@@ -1232,10 +1232,11 @@ test("방 모달은 후보 자동충원 예상치를 출전 슬롯으로 표시�
 });
 
 test("공용 경기방은 모든 진입점에서 렌더 실패와 삭제 실패를 방 안에서 복구한다", async () => {
-  const [modalSource, interactionsSource, matchModelSource] = await Promise.all([
+  const [modalSource, interactionsSource, matchModelSource, layoutSource] = await Promise.all([
     readFile(new URL("../src/components/recruiting/RecruitingRoomModal.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/components/recruiting/useRecruitingRoomModalInteractions.js", import.meta.url), "utf8"),
     readFile(new URL("../src/components/recruiting/RecruitingRoomMatchModel.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/recruiting/RecruitingRoomLayout.jsx", import.meta.url), "utf8"),
   ]);
 
   assert.match(modalSource, /class RecruitingRoomRenderBoundary extends Component/);
@@ -1247,6 +1248,7 @@ test("공용 경기방은 모든 진입점에서 렌더 실패와 삭제 실패�
   assert.match(interactionsSource, /setSoloRecordDeleteTarget\(null\);\s+closeModal\(\)/);
   assert.doesNotMatch(interactionsSource, /request\.finally\(closeModal\)/);
   assert.match(matchModelSource, /refereeAbsenceRequest\?\.status === "pending"/);
+  assert.match(layoutSource, /className="arena-lobby-drag-handle"[\s\S]*onClick=\{closeFromBackdrop\}/);
 });
 
 test("서버 action 실패는 기존 화면 상태를 보존하고 같은 영역에서 재시도할 수 있다", async () => {
@@ -1374,6 +1376,7 @@ test("슬롯·경기·이의제기 action은 서버 결과를 기다리고 실�
   assert.match(slotRenderers, /if \(result && result\.ok !== false\) setSlotActionDraft\(null\)/);
   assert.match(disputeInteractions, /sourceDisputePendingRef\.current[\s\S]*이의제기를 접수하지 못했습니다/);
   assert.match(actionSection, /sourceMatchActionPending === "start" \? "처리 중"/);
+  assert.match(actionSection, /runSourceMatchAction\("cancel-participation"[\s\S]*cancelRecruitingParticipation/);
   assert.match(tournamentActions, /return rollbackIfServerFailed\(syncTournamentServer\(syncedTournament/);
   assert.match(participation, /if \(!result \|\| result\?\.ok === false\) throw new Error\(result\?\.error \|\| "chat_send_failed"\)/);
   assert.match(matchRenderers, /if \(!result \|\| result\?\.ok === false\)[\s\S]*취소하지 못했습니다/);

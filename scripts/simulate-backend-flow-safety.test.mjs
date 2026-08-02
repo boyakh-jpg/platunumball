@@ -26,6 +26,10 @@ const exactCleanupIdempotentMigration = readFileSync(
   join(dirname(scriptPath), "../supabase/migrations/20260725020000_idempotent_exact_simulation_cleanup.sql"),
   "utf8",
 );
+const visibleSimulationCleanupMigration = readFileSync(
+  join(dirname(scriptPath), "../supabase/migrations/20260803013000_cleanup_visible_simulation_tournaments.sql"),
+  "utf8",
+);
 const autoFinalizeNormalizationMigration = readFileSync(
   join(dirname(scriptPath), "../supabase/migrations/20260725020500_restore_auto_finalize_dispute_normalization.sql"),
   "utf8",
@@ -247,6 +251,11 @@ test("simulation cleanup is exact, bounded, and guarded from user matches", () =
   assert.match(exactCleanupIdempotentMigration, /rankball_rebuild_profile_match_summary/);
   assert.match(exactCleanupIdempotentMigration, /rankball_refresh_court_metrics/);
   assert.match(exactCleanupIdempotentMigration, /'derivedRefreshCompleted', true/);
+  assert.match(visibleSimulationCleanupMigration, /rankball_cleanup_simulation_artifacts_exact/);
+  assert.match(visibleSimulationCleanupMigration, /sim_trn_tournament_bye_round_ms3bjpw4_2xio3d/);
+  assert.match(visibleSimulationCleanupMigration, /sim_trn_tournament_followup_round_ms3bjpw4_2xio3d/);
+  assert.match(visibleSimulationCleanupMigration, /cardinality\(target_match_ids\) > 10/);
+  assert.doesNotMatch(visibleSimulationCleanupMigration, /rankball_cleanup_simulation_artifacts\(\)/);
   assert.match(scriptSource, /if \(!derivedRefreshCompleted\)/);
   assert.match(schemaHealthSource, /projectActiveRpcContractChecks/);
   assert.match(

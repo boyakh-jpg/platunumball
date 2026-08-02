@@ -133,8 +133,19 @@ async function syncExamAttempt(context, action, attempt = {}) {
     const row = toExamAttemptRow(payload, context.profileId);
     const { error } = await context.supabase
       .from("referee_exam_attempts")
-      .upsert(row, { onConflict: "id" });
+      .insert(row);
     if (error) {
+      if (error.code === "23505") {
+        const { data: concurrentAttempt, error: concurrentError } = await context.supabase
+          .from("referee_exam_attempts")
+          .select("id, user_id, payload")
+          .eq("id", attemptId)
+          .maybeSingle();
+        if (concurrentError) throw concurrentError;
+        if (concurrentAttempt?.user_id === context.profileId) {
+          return { ok: true, attemptId, attempt: toClientAttempt(concurrentAttempt.payload), duplicate: true };
+        }
+      }
       if (String(error.message || "").includes("referee_exam_cooldown_active")) {
         error.statusCode = 400;
       }
@@ -180,11 +191,35 @@ async function syncExamAttempt(context, action, attempt = {}) {
     updatedAt: now,
   };
   const row = toExamAttemptRow(payload, context.profileId);
-  const { error } = await context.supabase
+  const { data: updatedAttempt, error } = await context.supabase
     .from("referee_exam_attempts")
-    .upsert(row, { onConflict: "id" });
+    .update(row)
+    .eq("id", attemptId)
+    .eq("user_id", context.profileId)
+    .eq("status", "started")
+    .select("id, status, payload")
+    .maybeSingle();
   if (error) throw error;
-  return { ok: true, attemptId, attempt: toClientAttempt(payload), result };
+  if (updatedAttempt?.id) return { ok: true, attemptId, attempt: toClientAttempt(payload), result };
+
+  const { data: concurrentAttempt, error: concurrentError } = await context.supabase
+    .from("referee_exam_attempts")
+    .select("id, user_id, status, payload")
+    .eq("id", attemptId)
+    .maybeSingle();
+  if (concurrentError) throw concurrentError;
+  if (concurrentAttempt?.user_id === context.profileId && ["passed", "failed"].includes(concurrentAttempt.status)) {
+    return {
+      ok: true,
+      attemptId,
+      attempt: toClientAttempt(concurrentAttempt.payload),
+      result: concurrentAttempt.payload?.result,
+      duplicate: true,
+    };
+  }
+  const conflictError = new Error("exam_attempt_state_conflict");
+  conflictError.statusCode = 409;
+  throw conflictError;
 }
 
 async function assertPassedAttempt(context, request = {}) {
@@ -246,14 +281,30 @@ async function syncRefereeRequest(context, request = {}, notifications = []) {
     .order("created_at", { ascending: false })
     .limit(1);
   if (pendingError) throw pendingError;
-  if (pendingRequests?.[0]?.id && pendingRequests[0].id !== row.id) {
+  if (pendingRequests?.[0]?.id) {
     return { ok: true, requestId: pendingRequests[0].id, notificationCount: 0, duplicate: true };
   }
 
   const { error: requestError } = await context.supabase
     .from("referee_requests")
-    .upsert(row, { onConflict: "id" });
-  if (requestError) throw requestError;
+    .insert(row);
+  if (requestError) {
+    if (requestError.code === "23505" || String(requestError.message || "").includes("referee_request_pending_exists")) {
+      const { data: concurrentRequests, error: concurrentError } = await context.supabase
+        .from("referee_requests")
+        .select("id")
+        .eq("requested_by", context.profileId)
+        .eq("status", "pending")
+        .order("created_at", { ascending: false })
+        .limit(1);
+      if (concurrentError) throw concurrentError;
+      if (concurrentRequests?.[0]?.id) {
+        return { ok: true, requestId: concurrentRequests[0].id, notificationCount: 0, duplicate: true };
+      }
+      requestError.statusCode = 409;
+    }
+    throw requestError;
+  }
 
   const notificationRows = toNotificationRows(notifications, context.profileId, {
     defaultTitle: "심판 요청",

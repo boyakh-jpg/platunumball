@@ -83,7 +83,9 @@ const trackedPostServerAction = useCallback((path, payload = {}, options = {}) =
         adminContextRef.current = EMPTY_ADMIN_CONTEXT;
         setAdminContext(EMPTY_ADMIN_CONTEXT);
         setState((prev) => withServerAdminContext(prev, EMPTY_ADMIN_CONTEXT));
-        return EMPTY_ADMIN_CONTEXT;
+        return expectedNonAdmin
+          ? EMPTY_ADMIN_CONTEXT
+          : { ...EMPTY_ADMIN_CONTEXT, loadError: error?.message ?? "admin_context_load_failed" };
       }
     })().finally(() => {
       if (adminContextPromiseRef.current === promise) adminContextPromiseRef.current = null;

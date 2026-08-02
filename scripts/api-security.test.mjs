@@ -577,6 +577,22 @@ test("future public database objects are deny-by-default", async () => {
   assert.doesNotMatch(migrationSource, /drop table|truncate table|delete from/i);
 });
 
+test("referee exam attempts preserve the first start and first terminal grading", async () => {
+  const [source, migrationSource] = await Promise.all([
+    readSource("server/api/referee/sync.js"),
+    readSource("supabase/migrations/20260803012000_serialize_referee_requests.sql"),
+  ]);
+  assert.match(source, /\.from\("referee_exam_attempts"\)\s*\.insert\(row\)/);
+  assert.doesNotMatch(source, /\.from\("referee_exam_attempts"\)\s*\.upsert\(row/);
+  assert.match(source, /\.update\(row\)[\s\S]{0,180}\.eq\("status", "started"\)[\s\S]{0,120}\.maybeSingle\(\)/);
+  assert.match(source, /exam_attempt_state_conflict/);
+  assert.match(source, /\.from\("referee_requests"\)\s*\.insert\(row\)/);
+  assert.doesNotMatch(source, /\.from\("referee_requests"\)\s*\.upsert\(row/);
+  assert.match(migrationSource, /pg_advisory_xact_lock/);
+  assert.match(migrationSource, /referee_request_pending_exists/);
+  assert.doesNotMatch(migrationSource, /delete\s+from|truncate\s+table|drop\s+table/i);
+});
+
 test("retired favorite targets can still be removed", async () => {
   const source = await readSource("server/api/favorites/sync.js");
   assert.match(source, /if \(active\) \{\s+await assertTargetExists\(context, targetType, targetId\)/u);

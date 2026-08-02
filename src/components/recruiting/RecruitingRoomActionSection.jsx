@@ -109,7 +109,6 @@ export function RecruitingRoomActionSection({ context }) {
                     ) : null}
                     {sourceMatchApprovalOpen && !sourceMatch.refereeId ? (
                       <form className="arena-dispute-editor" onSubmit={submitSourceDispute}>
-
                         <div className="arena-dispute-score-row arena-dispute-team-score-grid">
                           <label>
                             {sourceMatch.teamA?.name ?? "A"} · 현재 {sourceMatch.result?.scoreA ?? sourceMatch.teamA?.score ?? 0}
@@ -475,9 +474,10 @@ export function RecruitingRoomActionSection({ context }) {
                     type="button"
                     variant="secondary"
                     className="danger-button"
-                    onClick={() => app.actions.cancelRecruitingParticipation(selectedPost.id)}
+                    disabled={Boolean(sourceMatchActionPending)}
+                    onClick={() => { void runSourceMatchAction("cancel-participation", () => app.actions.cancelRecruitingParticipation(selectedPost.id)); }}
                   >
-                    <XCircle size={18} /> 참여 취소
+                    <XCircle size={18} /> {sourceMatchActionPending === "cancel-participation" ? "취소 중" : "참여 취소"}
                   </Button>
                 ) : null}
                 {!sourceRoomReadOnly && !matchRoom && mine ? (
