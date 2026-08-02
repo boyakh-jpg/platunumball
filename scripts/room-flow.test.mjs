@@ -54,7 +54,7 @@ import {
   updateMatchListScope,
 } from "../src/lib/matchUtils.js";
 import { getMatchConfigurationChangePatch, getMatchCreationPolicyPayload } from "../src/lib/matchCreationPolicies.js";
-import { getRecruitingInvitationSenderName, getRecruitingLobby } from "../src/lib/recruiting.js";
+import { getRecruitingEntryPlacementIds, getRecruitingInvitationSenderName, getRecruitingLobby } from "../src/lib/recruiting.js";
 
 configureServerRatingAuthority(SERVER_RATING_AUTHORITY);
 
@@ -766,8 +766,8 @@ test("확정 픽업 방모달은 실제 A/B 출전·후보 명단을 그대로 �
         matchIntent: "pickup",
         sideCapacity: 3,
         benchCapacity: 1,
-        sideAssignmentStatus: "confirmed",
-        sideAssignmentRevision: 1,
+        sideAssignmentStatus: "pending",
+        sideAssignmentRevision: 0,
       },
       createdAt: "2026-07-25T00:00:00.000Z",
     };
@@ -803,6 +803,18 @@ test("확정 픽업 방모달은 실제 A/B 출전·후보 명단을 그대로 �
       reserveLobby.sides.teamB.reserveCandidates.some((candidate) => candidate.playerId === "host"),
       true,
     );
+
+    const stalePartyMatch = {
+      ...match,
+      teamB: { players: ["host", "b2", "b3"], teamId: null },
+      reservePlayers: { teamA: ["ra"], teamB: ["b1"] },
+      parties: [...match.parties, { side: "teamB", players: ["b1"], reserves: [] }],
+    };
+    const stalePartyLobby = getRecruitingLobby(getMatchRoomPost(stalePartyMatch, { ...state, matches: [stalePartyMatch] }), state);
+    assert.equal(stalePartyLobby.entries.flatMap((entry) => {
+      const placement = getRecruitingEntryPlacementIds(entry);
+      return [...placement.activeIds, ...placement.reserveIds];
+    }).filter((playerId) => playerId === "b1").length, 1);
 
     const teamHostMatch = {
       ...match,

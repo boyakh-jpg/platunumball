@@ -64,9 +64,6 @@ export function getMatchRoomPost(match, state) {
   const pickupAssignmentUsesMatchRoster = (
     (sourceMatch.formationMode ?? sourceMatch.rules?.formationMode) === "pickup"
     || (sourceMatch.matchIntent ?? sourceMatch.rules?.matchIntent) === "pickup"
-  ) && (
-    ["draft", "confirmed"].includes(sourceMatch.rules?.sideAssignmentStatus)
-    || Number(sourceMatch.rules?.sideAssignmentRevision ?? 0) > 0
   );
   const assignedHostSide = MATCH_SIDES.find((sideName) => (
     sideName === "teamA"

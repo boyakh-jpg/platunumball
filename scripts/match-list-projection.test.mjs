@@ -59,7 +59,7 @@ test("목록 방 유형은 경기 사이드·팀 파티·모집 로비를 같은
   }), "팀 파티 포함");
 });
 
-test("일정 목록 인원은 선언 count를 우선하고 후보를 포함하지 않는다", () => {
+test("일정 목록 인원은 선언된 출전 수와 후보를 함께 센다", () => {
   assert.deepEqual(getScheduleMatchRosterProjection({
     teamA: {
       count: 3,
@@ -74,9 +74,9 @@ test("일정 목록 인원은 선언 count를 우선하고 후보를 포함하�
       teamB: ["br1"],
     },
   }), {
-    participantCount: 3,
-    teamACount: 3,
-    teamBCount: 0,
+    participantCount: 5,
+    teamACount: 4,
+    teamBCount: 1,
   });
 
   assert.deepEqual(getScheduleMatchRosterProjection({
