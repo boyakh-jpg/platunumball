@@ -1541,6 +1541,19 @@ test("team detail keeps navigation preview and always refreshes authoritative te
   assert.match(teamHoverCard, /state=\{\{ teamPreview: team \}\}/);
 });
 
+test("blocked player labels remain identifiable after directory filtering", async () => {
+  const [settingsRepository, settingsActions, settingsServer, settingsView] = await Promise.all([
+    readSource("src/data/repository/settings.js"),
+    readSource("src/hooks/appData/actions.js"),
+    readSource("server/api/settings/sync.js"),
+    readSource("src/pages/SettingsSideColumn.jsx"),
+  ]);
+  assert.match(settingsRepository, /blockedUserProfiles/);
+  assert.match(settingsActions, /syncSettingsServer\(\{ blockedUserIds: nextBlockedUserIds, blockedUserProfiles: nextBlockedUserProfiles \}\)/);
+  assert.match(settingsServer, /settingsPatch\.blockedUserProfiles/);
+  assert.match(settingsView, /blockedUserProfiles\?\.\[userId\]\?\.name/);
+});
+
 test("team creation requires one active approved home court selection", async () => {
   const [teamsPage, teamRepository, teamServer] = await Promise.all([
     readSource("src/pages/Teams.jsx"),

@@ -129,7 +129,7 @@ export default function SettingsSideColumn({ controller }) {
             <div className="compact-list ui-support-list">
               {blockedUserIds.length ? blockedUserIds.map((userId) => (
                 <div key={userId}>
-                  <span>{userMap[userId]?.name ?? "플레이어"}</span>
+                  <span>{userMap[userId]?.name ?? app.state.settings?.blockedUserProfiles?.[userId]?.name ?? "플레이어"}</span>
                   <button type="button" disabled={blockSavePending} onClick={() => releaseBlock(userId)}>해제</button>
                 </div>
               )) : <div><span>차단한 플레이어가 없습니다.</span><strong>0</strong></div>}

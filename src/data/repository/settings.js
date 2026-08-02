@@ -36,6 +36,10 @@ export function blockUser(state, userId) {
   const blockedUserIds = Array.from(new Set([...(state.settings?.blockedUserIds ?? []), userId]));
   const blockedUserIdSet = new Set(blockedUserIds);
   const blockedUser = state.users.find((user) => user.id === userId);
+  const blockedUserProfiles = blockedUser ? {
+    ...(state.settings?.blockedUserProfiles ?? {}),
+    [userId]: { name: blockedUser.name ?? "플레이어", hashtag: blockedUser.hashtag ?? blockedUser.handle ?? "" },
+  } : state.settings?.blockedUserProfiles ?? {};
   const isBlockedIncomingInvitation = (invitation = {}) => (
     invitation.targetUserId === state.currentUserId && blockedUserIdSet.has(invitation.fromUserId)
   );
@@ -49,7 +53,7 @@ export function blockUser(state, userId) {
 
   return {
     ...state,
-    settings: normalizeSettings({ ...(state.settings ?? {}), blockedUserIds }),
+    settings: normalizeSettings({ ...(state.settings ?? {}), blockedUserIds, blockedUserProfiles }),
     teamInvitations: (state.teamInvitations ?? []).filter((invitation) => !isBlockedIncomingInvitation(invitation)),
     recruitingPosts: visibleRecruitingPosts,
     notifications: [
@@ -67,11 +71,15 @@ export function blockUser(state, userId) {
 }
 
 export function unblockUser(state, userId) {
+  const blockedUserProfiles = Object.fromEntries(
+    Object.entries(state.settings?.blockedUserProfiles ?? {}).filter(([id]) => id !== userId),
+  );
   return {
     ...state,
     settings: normalizeSettings({
       ...(state.settings ?? {}),
       blockedUserIds: (state.settings?.blockedUserIds ?? []).filter((id) => id !== userId),
+      blockedUserProfiles,
     }),
   };
 }

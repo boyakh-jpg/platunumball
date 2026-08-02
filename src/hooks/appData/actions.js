@@ -207,7 +207,13 @@ export function createAppActions({
       const nextBlockedUserIds = shouldBlock
         ? Array.from(new Set([...blockedUserIds, userId]))
         : blockedUserIds.filter((blockedUserId) => blockedUserId !== userId);
-      const result = await syncSettingsServer({ blockedUserIds: nextBlockedUserIds });
+      const currentProfiles = stateRef.current.settings?.blockedUserProfiles ?? {};
+      const targetUser = stateRef.current.users.find((user) => user.id === userId);
+      const nextBlockedUserProfiles = Object.fromEntries([
+        ...Object.entries(currentProfiles).filter(([profileId]) => profileId !== userId),
+        ...(shouldBlock && targetUser ? [[userId, { name: targetUser.name ?? "플레이어", hashtag: targetUser.hashtag ?? targetUser.handle ?? "" }]] : []),
+      ]);
+      const result = await syncSettingsServer({ blockedUserIds: nextBlockedUserIds, blockedUserProfiles: nextBlockedUserProfiles });
       if (!result || result.ok === false) return result || false;
       blockedSettingsCommittedIdsRef.current = nextBlockedUserIds;
       setState((prev) => (shouldBlock

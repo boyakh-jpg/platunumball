@@ -44,6 +44,18 @@ function sanitizeSettingsPatch(value) {
       .map((userId) => String(userId || "").trim().slice(0, 128))
       .filter(Boolean))].slice(0, 250);
   }
+  const blockedUserProfiles = getPlainObject(source.blockedUserProfiles);
+  if (blockedUserProfiles && Array.isArray(source.blockedUserIds)) {
+    patch.blockedUserProfiles = Object.fromEntries(Object.entries(blockedUserProfiles).slice(0, 250).flatMap(([profileId, profile]) => {
+      const id = String(profileId || "").trim().slice(0, 128);
+      const value = getPlainObject(profile);
+      if (!id || !value) return [];
+      return [[id, {
+        name: String(value.name || "플레이어").trim().slice(0, 80) || "플레이어",
+        hashtag: String(value.hashtag || "").trim().slice(0, 80),
+      }]];
+    }));
+  }
 
   const privacy = sanitizeBooleanPatch(source.privacy, ["regionRanking", "teamHistory", "statSummary"]);
   if (privacy) patch.privacy = privacy;
@@ -89,6 +101,10 @@ export default async function handler(request, response) {
     const context = await getAuthenticatedContext(request);
     if (settingsPatch.blockedUserIds) {
       settingsPatch.blockedUserIds = settingsPatch.blockedUserIds.filter((userId) => userId !== context.profileId);
+      const blockedUserIdSet = new Set(settingsPatch.blockedUserIds);
+      settingsPatch.blockedUserProfiles = Object.fromEntries(
+        Object.entries(settingsPatch.blockedUserProfiles ?? {}).filter(([userId]) => blockedUserIdSet.has(userId)),
+      );
     }
     if (settingsPatch.representativeTeamId) {
       const { data: membership, error: membershipError } = await context.supabase
