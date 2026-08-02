@@ -28,6 +28,13 @@
   font-weight: var(--ui-button-font-weight);
   letter-spacing: 0;
 }
+.provider-button,
+.auth-browser-actions button,
+.auth-browser-actions a,
+.auth-session-line button,
+.auth-form > .button-secondary {
+  border: 0;
+}
 .button-sm {
   min-height: var(--ui-button-height-sm);
 }
