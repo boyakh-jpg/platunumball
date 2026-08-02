@@ -182,7 +182,6 @@ export default function Notifications({ app }) {
     <div className="page-stack">
       <header className="page-header">
         <div>
-          <p className="eyebrow">Notifications</p>
           <h1>알림</h1>
         </div>
         <Button variant="secondary" disabled={!unreadCount || Boolean(notificationReadPendingId)} onClick={() => { void readNotifications("all", app.actions.markAllNotificationsRead); }}>

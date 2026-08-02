@@ -258,7 +258,6 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
       ) : null}
       <Card className="court-detail-hero ui-design-app-hero">
         <div className="court-detail-heading">
-          <p className="eyebrow">Court Profile</p>
           <h1>{court.name}</h1>
           <p><MapPin size={16} /> {getCourtAddress(court)}</p>
           <div className="court-detail-tags">

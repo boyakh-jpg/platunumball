@@ -390,7 +390,6 @@ button:not(:focus-visible) {
 .rank-home .rank-summary-grid .home-rank-board-head h1 {
   color: #fff;
   word-break: keep-all;
-  text-shadow: 0 12px 30px rgba(0, 0, 0, 0.38);
 }
 .rank-home .rank-summary-grid .rank-hero-top > div {
   width: 100%;

@@ -48,9 +48,7 @@ return (
     <div className="page-stack om-match-page">
       <section className="om-match-hero ui-design-app-hero">
         <div className="om-match-copy">
-          <span className="om-kicker">MATCH QUEUE</span>
           <h1>일정</h1>
-          <p>내가 참가한 시작 전 경기만 날짜별로 표시합니다.</p>
         </div>
         <div className="om-match-panel ui-liquid-glass">
           <div className="om-match-stats ui-liquid-glass-segments">

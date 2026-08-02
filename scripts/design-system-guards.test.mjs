@@ -928,7 +928,7 @@ test("알파 온보딩은 기록 중심 무료 핵심 흐름을 안내한다", (
   assert.match(gettingStartedSource, /QR 토큰은 5분마다 바뀌며 경기 20분 전부터 로그인한 사전 등록 선수/);
   assert.match(gettingStartedSource, /출전·후보 선수가 모두 출석하면 예정시간 전에도 시작/);
   assert.match(gettingStartedSource, /QR 출석과 실제 출전은 다릅니다/);
-  assert.match(gettingStartedSource, /체크인 참가자 표는 3초, 경기 전 QR 패널은 15초, 경기시계와 지각 QR은 3초/);
+  assert.match(gettingStartedSource, /출석판과 QR 상태는 자동으로 갱신/);
   assert.match(gettingStartedSource, /만료된 QR, 다른 경기의 QR, 서명이 잘못된 QR, 미등록 사용자 스캔은 거부/);
   assert.match(gettingStartedSource, /출전·팀 배치를 자동 확정하지 않습니다/);
   assert.doesNotMatch(gettingStartedSource, /양쪽 실제 출전 선수의 과반 승인/);
@@ -959,7 +959,7 @@ test("알파 온보딩은 기록 중심 무료 핵심 흐름을 안내한다", (
   assert.match(gettingStartedSource, /isHomeGuideCardVisible\(app\.state\.settings\)/);
   assert.match(gettingStartedSource, /updateSettings\(\{\s*showHomeGuideCard: !homeGuideCardVisible,/);
   assert.match(gettingStartedSource, /홈에서 사용 설명 안 보기/);
-  assert.match(gettingStartedSource, /숨겨도 사용 설명과 연습 경기는 계속 이용할 수 있습니다/);
+  assert.doesNotMatch(gettingStartedSource, /숨겨도 사용 설명과 연습 경기는 계속 이용할 수 있습니다/);
   assert.match(practiceMatchSource, /aria-current=\{index \+ 1 === progress\.step \? "step" : undefined\}/);
   assert.match(practiceMatchSource, /className="practice-match-banner__actions ui-action-row"/);
   assert.doesNotMatch(practiceMatchSource, /practice-room-guide ui-panel|practice-room-guide ui-modal-section/);
@@ -975,7 +975,7 @@ test("알파 온보딩은 기록 중심 무료 핵심 흐름을 안내한다", (
 
 test("hero inner boards share one readable liquid-glass system", () => {
   assert.equal(count(tokenStyles, "--hero-copy-color: var(--rb-cream);"), 2);
-  assert.equal(count(tokenStyles, "0 4px 12px"), 2);
+  assert.equal(count(tokenStyles, "--hero-title-shadow: 0 2px 12px rgba(0, 0, 0, 0.26);"), 2);
   assert.equal(count(tokenStyles, "0 3px 8px"), 2);
   assert.doesNotMatch(tokenStyles, /--hero-title-shadow:[\s\S]{0,100}?14px 34px/);
   assert.doesNotMatch(tokenStyles, /--hero-copy-shadow:[\s\S]{0,100}?8px 20px/);
@@ -1022,6 +1022,24 @@ test("hero inner boards share one readable liquid-glass system", () => {
   );
   assert.equal(count(primitiveStyles, "-webkit-mask-composite: xor;"), 1);
   assert.equal(count(primitiveStyles, "mask-composite: exclude;"), 1);
+});
+
+test("page heroes use the home title effect without template or implementation copy", () => {
+  const heroSources = [
+    ...Object.values(pageSources),
+    matchRoomPageSource,
+    courtDetailSource,
+    entityProfileHeroSource,
+    gettingStartedSource,
+    practiceMatchSource,
+    read("src/pages/AdminPageView.jsx"),
+    read("src/pages/Recorder.jsx"),
+    read("src/pages/RefereeRulebook.jsx"),
+    read("src/pages/TournamentDetailView.jsx"),
+  ].join("\n");
+
+  assert.doesNotMatch(heroSources, />\s*(?:MATCH QUEUE|Team Hub|Study guide|Admin Console|RecordMatch|CreateMatch|OFFICIAL ROOM|CUSTOM ROOM|Player Profile|Team Profile)\s*</);
+  assert.doesNotMatch(heroSources, /공용 방 모달|저장 통로|같은 값|현재 알파 테스트|서버 원본|내부 보정값|실제 공용 방 모달|현재 서비스 화면/);
 });
 
 test("팀 허브 대표팀 보드는 팀 전용 너비와 고정 노랑 팀명을 사용한다", () => {

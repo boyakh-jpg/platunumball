@@ -654,8 +654,8 @@
 6. Keep every subject inside a 16:9 safe area with enough outer margin. The card uses `object-fit: contain`; no important body part or prop may look cropped. Subject glow, necessary motion lines, hazard shapes, and close contact shadows may use partial alpha, but background pixels and corners must be fully transparent.
 7. Existing `assets/referee-rulebook/{scene}.svg` files remain as load-failure fallback only.
 8. Profile icons `221~225` reuse the same referee character language as full-body transparent cutouts. They remain fully inside the circular safe area, stay readable at small size, and gain clearer referee equipment and premium sports accessories by tier without duplicate props or cropped limbs.
-9. Light theme rulebook hero copy uses the normal light-theme text and muted colors without the image-hero white text shadow, so the pale panel keeps readable contrast.
-10. 룰북 본문은 `경기 중 판정 → 개인활약 기록 → BOXTIER 기록·이의·후기 → 안전·심판 윤리` 순서의 chapter로 묶는다. hero는 설명성 제목과 적용 범위만 표시하고 홍보성 문구를 사용하지 않는다.
+9. Light theme rulebook hero title uses the shared `--hero-title-shadow`; individual theme files do not remove or replace it.
+10. 룰북 본문은 `경기 중 판정 → 개인활약 기록 → BOXTIER 기록·이의·후기 → 안전·심판 윤리` 순서의 chapter로 묶는다. hero는 제목만 표시하고 고정 설명·홍보 문구를 사용하지 않는다.
 11. 룰북의 page-header만 hero로 사용한다. 적용 범위 안내는 공용 card 한 겹으로 두고, 통계·상황 예시 안쪽은 별도 card 테두리나 배경 없이 평면 구획으로 나눈다.
 12. 이의신청 chapter는 `10분·15분·20분`, 참가자별 병렬 요청, 방장 항목별 판정, 마지막 판정 즉시 확정을 설명한다. 심판 확정, 단일 전역 큐, 재승인 필요 문구를 사용하지 않는다.
 
@@ -734,7 +734,8 @@ RankBall 다크 모드는 이 팔레트를 기본 CSS 색상 표준으로 쓴다
 2026-07-01: 앱 바닥과 주요 hero/방 모달 overlay의 1px 격자무늬는 제거한다. 코트 정체성은 실제 배경 이미지와 scoreboard/card hierarchy로만 표현한다.
 2026-07-02: "hero들"이라고 하면 홈/경기/모집만이 아니라 `page-header`, landing, team hub, season, profile, team detail, rulebook, tournament, match room 같은 모든 page-level hero를 포함한다.
 2026-07-02: 모든 page-level hero는 이미지 위에 dark/white wash, scanline/grid, 별도 `::before`/`::after` overlay를 얹지 않는다. hero 텍스트는 dark에서 `--rb-orange`/`--rb-orange-2`, light 큰 제목은 `--rb-cream`로 시인성을 확보한다.
-2026-07-02: hero 제목 폰트는 모두 `--hero-title-font`를 쓴다. 원인/결과: 개별 파일의 `linear-gradient` background와 `::before`/`::after` overlay가 뒤쪽 CSS에서 다시 살아나 이미지 위 막이 반복됐으므로, page-level hero는 최종 guard에서 image + fallback color만 남기고 `backdrop-filter`/blur/filter를 쓰지 않는다.
+2026-07-02: hero 제목은 모두 `--hero-title-font`와 홈 hero 기준 `--hero-title-shadow`를 쓴다. 개별 feature/theme CSS는 제목 그림자를 덮어쓰지 않는다. 원인/결과: 개별 파일의 `linear-gradient` background와 `::before`/`::after` overlay가 뒤쪽 CSS에서 다시 살아나 이미지 위 막이 반복됐으므로, page-level hero는 최종 guard에서 image + fallback color만 남기고 `backdrop-filter`/blur/filter를 쓰지 않는다.
+2026-08-02: page-level hero는 제목, 상태 badge/action, 날짜·구장·지역 같은 동적 정보만 표시한다. eyebrow/kicker와 고정 설명은 두지 않으며, 서버 원본·모듈·저장 통로·공용 모달 같은 내부 구현 용어를 사용자 화면에 노출하지 않는다.
 2026-07-23: 방만들기(`/app/create`) page-header는 다크·라이트 전용 체육관 이미지 hero를 쓴다. 왼쪽 제목 영역은 단순한 벽면 여백을 유지하고 오른쪽 골대·접힌 관중석·조명 구조는 중앙 crop 안에 둔다. 장식용 공은 두지 않고 보이는 코트선은 실제 바닥 구조에 맞게 한 번만 표시한다.
 2026-07-28: 팀 허브 모바일 hero에도 데스크톱처럼 대표팀 보드를 포함한다. 대표팀이 있으면 팀명·MMR·전적을 표시하며 759px 이하에서도 숨기지 않는다.
 2026-07-02: 홈 image hero와 rank spotlight card는 조각난 frame처럼 보이는 border, underline, inner pseudo frame을 쓰지 않는다. 이미지 경계는 배경/간격으로 처리한다.

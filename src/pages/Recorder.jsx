@@ -207,9 +207,7 @@ export default function Recorder({ app }) {
       <div className="page-stack recorder-page">
         <header className="page-header recorder-header ui-design-app-hero">
           <div>
-            <span className="eyebrow">PLAY</span>
             <h1>플레이</h1>
-            <p>경기 시작부터 기록 확정 전까지 필요한 작업을 표시합니다.</p>
           </div>
         </header>
 

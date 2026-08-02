@@ -403,7 +403,10 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head h1,
 html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head p,
 html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head .eyebrow {
   color: var(--rb-orange);
-  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.26);
+}
+html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head p,
+html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head .eyebrow {
+  text-shadow: var(--hero-copy-shadow);
 }
 .rank-home .rank-summary-grid .home-rank-board-head p:not(.eyebrow),
 html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head p:not(.eyebrow) {

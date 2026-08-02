@@ -10,7 +10,6 @@ export default function SettingsPageView({ controller }) {
 <div className={`page-stack settings-page settings-section-${settingsSection}`}>
       <header className="page-header ui-design-app-hero">
         <div>
-          <p className="eyebrow">{sectionMeta.eyebrow}</p>
           <h1>{sectionMeta.title}</h1>
         </div>
         {settingsSection !== "main" ? (

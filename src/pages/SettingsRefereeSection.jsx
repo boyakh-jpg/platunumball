@@ -43,9 +43,7 @@ export default function SettingsRefereeSection({ controller }) {
             <div className="referee-rulebook-panel compact ui-design-info-surface">
               <div className="referee-rulebook-head">
                 <div>
-                  <span className="eyebrow">Study guide</span>
                   <strong>커뮤니티 심판 룰북</strong>
-                  <p>문제 원문은 숨기고 판정 기준, 개인활약 기록 기준, 상황 예시만 따로 정리했다.</p>
                 </div>
                 <Badge tone="blue">학습자료</Badge>
               </div>
