@@ -365,7 +365,7 @@ body.rankball-scroll-locked .app-main {
   justify-content: center;
   gap: var(--space-3);
   min-height: 38px;
-  border: var(--ui-button-border-width) solid rgba(255, 205, 96, 0.28);
+  border: 0;
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.07);
   color: var(--text);
@@ -398,7 +398,7 @@ body.rankball-scroll-locked .app-main {
   align-items: center;
   gap: var(--space-3);
   margin-left: auto;
-  border: var(--ui-button-border-width) solid var(--line);
+  border: 0;
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.055);
   color: var(--text);
@@ -418,7 +418,7 @@ body.rankball-scroll-locked .app-main {
   justify-content: center;
   gap: var(--space-5);
   min-height: 52px;
-  border: var(--ui-button-border-width) solid rgba(255, 255, 255, 0.14);
+  border: 0;
   background: rgba(255, 255, 255, 0.06);
   color: var(--text);
   cursor: pointer;
@@ -479,6 +479,10 @@ body.rankball-scroll-locked .app-main {
 .provider-test {
   border-color: rgba(70, 224, 182, 0.34);
   background: rgba(70, 224, 182, 0.1);
+}
+
+.auth-form > .button-secondary {
+  border: 0;
 }
 
 .bottom-nav {
