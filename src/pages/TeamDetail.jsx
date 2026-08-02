@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Navigate, useLocation, useParams } from "react-router-dom";
+import { Navigate, useLocation, useNavigate, useParams } from "react-router-dom";
 import Badge from "../components/common/Badge.jsx";
 import BasketballLoader from "../components/common/BasketballLoader.jsx";
 import Button from "../components/common/Button.jsx";
@@ -34,6 +34,7 @@ function isHistoryInDetailWindow(match) {
 export default function TeamDetail({ app }) {
   const { teamId } = useParams();
   const location = useLocation();
+  const navigate = useNavigate();
   const loadDirectory = app.actions.loadDirectory;
   const loadTeamRecords = app.actions.loadTeamRecords;
   const loadTeamEmblemStatus = app.actions.loadTeamEmblemStatus;
@@ -191,7 +192,7 @@ export default function TeamDetail({ app }) {
   const directoryPending = app.remoteReady === false
     || teamDetailLoad.loading
     || (app.directoryStatus?.loaded === false && !app.directoryStatus?.error)
-    || (!team && app.remoteReady !== false && Boolean(loadDirectory) && !teamDetailError);
+    || (!team && !teamDetailReady && app.remoteReady !== false && Boolean(loadDirectory) && !teamDetailError);
   if (!team && directoryPending) return <BasketballLoader overlay label="팀 불러오는 중" />;
   if (!team && teamDetailError) {
     return (
@@ -384,7 +385,8 @@ export default function TeamDetail({ app }) {
       return;
     }
     const deleted = await runTeamManagementMutation(() => app.actions.deleteTeam(team.id));
-    if (!deleted) setDeleteArmed(false);
+    if (deleted) navigate("/app/teams", { replace: true });
+    else setDeleteArmed(false);
   };
   const uploadEmblem = async (event) => {
     const file = event.target.files?.[0];

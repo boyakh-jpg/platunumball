@@ -1524,6 +1524,7 @@ test("team detail keeps navigation preview and always refreshes authoritative te
   assert.match(teamDetailPage, /if \(detailRequestRef\.current !== teamId\)/);
   assert.match(teamDetailPage, /detailRequestRef\.current = teamId;\s+refreshTeam\(\);/);
   assert.match(teamDetailPage, /!team && teamDetailError/);
+  assert.match(teamDetailPage, /!team && !teamDetailReady && app\.remoteReady !== false/);
   assert.match(teamDetailView, /teamDetailError[\s\S]{0,420}refreshTeamDetail\(\)[\s\S]{0,120}다시 시도/);
   assert.match(teamDetailPage, /const result = await app\.actions\.inviteTeamMember/);
   assert.match(teamDetailPage, /if \(!result \|\| result\.ok === false\)/);
@@ -1534,6 +1535,7 @@ test("team detail keeps navigation preview and always refreshes authoritative te
   assert.match(teamDetailView, /const inviteRoleOptions = TEAM_INVITE_ROLES\.map/u);
   assert.match(teamDetailView, /function getManagedRoleOptions\(member, captainId\)/u);
   assert.match(teamDetailPage, /const result = await app\.actions\.toggleFavoriteTeam\(team\.id, team\)/);
+  assert.match(teamDetailPage, /if \(deleted\) navigate\("\/app\/teams", \{ replace: true \}\)/);
   assert.match(teamDetailView, /toggleTeamFavorite\(\)/);
   assert.match(teamHoverCard, /navigate\(teamPath, \{ state: \{ teamPreview: team \} \}\)/);
   assert.match(teamHoverCard, /state=\{\{ teamPreview: team \}\}/);
