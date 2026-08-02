@@ -2524,7 +2524,7 @@ test("referee rulebook matches current FIBA and BOXTIER operating rules", async 
   assert.doesNotMatch(rulebookText, /일반 live 경기|personal_record|match_record|결과 revision|교체 transaction/);
   assert.match(rulebookText, /상세 산식과 내부 보정값은 공개하지 않습니다/);
   assert.doesNotMatch(rulebookText, /1v1 10%|2v2 20%|3v3 35%|5v5 50%|상위 최대 5명 평균|정규멤버 비율만큼|-150부터 \+150/);
-  assert.match(tutorial, /상세 산식과 내부 보정값은 공개하지 않습니다/);
+  assert.match(tutorial, /상세 산식은 공개하지 않습니다/);
   assert.doesNotMatch(tutorial, /1v1 10%|2v2 20%|3v3 35%|5v5 50%|상위 5명 평균|정규멤버 비율만큼|MMR 100%|성과 보정은 0%/);
   assert.doesNotMatch(recruiting, /MMR 반영률:|현장 직접 90%|완전 랜덤 100%|MMR 균형 110%|팀원의 비율을 기준|ratingScale \* 100/);
   assert.doesNotMatch(matchRoom, /정규 · MMR \$\{|ratingScale \?\?/);
