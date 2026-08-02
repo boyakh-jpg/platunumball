@@ -221,7 +221,7 @@ export default function Recorder({ app }) {
             description="서버 연결을 확인한 뒤 다시 시도합니다."
             action={(
               <>
-                <button type="button" className="button button-secondary button-md" onClick={retryRecorderLoad}>다시 시도</button>
+                <button type="button" className="button ui-button button-secondary ui-button-secondary button-md ui-button-md" onClick={retryRecorderLoad}>다시 시도</button>
                 <Button as={Link} to="/app/matches" variant="secondary">일정 보기</Button>
               </>
             )}

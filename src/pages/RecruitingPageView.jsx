@@ -195,7 +195,7 @@ export default function RecruitingPageView({
 
       {!app.recruitingPagination?.exhausted ? (
         <div className="om-load-more">
-          <button type="button" className="button button-secondary button-md" disabled={app.recruitingPagination?.loading} onClick={() => app.actions.loadMoreRecruiting?.()}>
+          <button type="button" className="button ui-button button-secondary ui-button-secondary button-md ui-button-md" disabled={app.recruitingPagination?.loading} onClick={() => app.actions.loadMoreRecruiting?.()}>
             {app.recruitingPagination?.loading ? "불러오는 중" : "더 보기"}
           </button>
           {app.recruitingPagination?.loadMoreError ? <span>모집방을 더 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</span> : null}

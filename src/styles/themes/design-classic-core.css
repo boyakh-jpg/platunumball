@@ -124,12 +124,6 @@
   line-height: 1.5;
 }
 
-[data-design="classic"] .ui-design-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-5);
-}
-
 [data-design="classic"] .ui-design-hero__stats {
   position: absolute;
   z-index: 1;

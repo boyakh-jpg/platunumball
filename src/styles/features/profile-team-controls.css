@@ -292,11 +292,8 @@
 }
 
 .my-team-actions {
-  display: flex;
   min-width: 0;
-  align-items: center;
   justify-content: flex-end;
-  gap: var(--space-3);
 }
 
 .my-team-row .my-team-tier {

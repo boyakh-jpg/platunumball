@@ -401,11 +401,7 @@
 
 .profile-icon-card-actions,
 .profile-icon-dialog-actions {
-  display: flex;
-  align-items: center;
   justify-content: flex-end;
-  gap: var(--space-4);
-  flex-wrap: wrap;
 }
 
 .profile-icon-card-feedback {

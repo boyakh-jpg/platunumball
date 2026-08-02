@@ -188,7 +188,7 @@ export function RatingPolicyPanel({ app }) {
           <div className="app-confirm-dialog" role="dialog" aria-modal="true" aria-label="MMR·신뢰도 정책 저장" onMouseDown={(event) => event.stopPropagation()}>
             <strong>정책 버전 {version + 1}로 저장할까요?</strong>
             <p>저장 이후 확정되는 경기와 새 신뢰도 이벤트부터 적용됩니다. 이전 결과는 재계산하지 않습니다.</p>
-            <div className="app-confirm-actions">
+            <div className="ui-action-row app-confirm-actions">
               <Button type="button" variant="secondary" onClick={() => setConfirming(false)}>취소</Button>
               <Button type="button" onClick={savePolicy}>저장</Button>
             </div>

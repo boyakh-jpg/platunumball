@@ -163,10 +163,7 @@
 }
 
 .court-detail-state-actions {
-  display: flex;
-  flex-wrap: wrap;
   justify-content: center;
-  gap: var(--space-4);
 }
 
 .court-detail-inline-error {

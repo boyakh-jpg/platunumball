@@ -172,7 +172,7 @@ export default function SettingsSideColumn({ controller }) {
                       placeholder="구장 근처 도로명, 건물명 검색"
                     />
                   </label>
-                  <div className="settings-address-actions">
+                  <div className="ui-action-row settings-address-actions">
                     <Button type="button" variant="secondary" onClick={searchCourtAddress} disabled={courtAddressSearchPending || !courtAddressQuery.trim()}>
                       {courtAddressSearchPending ? "주소 찾는 중" : "근처 주소 찾기"}
                     </Button>
@@ -208,7 +208,7 @@ export default function SettingsSideColumn({ controller }) {
                     <input value={courtDraft.courtUnit} placeholder="예: 1코트, B코트, 실내" onChange={(event) => updateCourtDraft({ courtUnit: event.target.value })} />
                   </label>
                 </div>
-                <div className="settings-place-name-actions">
+                <div className="ui-action-row settings-place-name-actions">
                   <small>핀 주소의 시군구와 시설명을 합쳐 `시군구 + 시설명 + 농구장`으로 저장합니다.</small>
                   {courtDraft.buildingName ? <small>주소 건물명 `{courtDraft.buildingName}` 자동 반영 · 직접 수정하면 수동 시설명을 사용</small> : null}
                 </div>

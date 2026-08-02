@@ -146,14 +146,6 @@
   font-weight: 850;
 }
 
-.tournament-referee-actions,
-.tournament-sanction-actions {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
 .tournament-referee-actions button,
 .tournament-match-referee-list button {
   display: inline-flex;

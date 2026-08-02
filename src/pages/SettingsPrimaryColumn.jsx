@@ -88,6 +88,7 @@ export default function SettingsPrimaryColumn({ controller }) {
               <button
                 type="button"
                 className={themeDraft === "light" ? "active" : ""}
+                onPointerUp={(event) => event.currentTarget.blur()}
                 onClick={() => selectTheme("light")}
               >
                 라이트
@@ -95,6 +96,7 @@ export default function SettingsPrimaryColumn({ controller }) {
               <button
                 type="button"
                 className={themeDraft === "dark" ? "active" : ""}
+                onPointerUp={(event) => event.currentTarget.blur()}
                 onClick={() => selectTheme("dark")}
               >
                 다크
@@ -254,7 +256,7 @@ export default function SettingsPrimaryColumn({ controller }) {
                 </label>
               ))}
             </div>
-            <div className="settings-address-actions">
+            <div className="ui-action-row settings-address-actions">
               {discordLinked ? (
                 <Button
                   type="button"

@@ -250,13 +250,8 @@ html[data-theme="light"] .eyebrow {
   color: var(--rb-orange);
 }
 .rank-home .home-panel-empty {
-  display: grid;
   min-height: 66px;
   place-items: center;
-  color: var(--rb-muted);
-  font-size: 0.82rem;
-  font-weight: 850;
-  text-align: center;
 }
 /* 2026-07-01 desktop home compaction: lift lower panels beside the hero. */
 @media (min-width: 1080px) {

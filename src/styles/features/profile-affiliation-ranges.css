@@ -222,11 +222,6 @@
 .season-board-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
-.season-section-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
-}
 .season-section-actions .button {
   min-height: 34px;
 }

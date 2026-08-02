@@ -218,7 +218,7 @@ export default function Notifications({ app }) {
                     <em>{getRoomScheduleLabel(post)} · {post.court} · {senderName}님이 초대</em>
                     {invitationActionErrors[actionKey] ? <small role="status" className="form-warning">{invitationActionErrors[actionKey]}</small> : null}
                   </span>
-                  <span className="home-invitation-actions">
+                  <span className="ui-action-row home-invitation-actions">
                     <Button size="sm" type="button" disabled={actionPending} onClick={() => acceptInvitation(post.id, invitation.id)}>수락</Button>
                     <Button size="sm" type="button" variant="secondary" disabled={actionPending} onClick={() => declineInvitation(post.id, invitation.id)}>거절</Button>
                     <Button
@@ -262,7 +262,7 @@ export default function Notifications({ app }) {
                     <em>{sender?.name ?? "주장"} · 팀 가입 초대</em>
                     {invitationActionErrors[actionKey] ? <small role="status" className="form-warning">{invitationActionErrors[actionKey]}</small> : null}
                   </span>
-                  <span className="home-invitation-actions">
+                  <span className="ui-action-row home-invitation-actions">
                     <Button size="sm" type="button" disabled={actionPending} onClick={() => acceptTeamInvite(invitation)}>수락</Button>
                     <Button size="sm" type="button" variant="secondary" disabled={actionPending} onClick={() => declineTeamInvite(invitation.id)}>거절</Button>
                     <Button as={Link} variant="secondary" size="sm" to={`/app/teams/${invitation.teamId}`}>팀 보기</Button>
@@ -316,7 +316,7 @@ export default function Notifications({ app }) {
                 ) : null}
                 {notificationDeleteError?.id === notification.id ? <small role="status" className="form-warning">{notificationDeleteError.message}</small> : null}
               </span>
-              <span className="notification-actions">
+              <span className="ui-action-row notification-actions">
                 {notification.targetUnavailable ? (
                   <b className="notification-action-control notification-terminal-state">종료됨</b>
                 ) : notification.matchId ? (

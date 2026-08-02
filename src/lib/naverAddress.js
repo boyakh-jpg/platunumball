@@ -363,7 +363,7 @@ export async function openNaverMapPinPicker(court = {}, clientId = getNaverMapCl
     title.textContent = "실제 구장 위치 선택";
     const closeButton = document.createElement("button");
     closeButton.type = "button";
-    closeButton.className = "button button-secondary button-sm button-icon naver-pin-picker-close";
+    closeButton.className = "button ui-button button-secondary ui-button-secondary button-sm ui-button-sm button-icon naver-pin-picker-close";
     closeButton.setAttribute("aria-label", "닫기");
     closeButton.title = "닫기";
     closeButton.textContent = "×";
@@ -392,11 +392,11 @@ export async function openNaverMapPinPicker(court = {}, clientId = getNaverMapCl
     footerActions.className = "naver-pin-picker-actions";
     const cancelButton = document.createElement("button");
     cancelButton.type = "button";
-    cancelButton.className = "button button-secondary button-md";
+    cancelButton.className = "button ui-button button-secondary ui-button-secondary button-md ui-button-md";
     cancelButton.textContent = "취소";
     const submitButton = document.createElement("button");
     submitButton.type = "button";
-    submitButton.className = "button button-primary button-md";
+    submitButton.className = "button ui-button button-primary ui-button-primary button-md ui-button-md";
     submitButton.textContent = "이 위치로 주소 확정";
 
     header.append(title, closeButton);

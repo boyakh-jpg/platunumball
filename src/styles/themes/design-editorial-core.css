@@ -152,12 +152,6 @@
   line-height: 1.6;
 }
 
-[data-design="editorial"] .ui-design-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-5);
-}
-
 [data-design="editorial"] .ui-design-hero__stats {
   position: absolute;
   z-index: 1;

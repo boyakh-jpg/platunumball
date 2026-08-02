@@ -406,10 +406,7 @@ html[data-theme="light"] .referee-rulebook-page .referee-rulebook-intro h2 {
 }
 
 .referee-exam-actions {
-  display: flex;
-  align-items: center;
   justify-content: space-between;
-  gap: var(--space-4);
 }
 
 .referee-exam-list {

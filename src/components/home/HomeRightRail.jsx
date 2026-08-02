@@ -141,7 +141,7 @@ export default function HomeRightRail({
               <p className="eyebrow">Alerts</p>
               <h2>알림</h2>
             </div>
-            <div className="home-alert-heading-actions">
+            <div className="ui-action-row home-alert-heading-actions">
               <Button as={Link} to="/app/notifications" variant="secondary" size="sm">지난 알림</Button>
               <Badge tone={homeNoticeItems.length ? "orange" : "neutral"}>{homeNoticeItems.length}개</Badge>
             </div>

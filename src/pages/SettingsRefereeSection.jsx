@@ -67,7 +67,7 @@ export default function SettingsRefereeSection({ controller }) {
                       : `시험 시작 후 ${REFEREE_EXAM_COOLDOWN_DAYS}일 동안 재응시할 수 없습니다.`}
                   </p>
                   {refereeExamNotice ? <p className="referee-exam-lock locked">{refereeExamNotice}</p> : null}
-                  <div className="referee-exam-actions">
+                  <div className="ui-action-row referee-exam-actions">
                     <Button type="button" variant="secondary" onClick={startRefereeExam} disabled={Boolean(refereeActionPending) || refereeExamLocked || (refereeExamOpen && !refereeExamResult)}>
                       {refereeActionPending === "start" ? "시험 불러오는 중" : refereeExamOpen && !refereeExamResult ? "시험 진행 중" : "심판 시험 시작"}
                     </Button>

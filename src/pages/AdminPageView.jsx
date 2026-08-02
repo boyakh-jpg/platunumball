@@ -195,7 +195,7 @@ if (!canAdmin && (!app.adminStatus?.loaded || app.adminStatus?.loading)) {
                 }}
               />
             </label>
-            <div className="admin-row-actions">
+            <div className="ui-action-row admin-row-actions">
               <Button type="button" variant="secondary" disabled={reviewActionPending} onClick={applyQueueFilter}>적용</Button>
               {appliedQueueFilter ? <Button type="button" variant="secondary" disabled={reviewActionPending} onClick={clearQueueFilter}>초기화</Button> : null}
               <Button type="button" variant="secondary" disabled={reviewActionPending || app.adminStatus?.loading} onClick={refreshQueue}>

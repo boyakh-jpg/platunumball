@@ -342,7 +342,7 @@ export default function SearchPicker({
           {remoteError && !remoteLoading ? (
             <button
               type="button"
-              className="button button-secondary button-sm search-picker-retry"
+              className="button ui-button button-secondary ui-button-secondary button-sm ui-button-sm search-picker-retry"
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => setRemoteRetrySequence((current) => current + 1)}
             >

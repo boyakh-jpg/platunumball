@@ -129,12 +129,6 @@
   box-sizing: border-box;
 }
 
-.settings-address-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-4);
-}
-
 .settings-address-search small {
   color: var(--muted);
   font-size: 0.82rem;
@@ -209,7 +203,6 @@
   font-weight: 750;
 }
 
-.settings-place-name-actions,
 .settings-nearby-courts-head,
 .settings-nearby-court-list > div,
 .settings-nearby-confirm {
@@ -237,7 +230,9 @@
 }
 
 .settings-place-name-actions {
+  min-width: 0;
   align-items: flex-start;
+  justify-content: space-between;
 }
 
 .settings-place-name-actions .button {
@@ -410,10 +405,7 @@
 
 .court-detail-actions,
 .court-correction-actions {
-  display: flex;
   flex: 0 0 auto;
-  flex-wrap: wrap;
-  gap: var(--space-4);
 }
 
 .court-detail-actions .button {

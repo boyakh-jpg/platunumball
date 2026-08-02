@@ -6,7 +6,6 @@ body {
 .app-main {
   padding: var(--page-gutter);
 }
-.card,
 .section-card,
 .modal,
 .selector-panel,
@@ -22,11 +21,6 @@ body {
 .settings-page .section-card {
   box-shadow: var(--shadow);
 }
-.card {
-  background: rgba(10, 14, 21, 0.92);
-  background-image: none;
-}
-.button,
 input,
 select,
 textarea,
@@ -36,7 +30,6 @@ textarea,
 .search-picker-results.is-floating {
   border-radius: var(--radius-md);
 }
-.button,
 .provider-button,
 button,
 a,
@@ -45,7 +38,6 @@ select,
 textarea {
   touch-action: manipulation;
 }
-.button,
 .provider-button,
 .bottom-nav a,
 .nav-item,
@@ -200,7 +192,6 @@ html[data-theme="light"] textarea {
     gap: var(--space-6);
   }
 
-  .card,
   .section-card {
     padding: 14px;
   }
@@ -240,7 +231,6 @@ html[data-theme="light"] .app-main {
   background: color-mix(in srgb, var(--rb-orange) 12%, transparent);
   box-shadow: none;
 }
-.card,
 .section-card,
 .home-search-panel,
 .home-action-card {
@@ -248,7 +238,6 @@ html[data-theme="light"] .app-main {
   background-color: var(--card-bg);
   box-shadow: var(--card-shadow);
 }
-.button-primary,
 .provider-test {
   background: var(--button-primary-bg);
 }
@@ -311,7 +300,6 @@ html[data-theme="light"] .home-side-stack .compact-list > .team-hover-trigger {
   background: rgba(238, 244, 240, 0.64);
 }
 /* 2026-07-01 imweb fitness tone pass: charcoal surface, orange CTA, condensed heroes. */
-.card,
 .section-card,
 .modal,
 .selector-panel,
@@ -328,24 +316,10 @@ html[data-theme="light"] .home-side-stack .compact-list > .team-hover-trigger {
   border-color: var(--rb-line);
   background-color: var(--rb-surface);
 }
-.button {
-  min-height: 38px;
-  border-radius: var(--radius-xs);
-  padding: 0 14px;
-  font-size: 12px;
-  font-weight: 900;
-  text-transform: uppercase;
-}
-.button-primary,
 .provider-test,
 .rank-home .home-rank-board-head .button {
   background: var(--rb-orange);
   color: #fff;
-}
-.button-secondary {
-  border: var(--ui-button-border-width) solid var(--rb-line);
-  background: var(--rb-surface);
-  box-shadow: none;
 }
 .button-icon {
   width: 32px;
@@ -353,13 +327,11 @@ html[data-theme="light"] .home-side-stack .compact-list > .team-hover-trigger {
   border-radius: var(--radius-xs);
   background: rgba(255, 255, 255, 0.07);
 }
-.button:disabled,
 button:disabled,
 .search-picker-result-row:disabled {
   cursor: not-allowed;
   opacity: 0.58;
 }
-.button:focus-visible,
 .provider-button:focus-visible,
 .bottom-nav a:focus-visible,
 .nav-item:focus-visible,
@@ -451,7 +423,6 @@ html[data-theme="light"] body {
     linear-gradient(90deg, rgba(30, 24, 18, 0.024) 1px, transparent 1px) 0 0 / 44px 44px,
     var(--rb-bg);
 }
-html[data-theme="light"] .card,
 html[data-theme="light"] .section-card,
 html[data-theme="light"] .home-search-panel,
 html[data-theme="light"] .home-action-card {
@@ -465,7 +436,6 @@ textarea,
   border-color: var(--rb-line);
   border-radius: var(--radius-md);
 }
-.button:hover,
 .provider-button:hover {
   filter: brightness(0.96);
 }

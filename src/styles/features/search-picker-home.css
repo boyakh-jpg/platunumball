@@ -440,10 +440,7 @@ html[data-theme="light"] .search-picker-result-row.selected {
   background: rgba(70, 224, 182, 0.055);
 }
 .home-invitation-actions {
-  display: flex;
-  align-items: center;
   justify-content: flex-end;
-  gap: var(--space-3);
   white-space: nowrap;
 }
 .home-action-buttons {

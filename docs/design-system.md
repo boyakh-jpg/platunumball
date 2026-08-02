@@ -2,6 +2,15 @@
 
 1. 관리자 권한 조회가 일시적으로 실패하면 권한 없음 문구 대신 현재 카드에서 오류와 `다시 시도`를 표시한다.
 
+## 2026-08-03 공용 역할 선택자 모듈화
+
+1. card, button, badge의 시각값은 `.ui-card`, `.ui-button`, `.ui-badge`가 소유한다. 레거시 `.card`, `.button`, `.badge`는 호환 class로만 남기며 독립 시각 selector를 다시 만들지 않는다.
+2. 여러 action을 한 행에 배치하는 화면은 `.ui-action-row`를 합성한다. feature selector는 정렬 방향, 가용 너비, grid 위치처럼 화면 고유 배치만 정의하고 공용 `display`, `gap`, `align-items`, `flex-wrap`을 반복하지 않는다.
+3. 빈 상태의 공용 글자 크기와 정렬은 `.ui-empty-state-compact`가 소유한다. 화면 selector는 필요한 최소 높이만 정의한다.
+4. 역할 이름이 비슷해도 상호작용이 다른 tab은 억지로 합치지 않는다. segmented 선택기, 밑줄형 가로 스크롤 tab, page navigation tab은 각 구조를 유지한다.
+5. selector 통합은 desktop/mobile과 dark/light의 계산 스타일, overflow, 실제 화면을 변경 전후 비교한다. 공용 token 적용 외의 높이·너비·배치 변화가 생기면 해당 묶음만 되돌린다.
+6. 테마 segmented control은 포인터·터치 선택 뒤 포커스를 해제해 선택 테두리를 남기지 않는다. 키보드 이동의 `focus-visible` 표시는 유지한다.
+
 # 2026-08-01 프로필 비동기 실패 표시
 
 1. 프로필 기록 조회, 소속 저장, 링크 복사 실패는 진행 중 상태로 남거나 조용히 사라지지 않는다.

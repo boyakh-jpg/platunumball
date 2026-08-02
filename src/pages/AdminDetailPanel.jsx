@@ -431,7 +431,7 @@ export function AdminDetailPanel({ controller }) {
                       <strong>{request.name}</strong>
                       <em>{request.addressText} · {request.hashtag ?? "해시태그 자동"}</em>
                     </span>
-                    <span className="admin-row-actions">
+                    <span className="ui-action-row admin-row-actions">
                       <Badge tone={request.status === "reported" ? "orange" : request.status === "approved" ? "green" : "neutral"}>{getAdminStatusLabel(request.status)}</Badge>
                       {request.status !== "approved" ? <em>구장 신청 탭에서 확인 후 승인</em> : null}
                     </span>

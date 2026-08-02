@@ -195,7 +195,7 @@ export default function Season({ app }) {
                 <p className="eyebrow">Promotion Race</p>
                 <h2>전국 개인 승격권</h2>
               </div>
-              <div className="season-section-actions">
+              <div className="ui-action-row season-section-actions">
                 <Badge tone="gold">TOP {season.promotionLine ?? 4}</Badge>
                 <Button as={Link} to="/app/rankings?view=promotion" variant="secondary">전체 순위</Button>
               </div>
@@ -232,7 +232,7 @@ export default function Season({ app }) {
                 <p className="eyebrow">Squad Race</p>
                 <h2>전국 팀 승격권</h2>
               </div>
-              <div className="season-section-actions">
+              <div className="ui-action-row season-section-actions">
                 <Badge tone="gold">TOP {season.promotionLine ?? 4}</Badge>
                 <Button as={Link} to="/app/rankings?view=promotion&tab=teams" variant="secondary">전체 팀 순위</Button>
               </div>

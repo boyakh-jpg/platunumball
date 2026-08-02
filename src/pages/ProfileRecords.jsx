@@ -343,7 +343,7 @@ export default function ProfileRecords({ app }) {
         {archiveState.page?.detailExhausted === false ? (
           <button
             type="button"
-            className="button button-secondary button-md"
+            className="button ui-button button-secondary ui-button-secondary button-md ui-button-md"
             disabled={archiveState.loading}
             onClick={() => loadProfileRecords?.({
               loadMoreDetail: true,
@@ -357,7 +357,7 @@ export default function ProfileRecords({ app }) {
       {archiveState.error && (visibleRecentRecords.length || visibleArchivedRecords.length) ? (
         <Card className="section-card">
           <div className="ui-empty-state-compact">추가 기록을 불러오지 못했습니다. 기존 기록은 그대로 유지됩니다.</div>
-          <button type="button" className="button button-secondary button-md" onClick={() => loadProfileRecords?.({ force: true })}>
+          <button type="button" className="button ui-button button-secondary ui-button-secondary button-md ui-button-md" onClick={() => loadProfileRecords?.({ force: true })}>
             다시 시도
           </button>
         </Card>
@@ -390,7 +390,7 @@ export default function ProfileRecords({ app }) {
           {archiveState.page?.archiveExhausted === false ? (
             <button
               type="button"
-              className="button button-secondary button-md"
+              className="button ui-button button-secondary ui-button-secondary button-md ui-button-md"
               disabled={archiveState.loading}
               onClick={() => loadProfileRecords?.({
                 loadMoreArchive: true,
@@ -406,7 +406,7 @@ export default function ProfileRecords({ app }) {
       ) : archiveState.error ? (
         <Card className="section-card">
           <div className="ui-empty-state-compact">기록을 불러오지 못했습니다.</div>
-          <button type="button" className="button button-secondary button-md" onClick={() => loadProfileRecords?.({ force: true })}>
+          <button type="button" className="button ui-button button-secondary ui-button-secondary button-md ui-button-md" onClick={() => loadProfileRecords?.({ force: true })}>
             다시 시도
           </button>
         </Card>

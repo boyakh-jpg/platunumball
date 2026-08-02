@@ -270,9 +270,7 @@
 }
 
 .app-confirm-actions {
-  display: flex;
   justify-content: flex-end;
-  gap: var(--space-4);
 }
 
 .match-void-dialog {

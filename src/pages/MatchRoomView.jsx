@@ -90,7 +90,7 @@ return (
             <strong>개인 기록 삭제</strong>
             <p>삭제하면 내 기록 목록에서 사라집니다. MMR은 변하지 않습니다.</p>
             {managementActionFeedback ? <small role="status" className="form-warning">{managementActionFeedback}</small> : null}
-            <div className="app-confirm-actions">
+            <div className="ui-action-row app-confirm-actions">
               <Button type="button" variant="secondary" disabled={Boolean(managementActionPending)} onClick={() => setSoloRecordDeleteOpen(false)}>취소</Button>
               <Button type="button" variant="danger" disabled={Boolean(managementActionPending)} onClick={confirmDeleteSoloRecord}>{managementActionPending === "delete" ? "삭제 중" : "삭제하기"}</Button>
             </div>

@@ -91,7 +91,7 @@ export default function Landing({ state }) {
             <div className="ui-design-hero__copy ui-page-hero__copy">
               <Badge tone="green">Season Zero</Badge>
               <h1>오늘,<br />농구할 사람?</h1>
-              <div className="ui-design-actions">
+              <div className="ui-action-row ui-design-actions">
                 <Button as={Link} to="/app/recruiting">
                   경기 찾기 <ArrowRight size={18} />
                 </Button>

@@ -213,7 +213,7 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
     return (
       <div className="court-detail-state" role="alert">
         <strong>{loadError?.message || "구장 정보를 찾을 수 없습니다."}</strong>
-        <div className="court-detail-state-actions">
+        <div className="ui-action-row court-detail-state-actions">
           {loadError?.retryable ? <Button type="button" variant="secondary" size="sm" onClick={() => refreshDetail()}>다시 시도</Button> : null}
           {embedded ? (
             <Button type="button" variant="secondary" size="sm" onClick={onClose}>닫기</Button>
@@ -270,7 +270,7 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
             {typeof court.paid === "boolean" ? <Badge>이용료 · {court.paid ? "유료" : "무료"}</Badge> : null}
           </div>
         </div>
-        <div className="court-detail-actions">
+        <div className="ui-action-row court-detail-actions">
           <Button as="a" variant="secondary" size="sm" className="court-map-link ui-liquid-glass" href={mapUrl} target="_blank" rel="noreferrer">
             지도 보기 <ExternalLink size={15} />
           </Button>
@@ -328,7 +328,7 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
               <span>근거 URL (선택)</span>
               <input type="url" value={correctionUrl} onChange={(event) => setCorrectionUrl(event.target.value)} maxLength={1000} placeholder="https://" />
             </label>
-            <div className="court-correction-actions">
+            <div className="ui-action-row court-correction-actions">
               <Button type="submit" size="sm" disabled={!correctionCanSubmit || correctionSaving}>{correctionSaving ? "접수 중" : "수정 신고 접수"}</Button>
               <Button type="button" variant="secondary" size="sm" disabled={correctionSaving} onClick={() => setCorrectionOpen(false)}>닫기</Button>
             </div>

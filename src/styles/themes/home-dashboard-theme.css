@@ -277,7 +277,6 @@ body {
   background: rgba(255, 255, 255, 0.045);
   box-shadow: none;
 }
-.card,
 .section-card,
 .modal,
 .selector-panel,
@@ -323,19 +322,16 @@ body {
   border: var(--ui-stroke-width) solid var(--rb-line);
   border-radius: var(--radius-sm);
 }
-.button:not(:focus-visible),
 .provider-button:not(:focus-visible),
 button:not(:focus-visible) {
   box-shadow: none;
 }
-.button-primary,
 .rank-home .home-rank-board-head .button,
 .auth-test-login .provider-button {
   border: 0;
   background: var(--rb-orange);
   color: #fff;
 }
-.button-primary:hover,
 .rank-home .home-rank-board-head .button:hover,
 .auth-test-login .provider-button:hover {
   background: var(--rb-orange-2);

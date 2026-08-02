@@ -5,6 +5,8 @@
   border: var(--ui-card-border-width) solid var(--ui-card-border);
   border-radius: var(--ui-card-radius);
   box-shadow: var(--ui-card-shadow);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 
 .ui-tier-label {
@@ -98,6 +100,7 @@ html[data-theme] .app-main :is(.recent-match-row.result-d, .rank-match-draw) {
   justify-content: center;
   gap: 8px;
   min-height: var(--ui-button-height);
+  padding-block: 0;
   padding-inline: var(--ui-button-padding-x);
   color: var(--ui-button-color);
   font: inherit;

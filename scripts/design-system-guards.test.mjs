@@ -1414,3 +1414,62 @@ test("MMR 허용구간과 프로필 기본 입력은 공용 컴포넌트를 사�
     assert.doesNotMatch(source, /POSITION_OPTIONS\.map|REGION_TREE\.map/);
   }
 });
+
+test("shared visual roles stay on canonical primitives", () => {
+  const rolePairs = [
+    ["button", "ui-button"],
+    ["card", "ui-card"],
+    ["badge", "ui-badge"],
+  ];
+  const actionRoles = [
+    "admin-row-actions",
+    "app-confirm-actions",
+    "court-correction-actions",
+    "court-detail-actions",
+    "court-detail-state-actions",
+    "home-alert-heading-actions",
+    "home-invitation-actions",
+    "my-team-actions",
+    "notification-actions",
+    "profile-icon-card-actions",
+    "profile-icon-dialog-actions",
+    "referee-exam-actions",
+    "season-section-actions",
+    "settings-address-actions",
+    "settings-place-name-actions",
+    "tournament-referee-actions",
+    "tournament-sanction-actions",
+    "ui-design-actions",
+  ];
+  const sourceEntries = sourceFiles.map((file) => [file, read(file)]);
+
+  for (const [file, source] of sourceEntries) {
+    const classValues = [...source.matchAll(/(?:className\s*=\s*|\.className\s*=\s*)["'`]([^"'`]+)["'`]/g)]
+      .map((match) => match[1]);
+    for (const classValue of classValues) {
+      const tokens = classValue.split(/\s+/);
+      for (const [legacyRole, canonicalRole] of rolePairs) {
+        if (tokens.includes(legacyRole)) {
+          assert.ok(tokens.includes(canonicalRole), `${file}: ${legacyRole} must include ${canonicalRole}`);
+        }
+      }
+    }
+  }
+
+  for (const role of actionRoles) {
+    const occurrences = sourceEntries.flatMap(([file, source]) => (
+      [...source.matchAll(new RegExp(`className="([^"]*\\b${role}\\b[^"]*)"`, "g"))]
+        .map((match) => ({ file, className: match[1] }))
+    ));
+    assert.ok(occurrences.length > 0, `${role}: source occurrence required`);
+    for (const occurrence of occurrences) {
+      assert.match(occurrence.className, /(?:^|\s)ui-action-row(?:\s|$)/, `${occurrence.file}: ${role} must compose ui-action-row`);
+    }
+  }
+
+  assert.doesNotMatch(allStyleSources, /^\s*\.(?:card|button|badge)\s*(?:,|\{)/m);
+  assert.match(primitiveStyles, /\.ui-button\s*\{[^}]*padding-block:\s*0;/);
+  assert.match(primitiveStyles, /\.ui-card\s*\{[^}]*backdrop-filter:\s*none;/);
+  assert.match(primitiveStyles, /\.ui-empty-state-compact\s*\{[^}]*font-size:\s*var\(--font-size-meta\);/);
+  assert.equal(count(read("src/pages/SettingsPrimaryColumn.jsx"), "onPointerUp={(event) => event.currentTarget.blur()}"), 2);
+});

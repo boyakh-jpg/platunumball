@@ -148,7 +148,7 @@ export function AdminAppointmentSection({ controller }) {
               }}
             />
           </label>
-          <div className="admin-row-actions">
+          <div className="ui-action-row admin-row-actions">
             <Button type="button" variant="secondary" onClick={applyQueueFilter}>적용</Button>
             {appliedQueueFilter ? <Button type="button" variant="secondary" onClick={clearQueueFilter}>초기화</Button> : null}
           </div>

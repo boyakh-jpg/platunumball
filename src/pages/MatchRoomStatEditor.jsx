@@ -14,7 +14,7 @@ export function MatchRoomStatEditor({ controller }) {
                 <h2>{statEditorPlayer.name}</h2>
                 <span>{formatStatLine(score.playerStats[statEditorPlayerId])}</span>
               </div>
-              <button type="button" className="button button-secondary button-icon" onClick={() => setStatEditorPlayerId(null)} aria-label="닫기">
+              <button type="button" className="button ui-button button-secondary ui-button-secondary button-icon" onClick={() => setStatEditorPlayerId(null)} aria-label="닫기">
                 <X size={18} />
               </button>
             </div>

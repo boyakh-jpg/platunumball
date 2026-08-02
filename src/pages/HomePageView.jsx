@@ -182,7 +182,7 @@ export default function HomePageView({
                     })}
                   </div>
                 </>
-              ) : <div className="home-panel-empty">최근 확정 경기 없음</div>}
+              ) : <div className="ui-empty-state-compact home-panel-empty">최근 확정 경기 없음</div>}
             </Card>
           </div>
         </div>

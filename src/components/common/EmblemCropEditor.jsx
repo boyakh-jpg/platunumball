@@ -62,7 +62,7 @@ export default function EmblemCropEditor({ file, pending = false, warning = "", 
         </div>
         {warning ? <p className="form-warning">{warning}</p> : null}
         {error ? <p className="emblem-crop-feedback" role="alert">{error}</p> : null}
-        <div className="app-confirm-actions">
+        <div className="ui-action-row app-confirm-actions">
           <Button type="button" variant="secondary" disabled={pending} onClick={onCancel}>취소</Button>
           <Button type="button" disabled={pending || !image || loadFailed} onClick={() => onConfirm?.(crop)}>
             {pending ? "저장 중" : "저장"}

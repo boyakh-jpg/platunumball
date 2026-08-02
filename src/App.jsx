@@ -100,7 +100,7 @@ class AppErrorBoundary extends Component {
           <p className="eyebrow">{BRAND_NAME}</p>
           <h1>화면을 불러오지 못했습니다</h1>
           <p>일시적인 오류가 발생했습니다. 새로고침한 뒤 다시 시도해 주세요.</p>
-          <button type="button" className="button button-primary button-md" onClick={() => window.location.reload()}>
+          <button type="button" className="button ui-button button-primary ui-button-primary button-md ui-button-md" onClick={() => window.location.reload()}>
             새로고침
           </button>
         </section>

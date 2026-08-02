@@ -134,7 +134,7 @@ export default function VisualDirectionDemo() {
             <Badge tone="green">지금 12명이 경기 찾는 중</Badge>
             <h1>오늘,<br />농구할 사람?</h1>
             <p>장소와 시간을 고르면 같이 뛸 사람을 찾을 수 있어요.</p>
-            <div className="ui-design-actions">
+            <div className="ui-action-row ui-design-actions">
               <Button type="button">
                 경기 찾기 <ArrowRight size={18} />
               </Button>

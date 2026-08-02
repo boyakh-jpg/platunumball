@@ -145,7 +145,7 @@ export default function TeamDetailView({ controller }) {
               {teamRecordArchive.page?.detailExhausted === false ? (
                 <button
                   type="button"
-                  className="button button-secondary button-md"
+                  className="button ui-button button-secondary ui-button-secondary button-md ui-button-md"
                   disabled={teamRecordArchive.loading}
                   onClick={() => loadTeamRecords?.(team.id, {
                     loadMoreDetail: true,
@@ -174,7 +174,7 @@ export default function TeamDetailView({ controller }) {
             {teamRecordArchive.page?.archiveExhausted === false ? (
               <button
                 type="button"
-                className="button button-secondary button-md"
+                className="button ui-button button-secondary ui-button-secondary button-md ui-button-md"
                 disabled={teamRecordArchive.loading}
                 onClick={() => loadTeamRecords?.(team.id, {
                   loadMoreArchive: true,
@@ -187,7 +187,7 @@ export default function TeamDetailView({ controller }) {
             {teamRecordArchive.error ? (
               <button
                 type="button"
-                className="button button-secondary button-md"
+                className="button ui-button button-secondary ui-button-secondary button-md ui-button-md"
                 onClick={() => loadTeamRecords?.(team.id, { force: true })}
               >
                 기록 다시 불러오기

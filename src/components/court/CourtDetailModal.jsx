@@ -33,7 +33,7 @@ export default function CourtDetailModal({ app, courtId = "", open = false, onCl
         <button
           ref={closeButtonRef}
           type="button"
-          className="button button-secondary button-sm button-icon court-detail-modal-close"
+          className="button ui-button button-secondary ui-button-secondary button-sm ui-button-sm button-icon court-detail-modal-close"
           title="닫기"
           aria-label="구장 정보 닫기"
           onClick={onClose}

@@ -1,4 +1,3 @@
-.button,
 .provider-button,
 .auth-browser-actions button,
 .auth-browser-actions a,
@@ -34,9 +33,6 @@
 .auth-session-line button,
 .auth-form > .button-secondary {
   border: 0;
-}
-.button-sm {
-  min-height: var(--ui-button-height-sm);
 }
 .button-icon,
 .hover-card-close,
@@ -126,7 +122,6 @@
   background: var(--ui-button-bg);
   color: var(--ui-button-color);
 }
-.button-primary,
 .rank-home .home-rank-board-head .button,
 .provider-test,
 .create-submit-row .button:not(.button-secondary),
@@ -143,7 +138,6 @@
   color: var(--ui-button-color-active);
   box-shadow: none;
 }
-.button-primary:hover,
 .rank-home .home-rank-board-head .button:hover,
 .provider-test:hover,
 .create-submit-row .button:not(.button-secondary):hover {
@@ -151,12 +145,10 @@
   color: var(--ui-button-color-active);
   filter: none;
 }
-.button-primary:active,
 .rank-home .home-rank-board-head .button:active,
 .provider-test:active {
   background: var(--ui-button-bg-pressed);
 }
-.button-secondary,
 .button-icon {
   border-color: var(--ui-button-border);
   background: var(--ui-button-bg);
@@ -183,7 +175,6 @@ textarea {
   box-shadow: none;
   font-size: max(0.9rem, 16px);
 }
-.button:focus-visible,
 .provider-button:focus-visible,
 .auth-browser-actions button:focus-visible,
 .auth-browser-actions a:focus-visible,
@@ -245,8 +236,7 @@ textarea:focus-visible {
   box-shadow: var(--focus-ring);
 }
 button:disabled,
-.button:disabled,
-.button[aria-disabled="true"] {
+button[aria-disabled="true"] {
   opacity: 0.58;
   cursor: not-allowed;
 }

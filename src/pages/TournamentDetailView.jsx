@@ -138,7 +138,7 @@ return (
                 <span>{row.referee ? `${getUserHashtag(row.referee)} · 신뢰도 ${row.referee.trustScore}` : "심판 정보 확인 중"}</span>
               </div>
               {row.canApprove ? (
-                <div className="tournament-referee-actions">
+                <div className="ui-action-row tournament-referee-actions">
                   <button
                     type="button"
                     disabled={Boolean(governanceAction)}
@@ -196,7 +196,7 @@ return (
             <h2>{getTournamentSanctionLabel(tournament)}</h2>
             <p>팀장·심판 승인이 완료된 뒤 지역관리자가 승인하면 공식 대회로, 주최자가 비승인 개최를 선택하면 MMR 0.8 계수 대회로 시작합니다.</p>
           </div>
-          <div className="tournament-sanction-actions">
+          <div className="ui-action-row tournament-sanction-actions">
             {canReviewRegion ? (
               <>
                 <Button
@@ -347,7 +347,7 @@ return (
                     ? scheduleDialog.message
                   : scheduleDialog.message}
             </p>
-            <div className="app-confirm-actions">
+            <div className="ui-action-row app-confirm-actions">
               {scheduleDialog.mode === "confirm" ? (
                 <>
                   <Button type="button" variant="secondary" disabled={Boolean(savingScheduleId)} onClick={() => setScheduleDialog(null)}>취소</Button>
@@ -381,7 +381,7 @@ return (
                     ? "리그 승패 또는 다음 토너먼트 라운드에 반영했습니다."
                     : forfeitDialog.message}
             </p>
-            <div className="app-confirm-actions tournament-forfeit-actions">
+            <div className="ui-action-row app-confirm-actions tournament-forfeit-actions">
               {forfeitDialog.mode === "choose" ? (
                 <>
                   <Button type="button" variant="secondary" onClick={() => setForfeitDialog(null)}>취소</Button>

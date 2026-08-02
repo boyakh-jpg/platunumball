@@ -50,16 +50,16 @@
   }
 
   .landing-actions a,
-  .landing-actions .button {
+  .landing-actions .ui-button {
     width: 100%;
     min-width: 0;
   }
 
-  .button {
+  .ui-button {
     max-width: 100%;
   }
 
-  .landing-actions .button {
+  .landing-actions .ui-button {
     min-height: 46px;
     padding-inline: 12px;
     text-align: center;

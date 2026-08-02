@@ -258,11 +258,11 @@ export default function ProfileIconDialog({ user, actions, onClose, onSaved }) {
 
         {loadError ? (
           <p className="form-warning profile-icon-dialog-feedback">
-            {loadError} <button type="button" className="button button-secondary button-sm" onClick={() => setLoadAttempt((attempt) => attempt + 1)}>다시 시도</button>
+            {loadError} <button type="button" className="button ui-button button-secondary ui-button-secondary button-sm ui-button-sm" onClick={() => setLoadAttempt((attempt) => attempt + 1)}>다시 시도</button>
           </p>
         ) : null}
         {feedback ? <p className="form-warning profile-icon-dialog-feedback">{feedback}</p> : null}
-        <footer className="profile-icon-dialog-actions">
+        <footer className="ui-action-row profile-icon-dialog-actions">
           <Button as={Link} variant="secondary" size="sm" to="/app/profile/achievements" onClick={onClose}>업적 보기</Button>
           <Button type="submit" size="sm" disabled={pending || loading}>{pending ? "저장 중" : "저장"}</Button>
         </footer>

@@ -283,7 +283,7 @@ export default function Teams({ app }) {
                     <strong>{team.name}</strong>
                     <em>{getTeamRoleLabel(team.myRole)} · {team.mmr} MMR · {winRate}%</em>
                   </span>
-                  <span className="my-team-actions">
+                  <span className="ui-action-row my-team-actions">
                     <span className="my-team-tier ui-tier-label">
                       <img src={getTierEmblemSrc(team.mmr)} alt={`${getTierDivision(team.mmr)} emblem`} loading="lazy" />
                       <span>{getTierDivision(team.mmr)}</span>

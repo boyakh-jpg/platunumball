@@ -7,6 +7,7 @@
   justify-items: center;
   padding: 0;
   color: var(--rb-muted);
+  font-size: var(--font-size-meta);
   font-weight: 850;
   text-align: center;
   background: transparent;
