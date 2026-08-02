@@ -273,17 +273,77 @@ test("legacy auto-finalization stat fill is superseded by explicit referee compl
   assert.doesNotMatch(unifiedFinalizationMigration, /insert into public\.player_match_stats/i);
 });
 
-test("production simulation verifies one-representative public team joins", () => {
+test("production simulation verifies one-member representative public team joins", () => {
   const tailOnlyBranch = scriptSource.match(
     /else if \(tailOnly\) \{([\s\S]*?)\n\s*\} else if \(recordPermissionsOnly\)/,
   )?.[1] ?? "";
   assert.match(tailOnlyBranch, /runPublicTeamRegionFeedScenario/);
   assert.match(tailOnlyBranch, /label: "public_team_region_feed"/);
   assert.match(scriptSource, /playerIds: \[hostId\]/);
-  assert.match(scriptSource, /rejectOpponentNonCaptainRepresentative/);
-  assert.match(scriptSource, /recruiting_team_captain_required/);
-  assert.match(scriptSource, /joinOpponentRepresentative/);
+  assert.match(scriptSource, /joinOpponentMemberRepresentative/);
+  assert.match(scriptSource, /opponentApplication\?\.playerId === opponentMemberId/);
   assert.match(scriptSource, /opponentApplication\.playerIds/);
+});
+
+test("production simulation keeps personal stats separate and uses the 1v1 postgame rating scale", () => {
+  assert.match(scriptSource, /soloStats: \{[\s\S]*points: 9,[\s\S]*turnovers: 4,/);
+  assert.match(scriptSource, /stats\.points === 9[\s\S]*stats\.turnovers === 4/);
+  assert.match(scriptSource, /Number\(match\?\.ratingScale \?\? 0\) === 0\.1/);
+});
+
+test("production simulation supplies required room cancellation reasons", () => {
+  const closeActions = [...scriptSource.matchAll(/action: "closeRecruitingPost",([\s\S]{0,140})/g)];
+  assert.ok(closeActions.length >= 2);
+  assert.ok(closeActions.every((match) => /reason:/.test(match[1])));
+});
+
+test("production simulation supplies required match cancellation reasons", () => {
+  const cancelActions = [...scriptSource.matchAll(/action: "cancelMatch",([\s\S]{0,160})/g)];
+  assert.ok(cancelActions.length >= 1);
+  assert.ok(cancelActions.every((match) => /reason:/.test(match[1])));
+});
+
+test("production simulation accepts either canonical pre-start end rejection", () => {
+  assert.match(scriptSource, /endMatch:beforeStartBlocked[\s\S]*\["match_not_started", "match_time_range_invalid"\]/);
+});
+
+test("production simulation keeps open dispute requests out of the result draft", () => {
+  assert.match(scriptSource, /match\?\.disputeDraftResult == null[\s\S]*Number\(match\?\.result\?\.scoreB\) === 12/);
+});
+
+test("production simulation accepts capacity-expired home invitations as terminal state", () => {
+  assert.match(scriptSource, /expectedQueueExpiredIds = new Set\(overflow \? inviteBActiveIds\.slice\(5\) : \[\]\)/);
+  assert.match(scriptSource, /home action queue lost an invite before room capacity closed/);
+  assert.match(scriptSource, /home action queue capacity expiration mismatch/);
+});
+
+test("production simulation verifies the Discord bridge locally when its remote secret is unavailable", () => {
+  assert.match(scriptSource, /callHandler\("\/api\/discord\/room-chat", discordRoomChatHandler, localSecret, body, true\)/);
+  assert.match(scriptSource, /delete process\.env\.DISCORD_CHAT_BRIDGE_SECRET/);
+});
+
+test("production tournament play uses a time slot outside earlier simulation matches", () => {
+  const start = scriptSource.indexOf("async function playTournamentMatchToConfirmed");
+  const end = scriptSource.indexOf("async function runTournamentFollowupRoundScenario", start);
+  assert.ok(start >= 0 && end > start);
+  assert.match(scriptSource.slice(start, end), /getKstPastSchedule\(180\)/);
+  assert.match(scriptSource.slice(start, end), /finalizeMatch:notDue/);
+  assert.match(scriptSource.slice(start, end), /makeMatchFinalizationDue\(matchId\)/);
+  assert.match(scriptSource.slice(start, end), /action: "finalizeMatch",[\s\S]*disputesAcknowledged: true/);
+});
+
+test("production simulation finalizes only after the canonical three-minute window", () => {
+  assert.match(scriptSource, /async function makeMatchFinalizationDue/);
+  assert.match(scriptSource, /dueAt = new Date\(Date\.now\(\) - 4 \* MINUTE_MS\)/);
+  assert.match(scriptSource, /from\("matches"\)\.update\(\{ ended_at: dueAt \}\)/);
+  assert.match(scriptSource, /match finalization simulation time did not persist/);
+  const finalizeActions = [...scriptSource.matchAll(/action: "finalizeMatch",([\s\S]{0,120})/g)];
+  assert.ok(finalizeActions.length >= 4);
+  assert.ok(finalizeActions.every((match) => /disputesAcknowledged: true/.test(match[1])));
+});
+
+test("production postgame records stay outside live simulation time slots", () => {
+  assert.ok((scriptSource.match(/getKstPastSchedule\(12 \* 60\)/g) ?? []).length >= 3);
 });
 
 test("tournament simulation satisfies referee governance before generating fixtures", () => {
@@ -303,6 +363,7 @@ test("admin audit verification relies on exact artifact ids without a client clo
   const scenarioSource = scriptSource.slice(scenarioStart, scenarioEnd);
 
   assert.ok(scenarioStart >= 0 && scenarioEnd > scenarioStart);
+  assert.match(scenarioSource, /ensureSimulationTrustScore\(targetId, 90\)/);
   assert.match(scenarioSource, /row\.appointment_id === appointed\.appointmentId/);
   assert.match(
     scenarioSource,

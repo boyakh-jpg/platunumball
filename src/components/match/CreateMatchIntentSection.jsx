@@ -97,7 +97,7 @@ export function CreateMatchIntentSection({ context }) {
                   setTeamRegion("전체");
                   const mode = getMatchModeOrDefault(draft.mode, defaultMode);
                   update({
-                    ...getMatchIntentChangePatch(draft, "standard_competitive"),
+                    ...getMatchConfigurationChangePatch(draft, { matchPurpose: "competitive", formationMode: "prearranged" }),
                     ...getMatchModeChangePatch(draft, mode),
                     recordType: RECORD_TYPES.match,
                     visibility: "tournament",

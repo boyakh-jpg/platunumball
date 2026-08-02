@@ -1224,6 +1224,7 @@ test("CreateMatch persists bench capacity at top level and inside rules", () => 
   assert.doesNotMatch(ruleSelectorSource, /type="checkbox" checked=\{rules\.winByTwo\}/);
   assert.match(source, /getScopedMatchCreationPolicyPayload\(draft, "match_record"\)/);
   assert.match(source, /getScopedMatchCreationPolicyPayload\(draft, "tournament"\)/);
+  assert.match(source, /getMatchConfigurationChangePatch\(draft, \{ matchPurpose: "competitive", formationMode: "prearranged" \}\)/);
   assert.match(source, /getDefaultCreateTitle\(draft\.mode, patch\.matchIntent\)/);
   assert.match(source, /getMatchCreationWizardType\(draft, \{ recordIntent: isRecordCreateIntent \}\)/);
   assert.match(wizardSource, /step\.id === 4 \? \{ \.\.\.step, label: "구장" \}/);

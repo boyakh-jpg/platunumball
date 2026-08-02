@@ -844,6 +844,7 @@ test("DB 마이그레이션은 지각 후보, 무수정 정리, 최소 출전, �
   const unifiedRosterSql = await readSource("supabase/migrations/20260727110000_unified_match_roster_transition.sql");
   const simplifiedLiveMatchSql = await readSource("supabase/migrations/20260728124000_simplify_live_match_operations.sql");
   const tournamentQrSql = await readSource("supabase/migrations/20260729121000_enable_tournament_qr_attendance.sql");
+  const tournamentQrDefaultsSql = await readSource("supabase/migrations/20260803010000_force_tournament_qr_defaults.sql");
   const unifiedQrStartSql = await readSource("supabase/migrations/20260729150000_unify_match_qr_start_policy.sql");
   const privateQrSql = await readSource("supabase/migrations/20260730204500_align_match_qr_attendance_eligibility.sql");
   const hostFinalizationSql = await readSource("supabase/migrations/20260728130000_general_match_host_finalization.sql");
@@ -871,6 +872,10 @@ test("DB 마이그레이션은 지각 후보, 무수정 정리, 최소 출전, �
   assert.match(sql, /grant execute on function public\.rankball_match_attendance_qr_action/u);
   assert.match(tournamentQrSql, /current_match\.tournament_id is null/u);
   assert.doesNotMatch(tournamentQrSql, /delete\s+from|drop\s+table|truncate\s+table/iu);
+  assert.match(tournamentQrDefaultsSql, /rankball_enforce_tournament_qr_defaults/u);
+  assert.match(tournamentQrDefaultsSql, /before insert or update of tournament_id, rules on public\.matches/u);
+  assert.match(tournamentQrDefaultsSql, /'gameClockEnabled', true,[\s\S]*'qrAttendanceEnabled', true/u);
+  assert.doesNotMatch(tournamentQrDefaultsSql, /delete\s+from|drop\s+table|truncate\s+table/iu);
   assert.match(attendanceApiSource, /export function isQrMatchEligible/u);
   assert.match(attendanceApiSource, /\["public", "private"\]\.includes\(match\.visibility\) \|\| isTournamentMatch\(match\)/u);
   assert.match(attendanceApiSource, /String\(match\.rules\?\.recordType \|\| ""\) !== "match_record"/u);
