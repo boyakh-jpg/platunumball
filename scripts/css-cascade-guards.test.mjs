@@ -859,6 +859,10 @@ test("editorial feature cards and buttons inherit border width owners", () => {
   });
   assert.deepEqual(authCardViolations, []);
   assert.match(
+    fs.readFileSync("src/styles/themes/sports-shell-theme.css", "utf8"),
+    /\.auth-card\s*\{[^}]*box-shadow:\s*none;/,
+  );
+  assert.match(
     fs.readFileSync("src/styles/features/match-approval-sharing.css", "utf8"),
     /\.oauth-static-card\s*\{[^}]*border:\s*0;/,
   );
