@@ -309,7 +309,8 @@ test("심판 stats 전용 프로필 표시와 score-only 정책 계약을 고정
     assert.match(source, /hasVerifiedPlayerStats/);
   });
   assert.match(playerDetailSource, /recordedStatHistory\.length/);
-  assert.match(profileRecordsSource, /recordedStatRecords\.length/);
+  assert.match(profileRecordsSource, /recentSummary\.statGames/);
+  assert.match(profileRecordsSource, /summarizeProfileRecords/);
   assert.match(matchRoomSource, /\{\(hasReferee \|\| isSoloRecord\) && shouldShowResultEntry \? \(/);
   assert.match(matchRoomSource, /\{match\.result && \(hasReferee \|\| isSoloRecord\) \? \(/);
   assert.match(matchRoomSource, /(?:\{|return \()statEditorPlayer && \(hasReferee \|\| isSoloRecord\) \? \(/);

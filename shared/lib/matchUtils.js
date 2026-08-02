@@ -6,6 +6,7 @@ export * from "./matchLegacyCompatibility.js";
 export * from "./matchListStore.js";
 export * from "./matchParticipation.js";
 export * from "./matchPlayedDate.js";
+export * from "./profileRecordStats.js";
 export {
   getRoomKindFromMatch,
   isMatchRecordMatch,

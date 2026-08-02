@@ -15,6 +15,7 @@ const moduleNames = [
   "matchListStore.js",
   "matchParticipation.js",
   "matchPlayedDate.js",
+  "profileRecordStats.js",
   "matchRecordTypes.js",
   "matchRecordVerification.js",
   "matchResultEntry.js",
@@ -44,7 +45,7 @@ test("matchUtils stays a small compatibility barrel", async () => {
   assert.doesNotMatch(source, /\bfunction\b|=>/);
 
   const exports = Object.keys(await import("../shared/lib/matchUtils.js"));
-  assert.equal(exports.length, 146);
+  assert.equal(exports.length, 150);
   for (const name of [
     "canOperateAssignedMatchReferee",
     "getMatchPlayerIds",

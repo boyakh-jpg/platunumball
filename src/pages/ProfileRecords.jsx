@@ -6,7 +6,7 @@ import Card from "../components/common/Card.jsx";
 import { PersonalRecordMetaLabels } from "../components/match/MatchRecordMeta.jsx";
 import RecentMatchRow from "../components/match/RecentMatchRow.jsx";
 import { PLAYER_STAT_FIELDS } from "../lib/constants.js";
-import { formatStatLine, getActualMatchPlayerSideName, getMatchSideResult, getMatchSideScore as getSideScore, getPlayerRecentRecordMatches, getProfileRecordCategory, hasVerifiedPlayerStats, isPersonalRecordMatch } from "../lib/matchUtils.js";
+import { formatStatLine, getActualMatchPlayerSideName, getMatchSideResult, getMatchSideScore as getSideScore, getPlayerRecentRecordMatches, getProfileRecordFolder, groupProfileRecordsByCourt, hasVerifiedPlayerStats, isPersonalRecordMatch, summarizeProfileRecords } from "../lib/matchUtils.js";
 import { MatchRoomModal } from "./Matches.jsx";
 
 function getRecordLine(match, userId) {
@@ -34,12 +34,18 @@ function isPersonalArchiveRecord(record = {}) {
   return ["solo", "personal_record"].includes(String(record.recordType ?? "").trim().toLowerCase());
 }
 
-const RECORD_FILTERS = [
-  { id: "all", label: "통합" },
-  { id: "competitive", label: "경쟁전" },
-  { id: "friendly", label: "친선전" },
-  { id: "tournament", label: "대회 경기" },
+const RECORD_FOLDERS = [
+  { id: "summary", label: "종합" },
+  { id: "official", label: "공식기록" },
+  { id: "no_referee", label: "무심판" },
+  { id: "postgame", label: "사후기록" },
   { id: "personal", label: "내 기록" },
+];
+
+const OFFICIAL_SECTIONS = [
+  { id: "general", label: "일반" },
+  { id: "tournament", label: "대회" },
+  { id: "venue", label: "경기장별" },
 ];
 
 const PERSONAL_VISIBILITY_FILTERS = [
@@ -65,11 +71,12 @@ const PERSONAL_SUMMARY_FIELDS = [
   ...PLAYER_STAT_FIELDS.map((field) => field.id),
 ];
 
-function matchesRecordFilter(record = {}, filter = "all") {
-  const category = isPersonalArchiveRecord(record) ? "personal" : getProfileRecordCategory(record);
-  if (filter === "personal") return category === "personal";
-  if (category === "personal") return false;
-  return filter === "all" || category === filter;
+function matchesRecordSelection(record = {}, folder = "summary", officialSection = "general", playerId = "") {
+  const recordFolder = getProfileRecordFolder(record, playerId);
+  if (folder === "summary") return recordFolder !== "personal";
+  if (recordFolder !== folder) return false;
+  if (folder !== "official" || officialSection === "venue") return true;
+  return officialSection === "tournament" ? Boolean(record.tournamentId) : !record.tournamentId;
 }
 
 function matchesPersonalVisibility(record = {}, filter = "all") {
@@ -78,6 +85,10 @@ function matchesPersonalVisibility(record = {}, filter = "all") {
 
 function matchesModeFilter(record = {}, filter = "all") {
   return filter === "all" || record.mode === filter;
+}
+
+function formatMetric(value = 0) {
+  return Number(value).toFixed(1).replace(/\.0$/, "");
 }
 
 function getPersonalSummaryByVisibility(summary = {}, filter = "all") {
@@ -97,11 +108,11 @@ export default function ProfileRecords({ app }) {
   const archiveState = app.recordArchives?.profile ?? { rows: [], page: {}, loading: false, error: "" };
   const loadKeyRef = useRef("");
   const [selectedRecordMatchId, setSelectedRecordMatchId] = useState("");
-  const [recordFilter, setRecordFilter] = useState("all");
+  const [recordFolder, setRecordFolder] = useState("summary");
+  const [officialSection, setOfficialSection] = useState("general");
   const [personalVisibilityFilter, setPersonalVisibilityFilter] = useState("all");
   const [modeFilter, setModeFilter] = useState("all");
   const recentRecords = getPlayerRecentRecordMatches(app.state.matches, user.id);
-  const officialRecentRecords = recentRecords.filter((match) => !isPersonalRecordMatch(match));
   const personalRecentRecords = recentRecords.filter(isPersonalRecordMatch);
   const archivedRecords = archiveState.rows ?? [];
   useEffect(() => {
@@ -121,25 +132,17 @@ export default function ProfileRecords({ app }) {
       loadKeyRef.current = "";
     });
   }, [app.remoteReady, archiveState.error, loadProfileRecords, profileRecordsLoaded, user.id]);
-  const filteredOfficialRecords = officialRecentRecords.filter((match) => (
-    matchesRecordFilter(match, recordFilter) && matchesModeFilter(match, modeFilter)
-  ));
   const visibleRecentRecords = recentRecords.filter((match) => (
-    matchesRecordFilter(match, recordFilter)
-    && (recordFilter !== "personal" || matchesPersonalVisibility(match, personalVisibilityFilter))
-    && (recordFilter === "personal" || matchesModeFilter(match, modeFilter))
+    matchesRecordSelection(match, recordFolder, officialSection, user.id)
+    && (recordFolder !== "personal" || matchesPersonalVisibility(match, personalVisibilityFilter))
+    && (recordFolder === "personal" || matchesModeFilter(match, modeFilter))
   ));
   const visibleArchivedRecords = archivedRecords.filter((record) => (
-    matchesRecordFilter(record, recordFilter)
-    && (recordFilter !== "personal" || matchesPersonalVisibility(record, personalVisibilityFilter))
-    && (recordFilter === "personal" || matchesModeFilter(record, modeFilter))
+    matchesRecordSelection(record, recordFolder, officialSection, user.id)
+    && (recordFolder !== "personal" || matchesPersonalVisibility(record, personalVisibilityFilter))
+    && (recordFolder === "personal" || matchesModeFilter(record, modeFilter))
   ));
-  const recordedStatRecords = filteredOfficialRecords.filter((match) => hasVerifiedPlayerStats(match, user.id));
-  const totals = getTotals(recordedStatRecords, user.id);
-  const wins = filteredOfficialRecords.filter((match) => getRecordLine(match, user.id).result === "W").length;
-  const losses = filteredOfficialRecords.filter((match) => getRecordLine(match, user.id).result === "L").length;
-  const draws = filteredOfficialRecords.length - wins - losses;
-  const averageFouls = recordedStatRecords.length ? Number(totals.fouls ?? 0) / recordedStatRecords.length : 0;
+  const recentSummary = summarizeProfileRecords(visibleRecentRecords, user.id);
   const fallbackPersonalTotals = getTotals(personalRecentRecords, user.id);
   const fallbackPublicPersonalRecords = personalRecentRecords.filter((match) => matchesPersonalVisibility(match, "public"));
   const personalSummary = archiveState.personalSummary ?? {
@@ -160,14 +163,20 @@ export default function ProfileRecords({ app }) {
     ...fallbackPersonalTotals,
   };
   const visiblePersonalSummary = getPersonalSummaryByVisibility(personalSummary, personalVisibilityFilter);
-  const officialGameCount = filteredOfficialRecords.length;
-  const officialWinRate = officialGameCount ? Math.round((wins / officialGameCount) * 100) : 0;
   const personalGameCount = Number(visiblePersonalSummary.recordCount ?? 0);
-  const personalWinRate = personalGameCount
-    ? Math.round((Number(visiblePersonalSummary.winCount ?? 0) / personalGameCount) * 100)
-    : 0;
-  const showOfficialStatMetrics = recordedStatRecords.length > 0 || recordFilter === "tournament";
-  const officialStatTitle = `${modeFilter === "all" ? "" : `${modeFilter} `}${RECORD_FILTERS.find((item) => item.id === recordFilter)?.label ?? "통합"} 통계`;
+  const statCount = recordFolder === "personal" ? Number(visiblePersonalSummary.statCount ?? 0) : recentSummary.statGames;
+  const statTotals = recordFolder === "personal" ? visiblePersonalSummary : recentSummary.totals;
+  const statAverages = Object.fromEntries(PLAYER_STAT_FIELDS.map(({ id }) => [
+    id,
+    statCount ? Number(statTotals[id] ?? 0) / statCount : 0,
+  ]));
+  const showPlayerStats = recordFolder === "official" || recordFolder === "personal";
+  const venueGroups = recordFolder === "official" && officialSection === "venue"
+    ? groupProfileRecordsByCourt(visibleRecentRecords, user.id)
+    : [];
+  const folderLabel = RECORD_FOLDERS.find(({ id }) => id === recordFolder)?.label ?? "종합";
+  const sectionLabel = OFFICIAL_SECTIONS.find(({ id }) => id === officialSection)?.label ?? "일반";
+  const summaryTitle = `${modeFilter === "all" || recordFolder === "personal" ? "" : `${modeFilter} `}${recordFolder === "official" ? `공식기록 ${sectionLabel}` : folderLabel} 통계`;
   return (
     <div className="page-stack profile-records-page">
       <header className="page-header">
@@ -181,29 +190,41 @@ export default function ProfileRecords({ app }) {
       <Card className="section-card profile-records-summary">
         <div className="section-title-row">
           <div>
-            <p className="eyebrow">{recordFilter === "personal" ? "Self Authored" : "Official & General"}</p>
-            <h2>{recordFilter === "personal" ? "내 기록 통계" : officialStatTitle}</h2>
+            <p className="eyebrow">RECORD SUMMARY</p>
+            <h2>{summaryTitle}</h2>
           </div>
-          <Badge tone={recordFilter === "personal" ? "gold" : "green"}>
-            {recordFilter === "personal"
-              ? `${PERSONAL_VISIBILITY_FILTERS.find((item) => item.id === personalVisibilityFilter)?.label ?? "통합"} ${personalGameCount}경기`
-              : `최근 6개월 ${officialGameCount}경기`}
-          </Badge>
+          <Badge tone={recordFolder === "personal" ? "gold" : "green"}>최근 6개월 {recentSummary.games}경기</Badge>
         </div>
-        <div className="segmented-control profile-record-filter" aria-label="경기 기록 구분">
-          {RECORD_FILTERS.map((item) => (
+        <div className="profile-record-folder-tabs" role="tablist" aria-label="경기 기록 폴더">
+          {RECORD_FOLDERS.map((item) => (
             <button
               key={item.id}
               type="button"
-              className={recordFilter === item.id ? "active" : ""}
-              aria-pressed={recordFilter === item.id}
-              onClick={() => setRecordFilter(item.id)}
+              role="tab"
+              className={recordFolder === item.id ? "active" : ""}
+              aria-selected={recordFolder === item.id}
+              onClick={() => setRecordFolder(item.id)}
             >
               {item.label}
             </button>
           ))}
         </div>
-        {recordFilter !== "personal" ? (
+        {recordFolder === "official" ? (
+          <div className="segmented-control profile-record-section-filter" aria-label="공식기록 구분">
+            {OFFICIAL_SECTIONS.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className={officialSection === item.id ? "active" : ""}
+                aria-pressed={officialSection === item.id}
+                onClick={() => setOfficialSection(item.id)}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        ) : null}
+        {recordFolder !== "personal" ? (
           <div className="segmented-control profile-record-mode-filter" aria-label="경기 인원 구분">
             {MODE_FILTERS.map((item) => (
               <button
@@ -218,7 +239,7 @@ export default function ProfileRecords({ app }) {
             ))}
           </div>
         ) : null}
-        {recordFilter === "personal" ? (
+        {recordFolder === "personal" ? (
           <div className="segmented-control profile-record-visibility-filter" aria-label="내 기록 공개 범위">
             {PERSONAL_VISIBILITY_FILTERS.map((item) => (
               <button
@@ -233,31 +254,56 @@ export default function ProfileRecords({ app }) {
             ))}
           </div>
         ) : null}
-        <div className="rank-stat-grid">
-          {recordFilter === "personal" ? <>
-            <span><strong>{personalGameCount}</strong>경기</span>
-            <span><strong>{visiblePersonalSummary.winCount ?? 0}</strong>승</span>
-            <span><strong>{visiblePersonalSummary.lossCount ?? 0}</strong>패</span>
-            <span><strong>{visiblePersonalSummary.drawCount ?? 0}</strong>무</span>
-            <span><strong>{personalWinRate}%</strong>승률</span>
-            {Number(visiblePersonalSummary.statCount ?? 0) > 0 ? PLAYER_STAT_FIELDS.map((field) => (
-              <span key={field.id}><strong>{visiblePersonalSummary[field.id] ?? 0}</strong>{field.label}</span>
-            )) : null}
-          </> : <>
-            <span><strong>{officialGameCount}</strong>경기</span>
-            <span><strong>{wins}</strong>승</span>
-            <span><strong>{losses}</strong>패</span>
-            <span><strong>{draws}</strong>무</span>
-            <span><strong>{officialWinRate}%</strong>승률</span>
-            {showOfficialStatMetrics ? <>
-              <span><strong>{averageFouls.toFixed(1)}</strong>평균 파울</span>
-              {PLAYER_STAT_FIELDS.map((field) => (
-                <span key={field.id}><strong>{totals[field.id] ?? 0}</strong>{field.label}</span>
-              ))}
-            </> : null}
-          </>}
+        <h3 className="profile-record-metric-title">최근 6개월 점수</h3>
+        <div className="rank-stat-grid profile-record-score-grid">
+          <span><strong>{recentSummary.games}</strong>경기</span>
+          <span><strong>{recentSummary.wins}</strong>승</span>
+          <span><strong>{recentSummary.losses}</strong>패</span>
+          <span><strong>{recentSummary.draws}</strong>무</span>
+          <span><strong>{formatMetric(recentSummary.winRate)}%</strong>승률</span>
+          <span><strong>{formatMetric(recentSummary.averageScore)}</strong>경기당 득점</span>
+          <span><strong>{formatMetric(recentSummary.averageAllowed)}</strong>경기당 실점</span>
+          <span><strong>{formatMetric(recentSummary.averageDiff)}</strong>평균 득실차</span>
+          <span><strong>{recentSummary.scoreFor}</strong>누적 팀 득점</span>
         </div>
-        {recordFilter === "personal" ? <p className="form-helper">직접 만든 기록만 합산합니다. 공식 통계·업적·MMR에는 포함되지 않습니다.</p> : null}
+        {showPlayerStats ? <>
+          <h3 className="profile-record-metric-title">
+            {recordFolder === "personal" ? `저장된 내 기록 누적 · ${personalGameCount}경기` : `검증된 개인 기록 누적 · ${statCount}경기`}
+          </h3>
+          <div className="rank-stat-grid">
+            {PLAYER_STAT_FIELDS.map((field) => (
+              <span key={field.id}><strong>{statTotals[field.id] ?? 0}</strong>{field.label}</span>
+            ))}
+          </div>
+          <h3 className="profile-record-metric-title">개인 기록 경기당 평균</h3>
+          <div className="rank-stat-grid">
+            {PLAYER_STAT_FIELDS.map((field) => (
+              <span key={field.id}><strong>{formatMetric(statAverages[field.id])}</strong>평균 {field.label}</span>
+            ))}
+          </div>
+        </> : null}
+        {venueGroups.length ? (
+          <div className="profile-record-venue-list">
+            {venueGroups.map((group) => (
+              <section key={group.id}>
+                <div className="profile-record-venue-heading"><strong>{group.name}</strong><span>{group.summary.games}경기</span></div>
+                <div className="rank-stat-grid">
+                  <span><strong>{formatMetric(group.summary.averageScore)}</strong>평균 득점</span>
+                  <span><strong>{formatMetric(group.summary.averageAllowed)}</strong>평균 실점</span>
+                  <span><strong>{formatMetric(group.summary.averageDiff)}</strong>평균 득실차</span>
+                  {PLAYER_STAT_FIELDS.map((field) => (
+                    <span key={field.id}><strong>{formatMetric(group.summary.averages[field.id])}</strong>평균 {field.label}</span>
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
+        ) : null}
+        {recordFolder === "official" && officialSection === "venue" && !venueGroups.length ? (
+          <div className="ui-empty-state-compact">최근 6개월 공식 경기장 기록이 없습니다.</div>
+        ) : null}
+        {recordFolder === "personal" ? <p className="form-helper">직접 만든 기록만 합산합니다. 공식 통계·업적·MMR에는 포함되지 않습니다.</p> : null}
+        {["no_referee", "postgame"].includes(recordFolder) ? <p className="form-helper">개인 스탯을 만들지 않는 기록 유형이라 점수 통계만 표시합니다.</p> : null}
       </Card>
 
       <Card className="section-card">

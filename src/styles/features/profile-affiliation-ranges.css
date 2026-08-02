@@ -25,29 +25,78 @@
 .profile-record-row {
   grid-template-columns: 34px minmax(0, 1fr) minmax(54px, auto);
 }
-.profile-record-filter {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+.profile-record-folder-tabs {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-1);
   width: 100%;
   margin-bottom: var(--space-5);
+  overflow-x: auto;
+  border-bottom: var(--ui-stroke-width) solid var(--ui-liquid-glass-divider);
+  scrollbar-width: none;
 }
-.profile-record-filter button,
+.profile-record-folder-tabs::-webkit-scrollbar {
+  display: none;
+}
+.profile-record-folder-tabs button {
+  flex: 1 0 auto;
+  min-height: 40px;
+  padding: var(--space-2) var(--space-4);
+  border: 0;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-weight: var(--ui-button-font-weight);
+  cursor: pointer;
+}
+.profile-record-folder-tabs button.active {
+  background: var(--ui-control-bg);
+  color: var(--text);
+}
+.profile-record-section-filter button,
 .profile-record-mode-filter button,
 .profile-record-visibility-filter button {
   min-width: 0;
   white-space: nowrap;
 }
+.profile-record-section-filter,
 .profile-record-mode-filter,
 .profile-record-visibility-filter {
   display: grid;
   width: 100%;
-  margin: calc(var(--space-2) * -1) 0 var(--space-5);
+  margin: 0 0 var(--space-4);
+}
+.profile-record-section-filter {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 .profile-record-mode-filter {
   grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 .profile-record-visibility-filter {
   grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.profile-record-metric-title {
+  margin: var(--space-5) 0 var(--space-3);
+  color: var(--muted);
+  font-size: var(--font-size-body-sm);
+}
+.profile-record-venue-list {
+  display: grid;
+  margin-top: var(--space-5);
+}
+.profile-record-venue-list section {
+  padding: var(--space-5) 0;
+  border-top: var(--ui-stroke-width) solid var(--ui-liquid-glass-divider);
+}
+.profile-record-venue-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+.profile-record-venue-heading span {
+  color: var(--muted);
 }
 .record-archive-row {
   cursor: default;
@@ -73,8 +122,8 @@
   white-space: nowrap;
 }
 @media (max-width: 520px) {
-  .profile-record-filter {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+  .profile-record-folder-tabs button {
+    flex-basis: auto;
   }
 
   .profile-record-mode-filter {
