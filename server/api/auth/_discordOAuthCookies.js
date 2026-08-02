@@ -5,6 +5,15 @@ export const DISCORD_OAUTH_PROOF_COOKIE = "rankball_discord_oauth_proof";
 export const DISCORD_OAUTH_STATE_COOKIE_PATH = "/api/auth/discord/callback";
 export const DISCORD_OAUTH_PROOF_COOKIE_PATH = "/api/auth/discord/complete";
 
+export function getDiscordOAuthStateCookiePath(redirectUri = process.env.DISCORD_REDIRECT_URI) {
+  try {
+    const path = new URL(String(redirectUri || "")).pathname;
+    return path === "/api/discord/callback" ? path : DISCORD_OAUTH_STATE_COOKIE_PATH;
+  } catch {
+    return DISCORD_OAUTH_STATE_COOKIE_PATH;
+  }
+}
+
 function isSecureRequest(request = {}) {
   const forwardedProtocol = String(request.headers?.["x-forwarded-proto"] || "")
     .split(",")[0]
@@ -43,7 +52,7 @@ export function readCookie(request = {}, name = "") {
 
 export function setDiscordOAuthStateCookie(request, response, ticket) {
   response.setHeader("Set-Cookie", serializeCookie(request, DISCORD_OAUTH_STATE_COOKIE, ticket, {
-    path: DISCORD_OAUTH_STATE_COOKIE_PATH,
+    path: getDiscordOAuthStateCookiePath(),
     maxAgeSeconds: Math.ceil(DISCORD_OAUTH_STATE_TTL_MS / 1000),
   }));
 }
@@ -51,7 +60,7 @@ export function setDiscordOAuthStateCookie(request, response, ticket) {
 export function setDiscordOAuthProofCookies(request, response, proof) {
   response.setHeader("Set-Cookie", [
     serializeCookie(request, DISCORD_OAUTH_STATE_COOKIE, "", {
-      path: DISCORD_OAUTH_STATE_COOKIE_PATH,
+      path: getDiscordOAuthStateCookiePath(),
       maxAgeSeconds: 0,
     }),
     serializeCookie(request, DISCORD_OAUTH_PROOF_COOKIE, proof, {
@@ -63,7 +72,7 @@ export function setDiscordOAuthProofCookies(request, response, proof) {
 
 export function clearDiscordOAuthStateCookie(request, response) {
   response.setHeader("Set-Cookie", serializeCookie(request, DISCORD_OAUTH_STATE_COOKIE, "", {
-    path: DISCORD_OAUTH_STATE_COOKIE_PATH,
+    path: getDiscordOAuthStateCookiePath(),
     maxAgeSeconds: 0,
   }));
 }

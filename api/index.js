@@ -72,6 +72,7 @@ export const API_ROUTES = new Map([
   ["/auth/discord/callback", route(discordCallback, ["GET"], "oauthCallback")],
   ["/auth/discord/complete", route(discordComplete, ["POST"], "user")],
   ["/auth/discord/start", route(discordStart, ["POST"], "user")],
+  ["/discord/callback", route(discordCallback, ["GET"], "oauthCallback")],
   ["/court-requests/approve", route(courtRequestApprove, ["POST"], "admin")],
   ["/court-requests/report", route(courtRequestReport, ["POST"], "user")],
   ["/court-requests/submit", route(courtRequestSubmit, ["POST"], "user")],

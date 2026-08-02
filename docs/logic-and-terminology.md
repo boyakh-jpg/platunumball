@@ -454,6 +454,8 @@
 
 ## 2026-07-20 Discord OAuth 프로필 저장
 
+0. Discord OAuth callback 정식 경로는 `/api/auth/discord/callback`이다. 운영 Discord 앱에 이미 등록된 `/api/discord/callback`은 수신 전용 호환 경로로도 처리하며, state 쿠키 경로는 설정된 두 허용 callback 중 하나에만 맞춘다.
+
 1. Discord OAuth 시작은 인증된 `POST /api/auth/discord/start`만 허용한다. 서버가 무작위 state를 만들고 현재 프로필과 서명해 `HttpOnly`, `SameSite=Lax` 쿠키에 저장한다. 사용자 ID나 Supabase token을 OAuth 시작 URL query로 받지 않는다.
 2. Discord callback은 state query와 서명 쿠키를 함께 검증한다. Discord identity 증명값은 URL에 넣지 않고 callback 전용 `HttpOnly` 쿠키로 `/api/auth/discord/complete`에만 전달한다. 앱 복귀 URL에는 `discord=pending` 또는 오류 코드만 둔다.
 3. 콜백 결과는 Supabase 원격 프로필 로딩이 끝난 뒤 인증된 completion 요청으로 소비한다. completion은 현재 Supabase 프로필, OAuth state, 서명된 Discord identity가 모두 일치할 때만 연결 payload를 반환하며 쿠키는 한 번 사용한 뒤 만료한다.
