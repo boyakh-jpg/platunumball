@@ -108,6 +108,10 @@ test("홈 사용 설명 카드는 기본 표시이며 false 설정을 서버 map
     getRemoteAppSettings({ app_settings: { showHomeGuideCard: false } }),
     { showHomeGuideCard: false },
   );
+  assert.deepEqual(
+    getRemoteAppSettings({ app_settings: { blockedUserIds: ["remote-user"], blockedUserProfiles: { "remote-user": { name: "원격 선수" }, stale: { name: "제외" } } } }),
+    { blockedUserIds: ["remote-user"], blockedUserProfiles: { "remote-user": { name: "원격 선수" } } },
+  );
 });
 
 test("practice payload는 실서버 mutation 대상으로 사용할 수 없다", () => {
