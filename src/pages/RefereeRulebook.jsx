@@ -12,7 +12,7 @@ import {
   REFEREE_STAT_GUIDELINES,
 } from "../lib/refereeRulebook.js";
 
-const RULEBOOK_ASSET_VERSION = "20260729-2";
+const RULEBOOK_ASSET_VERSION = "20260802-1";
 const RULEBOOK_SOURCES = [
   {
     label: "FIBA 경기규칙 2024",
