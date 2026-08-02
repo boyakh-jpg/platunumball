@@ -60,6 +60,19 @@ test("팀 수에 따라 필수 심판 수가 2·3·4명으로 증가한다", () 
   assert.equal(isTournamentGovernanceEnabled(null), false);
 });
 
+test("대회 심판 안내는 신뢰도를 재평가하지 않고 유효 자격만 설명한다", async () => {
+  const [validationController, creationRepository] = await Promise.all([
+    readSource("src/components/match/useCreateMatchValidationController.js"),
+    readSource("src/data/repository/tournaments/creation.js"),
+  ]);
+  for (const source of [validationController, creationRepository]) {
+    assert.match(source, /대회 주최자는 대회 종료일까지 유효한 자격심판이어야 합니다\./u);
+    assert.match(source, /대회 종료일까지 유효한 자격이 없는 심판이 포함되어 있습니다\./u);
+    assert.doesNotMatch(source, /대회 주최자는 신뢰도/u);
+    assert.doesNotMatch(source, /자격 또는 신뢰도 조건/u);
+  }
+});
+
 test("활성 대회에서 승인된 기존 심판은 신뢰도 자동 회수 뒤에만 대회를 완료한다", () => {
   const referee = { id: "referee-low", trustScore: 69 };
   const autoRevokedAppointment = {

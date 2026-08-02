@@ -35,6 +35,14 @@ import {
   normalizeBenchCapacity,
 } from "../src/lib/constants.js";
 import { getDbScheduleParts } from "../src/data/scheduleUtils.js";
+import {
+  acceptTeamInvitation,
+  createTeam,
+  deleteTeam,
+  inviteTeamMember,
+  removeTeamMember,
+  updateTeamMemberRole,
+} from "../src/data/repository/account.js";
 import { getRoomScheduleLabel } from "../src/lib/matchUtils.js";
 import { getResumableRefereeExamAttempt, matchesReportSearchQuery } from "../src/pages/settingsPageModel.js";
 import { fromRemoteApprovedCourt } from "../src/data/remotePayloadMappers.js";
@@ -1557,10 +1565,11 @@ test("blocked player labels remain identifiable after directory filtering", asyn
 });
 
 test("team creation requires one active approved home court selection", async () => {
-  const [teamsPage, teamRepository, teamServer] = await Promise.all([
+  const [teamsPage, teamRepository, teamServer, backendSimulation] = await Promise.all([
     readSource("src/pages/Teams.jsx"),
     readSource("src/data/repository/account.js"),
     readSource("server/api/teams/sync-team.js"),
+    readSource("scripts/simulate-backend-flow.mjs"),
   ]);
   assert.match(teamsPage, /homeCourtId: ""/);
   assert.match(teamsPage, /court\.id === draft\.homeCourtId && court\.name === draft\.homeCourt/);
@@ -1574,6 +1583,35 @@ test("team creation requires one active approved home court selection", async ()
   assert.match(teamServer, /from\("approved_courts"\)[\s\S]*?\.eq\("id", team\.homeCourtId\)[\s\S]*?\.eq\("status", "active"\)/);
   assert.match(teamServer, /new Error\("invalid_team_home_court"\)/);
   assert.match(teamServer, /team\.homeCourt = approvedCourt\.name/);
+  assert.match(backendSimulation, /runTeamLifecycleScenario[\s\S]*?homeCourtId: simulationCourtId/);
+  assert.match(backendSimulation, /runTeamEmblemModerationScenario[\s\S]*?homeCourtId: simulationCourtId/);
+  assert.match(backendSimulation, /setRepresentativeTeam[\s\S]*?rejectNonMemberRepresentativeTeam[\s\S]*?representativeTeamDeleteFallback/);
+  assert.match(backendSimulation, /memberRoleUpdated: true[\s\S]*?memberRemoved: true/);
+});
+
+test("team lifecycle reducer preserves invitation, role, removal, and deletion invariants", () => {
+  let state = {
+    currentUserId: "captain",
+    users: [{ id: "captain" }, { id: "member" }],
+    teams: [],
+    teamInvitations: [],
+    recruitingPosts: [],
+    notifications: [],
+    settings: {},
+  };
+  state = createTeam(state, { name: "QA TEAM", homeCourt: "QA COURT", homeCourtId: "court-qa", region: "서울" });
+  const teamId = state.teams[0].id;
+  state = inviteTeamMember(state, teamId, "member", "regular");
+  const invitationId = state.teamInvitations[0].id;
+  state = acceptTeamInvitation({ ...state, currentUserId: "member" }, invitationId);
+  assert.equal(state.teams[0].members.find((member) => member.userId === "member")?.role, "regular");
+  state = updateTeamMemberRole({ ...state, currentUserId: "captain" }, teamId, "member", "mercenary");
+  assert.equal(state.teams[0].members.find((member) => member.userId === "member")?.role, "mercenary");
+  state = removeTeamMember(state, teamId, "member");
+  assert.deepEqual(state.teams[0].members, [{ userId: "captain", role: "captain" }]);
+  state = deleteTeam(state, teamId);
+  assert.equal(state.teams.length, 0);
+  assert.deepEqual(state.deletedTeamIds, [teamId]);
 });
 
 test("search keeps player and referee identities separate and remote blocking updates immediately", async () => {

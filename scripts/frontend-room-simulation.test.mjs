@@ -8,6 +8,7 @@ import {
   checkInMatchPlayer,
   confirmRecruitingMatch,
   createRecruitingPost,
+  disputeMatch,
   endMatch,
   finalizeMatchByAuthority,
   incrementMatchScore,
@@ -16,6 +17,7 @@ import {
   inviteRecruitingReferee,
   reportMatch,
   reportPlayer,
+  resolveMatchDispute,
   runAutomaticStateMaintenance,
   setMatchRoomPlayerPlacement,
   setRecruitingRoomTeam,
@@ -38,8 +40,14 @@ import {
   runPracticeReducer,
   submitPracticeSampleResult,
 } from "../src/lib/practiceMatch.js";
+import { createPracticeClockClient } from "../src/lib/practiceMatchClock.js";
 import { getRecruitingEntryPlacementIds, getRecruitingLobby, isIndividualOnlyRecruitingRoom } from "../src/lib/recruiting.js";
-import { buildMatchResultSubmission, getMatchManualFinalizationStatus } from "../src/lib/matchUtils.js";
+import {
+  buildMatchDisputeRequest,
+  buildMatchResultSubmission,
+  getMatchManualFinalizationStatus,
+  getOpenMatchDisputes,
+} from "../src/lib/matchUtils.js";
 import { inferRegionSelection } from "../src/lib/profileSetup.js";
 import { getLocalRivalries } from "../src/lib/season.js";
 import { buildSettingsActions } from "../src/hooks/appData/actions/settingsActions.js";
@@ -50,6 +58,23 @@ const MODE_CAPACITY = Object.freeze({
   "3v3": 3,
   "5v5": 5,
 });
+
+function getKstSchedule(offsetMs) {
+  const date = new Date(Date.now() + offsetMs);
+  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date).map((part) => [part.type, part.value]));
+  return {
+    scheduledDate: `${parts.year}-${parts.month}-${parts.day}`,
+    scheduledTime: `${parts.hour}:${parts.minute}`,
+  };
+}
 
 function apply(state, actionName, args, actorId, message = actionName) {
   const result = runPracticeReducer(state, actionName, args, actorId);
@@ -70,10 +95,19 @@ function acceptActualInvitation(state, postId, targetUserId, role = "player") {
   return acceptRecruitingInvitation(asActor(state, targetUserId), postId, invitation.id);
 }
 
-function runActualMatchLifecycle({ visibility, teamOnly, referee, benchCapacity }) {
+function runActualMatchLifecycle({
+  visibility,
+  teamOnly,
+  referee,
+  benchCapacity,
+  timingType = "instant",
+  qrAttendanceEnabled = false,
+  exerciseDispute = false,
+}) {
   const hostId = "u1";
   const refereeId = "u11";
   const postId = `actual-${visibility}-${teamOnly ? "team" : "player"}-${referee ? "referee" : "no-referee"}-bench-${benchCapacity}`;
+  const schedule = timingType === "scheduled" ? getKstSchedule(10 * 60_000) : {};
   let state = {
     ...structuredClone(demoFlowState),
     currentUserId: hostId,
@@ -87,7 +121,8 @@ function runActualMatchLifecycle({ visibility, teamOnly, referee, benchCapacity 
     id: postId,
     title: postId,
     visibility,
-    timingType: "instant",
+    timingType,
+    ...schedule,
     hostJoinMode: teamOnly ? "team" : "player",
     teamOnly,
     mode: "2v2",
@@ -97,7 +132,7 @@ function runActualMatchLifecycle({ visibility, teamOnly, referee, benchCapacity 
     formationMode: "prearranged",
     matchPurpose: "friendly",
     gameClockEnabled: true,
-    qrAttendanceEnabled: false,
+    qrAttendanceEnabled,
     periodCount: 2,
     periodMinutes: 1,
     overtimeMinutes: 1,
@@ -164,6 +199,8 @@ function runActualMatchLifecycle({ visibility, teamOnly, referee, benchCapacity 
   let match = state.matches[0];
   assert.ok(match?.id, `${postId}: 경기 확정`);
   assert.equal(match.refereeId ?? "", referee ? refereeId : "", `${postId}: 심판 배정`);
+  assert.equal(match.rules?.timingType, timingType, `${postId}: 일정 방식 저장`);
+  assert.equal(match.rules?.qrAttendanceEnabled, qrAttendanceEnabled, `${postId}: QR 출석 저장`);
   assert.equal(match.teamA.teamId, teamOnly ? "t1" : null, `${postId}: A사이드 팀 정체성`);
   assert.equal(match.teamB.teamId, teamOnly ? "t2" : null, `${postId}: B사이드 팀 정체성`);
   if (benchCapacity) {
@@ -255,6 +292,33 @@ function runActualMatchLifecycle({ visibility, teamOnly, referee, benchCapacity 
     [3, 2],
     `${postId}: 점수 반영`,
   );
+
+  if (exerciseDispute) {
+    const request = buildMatchDisputeRequest({
+      match,
+      playerId: hostId,
+      requestedStats: {
+        ...match.result.playerStats[hostId],
+        points: 4,
+      },
+      reason: "프론트 이의 큐 저장 검증",
+    });
+    state = disputeMatch(asActor(state, hostId), match.id, request);
+    match = state.matches[0];
+    assert.equal(match.status, "disputed", `${postId}: 이의 접수`);
+    assert.equal(getOpenMatchDisputes(match).length, 1, `${postId}: 이의 큐 표시`);
+    state = resolveMatchDispute(
+      asActor(state, operatorId),
+      match.id,
+      getOpenMatchDisputes(match)[0].id,
+      "accepted",
+      "현장 기록 확인 완료",
+    );
+    match = state.matches[0];
+    assert.equal(match.status, "approval", `${postId}: 이의 판정 후 승인 대기`);
+    assert.equal(getOpenMatchDisputes(match).length, 0, `${postId}: 이의 큐 비움`);
+    assert.deepEqual([match.teamA.score, match.teamB.score], [4, 2], `${postId}: 가결 기록 반영`);
+  }
 
   const finalizeOptions = {
     disputesAcknowledged: true,
@@ -491,20 +555,7 @@ function runPickupRoom({
 }
 
 function getPastKstSchedule() {
-  const date = new Date(Date.now() - 60_000);
-  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-US", {
-    timeZone: "Asia/Seoul",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-  }).formatToParts(date).map((part) => [part.type, part.value]));
-  return {
-    scheduledDate: `${parts.year}-${parts.month}-${parts.day}`,
-    scheduledTime: `${parts.hour}:${parts.minute}`,
-  };
+  return getKstSchedule(-60_000);
 }
 
 function approveRecordParticipants(state, matchId) {
@@ -878,6 +929,66 @@ test("실제 경기방 16조합은 후보 이동부터 출석·기록·최종 �
       }
     }
   }
+});
+
+test("예약 QR 심판 경기방은 전원 출석 뒤 조기 시작하고 이의 큐 판정까지 완료된다", () => {
+  runActualMatchLifecycle({
+    visibility: "private",
+    teamOnly: false,
+    referee: true,
+    benchCapacity: 1,
+    timingType: "scheduled",
+    qrAttendanceEnabled: true,
+    exerciseDispute: true,
+  });
+});
+
+test("로컬 프론트 경기시계는 정규 쿼터와 반복 연장을 순서대로 진행한다", async () => {
+  let state = createPracticeState({}, { name: "프론트 시계 방장" });
+  const created = createPracticeRecruitingRoom(state, {
+    title: "2쿼터 연장 프론트 시뮬",
+    mode: "1v1",
+    sideCapacity: 1,
+    benchCapacity: 0,
+    formationMode: "prearranged",
+    rules: {
+      formationMode: "prearranged",
+      matchPurpose: "friendly",
+      gameClockEnabled: true,
+      qrAttendanceEnabled: true,
+      periodCount: 2,
+      periodMinutes: 1,
+      overtimeMinutes: 1,
+      shotClockSeconds: 24,
+    },
+  });
+  assert.ok(created.postId);
+  state = acceptPendingInvitations(created.state, created.postId);
+  const confirmed = confirmRoom(state, created.postId);
+  state = completePracticeAttendance(confirmed.state, confirmed.matchId);
+  state = apply(state, "startMatch", [confirmed.matchId], PRACTICE_SELF_ID, "시계 경기 시작");
+
+  const nowMs = Date.now();
+  const stateRef = { current: state };
+  const clockClient = createPracticeClockClient(
+    () => stateRef.current,
+    () => PRACTICE_SELF_ID,
+    null,
+    () => nowMs,
+  );
+  assert.equal((await clockClient(confirmed.matchId, "start")).clock.status, "running");
+  assert.equal((await clockClient(confirmed.matchId, "endPeriod")).clock.status, "break");
+  let clock = (await clockClient(confirmed.matchId, "startPeriod")).clock;
+  assert.equal(clock.currentPeriod, 2);
+  assert.equal(clock.status, "running");
+  assert.equal((await clockClient(confirmed.matchId, "endPeriod")).clock.status, "break");
+  clock = (await clockClient(confirmed.matchId, "startOvertime")).clock;
+  assert.equal(clock.overtimeCount, 1);
+  assert.equal(clock.periodRemainingMs, 60_000);
+  await clockClient(confirmed.matchId, "endPeriod");
+  clock = (await clockClient(confirmed.matchId, "startOvertime")).clock;
+  assert.equal(clock.overtimeCount, 2);
+  assert.equal((await clockClient(confirmed.matchId, "endClock")).clock.status, "ended");
 });
 
 test("최종 승인은 결과 제출과 경기 종료 중 늦은 시각부터 3분 뒤 열린다", () => {

@@ -3622,6 +3622,7 @@ async function runTeamLifecycleScenario({
       name: `SIM-G-${suffix.slice(-6)}`,
       region: "Backend Simulation",
       homeCourt: "Backend Simulation Court",
+      homeCourtId: simulationCourtId,
       accent: "#58d2c0",
       members: [
         { userId: captainId, role: "captain" },
@@ -3636,11 +3637,21 @@ async function runTeamLifecycleScenario({
       name: `SIM-A-${suffix.slice(-6)}`,
       region: "서울특별시 마포구",
       homeCourt: "Backend Simulation Court",
+      homeCourtId: simulationCourtId,
       accent: "#58d2c0",
       members: [{ userId: captainId, role: "captain" }],
     },
   }));
   assertFlow(createResult?.ok && createResult?.teamId === teamId, "team create failed", createResult);
+  await ensureTemporaryProfileDiscordSnapshot(captainId);
+  const representativeResult = await step(`${ids.label}:setRepresentativeTeam`, () => syncSettingsAs(captainLogin, {
+    representativeTeamId: teamId,
+  }));
+  assertFlow(
+    representativeResult?.ok && representativeResult?.settings?.representativeTeamId === teamId,
+    "representative team setting failed",
+    representativeResult,
+  );
 
   const acceptedInvitationId = `sim_ti_${ids.label}_accept_${suffix}`;
   teamInvitationSimulationIds.add(acceptedInvitationId);
@@ -3667,14 +3678,20 @@ async function runTeamLifecycleScenario({
       accent: "#f05d4f",
       members: [
         { userId: captainId, role: "captain" },
-        { userId: acceptedMemberId, role: "regular" },
+        { userId: acceptedMemberId, role: "mercenary" },
       ],
     },
   }));
   assertFlow(updateResult?.ok && updateResult?.teamId === teamId, "team update failed", updateResult);
   const updatedTeams = await step(`${ids.label}:loadUpdatedTeam`, () => loadTeamsAs(captainLogin));
   const updatedTeam = (updatedTeams.teams ?? []).find((team) => team.id === teamId);
-  assertFlow(updatedTeam?.name?.startsWith("SIM-B-") && teamHasMembers(updatedTeam, [captainId, acceptedMemberId]), "updated team state mismatch", updatedTeam);
+  assertFlow(
+    updatedTeam?.name?.startsWith("SIM-B-")
+      && teamHasMembers(updatedTeam, [captainId, acceptedMemberId])
+      && updatedTeam.members.some((member) => member.userId === acceptedMemberId && member.role === "mercenary"),
+    "updated team state mismatch",
+    updatedTeam,
+  );
 
   const cancelledInvitationId = `sim_ti_${ids.label}_cancel_${suffix}`;
   teamInvitationSimulationIds.add(cancelledInvitationId);
@@ -3690,6 +3707,12 @@ async function runTeamLifecycleScenario({
     invitationId: cancelledInvitationId,
   }));
   assertFlow(cancelResult?.ok && cancelResult?.status === "cancelled", "team invitation cancel failed", cancelResult);
+  const nonMemberRepresentativeResult = await expectRejected(
+    `${ids.label}:rejectNonMemberRepresentativeTeam`,
+    () => syncSettingsAs(cancelledInviteLogin, { representativeTeamId: teamId }),
+    ["representative_team_must_be_owned"],
+  );
+  assertFlow(nonMemberRepresentativeResult.rejected, "non-member selected a representative team", nonMemberRepresentativeResult);
 
   const recruitingResult = await step(`${ids.label}:createActiveTeamRecruitingPost`, () => syncRecruitingAs(captainLogin, {
     action: "createRecruitingPost",
@@ -3746,6 +3769,25 @@ async function runTeamLifecycleScenario({
   }));
   assertFlow(closeRecruitingResult?.ok, "active team recruiting reference close failed", closeRecruitingResult);
 
+  const removeMemberResult = await step(`${ids.label}:removeTeamMember`, () => syncTeamAs(captainLogin, {
+    team: {
+      id: teamId,
+      name: `SIM-B-${suffix.slice(-6)}`,
+      region: "서울특별시 성동구",
+      homeCourt: "Updated Simulation Court",
+      accent: "#f05d4f",
+      members: [{ userId: captainId, role: "captain" }],
+    },
+  }));
+  assertFlow(removeMemberResult?.ok && removeMemberResult?.memberCount === 1, "team member removal failed", removeMemberResult);
+  const memberRemovedTeams = await step(`${ids.label}:loadTeamAfterMemberRemoval`, () => loadTeamsAs(captainLogin));
+  const memberRemovedTeam = (memberRemovedTeams.teams ?? []).find((team) => team.id === teamId);
+  assertFlow(
+    memberRemovedTeam?.members?.length === 1 && memberRemovedTeam.members[0]?.userId === captainId,
+    "removed team member remained in roster",
+    memberRemovedTeam,
+  );
+
   const deleteResult = await step(`${ids.label}:deleteTeam`, () => syncTeamAs(captainLogin, { deletedTeamId: teamId }));
   assertFlow(deleteResult?.ok && deleteResult?.deleted === true, "team soft delete failed", deleteResult);
   const { data: deletedTeam, error: deletedTeamError } = await supabase
@@ -3755,6 +3797,11 @@ async function runTeamLifecycleScenario({
     .maybeSingle();
   if (deletedTeamError) throw deletedTeamError;
   assertFlow(Boolean(deletedTeam?.deleted_at), "team deleted_at missing", deletedTeam);
+  const { data: representativeTeamId, error: representativeTeamError } = await supabase.rpc("rankball_profile_representative_team_id", {
+    p_profile_id: captainId,
+  });
+  if (representativeTeamError) throw representativeTeamError;
+  assertFlow(representativeTeamId !== teamId, "deleted team remained the canonical representative team", { teamId, representativeTeamId });
 
   return {
     label: ids.label,
@@ -3763,6 +3810,10 @@ async function runTeamLifecycleScenario({
     created: true,
     invitationAccepted: true,
     updated: true,
+    memberRoleUpdated: true,
+    memberRemoved: true,
+    representativeTeamGuard: true,
+    representativeTeamDeleteFallback: true,
     invitationCancelled: true,
     initialMemberGuard: true,
     activeReferenceGuard: true,
@@ -3794,6 +3845,7 @@ async function runTeamEmblemModerationScenario({
       name: `RB-QA-${suffix.slice(-6)}`,
       region: "서울특별시 마포구",
       homeCourt: "Backend Simulation Court",
+      homeCourtId: simulationCourtId,
       accent: "#58d2c0",
       members: [{ userId: captainId, role: "captain" }],
     },

@@ -1,4 +1,4 @@
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { ArrowRight, Copy, ExternalLink, LogOut, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import Badge from "../components/common/Badge.jsx";
@@ -29,6 +29,8 @@ export default function Login({ auth, app }) {
   const activeProviders = auth.configured ? providers.filter((provider) => provider.id === "google") : providers;
   const embeddedOAuthBrowser = auth.configured && isEmbeddedOAuthBrowser();
   const browserOpenUrl = typeof window === "undefined" ? "" : `${window.location.origin}${from}`;
+
+  if (auth.session) return <Navigate to={from} replace />;
 
   const enterApp = () => navigate(from, { replace: true });
   const signIn = async (providerId) => {

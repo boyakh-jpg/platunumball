@@ -582,3 +582,24 @@ test("retired favorite targets can still be removed", async () => {
   assert.match(source, /if \(active\) \{\s+await assertTargetExists\(context, targetType, targetId\)/u);
   assert.doesNotMatch(source, /await assertTargetExists\(context, targetType, targetId\);\s+if \(active\)/u);
 });
+
+test("legacy favorite constraint accepts referee targets", async () => {
+  const source = await readSource("supabase/migrations/20260802012000_allow_referee_favorites.sql");
+  assert.match(source, /drop constraint if exists favorites_target_type_check/u);
+  assert.match(source, /target_type in \('player', 'team', 'court', 'referee'\)/u);
+  assert.doesNotMatch(source, /delete from|truncate table|drop table/iu);
+});
+
+test("settings and referee writes do not report derived cleanup as a failed canonical save", async () => {
+  const [settingsSource, refereeSource, refereeControllerSource] = await Promise.all([
+    readSource("server/api/settings/sync.js"),
+    readSource("server/api/referee/sync.js"),
+    readSource("src/pages/useSettingsRefereeController.js"),
+  ]);
+  assert.match(settingsSource, /console\.warn\("Queued Discord delivery cleanup failed after settings save\."/u);
+  assert.doesNotMatch(settingsSource, /if \(cancelError\) throw cancelError/u);
+  assert.match(refereeSource, /\.eq\("requested_by", context\.profileId\)[\s\S]*?\.eq\("status", "pending"\)/u);
+  assert.match(refereeSource, /duplicate: true/u);
+  assert.doesNotMatch(refereeSource, /if \(notificationError\) throw notificationError/u);
+  assert.match(refereeControllerSource, /if \(hasPendingRefereeRequest\)/u);
+});

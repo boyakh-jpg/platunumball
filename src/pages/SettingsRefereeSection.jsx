@@ -16,6 +16,7 @@ export default function SettingsRefereeSection({ controller }) {
     refereeExamAnswers,
     refereeExamResult,
     refereeRequests,
+    hasPendingRefereeRequest,
     currentTrustScore,
     canOpenRefereeRequestForm,
     refereeExamNotice,
@@ -129,10 +130,11 @@ export default function SettingsRefereeSection({ controller }) {
                     메모
                     <textarea value={refereeDraft.memo} placeholder="자격증, 활동 지역, 가능한 시간 등을 적어 주세요." onChange={(event) => updateRefereeDraft({ memo: event.target.value })} />
                   </label>
-                  <Button type="submit" variant="secondary" disabled={Boolean(refereeActionPending) || (refereeExamRequired && !refereeExamPassed)}>
+                  <Button type="submit" variant="secondary" disabled={Boolean(refereeActionPending) || hasPendingRefereeRequest || (refereeExamRequired && !refereeExamPassed)}>
                     <Send size={16} /> {refereeActionPending === "request" ? "저장 중" : "심판 등록요청"}
                   </Button>
                   {refereeExamRequired && !refereeExamPassed ? <small>커뮤니티 심판은 시험 통과 후 등록요청할 수 있습니다.</small> : null}
+                  {hasPendingRefereeRequest ? <small>이미 심사 중인 심판 등록요청이 있습니다.</small> : null}
                 </form>
                 <div className="compact-list ui-support-list">
                   {refereeRequests.slice(0, 4).map((request) => (

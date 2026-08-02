@@ -22,6 +22,9 @@ export default function useSettingsRefereeController({ app, currentTrustScore })
   const [refereeClock, setRefereeClock] = useState(() => Date.now());
   const refereeActionPendingRef = useRef("");
   const refereeRequests = app.state.settings?.refereeRequests ?? [];
+  const hasPendingRefereeRequest = refereeRequests.some((request) => (
+    request.requestedBy === app.currentUserId && request.status === "pending"
+  ));
   const refereeExamAttempts = app.state.settings?.refereeExamAttempts ?? [];
   const canOpenRefereeRequestForm = currentTrustScore >= REFEREE_TRUST_MIN;
   const answeredRefereeExamCount = Object.keys(refereeExamAnswers).length;
@@ -156,6 +159,10 @@ export default function useSettingsRefereeController({ app, currentTrustScore })
   };
   const submitRefereeRequest = async (event) => {
     event.preventDefault();
+    if (hasPendingRefereeRequest) {
+      setRefereeExamNotice("이미 심사 중인 심판 등록요청이 있습니다.");
+      return;
+    }
     if (!beginRefereeAction("request")) return;
     setRefereeExamNotice("심판 등록요청 저장 중입니다.");
     try {
@@ -192,6 +199,7 @@ export default function useSettingsRefereeController({ app, currentTrustScore })
     refereeExamAnswers,
     refereeExamResult,
     refereeRequests,
+    hasPendingRefereeRequest,
     canOpenRefereeRequestForm,
     refereeExamNotice,
     refereeActionPending,

@@ -238,6 +238,18 @@ async function syncRefereeRequest(context, request = {}, notifications = []) {
   const row = toRefereeRequestRow(request, context.profileId, trustScore);
   await assertPassedAttempt(context, row.payload);
 
+  const { data: pendingRequests, error: pendingError } = await context.supabase
+    .from("referee_requests")
+    .select("id")
+    .eq("requested_by", context.profileId)
+    .eq("status", "pending")
+    .order("created_at", { ascending: false })
+    .limit(1);
+  if (pendingError) throw pendingError;
+  if (pendingRequests?.[0]?.id && pendingRequests[0].id !== row.id) {
+    return { ok: true, requestId: pendingRequests[0].id, notificationCount: 0, duplicate: true };
+  }
+
   const { error: requestError } = await context.supabase
     .from("referee_requests")
     .upsert(row, { onConflict: "id" });
@@ -253,7 +265,7 @@ async function syncRefereeRequest(context, request = {}, notifications = []) {
     const { error: notificationError } = await context.supabase
       .from("notifications")
       .upsert(notificationRows, { onConflict: "id" });
-    if (notificationError) throw notificationError;
+    if (notificationError) console.warn("Referee request notification sync failed after request save.", notificationError);
   }
 
   return { ok: true, requestId: row.id, notificationCount: notificationRows.length };

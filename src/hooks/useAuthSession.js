@@ -251,10 +251,6 @@ export function useAuthSession() {
       setTestLoginPending(false);
       setError("");
       setMessage("");
-      writeTestSession(null);
-      setClientActionSession(null);
-      setSession(null);
-      setLoading(false);
       try {
         if (isSupabaseConfigured) {
           const { error: signOutError } = await supabase.auth.signOut();
@@ -263,6 +259,10 @@ export function useAuthSession() {
             return false;
           }
         }
+        writeTestSession(null);
+        setClientActionSession(null);
+        setSession(null);
+        setLoading(false);
         return true;
       } catch (signOutError) {
         setError(formatAuthError(signOutError?.message) || "로그아웃하지 못했습니다. 다시 시도해 주세요.");

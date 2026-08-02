@@ -372,7 +372,9 @@ test("계정·설정 변경은 선택 대상과 저장 요청을 안전하게 �
   assert.match(authSession, /authActionPendingRef\.current/u);
   assert.match(authSession, /catch \(authError\)[\s\S]{0,180}finally/u);
   assert.match(authSession, /catch \(signOutError\)[\s\S]{0,180}finally/u);
+  assert.ok(authSession.indexOf("await supabase.auth.signOut()") < authSession.indexOf("writeTestSession(null)", authSession.indexOf("signOut: async")));
   assert.match(loginPage, /disabled=\{auth\.authActionPending \|\| auth\.testLoginPending\}/u);
+  assert.match(loginPage, /if \(auth\.session\) return <Navigate to=\{from\} replace \/>/u);
   assert.match(sidebar, /disabled=\{auth\.authActionPending\}/u);
 });
 
