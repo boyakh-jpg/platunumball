@@ -235,6 +235,7 @@
   font-weight: 950;
   line-height: 1.03;
   letter-spacing: -0.045em;
+  text-shadow: var(--hero-title-shadow);
   word-break: keep-all;
 }
 

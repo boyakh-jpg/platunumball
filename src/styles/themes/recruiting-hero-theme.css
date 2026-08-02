@@ -116,15 +116,12 @@ html[data-theme="light"] .arena-slot-command-popover {
 /* 2026-07-02 canonical recruiting hero image rule: no wash, grid, or pseudo overlay. */
 
 .arena-recruit-hero .eyebrow,
-.arena-recruit-hero h1,
 .arena-recruit-hero p,
 html[data-theme="light"] .arena-recruit-hero .eyebrow,
-html[data-theme="light"] .arena-recruit-hero h1,
 html[data-theme="light"] .arena-recruit-hero p {
   color: var(--rb-orange);
-  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.26);
+  text-shadow: var(--hero-copy-shadow);
 }
-
 .arena-recruit-hero p,
 html[data-theme="light"] .arena-recruit-hero p {
   color: var(--rb-orange-2);

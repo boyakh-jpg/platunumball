@@ -73,7 +73,7 @@ export default function GettingStarted({ app }) {
           <ArrowLeft size={16} aria-hidden="true" />
           홈으로
         </Button>
-        <span>ALPHA GUIDE · {GUIDE_CHAPTERS.length}단계</span>
+        <span>사용 설명 · {GUIDE_CHAPTERS.length}단계</span>
       </div>
 
       <nav
@@ -111,9 +111,7 @@ export default function GettingStarted({ app }) {
       <Card as="article" className="getting-started-chapter">
         <header className="getting-started-chapter__copy">
           <Badge tone="orange">{activeIndex + 1} / {GUIDE_CHAPTERS.length}</Badge>
-          <p className="eyebrow">{chapter.eyebrow}</p>
           <h1 ref={chapterTitleRef} tabIndex={-1}>{chapter.title}</h1>
-          <p>{chapter.lead}</p>
           <div className="ui-action-row">
             {chapter.actions.map((action) => {
               const ActionIcon = action.Icon;
@@ -134,7 +132,6 @@ export default function GettingStarted({ app }) {
 
         {chapter.practicePreview || chapter.previewItems ? (
           <div className="getting-started-practice-preview ui-panel ui-design-info-surface">
-            <Badge tone="orange">현재 서비스 화면</Badge>
             <ol>
               {(chapter.previewItems ?? [
                 { label: "CREATE", title: "경기 만들기" },
@@ -145,9 +142,6 @@ export default function GettingStarted({ app }) {
                 <li key={item.label}><strong>{item.label}</strong><span>{item.title}</span></li>
               ))}
             </ol>
-            <p>{chapter.practicePreview
-              ? "실제 경기 만들기와 공용 방 모달을 사용하고 저장 통로만 이 페이지의 연습 상태로 분리합니다."
-              : `${chapter.navLabel} 메뉴에서 위 기능을 현재 계정 권한에 맞게 확인할 수 있습니다.`}</p>
           </div>
         ) : (
           <figure className="getting-started-shot ui-design-borderless-surface">
@@ -165,7 +159,6 @@ export default function GettingStarted({ app }) {
       <section className="getting-started-section" aria-labelledby="getting-started-steps-title">
         <div className="getting-started-section__head">
           <div>
-            <p className="eyebrow">HOW IT WORKS</p>
             <h2 id="getting-started-steps-title">{chapter.navLabel} 흐름</h2>
           </div>
           <span>{activeIndex + 1} / {GUIDE_CHAPTERS.length}</span>
@@ -189,7 +182,6 @@ export default function GettingStarted({ app }) {
           <CalloutIcon size={25} aria-hidden="true" />
         </span>
         <div>
-          <p className="eyebrow">CHECK POINT</p>
           <h2>{chapter.callout.title}</h2>
           <p>{chapter.callout.body}</p>
           <ul>
@@ -202,9 +194,7 @@ export default function GettingStarted({ app }) {
       {chapter.id === "practice" ? (
         <section className="getting-started-home-guide-setting ui-panel ui-design-info-surface" aria-labelledby="home-guide-setting-title">
           <div>
-            <p className="eyebrow">HOME GUIDE</p>
             <h2 id="home-guide-setting-title">홈 안내 카드</h2>
-            <p>설정의 홈 안내 카드와 같은 값입니다. 숨겨도 사용 설명과 연습 경기는 계속 이용할 수 있습니다.</p>
             <small role="status">{homeGuideCardSaveStatus || "선택 즉시 설정에 저장됩니다."}</small>
           </div>
           <Button

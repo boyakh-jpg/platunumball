@@ -362,10 +362,8 @@ export default function PracticeMatch({ app }) {
         <div>
           <span className="badge-row">
             <Badge tone="orange"><FlaskConical size={14} aria-hidden="true" /> 비저장 연습</Badge>
-            <Badge tone="neutral">현재 서비스 화면</Badge>
           </span>
           <h1>처음부터 끝까지 한 번 해보기</h1>
-          <p>방 설정은 실제 경기 만들기, 이후 단계는 실제 공용 방 모달과 경기시계를 사용합니다. 다른 연습 선수의 응답만 보조 버튼으로 처리합니다.</p>
         </div>
         <div className="practice-match-banner__actions ui-action-row">
           <Button as={Link} variant="secondary" size="sm" to="/app/guide?chapter=practice">

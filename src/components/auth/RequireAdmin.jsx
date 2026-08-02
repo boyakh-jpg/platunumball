@@ -29,12 +29,10 @@ export default function RequireAdmin({ app, children }) {
         <Card className="section-card admin-denied-card">
           <div className="section-title-row">
             <div>
-              <p className="eyebrow">Admin</p>
               <h1>관리자 권한 없음</h1>
             </div>
             <ShieldCheck size={22} />
           </div>
-          <p>관리자 메뉴는 서버에서 확인된 활성 관리자에게만 표시됩니다.</p>
         </Card>
       </div>
     );

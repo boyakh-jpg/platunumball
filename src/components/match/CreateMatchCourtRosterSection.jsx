@@ -392,8 +392,8 @@ export function CreateMatchCourtRosterSection({ context }) {
               <UsersRound size={17} />
               <span>
                 {isPublicRoom
-                  ? "빈 팀방을 만든 뒤 공용 방 모달에서 A팀을 선택합니다. B사이드는 상대 팀 주장이 참가합니다."
-                  : "빈 팀방을 만든 뒤 공용 방 모달에서 A팀과 B팀을 순서대로 선택합니다. B팀 현재 주장에게 초대 1건이 자동 생성됩니다."}
+                  ? "빈 팀방을 만든 뒤 경기방에서 A팀을 선택합니다. B사이드는 상대 팀 주장이 참가합니다."
+                  : "빈 팀방을 만든 뒤 경기방에서 A팀과 B팀을 순서대로 선택합니다. B팀 현재 주장에게 초대 1건이 자동 생성됩니다."}
               </span>
             </div>
           ) : null}

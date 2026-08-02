@@ -181,7 +181,6 @@ export default function ProfileRecords({ app }) {
     <div className="page-stack profile-records-page">
       <header className="page-header">
         <div>
-          <p className="eyebrow">MY RECORDS</p>
           <h1>내 기록</h1>
         </div>
         <Button as={Link} variant="secondary" to="/app/profile">프로필로</Button>

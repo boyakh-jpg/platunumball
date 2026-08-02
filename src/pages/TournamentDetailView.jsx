@@ -29,7 +29,6 @@ return (
 
       <section className="tournament-hero">
         <div>
-          <span className="om-kicker">PRIVATE EVENT</span>
           <h1>{tournament.title}</h1>
           <p className="tournament-hero-meta">
             <span><CalendarDays size={16} />{formatWindow(tournament)} · {tournament.court}</span>

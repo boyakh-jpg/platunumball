@@ -287,9 +287,6 @@ html[data-theme="light"] .app-main {
 html[data-theme="light"] .rank-home .rank-summary-grid {
   border-color: rgba(184, 118, 19, 0.2);
 }
-html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head h1 {
-  text-shadow: none;
-}
 html[data-theme="light"] .rank-home .rank-mode-pill,
 html[data-theme="light"] .home-action-row,
 html[data-theme="light"] .home-search-box {

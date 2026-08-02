@@ -64,7 +64,6 @@ export default function SettingsPrimaryColumn({ controller }) {
           <Card className="section-card settings-nav-card">
             <div className="section-title-row">
               <div>
-                <p className="eyebrow">Setting pages</p>
                 <h2>세부 설정</h2>
               </div>
               <ShieldCheck size={22} />

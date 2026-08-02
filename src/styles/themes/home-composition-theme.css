@@ -210,7 +210,6 @@ html[data-theme="light"] .app-main {
     color: #fff;
     font-size: clamp(46px, 15vw, 68px);
     line-height: 0.84;
-    text-shadow: 0 14px 32px rgba(0, 0, 0, 0.52);
   }
 
   .rank-home .rank-summary-grid .home-rank-board-head p:not(.eyebrow) {
@@ -411,7 +410,6 @@ html[data-theme="light"] .app-main {
 html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head h1 {
   color: var(--rb-cream);
   letter-spacing: 0;
-  text-shadow: 0 14px 34px rgba(0, 0, 0, 0.58);
 }
 .rank-home .rank-summary-grid .home-rank-board-head p:not(.eyebrow),
 html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head p:not(.eyebrow) {

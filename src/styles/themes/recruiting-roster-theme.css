@@ -293,7 +293,6 @@ html[data-theme="light"] .arena-room-party-group::after {
   max-width: 12ch;
   font-size: clamp(64px, 8vw, 112px);
   line-height: 0.84;
-  text-shadow: 0 16px 34px rgba(0, 0, 0, 0.5);
 }
 
 .arena-hero-copy p {

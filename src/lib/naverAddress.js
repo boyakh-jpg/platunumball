@@ -107,7 +107,7 @@ export async function loadNaverPanoramaSdk(clientId = getNaverMapClientId()) {
   await loadExternalScript(NAVER_PANORAMA_SCRIPT_ID, "https://oapi.map.naver.com/openapi/v3/maps-panorama.js");
   const startedAt = Date.now();
   while (!hasNaverPanorama()) {
-    if (Date.now() - startedAt >= 8000) throw new Error("거리뷰 모듈을 불러오지 못했습니다.");
+    if (Date.now() - startedAt >= 8000) throw new Error("거리뷰를 불러오지 못했습니다.");
     await new Promise((resolve) => window.setTimeout(resolve, 50));
   }
 }

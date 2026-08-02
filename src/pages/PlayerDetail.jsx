@@ -222,7 +222,6 @@ export default function PlayerDetail({ app }) {
     <div className="page-stack profile-detail-page rank-profile-page">
       <EntityProfileHero
         className="profile-hero rank-profile-hero"
-        eyebrow="Player Profile"
         title={player.name}
         subtitle={`${getUserHashtag(player)} · 신뢰도 ${player.trustScore}`}
         badges={(

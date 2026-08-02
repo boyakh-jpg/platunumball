@@ -4,7 +4,7 @@ import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import UserOperationsPanel from "../components/admin/UserOperationsPanel.jsx";
 import CourtDatabasePanel from "../components/admin/CourtDatabasePanel.jsx";
-import { ADMIN_PERMISSION_NOTICE, getAdminReportTypeLabel } from "../lib/admin.js";
+import { getAdminReportTypeLabel } from "../lib/admin.js";
 import { ADMIN_DEFAULT_PAGE_LIMIT } from "../lib/queryPolicy.js";
 import {
   REVIEW_QUEUE_FILTER_PLACEHOLDERS,
@@ -102,7 +102,6 @@ if (!canAdmin && (!app.adminStatus?.loaded || app.adminStatus?.loading)) {
         <Card className="section-card admin-denied-card">
           <div className="section-title-row">
             <div>
-              <p className="eyebrow">Admin</p>
               <h1>관리자 권한 확인 중</h1>
             </div>
             <ShieldCheck size={22} />
@@ -118,13 +117,10 @@ if (!canAdmin && (!app.adminStatus?.loaded || app.adminStatus?.loading)) {
         <Card className="section-card admin-denied-card">
           <div className="section-title-row">
             <div>
-              <p className="eyebrow">Admin</p>
               <h1>관리자 권한 없음</h1>
             </div>
             <ShieldCheck size={22} />
           </div>
-          <p>관리자 메뉴는 권한자에게만 표시됩니다.</p>
-          <small>{ADMIN_PERMISSION_NOTICE}</small>
         </Card>
       </div>
     );
@@ -134,10 +130,9 @@ if (!canAdmin && (!app.adminStatus?.loaded || app.adminStatus?.loading)) {
     <div className="page-stack admin-page">
       <header className="page-header">
         <div>
-          <p className="eyebrow">Admin Console</p>
           <h1>관리자 메뉴</h1>
         </div>
-        <Badge tone="team">서버 권한</Badge>
+        <Badge tone="team">관리자</Badge>
       </header>
 
       <nav className="admin-section-tabs" aria-label="관리자 업무">
