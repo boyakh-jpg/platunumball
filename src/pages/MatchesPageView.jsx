@@ -46,8 +46,8 @@ export default function MatchesPageView({ controller }) {
   const { app, location, viewId, panelMode, branchFilter, relationFilter, dateFilter, calendarMonth, selectedRecruitingPostId, setSelectedRecruitingPostId, setSelectedRecruitingPostDetailLoadingId, setSelectedRecruitingPostDetailFailedId, attendanceScanState, attendanceQrFlow, activeSelectedMatchId, todayValue, selectedView, teamById, userById, matchesById, courtById, courtByName, activeTournaments, selectedRecruitingPost, selectedRecruitingLobby, selectedRecruitingPostDetailFailed, selectedRecruitingPostDetailLoading, selectedMatch, selectedMatchRoomPost, selectedMatchRoomError, selectedMatchDetailLoading, selectedMatchDetailFailed, applyFilterState, closeSelectedMatch, requestMatchDetail, openSelectedRecruitingPost, openSelectedMatch, matchPagination, teamMatchList, calendarCounts, calendarDays, calendarMonthCount, scheduleLoading, scheduleError, displayScheduleItems, scheduleCountLabel, displayActiveCount, displayTodoCount, displayScheduledCount, getDisplayViewButtonCount, teamScheduleCount } = controller;
 return (
     <div className="page-stack om-match-page">
-      <section className="om-match-hero ui-design-app-hero">
-        <div className="om-match-copy">
+      <section className="om-match-hero ui-page-hero ui-design-app-hero">
+        <div className="om-match-copy ui-page-hero__copy">
           <span className="eyebrow">MATCH QUEUE</span>
           <h1>일정</h1>
         </div>
@@ -217,7 +217,7 @@ return (
       ) : null}
 
       {panelMode === "tournament" ? <section className="om-tournament-panel" aria-label="비공개 대회">
-        <div className="om-list-head">
+        <div className="section-title-row om-list-head">
           <div>
             <span className="eyebrow">PRIVATE EVENT</span>
             <h2>비공개 대회</h2>
@@ -358,7 +358,7 @@ return (
       {scheduleLoading ? <BasketballLoader overlay label="서버 데이터 불러오는 중" /> : null}
 
       {panelMode !== "tournament" ? <section className="om-match-list" aria-label="경기 목록">
-        <div className="om-list-head">
+        <div className="section-title-row om-list-head">
           <div>
             <span className="eyebrow">{selectedView.code}</span>
             <h2>{panelMode === "team" ? "내 팀 경기" : dateFilter ? `${selectedView.title} · ${formatDateLabel(dateFilter)}` : selectedView.title}</h2>

@@ -91,8 +91,8 @@ export default function ProfileAchievements({ app }) {
 
   return (
     <div className="page-stack profile-achievements-page">
-      <header className="page-header">
-        <div>
+      <header className="page-header ui-page-hero ui-design-app-hero">
+        <div className="ui-page-hero__copy">
           <p className="eyebrow">Achievements</p>
           <h1>아이콘 업적</h1>
         </div>

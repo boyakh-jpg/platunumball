@@ -179,8 +179,8 @@ export default function ProfileRecords({ app }) {
   const summaryTitle = `${modeFilter === "all" || recordFolder === "personal" ? "" : `${modeFilter} `}${recordFolder === "official" ? `공식기록 ${sectionLabel}` : folderLabel} 통계`;
   return (
     <div className="page-stack profile-records-page">
-      <header className="page-header">
-        <div>
+      <header className="page-header ui-page-hero ui-design-app-hero">
+        <div className="ui-page-hero__copy">
           <p className="eyebrow">MY RECORDS</p>
           <h1>내 기록</h1>
         </div>

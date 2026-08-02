@@ -180,8 +180,8 @@ export default function Notifications({ app }) {
 
   return (
     <div className="page-stack">
-      <header className="page-header">
-        <div>
+      <header className="page-header ui-page-hero ui-design-app-hero">
+        <div className="ui-page-hero__copy">
           <p className="eyebrow">Notifications</p>
           <h1>알림</h1>
         </div>

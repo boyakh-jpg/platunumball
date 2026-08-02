@@ -130,8 +130,8 @@ if (!canAdmin && (!app.adminStatus?.loaded || app.adminStatus?.loading)) {
 
   return (
     <div className="page-stack admin-page">
-      <header className="page-header">
-        <div>
+      <header className="page-header ui-page-hero ui-design-app-hero">
+        <div className="ui-page-hero__copy">
           <p className="eyebrow">Admin Console</p>
           <h1>관리자 메뉴</h1>
         </div>

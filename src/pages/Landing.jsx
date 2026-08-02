@@ -81,14 +81,14 @@ export default function Landing({ state }) {
       <div className="ui-design-page ui-design-main-page">
         <div className="ui-design-flow ui-design-main-flow">
           <section
-            className="ui-design-hero ui-design-main-hero"
+            className="ui-design-hero ui-design-main-hero ui-page-hero"
             style={{
               "--ui-design-media": "var(--bg-action)",
               "--ui-design-media-position": "center 36%",
               "--ui-design-media-position-mobile": "62% center",
             }}
           >
-            <div className="ui-design-hero__copy">
+            <div className="ui-design-hero__copy ui-page-hero__copy">
               <Badge tone="green">Season Zero</Badge>
               <h1>오늘,<br />농구할 사람?</h1>
               <div className="ui-design-actions">
@@ -111,7 +111,7 @@ export default function Landing({ state }) {
           </section>
 
           <section className="ui-design-section">
-            <div className="ui-design-section-heading">
+            <div className="section-title-row ui-design-section-heading">
               <div>
                 <p className="eyebrow">Play next</p>
                 <h2>지금 열려 있는 경기</h2>
@@ -199,7 +199,7 @@ export default function Landing({ state }) {
           </section>
 
           <section className="ui-design-section">
-            <div className="ui-design-section-heading">
+            <div className="section-title-row ui-design-section-heading">
               <div>
                 <p className="eyebrow">Recent games</p>
                 <h2>최근 경기</h2>

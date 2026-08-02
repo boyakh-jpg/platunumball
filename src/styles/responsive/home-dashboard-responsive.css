@@ -112,17 +112,6 @@ html[data-theme="light"] .team-detail-hero::after {
   background: none;
   opacity: 0;
 }
-@media (max-width: 720px) {
-  .rank-home .rank-summary-grid .home-rank-board-head h1,
-  .page-header h1,
-  .landing-hero h1,
-  .match-hero h1,
-  .team-hub-hero h1,
-  .profile-hero h1,
-  .team-detail-hero h1 {
-    font-size: var(--hero-title-size-mobile);
-  }
-}
 /* Team hub is the tall ranked-team exception at every responsive breakpoint. */
 @media (min-width: 760px) and (max-width: 1079px) {
   .app-main > .page-stack.teams-page > .team-hub-hero:first-child {

@@ -105,8 +105,8 @@ export default function RefereeRulebook({ theme = "dark" }) {
 
   return (
     <div className="page-stack referee-rulebook-page">
-      <header className="page-header">
-        <div>
+      <header className="page-header ui-page-hero ui-design-app-hero">
+        <div className="ui-page-hero__copy">
           <p className="eyebrow">Study guide</p>
           <h1>농구 룰북</h1>
         </div>

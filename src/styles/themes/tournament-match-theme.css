@@ -62,25 +62,6 @@ html[data-theme="light"] .om-match-panel {
   font-weight: 900;
 }
 
-/* 2026-07-01 standard UI cleanup: matches controls follow shared primitives. */
-
-.om-match-copy h1,
-.tournament-hero h1 {
-  color: var(--hero-title-color);
-  text-shadow: var(--hero-title-shadow);
-}
-
-.om-match-copy p,
-.tournament-hero p {
-  color: var(--hero-copy-color);
-  text-shadow: var(--hero-copy-shadow);
-}
-
-.om-match-copy .eyebrow,
-.tournament-hero .eyebrow {
-  color: var(--rb-orange);
-}
-
 .om-calendar-panel,
 .om-tournament-panel,
 .om-tournament-card,
@@ -185,27 +166,7 @@ html[data-theme="light"] .tournament-schedule-list {
   background: color-mix(in srgb, var(--rb-orange) 14%, var(--ui-card-bg));
 }
 
-.om-match-copy .eyebrow,
-.om-match-copy p,
-html[data-theme="light"] .om-match-copy .eyebrow,
-html[data-theme="light"] .om-match-copy p {
-  color: var(--rb-orange);
-  text-shadow: var(--hero-copy-shadow);
-}
-.om-match-copy p,
-html[data-theme="light"] .om-match-copy p {
-  color: var(--rb-orange-2);
-}
-
-html[data-theme="light"] .om-match-copy h1 {
-  color: var(--rb-cream);
-}
-
-html[data-theme="light"] .tournament-hero h1 {
-  color: var(--rb-cream);
-}
-
-/* 2026-07-02 final matches hero guard: no wash/blur and shared title font. */
+/* 2026-07-02 final matches hero guard: no wash or blur. */
 
 .om-match-hero,
 html[data-theme="light"] .om-match-hero {
@@ -237,27 +198,6 @@ html[data-theme="light"] .tournament-hero::after {
   display: none;
   background: none;
   opacity: 0;
-}
-
-.om-match-copy h1,
-.tournament-hero h1,
-html[data-theme="light"] .om-match-copy h1,
-html[data-theme="light"] .tournament-hero h1 {
-  font-family: var(--hero-title-font);
-  font-size: var(--hero-title-size);
-  font-weight: 950;
-  line-height: var(--hero-title-line-height);
-  letter-spacing: var(--hero-title-letter-spacing);
-  text-transform: uppercase;
-}
-
-@media (max-width: 720px) {
-  .om-match-copy h1,
-  .tournament-hero h1,
-  html[data-theme="light"] .om-match-copy h1,
-  html[data-theme="light"] .tournament-hero h1 {
-    font-size: var(--hero-title-size-mobile);
-  }
 }
 
 /* 2026-07-02 page width guard: matches follows the shared app container. */

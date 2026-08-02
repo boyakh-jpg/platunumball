@@ -231,8 +231,8 @@ export default function Teams({ app }) {
   return (
     <div className="page-stack teams-page">
       {teamDirectoryPending ? <BasketballLoader overlay label="팀 맞추는 중" /> : null}
-      <section className="team-hub-hero ui-design-app-hero">
-        <div>
+      <section className="team-hub-hero ui-page-hero ui-design-app-hero">
+        <div className="ui-page-hero__copy">
           <p className="eyebrow">Team Hub</p>
           <h1>팀</h1>
         </div>

@@ -158,7 +158,7 @@ export default function GettingStarted({ app }) {
       </Card>
 
       <section className="getting-started-section" aria-labelledby="getting-started-steps-title">
-        <div className="getting-started-section__head">
+        <div className="section-title-row getting-started-section__head">
           <div>
             <p className="eyebrow">HOW IT WORKS</p>
             <h2 id="getting-started-steps-title">{chapter.navLabel} 흐름</h2>

@@ -27,8 +27,8 @@ return (
     <div className="page-stack tournament-detail-page">
       <Button as={Link} variant="secondary" className="tournament-back-link" to={matchesReturnTo}><ChevronLeft size={17} /> 경기로</Button>
 
-      <section className="tournament-hero">
-        <div>
+      <section className="tournament-hero ui-page-hero ui-design-app-hero">
+        <div className="ui-page-hero__copy">
           <span className="eyebrow">PRIVATE EVENT</span>
           <h1>{tournament.title}</h1>
           <p className="tournament-hero-meta">
@@ -82,7 +82,7 @@ return (
 
       {hasPendingTeamApprovals ? (
         <section className="tournament-section">
-          <div className="om-list-head">
+          <div className="section-title-row om-list-head">
             <div>
               <span className="eyebrow">INVITED TEAMS</span>
               <h2>참가팀</h2>
@@ -123,7 +123,7 @@ return (
 
       {governanceEnabled ? (
         <section className="tournament-section tournament-governance-section">
-        <div className="om-list-head">
+        <div className="section-title-row om-list-head">
           <div>
             <span className="eyebrow">REFEREE APPROVAL</span>
             <h2>대회 심판</h2>
@@ -243,7 +243,7 @@ return (
 
       {governanceEnabled && tournamentMatches.length ? (
         <section className="tournament-section">
-          <div className="om-list-head">
+          <div className="section-title-row om-list-head">
             <div>
               <span className="eyebrow">MATCH REFEREES</span>
               <h2>경기별 중립 심판</h2>
@@ -292,7 +292,7 @@ return (
 
       {tournament.format === "tournament" && tournamentMatches.length ? (
         <section className="tournament-section">
-          <div className="om-list-head">
+          <div className="section-title-row om-list-head">
             <div>
               <span className="eyebrow">SCHEDULE</span>
               <h2>경기 일정</h2>

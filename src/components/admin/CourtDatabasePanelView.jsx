@@ -207,7 +207,7 @@ const modal = open ? (
               </aside>
 
               <section className="court-db-review-editor">
-                <div className="court-db-review-section-head">
+                <div className="section-title-row court-db-review-section-head">
                   <div>
                     <strong>원터치 판정</strong>
                     <small>선택한 속성까지 저장하고 바로 다음 구장으로 이동</small>
@@ -251,7 +251,7 @@ const modal = open ? (
                 </div>
 
                 <section className="court-db-proximity-review" aria-busy={proximityLoading}>
-                  <div className="court-db-review-section-head">
+                  <div className="section-title-row court-db-review-section-head">
                     <div>
                       <strong>30m 자동 병합 · 실제 코트 수 검증</strong>
                       <small>근접한 DB 행은 같은 시설명과 1코트~N코트로 자동 묶임</small>

@@ -260,34 +260,12 @@ button.danger-button:hover {
 .card > .eyebrow,
 .card .eyebrow,
 .match-card .eyebrow,
-.page-header .eyebrow,
-.profile-hero .eyebrow,
-.team-detail-hero .eyebrow,
-.team-hub-hero .eyebrow {
+.ui-page-hero__copy .eyebrow {
   color: var(--rb-orange);
 }
-.rank-hero-top h1,
-.rank-home .rank-summary-grid .home-rank-board-head h1,
-.home-rank-board-head h1,
-.page-header h1,
-.landing-hero h1,
-.match-hero h1,
-.team-hub-hero h1,
-.profile-hero h1,
-.team-detail-hero h1,
-.gm-room-title h1 {
+.ui-page-hero__copy h1 {
   color: var(--hero-title-color);
   text-shadow: var(--hero-title-shadow);
-}
-.rank-hero-top h1,
-.rank-home .rank-summary-grid .home-rank-board-head h1,
-.home-rank-board-head h1,
-.page-header h1,
-.landing-hero h1,
-.match-hero h1,
-.team-hub-hero h1,
-.profile-hero h1,
-.team-detail-hero h1 {
   font-family: var(--hero-title-font);
   font-size: var(--hero-title-size);
   font-weight: 950;
@@ -295,26 +273,12 @@ button.danger-button:hover {
   letter-spacing: var(--hero-title-letter-spacing);
   text-transform: uppercase;
 }
-.rank-hero-top p:not(.eyebrow),
-.rank-home .rank-summary-grid .home-rank-board-head p:not(.eyebrow),
-.home-rank-board-head p:not(.eyebrow),
-.page-header p:not(.eyebrow),
-.match-hero p,
-.profile-hero p:not(.eyebrow),
-.team-detail-hero p:not(.eyebrow),
-.gm-room-title p {
+.ui-page-hero__copy p:not(.eyebrow) {
   color: var(--hero-copy-color);
   text-shadow: var(--hero-copy-shadow);
 }
 @media (max-width: 720px) {
-  .rank-hero-top h1,
-.home-rank-board-head h1,
-.page-header h1,
-.landing-hero h1,
-.match-hero h1,
-.team-hub-hero h1,
-.profile-hero h1,
-.team-detail-hero h1 {
+  .ui-page-hero__copy h1 {
     font-size: var(--hero-title-size-mobile);
   }
 }

@@ -116,8 +116,8 @@ export default function Rankings({ app }) {
 
   return (
     <div className="page-stack rankings-page">
-      <header className="page-header ui-design-app-hero">
-        <div>
+      <header className="page-header ui-page-hero ui-design-app-hero">
+        <div className="ui-page-hero__copy">
           <p className="eyebrow">{promotionView ? "Promotion Race" : "Rankings"}</p>
           <h1>{promotionView ? "시즌 승격권" : "랭크보드"}</h1>
         </div>

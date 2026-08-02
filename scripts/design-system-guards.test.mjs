@@ -178,7 +178,7 @@ test("앱은 분류 박스 없는 표준 디자인을 사용하고 비교 데모
   ].forEach((source) => assert.match(source, /ui-design-app-hero/));
   assert.doesNotMatch(pageSources.settings, /화면 구성|분류 박스 없음 사용 중|selectDesignMode/);
   assert.match(pageSources.landing, /className="ui-design-host ui-design-public-main" data-design="editorial"/);
-  assert.match(pageSources.landing, /className="ui-design-hero ui-design-main-hero"/);
+  assert.match(pageSources.landing, /className="ui-design-hero ui-design-main-hero ui-page-hero"/);
   assert.match(pageSources.landing, /지금 열려 있는 경기/);
   assert.match(pageSources.landing, /Team basketball/);
   assert.match(pageSources.landing, /Season ranking/);
@@ -241,7 +241,7 @@ assert.match(editorialDesignStyles, /\.ui-design-spotlight__stats > div\s*\{[^}]
   assert.match(gettingStartedSource, /getting-started-chapter-nav ui-panel ui-design-info-surface/);
   assert.match(gettingStartedSource, /getting-started-steps ui-design-borderless-list/);
   assert.match(courtDetailSource, /court-map-link ui-liquid-glass/);
-  assert.match(courtDetailSource, /court-detail-hero ui-design-app-hero/);
+  assert.match(courtDetailSource, /court-detail-hero ui-page-hero ui-design-app-hero/);
   assert.match(courtDetailSource, /court-profile-information ui-design-content-surface/);
   assert.match(primitiveStyles, /\.ui-tier-label\s*\{[^}]*font-family:\s*var\(--sports-display-font\);[^}]*font-style:\s*normal;[^}]*font-weight:\s*(?:950|var\(--font-weight-sports\));/);
   assert.match(read("src/components/rating/RatingCard.jsx"), /className="ui-tier-label"/);
@@ -1003,7 +1003,7 @@ test("hero inner boards share one readable liquid-glass system", () => {
   assert.match(pageSources.teams, /team-hub-board ui-liquid-glass/);
   assert.match(pageSources.matches, /om-match-panel ui-liquid-glass[\s\S]*om-match-stats ui-liquid-glass-segments/);
   assert.match(pageSources.recruiting, /arena-hero-panel ui-liquid-glass[\s\S]*arena-hero-stats ui-liquid-glass-segments/);
-  assert.match(pageSources.season, /<header className="page-header">/);
+  assert.match(pageSources.season, /<header className="page-header ui-page-hero ui-design-app-hero">/);
   assert.match(pageSources.season, /section-card season-overview-card/);
   assert.match(pageSources.season, /className="rank-stat-grid season-summary-grid"/);
   assert.match(pageSources.season, /className="card-grid season-board-grid"/);
@@ -1044,6 +1044,47 @@ test("page heroes keep shared eyebrows without implementation copy", () => {
   assert.match(heroSources, /className="eyebrow">Team Hub</);
   assert.match(heroSources, /className="eyebrow">Study guide</);
   assert.doesNotMatch(heroSources, /공용 방 모달|저장 통로|같은 값|현재 알파 테스트|서버 원본|내부 보정값|실제 공용 방 모달|현재 서비스 화면/);
+
+  const standardizedHeroSources = [
+    pageSources.landing,
+    pageSources.home,
+    pageSources.profile,
+    pageSources.profileRecords,
+    pageSources.matches,
+    pageSources.recruiting,
+    pageSources.season,
+    pageSources.teams,
+    pageSources.rankings,
+    pageSources.settings,
+    matchRoomPageSource,
+    courtDetailSource,
+    entityProfileHeroSource,
+    read("src/components/match/CreateMatchLayout.jsx"),
+    read("src/pages/AdminPageView.jsx"),
+    read("src/pages/Affiliations.jsx"),
+    read("src/pages/Notifications.jsx"),
+    read("src/pages/ProfileAchievements.jsx"),
+    read("src/pages/Recorder.jsx"),
+    read("src/pages/RefereeRulebook.jsx"),
+    read("src/pages/Signup.jsx"),
+    read("src/pages/TournamentDetailView.jsx"),
+  ];
+  standardizedHeroSources.forEach((source) => {
+    assert.match(source, /ui-page-hero/);
+    assert.match(source, /ui-page-hero__copy/);
+  });
+  assert.match(visualSystemStyles, /\.ui-page-hero__copy h1\s*\{[^}]*text-shadow:\s*var\(--hero-title-shadow\);[^}]*font-family:\s*var\(--hero-title-font\);/);
+  assert.match(visualSystemStyles, /\.ui-page-hero__copy p:not\(\.eyebrow\)\s*\{[^}]*color:\s*var\(--hero-copy-color\);[^}]*text-shadow:\s*var\(--hero-copy-shadow\);/);
+  assert.doesNotMatch(
+    [matchesStyles, recruitingStyles, matchRoomStyles].join("\n"),
+    /\.(?:om-match-copy|arena-hero-copy|tournament-hero|gm-room-title)[^{]*\{[^}]*var\(--hero-title-/,
+  );
+
+  const allComponentSources = sourceFiles.map((file) => read(file)).join("\n");
+  assert.doesNotMatch(
+    allComponentSources,
+    /className="(?:om-list-head|arena-queue-controls-head|getting-started-section__head|referee-rulebook-head|settings-nearby-courts-head|league-panel-head|court-db-review-section-head|ui-design-section-heading)/,
+  );
 });
 
 test("팀 허브 대표팀 보드는 팀 전용 너비와 고정 노랑 팀명을 사용한다", () => {

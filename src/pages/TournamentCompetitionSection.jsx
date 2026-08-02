@@ -15,7 +15,7 @@ export function TournamentCompetitionSection({ controller }) {
   const { app, tournament, scheduleDialog, setScheduleDialog, savingScheduleId, forfeitDialog, setForfeitDialog, savingForfeitId, selectedMatchId, setSelectedMatchId, editingScheduleId, setEditingScheduleId, refereeQuery, setRefereeQuery, governanceAction, governanceFeedback, teamById, userById, matchesById, tournamentMatches, teamRows, acceptedCount, hasPendingTeamApprovals, governanceEnabled, requiredRefereeCount, acceptedRefereeIds, refereeRows, eligibleRefereeCandidates, canInviteReferee, canReviewRegion, canStartCommunity, verticalBracket, championTeam, canManageSchedule, todayValue, maxScheduleDate, leagueFixtures, leagueMatchesByFixture, leagueStandings, tournamentCourts, saveSchedule, confirmSchedule, confirmForfeit, runGovernanceAction, saveMatchReferee, renderRefereeInviteItem, organizer, dialogMatch, forfeitMatch, matchesReturnTo } = controller;
   return (
       <section className="tournament-section">
-        <div className="om-list-head">
+        <div className="section-title-row om-list-head">
           <div>
             <span className="eyebrow">{tournament.format === "tournament" ? "BRACKET" : "LEAGUE FIXTURES"}</span>
             <h2>{tournament.format === "tournament" ? "대진표" : "리그 경기표"}</h2>
@@ -59,7 +59,7 @@ export function TournamentCompetitionSection({ controller }) {
         ) : (
           <div className="league-layout">
             <div className="league-standings-panel">
-              <div className="league-panel-head">
+              <div className="section-title-row league-panel-head">
                 <strong>현재 순위</strong>
                 <span>승수 · 득실차 · 득점 순</span>
               </div>
@@ -84,7 +84,7 @@ export function TournamentCompetitionSection({ controller }) {
               </div>
             </div>
             <div className="league-fixtures-panel">
-              <div className="league-panel-head">
+              <div className="section-title-row league-panel-head">
                 <strong>경기 일정·결과</strong>
                 <span>{leagueFixtures.length}경기</span>
               </div>

@@ -256,8 +256,8 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
           <Button type="button" variant="secondary" size="sm" onClick={() => refreshDetail()}>다시 시도</Button>
         </div>
       ) : null}
-      <Card className="court-detail-hero ui-design-app-hero">
-        <div className="court-detail-heading">
+      <Card className="court-detail-hero ui-page-hero ui-design-app-hero">
+        <div className="court-detail-heading ui-page-hero__copy">
           <p className="eyebrow">Court Profile</p>
           <h1>{court.name}</h1>
           <p><MapPin size={16} /> {getCourtAddress(court)}</p>

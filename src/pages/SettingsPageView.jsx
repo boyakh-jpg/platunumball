@@ -8,8 +8,8 @@ export default function SettingsPageView({ controller }) {
   const { sectionMeta, settingsSection } = controller;
   return (
 <div className={`page-stack settings-page settings-section-${settingsSection}`}>
-      <header className="page-header ui-design-app-hero">
-        <div>
+      <header className="page-header ui-page-hero ui-design-app-hero">
+        <div className="ui-page-hero__copy">
           <p className="eyebrow">{sectionMeta.eyebrow}</p>
           <h1>{sectionMeta.title}</h1>
         </div>

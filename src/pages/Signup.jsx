@@ -139,8 +139,8 @@ export default function Signup({ app, auth }) {
 
   return (
     <div className="page-stack signup-setup-page">
-      <header className="page-header">
-        <div>
+      <header className="page-header ui-page-hero ui-design-app-hero">
+        <div className="ui-page-hero__copy">
           <p className="eyebrow">Signup</p>
           <h1>가입 정보 설정</h1>
         </div>

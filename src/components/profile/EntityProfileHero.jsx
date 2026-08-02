@@ -23,8 +23,8 @@ export default function EntityProfileHero({
   );
 
   return (
-    <section className={`entity-profile-hero ${className}`.trim()} style={style}>
-      <div className="entity-profile-hero-copy">
+    <section className={`entity-profile-hero ui-page-hero ui-design-app-hero ${className}`.trim()} style={style}>
+      <div className="entity-profile-hero-copy ui-page-hero__copy">
         {leading ? (
           <div className={`entity-profile-hero-identity ${identityClassName}`.trim()}>
             {leading}

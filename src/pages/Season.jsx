@@ -133,8 +133,8 @@ export default function Season({ app }) {
 
   return (
     <div className="page-stack season-page">
-      <header className="page-header">
-        <div>
+      <header className="page-header ui-page-hero ui-design-app-hero">
+        <div className="ui-page-hero__copy">
           <p className="eyebrow">Season</p>
           <h1>시즌</h1>
           <p>{season.name} · {season.subtitle}</p>

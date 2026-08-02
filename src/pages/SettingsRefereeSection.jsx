@@ -42,7 +42,7 @@ export default function SettingsRefereeSection({ controller }) {
               <ShieldCheck size={22} />
             </div>
             <div className="referee-rulebook-panel compact ui-design-info-surface">
-              <div className="referee-rulebook-head">
+              <div className="section-title-row referee-rulebook-head">
                 <div>
                   <span className="eyebrow">Study guide</span>
                   <strong>커뮤니티 심판 룰북</strong>

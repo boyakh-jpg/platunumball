@@ -49,9 +49,9 @@ export default function HomePageView({
       </Card>
 
       <div className="page-stack home-left-rail">
-        <section className="rank-summary-grid ui-design-app-hero">
+        <section className="rank-summary-grid ui-page-hero ui-design-app-hero">
           <div className="home-rank-board-head">
-            <div className="rank-hero-top">
+            <div className="rank-hero-top ui-page-hero__copy">
               <div>
                 <p className="eyebrow">내 랭크 보드</p>
                 <h1>{user.name}님의 오늘 코트 현황</h1>

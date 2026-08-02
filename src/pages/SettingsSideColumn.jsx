@@ -224,7 +224,7 @@ export default function SettingsSideColumn({ controller }) {
                 ) : null}
                 {courtPinConfirmed && courtNearbyCandidates.length ? (
                   <div className="arena-mini-note arena-mini-note-warning settings-nearby-courts">
-                    <div className="settings-nearby-courts-head">
+                    <div className="section-title-row settings-nearby-courts-head">
                       <div>
                         <span>근처 등록·검토 중 구장</span>
                         <strong>{courtNearbyCandidates.length}개 확인</strong>

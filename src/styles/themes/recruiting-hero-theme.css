@@ -113,25 +113,7 @@ html[data-theme="light"] .arena-slot-command-popover {
   }
 }
 
-/* 2026-07-02 canonical recruiting hero image rule: no wash, grid, or pseudo overlay. */
-
-.arena-recruit-hero .eyebrow,
-.arena-recruit-hero p,
-html[data-theme="light"] .arena-recruit-hero .eyebrow,
-html[data-theme="light"] .arena-recruit-hero p {
-  color: var(--rb-orange);
-  text-shadow: var(--hero-copy-shadow);
-}
-.arena-recruit-hero p,
-html[data-theme="light"] .arena-recruit-hero p {
-  color: var(--rb-orange-2);
-}
-
-html[data-theme="light"] .arena-recruit-hero h1 {
-  color: var(--rb-cream);
-}
-
-/* 2026-07-02 final recruiting hero guard: no wash/blur and shared title font. */
+/* 2026-07-02 final recruiting hero guard: no wash or blur. */
 
 .arena-recruit-hero,
 html[data-theme="light"] .arena-recruit-hero {
@@ -147,21 +129,4 @@ html[data-theme="light"] .arena-recruit-hero::after {
   display: none;
   background: none;
   opacity: 0;
-}
-
-.arena-hero-copy h1,
-html[data-theme="light"] .arena-hero-copy h1 {
-  font-family: var(--hero-title-font);
-  font-size: var(--hero-title-size);
-  font-weight: 950;
-  line-height: var(--hero-title-line-height);
-  letter-spacing: var(--hero-title-letter-spacing);
-  text-transform: uppercase;
-}
-
-@media (max-width: 720px) {
-  .arena-hero-copy h1,
-  html[data-theme="light"] .arena-hero-copy h1 {
-    font-size: var(--hero-title-size-mobile);
-  }
 }

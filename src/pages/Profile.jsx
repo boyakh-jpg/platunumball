@@ -186,8 +186,8 @@ export default function Profile({ app }) {
   };
   return (
     <div className="page-stack profile-page">
-      <header className="page-header ui-design-app-hero">
-        <div>
+      <header className="page-header ui-page-hero ui-design-app-hero">
+        <div className="ui-page-hero__copy">
           <p className="eyebrow">Profile</p>
           <h1>프로필</h1>
         </div>
