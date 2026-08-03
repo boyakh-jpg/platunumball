@@ -56,7 +56,7 @@ import {
   normalizeTeamScoresDisputeRequest,
 } from "../src/lib/matchUtils.js";
 import { inferRegionSelection } from "../src/lib/profileSetup.js";
-import { getLocalRivalries } from "../src/lib/season.js";
+import { getLocalRivalries, getTeamScoreSummary } from "../src/lib/season.js";
 import { buildSettingsActions } from "../src/hooks/appData/actions/settingsActions.js";
 
 const MODE_CAPACITY = Object.freeze({
@@ -821,6 +821,28 @@ test("시즌 라이벌은 내 팀이 포함된 지역 매치업만 반환한다"
     ownIds.includes(pair.teamA.id) !== ownIds.includes(pair.teamB.id)
   )));
   assert.ok(rivalries.every((pair) => pair.teamA.region === pair.teamB.region));
+});
+
+test("팀 득실 통계는 현재 상세과 archive 중복을 제거한다", () => {
+  const matches = [{
+    id: "match-1",
+    status: "confirmed",
+    result: { scoreA: 21, scoreB: 18 },
+    teamA: { teamId: "team-a" },
+    teamB: { teamId: "team-b" },
+  }];
+  const summary = getTeamScoreSummary(matches, [
+    { matchId: "match-1", score: 21, opponentScore: 18 },
+    { matchId: "match-2", score: 14, opponentScore: 16 },
+  ], "team-a");
+  assert.deepEqual(summary, {
+    games: 2,
+    pointsFor: 35,
+    pointsAgainst: 34,
+    averagePointsFor: 17.5,
+    averagePointsAgainst: 17,
+    averageMargin: 0.5,
+  });
 });
 
 test("시즌 directory 실패 응답은 같은 사용자 재시도를 열어 둔다", async () => {

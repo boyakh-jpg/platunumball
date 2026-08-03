@@ -3,10 +3,10 @@ export function CreateMatchCourtRosterSection({ context }) {
     AGE_GROUPS, Badge, Button, Card, ClipboardList, CourtDetailModal, CourtMapPicker,
     Globe2, MapIcon, MapPin, MatchCostPolicyFields, MeetingPointFields, MmrRangeSelector, NumericStepper,
     PLAYER_STAT_FIELDS, REGION_TREE, SearchPicker, ShieldCheck, TeamHoverCard, UsersRound, X,
-    activePlayerIds, ageRestrictionBlocked, ageRestrictionOption, app, clearSelectedCourt, courtDetailCourtId, courtMapDirectoryStatus,
+    activePlayerIds, ageRestrictionBlocked, ageRestrictionOption, app, challengeTeamAId, challengeTeamBId, clearSelectedCourt, courtDetailCourtId, courtMapDirectoryStatus,
     courtMapOpen, courtMapRegion, courtPlayWarning, courtQuery, courtRegion, courtSummary, draft,
     favoriteCourts, favoriteReferees, favoriteTeams, getCourtAddress, getCourtLayoutLabel, getCourtSearchText, getCourtSurfaceLabel,
-    getTournamentTeamEligibility, isMatchRecordRoom, isPublicRoom, isSoloRecord, isStandardCreateWizard, isTeamRoom, isTournamentRoom,
+    getTournamentTeamEligibility, hasTeamChallenge, isMatchRecordRoom, isPublicRoom, isSoloRecord, isStandardCreateWizard, isTeamRoom, isTournamentRoom,
     loadedCourtMapRegionsRef, mmrLimitOptions, mmrRangePolicy, recordComposition, refereeQuery, refereeSearchResults, registeredCourts,
     remoteDirectoryEnabled, removeTournamentCourt, removeTournamentReferee, renderCourtSearchItem, renderCreateTeamSearchItem, renderRefereeSearchItem, representativeTournamentTeam,
     requiredTournamentRefereeCount, roomTierRange, selectCourt, selectedCourt, selectedTournamentCourts, selectedTournamentReferees, setCourtDetailCourtId,
@@ -391,7 +391,9 @@ export function CreateMatchCourtRosterSection({ context }) {
             <div className="create-public-note ui-design-borderless-surface">
               <UsersRound size={17} />
               <span>
-                {isPublicRoom
+                {hasTeamChallenge
+                  ? `${app.state.teams.find((team) => team.id === challengeTeamAId)?.name ?? "내 팀"}으로 방을 만든 뒤 ${app.state.teams.find((team) => team.id === challengeTeamBId)?.name ?? "라이벌 팀"} 현재 주장에게 자동 초대합니다.`
+                  : isPublicRoom
                   ? "빈 팀방을 만든 뒤 경기방에서 A팀을 선택합니다. B사이드는 상대 팀 주장이 참가합니다."
                   : "빈 팀방을 만든 뒤 경기방에서 A팀과 B팀을 순서대로 선택합니다. B팀 현재 주장에게 초대 1건이 자동 생성됩니다."}
               </span>

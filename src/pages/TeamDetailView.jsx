@@ -34,7 +34,7 @@ function getManagedRoleOptions(member, captainId) {
 }
 
 export default function TeamDetailView({ controller }) {
-  const { addUserId, app, archivedHistory, availableUsers, canAddMember, canManage, cancelPendingTeamInvitation, captain, changeTeamMemberRole, confirmEmblemUpload, confirmedCount, cooldownNextAt, deleteArmed, deleteTeam, detailHistory, directoryPending, emblemAbbreviationCharacterCount, emblemCanRestore, emblemFeedback, emblemFile, emblemInputRef, emblemPending, emblemSource, emblemStatusError, emblemStatusRequestRef, emblemStyleDraft, emblemUploadLocked, excludeTeamMember, favoriteError, favoritePending, favoriteTeamIds, firstAddableUser, history, historyCount, historyIds, inviteMember, isFavoriteTeam, loadDirectory, loadTeamEmblemStatus, loadTeamRecords, loadedLosses, loadedWins, losses, memberDraft, memberQuery, membershipCounts, moderationBlockedAt, moderationLocked, nextEmblemUploadAt, pendingTargetIds, pendingTeamInvitations, refreshTeamDetail, regularMembers, renderInviteSearchItem, renderMembers, reserveMembers, restorePreviousEmblem, retryTeamEmblemStatus, saveEmblemStyle, selectEmblemSource, selectedCount, selectedHistoryMatchId, selectedInviteProfile, selectedInviteUser, selectedRemoteUser, setDeleteArmed, setEmblemCanRestore, setEmblemFeedback, setEmblemFile, setEmblemPending, setEmblemStyleDraft, setMemberDraft, setMemberQuery, setSelectedHistoryMatchId, setSelectedInviteProfile, setTeamInviteError, team, teamDetailError, teamFull, teamId, teamInviteError, teamInvitePending, teamManagementError, teamManagementPending, teamRecordArchive, toggleTeamFavorite, uploadEmblem, userMap, winRate, wins } = controller;
+  const { addUserId, app, archivedHistory, availableUsers, canAddMember, canManage, cancelPendingTeamInvitation, captain, changeTeamMemberRole, confirmEmblemUpload, confirmedCount, cooldownNextAt, deleteArmed, deleteTeam, detailHistory, directoryPending, emblemAbbreviationCharacterCount, emblemCanRestore, emblemFeedback, emblemFile, emblemInputRef, emblemPending, emblemSource, emblemStatusError, emblemStatusRequestRef, emblemStyleDraft, emblemUploadLocked, excludeTeamMember, favoriteError, favoritePending, favoriteTeamIds, firstAddableUser, history, historyCount, historyIds, inviteMember, isFavoriteTeam, loadDirectory, loadTeamEmblemStatus, loadTeamRecords, loadedLosses, loadedWins, losses, memberDraft, memberQuery, membershipCounts, moderationBlockedAt, moderationLocked, nextEmblemUploadAt, pendingTargetIds, pendingTeamInvitations, refreshTeamDetail, regularMembers, renderInviteSearchItem, renderMembers, reserveMembers, restorePreviousEmblem, retryTeamEmblemStatus, saveEmblemStyle, selectEmblemSource, selectedCount, selectedHistoryMatchId, selectedInviteProfile, selectedInviteUser, selectedRemoteUser, setDeleteArmed, setEmblemCanRestore, setEmblemFeedback, setEmblemFile, setEmblemPending, setEmblemStyleDraft, setMemberDraft, setMemberQuery, setSelectedHistoryMatchId, setSelectedInviteProfile, setTeamInviteError, team, teamDetailError, teamFull, teamId, teamInviteError, teamInvitePending, teamManagementError, teamManagementPending, teamRecordArchive, teamScoreSummary, toggleTeamFavorite, uploadEmblem, userMap, winRate, wins } = controller;
   const teamControlPending = teamInvitePending || teamManagementPending;
   return (
     <div className="page-stack team-detail-page rank-team-page">
@@ -75,6 +75,7 @@ export default function TeamDetailView({ controller }) {
       {favoriteError ? <span role="status" className="form-warning">{favoriteError}</span> : null}
 
       <nav className="rank-profile-tabs">
+        <a href="#team-stats">통계</a>
         <a href="#team-history">전적</a>
         <a href="#team-roster">로스터</a>
         <a href="#team-control">관리</a>
@@ -111,6 +112,24 @@ export default function TeamDetailView({ controller }) {
           </div>
         </Card>
       </section>
+
+      <Card id="team-stats" className="section-card rank-record-card">
+        <div className="section-title-row">
+          <div>
+            <p className="eyebrow">Team Scoring</p>
+            <h2>전체 확정 경기 득실 통계</h2>
+          </div>
+          <Badge tone="blue">불러온 기록 {teamScoreSummary.games}경기</Badge>
+        </div>
+        <div className="rank-stat-grid">
+          <span><strong>{teamScoreSummary.pointsFor}</strong>누적 득점</span>
+          <span><strong>{teamScoreSummary.pointsAgainst}</strong>누적 실점</span>
+          <span><strong>{teamScoreSummary.averagePointsFor.toFixed(1)}</strong>평균 득점</span>
+          <span><strong>{teamScoreSummary.averagePointsAgainst.toFixed(1)}</strong>평균 실점</span>
+          <span><strong>{teamScoreSummary.pointsFor - teamScoreSummary.pointsAgainst > 0 ? "+" : ""}{teamScoreSummary.pointsFor - teamScoreSummary.pointsAgainst}</strong>누적 득실차</span>
+          <span><strong>{teamScoreSummary.averageMargin > 0 ? "+" : ""}{teamScoreSummary.averageMargin.toFixed(1)}</strong>평균 득실차</span>
+        </div>
+      </Card>
 
       <div className="content-grid wide-left">
         <div className="page-stack">

@@ -1110,7 +1110,14 @@ test("notification actions keep tournament links and failed team invites in plac
 });
 
 test("season rival challenge closes the created room when the B-team invite fails", async () => {
-  const createActions = await readSource("src/components/match/CreateMatchActions.jsx");
+  const [season, createController, createActions] = await Promise.all([
+    readSource("src/pages/Season.jsx"),
+    readSource("src/components/match/useCreateMatchBaseController.js"),
+    readSource("src/components/match/CreateMatchActions.jsx"),
+  ]);
+  assert.match(season, /challengeTeamAId=\$\{encodeURIComponent\(myTeam\.id\)\}&challengeTeamBId=\$\{encodeURIComponent\(opponentTeam\.id\)\}/u);
+  assert.match(createController, /challengeSearchParams\.get\("challengeTeamAId"\)/u);
+  assert.match(createController, /challengeSearchParams\.get\("challengeTeamBId"\)/u);
   assert.match(createActions, /const result = await app\.actions\.setRecruitingRoomTeam\(postId, "teamB", presetTeamBId, "시즌 라이벌 매치업에서 보낸 팀 초대입니다\."\)/u);
   assert.match(createActions, /if \(!result \|\| result\?\.ok === false\) \{[\s\S]{0,240}closeRecruitingPost\(postId, "B팀 초대 실패로 생성 취소"\)[\s\S]{0,240}return;/u);
 });
