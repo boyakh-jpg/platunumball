@@ -40,7 +40,7 @@ export default function RecruitingPageView({
             <Button as={Link} to="/app/create" className="ui-button-block">
               <PlusCircle size={18} /> 매칭 만들기
             </Button>
-            <Button as={Link} to="/app/create?intent=record" className="ui-button-block">
+            <Button as={Link} to="/app/create?intent=record" variant="secondary" className="ui-button-block">
               <ClipboardCheck size={18} /> 경기 기록하기
             </Button>
           </div>
