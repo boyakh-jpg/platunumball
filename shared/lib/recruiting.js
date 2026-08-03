@@ -42,6 +42,7 @@ export {
   getSelectedTeamPlayerIds,
   normalizeRecruitingApplicants,
   normalizeRecruitingRoomState,
+  getPlayerMatchModeMmr,
   getRecruitingApplicantKey,
   hasRecruitingApplicant,
   getPendingRecruitingInvitations,

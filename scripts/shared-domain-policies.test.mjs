@@ -176,9 +176,16 @@ import {
 } from "../server/api/_r2ImageStorage.js";
 import { readJsonBody } from "../server/api/_supabaseAdmin.js";
 import { compactClientUser } from "../server/lib/clientProjection.js";
-import { getRecruitingListCardCounts, getRecruitingListCardLobby, isPaidRecruitingCourt } from "../src/lib/recruiting.js";
+import {
+  getPlayerMatchModeMmr,
+  getRecruitingListCardCounts,
+  getRecruitingListCardLobby,
+  getRecruitingTargetMmr,
+  getTeamEventEligibility,
+  isPaidRecruitingCourt,
+} from "../src/lib/recruiting.js";
 import { mergeRecruitingPostsById } from "../src/hooks/useAppData.js";
-import { getPlayerSeasonActivity, getTeamScoreSummary } from "../src/lib/season.js";
+import { getLocalRivalries, getPlayerSeasonActivity, getTeamScoreSummary } from "../src/lib/season.js";
 import { fromRemoteProfile } from "../src/data/profileMappers.js";
 import { IMAGE_CONTEXT_MENU_ALLOW_ATTRIBUTE, getProtectedImageTarget } from "../src/hooks/useImageInteractionGuard.js";
 import { REFEREE_EXAM_VERSION } from "../src/lib/refereeExamBank.js";
@@ -1467,6 +1474,52 @@ test("team score summary deduplicates current and archived matches", () => {
     averagePointsAgainst: 17,
     averageMargin: 0.5,
   });
+});
+
+test("season rival challenge fixes my team and opponent before opening the room", async () => {
+  const rivalries = getLocalRivalries([
+    { id: "mine-a", region: "서울", mmr: 1200, wins: 0 },
+    { id: "mine-b", region: "서울", mmr: 1250, wins: 0 },
+    { id: "rival", region: "서울", mmr: 1230, wins: 0 },
+    { id: "far", region: "경기", mmr: 1220, wins: 0 },
+  ], [], "서울", 6, ["mine-a", "mine-b"]);
+  assert.deepEqual(rivalries.map((pair) => pair.id).sort(), ["mine-a-rival", "mine-b-rival"]);
+
+  const [seasonPage, createController, createEffects, createActions, room] = await Promise.all([
+    readSource("src/pages/Season.jsx"),
+    readSource("src/components/match/useCreateMatchBaseController.js"),
+    readSource("src/components/match/useCreateMatchValidationEffects.js"),
+    readSource("src/components/match/CreateMatchActions.jsx"),
+    readSource("src/components/recruiting/RecruitingRoomPrimarySection.jsx"),
+  ]);
+  assert.match(seasonPage, /challengeTeamAId=\$\{encodeURIComponent\(myTeam\.id\)\}&challengeTeamBId=\$\{encodeURIComponent\(opponentTeam\.id\)\}/);
+  assert.match(createController, /challengeSearchParams\.get\("challengeTeamAId"\)/);
+  assert.match(createEffects, /if \(!hasTeamChallenge\) return;[\s\S]{0,240}teamBId: challengeTeamBId/);
+  assert.match(createActions, /setRecruitingRoomTeam\(postId, "teamB", challengeTeamBId, "시즌 라이벌 매치업에서 보낸 팀 초대입니다\."\)/);
+  assert.match(room, /<strong>B사이드<\/strong>\s*\{selectedRoomTeamBId \? \(/);
+});
+
+test("recruiting MMR follows match mode while age eligibility stays enforced", async () => {
+  const host = { id: "host", ageGroup: "open", ratings: { integrated: 1250, modes: { "1v1": 1100, "5v5": 1450 } } };
+  const junior = { id: "junior", ageGroup: "junior", ratings: { integrated: 1250, modes: { "1v1": 1100, "5v5": 1450 } } };
+  const state = { users: [host, junior], teams: [] };
+  const team = { id: "team", members: [{ userId: "host", role: "captain" }, { userId: "junior", role: "member" }] };
+
+  assert.equal(getPlayerMatchModeMmr(host, "1v1"), 1100);
+  assert.equal(getPlayerMatchModeMmr(host, "5v5"), 1450);
+  assert.equal(getRecruitingTargetMmr({ playerId: "host", mode: "1v1" }, state), 1100);
+  assert.equal(getRecruitingTargetMmr({ playerId: "host", mode: "5v5" }, state), 1450);
+  assert.deepEqual(getTeamEventEligibility(team, state.users, {
+    mode: "1v1",
+    capacity: 1,
+    ranked: true,
+    mmrLimitMode: "block",
+    targetMmr: 1100,
+    allowedAgeGroups: ["open"],
+  }).eligiblePlayerIds, ["host"]);
+
+  const createValidation = await readSource("src/components/match/useCreateMatchValidationController.js");
+  assert.match(createValidation, /getRecruitingTierRange\(getPlayerMatchModeMmr\(app\.currentUser, draft\.mode\)/);
 });
 
 test("team detail keeps navigation preview and always refreshes authoritative team data once", async () => {

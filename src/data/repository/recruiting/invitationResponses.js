@@ -1,4 +1,3 @@
-import { DEFAULT_RATING } from "../../../lib/constants.js";
 import { MATCH_SIDES } from "../../../lib/constants.js";
 import { SIDE_LABEL_TEXT } from "../../../lib/constants.js";
 import { currentUserCanRefereeRecruitingRoom } from "../../../lib/recruiting.js";
@@ -8,6 +7,7 @@ import { getRecruitingApplicantKey } from "../../../lib/recruiting.js";
 import { getRecruitingBenchCapacity } from "../../../lib/recruiting.js";
 import { getRecruitingBestSide } from "../../../lib/recruiting.js";
 import { getRecruitingFit } from "../../../lib/recruiting.js";
+import { getPlayerMatchModeMmr } from "../../../lib/recruiting.js";
 import { getRecruitingLobby } from "../../../lib/recruiting.js";
 import { getRecruitingRoomOwnerId } from "../../../lib/recruiting.js";
 import { getRecruitingSideCapacity } from "../../../lib/recruiting.js";
@@ -190,8 +190,8 @@ export function acceptRecruitingInvitation(state, postId, invitationId) {
     ? state.teams.find((team) => team.id === invitationTeamId && team.members.some((member) => member.userId === state.currentUserId))
     : null;
   const candidateMmr = invitedTeam
-    ? invitedTeam.mmr ?? user?.ratings?.integrated ?? DEFAULT_RATING
-    : user?.ratings?.integrated ?? DEFAULT_RATING;
+    ? invitedTeam.mmr ?? getPlayerMatchModeMmr(user, post.mode)
+    : getPlayerMatchModeMmr(user, post.mode);
   const fit = getRecruitingFit(post, candidateMmr, state);
   const mmrLimitMode = normalizeRecruitingMmrLimitMode(post.mmrLimitMode ?? roomState.mmrLimitMode);
   const expireInvitation = (body) => ({

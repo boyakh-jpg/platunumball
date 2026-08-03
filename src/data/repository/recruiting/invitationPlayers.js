@@ -1,10 +1,10 @@
-import { DEFAULT_RATING } from "../../../lib/constants.js";
 import { MATCH_SIDES } from "../../../lib/constants.js";
 import { SIDE_LABEL_TEXT } from "../../../lib/constants.js";
 import { getLobbyPrimaryTeamId } from "../../../lib/recruiting.js";
 import { getPendingReserveInvitationCount } from "../../../lib/recruiting.js";
 import { getRecruitingBenchCapacity } from "../../../lib/recruiting.js";
 import { getRecruitingFit } from "../../../lib/recruiting.js";
+import { getPlayerMatchModeMmr } from "../../../lib/recruiting.js";
 import { getRecruitingLobby } from "../../../lib/recruiting.js";
 import { inferSidePartyTeamIdForUser } from "../../../lib/recruiting.js";
 import { isIndividualOnlyRecruitingRoom } from "../../../lib/recruiting.js";
@@ -120,9 +120,9 @@ export function inviteRecruitingPlayers(state, postId, invite = {}) {
   if (mmrLimitMode === "block") {
     const outOfRangeUser = targetUserIds
       .map((playerId) => state.users.find((user) => user.id === playerId))
-      .find((targetUser) => targetUser && !getRecruitingFit(post, targetUser.ratings?.integrated ?? DEFAULT_RATING, state).allowed);
+      .find((targetUser) => targetUser && !getRecruitingFit(post, getPlayerMatchModeMmr(targetUser, post.mode), state).allowed);
     if (outOfRangeUser) {
-      const fit = getRecruitingFit(post, outOfRangeUser.ratings?.integrated ?? DEFAULT_RATING, state);
+      const fit = getRecruitingFit(post, getPlayerMatchModeMmr(outOfRangeUser, post.mode), state);
       return {
         ...state,
         notifications: [

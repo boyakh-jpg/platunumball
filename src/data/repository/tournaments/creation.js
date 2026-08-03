@@ -49,6 +49,7 @@ export function createTournament(state, draft) {
     rosterReady: { teamA: false, teamB: false },
   };
   const tournamentTeamSnapshots = Object.fromEntries(invitedTeams.map((team) => [team.id, getLocalTournamentTeamSnapshot(state, team, {
+    mode: draft.mode,
     capacity: sideCapacity,
     ranked: draft.ranked,
     mmrLimitMode,

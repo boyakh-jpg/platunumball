@@ -87,6 +87,7 @@ export function createRecruitingPost(state, draft) {
     ? (requestedOpponentLeaderId && opponentMemberIds.has(requestedOpponentLeaderId) && !hostSidePlayerIds.has(requestedOpponentLeaderId) ? requestedOpponentLeaderId : "")
     : rawOpponentPlayerIds.includes(draft.opponentLeaderId) ? draft.opponentLeaderId : rawOpponentPlayerIds[0] ?? "";
   const hostEligibility = hostTeam ? getTeamEventEligibility(hostTeam, state.users, {
+    mode: draft.mode,
     capacity: sideCapacity,
     ranked: creationPolicy.ranked,
     mmrLimitMode,
@@ -96,6 +97,7 @@ export function createRecruitingPost(state, draft) {
     requireCaptainEligible: false,
   }) : null;
   const opponentEligibility = opponentTeam ? getTeamEventEligibility(opponentTeam, state.users, {
+    mode: draft.mode,
     capacity: sideCapacity,
     ranked: creationPolicy.ranked,
     mmrLimitMode,
@@ -380,6 +382,7 @@ export function setRecruitingRoomTeam(state, postId, side, teamId, contextMessag
   const mmrLimitMode = post.ranked === false ? "off" : "block";
   const hostTeam = state.teams?.find((item) => item.id === post.teamId) ?? null;
   const eligibility = getTeamEventEligibility(team, state.users, {
+    mode: post.mode,
     capacity: getRecruitingSideCapacity(post),
     ranked: post.ranked !== false,
     mmrLimitMode,

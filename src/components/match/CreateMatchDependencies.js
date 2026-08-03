@@ -60,7 +60,7 @@ import {
 } from "../../lib/matchCreationPolicies.js";
 import { AGE_GROUPS, REGION_TREE, getAgeGroupForUser, getRepresentativeTeam, inferRegionSelection } from "../../lib/profileSetup.js";
 import { COURT_MAP_SEARCH_LIMIT, COURT_MAP_SEARCH_PURPOSE, DIRECTORY_PICKER_PAGE_LIMIT } from "../../lib/queryPolicy.js";
-import { MMR_RANGE_POLICIES, getRecruitingSideCapacity, getRecruitingTierRange, getSelectableTeamPlayerIds, getTeamEventEligibility, isMmrInRecruitingRange, normalizeRecruitingMmrRangeMode } from "../../lib/recruiting.js";
+import { MMR_RANGE_POLICIES, getPlayerMatchModeMmr, getRecruitingSideCapacity, getRecruitingTierRange, getSelectableTeamPlayerIds, getTeamEventEligibility, isMmrInRecruitingRange, normalizeRecruitingMmrRangeMode } from "../../lib/recruiting.js";
 import { postServerAction } from "../../lib/serverActions.js";
 import {
   getCreateDefaultTeamPlayerIds as getDefaultTeamPlayerIds,
@@ -121,7 +121,7 @@ export const CREATE_MATCH_DEPENDENCIES = {
   getRecordEntryMode, getMatchCreationPolicyPayload, getMatchCreationValidation, getMatchCreationWizardType, getMatchIntentChangePatch, getMatchModeChangePatch,
   getPersonalRecordDraftPayload, getRoomRemakeDraft, getRoomRemakeWarningCopy, getScopedMatchCreationPolicyPayload, AGE_GROUPS, REGION_TREE,
   getAgeGroupForUser, getRepresentativeTeam, inferRegionSelection, COURT_MAP_SEARCH_LIMIT, COURT_MAP_SEARCH_PURPOSE, DIRECTORY_PICKER_PAGE_LIMIT,
-  MMR_RANGE_POLICIES, getRecruitingSideCapacity, getRecruitingTierRange, getSelectableTeamPlayerIds, getTeamEventEligibility, isMmrInRecruitingRange,
+  MMR_RANGE_POLICIES, getPlayerMatchModeMmr, getRecruitingSideCapacity, getRecruitingTierRange, getSelectableTeamPlayerIds, getTeamEventEligibility, isMmrInRecruitingRange,
   normalizeRecruitingMmrRangeMode, postServerAction, getDefaultTeamPlayerIds, getPartyPlayerIds, getPartyReserveIds, getRequiredTournamentRefereeCount,
   getTournamentRefereePoolValidation, DEFAULT_MATCH_MEMO, MATCH_MODE_IDS, formatCreateSaveError, getAgeRestrictionOption, getAvailableTeamPlayerIds,
   getCreateStepFromSearch, getCreateStepSearch, getDefaultCreateMode, getDefaultCreateTitle, getDefaultMmrLimitMode, getDefaultTournamentTitle,

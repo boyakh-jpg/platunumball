@@ -189,15 +189,21 @@ export function getTeamSeasonRows(teams = [], matches = [], season = fallbackSea
     .sort((a, b) => b.seasonScore - a.seasonScore || b.mmr - a.mmr);
 }
 
-export function getLocalRivalries(teams = [], matches = [], region = "전체", limit = 6) {
-  const localTeams = teams.filter((team) => region === "전체" || team.region === region);
+export function getLocalRivalries(teams = [], matches = [], region = "전체", limit = 6, anchorTeamIds = []) {
+  const anchorTeamIdSet = new Set(anchorTeamIds);
+  const localTeams = anchorTeamIdSet.size
+    ? teams
+    : teams.filter((team) => region === "전체" || team.region === region);
   const pairs = [];
 
   for (let i = 0; i < localTeams.length; i += 1) {
     for (let j = i + 1; j < localTeams.length; j += 1) {
       const teamA = localTeams[i];
       const teamB = localTeams[j];
+      if (anchorTeamIdSet.size && anchorTeamIdSet.has(teamA.id) === anchorTeamIdSet.has(teamB.id)) continue;
+      if (anchorTeamIdSet.size && teamA.region !== teamB.region) continue;
       const headToHead = matches.filter((match) => {
+        if (!isConfirmed(match)) return false;
         const aSide = getTeamSide(match, teamA.id);
         const bSide = getTeamSide(match, teamB.id);
         return aSide && bSide;

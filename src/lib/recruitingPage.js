@@ -15,6 +15,7 @@ import {
   getRecruitingBenchCapacity,
   getRecruitingBestSide,
   getRecruitingLobby,
+  getPlayerMatchModeMmr,
   getRecruitingSideCapacity,
   isIndividualOnlyRecruitingRoom,
   isTeamOnlyRecruitingRoom,
@@ -175,9 +176,11 @@ export function getDefaultJoinRoster(post, lobby, team, currentUser, sideName, r
   };
 }
 
-export function getPlayerMmrAverage(playerIds = [], userById = {}, fallback = DEFAULT_RATING) {
+export function getPlayerMmrAverage(playerIds = [], userById = {}, fallback = DEFAULT_RATING, mode = "") {
   const values = playerIds
-    .map((playerId) => Number(userById[playerId]?.ratings?.integrated))
+    .map((playerId) => userById[playerId])
+    .filter(Boolean)
+    .map((user) => getPlayerMatchModeMmr(user, mode))
     .filter((value) => Number.isFinite(value));
   if (!values.length) return fallback;
   return Math.round(values.reduce((sum, value) => sum + value, 0) / values.length);

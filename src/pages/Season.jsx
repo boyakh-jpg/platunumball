@@ -35,9 +35,15 @@ export default function Season({ app }) {
   const regionalPlayerRows = getPlayerSeasonRows(app.state.users, app.state.matches, season, region)
     .filter((user) => isPlacementComplete(user.ratings))
     .filter((user) => user.id === app.currentUser.id || user.privacy?.regionRanking !== false);
+  const myTeamIds = app.state.teams
+    .filter((team) => team.members?.some((member) => member.userId === app.currentUser.id))
+    .map((team) => team.id);
+  const myTeamIdSet = new Set(myTeamIds);
   const nationalRankByPlayerId = new Map(nationalPlayerRows.map((user, index) => [user.id, index + 1]));
   const nationalCandidates = regionalPlayerRows.slice(0, 5);
-  const rivalries = getLocalRivalries(app.state.teams, app.state.matches, region, 4);
+  const rivalries = myTeamIds.length
+    ? getLocalRivalries(app.state.teams, app.state.matches, region, 4, myTeamIds)
+    : [];
   const activity = getPlayerSeasonActivity(app.state.matches, app.currentUser.id, season);
   const myNationalRankIndex = nationalPlayerRows.findIndex((user) => user.id === app.currentUser.id);
   const myRegionalRankIndex = regionalPlayerRows.findIndex((user) => user.id === app.currentUser.id);
@@ -241,12 +247,15 @@ export default function Season({ app }) {
         <div className="section-title-row">
           <div>
             <p className="eyebrow">Rivalry Heat</p>
-            <h2>{region} 라이벌 매치업</h2>
+            <h2>{myTeamIds.length ? "내 팀 지역" : region} 라이벌 매치업</h2>
           </div>
           <Swords size={20} />
         </div>
         <div className="rivalry-grid">
-          {rivalries.length ? rivalries.map((pair) => (
+          {rivalries.length ? rivalries.map((pair) => {
+            const myTeam = myTeamIdSet.has(pair.teamA.id) ? pair.teamA : pair.teamB;
+            const opponentTeam = myTeam.id === pair.teamA.id ? pair.teamB : pair.teamA;
+            return (
             <article key={pair.id} className="rivalry-matchup ui-design-info-surface">
               <div>
                 <Link to={`/app/teams/${pair.teamA.id}`}>{pair.teamA.name}</Link>
@@ -259,7 +268,12 @@ export default function Season({ app }) {
               </div>
               <p>{pair.headToHead.length}전 · MMR 차이 {pair.mmrGap}</p>
               <div className="rivalry-challenge-actions">
-                <Button as={Link} to="/app/create" variant="secondary" size="sm">
+                <Button
+                  as={Link}
+                  to={`/app/create?challengeTeamAId=${encodeURIComponent(myTeam.id)}&challengeTeamBId=${encodeURIComponent(opponentTeam.id)}`}
+                  state={{ challengeTeamAId: myTeam.id, challengeTeamBId: opponentTeam.id }}
+                  size="sm"
+                >
                   매칭 만들기 <ArrowRight size={16} />
                 </Button>
                 <Button as={Link} to="/app/create?intent=record" variant="secondary" size="sm">
@@ -267,7 +281,8 @@ export default function Season({ app }) {
                 </Button>
               </div>
             </article>
-          )) : (
+            );
+          }) : (
             <article className="rivalry-matchup rivalry-empty">
               <div>
                 <strong>라이벌 후보 없음</strong>

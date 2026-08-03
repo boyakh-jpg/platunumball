@@ -247,6 +247,7 @@ const roomPhaseBadge = sourceMatch ? sourceMatchPhase : roomQueueStatus;
                     tournamentRoster={sourceMatchIsTournamentPregame}
                     reserveCapacity={sourceMatchIsRecordRoom ? MAX_RESERVE_PLAYERS_PER_SIDE : benchCapacity}
                     eligiblePlayerIds={sourceMatchIsTournamentPregame ? getTeamEventEligibility(sourceMatchRecordTeams[sideName], app.state.users, {
+                      mode: sourceMatch.mode,
                       capacity: getRecruitingSideCapacity(sourceMatch),
                       ranked: sourceMatch.ranked,
                       mmrLimitMode: sourceMatch.rules?.mmrLimitMode ?? sourceMatch.mmrLimitMode,

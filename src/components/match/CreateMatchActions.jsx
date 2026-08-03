@@ -1,6 +1,6 @@
 export function createCreateMatchActions(context) {
   const {
-    RECORD_TYPES, Star, ageRestrictionOption, app, appendSoloRecordUser, currentRegion, draft,
+    RECORD_TYPES, Star, ageRestrictionOption, app, appendSoloRecordUser, challengeTeamAId, challengeTeamBId, currentRegion, draft,
     favoriteRefereeIds, favoriteTeamIds, formatCreateSaveError, getAvailableTeamPlayerIds, getCourtAddress, getCourtHashtag, getCourtLayoutLabel,
     getCourtSurfaceLabel, getMatchCreationPolicyPayload, getMatchRulesPayload, getOpponentTeam, getPersonalRecordDraftPayload, getRepresentativePlayerIds, getScopedMatchCreationPolicyPayload,
     getTeamEligibility, getTeamHashtag, getTournamentTeamEligibility, getUserHashtag, isFavoriteCourt, isInstantRoom, isMatchRecordRoom,
@@ -431,6 +431,22 @@ const selectTeamA = (teamAId) => {
       ].filter(Boolean).join("\n"),
     });
     if (typeof postId === "string" && postId) {
+      if (!remakeDraft && createAsTeam && challengeTeamAId) {
+        const teamAResult = await app.actions.setRecruitingRoomTeam(postId, "teamA", challengeTeamAId);
+        if (!teamAResult || teamAResult?.ok === false) {
+          await app.actions.closeRecruitingPost(postId, "A팀 선택 실패로 생성 취소");
+          setSubmitFeedback(formatCreateSaveError(teamAResult, "A팀을 선택하지 못해 생성한 방을 종료했습니다."));
+          return;
+        }
+        if (draft.visibility === "private" && challengeTeamBId) {
+          const teamBResult = await app.actions.setRecruitingRoomTeam(postId, "teamB", challengeTeamBId, "시즌 라이벌 매치업에서 보낸 팀 초대입니다.");
+          if (!teamBResult || teamBResult?.ok === false) {
+            await app.actions.closeRecruitingPost(postId, "B팀 초대 실패로 생성 취소");
+            setSubmitFeedback(formatCreateSaveError(teamBResult, "상대 B팀을 초대하지 못해 생성한 방을 종료했습니다."));
+            return;
+          }
+        }
+      }
       if (remakeDraft && createAsTeam && draft.remakeTeamAId) {
         await app.actions.setRecruitingRoomTeam(postId, "teamA", draft.remakeTeamAId);
       }

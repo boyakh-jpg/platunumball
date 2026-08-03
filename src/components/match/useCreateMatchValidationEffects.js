@@ -3,6 +3,8 @@ export function useCreateMatchValidationEffects(context, { refereeCandidates }) 
     RECORD_TYPES,
     app,
     canCreateTeamRoom,
+    challengeTeamAId,
+    challengeTeamBId,
     defaultAgeRestriction,
     defaultHostJoinMode,
     defaultMmrLimitMode,
@@ -18,6 +20,7 @@ export function useCreateMatchValidationEffects(context, { refereeCandidates }) 
     getRepresentativePlayerIds,
     getSelectableTeamPlayerIds,
     getSeoulTimeInputValue,
+    hasTeamChallenge,
     isDefaultCreateTitle,
     isDefaultTournamentTitle,
     isMatchRecordRoom,
@@ -39,6 +42,18 @@ export function useCreateMatchValidationEffects(context, { refereeCandidates }) 
     today,
     useEffect,
   } = context;
+
+  useEffect(() => {
+    if (!hasTeamChallenge) return;
+    setDraft((current) => ({
+      ...current,
+      visibility: "private",
+      hostJoinMode: "team",
+      teamOnly: true,
+      teamAId: challengeTeamAId,
+      teamBId: challengeTeamBId,
+    }));
+  }, [challengeTeamAId, challengeTeamBId, hasTeamChallenge]);
 
   useEffect(() => {
     if (isRecordCreateIntent) {
@@ -122,6 +137,7 @@ export function useCreateMatchValidationEffects(context, { refereeCandidates }) 
 
   useEffect(() => {
     if (isTeamRoom && !isTournamentRoom) {
+      if (hasTeamChallenge) return;
       setDraft((current) => {
         const alreadyEmpty = !current.teamAId
           && !current.teamBId
@@ -162,7 +178,7 @@ export function useCreateMatchValidationEffects(context, { refereeCandidates }) 
         && tournamentTeamIds.every((teamId, index) => teamId === current.tournamentTeamIds[index])) return current;
       return { ...current, tournamentTeamIds };
     });
-  }, [app.state.teams, defaultTournamentTeamB?.id, isTeamRoom, isTournamentRoom, myTeams, representativeTournamentTeam?.id]);
+  }, [app.state.teams, defaultTournamentTeamB?.id, hasTeamChallenge, isTeamRoom, isTournamentRoom, myTeams, representativeTournamentTeam?.id]);
 
   useEffect(() => {
     if (!isPickupMatch) return;
@@ -180,7 +196,7 @@ export function useCreateMatchValidationEffects(context, { refereeCandidates }) 
   }, [isPickupMatch]);
 
   useEffect(() => {
-    if (canCreateTeamRoom) return;
+    if (canCreateTeamRoom || hasTeamChallenge) return;
     setDraft((current) => current.hostJoinMode === "team"
       ? {
         ...current,
@@ -193,7 +209,7 @@ export function useCreateMatchValidationEffects(context, { refereeCandidates }) 
         opponentLeaderId: "",
       }
       : current);
-  }, [canCreateTeamRoom]);
+  }, [canCreateTeamRoom, hasTeamChallenge]);
 
   useEffect(() => {
     if (!isTeamRoom || !selectedTeamA) return;

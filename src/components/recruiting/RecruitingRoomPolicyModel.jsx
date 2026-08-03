@@ -3,7 +3,7 @@ export function buildRecruitingRoomPolicyModel(context) {
     DEFAULT_RATING, MATCH_SIDES, RECRUITING_JOIN_MODES, ROOM_BODY_MODES, app, getCourtPlayWarning,
     getDefaultJoinRoster, getJoinActiveCapacity, getJoinDraft, getJoinableSidePartyOptions, getLobbyPrimaryTeamId, getLobbySideMeta,
     getMatchCreationSummary, getMatchRuleDetailRows, getMatchRuleInputValidation, getPartyPlayerIds, getPartyReserveIds, getPickupOpenSlotPlacements,
-    getPickupResizeValidation, getPickupTeamAssignmentPolicy, getPlayerMmrAverage, getPublicRoomTimingStatus, getRecruitingBenchCapacity, getRecruitingFit,
+    getPickupResizeValidation, getPickupTeamAssignmentPolicy, getPlayerMatchModeMmr, getPlayerMmrAverage, getPublicRoomTimingStatus, getRecruitingBenchCapacity, getRecruitingFit,
     getRecruitingLobby, getRecruitingRoomOwnerId, getRecruitingRuleAcknowledgement, getRecruitingSideCapacity, getRecruitingTargetMmr, getRecruitingTierRange,
     getRoomEditDraftByPost, getRoomPhaseViewModel, getRoomScheduleProposalProgress, getSameSidePartyOptions, getSourceMatchAction, getSourceMatchDecisionSideName,
     getSourceMatchStatus, getTeamCaptainId, getTeamEventEligibility, getTeamHashtag, inviteDraft, isCurrentUserRoomParticipant,
@@ -25,6 +25,7 @@ const lobby = getRecruitingLobby(selectedPost, app.state);
         const selectedRoomTeamB = teamById[selectedRoomTeamBId] ?? null;
         const roomTargetMmr = getRecruitingTargetMmr(selectedPost, app.state);
         const getJoinTeamEligibility = (team) => getTeamEventEligibility(team, app.state.users, {
+          mode: selectedPost.mode,
           capacity: getRecruitingSideCapacity(selectedPost),
           ranked: selectedPost.ranked,
           mmrLimitMode: selectedPost.mmrLimitMode ?? selectedPost.roomState?.mmrLimitMode,
@@ -53,9 +54,9 @@ const lobby = getRecruitingLobby(selectedPost, app.state);
           ? []
           : getPartyReserveIds(selectedJoinTeam, joinDraft.reservePlayerIds, selectedJoinPlayerIds, benchCapacity);
         const candidateMmr = joinDraft.joinMode === "team" && !individualOnlyRoom
-          ? getPlayerMmrAverage(selectedJoinPlayerIds, userById, selectedJoinTeam?.mmr ?? app.currentUser.ratings.integrated)
-          : app.currentUser.ratings.integrated;
-        const fit = getRecruitingFit(selectedPost, candidateMmr || app.currentUser.ratings.integrated, app.state);
+          ? getPlayerMmrAverage(selectedJoinPlayerIds, userById, selectedJoinTeam?.mmr ?? getPlayerMatchModeMmr(app.currentUser, selectedPost.mode), selectedPost.mode)
+          : getPlayerMatchModeMmr(app.currentUser, selectedPost.mode);
+        const fit = getRecruitingFit(selectedPost, candidateMmr, app.state);
         const matchRoom = Boolean(sourceMatch);
         const recruitingRoomConfirmed = Boolean(selectedPost.status === "closed" || selectedPost.confirmedAt);
         const storedRoomPost = app.state.recruitingPosts?.find((item) => item.id === selectedPost.id) ?? null;
@@ -108,6 +109,7 @@ const lobby = getRecruitingLobby(selectedPost, app.state);
           && (!selectedRoomTeamAId || !selectedRoomTeamBId);
         const getRoomTeamSelectionEligibility = (team, sideName) => {
           const eligibility = getTeamEventEligibility(team, app.state.users, {
+            mode: selectedPost.mode,
             capacity: getRecruitingSideCapacity(selectedPost),
             ranked: selectedPost.ranked,
             mmrLimitMode: selectedPost.mmrLimitMode ?? selectedPost.roomState?.mmrLimitMode,
@@ -335,7 +337,7 @@ const lobby = getRecruitingLobby(selectedPost, app.state);
           if (mmrLimitMode !== "block") return true;
           const targetPlayer = player ?? userById[playerId];
           if (!targetPlayer) return true;
-          return getRecruitingFit(selectedPost, targetPlayer.ratings?.integrated ?? DEFAULT_RATING, app.state).allowed;
+          return getRecruitingFit(selectedPost, getPlayerMatchModeMmr(targetPlayer, selectedPost.mode), app.state).allowed;
         };
         const disabledRefereeIds = new Set([
           ...disabledInvitePlayerIds,

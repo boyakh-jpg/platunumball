@@ -6,7 +6,7 @@ export function useCreateMatchValidationController(context) {
     activePlayerIds, ageRestrictionOption, app, canCreateTeamRoom, currentRegion, defaultAgeRestriction, defaultCourt,
     defaultHostJoinMode, defaultMmrLimitMode, defaultMode, defaultTournamentTeamB, draft, favoriteRefereeIds, favoriteTeamIds,
     getAgeGroupForUser, getAvailableTeamPlayerIds, getCourtPlayWarning, getDefaultCreateTitle, getHostTrustRequirement, getMatchConfigurationChangePatch, getMatchIntentChangePatch,
-    getMatchModeChangePatch, getMatchModeOrDefault, getMatchRecordMemo, getModeSize, getPublicRoomTimingStatus, getRecordCreationWindowStatus, getRecruitingTierRange,
+    getMatchModeChangePatch, getMatchModeOrDefault, getMatchRecordMemo, getModeSize, getPlayerMatchModeMmr, getPublicRoomTimingStatus, getRecordCreationWindowStatus, getRecruitingTierRange,
     getRepresentativePlayerIds, getRequiredTournamentRefereeCount, getSelectableTeamPlayerIds, getSeoulTimeInputValue, getSoloRecordPlayerRef, getSoloRecordRosterLines, getSoloRecordUserIdentity,
     getSoloRecordUserLine, getTeamEligibility, getTeamHashtag, getTournamentRefereePoolValidation, getUserHashtag, includesQuery, ineligibleTournamentTeams,
     isDefaultCreateTitle, isDefaultTournamentTitle, isEligibleReferee, isInstantRoom, isMatchRecordRoom, isMmrInRecruitingRange, isPickupMatch,
@@ -109,7 +109,7 @@ export function useCreateMatchValidationController(context) {
     [app.currentUser.id, app.state.users, currentRegion, soloRecordSelectedIdentitySet],
   );
   const teamTierRange = getRecruitingTierRange(selectedTeamA?.mmr ?? DEFAULT_RATING, draft.ranked, draft.mmrRangeMode);
-  const personalTierRange = getRecruitingTierRange(app.currentUser.ratings?.integrated ?? DEFAULT_RATING, draft.ranked, draft.mmrRangeMode);
+  const personalTierRange = getRecruitingTierRange(getPlayerMatchModeMmr(app.currentUser, draft.mode), draft.ranked, draft.mmrRangeMode);
   const roomTierRange = isTeamRoom ? teamTierRange : personalTierRange;
   const mmrRangePolicy = MMR_RANGE_POLICIES[draft.mmrRangeMode] ?? MMR_RANGE_POLICIES.narrow;
   const currentUserAgeGroup = getAgeGroupForUser(app.currentUser);

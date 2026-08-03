@@ -122,6 +122,7 @@ export function setMatchRecordTeamRoster(state, matchId, sideName, roster = {}) 
     ? MAX_BENCH_CAPACITY
     : getRecruitingBenchCapacity(match);
   const eligibility = getTeamEventEligibility(team, state.users, {
+    mode: match.mode,
     capacity: sideCapacity,
     ranked: match.ranked,
     mmrLimitMode: match.rules?.mmrLimitMode ?? match.mmrLimitMode,

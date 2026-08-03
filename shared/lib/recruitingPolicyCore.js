@@ -1,7 +1,7 @@
 import { DEFAULT_RATING, MATCH_SIDES, MODE_SIZES, ROOM_KINDS, normalizeBenchCapacity } from "./constants.js";
 import { normalizeCourtOptionalBoolean } from "./courtPolicy.js";
 import { getAgeGroupForUser } from "./profileSetup.js";
-import { isMmrInRecruitingRange, normalizeRecruitingMmrRangeMode } from "./recruitingMmrPolicy.js";
+import { getPlayerMatchModeMmr, isMmrInRecruitingRange, normalizeRecruitingMmrRangeMode } from "./recruitingMmrPolicy.js";
 
 export const SYNTHETIC_MATCH_ROOM_PREFIX = "match-room-";
 const FREE_RECRUITING_COURT_FEE_VALUES = new Set(["0", "0원", "무료", "free", "없음"]);
@@ -280,7 +280,7 @@ export function getTeamEventEligibility(team = null, users = [], options = {}) {
     const user = userById.get(playerId);
     if (!user) return false;
     if (allowedAgeGroups && !allowedAgeGroups.has(getAgeGroupForUser(user))) return false;
-    const playerMmr = Number(user.ratings?.integrated ?? user.mmr ?? DEFAULT_RATING);
+    const playerMmr = getPlayerMatchModeMmr(user, options.mode);
     return !enforceMmr || isMmrInRecruitingRange(playerMmr, targetMmr, true, rangeMode);
   });
   const missingCount = Math.max(0, capacity - eligiblePlayerIds.length);
