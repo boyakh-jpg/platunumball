@@ -1119,6 +1119,8 @@ test("season rival challenge closes the created room when the B-team invite fail
   assert.match(season, /challengeTeamAId=\$\{encodeURIComponent\(myTeam\.id\)\}&challengeTeamBId=\$\{encodeURIComponent\(opponentTeam\.id\)\}/u);
   assert.match(createController, /challengeSearchParams\.get\("challengeTeamAId"\)/u);
   assert.match(createController, /challengeSearchParams\.get\("challengeTeamBId"\)/u);
+  assert.match(createEffects, /if \(!hasTeamChallenge\) return;[\s\S]{0,240}visibility: "private",[\s\S]{0,180}teamAId: challengeTeamAId,[\s\S]{0,80}teamBId: challengeTeamBId/u);
+  assert.match(createEffects, /if \(isTeamRoom && !isTournamentRoom\) \{\s*if \(hasTeamChallenge\) return;/u);
   assert.match(createEffects, /if \(canCreateTeamRoom \|\| hasTeamChallenge\) return;/u);
   assert.match(createActions, /const result = await app\.actions\.setRecruitingRoomTeam\(postId, "teamB", presetTeamBId, "시즌 라이벌 매치업에서 보낸 팀 초대입니다\."\)/u);
   assert.match(createActions, /if \(!result \|\| result\?\.ok === false\) \{[\s\S]{0,240}closeRecruitingPost\(postId, "B팀 초대 실패로 생성 취소"\)[\s\S]{0,240}return;/u);
