@@ -1,6 +1,6 @@
 export function createCreateMatchActions(context) {
   const {
-    RECORD_TYPES, Star, ageRestrictionOption, app, appendSoloRecordUser, challengeTeamAId, challengeTeamBId, currentRegion, draft,
+    RECORD_TYPES, Star, ageRestrictionOption, app, appendSoloRecordUser, challengeTeamAId, challengeTeamBId, currentRegion, draft, hasTeamChallenge,
     favoriteRefereeIds, favoriteTeamIds, formatCreateSaveError, getAvailableTeamPlayerIds, getCourtAddress, getCourtHashtag, getCourtLayoutLabel,
     getCourtSurfaceLabel, getMatchCreationPolicyPayload, getMatchRulesPayload, getOpponentTeam, getPersonalRecordDraftPayload, getRepresentativePlayerIds, getScopedMatchCreationPolicyPayload,
     getTeamEligibility, getTeamHashtag, getTournamentTeamEligibility, getUserHashtag, isFavoriteCourt, isInstantRoom, isMatchRecordRoom,
@@ -10,8 +10,7 @@ export function createCreateMatchActions(context) {
     setRefereeQuery, setSelectedTournamentTeamProfiles, setSelectedTournamentRefereeProfiles, setSubmitFeedback, setSubmitting, sideCapacity, sortedTeams, submitDisabled,
     submitDisabledReason, submitting, submittingRef, update,
   } = context;
-
-const selectTeamA = (teamAId) => {
+  const selectTeamA = (teamAId) => {
     if (!myTeams.some((team) => team.id === teamAId)) return;
     const team = app.state.teams.find((item) => item.id === teamAId);
     const teamEligibility = getTeamEligibility(team, team?.mmr);
@@ -378,7 +377,8 @@ const selectTeamA = (teamAId) => {
       return;
     }
     const creationPolicyPayload = getMatchCreationPolicyPayload(draft);
-    const createAsTeam = creationPolicyPayload.hostJoinMode === "team" && creationPolicyPayload.teamOnly;
+    const effectiveVisibility = hasTeamChallenge ? "private" : draft.visibility;
+    const createAsTeam = hasTeamChallenge || creationPolicyPayload.hostJoinMode === "team" && creationPolicyPayload.teamOnly;
     const remakeInvitationContext = remakeDraft
       ? [
           "취소된 방을 같은 설정으로 다시 만들었습니다.",
@@ -388,9 +388,9 @@ const selectTeamA = (teamAId) => {
     const postId = await app.actions.createRecruitingPost({
       ...creationPolicyPayload,
       ...(remakeDraft ? { remakeSourceId, remakeSourceMatchId } : {}),
-      visibility: draft.visibility,
+      visibility: effectiveVisibility,
       title: draft.title,
-      hostJoinMode: creationPolicyPayload.hostJoinMode,
+      hostJoinMode: createAsTeam ? "team" : creationPolicyPayload.hostJoinMode,
       teamOnly: createAsTeam,
       teamId: "",
       playerIds: [],
@@ -437,7 +437,7 @@ const selectTeamA = (teamAId) => {
         creationPolicyPayload.venuePaymentType === "paid_reserved" ? `구장 예약: ${creationPolicyPayload.venueFee ? `${creationPolicyPayload.venueFee}원` : "예약 있음"}` : "",
         remakeDraft && draft.remakeCancellationReason ? `이전 방 취소 사유: ${draft.remakeCancellationReason}` : "",
         draft.memo,
-        isPublicRoom ? "공개방: 빈 슬롯은 방에서 공개 모집합니다." : "비공개방: 초대/선택된 인원만 참여합니다.",
+        effectiveVisibility === "public" ? "공개방: 빈 슬롯은 방에서 공개 모집합니다." : "비공개방: 초대/선택된 인원만 참여합니다.",
       ].filter(Boolean).join("\n"),
     });
     if (typeof postId === "string" && postId) {
@@ -469,7 +469,7 @@ const selectTeamA = (teamAId) => {
             if (!result || result?.ok === false) { await app.actions.closeRecruitingPost(postId, "선수 재초대 실패로 생성 취소"); setSubmitFeedback(formatCreateSaveError(result, "이전 참가자를 다시 초대하지 못해 생성한 방을 종료했습니다.")); return; }
           }
         }
-      } else if (!remakeDraft && createAsTeam && presetTeamAReady && draft.visibility === "private" && presetTeamBId) {
+      } else if (!remakeDraft && createAsTeam && presetTeamAReady && effectiveVisibility === "private" && presetTeamBId) {
         const result = await app.actions.setRecruitingRoomTeam(postId, "teamB", presetTeamBId, "시즌 라이벌 매치업에서 보낸 팀 초대입니다.");
         if (!result || result?.ok === false) {
           await app.actions.closeRecruitingPost(postId, "B팀 초대 실패로 생성 취소");

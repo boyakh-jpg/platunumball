@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { clampNumericStepperValue } from "../src/lib/numericStepper.js";
+import { clampNumericStepperValue, isDirectNumericEntryPointer } from "../src/lib/numericStepper.js";
 import {
   MATCH_ROOM_SOURCE_PATHS,
   RECRUITING_PAGE_SOURCE_PATHS,
@@ -13,6 +13,11 @@ test("공용 숫자 스테퍼가 범위와 정수 정책을 적용한다", () =>
   assert.equal(clampNumericStepperValue(12, 0, 10), 10);
   assert.equal(clampNumericStepperValue(3.8, 0, 10), 3);
   assert.equal(clampNumericStepperValue(3.8, 0, 10, false), 3.8);
+});
+
+test("숫자 본문 클릭과 native 증감 영역을 구분한다", () => {
+  assert.equal(isDirectNumericEntryPointer(150, 200), true);
+  assert.equal(isDirectNumericEntryPointer(185, 200), false);
 });
 
 test("기록 화면은 공용 NumericStepper만 사용한다", async () => {

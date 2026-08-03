@@ -88,6 +88,7 @@ import {
   getMmrSpread,
   getOpponentTeam,
   getRepresentativePlayerIds,
+  getTeamChallengeEligibilityPolicy,
   includesQuery,
   isDefaultCreateTitle,
   isDefaultTournamentTitle,
@@ -125,7 +126,7 @@ export const CREATE_MATCH_DEPENDENCIES = {
   normalizeRecruitingMmrRangeMode, postServerAction, getDefaultTeamPlayerIds, getPartyPlayerIds, getPartyReserveIds, getRequiredTournamentRefereeCount,
   getTournamentRefereePoolValidation, DEFAULT_MATCH_MEMO, MATCH_MODE_IDS, formatCreateSaveError, getAgeRestrictionOption, getAvailableTeamPlayerIds,
   getCreateStepFromSearch, getCreateStepSearch, getDefaultCreateMode, getDefaultCreateTitle, getDefaultMmrLimitMode, getDefaultTournamentTitle,
-  getMatchModeOrDefault, getMatchRecordMemo, getMmrSpread, getOpponentTeam, getRepresentativePlayerIds, includesQuery,
+  getMatchModeOrDefault, getMatchRecordMemo, getMmrSpread, getOpponentTeam, getRepresentativePlayerIds, getTeamChallengeEligibilityPolicy, includesQuery,
   isDefaultCreateTitle, isDefaultTournamentTitle, isHashtagQuery, makeEmptySoloStats, mmrLimitOptions, toggleAgeRestriction,
   tournamentFormatOptions, tournamentMmrPolicyOptions, tournamentScheduleOptions, SOLO_RECORD_MODES,
 };

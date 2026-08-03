@@ -10,13 +10,13 @@ export function useCreateMatchBaseController({
   syncStepToUrl = true,
 }) {
   const {
-    COURT_MAP_SEARCH_LIMIT, COURT_MAP_SEARCH_PURPOSE, DEFAULT_MATCH_MEMO, DEFAULT_TOURNAMENT_MMR_GAP, DIRECTORY_PICKER_PAGE_LIMIT, DISPUTE_WINDOW_MINUTES, MAX_PARTY_RESERVES,
+    COURT_MAP_SEARCH_LIMIT, COURT_MAP_SEARCH_PURPOSE, DEFAULT_MATCH_MEMO, DEFAULT_TOURNAMENT_MMR_GAP, DIRECTORY_PICKER_PAGE_LIMIT, DISPUTE_WINDOW_MINUTES, MATCH_MODES, MAX_PARTY_RESERVES,
     RECORD_TYPES, REGIONS, ROOM_SCHEDULE_MAX_DAYS, SCHEDULE_MAX_DAYS, addDateDays, getAgeGroupForUser, getAgeRestrictionOption,
     getCanonicalRegion, getCourtPickerResults, getCourtRecommendationScore, getCreateStepFromSearch, getCreateStepSearch, getDefaultCreateMode, getDefaultCreateTitle,
     getDefaultMatchCreationPolicy, getDefaultMmrLimitMode, getDefaultTeamPlayerIds, getLocalDateInputValue, getMatchCreationSteps, getMatchCreationValidation, getMatchCreationWizardType,
     getMatchFormationMode, getMatchModeChangePatch, getMmrSpread, getNextQueueSchedule, getOpponentTeam, getPartyPlayerIds, getPartyReserveIds,
     getPublicRoomMaxDateInput, getRecordComposition, getRecordEntryMode, getRecruitingSideCapacity, getRegisteredCourts, getRepresentativePlayerIds, getRepresentativeTeam,
-    getRoomKindFromDraft, getRoomRemakeDraft, getSoloRecordRosterError, getSoloRecordSelectedIdentitySet, getTeamEventEligibility, getTeamHashtag, includesQuery,
+    getRoomKindFromDraft, getRoomRemakeDraft, getSoloRecordRosterError, getSoloRecordSelectedIdentitySet, getTeamChallengeEligibilityPolicy, getTeamEventEligibility, getTeamHashtag, includesQuery,
     inferRegionSelection, isCourtInRegion, isDefaultCreateTitle, isDefaultTournamentTitle, isHashtagQuery, isSameRegion, makeEmptySoloStats,
     mergeCourtSearchCourts, normalizeRecruitingMmrRangeMode, postServerAction, useCallback, useEffect, useLocation, useMemo,
     useNavigate, useRef, useState,
@@ -308,6 +308,21 @@ const navigate = useNavigate();
 
   const selectedTeamA = app.state.teams.find((team) => team.id === draft.teamAId);
   const selectedTeamB = app.state.teams.find((team) => team.id === draft.teamBId);
+  const challengePolicyByMode = useMemo(() => new Map(
+    MATCH_MODES
+      .filter((mode) => mode.size > 1)
+      .map((mode) => [mode.id, getTeamChallengeEligibilityPolicy({
+        teamA: selectedTeamA,
+        teamB: selectedTeamB,
+        users: app.state.users,
+        capacity: mode.size,
+        currentUserId: app.currentUser.id,
+        ranked: draft.ranked,
+      })])
+      .filter(([, policy]) => Boolean(policy)),
+  ), [app.currentUser.id, app.state.users, draft.ranked, selectedTeamA, selectedTeamB]);
+  const challengeModeIds = useMemo(() => new Set(challengePolicyByMode.keys()), [challengePolicyByMode]);
+  const challengeEligibilityPolicy = challengePolicyByMode.get(draft.mode) ?? null;
   const isSoloRecord = draft.recordType === RECORD_TYPES.personalRecord;
   const isMatchRecordRoom = draft.recordType === RECORD_TYPES.matchRecord;
   const recordEntryMode = getRecordEntryMode(draft);
@@ -461,7 +476,7 @@ const navigate = useNavigate();
     setSoloTeamBUserQuery, teamRegion, setTeamRegion, courtRegion, setCourtRegion, teamSelectableRegions, courtMapRegion,
     defaultAgeRestriction, favoriteTeamIds, favoriteRefereeIds, isFavoriteTeam, isFavoriteCourt, defaultSchedule, draft,
     setDraft, submitting, setSubmitting, submittingRef, submitFeedback, setSubmitFeedback, wizardStep, setWizardStep,
-    sortedTeams, sortedCourts, favoriteTeams, favoriteCourts, selectedTeamA, selectedTeamB, isSoloRecord,
+    sortedTeams, sortedCourts, favoriteTeams, favoriteCourts, selectedTeamA, selectedTeamB, challengePolicyByMode, challengeModeIds, challengeEligibilityPolicy, isSoloRecord,
     isMatchRecordRoom, recordEntryMode, recordComposition, soloRosterError, soloRecordSelectedIdentitySet, isPublicRoom, isTournamentRoom,
     isPickupMatch, isTeamRoom, isStandardCreateWizard, creationWizardType, creationWizardSteps, finalWizardStep, wizardStepIds,
     goToWizardStep, matchCreationValidation, matchCreationPolicy, currentRoomKind, sideCapacity, ageRestrictionOption, getTeamEligibility,

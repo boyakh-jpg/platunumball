@@ -5,7 +5,7 @@ export function CreateMatchIntentSection({ context }) {
     defaultTeamA, defaultTournamentTeamA, defaultTournamentTeamB, draft, getDefaultCreateTitle, getDefaultTeamPlayerIds, getDefaultTournamentTitle,
     getMatchConfigurationChangePatch, getMatchFormationMode, getMatchIntentChangePatch, getMatchModeChangePatch, getMatchModeOrDefault, getMatchRecordMemo, getRecordComposition,
     getRecordEntryMode, getRepresentativePlayerIds, getRoomKindLabel, getSeoulTimeInputValue, goToWizardStep, isDefaultCreateTitle, isDefaultTournamentTitle,
-    isMatchRecordRoom, isPublicRoom, isRecordCreateIntent, isSoloRecord, isStandardCreateWizard, isTournamentRoom, practiceMode,
+    hasTeamChallenge, isMatchRecordRoom, isPublicRoom, isRecordCreateIntent, isSoloRecord, isStandardCreateWizard, isTournamentRoom, practiceMode,
     recordComposition, recordEntryMode, selectedTeamA, selectedTeamB, setTeamRegion, today, update,
     wizardStep,
   } = context;
@@ -62,7 +62,7 @@ export function CreateMatchIntentSection({ context }) {
                 <button
                   type="button"
                   className={draft.recordType === RECORD_TYPES.match && draft.visibility === "public" ? "ui-choice-tile active" : "ui-choice-tile"}
-                  disabled={practiceMode}
+                  disabled={practiceMode || hasTeamChallenge}
                   onClick={() => {
                     const team = defaultTeamA ?? selectedTeamA;
                     const nextMode = getMatchModeOrDefault(draft.mode, defaultMode);
@@ -93,7 +93,7 @@ export function CreateMatchIntentSection({ context }) {
                     <em>매칭 목록에서 선수·팀을 모집합니다.</em>
                   </span>
                 </button>
-                <button type="button" className={isTournamentRoom ? "ui-choice-tile active" : "ui-choice-tile"} disabled={practiceMode} onClick={() => {
+                <button type="button" className={isTournamentRoom ? "ui-choice-tile active" : "ui-choice-tile"} disabled={practiceMode || hasTeamChallenge} onClick={() => {
                   setTeamRegion("전체");
                   const mode = getMatchModeOrDefault(draft.mode, defaultMode);
                   update({
@@ -199,11 +199,13 @@ export function CreateMatchIntentSection({ context }) {
             )}
           </div>
           {practiceMode ? <p className="form-helper">연습에서는 비공개 경기방만 사용합니다. 경기 목적·팀 구성·시계 규칙은 직접 바꿔볼 수 있습니다.</p> : null}
+          {hasTeamChallenge ? <p className="form-helper">라이벌 매치는 비공개 팀전으로 고정됩니다.</p> : null}
           {isStandardCreateWizard ? (
             <div className="match-intent-preset-section">
               <MatchIntentPresetSelector
                 matchPurpose={draft.matchPurpose}
                 formationMode={draft.formationMode}
+                formationLocked={hasTeamChallenge}
                 onPurposeSelect={(matchPurpose) => {
                   const patch = getMatchConfigurationChangePatch(draft, { matchPurpose });
                   update({

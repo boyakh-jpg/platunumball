@@ -4,6 +4,7 @@ export default function MmrRangeSelector({
   value,
   onChange,
   ariaLabel = "정규전 허용구간",
+  disabled = false,
 }) {
   return (
     <div className="ui-segmented-control segmented-control compact-segments" role="radiogroup" aria-label={ariaLabel}>
@@ -14,6 +15,7 @@ export default function MmrRangeSelector({
           className={value === mode ? "active" : ""}
           role="radio"
           aria-checked={value === mode}
+          disabled={disabled}
           onClick={() => onChange(mode)}
         >
           {policy.label}

@@ -90,6 +90,7 @@ export default function RuleSelector({ draft, onChange }) {
       <label>
         목표 점수
         <InlineValidatedInput
+          clearOnDirectEntry
           type="number"
           min="7"
           max="99"
@@ -109,6 +110,7 @@ export default function RuleSelector({ draft, onChange }) {
       <label>
         {periodUnitLabel}
         <InlineValidatedInput
+          clearOnDirectEntry
           type="number"
           min="1"
           max={getMatchPeriodMinutesMax(rules.periodCount)}
@@ -130,6 +132,7 @@ export default function RuleSelector({ draft, onChange }) {
         <label>
           마지막 구간 스톱 (분)
           <InlineValidatedInput
+            clearOnDirectEntry
             type="number"
             min="0"
             max={rules.periodMinutes}
@@ -144,6 +147,7 @@ export default function RuleSelector({ draft, onChange }) {
         <label>
           쿼터 사이 휴식 (분)
           <InlineValidatedInput
+            clearOnDirectEntry
             type="number"
             min="0"
             max="30"
@@ -158,6 +162,7 @@ export default function RuleSelector({ draft, onChange }) {
         <label>
           하프타임 (분)
           <InlineValidatedInput
+            clearOnDirectEntry
             type="number"
             min="0"
             max="30"
@@ -171,6 +176,7 @@ export default function RuleSelector({ draft, onChange }) {
       <label>
         연장 1회 (분)
         <InlineValidatedInput
+          clearOnDirectEntry
           type="number"
           min="1"
           max="20"

@@ -3,13 +3,13 @@ import { useCreateMatchValidationEffects } from "./useCreateMatchValidationEffec
 export function useCreateMatchValidationController(context) {
   const {
     DEFAULT_RATING, DEFAULT_TOURNAMENT_MMR_GAP, MATCH_MODE_IDS, MMR_RANGE_POLICIES, PLAYER_STAT_FIELDS, RECORD_TYPES, REFEREE_TRUST_MIN,
-    activePlayerIds, ageRestrictionOption, app, canCreateTeamRoom, currentRegion, defaultAgeRestriction, defaultCourt,
+    activePlayerIds, ageRestrictionOption, app, canCreateTeamRoom, challengeEligibilityPolicy, challengeModeIds, currentRegion, defaultAgeRestriction, defaultCourt,
     defaultHostJoinMode, defaultMmrLimitMode, defaultMode, defaultTournamentTeamB, draft, favoriteRefereeIds, favoriteTeamIds,
     getAgeGroupForUser, getAvailableTeamPlayerIds, getCourtPlayWarning, getDefaultCreateTitle, getHostTrustRequirement, getMatchConfigurationChangePatch, getMatchIntentChangePatch,
     getMatchModeChangePatch, getMatchModeOrDefault, getMatchRecordMemo, getModeSize, getPublicRoomTimingStatus, getRecordCreationWindowStatus, getRecruitingTierRange,
     getRepresentativePlayerIds, getRequiredTournamentRefereeCount, getSelectableTeamPlayerIds, getSeoulTimeInputValue, getSoloRecordPlayerRef, getSoloRecordRosterLines, getSoloRecordUserIdentity,
     getSoloRecordUserLine, getTeamEligibility, getTeamHashtag, getTournamentRefereePoolValidation, getUserHashtag, includesQuery, ineligibleTournamentTeams,
-    inferRegionSelection, isDefaultCreateTitle, isDefaultTournamentTitle, isEligibleReferee, isInstantRoom, isMatchRecordRoom, isMmrInRecruitingRange, isPickupMatch,
+    hasTeamChallenge, inferRegionSelection, isDefaultCreateTitle, isDefaultTournamentTitle, isEligibleReferee, isInstantRoom, isMatchRecordRoom, isMmrInRecruitingRange, isPickupMatch,
     isPublicRoom, isRecordCreateIntent, isSameRegion, isSoloRecord, isStandardCreateWizard, isTeamRoom, isTournamentRoom,
     matchCreationValidation, maxScheduleDate, minSoloRecordDate, myTeams, normalizeSoloRecordRosterInput, opponentTeamQuery, ownerReservePlayerIds,
     ownerSidePlayerIds, ownerSidePlayerKey, publicPartyPlayerIds, recordComposition, recordEntryMode, refereeQuery, registeredCourts,
@@ -267,14 +267,19 @@ export function useCreateMatchValidationController(context) {
   const meetingPointInvalid = !isSoloRecord && !isMatchRecordRoom && draft.meetingPoint.trim().length < 2;
   const matchRuleInvalid = !isSoloRecord && !matchCreationValidation.ruleValidation.valid;
   const matchCreationPolicyInvalid = isStandardCreateWizard && matchCreationValidation.policyErrors.length > 0;
-  const submitDisabled = courtRequiredBlocked || meetingPointInvalid || matchRuleInvalid || matchCreationPolicyInvalid || (isSoloRecord ? soloRecordInvalid : !scheduleAllowed || !tournamentEndAllowed || ageRestrictionBlocked || hostTrustBlocked || (isMatchRecordRoom
+  const challengeTeamInvalid = hasTeamChallenge && (!selectedTeamA || !selectedTeamB || !challengeModeIds.has(draft.mode) || !challengeEligibilityPolicy);
+  const submitDisabled = challengeTeamInvalid || courtRequiredBlocked || meetingPointInvalid || matchRuleInvalid || matchCreationPolicyInvalid || (isSoloRecord ? soloRecordInvalid : !scheduleAllowed || !tournamentEndAllowed || ageRestrictionBlocked || hostTrustBlocked || (isMatchRecordRoom
     ? matchRecordInvalid
     : isTournamentRoom
     ? tournamentInvalid
     : isPublicRoom
       ? publicTeamInvalid
       : teamTierBlocked || privateTeamInvalid));
-  const submitDisabledReason = courtRequiredBlocked
+  const submitDisabledReason = challengeTeamInvalid
+    ? !selectedTeamA || !selectedTeamB
+      ? "라이벌 팀 명단을 불러오는 중입니다."
+      : "양 팀이 출전 인원을 채울 수 있는 경기 인원을 선택해 주세요."
+    : courtRequiredBlocked
     ? "등록된 구장을 선택해야 생성할 수 있습니다."
     : meetingPointInvalid
       ? "실제로 만날 출입구·층·코트 번호를 2자 이상 적어 주세요."
@@ -418,7 +423,7 @@ export function useCreateMatchValidationController(context) {
     scheduledTimingStatus, scheduledTimingAllowed, recordCreationWindow, scheduleAllowed, tournamentEndAllowed, selectedCourt, selectedTournamentCourts,
     courtRequiredBlocked, privateTeamInvalid, matchRecordInvalid, publicTeamInvalid, tournamentMmrBlocked, tournamentOrganizerEligible, requiredTournamentRefereeCount,
     tournamentRefereePoolValidation, tournamentInvalid, publicTeamInvalidReason, privateTeamInvalidReason, matchRecordInvalidReason, tournamentInvalidReason, soloStatsInvalid,
-    soloScoreForNumber, soloScoreAgainstNumber, soloRecordInvalid, meetingPointInvalid, matchRuleInvalid, matchCreationPolicyInvalid, submitDisabled,
+    soloScoreForNumber, soloScoreAgainstNumber, soloRecordInvalid, meetingPointInvalid, matchRuleInvalid, matchCreationPolicyInvalid, challengeTeamInvalid, submitDisabled,
     submitDisabledReason, courtSummary, courtPlayWarning, selectCourt, clearSelectedCourt, removeTournamentCourt, update,
     updateSoloStat, normalizeSoloRosterSide, appendSoloRecordUser,
   };

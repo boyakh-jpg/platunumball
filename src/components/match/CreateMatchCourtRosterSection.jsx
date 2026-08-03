@@ -1,3 +1,5 @@
+import InlineValidatedInput from "../common/InlineValidatedInput.jsx";
+
 export function CreateMatchCourtRosterSection({ context }) {
   const {
     AGE_GROUPS, Badge, Button, Card, ClipboardList, CourtDetailModal, CourtMapPicker,
@@ -203,7 +205,7 @@ export function CreateMatchCourtRosterSection({ context }) {
                       value={(draft.soloStats ?? {})[field.id] ?? 0}
                       max={999}
                       label={field.id === "points" ? "내 득점" : field.label}
-                      clearZeroOnFocus
+                      clearOnFocus
                       onChange={(value) => updateSoloStat(field.id, value)}
                     />
                   </label>
@@ -228,20 +230,20 @@ export function CreateMatchCourtRosterSection({ context }) {
                   <div className="mmr-range-summary-row">
                     <div>
                       <span>경쟁전 허용구간</span>
-                      <strong>{isTournamentRoom ? `${mmrRangePolicy.label} · 팀별 MMR 기준` : isTeamRoom ? `${mmrRangePolicy.label} · A팀 선택 후 확정` : roomTierRange.detail}</strong>
-                      <em>{isTournamentRoom ? "각 팀의 조건 충족 선수 수를 검사" : isTeamRoom ? "방 모달에서 선택한 A팀 MMR 기준" : `${app.currentUser.name} 기준`} · {mmrRangePolicy.detail}</em>
+                      <strong>{hasTeamChallenge ? `${mmrRangePolicy.label} · 양 팀 출전 가능 인원 자동 계산` : isTournamentRoom ? `${mmrRangePolicy.label} · 팀별 MMR 기준` : isTeamRoom ? `${mmrRangePolicy.label} · A팀 선택 후 확정` : roomTierRange.detail}</strong>
+                      <em>{hasTeamChallenge ? "필요 인원을 채우는 최소 범위로 고정" : isTournamentRoom ? "각 팀의 조건 충족 선수 수를 검사" : isTeamRoom ? "방 모달에서 선택한 A팀 MMR 기준" : `${app.currentUser.name} 기준`} · {mmrRangePolicy.detail}</em>
                     </div>
                     <Badge tone={teamTierBlocked || teamTierWarned ? "orange" : "green"}>{teamTierBlocked ? "차단" : teamTierWarned ? "경고" : "허용"}</Badge>
                   </div>
-                  <MmrRangeSelector value={draft.mmrRangeMode} onChange={(mmrRangeMode) => update({ mmrRangeMode })} />
+                  <MmrRangeSelector value={draft.mmrRangeMode} disabled={hasTeamChallenge} onChange={(mmrRangeMode) => update({ mmrRangeMode })} />
                 </div>
               ) : null}
               <div className={ageRestrictionBlocked ? "mmr-range-mode-control create-eligibility-control ui-design-borderless-surface tier-range-note-warning" : "mmr-range-mode-control create-eligibility-control ui-design-borderless-surface"}>
                 <div className="mmr-range-summary-row">
                   <div>
                     <span>연령 제한</span>
-                    <strong>{ageRestrictionOption.label}</strong>
-                    <em>{ageRestrictionOption.desc}</em>
+                    <strong>{ageRestrictionOption.label}{hasTeamChallenge ? " · 자동" : ""}</strong>
+                    <em>{hasTeamChallenge ? "양 팀이 출전 인원을 채우는 최소 연령 범위" : ageRestrictionOption.desc}</em>
                   </div>
                   <Badge tone={ageRestrictionBlocked ? "orange" : "green"}>{ageRestrictionBlocked ? "차단" : "허용"}</Badge>
                 </div>
@@ -251,6 +253,7 @@ export function CreateMatchCourtRosterSection({ context }) {
                       key={option.id}
                       type="button"
                       className={ageRestrictionOption.allowedGroups.includes(option.id) ? "active" : ""}
+                      disabled={hasTeamChallenge}
                       onClick={() => update({ ageRestriction: toggleAgeRestriction(draft.ageRestriction, option.id) })}
                     >
                       {option.label}
@@ -271,7 +274,7 @@ export function CreateMatchCourtRosterSection({ context }) {
               {isTournamentRoom ? (
                 <label>
                   허용 MMR 차이
-                  <input type="number" min="0" step="10" value={draft.tournamentMaxMmrGap} onChange={(event) => update({ tournamentMaxMmrGap: event.target.value })} />
+                  <InlineValidatedInput clearOnDirectEntry type="number" min="0" step="10" value={draft.tournamentMaxMmrGap} onChange={(event) => update({ tournamentMaxMmrGap: event.target.value })} />
                 </label>
               ) : null}
               {isTournamentRoom ? (

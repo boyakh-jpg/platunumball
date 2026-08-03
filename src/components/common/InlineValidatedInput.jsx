@@ -1,9 +1,11 @@
 import { useId } from "react";
+import { isDirectNumericEntryPointer } from "../../lib/numericStepper.js";
 
 export default function InlineValidatedInput({
   message = "",
   wrapperClassName = "",
   className = "",
+  clearOnDirectEntry = false,
   ...inputProps
 }) {
   const generatedId = useId();
@@ -17,6 +19,13 @@ export default function InlineValidatedInput({
         className={className}
         aria-describedby={describedBy}
         aria-invalid={message ? "true" : undefined}
+        onPointerDown={(event) => {
+          inputProps.onPointerDown?.(event);
+          if (!clearOnDirectEntry || inputProps.type !== "number" || inputProps.disabled) return;
+          if (!isDirectNumericEntryPointer(event.clientX, event.currentTarget.getBoundingClientRect().right)) return;
+          event.currentTarget.value = "";
+          inputProps.onChange?.(event);
+        }}
       />
       {message ? (
         <span id={messageId} className="inline-validated-input-message" aria-live="polite">

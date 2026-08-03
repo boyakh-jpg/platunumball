@@ -3,7 +3,7 @@ import { CreateMatchRefereePicker } from "./CreateMatchRefereePicker.jsx";
 export function CreateMatchDetailsSection({ context }) {
   const {
     Card, MATCH_MODES, MatchRosterPolicyFields, NumericStepper, SOLO_RECORD_MODES,
-    SearchPicker, app, canCreateTeamRoom, draft,
+    SearchPicker, app, canCreateTeamRoom, challengeModeIds, draft, hasTeamChallenge,
     getDefaultCreateTitle, getDefaultTournamentTitle, getMatchFormationMode, getMatchModeChangePatch, getSoloRecordUserSearchText, isDefaultCreateTitle, isDefaultTournamentTitle,
     isInstantRoom, isMatchRecordRoom, isPickupMatch, isPublicRoom, isSoloRecord, isStandardCreateWizard, isTournamentRoom,
     maxScheduleDate, minSoloRecordDate, modeManuallyChangedRef, normalizeSoloRosterSide, practiceMode, recordComposition, recordEntryMode,
@@ -32,6 +32,7 @@ export function CreateMatchDetailsSection({ context }) {
                 참가 방식
                 <select
                   value={draft.hostJoinMode}
+                  disabled={hasTeamChallenge}
                   onChange={(event) => {
                     const hostJoinMode = isPickupMatch || (event.target.value === "team" && !canCreateTeamRoom) ? "player" : event.target.value;
                     const opponentLeaderId = "";
@@ -85,6 +86,7 @@ export function CreateMatchDetailsSection({ context }) {
               <select value={draft.mode} onChange={(event) => {
                 modeManuallyChangedRef.current = true;
                 const mode = event.target.value;
+                if (hasTeamChallenge && !challengeModeIds.has(mode)) return;
                 if (isTournamentRoom) {
                   update({
                     ...getMatchModeChangePatch(draft, mode),
@@ -111,15 +113,15 @@ export function CreateMatchDetailsSection({ context }) {
                   });
                   return;
                 }
-                const hostJoinMode = getMatchFormationMode(draft) === "pickup" || mode === "1v1" || !canCreateTeamRoom ? "player" : draft.hostJoinMode;
+                const hostJoinMode = hasTeamChallenge ? "team" : getMatchFormationMode(draft) === "pickup" || mode === "1v1" || !canCreateTeamRoom ? "player" : draft.hostJoinMode;
                 const nextIsTeamRoom = !isTournamentRoom && hostJoinMode === "team";
                 const opponentLeaderId = "";
                 update({
                   ...getMatchModeChangePatch(draft, mode),
                   hostJoinMode,
                   teamOnly: nextIsTeamRoom,
-                  teamAId: undefined,
-                  teamBId: undefined,
+                  teamAId: hasTeamChallenge ? draft.teamAId : undefined,
+                  teamBId: hasTeamChallenge ? draft.teamBId : undefined,
                   title: isDefaultCreateTitle(draft.title) ? getDefaultCreateTitle(mode, draft.matchIntent) : draft.title,
                   ...(nextIsTeamRoom ? {
                     playerIds: [],
@@ -137,7 +139,7 @@ export function CreateMatchDetailsSection({ context }) {
                 });
               }}>
                 {(isSoloRecord ? SOLO_RECORD_MODES : MATCH_MODES).map((mode) => (
-                  <option key={mode.id} value={mode.id}>
+                  <option key={mode.id} value={mode.id} disabled={hasTeamChallenge && !challengeModeIds.has(mode.id)}>
                     {mode.label}
                   </option>
                 ))}
@@ -168,7 +170,7 @@ export function CreateMatchDetailsSection({ context }) {
                     value={draft.soloScoreFor}
                     max={999}
                     label="우리팀 점수"
-                    clearZeroOnFocus
+                    clearOnFocus
                     onChange={(value) => update({ soloScoreFor: value })}
                   />
                 </label>
@@ -178,7 +180,7 @@ export function CreateMatchDetailsSection({ context }) {
                     value={draft.soloScoreAgainst}
                     max={999}
                     label="상대 점수"
-                    clearZeroOnFocus
+                    clearOnFocus
                     onChange={(value) => update({ soloScoreAgainst: value })}
                   />
                 </label>

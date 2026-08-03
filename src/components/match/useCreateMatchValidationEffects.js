@@ -38,6 +38,8 @@ export function useCreateMatchValidationEffects(context, { refereeCandidates }) 
     selectedTeamB,
     challengeTeamAId,
     challengeTeamBId,
+    challengePolicyByMode,
+    challengeModeIds,
     setDraft,
     setRefereeQuery,
     today,
@@ -46,15 +48,38 @@ export function useCreateMatchValidationEffects(context, { refereeCandidates }) 
 
   useEffect(() => {
     if (!hasTeamChallenge) return;
-    setDraft((current) => ({
-      ...current,
-      visibility: "private",
-      hostJoinMode: "team",
-      teamOnly: true,
-      teamAId: challengeTeamAId,
-      teamBId: challengeTeamBId,
-    }));
-  }, [challengeTeamAId, challengeTeamBId, hasTeamChallenge]);
+    setDraft((current) => {
+      const mode = challengeModeIds.has(current.mode)
+        ? current.mode
+        : [...challengeModeIds].sort((a, b) => Number.parseInt(b, 10) - Number.parseInt(a, 10))[0] ?? current.mode;
+      const eligibilityPolicy = challengePolicyByMode.get(mode);
+      const next = {
+        ...current,
+        ...(mode !== current.mode ? getMatchModeChangePatch(current, mode) : {}),
+        visibility: "private",
+        hostJoinMode: "team",
+        teamOnly: true,
+        formationMode: "prearranged",
+        matchIntent: current.matchPurpose === "friendly" ? "friendly" : "standard_competitive",
+        teamAId: challengeTeamAId,
+        teamBId: challengeTeamBId,
+        ...(eligibilityPolicy ? {
+          mmrRangeMode: eligibilityPolicy.mmrRangeMode,
+          mmrLimitMode: eligibilityPolicy.mmrLimitMode,
+          ageRestriction: eligibilityPolicy.ageRestriction,
+        } : {}),
+        title: mode !== current.mode && isDefaultCreateTitle(current.title)
+          ? getDefaultCreateTitle(mode, current.matchIntent)
+          : current.title,
+      };
+      return Object.keys(next).every((key) => next[key] === current[key]) ? current : next;
+    });
+  }, [
+    challengeModeIds, challengePolicyByMode, challengeTeamAId, challengeTeamBId, draft.ageRestriction,
+    draft.formationMode, draft.hostJoinMode, draft.matchIntent, draft.mmrLimitMode, draft.mmrRangeMode,
+    draft.mode, draft.teamAId, draft.teamBId, draft.teamOnly, draft.visibility, getDefaultCreateTitle,
+    getMatchModeChangePatch, hasTeamChallenge, isDefaultCreateTitle, setDraft,
+  ]);
 
   useEffect(() => {
     if (isRecordCreateIntent) {

@@ -5,7 +5,11 @@ import {
   isSameRegion,
 } from "./constants.js";
 import { AGE_GROUPS } from "./profileSetup.js";
-import { getSelectableTeamPlayerIds } from "./recruiting.js";
+import {
+  MMR_RANGE_POLICIES,
+  getSelectableTeamPlayerIds,
+  getTeamEventEligibility,
+} from "./recruiting.js";
 
 export const mmrLimitOptions = [
   { id: "off", label: "제한 없음" },
@@ -47,6 +51,45 @@ export const ageRestrictionOptions = [
 
 export function getAgeRestrictionOption(ageRestriction) {
   return ageRestrictionOptions.find((option) => option.id === ageRestriction) ?? ageRestrictionOptions[0];
+}
+
+export function getTeamChallengeEligibilityPolicy({
+  teamA,
+  teamB,
+  users = [],
+  capacity,
+  currentUserId = "",
+  ranked = true,
+}) {
+  if (!teamA?.id || !teamB?.id || teamA.id === teamB.id || Number(capacity) < 2) return null;
+  const targetMmr = Number(teamA.mmr ?? DEFAULT_RATING);
+  const mmrOptions = ranked
+    ? [...Object.keys(MMR_RANGE_POLICIES).map((mmrRangeMode, index) => ({ mmrRangeMode, mmrLimitMode: "block", cost: index })), { mmrRangeMode: "wide", mmrLimitMode: "off", cost: 3 }]
+    : [{ mmrRangeMode: "narrow", mmrLimitMode: "off", cost: 0 }];
+  const candidates = [];
+  for (const mmrOption of mmrOptions) {
+    for (const ageOption of ageRestrictionOptions) {
+      const options = {
+        capacity,
+        ranked,
+        ...mmrOption,
+        targetMmr,
+        allowedAgeGroups: ageOption.allowedGroups,
+      };
+      const teamAEligibility = getTeamEventEligibility(teamA, users, { ...options, requireCaptainEligible: false });
+      const teamBEligibility = getTeamEventEligibility(teamB, users, { ...options, requireCaptainEligible: true });
+      if (!teamAEligibility.allowed || !teamBEligibility.allowed || !teamAEligibility.eligiblePlayerIds.includes(currentUserId)) continue;
+      candidates.push({
+        ...mmrOption,
+        mmrCost: mmrOption.cost,
+        ageRestriction: ageOption.id,
+        teamAEligibility,
+        teamBEligibility,
+        cost: mmrOption.cost + ageOption.allowedGroups.length - 1,
+      });
+    }
+  }
+  return candidates.sort((a, b) => a.cost - b.cost || a.mmrCost - b.mmrCost || getAgeRestrictionOption(a.ageRestriction).allowedGroups.length - getAgeRestrictionOption(b.ageRestriction).allowedGroups.length)[0] ?? null;
 }
 
 function getAgeRestrictionFromGroups(groupIds = []) {

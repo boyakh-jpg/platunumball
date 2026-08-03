@@ -293,8 +293,7 @@ html[data-theme="light"] .theme-choice-card,
 html[data-theme="light"] .selector-panel,
 html[data-theme="light"] .team-search-selected,
 html[data-theme="light"] .team-search-popover,
-html[data-theme="light"] .tier-range-note,
-html[data-theme="light"] .mmr-range-mode-control {
+html[data-theme="light"] .tier-range-note {
   border-color: rgba(32, 56, 68, 0.15);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(247, 251, 248, 0.72)),

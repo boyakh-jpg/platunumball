@@ -67,8 +67,36 @@ import {
   isIndividualOnlyRecruitingRoom,
   normalizeRecruitingMmrRangeMode,
 } from "../src/lib/recruiting.js";
+import { getTeamChallengeEligibilityPolicy } from "../src/lib/createMatchPage.js";
 
 configureServerRatingAuthority(SERVER_RATING_AUTHORITY);
+
+test("라이벌 매치는 출전 인원을 채우는 최소 MMR·연령 범위를 고른다", () => {
+  const makeTeam = (id, prefix, mmrs) => ({
+    id,
+    mmr: 1200,
+    members: mmrs.map((_, index) => ({ userId: `${prefix}${index + 1}`, role: index === 0 ? "captain" : "member" })),
+  });
+  const makeUsers = (prefix, mmrs) => mmrs.map((mmr, index) => ({
+    id: `${prefix}${index + 1}`,
+    ageGroup: "open",
+    ratings: { integrated: mmr },
+  }));
+  const teamA = makeTeam("team-a", "a", [1200, 1300, 1400, 1600, 1700]);
+  const teamB = makeTeam("team-b", "b", [1200, 1300, 1400, 1600, 1700]);
+  const users = [...makeUsers("a", [1200, 1300, 1400, 1600, 1700]), ...makeUsers("b", [1200, 1300, 1400, 1600, 1700])];
+
+  const policy = getTeamChallengeEligibilityPolicy({ teamA, teamB, users, capacity: 3, currentUserId: "a1", ranked: true });
+  assert.equal(policy?.mmrRangeMode, "normal");
+  assert.equal(policy?.mmrLimitMode, "block");
+  assert.equal(policy?.ageRestriction, "open");
+
+  const narrowUsers = users.map((user) => ({ ...user, ratings: { integrated: user.id.endsWith("3") ? 1310 : 1200 } }));
+  assert.equal(getTeamChallengeEligibilityPolicy({ teamA, teamB, users: narrowUsers, capacity: 3, currentUserId: "a1", ranked: true })?.mmrRangeMode, "narrow");
+
+  const distantUsers = users.map((user) => ({ ...user, ratings: { integrated: user.id.endsWith("1") ? 1200 : 1800 } }));
+  assert.equal(getTeamChallengeEligibilityPolicy({ teamA, teamB, users: distantUsers, capacity: 3, currentUserId: "a1", ranked: true })?.mmrLimitMode, "off");
+});
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const readPageSourceGroup = (paths) => readSourceGroupSync(
@@ -1195,7 +1223,7 @@ test("CreateMatch persists bench capacity at top level and inside rules", () => 
   assert.match(source, /teamId:\s*""[\s\S]*opponentTeamId:\s*""/);
   assert.match(source, /presetTeamAId[\s\S]*setRecruitingRoomTeam\(postId, "teamA"/);
   assert.match(source, /if \(!result \|\| result\?\.ok === false\)[\s\S]*closeRecruitingPost\(postId, "A팀 선택 실패로 생성 취소"\)/);
-  assert.match(source, /else if \(!remakeDraft && createAsTeam && presetTeamAReady && draft\.visibility === "private" && presetTeamBId\)/);
+  assert.match(source, /else if \(!remakeDraft && createAsTeam && presetTeamAReady && effectiveVisibility === "private" && presetTeamBId\)/);
   assert.match(source, /if \(submittingRef\.current \|\| submitting\) return/);
   assert.match(source, /submittingRef\.current = true[\s\S]*finally \{[\s\S]*submittingRef\.current = false/);
   assert.match(source, /remakeDraft && draft\.remakeReinvite[\s\S]*const result = await app\.actions\.setRecruitingRoomTeam\(postId, "teamB"[\s\S]*B팀 재초대 실패로 생성 취소/);
