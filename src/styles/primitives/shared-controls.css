@@ -97,8 +97,50 @@ input:is([type="date"], [type="time"], [type="datetime-local"], [type="month"]) 
   padding-block: 9px;
   line-height: 20px;
 }
+input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+select,
+.auth-card select,
+.home-search-box input {
+  width: 100%;
+  min-height: var(--ui-button-height);
+  padding: 10px 12px;
+  border: var(--ui-stroke-width) solid var(--ui-control-border);
+  border-radius: var(--ui-control-radius);
+  outline: none;
+  background: var(--ui-control-bg);
+  color: var(--rb-text);
+  box-shadow: none;
+  font-size: max(0.9rem, 16px);
+  touch-action: manipulation;
+}
 select {
   height: var(--ui-button-height);
+}
+select option,
+select optgroup {
+  background-color: #f8fbfd;
+  color: #13252d;
+}
+select option:disabled {
+  color: #8a98a3;
+}
+textarea {
+  width: 100%;
+  min-height: 112px;
+  padding: 10px 12px;
+  border: var(--ui-stroke-width) solid var(--ui-control-border);
+  border-radius: var(--ui-control-radius);
+  outline: none;
+  background: var(--ui-control-bg);
+  color: var(--rb-text);
+  box-shadow: none;
+  font-size: max(0.9rem, 16px);
+  resize: vertical;
+  touch-action: manipulation;
+}
+input[type="color"] {
+  padding: 4px;
+  touch-action: manipulation;
 }
 input:is([type="date"], [type="time"], [type="datetime-local"], [type="month"])::-webkit-date-and-time-value,
 input:is([type="date"], [type="time"], [type="datetime-local"], [type="month"])::-webkit-datetime-edit {

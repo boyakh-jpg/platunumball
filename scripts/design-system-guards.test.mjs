@@ -657,11 +657,11 @@ test("같은 정책 행은 명시형 선택 필드와 중앙 control 정렬을 �
   assert.match(matchesStyles, /\.tournament-schedule-list form\s*\{[^}]*align-items:\s*center;/);
 
   assert.match(
-    globalWorkflowStyles,
-    /input:focus,\s*select:focus,\s*textarea:focus\s*\{[^}]*border-color:\s*var\(--rb-orange\);[^}]*box-shadow:\s*var\(--focus-ring\);/,
+    visualSystemStyles,
+    /input:not\(\[type="checkbox"\]\):not\(\[type="radio"\]\):not\(\[type="color"\]\):focus,\s*select:focus,\s*textarea:focus\s*\{[^}]*border-color:\s*var\(--rb-orange\);[^}]*box-shadow:\s*var\(--focus-ring\);/,
   );
   assert.doesNotMatch(
-    globalWorkflowStyles,
+    visualSystemStyles,
     /input:focus,\s*select:focus,\s*textarea:focus\s*\{[^}]*var\(--green\)/,
   );
 });

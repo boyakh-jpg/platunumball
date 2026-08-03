@@ -68,27 +68,6 @@ html[data-theme="light"] .sidebar-nav a.active {
   background: rgba(229, 85, 63, 0.1);
   color: var(--rb-text);
 }
-html[data-theme="light"] .card,
-html[data-theme="light"] .section-card,
-html[data-theme="light"] .modal,
-html[data-theme="light"] .selector-panel,
-html[data-theme="light"] .team-card,
-html[data-theme="light"] .rating-card,
-html[data-theme="light"] .profile-records-summary,
-html[data-theme="light"] .match-focus-card,
-html[data-theme="light"] .home-search-panel,
-html[data-theme="light"] .home-action-card,
-html[data-theme="light"] .home-recent-card,
-html[data-theme="light"] .rank-profile-card,
-html[data-theme="light"] .rank-mode-card,
-html[data-theme="light"] .rank-leaderboard-card,
-html[data-theme="light"] .rank-record-card,
-html[data-theme="light"] .season-mini-card,
-html[data-theme="light"] .settings-page .section-card {
-  border-color: var(--rb-line);
-  background: var(--rb-surface);
-  box-shadow: var(--shadow);
-}
 html[data-theme="light"] .rank-home .rank-summary-grid {
   background:
     linear-gradient(90deg, rgba(20, 20, 20, 0.58), rgba(70, 58, 46, 0.36)),

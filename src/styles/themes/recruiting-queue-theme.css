@@ -132,11 +132,6 @@
   color: var(--green);
 }
 
-.arena-filter-select select {
-  width: 100%;
-  min-width: 0;
-}
-
 html[data-theme="light"] .arena-queue-controls,
 html[data-theme="light"] .arena-filter-bar {
   border-color: var(--ui-card-border);
@@ -366,8 +361,7 @@ html[data-theme="light"] .arena-filter-bar {
   padding: 8px;
 }
 
-.arena-filter-bar button,
-.arena-filter-select select {
+.arena-filter-bar button {
   border-color: var(--rb-line);
 }
 

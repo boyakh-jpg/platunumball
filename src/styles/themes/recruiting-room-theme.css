@@ -163,14 +163,6 @@ html[data-theme="light"] .arena-side-roster .arena-room-player-slot:not(.empty) 
   font-weight: 900;
 }
 
-.arena-filter-select select {
-  min-height: 38px;
-  border: var(--ui-stroke-width) solid var(--rb-line);
-  border-radius: var(--radius-xs);
-  font-size: 12px;
-  font-weight: 900;
-}
-
 .arena-filter-bar .arena-start-date-filter {
   gap: 8px;
 }

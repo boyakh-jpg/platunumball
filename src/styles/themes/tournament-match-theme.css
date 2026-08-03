@@ -54,14 +54,6 @@ html[data-theme="light"] .om-match-panel {
   box-shadow: var(--card-shadow);
 }
 
-.om-calendar-filter-bar select {
-  min-height: var(--control-height);
-  border: var(--ui-button-border-width) solid var(--control-border);
-  border-radius: var(--control-radius);
-  font-size: var(--control-font-size);
-  font-weight: 900;
-}
-
 .om-calendar-panel,
 .om-tournament-panel,
 .om-tournament-card,
@@ -119,7 +111,6 @@ html[data-theme="light"] .tournament-schedule-list {
   overflow: visible;
 }
 
-.om-calendar-filter-bar select,
 .om-calendar-toolbar button,
 .om-calendar-grid button,
 .om-tournament-head-actions button,
@@ -136,11 +127,6 @@ html[data-theme="light"] .tournament-schedule-list {
   font-size: var(--ui-button-font-size);
   font-weight: var(--ui-button-font-weight);
   letter-spacing: 0;
-}
-
-.om-calendar-filter-bar select {
-  border-color: var(--ui-control-border);
-  background: var(--ui-control-bg);
 }
 
 .om-calendar-toolbar button.active,

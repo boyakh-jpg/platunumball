@@ -35,18 +35,6 @@
   filter: none;
 }
 
-.arena-filter-select select,
-.arena-slot-command-popover input:not([type="checkbox"]):not([type="radio"]),
-.arena-slot-command-popover select,
-.arena-slot-command-popover textarea {
-  min-height: var(--ui-button-height);
-  border: var(--ui-stroke-width) solid var(--ui-control-border);
-  border-radius: var(--ui-control-radius);
-  background: var(--ui-control-bg);
-  color: var(--rb-text);
-  box-shadow: none;
-}
-
 .arena-slot-command-popover {
   border-color: var(--rb-line-strong);
   background:

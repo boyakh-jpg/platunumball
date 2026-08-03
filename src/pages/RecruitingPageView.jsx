@@ -72,12 +72,12 @@ export default function RecruitingPageView({
           <>
             <section id="recruiting-queue-filters" className="arena-filter-bar" aria-label="필터">
               <label className="arena-filter-select arena-region-sido-filter">
-                <select aria-label="시도" value={regionFilterSido} onChange={selectRegionSido}>
+                <select className="ui-control" aria-label="시도" value={regionFilterSido} onChange={selectRegionSido}>
                   {REGION_TREE.map((region) => <option key={region.sido} value={region.sido}>{region.sido}</option>)}
                 </select>
               </label>
               <label className="arena-filter-select arena-region-district-filter">
-                <select aria-label="시군구" value={selectedRegionDistrict} onChange={selectRegionDistrict}>
+                <select className="ui-control" aria-label="시군구" value={selectedRegionDistrict} onChange={selectRegionDistrict}>
                   {regionDistrictOptions.map((district) => <option key={district} value={district}>{district}</option>)}
                 </select>
               </label>
@@ -87,7 +87,7 @@ export default function RecruitingPageView({
                 <button type="button" className={queue === "friendly" ? "active" : ""} onClick={() => setQueue("friendly")}>친선전</button>
               </div>
               <label className="arena-filter-select arena-mode-filter">
-                <select aria-label="경기 방식" value={modeFilter} onChange={(event) => setModeFilter(event.target.value)}>
+                <select className="ui-control" aria-label="경기 방식" value={modeFilter} onChange={(event) => setModeFilter(event.target.value)}>
                   <option value="all">전체 방식</option>
                   {MATCH_MODES.map((mode) => <option key={mode.id} value={mode.id}>{mode.label}</option>)}
                 </select>

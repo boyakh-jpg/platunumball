@@ -82,28 +82,6 @@
   padding: 0;
 }
 
-html[data-theme="light"] .section-card,
-html[data-theme="light"] .team-card,
-html[data-theme="light"] .rating-card,
-html[data-theme="light"] .profile-records-summary,
-html[data-theme="light"] .selector-panel,
-html[data-theme="light"] .team-create-panel,
-html[data-theme="light"] .my-team-management-card,
-html[data-theme="light"] .team-search-card,
-html[data-theme="light"] .home-search-panel,
-html[data-theme="light"] .home-action-card,
-html[data-theme="light"] .rank-profile-card,
-html[data-theme="light"] .rank-mode-card,
-html[data-theme="light"] .rank-leaderboard-card,
-html[data-theme="light"] .rank-record-card,
-html[data-theme="light"] .match-focus-card,
-html[data-theme="light"] .home-recent-card,
-html[data-theme="light"] .season-mini-card {
-  border-color: var(--ui-card-border);
-  background: var(--ui-card-bg-strong);
-  box-shadow: var(--ui-card-shadow);
-}
-
 html[data-theme="light"] .rank-stat-grid span,
 html[data-theme="light"] .stat-strip span,
 html[data-theme="light"] .rank-tier-block,

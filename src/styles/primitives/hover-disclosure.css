@@ -154,26 +154,11 @@
   background: var(--ui-button-bg);
   color: var(--ui-button-color);
 }
-input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
-select,
-.auth-card select,
-.home-search-box input {
-  min-height: var(--ui-button-height);
-  border: var(--ui-stroke-width) solid var(--ui-control-border);
-  border-radius: var(--ui-control-radius);
-  background: var(--ui-control-bg);
-  color: var(--rb-text);
-  box-shadow: none;
-  font-size: max(0.9rem, 16px);
-}
-textarea {
-  min-height: 112px;
-  border: var(--ui-stroke-width) solid var(--ui-control-border);
-  border-radius: var(--ui-control-radius);
-  background: var(--ui-control-bg);
-  color: var(--rb-text);
-  box-shadow: none;
-  font-size: max(0.9rem, 16px);
+input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):focus,
+select:focus,
+textarea:focus {
+  border-color: var(--rb-orange);
+  box-shadow: var(--focus-ring);
 }
 .provider-button:focus-visible,
 .auth-browser-actions button:focus-visible,
@@ -191,6 +176,8 @@ textarea {
 .arena-start-date-filter button:focus-visible,
 .om-calendar-toolbar button:focus-visible,
 input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):focus-visible,
+input[type="radio"]:focus-visible,
+input[type="color"]:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
   outline: 2px solid color-mix(in srgb, var(--rb-orange-2) 72%, transparent);

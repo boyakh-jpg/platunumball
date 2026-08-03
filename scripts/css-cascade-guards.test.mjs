@@ -599,6 +599,35 @@ test("shared empty-state surfaces have one primitive owner", () => {
   assert.deepEqual(duplicateOwners, []);
 });
 
+test("native text controls keep one primitive visual owner", () => {
+  const visualProperties = new Set([
+    "background",
+    "background-color",
+    "border",
+    "border-color",
+    "border-radius",
+    "box-shadow",
+    "color",
+    "outline",
+  ]);
+  const nativeControlBranch = /^(?:html\[data-theme="(?:light|dark)"\]\s+)?(?:input|select|textarea)(?::(?:focus|focus-visible))?$/;
+  const duplicateOwners = [];
+
+  for (const file of styleDirectoryCssFiles.filter((file) => !file.replaceAll("\\", "/").includes("/primitives/"))) {
+    parseCss(file).walkRules((rule) => {
+      const ownsNativeControl = (rule.selectors ?? [rule.selector])
+        .some((selector) => nativeControlBranch.test(normalizeSelector(selector)));
+      if (!ownsNativeControl) return;
+      rule.walkDecls((declaration) => {
+        if (!visualProperties.has(declaration.prop)) return;
+        duplicateOwners.push(`${file}:${declaration.source.start.line} ${rule.selector} ${declaration.prop}`);
+      });
+    });
+  }
+
+  assert.deepEqual(duplicateOwners, []);
+});
+
 test("critical interactive branches keep a visible focus indicator", () => {
   const checks = [
     {

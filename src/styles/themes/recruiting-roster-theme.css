@@ -79,8 +79,7 @@
   }
 }
 
-html[data-theme="light"] .arena-filter-bar button,
-html[data-theme="light"] .arena-filter-select select {
+html[data-theme="light"] .arena-filter-bar button {
   border-color: rgba(30, 24, 18, 0.14);
   background: rgba(255, 255, 255, 0.72);
   color: var(--rb-text);

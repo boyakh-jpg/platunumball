@@ -171,10 +171,6 @@ html[data-theme="light"] .arena-room-chat {
   font-weight: 900;
 }
 
-.arena-filter-select select {
-  background: var(--input-bg);
-}
-
 .arena-filter-bar button.active,
 .arena-filter-bar .segmented-control button.active,
 .arena-filter-bar .arena-start-date-filter button.active,

@@ -6,24 +6,6 @@ body {
 .app-main {
   padding: var(--page-gutter);
 }
-.section-card,
-.modal,
-.selector-panel,
-.team-card,
-.rating-card,
-.profile-records-summary,
-.home-search-panel,
-.home-action-card,
-.match-focus-card,
-.home-recent-card,
-.rank-leaderboard-card,
-.season-mini-card,
-.settings-page .section-card {
-  box-shadow: var(--shadow);
-}
-input,
-select,
-textarea,
 .segmented-control,
 .contract-grid div,
 .two-column > div,
@@ -32,10 +14,7 @@ textarea,
 }
 .provider-button,
 button,
-a,
-input,
-select,
-textarea {
+a {
   touch-action: manipulation;
 }
 .provider-button,
@@ -123,27 +102,9 @@ textarea {
 .home-side-stack {
   min-width: 0;
 }
-html[data-theme="light"] .card,
-html[data-theme="light"] .section-card,
-html[data-theme="light"] .home-search-panel,
-html[data-theme="light"] .home-action-card,
-html[data-theme="light"] .match-focus-card,
-html[data-theme="light"] .home-recent-card,
-html[data-theme="light"] .rank-leaderboard-card,
-html[data-theme="light"] .season-mini-card,
-html[data-theme="light"] .settings-page .section-card {
-  border-color: rgba(32, 56, 68, 0.14);
-  background: rgba(255, 255, 255, 0.92);
-  background-image: none;
-}
 html[data-theme="light"] .auth-card {
   border-color: rgba(32, 56, 68, 0.14);
   background: rgba(255, 255, 255, 0.94);
-}
-html[data-theme="light"] input,
-html[data-theme="light"] select,
-html[data-theme="light"] textarea {
-  background: rgba(238, 244, 240, 0.94);
 }
 @media (max-width: 1020px) {
   .app-main {
@@ -231,13 +192,6 @@ html[data-theme="light"] .app-main {
   background: color-mix(in srgb, var(--rb-orange) 12%, transparent);
   box-shadow: none;
 }
-.section-card,
-.home-search-panel,
-.home-action-card {
-  border-color: var(--card-border);
-  background-color: var(--card-bg);
-  box-shadow: var(--card-shadow);
-}
 .provider-test {
   background: var(--button-primary-bg);
 }
@@ -300,19 +254,7 @@ html[data-theme="light"] .home-side-stack .compact-list > .team-hover-trigger {
   background: rgba(238, 244, 240, 0.64);
 }
 /* 2026-07-01 imweb fitness tone pass: charcoal surface, orange CTA, condensed heroes. */
-.section-card,
-.modal,
-.selector-panel,
-.team-card,
-.rating-card,
-.profile-records-summary,
-.home-search-panel,
-.home-action-card,
-.match-focus-card,
-.home-recent-card,
-.rank-leaderboard-card,
-.season-mini-card,
-.settings-page .section-card {
+.modal {
   border-color: var(--rb-line);
   background-color: var(--rb-surface);
 }
@@ -336,10 +278,7 @@ button:disabled,
 .bottom-nav a:focus-visible,
 .nav-item:focus-visible,
 button:focus-visible,
-a:focus-visible,
-input:focus-visible,
-select:focus-visible,
-textarea:focus-visible {
+a:focus-visible {
   outline: 2px solid rgba(255, 118, 88, 0.72);
   outline-offset: 2px;
 }
@@ -423,19 +362,7 @@ html[data-theme="light"] body {
     linear-gradient(90deg, rgba(30, 24, 18, 0.024) 1px, transparent 1px) 0 0 / 44px 44px,
     var(--rb-bg);
 }
-html[data-theme="light"] .section-card,
-html[data-theme="light"] .home-search-panel,
-html[data-theme="light"] .home-action-card {
-  background-color: var(--rb-surface);
-}
 /* 2026-07-01 warm cream light mode and shared app controls. */
-input,
-select,
-textarea,
-.auth-card select {
-  border-color: var(--rb-line);
-  border-radius: var(--radius-md);
-}
 .provider-button:hover {
   filter: brightness(0.96);
 }

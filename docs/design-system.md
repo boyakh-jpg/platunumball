@@ -242,6 +242,8 @@
 5. Stylelint는 `tokens.css` 밖의 hex·rgb·rgba 직접 색상, primitive 밖의 임의 `border-radius`, 공용 control 밖의 고정 button/input 높이, allowlist 밖의 `!important`, 동일 scope의 중복 selector를 오류로 처리한다. 원형의 `50%`, pill의 공용 token, 이미지 overlay, native control·portal 위치 보정은 명시적 allowlist만 허용한다.
 6. CSS 변경은 lint 뒤 `desktop/mobile × dark/light × pickup_pool/pickup_assignment/prearranged/live/match_record` 조합을 시각 검증한다. 한 조합이라도 overflow, 잘림, 겹침, primitive 이탈이 있으면 완료로 보지 않는다.
 7. 설계 문서에서 최신 규범과 충돌하는 과거 selector·수치 기록은 구현 근거로 사용하지 않는다. 현재 규범 section을 먼저 고치고 변경 이력은 별도 이력으로만 보존한다.
+8. 공통화는 class 이름 추가가 아니라 시각 속성의 소유권 이동으로 완료한다. 카드·패널·행·버튼·badge·chip·tab·입력·select·popover·modal·empty state의 표면, 색상, border, radius, shadow, 글꼴, 기본 높이, hover, focus, selected는 primitive가 한 번만 정의한다. page selector는 layout과 업무 상태만 소유하며 실제 변형이 필요하면 `--ui-*` custom property를 설정한다.
+9. 일반 `input`, `select`, `textarea`의 기본 표면은 `primitives/shared-controls.css`, focus 표면은 `primitives/hover-disclosure.css`가 유일하게 소유한다. page·theme CSS에서 generic selector로 다시 덮어쓰지 않는다.
 
 ## 2026-07-22 압축 경기 생성과 추천 UI
 
