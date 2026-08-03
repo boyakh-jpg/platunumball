@@ -2090,25 +2090,25 @@ flowchart TD
 8. Discord DM은 앱 내부 알림을 원본으로 삼아 발송 큐에 쌓고, 서버 Bot이 큐를 처리해야 한다.
 9. 방 채팅과 Discord 채팅 양방향 연동은 `room_discord_links`의 채널/thread 매핑과 `room_chat_messages.external_message_id` 중복 방지 키를 사용한다.
 10. Discord DM 링크는 앱 내부 알림의 `recruitingPostId` 또는 `matchId`에서 만든 웹 경로를 포함한다.
-11. 초대 알림에만 Discord 수락/거절 버튼 payload를 붙인다. 버튼은 권한 원본이 아니며 서버가 `discordUserId -> userId`, 초대 대상, pending 상태, 방 정원, 후보 정원, 징계 상태를 다시 검증해야 한다.
-12. Discord 버튼 처리 실패 또는 충돌 시 앱 내부 초대/알림 상태를 원본으로 유지하고, Discord 응답은 웹 링크로 재확인하게 한다.
+11. Discord 초대 알림은 앱의 해당 방 URL만 제공하고 수락·거절 버튼 payload를 붙이지 않는다. 초대 결정은 앱 내부 초대 화면에서만 처리한다.
+12. 과거에 발송된 Discord 수락·거절 버튼은 더 이상 초대 상태를 변경하지 않고 해당 앱 방 URL만 응답한다.
 13. `/api/auth/discord/start`와 `/api/auth/discord/callback`은 Discord 공개 프로필 정보를 받아 OAuth state에 기록된 앱 프로필에 저장하는 연결 경로다.
 14. normalized Supabase 저장에서는 `profiles.discord_connection`에 `discordConnection`을 보존한다.
 15. Discord 계정 하나는 앱 프로필 하나에만 연결한다. 같은 `discordConnection.userId`가 다른 프로필에 있으면 새 연동은 거절한다.
 16. OAuth 승인 직후 아직 원격 저장 전인 로컬 `discordConnection`은 Supabase hydration/subscription이 예전 state를 내려도 지우지 않는다. 단, 원격 state에 같은 Discord ID를 가진 다른 프로필이 있으면 보존하지 않는다.
-17. Discord DM 큐는 DB `discordNotificationDeliveries`에 저장하고 `/api/discord/dm-worker`가 처리한다. 버튼 수락/거절 커밋은 `/api/discord/interactions`가 Discord signature 검증 후 초대 서버 action으로 처리한다.
+17. Discord DM 큐는 DB `discordNotificationDeliveries`에 저장하고 `/api/discord/dm-worker`가 처리한다. `/api/discord/interactions`는 Discord signature를 검증하고 기존 초대 버튼과 대회 버튼에 앱 URL만 응답한다.
 18. `/api/discord/dm-worker`는 외부 스케줄러용 `GET`과 수동 점검용 `POST`를 모두 허용한다. 둘 다 `Authorization: Bearer <CRON_SECRET>` 검증을 통과해야 한다.
 19. Vercel Hobby Cron은 알림 worker에 쓰지 않는다. Supabase Cron이 Vault의 `rankball_app_base_url`, `rankball_cron_secret`을 사용해 1분마다 `/api/discord/dm-worker`를 호출한다. 외부 `cron-job.org`는 사용하지 않는다.
 20. 수동 테스트 DM은 username을 받을 수 있지만 서버가 봇이 들어간 Discord 서버 멤버 검색으로 숫자 `discord_user_id`를 찾은 뒤 보낸다. 자동 발송 큐와 프로필 연동 원본은 username이 아니라 숫자 `discord_user_id`다.
 21. 경기 Discord 자동 알림은 match server action이 `discord_notification_deliveries`에 직접 저장한다. 예정 경기 전 알림은 1시간 일정 확인, 미출석 선수 20분·10분 QR 출석, 방관리자 10분 출석 현황만 만들고 경기 종료는 즉시 발송 큐로 넣는다.
 22. 경기 종료 알림은 점수 입력을 요청한다. 결과 제출 뒤에는 경기별 이의신청 제한시간 5분 전에 결과 확인과 이의신청 안내를 다시 보낸다.
-23. 모집방 생성 자체는 앱 알림이나 Discord DM을 만들지 않는다. 수동·자동 모집방 취소는 참가자별 앱 알림과 Discord delivery를 만들며, 초대장 수락/거절 버튼은 cron reminder가 아니라 Discord interaction server action으로 처리한다.
+23. 모집방 생성 자체는 앱 알림이나 Discord DM을 만들지 않는다. 수동·자동 모집방 취소는 참가자별 앱 알림과 Discord delivery를 만들며, 초대 수락·거절은 앱 내부 server action으로만 처리한다.
 24. 방관리자 경기 전 알림은 심판이 있으면 심판, 없으면 방장에게 10분 전 출석·미출석 수를 보낸다. 일정/실제 참여 명단/방관리자가 바뀌면 아직 발송되지 않은 경기 전 알림을 현재 대상자 기준으로 재생성하고, 경기를 시작하면 모두 취소한다. Discord worker는 1분마다 실행하며 예약시각보다 90초 이상 늦은 경기 전 delivery를 보내지 않는다.
 25. 경기 종료, 점수 제출, 이의신청, 승인 처리, 이의 판정이 일어나면 아직 발송되지 않은 시작 전 리마인더, 방관리자 안내, 경기 종료 점수 입력 안내, 이의신청 마감 전 안내를 현재 상태에 맞춰 취소하거나 다시 만든다.
 26. 경기 취소 또는 무효 처리 시 아직 발송되지 않은 해당 경기의 시작 전 리마인더, 방관리자 안내, 시작/종료/이의 안내는 모두 취소한다.
 27. 경기 리마인더 stale 삭제는 현재 match snapshot의 참가자/방관리자 대상자가 0명이어도 먼저 실행한다. 대상자 없음은 새 row 생성을 막을 뿐 기존 예약 row 삭제를 막으면 안 된다.
 27-1. Backend flow simulation seeds pending match notice/delivery rows and verifies stale cleanup for `startMatch`, `approveMatch`, and `voidMatch` action branches.
-28. Discord 초대 버튼 interaction은 `custom_id` 길이와 ID 형식을 먼저 검증하고, 커밋 전 현재 DB snapshot에서 `postId + invitationId + discord_user_id`가 같은 pending 초대인지 다시 확인한다. 이미 처리/만료/닫힌 초대는 DB write 없이 stale 안내만 보낸다.
+28. 과거 Discord 초대 버튼 interaction은 `custom_id` 길이와 ID 형식을 검증한 뒤 `postId`의 앱 방 URL만 응답하며 DB write를 실행하지 않는다.
 29. 웹 방 채팅은 서버 저장 후 같은 방의 enabled `room_discord_links`가 있으면 Discord REST로 전송한다. Discord 채팅은 `scripts/discord-room-chat-bridge.mjs`가 Gateway 이벤트를 받아 `POST /api/discord/room-chat`으로 넣고, 서버는 bridge secret, channel/thread 매핑, `discord_user_id -> profiles.id`, 방 참여 권한, `external_message_id` 중복을 다시 검증한다. Bot/webhook 메시지는 echo 방지를 위해 저장하지 않는다. Discord thread 메시지는 Gateway `channel_id`가 thread id로 들어와도 `room_discord_links`의 parent channel/thread id로 정규화해 저장한다.
 29-1. Backend flow simulation verifies Discord-origin room chat import through `/api/discord/room-chat`, including thread-id normalization, duplicate `external_message_id` blocking, bot echo skip, and visibility in room detail chat.
 29-2. 상시 Discord Gateway bridge는 heartbeat ACK 누락 시 연결을 재생성하고, Gateway session id와 sequence가 유효하면 resume한다. 인증·intent 오류 close code는 무한 재접속하지 않고 종료하며 운영 supervisor가 실패로 감지하게 한다.
@@ -2168,7 +2168,7 @@ flowchart TD
 10. `POST /api/system/schema-health`의 `ensureCourtAdmins`는 `CRON_SECRET` 인증이 있을 때만 `boyakh` owner와 `rankball-001` regionManager appointment를 idempotent upsert한다.
 11. `rankball_report_court_request()`는 신고 생성, 요청의 `reported` 전환, 판정 전 무차감 알림만 한 transaction으로 처리한다. 관리자 판정 transaction의 신고 상태 전환 trigger는 인정 시 요청을 `rejected`로 바꾸고 정책 신뢰도 차감을 요청별 1회 적용하며, 기각 시 남은 미처리 신고가 없으면 `pending`으로 복원한다.
 12. 구장 등록요청 제출은 `rankball_submit_court_request()`에서 신뢰도와 승인/대기 중복을 서버에서 다시 검사한다.
-13. 일반 관리자 신고 처리, 임명/징계 처리, Discord DM 발송, Discord 초대 버튼 interaction은 별도 server action으로 분리한다.
+13. 일반 관리자 신고 처리, 임명/징계 처리, Discord DM 발송은 별도 server action으로 분리한다. Discord interaction은 앱 URL 안내만 담당한다.
 14. Discord DM 발송 큐는 `POST /api/discord/sync-deliveries`가 현재 프로필의 `discord_user_id` 기준으로만 저장한다.
 15. `/api/supabase/bridge`, `VITE_ENABLE_SERVER_BRIDGE_WRITE`, `VITE_ENABLE_BULK_REMOTE_WRITE`는 제거한다.
 
@@ -2186,7 +2186,7 @@ flowchart TD
 10. 임명 연장은 `rankball_extend_admin_appointment_action()`에서 appointment row를 lock한 뒤 만료일, audit log, 알림을 한 transaction으로 처리한다.
 11. 플레이어 신고 최종판단은 선택한 report row 하나를 기준으로 처리한다. 플레이어 큐는 해당 플레이어의 신고, 경기, 제재 이력을 같이 보여준다.
 12. 구장 심사와 경기 심사는 같은 관리자 화면 안에서 보되, 처리 대상 report type과 액션 후보를 분리한다.
-13. Discord DM 발송은 `discord_notification_deliveries` 큐를 서버 worker가 처리한다. Discord 초대 버튼 interaction은 `/api/discord/interactions`가 처리한다.
+13. Discord DM 발송은 `discord_notification_deliveries` 큐를 서버 worker가 처리한다. `/api/discord/interactions`는 기존 초대 버튼과 대회 버튼의 앱 URL 응답만 처리한다.
 14. MMR·신뢰도 정책 조회/변경은 최고관리자 level 100 전용 `POST /api/admin/rating-policy`와 `rankball_get_rating_policy()` / `rankball_update_rating_policy()`만 사용한다.
 15. 정책 변경은 전체 정책 JSON, 이전 버전, 변경 사유를 한 transaction에서 검증하고 `admin_audit_log.type=rating_policy_update`로 이전값과 이후값을 남긴다.
 16. `rating_policy`는 브라우저 직접 read/write 대상이 아니며 API와 DB RPC가 각각 최고관리자 권한을 검사한다.
@@ -3114,7 +3114,7 @@ flowchart TD
 3. 경기 결과·부분 기록 병합, 심판 부재, 룰·명단·선수 제거, 이의 항목 판정·최종 확정, 일반 승인과 MMR은 경기 advisory lock과 row lock 안의 DB reducer가 처리한다.
 4. 토너먼트 대진 검증, 1라운드 생성, 승자 후속 라운드 생성은 토너먼트 DB RPC와 확정 경기 trigger가 처리한다.
 5. 기존 entity를 바꾸는 지원 RPC가 없으면 JS snapshot replay로 후퇴하지 않고 `503`으로 실패한다. 새 생성·사후경기 참가자 구성처럼 서버 조합 계산이 필요한 operation은 `baseUpdatedAt` 낙관적 잠금 검증 후 단일 DB transaction RPC로만 커밋한다.
-6. Discord 초대 수락·거절도 웹과 같은 `rankball_recruiting_management_action()`을 사용해 개인·팀·파티 초대를 동일하게 처리한다.
+6. 초대 수락·거절은 앱 내부에서만 `rankball_recruiting_management_action()`을 사용해 개인·팀·파티 초대를 동일하게 처리한다.
 7. 브라우저의 새 모집방 생성 요청에 id가 없으면 `/api/recruiting/sync-post`가 충돌 가능성이 낮은 `q_` id를 한 번 생성해 DB reducer에 전달한다. 방 규칙 검증, advisory lock, 중복 검사, insert는 계속 DB RPC가 담당한다.
 8. Supabase 프론트는 모집·경기·토너먼트 operation에서 로컬 reducer를 먼저 실행하지 않고 서버가 반환한 DB row만 병합한다. 로컬 reducer는 비-Supabase demo mode에만 남긴다.
 9. 원격 DB 경기의 status/result/score/종료 시각은 미래 일정 보정으로 덮지 않는다. 미래 lifecycle 복구는 local/demo state에만 적용한다.

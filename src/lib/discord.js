@@ -1,5 +1,5 @@
 import { getNotificationActorId, getNotificationTargetPath, isNotificationDue } from "./notifications.js";
-import { DISCORD_OAUTH_STATE_TTL_MS, getDiscordInviteCustomId, isDiscordOAuthState } from "./discordProtocol.js";
+import { DISCORD_OAUTH_STATE_TTL_MS, isDiscordOAuthState } from "./discordProtocol.js";
 import { getSafeImageUrl } from "./inputSecurity.js";
 import { postServerAction } from "./serverActions.js";
 
@@ -182,29 +182,6 @@ function getNotificationWebUrl(notification = {}) {
   return appBaseUrl ? `${appBaseUrl}${webPath}` : webPath;
 }
 
-function getDiscordActionId(action, recruitingPostId, invitationId) {
-  return getDiscordInviteCustomId(action, recruitingPostId, invitationId);
-}
-
-function getDiscordNotificationActions(notification = {}) {
-  if (Array.isArray(notification.discordActions)) return notification.discordActions;
-  if (!notification.recruitingPostId || !notification.invitationId) return [];
-  return [
-    {
-      id: "accept",
-      label: "수락",
-      style: "primary",
-      customId: getDiscordActionId("accept", notification.recruitingPostId, notification.invitationId),
-    },
-    {
-      id: "decline",
-      label: "거절",
-      style: "secondary",
-      customId: getDiscordActionId("decline", notification.recruitingPostId, notification.invitationId),
-    },
-  ];
-}
-
 export function syncDiscordNotificationDeliveries(state = {}) {
   const currentUserId = state.currentUserId;
   const notifications = state.notifications ?? [];
@@ -255,7 +232,7 @@ export function syncDiscordNotificationDeliveries(state = {}) {
         body: notification.body,
         webPath: getNotificationWebPath(notification),
         webUrl: getNotificationWebUrl(notification),
-        actions: getDiscordNotificationActions(notification),
+        actions: [],
         fromUserId: getNotificationActorId(notification),
         status: "queued",
         queuedAt: now,

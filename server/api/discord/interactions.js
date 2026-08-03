@@ -1,7 +1,5 @@
 import crypto from "node:crypto";
-import { asArray } from "../../../shared/lib/arrayValues.js";
-import { allowRequestMethod, getSupabaseAdminClient, sendJson } from "../_supabaseAdmin.js";
-import { loadAuthoritativeState } from "../_authoritativeState.js";
+import { allowRequestMethod, sendJson } from "../_supabaseAdmin.js";
 import {
   DISCORD_INVITE_ACTION_PREFIX as INVITE_PREFIX,
   DISCORD_TOURNAMENT_ACTION_PREFIX as TOURNAMENT_PREFIX,
@@ -119,82 +117,9 @@ function getTournamentUrl(request, tournamentId) {
   return getPublicAppWebUrl(path, request);
 }
 
-function getInteractionDiscordUserId(interaction = {}) {
-  return String(interaction.member?.user?.id || interaction.user?.id || "").trim();
-}
-
-async function getProfileByDiscordUserId(supabase, discordUserId) {
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("id, discord_user_id")
-    .eq("discord_user_id", discordUserId)
-    .maybeSingle();
-  if (error) throw error;
-  return data ?? null;
-}
-
-function getRoomState(post = {}) {
-  const roomState = post.roomState ?? post.room_state;
-  return roomState && typeof roomState === "object" ? roomState : {};
-}
-
-function getInviteDecisionState(state = {}, operation = {}, profileId = "") {
-  const post = asArray(state.recruitingPosts).find((item) => item?.id === operation.postId) ?? null;
-  if (!post) return { stale: true, reason: "missing_post" };
-  if (post.status && post.status !== "open") return { post, stale: true, reason: "closed_post" };
-
-  const invitation = asArray(getRoomState(post).invitations).find((item) => item?.id === operation.invitationId) ?? null;
-  if (!invitation) return { post, stale: true, reason: "missing_invitation" };
-  if (invitation.targetUserId !== profileId) reject(403, "discord_invite_not_for_user");
-  if (String(invitation.status ?? "pending") !== "pending") {
-    return { post, invitation, stale: true, reason: "processed_invitation" };
-  }
-  return { post, invitation, stale: false };
-}
-
-function getInviteResultMessage(operation = {}) {
-  return operation.action === "acceptRecruitingInvitation"
-    ? `초대를 수락했습니다. ${BRAND_NAME}에서 방 상태를 확인해 주세요.`
-    : "초대를 거절했습니다.";
-}
-
-function getStaleInviteMessage(decision = {}) {
-  if (decision.reason === "closed_post") return `이미 닫힌 방입니다. ${BRAND_NAME}에서 최신 상태를 확인해 주세요.`;
-  return `이미 처리됐거나 만료된 초대입니다. ${BRAND_NAME}에서 최신 상태를 확인해 주세요.`;
-}
-
-async function handleInviteAction(interaction) {
-  const component = interaction.data?.custom_id ? interaction.data : null;
-  const operation = parseInviteAction(component?.custom_id);
-
-  const discordUserId = getInteractionDiscordUserId(interaction);
-  if (!discordUserId) reject(401, "missing_discord_user");
-
-  const supabase = getSupabaseAdminClient();
-  const profile = await getProfileByDiscordUserId(supabase, discordUserId);
-  if (!profile?.id) reject(403, "discord_profile_not_linked");
-
-  const context = {
-    supabase,
-    profileId: profile.id,
-    authUserId: `discord:${discordUserId}`,
-    authUser: { id: `discord:${discordUserId}` },
-  };
-  const state = await loadAuthoritativeState(context, { operation });
-  const decision = getInviteDecisionState(state, operation, profile.id);
-  if (decision.stale) return getStaleInviteMessage(decision);
-
-  const { error } = await supabase.rpc("rankball_recruiting_management_action", {
-    p_actor_profile_id: profile.id,
-    p_operation: operation,
-  });
-  if (error) {
-    if (["P0002", "23514"].includes(error.code)) return getStaleInviteMessage({ reason: "processed_invitation" });
-    if (error.code === "42501") reject(403, "discord_invite_not_for_user");
-    throw error;
-  }
-
-  return getInviteResultMessage(operation);
+function getInviteUrl(request, customId) {
+  const operation = parseInviteAction(customId);
+  return getPublicAppWebUrl(`/app/recruiting?post=${encodeURIComponent(operation.postId)}`, request);
 }
 
 export default async function handler(request, response) {
@@ -221,8 +146,12 @@ export default async function handler(request, response) {
       return;
     }
 
-    const message = await handleInviteAction(interaction);
-    sendInteractionMessage(response, message);
+    if (customId.startsWith(`${INVITE_PREFIX}:`)) {
+      sendInteractionMessage(response, getInviteUrl(request, customId));
+      return;
+    }
+
+    sendInteractionMessage(response, "지원하지 않는 Discord 액션입니다.");
   } catch (error) {
     console.error("Discord interaction failed.", error);
     const statusCode = error.statusCode || 500;
@@ -232,10 +161,6 @@ export default async function handler(request, response) {
     }
     if (statusCode >= 500) {
       sendJson(response, statusCode, { error: error.message || "discord_interaction_failed" });
-      return;
-    }
-    if (statusCode === 409 && error.details?.message) {
-      sendInteractionMessage(response, `요청 상태가 변경되었습니다. ${BRAND_NAME}에서 최신 상태를 확인해 주세요.`);
       return;
     }
     sendInteractionMessage(response, `처리하지 못했습니다. ${BRAND_NAME}에서 다시 확인해 주세요.`);

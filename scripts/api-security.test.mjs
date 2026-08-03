@@ -201,6 +201,21 @@ test("Discord delivery cron uses Vault and stays separate from system maintenanc
   assert.doesNotMatch(cronSource, /CRON_SECRET=/);
 });
 
+test("Discord invitations link to the app without decision buttons", async () => {
+  const [syncSource, clientSource, interactionSource] = await Promise.all([
+    readSource("server/api/discord/sync-deliveries.js"),
+    readSource("src/lib/discord.js"),
+    readSource("server/api/discord/interactions.js"),
+  ]);
+
+  assert.doesNotMatch(syncSource, /getDiscordInviteCustomId|label: "(?:수락|거절)"/u);
+  assert.doesNotMatch(clientSource, /getDiscordInviteCustomId|label: "(?:수락|거절)"/u);
+  assert.match(syncSource, /actions: \[\]/u);
+  assert.match(clientSource, /actions: \[\]/u);
+  assert.match(interactionSource, /\/app\/recruiting\?post=/u);
+  assert.doesNotMatch(interactionSource, /rankball_recruiting_management_action|loadAuthoritativeState/u);
+});
+
 test("credentials are rejected from every URL query", async () => {
   [
     "access_token",

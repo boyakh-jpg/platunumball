@@ -9,7 +9,6 @@ import {
   DISCORD_NOTIFICATION_TITLE_MAX_LENGTH,
   DISCORD_NOTIFICATION_URL_MAX_LENGTH,
   DISCORD_PROFILE_ID_MAX_LENGTH,
-  getDiscordInviteCustomId,
 } from "../../../shared/lib/discordProtocol.js";
 
 const MAX_DELIVERIES = 100;
@@ -51,14 +50,6 @@ function getNotificationWebPath(notification = {}) {
   });
 }
 
-function getNotificationActions(notification = {}) {
-  if (!notification.recruitingPostId || !notification.invitationId) return [];
-  return [
-    { id: "accept", label: "수락", style: "primary", customId: getDiscordInviteCustomId("accept", notification.recruitingPostId, notification.invitationId) },
-    { id: "decline", label: "거절", style: "secondary", customId: getDiscordInviteCustomId("decline", notification.recruitingPostId, notification.invitationId) },
-  ];
-}
-
 function getNotificationSendAt(notification = {}, queuedAt) {
   const raw = notification.sendAt ?? notification.dueAt ?? notification.payload?.sendAt ?? notification.payload?.dueAt;
   const time = raw ? Date.parse(raw) : NaN;
@@ -83,7 +74,7 @@ function toDeliveryRow(notification, profileId, discordUserId, queuedAt) {
     body: trimText(notification.body, DISCORD_NOTIFICATION_BODY_MAX_LENGTH),
     webPath,
     webUrl: getPublicAppWebUrl(webPath),
-    actions: getNotificationActions(notification),
+    actions: [],
     fromUserId: trimText(getNotificationActorId(notification), DISCORD_PROFILE_ID_MAX_LENGTH),
     status: "queued",
     queuedAt,
