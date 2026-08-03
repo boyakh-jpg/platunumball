@@ -7,4 +7,7 @@ supabase/.temp/
 .env.development.local
 .env.production.local
 .vercel
+.codex/
+rankball-handoff-*/
+rankball-handoff-*.zip*
 /인증키.txt
