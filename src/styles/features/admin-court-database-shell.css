@@ -155,11 +155,10 @@
 
 .court-db-modal .court-db-filter-row input,
 .court-db-modal .court-db-filter-row select {
-  height: 18px;
-  border-radius: var(--radius-xs);
-  font-size: 0.62rem;
+  --ui-control-xs-height: 18px;
+  --ui-control-xs-padding: 0 3px;
+  --ui-control-xs-font-size: 0.62rem;
   line-height: 1;
-  padding: 0 3px;
 }
 
 .court-db-modal .court-db-table tbody td input,
@@ -168,11 +167,6 @@
   width: 100%;
   min-width: 0;
   height: 25px;
-  border: var(--ui-stroke-width) solid var(--input-border);
-  border-radius: var(--radius-xs);
-  background: var(--input-bg);
-  color: var(--text);
-  font: inherit;
   padding: 2px 6px;
 }
 
@@ -295,19 +289,9 @@
 
 .court-db-quick-status button {
   min-height: 27px;
-  border: var(--ui-button-border-width) solid var(--card-border);
-  border-radius: var(--radius-xs);
-  background: var(--input-bg);
-  color: var(--text);
   font-size: 0.68rem;
   font-weight: 850;
-  cursor: pointer;
   padding: 3px 7px;
-}
-
-.court-db-quick-status button:disabled {
-  cursor: not-allowed;
-  opacity: 0.42;
 }
 
 .court-db-batch-actions {

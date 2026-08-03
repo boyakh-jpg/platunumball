@@ -151,6 +151,7 @@ const modal = open ? (
               <label>
                 변경 사유
                 <input
+                  className="ui-control ui-control-xs"
                   value={reason}
                   placeholder={reasonOptional ? "boyakh 한시적 입력 잠금" : "4자 이상"}
                   maxLength={160}
@@ -165,9 +166,9 @@ const modal = open ? (
                 />
               </label>
               <div className="court-db-quick-status">
-                <button type="button" disabled={!selectedRow || saving} onClick={() => applyQuickStatus("review")}>확인불가 숨김</button>
-                <button type="button" disabled={!selectedRow || saving} onClick={() => applyQuickStatus("disabled")}>비활성화</button>
-                <button type="button" disabled={!selectedRow || saving} onClick={() => applyQuickStatus("active")}>활성 복구</button>
+                <Button type="button" size="sm" variant="secondary" disabled={!selectedRow || saving} onClick={() => applyQuickStatus("review")}>확인불가 숨김</Button>
+                <Button type="button" size="sm" variant="secondary" disabled={!selectedRow || saving} onClick={() => applyQuickStatus("disabled")}>비활성화</Button>
+                <Button type="button" size="sm" variant="secondary" disabled={!selectedRow || saving} onClick={() => applyQuickStatus("active")}>활성 복구</Button>
               </div>
               <div className="court-db-batch-actions">
                 <Button type="button" size="sm" disabled={!editDirty || Boolean(editValidation) || !reasonValid || saving} onClick={saveUpdates}>
@@ -218,9 +219,11 @@ const modal = open ? (
                   {REVIEW_SCENARIOS.map((scenario) => {
                     const unavailable = scenario.id === "regional_alias" && !reviewRow.emd;
                     return (
-                      <button
+                      <Button
                         key={scenario.id}
                         type="button"
+                        size="sm"
+                        variant="secondary"
                         data-tone={scenario.tone}
                         disabled={loading || saving || unavailable}
                         title={unavailable ? "읍면동 확인 필요" : scenario.description}
@@ -228,7 +231,7 @@ const modal = open ? (
                       >
                         <strong>{scenario.label}</strong>
                         <span>{scenario.description}</span>
-                      </button>
+                      </Button>
                     );
                   })}
                 </div>
@@ -236,16 +239,16 @@ const modal = open ? (
                 <div className="court-db-review-primary-fields">
                   <label className={Object.prototype.hasOwnProperty.call(reviewPatch, "facilityName") ? "is-dirty" : ""}>
                     시설명 (표준명 자동 반영)
-                    <input value={reviewValues.facilityName ?? ""} disabled={saving} onChange={(event) => updateReviewValue("facilityName", event.target.value)} />
+                    <input className="ui-control" value={reviewValues.facilityName ?? ""} disabled={saving} onChange={(event) => updateReviewValue("facilityName", event.target.value)} />
                   </label>
                   <label className={Object.prototype.hasOwnProperty.call(reviewPatch, "courtUnit") ? "is-dirty" : ""}>
                     코트 구분
-                    <input value={reviewValues.courtUnit ?? ""} placeholder="예: 1코트" disabled={saving} onChange={(event) => updateReviewValue("courtUnit", event.target.value)} />
+                    <input className="ui-control" value={reviewValues.courtUnit ?? ""} placeholder="예: 1코트" disabled={saving} onChange={(event) => updateReviewValue("courtUnit", event.target.value)} />
                   </label>
                   <div className="court-db-review-unit-chips">
                     {COURT_UNIT_CHIPS.map(([value, label]) => {
                       const selected = Object.is(reviewValues.courtUnit ?? null, value ?? null);
-                      return <button key={String(value)} type="button" className={selected ? "selected" : ""} aria-pressed={selected} disabled={saving} onClick={() => updateReviewValue("courtUnit", value)}>{label}</button>;
+                      return <Button key={String(value)} type="button" size="sm" variant="secondary" className={selected ? "selected" : ""} aria-pressed={selected} disabled={saving} onClick={() => updateReviewValue("courtUnit", value)}>{label}</Button>;
                     })}
                   </div>
                 </div>
@@ -262,6 +265,7 @@ const modal = open ? (
                     <label>
                       이 장소에는 실제 코트가 몇 개 있나요?
                       <input
+                        className="ui-control"
                         type="number"
                         min="1"
                         step="1"
@@ -326,6 +330,7 @@ const modal = open ? (
                 <label className="court-db-review-reason">
                   수동 저장 사유
                   <input
+                    className="ui-control"
                     value={reason}
                     placeholder={reasonOptional ? "boyakh 한시적 자동 기록" : "수동 저장 때 4자 이상"}
                     maxLength={160}

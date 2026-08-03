@@ -75,6 +75,11 @@ const globalSearchStyles = readCssTree("src/styles/global-search-profile.css");
 const visualSystemStyles = readCssTree("src/styles/global-visual-system.css");
 const courtControlStyles = readCssTree("src/styles/global-court-controls.css");
 const globalAdminStyles = readCssTree("src/styles/global-admin-layout.css");
+const courtDatabaseControlSource = read("src/components/admin/CourtDatabaseControls.jsx");
+const courtDatabasePanelSource = read("src/components/admin/CourtDatabasePanelView.jsx");
+const courtDatabaseDuplicateSource = read("src/components/admin/CourtDatabaseDuplicateReview.jsx");
+const courtDatabaseMapStyles = read("src/styles/features/admin-court-database-map.css");
+const courtDatabaseShellStyles = read("src/styles/features/admin-court-database-shell.css");
 const globalWorkflowStyles = readCssTree("src/styles/global-workflows.css");
 const globalSurfaceStyles = readCssTree("src/styles/global-surfaces.css");
 const landingScoreThemeStyles = read("src/styles/themes/landing-score-theme.css");
@@ -1472,4 +1477,23 @@ test("shared visual roles stay on canonical primitives", () => {
   assert.match(primitiveStyles, /\.ui-card\s*\{[^}]*backdrop-filter:\s*none;/);
   assert.match(primitiveStyles, /\.ui-empty-state-compact\s*\{[^}]*font-size:\s*var\(--font-size-meta\);/);
   assert.equal(count(read("src/pages/SettingsPrimaryColumn.jsx"), "onPointerUp={(event) => event.currentTarget.blur()}"), 2);
+});
+
+test("admin court controls use canonical primitives without feature-owned skins", () => {
+  assert.match(courtDatabaseControlSource, /className="ui-control ui-control-xs"/);
+  assert.match(courtDatabaseControlSource, /<Button[\s\S]*?className=\{selected \? "selected" : ""\}/);
+  assert.match(courtDatabasePanelSource, /className="ui-control"/);
+  assert.match(courtDatabaseDuplicateSource, /className="ui-control"/);
+  assert.doesNotMatch(
+    courtDatabaseMapStyles,
+    /\.court-db-review-scenarios button\s*\{[^}]*(?:border-radius|background\s*:|color\s*:|cursor\s*:)/,
+  );
+  assert.doesNotMatch(
+    courtDatabaseMapStyles,
+    /\.court-db-review-unit-chips button,\s*\.court-db-review-chip-group button\s*\{[^}]*(?:border-radius|background\s*:|color\s*:|cursor\s*:)/,
+  );
+  assert.doesNotMatch(
+    courtDatabaseShellStyles,
+    /\.court-db-quick-status button\s*\{[^}]*(?:border-radius|background:|color:|cursor:)/,
+  );
 });

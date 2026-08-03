@@ -114,6 +114,7 @@ export function CourtDatabaseDuplicateReview({ controller }) {
                 <label>
                   이 장소에 실제 코트가 몇 개 있나요?
                   <input
+                    className="ui-control"
                     type="number"
                     min="1"
                     step="1"

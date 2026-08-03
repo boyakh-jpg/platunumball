@@ -244,6 +244,7 @@
 7. 설계 문서에서 최신 규범과 충돌하는 과거 selector·수치 기록은 구현 근거로 사용하지 않는다. 현재 규범 section을 먼저 고치고 변경 이력은 별도 이력으로만 보존한다.
 8. 공통화는 class 이름 추가가 아니라 시각 속성의 소유권 이동으로 완료한다. 카드·패널·행·버튼·badge·chip·tab·입력·select·popover·modal·empty state의 표면, 색상, border, radius, shadow, 글꼴, 기본 높이, hover, focus, selected는 primitive가 한 번만 정의한다. page selector는 layout과 업무 상태만 소유하며 실제 변형이 필요하면 `--ui-*` custom property를 설정한다.
 9. 일반 `input`, `select`, `textarea`의 기본 표면은 `primitives/shared-controls.css`, focus 표면은 `primitives/hover-disclosure.css`가 유일하게 소유한다. page·theme CSS에서 generic selector로 다시 덮어쓰지 않는다.
+10. 공통화 전후 공용 방 모달의 `gap`, `padding`, grid·flex, width, `white-space`, `word-break`, `overflow-wrap`, `line-height`와 텍스트 줄 수는 같아야 한다. mobile·desktop × dark·light에서 computed layout과 가로 overflow를 비교하고 차이가 있으면 해당 공통화를 되돌린다.
 
 ## 2026-07-22 압축 경기 생성과 추천 UI
 
