@@ -320,7 +320,8 @@ test("player detail uses shared record rows and one support rail", () => {
 });
 
 test("referee detail uses the player hero structure and dedicated tier emblems", () => {
-  assert.ok(fs.statSync("public/assets/rankball-referee-profile-v4.webp").size > 0);
+  assert.ok(fs.statSync("public/assets/rankball-record-create-night.webp").size > 0);
+  assert.ok(fs.statSync("public/assets/rankball-record-create-day.webp").size > 0);
   for (const grade of ["candidate", "silver", "gold", "platinum", "official"]) {
     assert.ok(fs.statSync(`public/assets/referee-tier-emblems/referee-${grade}-v2.webp`).size > 0);
   }
@@ -329,11 +330,38 @@ test("referee detail uses the player hero structure and dedicated tier emblems",
   assert.match(pageSources.refereeDetail, /<RefereeTierEmblem grade=\{grade\} meta=\{gradeMeta\} size="hero" showLabel \/>/);
   assert.doesNotMatch(pageSources.refereeDetail, /leading=|referee-profile-grade/);
   assert.match(pageSources.refereeDetail, /className="referee-profile-body"/);
-  assert.match(pageSources.refereeDetail, /"--page-hero-bg": `url\("\$\{assetUrl\("\/assets\/rankball-referee-profile-v4\.webp"\)\}"\)`/);
+  assert.match(pageSources.refereeDetail, /"--referee-page-hero-bg-night": `url\("\$\{assetUrl\("\/assets\/rankball-record-create-night\.webp"\)\}"\)`/);
+  assert.match(pageSources.refereeDetail, /"--referee-page-hero-bg-day": `url\("\$\{assetUrl\("\/assets\/rankball-record-create-day\.webp"\)\}"\)`/);
   assert.match(refereeTierEmblemSource, /<img/);
   assert.match(refereeTierEmblemSource, /referee-tier-emblems\/referee-candidate-v2\.webp/);
   assert.doesNotMatch(refereeTierEmblemSource, /Whistle|referee-tier-mark|referee-[a-z]+-v1/);
   assert.match(globalSearchStyles, /\.referee-profile-body\s*\{[^}]*grid-template-columns:/s);
+  assert.match(globalSearchStyles, /\.profile-detail-page \.rank-profile-hero\.referee-profile-hero\s*\{[^}]*--page-hero-bg:\s*var\(--referee-page-hero-bg-night\);/s);
+  assert.match(globalSearchStyles, /html\[data-theme="light"\] \.profile-detail-page \.rank-profile-hero\.referee-profile-hero\s*\{[^}]*--page-hero-bg:\s*var\(--referee-page-hero-bg-day\);/s);
+});
+
+test("signed-in login redirects and settings exposes logout", () => {
+  assert.match(loginSource, /if \(auth\.session\) return <Navigate to=\{from\} replace \/>;/);
+  assert.match(settingsSource, /<SettingsPageView controller=\{controller\} auth=\{props\.auth\} \/>/);
+  assert.match(settingsSource, /onClick=\{auth\.signOut\}/);
+  assert.match(settingsSource, /<LogOut size=\{16\} \/> 로그아웃/);
+});
+
+test("regular room referee invitations live only in the room modal", () => {
+  const createSections = [
+    read("src/components/match/CreateMatchDetailsSection.jsx"),
+    read("src/components/match/CreateMatchPolicyReviewSection.jsx"),
+  ].join("\n");
+  const creationSource = read("src/data/repository/recruiting/creation.js");
+
+  assert.doesNotMatch(createSections, /CreateMatchRefereePicker/);
+  assert.doesNotMatch(creationSource, /getTrustedRefereeId|requestedRefereeId/);
+  assert.match(creationSource, /const initialRefereeInvitations = \[\];/);
+  assert.match(recruitingPageSource, /const showRefereeInviteSlot = !selectedPost\.refereeId;/);
+  assert.match(recruitingPageSource, /<RefereeInvitePanel/);
+  assert.match(recruitingStyles, /\.arena-referee-invite-panel header strong\s*\{[^}]*font-size:\s*var\(--font-size-title-sm\);/s);
+  assert.match(recruitingStyles, /\.arena-referee-invite-panel header span\s*\{[^}]*font-size:\s*var\(--font-size-meta\);/s);
+  assert.match(recruitingStyles, /\.arena-referee-invite-panel \.arena-invite-search input\s*\{[^}]*font-size:\s*var\(--control-font-size\);/s);
 });
 
 test("win loss draw record borders keep semantic colors in every theme", () => {

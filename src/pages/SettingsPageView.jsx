@@ -1,10 +1,11 @@
 import { Link } from "react-router-dom";
+import { LogOut } from "lucide-react";
 import Button from "../components/common/Button.jsx";
 import SettingsPrimaryColumn from "./SettingsPrimaryColumn.jsx";
 import SettingsSideColumn from "./SettingsSideColumn.jsx";
 import SettingsRefereeSection from "./SettingsRefereeSection.jsx";
 
-export default function SettingsPageView({ controller }) {
+export default function SettingsPageView({ controller, auth }) {
   const { sectionMeta, settingsSection } = controller;
   return (
 <div className={`page-stack settings-page settings-section-${settingsSection}`}>
@@ -13,6 +14,11 @@ export default function SettingsPageView({ controller }) {
           <p className="eyebrow">{sectionMeta.eyebrow}</p>
           <h1>{sectionMeta.title}</h1>
         </div>
+        {settingsSection === "main" && auth ? (
+          <Button type="button" variant="secondary" onClick={auth.signOut} disabled={auth.authActionPending}>
+            <LogOut size={16} /> 로그아웃
+          </Button>
+        ) : null}
         {settingsSection !== "main" ? (
           <Button as={Link} variant="secondary" to="/app/settings">설정</Button>
         ) : null}

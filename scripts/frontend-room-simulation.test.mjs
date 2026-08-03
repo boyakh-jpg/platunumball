@@ -149,6 +149,7 @@ function runActualMatchLifecycle({
     overtimeMinutes: 1,
     shotClockSeconds: 24,
     refereeWanted: referee,
+    refereeId: referee ? refereeId : "",
     court: "실제 프론트 시뮬레이션 코트",
     meetingPoint: "1번 코트 입구",
   });
@@ -203,6 +204,11 @@ function runActualMatchLifecycle({
   }
 
   if (referee) {
+    assert.equal(
+      state.recruitingPosts.find((post) => post.id === postId).roomState.invitations.some((invitation) => invitation.role === "referee"),
+      false,
+      `${postId}: referee invite starts in room modal`,
+    );
     state = inviteRecruitingReferee(asActor(state, hostId), postId, refereeId);
     if (acceptReferee) state = acceptActualInvitation(state, postId, refereeId, "referee");
   }

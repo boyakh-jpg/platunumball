@@ -223,6 +223,10 @@
   margin-top: 10px;
 }
 
+.arena-referee-invite-panel .arena-invite-search input {
+  font-size: var(--control-font-size);
+}
+
 .arena-referee-pending-list {
   display: flex;
   flex-wrap: wrap;
@@ -234,7 +238,7 @@
   background: rgba(255, 211, 106, 0.14);
   color: var(--text);
   padding: 6px 9px;
-  font-size: 0.78rem;
+  font-size: var(--control-font-size);
   font-weight: 900;
 }
 

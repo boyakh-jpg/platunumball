@@ -348,7 +348,7 @@ const lobby = getRecruitingLobby(selectedPost, app.state);
             .filter((user) => isEligibleReferee(user, selectedPost.refereeTrustMin, app.state.settings?.refereeAppointments))
             .sort((a, b) => Number(b.trustScore ?? 0) - Number(a.trustScore ?? 0))
           : [];
-        const showRefereeInviteSlot = refereeWanted && !selectedPost.refereeId;
+        const showRefereeInviteSlot = !selectedPost.refereeId;
         const canInviteRefereeFromRoom = showRefereeInviteSlot && canInviteFromRoom;
         const activeInviteDraftRaw = inviteDraft?.postId === selectedPost.id ? inviteDraft : null;
         const activeSelfSlotDraftRaw = slotActionDraft?.postId === selectedPost.id ? slotActionDraft : null;

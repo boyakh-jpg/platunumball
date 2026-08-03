@@ -119,7 +119,8 @@ export default function RefereeDetail({ app }) {
       <EntityProfileHero
         className="profile-hero rank-profile-hero referee-profile-hero"
         style={{
-          "--page-hero-bg": `url("${assetUrl("/assets/rankball-referee-profile-v4.webp")}")`,
+          "--referee-page-hero-bg-night": `url("${assetUrl("/assets/rankball-record-create-night.webp")}")`,
+          "--referee-page-hero-bg-day": `url("${assetUrl("/assets/rankball-record-create-day.webp")}")`,
           "--page-hero-bg-position": "center",
         }}
         eyebrow="Referee Profile"

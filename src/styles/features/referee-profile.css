@@ -1,6 +1,10 @@
-.referee-profile-hero {
+.profile-detail-page .rank-profile-hero.referee-profile-hero {
+  --page-hero-bg: var(--referee-page-hero-bg-night);
   min-height: 300px;
   border-color: color-mix(in srgb, var(--rb-blue) 34%, transparent);
+}
+html[data-theme="light"] .profile-detail-page .rank-profile-hero.referee-profile-hero {
+  --page-hero-bg: var(--referee-page-hero-bg-day);
 }
 .referee-profile-hero .entity-profile-hero-copy {
   align-self: center;

@@ -442,3 +442,12 @@ html[data-theme="light"] .arena-side-roster .arena-room-player-slot:not(.empty) 
   font-size: 12px;
   line-height: 1.45;
 }
+
+.arena-referee-invite-panel header strong {
+  font-size: var(--font-size-title-sm);
+  text-transform: none;
+}
+
+.arena-referee-invite-panel header span {
+  font-size: var(--font-size-meta);
+}

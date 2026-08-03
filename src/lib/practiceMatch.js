@@ -259,13 +259,16 @@ export function createPracticeRecruitingRoom(state, draft = {}, { inviteTutorial
   let next = withPracticeActor(state, PRACTICE_SELF_ID, repository.createRecruitingPost, safeDraft);
   const post = next.recruitingPosts.find((item) => item.id === roomId);
   if (!post) return { state, postId: "", error: "practice_room_create_failed" };
-  if (post.teamOnly) return { state: next, postId: roomId, error: "" };
-
   const reservedRefereeId = safeDraft.refereeId || (
     safeDraft.refereeWanted
       ? next.users.find((user) => user.officialReferee === true)?.id || ""
       : ""
   );
+  if (reservedRefereeId) {
+    next = withPracticeActor(next, PRACTICE_SELF_ID, repository.inviteRecruitingReferee, roomId, reservedRefereeId);
+  }
+  if (post.teamOnly) return { state: next, postId: roomId, error: "" };
+
   const dummyIds = next.users
     .map((user) => user.id)
     .filter((userId) => userId !== PRACTICE_SELF_ID && userId !== reservedRefereeId);

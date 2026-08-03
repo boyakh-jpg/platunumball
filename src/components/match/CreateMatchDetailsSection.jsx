@@ -1,5 +1,3 @@
-import { CreateMatchRefereePicker } from "./CreateMatchRefereePicker.jsx";
-
 export function CreateMatchDetailsSection({ context }) {
   const {
     Card, MATCH_MODES, MatchRosterPolicyFields, NumericStepper, SOLO_RECORD_MODES,
@@ -255,9 +253,6 @@ export function CreateMatchDetailsSection({ context }) {
                   </>
                 ) : null}
               </>
-            ) : null}
-            {!isTournamentRoom && !isSoloRecord && !isMatchRecordRoom && !isStandardCreateWizard ? (
-              <CreateMatchRefereePicker context={context} />
             ) : null}
             {isTournamentRoom ? (
               <>

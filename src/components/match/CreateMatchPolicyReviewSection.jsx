@@ -1,5 +1,3 @@
-import { CreateMatchRefereePicker } from "./CreateMatchRefereePicker.jsx";
-
 export function CreateMatchPolicyReviewSection({ context }) {
   const {
     Button, Card, MatchCreationReviewPanel, MatchCreationRulePanel, MatchOperationsPolicyFields, SearchPicker,
@@ -30,9 +28,6 @@ export function CreateMatchPolicyReviewSection({ context }) {
           </div>
           {isStandardCreateWizard || isTournamentRoom ? (
             <MatchOperationsPolicyFields draft={draft} onChange={update} />
-          ) : null}
-          {isStandardCreateWizard ? (
-            <CreateMatchRefereePicker context={context} className="match-wizard-referee-row" />
           ) : null}
           {!isSoloRecord && !isMatchRecordRoom ? (
             <label className="memo-label">

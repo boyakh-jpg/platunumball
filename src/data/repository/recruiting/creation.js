@@ -26,7 +26,6 @@ import { normalizeDisputeWindowMinutes } from "../../../lib/constants.js";
 import { normalizeRecruitingMmrRangeMode } from "../../../lib/recruiting.js";
 import { normalizeRecruitingRoomState } from "../../../lib/recruiting.js";
 import { getDisciplineBlockedState, getHostTrustBlockNotification, getInvalidPublicScheduleNotification, getInvalidScheduleNotification } from "../guards.js";
-import { getTrustedRefereeId } from "../lifecycle.js";
 import { getServerRatingValue } from "../runtime.js";
 
 export function createRecruitingPost(state, draft) {
@@ -168,8 +167,7 @@ export function createRecruitingPost(state, draft) {
   }
   const hostSize = hostJoinMode === "team" ? hostPlayerIds.length : 1;
   const opponentSize = orderedOpponentPlayerIds.length;
-  const requestedRefereeId = getTrustedRefereeId(state, draft.refereeId, [state.currentUserId, ...hostPlayerIds, ...orderedOpponentPlayerIds]);
-  const refereeWanted = Boolean(draft.refereeWanted || requestedRefereeId);
+  const refereeWanted = Boolean(draft.refereeWanted);
   const refereeId = "";
   const timingType = draft.timingType === "instant" ? "instant" : "scheduled";
   const fallbackSchedule = timingType === "instant" ? null : getNextQueueSchedule(state.recruitingPosts ?? []);
@@ -212,20 +210,7 @@ export function createRecruitingPost(state, draft) {
     createdAt,
     updatedAt: createdAt,
   }));
-  const initialRefereeInvitations = refereeWanted && requestedRefereeId
-    ? [{
-        id: makeId("inv"),
-        role: "referee",
-        targetUserId: requestedRefereeId,
-        fromUserId: state.currentUserId,
-        teamId: null,
-        side: "teamB",
-        reserve: false,
-        status: "pending",
-        createdAt,
-        updatedAt: createdAt,
-      }]
-    : [];
+  const initialRefereeInvitations = [];
   const applicants = opponentTeam && orderedOpponentPlayerIds.length
     ? [
         {

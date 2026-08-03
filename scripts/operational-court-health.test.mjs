@@ -97,3 +97,13 @@ test("operational health rejects deleted synthetic court rows and references", a
   assert.doesNotMatch(migration, /\b(?:delete|update|truncate)\s+(?:from\s+)?public\.(?:approved_courts|courts)\b/i);
   assert.doesNotMatch(migration, /\balter\s+table\b/i);
 });
+
+test("court review writes refresh only affected court metrics", async () => {
+  const migration = await readSource("supabase/migrations/20260803130000_scope_court_review_metric_refresh.sql");
+
+  assert.match(migration, /rankball_refresh_court_metrics_after_review/);
+  assert.match(migration, /rankball_resolve_approved_court_id\(old\.court_id, old\.court_name\)/);
+  assert.match(migration, /rankball_resolve_approved_court_id\(new\.court_id, new\.court_name\)/);
+  assert.match(migration, /rankball_refresh_court_metrics\(new_court_id\)/);
+  assert.doesNotMatch(migration, /rankball_refresh_all_court_metrics/);
+});
