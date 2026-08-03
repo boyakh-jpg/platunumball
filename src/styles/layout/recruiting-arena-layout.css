@@ -70,6 +70,21 @@ html[data-theme="light"] .arena-lobby-arena {
   .arena-lobby-modal-scroll {
     scrollbar-gutter: auto;
   }
+
+  .arena-lobby-modal .arena-dispute-player {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-2);
+  }
+
+  .arena-lobby-modal .arena-dispute-player > span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .arena-lobby-modal .arena-dispute-player > div {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 @media (max-width: 380px) {
   .arena-lobby-modal-scroll {
@@ -85,19 +100,6 @@ html[data-theme="light"] .arena-lobby-arena {
   .arena-lobby-modal .arena-dispute-editor {
     gap: 10px;
     padding: 10px;
-  }
-
-  .arena-lobby-modal .arena-dispute-player > div {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-@media (max-width: 340px) {
-  .arena-lobby-modal .arena-dispute-player > div {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .arena-lobby-modal .arena-stat-stepper {
-    grid-template-columns: 24px minmax(26px, 1fr) 24px;
   }
 }
 .arena-room-chat,

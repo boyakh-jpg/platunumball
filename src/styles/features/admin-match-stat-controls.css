@@ -10,7 +10,7 @@
   .arena-stat-stepper {
     width: 100%;
     min-width: 0;
-    grid-template-columns: minmax(30px, 0.8fr) minmax(28px, 1fr) minmax(30px, 0.8fr);
+    grid-template-columns: 21px minmax(36px, 1fr) 21px;
     grid-template-rows: 44px;
   }
 

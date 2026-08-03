@@ -1405,6 +1405,21 @@ test("경기 기록 참가 확인은 공용 surface token과 모달 밀도를 �
   assert.doesNotMatch(globalAdminStyles, /html\[data-theme="light"\] \.approval-(?:grid|voter-list)/);
 });
 
+test("mobile referee stat editor keeps names and numeric steppers aligned", () => {
+  assert.match(
+    recruitingStyles,
+    /@media \(max-width:\s*720px\)[\s\S]*?\.arena-lobby-modal \.arena-dispute-player\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\);/,
+  );
+  assert.match(
+    globalAdminStyles,
+    /\.arena-dispute-player \.ui-numeric-stepper\.arena-stat-stepper > input\[type="number"\]\s*\{[^}]*padding:\s*6px 2px;[^}]*font-size:\s*0\.75rem;/,
+  );
+  assert.match(
+    globalAdminStyles,
+    /@media \(max-width:\s*640px\)[\s\S]*?\.arena-stat-stepper\s*\{[^}]*grid-template-columns:\s*21px minmax\(36px,\s*1fr\) 21px;[^}]*grid-template-rows:\s*44px;/,
+  );
+});
+
 test("방모달 참가자 상태와 관리 action은 선수 오른쪽 열과 공용 구분선을 사용한다", () => {
   assert.match(
     recruitingStyles,
