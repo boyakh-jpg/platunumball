@@ -291,6 +291,14 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
   const submitCourtRequest = async (event) => {
     event.preventDefault();
     if (courtSubmitPendingRef.current) return;
+    if (!courtDisplayName) {
+      setCourtLookupStatus("시설/장소명을 입력해 주세요.");
+      return;
+    }
+    if (!courtAddressSelected || !courtHasMapPin) {
+      setCourtLookupStatus("근처 주소를 선택하고 실제 구장 위치를 확정해 주세요.");
+      return;
+    }
     if (!courtPinConfirmed) {
       setCourtLookupStatus("지도 핀으로 실제 구장 위치를 확정해 주세요.");
       return;
@@ -301,6 +309,14 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
     }
     if (courtNearbyReviewRequired && !courtNearbyConfirmed) {
       setCourtLookupStatus("근처 등록·검토 중 구장을 확인하고 중복 확인에 체크해 주세요.");
+      return;
+    }
+    if (courtNearbyLookupFailed) {
+      setCourtLookupStatus("근처 등록 구장을 다시 불러온 뒤 신청해 주세요.");
+      return;
+    }
+    if (courtRequiresUnit && !courtDraft.courtUnit.trim()) {
+      setCourtLookupStatus("같은 장소의 다른 코트라면 코트 구분을 입력해 주세요.");
       return;
     }
     if (courtSourceUrlInvalid) {

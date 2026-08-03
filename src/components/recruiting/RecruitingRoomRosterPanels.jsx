@@ -45,6 +45,7 @@ export function SideRoster({
   showCaptainBadge = false,
   roomState = {},
   sideLeaderId = "",
+  pendingLeader = null,
   slotPositions = {},
   canInvite = false,
   inviteLabel = "초대",
@@ -67,7 +68,8 @@ export function SideRoster({
     });
   });
   const activeSlotGroups = groupPartySlots(activeSlots);
-  const openSlots = Math.max(0, side.capacity - side.filled);
+  const pendingLeaderVisible = Boolean(pendingLeader?.playerId && pendingLeader?.user && !activeSlots.length && side.filled < side.capacity);
+  const openSlots = Math.max(0, side.capacity - side.filled - Number(pendingLeaderVisible));
   const slotTrackCount = Math.max(1, Number(side.capacity) || activeSlots.length || 1);
   const displayedSideLeaderId = (
     activeSlots.some(({ playerId }) => playerId === hostPlayerId)
@@ -114,6 +116,17 @@ export function SideRoster({
             </div>
           ) : renderActiveSlot(group.slots[0])
         ))}
+        {pendingLeaderVisible ? (
+          <PlayerRoomSlot
+            user={pendingLeader.user}
+            teams={teams}
+            status="waiting"
+            title="초대 대기"
+            detail={pendingLeader.teamName}
+            mmr={pendingLeader.user.ratings?.integrated ?? DEFAULT_RATING}
+            badge={getRoomSlotBadge(pendingLeader.playerId, null, hostPlayerId, showCaptainBadge, roomState, { sideLeaderId: pendingLeader.playerId })}
+          />
+        ) : null}
         {Array.from({ length: openSlots }).map((_item, index) => {
           const slotKey = `${sideName}-active-${index}`;
           return (

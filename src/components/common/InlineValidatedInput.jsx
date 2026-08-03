@@ -10,7 +10,6 @@ export default function InlineValidatedInput({
 }) {
   const generatedId = useId();
   const blurFallbackRef = useRef(inputProps.value);
-  const preservePointerFallbackRef = useRef(false);
   const messageId = `${inputProps.id || generatedId}-validation`;
   const describedBy = [inputProps["aria-describedby"], message ? messageId : ""].filter(Boolean).join(" ") || undefined;
 
@@ -22,16 +21,14 @@ export default function InlineValidatedInput({
         aria-describedby={describedBy}
         aria-invalid={message ? "true" : undefined}
         onFocus={(event) => {
-          if (!preservePointerFallbackRef.current) blurFallbackRef.current = inputProps.value;
-          preservePointerFallbackRef.current = false;
+          if (inputProps.value !== "") blurFallbackRef.current = inputProps.value;
           inputProps.onFocus?.(event);
         }}
         onPointerDown={(event) => {
           inputProps.onPointerDown?.(event);
           if (!clearOnDirectEntry || inputProps.type !== "number" || inputProps.disabled) return;
           if (!isDirectNumericEntryPointer(event.clientX, event.currentTarget.getBoundingClientRect().right)) return;
-          blurFallbackRef.current = inputProps.value;
-          preservePointerFallbackRef.current = true;
+          if (inputProps.value !== "") blurFallbackRef.current = inputProps.value;
           event.currentTarget.value = "";
           inputProps.onChange?.(event);
         }}

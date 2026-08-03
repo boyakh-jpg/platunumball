@@ -29,6 +29,21 @@ function RecruitingRoomVersusSide({ context, sideName, meta }) {
     tournamentRoomOwnerName,
     userById,
   } = context;
+  const pendingSideLeaderInvitation = !sourceMatch && selectedPost.visibility === "private"
+    ? (roomState.invitations ?? []).find((invitation) => (
+        invitation.status === "pending"
+        && invitation.role !== "referee"
+        && invitation.joinMode === "team"
+        && invitation.side === sideName
+      ))
+    : null;
+  const pendingSideLeader = pendingSideLeaderInvitation
+    ? {
+        playerId: pendingSideLeaderInvitation.targetUserId,
+        user: userById[pendingSideLeaderInvitation.targetUserId],
+        teamName: app.state.teams.find((team) => team.id === pendingSideLeaderInvitation.teamId)?.name ?? "",
+      }
+    : null;
 
   return (
     <div className={`arena-lobby-team-panel ${sideName === "teamA" ? "team-a" : "team-b"}`}>
@@ -48,6 +63,7 @@ function RecruitingRoomVersusSide({ context, sideName, meta }) {
       <SideRoster
         sideName={sideName}
         side={lobby.sides[sideName]}
+        pendingLeader={pendingSideLeader}
         {...getRecruitingRoomRosterProps(context, sideName)}
         onSetPlacement={(playerId, placement) => app.actions.setRecruitingApplicantPlacement(selectedPost.id, playerId, placement)}
         onSetMemberReserve={(entryId, playerId, reserve) => app.actions.setRecruitingPartyPlayerReserve(selectedPost.id, entryId, playerId, reserve)}

@@ -96,6 +96,7 @@ const sidebarSource = read("src/components/layout/Sidebar.jsx");
 const loginSource = read("src/pages/Login.jsx");
 const notificationsSource = read("src/pages/Notifications.jsx");
 const settingsSource = readSourceGroupSync(read, SETTINGS_PAGE_SOURCE_PATHS);
+const settingsStyles = read("src/styles/features/settings-location-preferences.css");
 const matchesPageSource = readSourceGroupSync(read, MATCHES_PAGE_SOURCE_PATHS);
 const matchRoomPageSource = readSourceGroupSync(read, MATCH_ROOM_SOURCE_PATHS);
 const homePageSource = readSourceGroupSync(read, HOME_PAGE_SOURCE_PATHS);
@@ -348,6 +349,8 @@ test("signed-in login redirects and settings exposes logout", () => {
   assert.match(settingsSource, /<LogOut size=\{16\} \/> 로그아웃/);
   assert.doesNotMatch(settingsSource, /<header[^>]*>[\s\S]*?auth\.signOut[\s\S]*?<\/header>/);
   assert.match(settingsSource, /<SettingsRefereeSection controller=\{controller\} \/>[\s\S]*?settings-signout-row/);
+  assert.match(settingsSource, /settings-signout-row[\s\S]*?variant="danger"/);
+  assert.match(settingsStyles, /\.settings-signout-row \.button\s*\{[^}]*width:\s*100%;/);
 });
 
 test("regular room referee invitations live only in the room modal", () => {
@@ -791,6 +794,9 @@ test("매칭과 기록 생성 선택 영역은 같은 제목과 버튼 타이포
     courtControlStyles,
     /\.create-match-page :is\(\.create-mode-grid,\s*\.match-intent-preset-grid\) button strong\s*\{[^}]*font-size:\s*var\(--create-choice-option-title-font-size\);[^}]*line-height:\s*1\.35;/,
   );
+  assert.match(courtControlStyles, /\.create-match-page\s*\{[^}]*--button-secondary-bg:\s*var\(--surface-3\);[^}]*--ui-button-bg:\s*var\(--surface-3\);/);
+  assert.match(courtControlStyles, /html\[data-theme\] \.create-match-page \.button-secondary\s*\{[^}]*background:\s*var\(--surface-3\);/);
+  assert.match(courtControlStyles, /\.match-intent-preset-grid > button\s*\{[^}]*background:\s*var\(--surface-3\);/);
   assert.match(
     courtControlStyles,
     /\.create-match-page \.create-mode-grid button em,[\s\S]*?font-size:\s*var\(--create-choice-option-copy-font-size\);[\s\S]*?line-height:\s*1\.45;/,

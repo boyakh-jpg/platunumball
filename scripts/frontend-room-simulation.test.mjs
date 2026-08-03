@@ -1277,6 +1277,28 @@ test("방 모달은 후보 자동충원 예상치를 출전 슬롯으로 표시�
   assert.doesNotMatch(primarySource, /lobby\.sides\.team[AB]\.projectedFilled/);
 });
 
+test("비공개 팀방은 수락 전 B사이드장을 빈 슬롯 대신 초대 대기로 표시한다", async () => {
+  const [primarySource, rosterSource] = await Promise.all([
+    readFile(new URL("../src/components/recruiting/RecruitingRoomPrimarySection.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/recruiting/RecruitingRoomRosterPanels.jsx", import.meta.url), "utf8"),
+  ]);
+  assert.match(primarySource, /invitation\.joinMode === "team"[\s\S]*invitation\.side === sideName/);
+  assert.match(primarySource, /pendingLeader=\{pendingSideLeader\}/);
+  assert.match(rosterSource, /title="초대 대기"/);
+  assert.match(rosterSource, /side\.capacity - side\.filled - Number\(pendingLeaderVisible\)/);
+});
+
+test("구장 등록요청 버튼은 진행 중에만 잠그고 미충족 조건을 클릭 후 안내한다", async () => {
+  const [viewSource, controllerSource] = await Promise.all([
+    readFile(new URL("../src/pages/SettingsSideColumn.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/pages/useSettingsCourtRequestController.js", import.meta.url), "utf8"),
+  ]);
+  assert.match(viewSource, /disabled=\{courtSubmitPending \|\| courtPinPending \|\| courtPhotoPending\}/);
+  assert.doesNotMatch(viewSource, /disabled=\{[^}]*!canSubmitCourtRequest[^}]*\}/);
+  assert.match(controllerSource, /if \(!courtDisplayName\)[\s\S]*시설\/장소명을 입력해 주세요\./);
+  assert.match(controllerSource, /if \(!courtAddressSelected \|\| !courtHasMapPin\)[\s\S]*실제 구장 위치를 확정해 주세요\./);
+});
+
 test("공용 경기방은 모든 진입점에서 렌더 실패와 삭제 실패를 방 안에서 복구한다", async () => {
   const [modalSource, interactionsSource, matchModelSource, layoutSource] = await Promise.all([
     readFile(new URL("../src/components/recruiting/RecruitingRoomModal.jsx", import.meta.url), "utf8"),

@@ -136,6 +136,12 @@
   --create-choice-heading-font-size: 1.25rem;
   --create-choice-option-title-font-size: 0.9rem;
   --create-choice-option-copy-font-size: 0.8rem;
+  --button-secondary-bg: var(--surface-3);
+  --ui-button-bg: var(--surface-3);
+}
+
+html[data-theme] .create-match-page .button-secondary {
+  background: var(--surface-3);
 }
 
 .create-match-page .create-choice-heading {
@@ -194,7 +200,7 @@
   gap: 5px;
   border: var(--ui-stroke-width) solid var(--ui-control-border);
   border-radius: var(--ui-control-radius);
-  background: var(--ui-control-bg);
+  background: var(--surface-3);
   color: var(--text);
   cursor: pointer;
   font: inherit;

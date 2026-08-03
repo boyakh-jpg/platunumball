@@ -294,8 +294,11 @@
 }
 
 .settings-signout-row {
-  justify-content: flex-end;
   padding-block: var(--space-6);
+}
+
+.settings-signout-row .button {
+  width: 100%;
 }
 
 @media (max-width: 560px) {

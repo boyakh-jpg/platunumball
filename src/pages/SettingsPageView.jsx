@@ -27,7 +27,7 @@ export default function SettingsPageView({ controller, auth }) {
       <SettingsRefereeSection controller={controller} />
       {settingsSection === "main" && auth ? (
         <div className="ui-action-row settings-signout-row">
-          <Button type="button" variant="secondary" onClick={auth.signOut} disabled={auth.authActionPending}>
+          <Button type="button" variant="danger" onClick={auth.signOut} disabled={auth.authActionPending}>
             <LogOut size={16} /> 로그아웃
           </Button>
         </div>

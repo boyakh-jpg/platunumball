@@ -400,7 +400,7 @@ export default function SettingsSideColumn({ controller }) {
                     </div>
                   ) : null}
                 </div>
-                <Button type="submit" variant="secondary" disabled={courtSubmitPending || courtPinPending || courtPhotoPending || !canSubmitCourtRequest || !courtDisplayName || !courtAddressSelected || !courtHasMapPin || !courtPinConfirmed}>
+                <Button type="submit" variant="secondary" disabled={courtSubmitPending || courtPinPending || courtPhotoPending}>
                   <Send size={16} /> {courtSubmitPending ? "저장 중" : "등록요청"}
                 </Button>
               </form>
