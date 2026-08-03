@@ -2514,6 +2514,7 @@ test("referee rulebook matches current FIBA and BOXTIER operating rules", async 
   assert.equal(REFEREE_RULEBOOK_EASY_SECTIONS.length, 6);
   assert.match(rulebookText, /QR 출석과 실제 출전은 다름/);
   assert.match(rulebookText, /개인기록은 심판 경기만/);
+  assert.match(JSON.stringify(REFEREE_RULEBOOK_EASY_SECTIONS), /턴오버\(TO\).*공격권을 상대에게 넘긴 선수/);
   assert.match(rulebookText, /턴오버\(TO\).*공격권을 상대에게 넘긴 선수/);
   assert.doesNotMatch(rulebookText, /림 위 원통|4번 드리블|낮은 가중치/);
   assert.match(rulebookText, /1m 안에서 밀착 수비/);
@@ -2536,6 +2537,7 @@ test("referee rulebook matches current FIBA and BOXTIER operating rules", async 
   assert.match(rulebookText, /상세 산식과 내부 보정값은 공개하지 않습니다/);
   assert.doesNotMatch(rulebookText, /1v1 10%|2v2 20%|3v3 35%|5v5 50%|상위 최대 5명 평균|정규멤버 비율만큼|-150부터 \+150/);
   assert.match(tutorial, /상세 산식은 공개하지 않습니다/);
+  assert.match(tutorial, /턴오버\(TO\).*공격권을 상대에게 넘긴 선수/);
   assert.doesNotMatch(tutorial, /1v1 10%|2v2 20%|3v3 35%|5v5 50%|상위 5명 평균|정규멤버 비율만큼|MMR 100%|성과 보정은 0%/);
   assert.doesNotMatch(recruiting, /MMR 반영률:|현장 직접 90%|완전 랜덤 100%|MMR 균형 110%|팀원의 비율을 기준|ratingScale \* 100/);
   assert.doesNotMatch(matchRoom, /정규 · MMR \$\{|ratingScale \?\?/);
