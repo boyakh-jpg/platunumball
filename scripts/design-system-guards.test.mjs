@@ -61,6 +61,7 @@ const recentMatchRowSource = read("src/components/match/RecentMatchRow.jsx");
 const mmrRangeSelectorSource = read("src/components/match/MmrRangeSelector.jsx");
 const approvalPanelSource = read("src/components/match/ApprovalPanel.jsx");
 const profileBasicsFieldsSource = read("src/components/profile/ProfileBasicsFields.jsx");
+const refereeTierEmblemSource = read("src/components/rating/RefereeTierEmblem.jsx");
 const signupSource = read("src/pages/Signup.jsx");
 const matchOperationsFieldsSource = matchCreationWizardSource.slice(
   matchCreationWizardSource.indexOf("export function MatchOperationsPolicyFields"),
@@ -304,22 +305,25 @@ test("player detail uses shared record rows and one support rail", () => {
   assert.match(pageSources.playerDetail, /className="ui-profile-identity-inline"/);
   assert.doesNotMatch(globalSearchStyles, /\.connection-list a\s*\{[^}]*gap:\s*9px;/);
   assert.match(pageSources.playerDetail, /className="recent-result-strip"/);
+  assert.match(pageSources.playerDetail, /getActualMatchPlayerSideName/);
+  assert.match(pageSources.playerDetail, /player\.privacy\?\.statSummary !== false/);
+  assert.match(pageSources.playerDetail, /to=\{`\/app\/referees\/\$\{player\.id\}`\}/);
+  assert.match(pageSources.playerDetail, /<strong>\{confirmedHistory\.length\}<\/strong>확정 경기/);
   assert.doesNotMatch(pageSources.playerDetail, /form-pill/);
   assert.doesNotMatch(globalSearchStyles, /\.form-pill(?:-row)?\s*\{/);
   assert.match(globalSurfaceStyles, /\.profile-detail-page \.profile-hero\s*\{[^}]*--page-hero-bg:\s*var\(--bg-profile\);/);
 });
 
 test("referee detail uses the player hero structure and dedicated tier emblems", () => {
-  assert.ok(fs.statSync("public/assets/rankball-referee-profile-v2.webp").size > 0);
-  for (const grade of ["candidate", "silver", "gold", "platinum", "official"]) {
-    assert.ok(fs.statSync(`public/assets/referee-tier-emblems/referee-${grade}-v1.webp`).size > 0);
-  }
+  assert.ok(fs.statSync("public/assets/rankball-referee-profile-v3.webp").size > 0);
   assert.match(pageSources.refereeDetail, /className="profile-hero rank-profile-hero referee-profile-hero"/);
   assert.match(pageSources.refereeDetail, /className="player-tier-hero"/);
   assert.match(pageSources.refereeDetail, /<RefereeTierEmblem grade=\{grade\} meta=\{gradeMeta\} size="hero" showLabel \/>/);
   assert.doesNotMatch(pageSources.refereeDetail, /leading=|referee-profile-grade/);
   assert.match(pageSources.refereeDetail, /className="referee-profile-body"/);
-  assert.match(pageSources.refereeDetail, /"--page-hero-bg": `url\("\$\{assetUrl\("\/assets\/rankball-referee-profile-v2\.webp"\)\}"\)`/);
+  assert.match(pageSources.refereeDetail, /"--page-hero-bg": `url\("\$\{assetUrl\("\/assets\/rankball-referee-profile-v3\.webp"\)\}"\)`/);
+  assert.doesNotMatch(refereeTierEmblemSource, /<img|referee-tier-emblems/);
+  assert.match(refereeTierEmblemSource, /<Shield \/>/);
   assert.match(globalSearchStyles, /\.referee-profile-body\s*\{[^}]*grid-template-columns:/s);
 });
 

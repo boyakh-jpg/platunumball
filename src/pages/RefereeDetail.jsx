@@ -119,8 +119,8 @@ export default function RefereeDetail({ app }) {
       <EntityProfileHero
         className="profile-hero rank-profile-hero referee-profile-hero"
         style={{
-          "--page-hero-bg": `url("${assetUrl("/assets/rankball-referee-profile-v2.webp")}")`,
-          "--page-hero-bg-position": "center top",
+          "--page-hero-bg": `url("${assetUrl("/assets/rankball-referee-profile-v3.webp")}")`,
+          "--page-hero-bg-position": "center",
         }}
         eyebrow="Referee Profile"
         title={referee.name}
@@ -139,12 +139,12 @@ export default function RefereeDetail({ app }) {
         )}
       />
 
-      <div className="referee-profile-navigation">
+      <div className="profile-page-navigation">
         <nav className="rank-profile-tabs">
           <a href="#referee-stats">통계</a>
           <a href="#referee-history">최근 경기</a>
         </nav>
-        <Button as={Link} size="sm" variant="secondary" className="referee-profile-player-link" to={`/app/players/${referee.id}`}>
+        <Button as={Link} size="sm" variant="secondary" className="profile-role-link" to={`/app/players/${referee.id}`}>
           선수 프로필
           <ArrowUpRight size={15} aria-hidden="true" />
         </Button>

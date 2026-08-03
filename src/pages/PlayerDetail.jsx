@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
-import { MessageCircle } from "lucide-react";
+import { ArrowUpRight, MessageCircle, ShieldCheck } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import BasketballLoader from "../components/common/BasketballLoader.jsx";
 import Button from "../components/common/Button.jsx";
@@ -17,21 +17,15 @@ import TeamEmblem from "../components/team/TeamEmblem.jsx";
 import { getDiscordDisplayName, getDiscordProfileUrl } from "../lib/discord.js";
 import { getUserHashtag } from "../lib/handles.js";
 import { getTeamRoleLabel, PLAYER_STAT_FIELDS } from "../lib/constants.js";
-import { compareMatchRecency, getMatchSideScore as getSideScore, hasVerifiedPlayerStats, isPersonalRecordMatch } from "../lib/matchUtils.js";
+import { compareMatchRecency, getActualMatchPlayerSideName, getMatchSideScore as getSideScore, hasVerifiedPlayerStats, isEligibleReferee, isPersonalRecordMatch } from "../lib/matchUtils.js";
 import { getRepresentativeTeam, getUserProfileTeams } from "../lib/profileSetup.js";
 import { getPlacementLabel, isPlacementComplete } from "../lib/rating.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 import { getTierDivision } from "../lib/tier.js";
 import { MatchRoomModal } from "./Matches.jsx";
 
-function getPlayerSide(match, playerId) {
-  if ((match.teamA?.players ?? []).includes(playerId)) return "teamA";
-  if ((match.teamB?.players ?? []).includes(playerId)) return "teamB";
-  return null;
-}
-
 function getPlayerOutcome(match, playerId) {
-  const sideName = getPlayerSide(match, playerId);
+  const sideName = getActualMatchPlayerSideName(match, playerId);
   if (!sideName || !match.result) return null;
   const otherSide = sideName === "teamA" ? "teamB" : "teamA";
   const sideScore = getSideScore(match, sideName);
@@ -58,8 +52,10 @@ export default function PlayerDetail({ app }) {
   const [selectedMatchId, setSelectedMatchId] = useState("");
   const [profileLoadAttempt, setProfileLoadAttempt] = useState(0);
   const [profileLoadState, setProfileLoadState] = useState({ playerId: "", status: "idle" });
+  const [refereeProfileState, setRefereeProfileState] = useState({ playerId: "", available: false });
   const loadDirectory = app.actions?.loadDirectory;
   const loadPublicProfileRecords = app.actions?.loadPublicProfileRecords;
+  const loadRefereeDetail = app.actions?.loadRefereeDetail;
   useEffect(() => {
     if (!playerId || app.remoteReady === false) return undefined;
     let cancelled = false;
@@ -89,6 +85,29 @@ export default function PlayerDetail({ app }) {
     ? location.state.playerPreview
     : null;
   const player = app.state.users.find((user) => user.id === playerId) ?? previewPlayer;
+  const hasKnownRefereeProfile = Boolean(player && isEligibleReferee(
+    player,
+    undefined,
+    app.state.settings?.refereeAppointments,
+  ));
+  const playerAvailable = Boolean(player);
+  useEffect(() => {
+    if (!playerId || !playerAvailable || app.remoteReady === false) return undefined;
+    let cancelled = false;
+    if (hasKnownRefereeProfile || !isSupabaseConfigured || !loadRefereeDetail) {
+      setRefereeProfileState({ playerId, available: hasKnownRefereeProfile });
+      return undefined;
+    }
+    setRefereeProfileState({ playerId, available: false });
+    Promise.resolve(loadRefereeDetail(playerId, 1))
+      .then((result) => {
+        if (!cancelled) setRefereeProfileState({ playerId, available: Boolean(result?.referee) });
+      })
+      .catch(() => {
+        if (!cancelled) setRefereeProfileState({ playerId, available: false });
+      });
+    return () => { cancelled = true; };
+  }, [app.remoteReady, hasKnownRefereeProfile, loadRefereeDetail, playerAvailable, playerId]);
 
   const directoryPending = app.remoteReady === false
     || profileLoadState.playerId !== playerId
@@ -117,14 +136,15 @@ export default function PlayerDetail({ app }) {
 
   const isOwnProfile = player.id === app.currentUser.id;
   const canViewTeamHistory = isOwnProfile || player.privacy?.teamHistory === true || (!isSupabaseConfigured && player.privacy?.teamHistory !== false);
-  const canViewStatSummary = isOwnProfile || player.privacy?.statSummary === true || (!isSupabaseConfigured && player.privacy?.statSummary !== false);
+  const canViewStatSummary = isOwnProfile || player.privacy?.statSummary !== false;
+  const hasRefereeProfile = refereeProfileState.playerId === player.id && refereeProfileState.available;
   const userMap = Object.fromEntries(app.state.users.map((user) => [user.id, user]));
   const playerTeams = getUserProfileTeams(player.id, app.state.teams);
   const representativeTeam = getRepresentativeTeam(player.id, app.state.teams, player.representativeTeamId);
   const orderedPlayerTeams = [...playerTeams].sort((teamA, teamB) => (
     Number(teamB.id === representativeTeam?.id) - Number(teamA.id === representativeTeam?.id)
   ));
-  const allPlayerHistory = app.state.matches.filter((match) => getPlayerSide(match, player.id));
+  const allPlayerHistory = app.state.matches.filter((match) => getActualMatchPlayerSideName(match, player.id));
   const history = allPlayerHistory.filter((match) => (
     !isPersonalRecordMatch(match)
     && (isOwnProfile || (match.visibility ?? match.rules?.visibility ?? "public") !== "private")
@@ -162,7 +182,7 @@ export default function PlayerDetail({ app }) {
   const totals = Object.fromEntries(PLAYER_STAT_FIELDS.map((field) => [field.id, 0]));
 
   for (const match of history) {
-    const sideName = getPlayerSide(match, player.id);
+    const sideName = getActualMatchPlayerSideName(match, player.id);
     const oppositeSide = sideName === "teamA" ? "teamB" : "teamA";
     (match[sideName]?.players ?? []).filter((id) => id !== player.id).forEach((id) => addCount(teammateCounts, id));
     (match[oppositeSide]?.players ?? []).forEach((id) => addCount(opponentCounts, id));
@@ -179,6 +199,7 @@ export default function PlayerDetail({ app }) {
   const officialStatRecordCount = recordedStatHistory.length + archivedStatHistory.length;
   const wins = confirmedHistory.filter((match) => getPlayerOutcome(match, player.id) === "win").length;
   const losses = confirmedHistory.filter((match) => getPlayerOutcome(match, player.id) === "loss").length;
+  const draws = confirmedHistory.filter((match) => getPlayerOutcome(match, player.id) === "draw").length;
   const winRate = confirmedHistory.length ? Math.round((wins / confirmedHistory.length) * 100) : 0;
   const recentOutcomes = confirmedHistory.slice(0, 10).map((match) => getPlayerOutcome(match, player.id));
   const officialFoulTotal = recordedStatHistory.reduce(
@@ -259,13 +280,22 @@ export default function PlayerDetail({ app }) {
         </Card>
       ) : null}
 
-      {canViewStatSummary || canViewTeamHistory ? (
-        <nav className="rank-profile-tabs">
-          {canViewStatSummary ? <a href="#summary">종합</a> : null}
-          {canViewTeamHistory ? <a href="#history">전적</a> : null}
-          {canViewTeamHistory ? <a href="#teams">팀</a> : null}
-          {canViewTeamHistory ? <a href="#links">상대</a> : null}
-        </nav>
+      {canViewStatSummary || canViewTeamHistory || hasRefereeProfile ? (
+        <div className="profile-page-navigation">
+          {canViewStatSummary || canViewTeamHistory ? <nav className="rank-profile-tabs">
+            {canViewStatSummary ? <a href="#summary">종합</a> : null}
+            {canViewTeamHistory ? <a href="#history">전적</a> : null}
+            {canViewTeamHistory ? <a href="#teams">팀</a> : null}
+            {canViewTeamHistory ? <a href="#links">상대</a> : null}
+          </nav> : null}
+          {hasRefereeProfile ? (
+            <Button as={Link} size="sm" variant="secondary" className="profile-role-link" to={`/app/referees/${player.id}`}>
+              <ShieldCheck size={15} aria-hidden="true" />
+              심판 프로필
+              <ArrowUpRight size={15} aria-hidden="true" />
+            </Button>
+          ) : null}
+        </div>
       ) : null}
 
       <div className={`rank-profile-body-grid${canViewStatSummary || canViewTeamHistory ? " has-team-rail" : ""}${canViewStatSummary ? " has-summary" : ""}`}>
@@ -342,22 +372,32 @@ export default function PlayerDetail({ app }) {
             <div className="section-title-row">
               <div>
                 <p className="eyebrow">Career Totals</p>
-                <h2>누적 스탯</h2>
+                <h2>경기 통계</h2>
               </div>
-              <Badge tone={officialStatRecordCount ? "blue" : "neutral"}>{officialStatRecordCount}경기</Badge>
+              <Badge tone={confirmedHistory.length ? "blue" : "neutral"}>{confirmedHistory.length}경기</Badge>
             </div>
-            {officialStatRecordCount ? <div className="rank-stat-grid">
-              {PLAYER_STAT_FIELDS.map((field) => (
-                <span key={field.id}>
-                  <strong>{totals[field.id]}</strong>
-                  {field.label}
+            <div className="page-stack">
+              <div className="rank-stat-grid">
+                <span><strong>{confirmedHistory.length}</strong>확정 경기</span>
+                <span><strong>{wins}</strong>승</span>
+                <span><strong>{losses}</strong>패</span>
+                <span><strong>{draws}</strong>무</span>
+                <span><strong>{winRate}%</strong>승률</span>
+                <span><strong>{officialStatRecordCount}</strong>세부 기록 경기</span>
+              </div>
+              {officialStatRecordCount ? <div className="rank-stat-grid">
+                {PLAYER_STAT_FIELDS.map((field) => (
+                  <span key={field.id}>
+                    <strong>{totals[field.id]}</strong>
+                    {field.label}
+                  </span>
+                ))}
+                <span>
+                  <strong>{averageFouls.toFixed(1)}</strong>
+                  평균 파울
                 </span>
-              ))}
-              <span>
-                <strong>{averageFouls.toFixed(1)}</strong>
-                평균 파울
-              </span>
-            </div> : <div className="ui-empty-state-compact">공개된 검증 스탯이 아직 없습니다.</div>}
+              </div> : <div className="ui-empty-state-compact">득점·리바운드 등 세부 기록은 아직 없습니다.</div>}
+            </div>
           </Card> : null}
         </section>
 
@@ -390,7 +430,7 @@ export default function PlayerDetail({ app }) {
               {personalRecordHistory.length ? (
                 <div className="recent-match-list personal-record-history-list">
                   {personalRecordHistory.map((match) => {
-                    const sideName = getPlayerSide(match, player.id) ?? "teamA";
+                    const sideName = getActualMatchPlayerSideName(match, player.id) ?? "teamA";
                     const oppositeSide = sideName === "teamA" ? "teamB" : "teamA";
                     const outcome = getPlayerOutcome(match, player.id);
                     return (
@@ -441,7 +481,7 @@ export default function PlayerDetail({ app }) {
               </div>
               <div className="recent-match-list">
                 {history.map((match) => {
-                  const sideName = getPlayerSide(match, player.id);
+                  const sideName = getActualMatchPlayerSideName(match, player.id);
                   const oppositeSide = sideName === "teamA" ? "teamB" : "teamA";
                   const side = match[sideName] ?? { name: sideName === "teamA" ? "A" : "B", teamId: "" };
                   const opponent = match[oppositeSide] ?? { name: oppositeSide === "teamA" ? "A" : "B", teamId: "" };

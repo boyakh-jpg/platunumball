@@ -1,26 +1,26 @@
-import { assetUrl } from "../../lib/assets.js";
-
-const emblemByGrade = {
-  candidate: "/assets/referee-tier-emblems/referee-candidate-v1.webp",
-  silver: "/assets/referee-tier-emblems/referee-silver-v1.webp",
-  gold: "/assets/referee-tier-emblems/referee-gold-v1.webp",
-  platinum: "/assets/referee-tier-emblems/referee-platinum-v1.webp",
-  official: "/assets/referee-tier-emblems/referee-official-v1.webp",
-};
+import { Shield } from "lucide-react";
 
 const colorByGrade = {
-  candidate: "#c98563",
-  silver: "#78aaff",
-  gold: "#ffd36c",
-  platinum: "#b9a8ff",
-  official: "#ffe09a",
+  candidate: "#d58a62",
+  silver: "#b9c2cf",
+  gold: "#e9bd4a",
+  platinum: "#64d6c4",
+  official: "#f2f0e8",
 };
 
 export default function RefereeTierEmblem({ grade = "candidate", meta, size = "md", showLabel = false }) {
-  const normalizedGrade = emblemByGrade[grade] ? grade : "candidate";
+  const normalizedGrade = colorByGrade[grade] ? grade : "candidate";
   return (
-    <figure className={`tier-emblem tier-emblem-${size} referee-tier-emblem`} style={{ "--tier-color": colorByGrade[normalizedGrade] }}>
-      <img src={assetUrl(emblemByGrade[normalizedGrade])} alt={`${meta?.label ?? "심판"} 티어 문장`} loading="lazy" />
+    <figure
+      className={`tier-emblem tier-emblem-${size} referee-tier-emblem referee-tier-${normalizedGrade}`}
+      style={{ "--tier-color": colorByGrade[normalizedGrade] }}
+      role="img"
+      aria-label={`${meta?.label ?? "심판"} 티어 문장`}
+    >
+      <div className="referee-tier-mark" aria-hidden="true">
+        <Shield />
+        <strong>{meta?.code ?? "C"}</strong>
+      </div>
       {showLabel ? (
         <figcaption>
           <strong className="ui-tier-label">{meta?.label ?? "자격심판"}</strong>
