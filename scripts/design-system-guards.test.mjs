@@ -309,11 +309,17 @@ test("player detail uses shared record rows and one support rail", () => {
   assert.match(globalSurfaceStyles, /\.profile-detail-page \.profile-hero\s*\{[^}]*--page-hero-bg:\s*var\(--bg-profile\);/);
 });
 
-test("referee detail uses the profile layout and a deployable hero asset", () => {
-  assert.ok(fs.statSync("public/assets/rankball-referee-profile-v1.webp").size > 0);
+test("referee detail uses the player hero structure and dedicated tier emblems", () => {
+  assert.ok(fs.statSync("public/assets/rankball-referee-profile-v2.webp").size > 0);
+  for (const grade of ["candidate", "silver", "gold", "platinum", "official"]) {
+    assert.ok(fs.statSync(`public/assets/referee-tier-emblems/referee-${grade}-v1.webp`).size > 0);
+  }
   assert.match(pageSources.refereeDetail, /className="profile-hero rank-profile-hero referee-profile-hero"/);
+  assert.match(pageSources.refereeDetail, /className="player-tier-hero"/);
+  assert.match(pageSources.refereeDetail, /<RefereeTierEmblem grade=\{grade\} meta=\{gradeMeta\} size="hero" showLabel \/>/);
+  assert.doesNotMatch(pageSources.refereeDetail, /leading=|referee-profile-grade/);
   assert.match(pageSources.refereeDetail, /className="referee-profile-body"/);
-  assert.match(pageSources.refereeDetail, /"--page-hero-bg": `url\("\$\{assetUrl\("\/assets\/rankball-referee-profile-v1\.webp"\)\}"\)`/);
+  assert.match(pageSources.refereeDetail, /"--page-hero-bg": `url\("\$\{assetUrl\("\/assets\/rankball-referee-profile-v2\.webp"\)\}"\)`/);
   assert.match(globalSearchStyles, /\.referee-profile-body\s*\{[^}]*grid-template-columns:/s);
 });
 

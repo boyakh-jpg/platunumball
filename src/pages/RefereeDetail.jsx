@@ -7,7 +7,7 @@ import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import RecentMatchRow from "../components/match/RecentMatchRow.jsx";
 import EntityProfileHero from "../components/profile/EntityProfileHero.jsx";
-import ProfileEmblem from "../components/profile/ProfileEmblem.jsx";
+import RefereeTierEmblem from "../components/rating/RefereeTierEmblem.jsx";
 import { REFEREE_GRADE_META } from "../lib/admin.js";
 import { assetUrl } from "../lib/assets.js";
 import { getUserHashtag } from "../lib/handles.js";
@@ -119,13 +119,12 @@ export default function RefereeDetail({ app }) {
       <EntityProfileHero
         className="profile-hero rank-profile-hero referee-profile-hero"
         style={{
-          "--page-hero-bg": `url("${assetUrl("/assets/rankball-referee-profile-v1.webp")}")`,
-          "--page-hero-bg-position": "center",
+          "--page-hero-bg": `url("${assetUrl("/assets/rankball-referee-profile-v2.webp")}")`,
+          "--page-hero-bg-position": "center top",
         }}
         eyebrow="Referee Profile"
         title={referee.name}
         subtitle={`${getUserHashtag(referee)} · ${referee.region ?? "지역 미설정"}`}
-        leading={<ProfileEmblem user={referee} className="hero-avatar" />}
         badges={(
           <>
             <Badge tone={gradeMeta.tone} className="ui-liquid-glass">{gradeMeta.label}</Badge>
@@ -133,28 +132,23 @@ export default function RefereeDetail({ app }) {
             <Badge tone="green" className="ui-liquid-glass">활동 중</Badge>
           </>
         )}
-        action={(
-          <Button as={Link} size="sm" variant="secondary" className="ui-liquid-glass referee-profile-player-link" to={`/app/players/${referee.id}`}>
-            선수 프로필
-            <ArrowUpRight size={15} aria-hidden="true" />
-          </Button>
-        )}
         visual={(
-          <div className={`referee-profile-grade referee-profile-grade-${gradeMeta.tone}`}>
-            <span className="referee-profile-grade-code">{gradeMeta.code}</span>
-            <span>
-              <small>Current License</small>
-              <b>{gradeMeta.label}</b>
-              <em>{gradeMeta.requirement}</em>
-            </span>
+          <div className="player-tier-hero">
+            <RefereeTierEmblem grade={grade} meta={gradeMeta} size="hero" showLabel />
           </div>
         )}
       />
 
-      <nav className="rank-profile-tabs">
-        <a href="#referee-stats">통계</a>
-        <a href="#referee-history">최근 경기</a>
-      </nav>
+      <div className="referee-profile-navigation">
+        <nav className="rank-profile-tabs">
+          <a href="#referee-stats">통계</a>
+          <a href="#referee-history">최근 경기</a>
+        </nav>
+        <Button as={Link} size="sm" variant="secondary" className="referee-profile-player-link" to={`/app/players/${referee.id}`}>
+          선수 프로필
+          <ArrowUpRight size={15} aria-hidden="true" />
+        </Button>
+      </div>
 
       <div className="referee-profile-body">
         <aside className="page-stack referee-profile-rail">
@@ -167,7 +161,7 @@ export default function RefereeDetail({ app }) {
               <ShieldCheck size={22} aria-hidden="true" />
             </div>
             <div className="referee-license-summary">
-              <strong>{gradeMeta.code}</strong>
+              <RefereeTierEmblem grade={grade} meta={gradeMeta} size="sm" />
               <span><b>{gradeMeta.label}</b><em>{gradeMeta.requirement}</em></span>
             </div>
             <dl className="referee-profile-facts">

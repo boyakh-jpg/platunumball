@@ -5,68 +5,23 @@
 .referee-profile-hero .entity-profile-hero-copy {
   align-self: center;
 }
-.referee-profile-hero .hero-avatar {
-  border: var(--ui-stroke-width-strong) solid color-mix(in srgb, var(--rb-blue) 58%, #fff);
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.34);
+.referee-profile-navigation {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-5);
 }
 .referee-profile-player-link {
   width: max-content;
 }
-.referee-profile-grade {
-  display: grid;
-  width: min(100%, 310px);
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
-  gap: var(--space-6);
-  border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.28);
-  border-radius: var(--radius);
-  background: rgba(5, 8, 13, 0.72);
-  box-shadow: 0 16px 46px rgba(0, 0, 0, 0.3);
-  padding: 14px;
-  backdrop-filter: blur(14px);
-}
-.referee-profile-grade-code {
-  display: grid;
-  width: 76px;
-  aspect-ratio: 1;
-  place-items: center;
-  border: var(--ui-stroke-width-strong) solid currentColor;
-  border-radius: 50%;
-  color: var(--rb-blue);
-  font-family: var(--sports-display-font);
-  font-size: 2rem;
-  font-weight: 950;
-}
-.referee-profile-grade-gold .referee-profile-grade-code {
-  color: var(--rb-gold);
-}
-.referee-profile-grade-green .referee-profile-grade-code {
-  color: var(--rb-green);
-}
-.referee-profile-grade-neutral .referee-profile-grade-code {
-  color: rgba(255, 255, 255, 0.74);
-}
-.referee-profile-grade > span:last-child,
 .referee-license-summary > span {
   display: grid;
   min-width: 0;
   gap: var(--space-1);
 }
-.referee-profile-grade small {
-  color: var(--rb-orange-2);
-  font-size: 0.66rem;
-  font-weight: 950;
-  text-transform: uppercase;
-}
-.referee-profile-grade b {
-  color: #fff;
-  font-size: 1rem;
-}
-.referee-profile-grade em {
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 0.72rem;
-  font-style: normal;
-  font-weight: 800;
+.referee-tier-emblem img {
+  -webkit-mask-image: none;
+  mask-image: none;
 }
 .referee-profile-body {
   display: grid;
@@ -88,17 +43,6 @@
   align-items: center;
   gap: var(--space-5);
   padding-block: var(--space-4);
-}
-.referee-license-summary > strong {
-  display: grid;
-  width: 54px;
-  aspect-ratio: 1;
-  place-items: center;
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--rb-blue) 16%, var(--ui-control-bg));
-  color: var(--rb-blue);
-  font-family: var(--sports-display-font);
-  font-size: 1.45rem;
 }
 .referee-license-summary b {
   color: var(--rb-text);
@@ -138,9 +82,12 @@
   }
   .referee-profile-hero {
     min-height: 420px;
-    background-position: 61% center;
   }
-  .referee-profile-grade {
+  .referee-profile-navigation {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .referee-profile-player-link {
     width: 100%;
   }
 }
