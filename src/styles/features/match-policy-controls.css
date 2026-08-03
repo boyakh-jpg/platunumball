@@ -293,8 +293,8 @@
   display: grid;
   gap: var(--space-1);
 }
-.member-main span,
-.ranking-name span {
+.member-main > span,
+.ranking-name > div > span {
   color: var(--muted);
   font-size: 0.78rem;
 }

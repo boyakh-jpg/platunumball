@@ -544,6 +544,8 @@ test("공용 CTA는 ui-button-block 하나로 너비만 확장한다", () => {
   assert.equal(countClassToken(pageSources.recruiting, "ui-button-block"), 2);
   assert.equal(countClassToken(pageSources.season, "ui-button-block"), 1);
   assert.match(primitiveStyles, /\.ui-button-block\s*\{\s*width:\s*100%;\s*\}/);
+  assert.doesNotMatch(allStyleSources, /\.season-play-report > a\s*\{[^}]*display:\s*block/);
+  assert.doesNotMatch(allStyleSources, /\.ranking-name span\s*\{/);
 });
 
 test("공용 버튼과 badge 라벨은 한 줄을 유지한다", () => {
