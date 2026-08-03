@@ -77,14 +77,33 @@ export function getTeamScoreSummary(matches = [], archiveRecords = [], teamId = 
     rows.push({ pointsFor, pointsAgainst });
   });
 
-  const totals = rows.reduce((summary, row) => ({
-    pointsFor: summary.pointsFor + row.pointsFor,
-    pointsAgainst: summary.pointsAgainst + row.pointsAgainst,
-  }), { pointsFor: 0, pointsAgainst: 0 });
+  const totals = rows.reduce((summary, row) => {
+    const margin = row.pointsFor - row.pointsAgainst;
+    return {
+      pointsFor: summary.pointsFor + row.pointsFor,
+      pointsAgainst: summary.pointsAgainst + row.pointsAgainst,
+      wins: summary.wins + Number(margin > 0),
+      losses: summary.losses + Number(margin < 0),
+      draws: summary.draws + Number(margin === 0),
+      highestPointsFor: Math.max(summary.highestPointsFor, row.pointsFor),
+      lowestPointsAgainst: Math.min(summary.lowestPointsAgainst, row.pointsAgainst),
+      largestWinMargin: Math.max(summary.largestWinMargin, margin),
+    };
+  }, {
+    pointsFor: 0,
+    pointsAgainst: 0,
+    wins: 0,
+    losses: 0,
+    draws: 0,
+    highestPointsFor: 0,
+    lowestPointsAgainst: Number.POSITIVE_INFINITY,
+    largestWinMargin: 0,
+  });
   const games = rows.length;
   return {
     games,
     ...totals,
+    lowestPointsAgainst: games ? totals.lowestPointsAgainst : 0,
     averagePointsFor: games ? totals.pointsFor / games : 0,
     averagePointsAgainst: games ? totals.pointsAgainst / games : 0,
     averageMargin: games ? (totals.pointsFor - totals.pointsAgainst) / games : 0,

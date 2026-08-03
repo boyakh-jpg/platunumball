@@ -2092,6 +2092,12 @@ test("home loads the authoritative profile record page when bootstrap has no rec
   assert.match(source, /app\.actions\.loadProfileRecords\(\)/);
 });
 
+test("profile fills a missing match summary after a thin home bootstrap", async () => {
+  const source = await readSource("src/pages/Profile.jsx");
+  assert.match(source, /if \(!app\.remoteReady \|\| user\.matchSummary \|\| !app\.actions\.refreshCurrentProfile\) return/);
+  assert.match(source, /void app\.actions\.refreshCurrentProfile\(\)/);
+});
+
 test("court map URLs pin stored coordinates and fall back to address search", () => {
   assert.equal(getCourtCoordinate(null), null);
   assert.equal(getCourtCoordinate(undefined), null);

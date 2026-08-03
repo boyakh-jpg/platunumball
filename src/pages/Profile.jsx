@@ -107,6 +107,7 @@ export default function Profile({ app }) {
   const [emblemFeedback, setEmblemFeedback] = useState("");
   const [iconDialogOpen, setIconDialogOpen] = useState(false);
   const recordsLoadKeyRef = useRef("");
+  const summaryLoadKeyRef = useRef("");
   const districtOptions = getRegionDistrictOptions(draft.regionSido);
   const update = (patch) => setDraft((current) => ({ ...current, ...patch }));
 
@@ -151,6 +152,12 @@ export default function Profile({ app }) {
     }
   };
   const myRecords = getPlayerRecentRecordMatches(app.state.matches, user.id, { limit: 6 });
+  useEffect(() => {
+    if (!app.remoteReady || user.matchSummary || !app.actions.refreshCurrentProfile) return;
+    if (summaryLoadKeyRef.current === user.id) return;
+    summaryLoadKeyRef.current = user.id;
+    void app.actions.refreshCurrentProfile();
+  }, [app.actions.refreshCurrentProfile, app.remoteReady, user.id, user.matchSummary]);
   useEffect(() => {
     const shouldLoadRecords = !app.actions.profileRecordsLoaded;
     if (!app.remoteReady || !app.actions.loadProfileRecords || !shouldLoadRecords) return;

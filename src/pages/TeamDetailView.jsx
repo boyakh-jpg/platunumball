@@ -122,12 +122,18 @@ export default function TeamDetailView({ controller }) {
           <Badge tone="blue">불러온 기록 {teamScoreSummary.games}경기</Badge>
         </div>
         <div className="rank-stat-grid">
+          <span><strong>{teamScoreSummary.wins}</strong>전체 승</span>
+          <span><strong>{teamScoreSummary.losses}</strong>전체 패</span>
+          <span><strong>{teamScoreSummary.draws}</strong>전체 무</span>
           <span><strong>{teamScoreSummary.pointsFor}</strong>누적 득점</span>
           <span><strong>{teamScoreSummary.pointsAgainst}</strong>누적 실점</span>
           <span><strong>{teamScoreSummary.averagePointsFor.toFixed(1)}</strong>평균 득점</span>
           <span><strong>{teamScoreSummary.averagePointsAgainst.toFixed(1)}</strong>평균 실점</span>
           <span><strong>{teamScoreSummary.pointsFor - teamScoreSummary.pointsAgainst > 0 ? "+" : ""}{teamScoreSummary.pointsFor - teamScoreSummary.pointsAgainst}</strong>누적 득실차</span>
           <span><strong>{teamScoreSummary.averageMargin > 0 ? "+" : ""}{teamScoreSummary.averageMargin.toFixed(1)}</strong>평균 득실차</span>
+          <span><strong>{teamScoreSummary.highestPointsFor}</strong>최고 득점</span>
+          <span><strong>{teamScoreSummary.lowestPointsAgainst}</strong>최소 실점</span>
+          <span><strong>{teamScoreSummary.largestWinMargin > 0 ? "+" : ""}{teamScoreSummary.largestWinMargin}</strong>최대 승리차</span>
         </div>
       </Card>
 
