@@ -2118,6 +2118,8 @@ test("referee profiles use canonical grades and public confirmed officiating his
   assert.match(homeSearchSource, /item\.kind === "referee" \? `\/app\/referees\/\$\{item\.id\}`/);
   assert.match(favoriteSource, /to=\{`\/app\/referees\/\$\{item\.id\}`\}/);
   assert.match(apiSource, /referee_appointments/);
+  assert.match(apiSource, /TEST_REFEREE_LOGIN_IDS\.includes\(profileResult\.data\?\.test_login_id\)/);
+  assert.match(apiSource, /const grade = appointment\?\.grade \?\? "candidate"/);
   assert.match(querySource, /\.eq\("referee_id", safeRefereeId\)/);
   assert.match(querySource, /\.eq\("status", "confirmed"\)/);
   assert.match(querySource, /\.or\("visibility\.neq\.private,visibility\.is\.null"\)/);
