@@ -357,7 +357,11 @@ export function useCreateMatchValidationController(context) {
   };
   const updateSoloStat = (fieldId, value) => {
     const nextValue = value === "" ? "" : Math.max(0, Math.min(999, Number(value) || 0));
-    update({ soloStats: { ...(draft.soloStats ?? {}), [fieldId]: nextValue } });
+    setSubmitFeedback("");
+    setDraft((current) => ({
+      ...current,
+      soloStats: { ...(current.soloStats ?? {}), [fieldId]: nextValue },
+    }));
   };
   const normalizeSoloRosterSide = (sideName) => {
     const fieldId = sideName === "teamA" ? "soloTeamAPlayersText" : "soloTeamBPlayersText";

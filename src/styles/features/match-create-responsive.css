@@ -45,6 +45,14 @@
 .create-eligibility-control > .segmented-control {
   width: max-content;
   max-width: 100%;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+}
+
+.create-eligibility-control > .segmented-control > button:not(.active) {
+  background: var(--surface-3);
 }
 
 @media (max-width: 1280px) {

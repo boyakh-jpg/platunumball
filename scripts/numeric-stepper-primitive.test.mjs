@@ -32,3 +32,12 @@ test("기록 화면은 공용 NumericStepper만 사용한다", async () => {
   assert.doesNotMatch(matchRoomSource, /function NumericStepper\s*\(/);
   assert.doesNotMatch(recruitingSource, /function NumericStepper\s*\(/);
 });
+
+test("empty numeric input restores its valid default on blur", async () => {
+  const [source, createValidationSource] = await Promise.all([
+    readFile(new URL("../src/components/common/NumericStepper.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/match/useCreateMatchValidationController.js", import.meta.url), "utf8"),
+  ]);
+  assert.match(source, /onBlur=\{\(event\) => \{[\s\S]*?if \(event\.currentTarget\.value === ""\) setNextValue\(numericValue\)/);
+  assert.match(createValidationSource, /setDraft\(\(current\) => \(\{[\s\S]*?soloStats: \{ \.\.\.\(current\.soloStats/);
+});

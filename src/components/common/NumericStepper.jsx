@@ -40,6 +40,9 @@ export default function NumericStepper({
         onFocus={() => {
           if (clearZeroOnFocus && numericValue === 0) onChange?.("");
         }}
+        onBlur={(event) => {
+          if (event.currentTarget.value === "") setNextValue(numericValue);
+        }}
         onChange={(event) => {
           if (event.target.value === "") {
             onChange?.("");
