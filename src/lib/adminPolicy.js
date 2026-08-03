@@ -34,11 +34,11 @@ const ADMIN_GRADE_ALIASES = {
   moderator: "matchManager",
 };
 export const REFEREE_GRADE_META = {
-  official: { label: "공인심판", level: 100, requirement: "공인 자격증 인증" },
-  platinum: { label: "플래티넘 심판", level: 80, requirement: "경기 수행 우수 · 신고 낮음 · 추천 높음" },
-  gold: { label: "골드 심판", level: 60, requirement: "안정적 경기 수행" },
-  silver: { label: "실버 심판", level: 40, requirement: "기본 자격 유지" },
-  candidate: { label: "자격심판", level: 20, requirement: "커뮤니티 시험/심사 통과" },
+  official: { code: "PRO", label: "공인심판", level: 100, tone: "gold", requirement: "공인 자격증 인증" },
+  platinum: { code: "S", label: "플래티넘 심판", level: 80, tone: "gold", requirement: "경기 수행 우수 · 신고 낮음 · 추천 높음" },
+  gold: { code: "A", label: "골드 심판", level: 60, tone: "green", requirement: "안정적 경기 수행" },
+  silver: { code: "B", label: "실버 심판", level: 40, tone: "blue", requirement: "기본 자격 유지" },
+  candidate: { code: "C", label: "자격심판", level: 20, tone: "neutral", requirement: "커뮤니티 시험/심사 통과" },
 };
 export const SUSPENSION_TIERS = [
   { id: "3d", label: "3일 정지", days: 3 },

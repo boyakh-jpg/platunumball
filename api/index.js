@@ -39,6 +39,7 @@ import profileMe from "../server/api/profile/me.js";
 import profileUpsert from "../server/api/profile/upsert.js";
 import recordList from "../server/api/records/list.js";
 import refereeSync from "../server/api/referee/sync.js";
+import refereeDetail from "../server/api/referees/detail.js";
 import recruitingList from "../server/api/recruiting/list.js";
 import recruitingSyncPost from "../server/api/recruiting/sync-post.js";
 import seasonRankings from "../server/api/season/rankings.js";
@@ -103,6 +104,7 @@ export const API_ROUTES = new Map([
   ["/profile/upsert", route(profileUpsert, ["POST"], "user")],
   ["/records/list", route(recordList, ["POST"], "user")],
   ["/referee/sync", route(refereeSync, ["POST"], "user")],
+  ["/referees/detail", route(refereeDetail, ["POST"], "user")],
   ["/recruiting/list", route(recruitingList, ["POST"], "user")],
   ["/recruiting/sync-post", route(recruitingSyncPost, ["POST"], "user")],
   ["/season/rankings", route(seasonRankings, ["POST"], "user")],

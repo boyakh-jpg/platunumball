@@ -24,6 +24,7 @@ const Login = lazy(() => import("./pages/Login.jsx"));
 const Matches = lazy(() => import("./pages/Matches.jsx"));
 const Notifications = lazy(() => import("./pages/Notifications.jsx"));
 const PlayerDetail = lazy(() => import("./pages/PlayerDetail.jsx"));
+const RefereeDetail = lazy(() => import("./pages/RefereeDetail.jsx"));
 const Privacy = lazy(() => import("./pages/Privacy.jsx"));
 const Profile = lazy(() => import("./pages/Profile.jsx"));
 const ProfileAchievements = lazy(() => import("./pages/ProfileAchievements.jsx"));
@@ -206,6 +207,7 @@ export default function App() {
             <Route path="/app/teams/:teamId" element={<TeamDetail app={app} />} />
             <Route path="/app/tournaments/:tournamentId" element={<TournamentDetail app={app} />} />
             <Route path="/app/players/:playerId" element={<PlayerDetail app={app} />} />
+            <Route path="/app/referees/:refereeId" element={<RefereeDetail app={app} />} />
             <Route path="/app/profile" element={<Profile app={app} />} />
             <Route path="/app/profile/achievements" element={<ProfileAchievements app={app} />} />
             <Route path="/app/profile/records" element={<ProfileRecords app={app} />} />

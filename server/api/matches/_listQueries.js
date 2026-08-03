@@ -1,5 +1,6 @@
 import { isMissingUserRoomFeed, uniqueValues as unique } from "../_supabaseAdmin.js";
 import { REMOTE_CLIENT_MATCH_LIMIT } from "../../../shared/lib/constants.js";
+import { MATCH_LIST_COLUMNS } from "../../../shared/lib/repositoryColumns.js";
 
 import { uniqueFeedCards } from "./_listProjection.js";
 import { attachRoomFeedCards } from "./_listEnrichment.js";
@@ -42,6 +43,24 @@ const ACTIVE_MATCH_EXCLUDED_STATUSES = new Set(ACTIVE_MATCH_EXCLUDED_STATUS_VALU
 
 
 export const MATCH_RELATED_FALLBACK_MAX_LIMIT = 80;
+
+export async function fetchRefereeMatchPage(client, refereeId = "", limit = REMOTE_CLIENT_MATCH_LIMIT) {
+  const safeRefereeId = String(refereeId ?? "").trim();
+  if (!safeRefereeId) return { rows: [], cursor: "", exhausted: true };
+  const candidateLimit = Math.max(1, Math.min(MATCH_RELATED_FALLBACK_MAX_LIMIT, Number(limit) || REMOTE_CLIENT_MATCH_LIMIT));
+  const { data, error } = await client
+    .from("matches")
+    .select(MATCH_LIST_COLUMNS)
+    .eq("referee_id", safeRefereeId)
+    .eq("status", "confirmed")
+    .or("visibility.neq.private,visibility.is.null")
+    .order("confirmed_at", { ascending: false, nullsFirst: false })
+    .order("id", { ascending: false })
+    .limit(candidateLimit);
+  if (error) throw error;
+  const rows = data ?? [];
+  return { rows, cursor: "", exhausted: rows.length < candidateLimit };
+}
 
 
 

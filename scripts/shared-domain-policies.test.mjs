@@ -2098,6 +2098,29 @@ test("profile fills a missing match summary after a thin home bootstrap", async 
   assert.match(source, /void app\.actions\.refreshCurrentProfile\(\)/);
 });
 
+test("referee profiles use canonical grades and public confirmed officiating history", async () => {
+  const [appSource, dispatcherSource, pageSource, hoverSource, apiSource, querySource, adminSource] = await Promise.all([
+    readSource("src/App.jsx"),
+    readSource("api/index.js"),
+    readSource("src/pages/RefereeDetail.jsx"),
+    readSource("src/components/referee/RefereeHoverCard.jsx"),
+    readSource("server/api/referees/detail.js"),
+    readSource("server/api/matches/_listQueries.js"),
+    readSource("src/lib/adminPolicy.js"),
+  ]);
+  assert.match(appSource, /path="\/app\/referees\/:refereeId"/);
+  assert.match(dispatcherSource, /\["\/referees\/detail", route\(refereeDetail, \["POST"\], "user"\)\]/);
+  assert.match(pageSource, /EntityProfileHero/);
+  assert.match(pageSource, /RecentMatchRow/);
+  assert.match(hoverSource, /`\/app\/referees\/\$\{user\.id\}`/);
+  assert.match(apiSource, /referee_appointments/);
+  assert.match(querySource, /\.eq\("referee_id", safeRefereeId\)/);
+  assert.match(querySource, /\.eq\("status", "confirmed"\)/);
+  assert.match(querySource, /\.or\("visibility\.neq\.private,visibility\.is\.null"\)/);
+  assert.match(adminSource, /official: \{ code: "PRO"/);
+  assert.match(adminSource, /candidate: \{ code: "C"/);
+});
+
 test("court map URLs pin stored coordinates and fall back to address search", () => {
   assert.equal(getCourtCoordinate(null), null);
   assert.equal(getCourtCoordinate(undefined), null);

@@ -3,6 +3,7 @@ import { BadgeCheck, ClipboardCheck, ShieldCheck, Star, Trophy } from "lucide-re
 import HoverPortal, { HoverCardCloseButton, HoverCardTrigger } from "../common/HoverPortal.jsx";
 import useHoverCardInteraction from "../../hooks/useHoverCardInteraction.js";
 import { DAY_MS, REFEREE_ACTIVE_TRUST_MIN } from "../../lib/constants.js";
+import { REFEREE_GRADE_META } from "../../lib/admin.js";
 import { getUserHashtag } from "../../lib/handles.js";
 
 const COMPLETED_STATUSES = new Set(["approval", "disputed", "confirmed"]);
@@ -47,15 +48,14 @@ function getRefereeQualification(user = {}) {
   return "커뮤니티 심판";
 }
 
-function getRefereeTier(user = {}, stats = {}, minTrust = REFEREE_ACTIVE_TRUST_MIN) {
+function getRefereeTier(user = {}, minTrust = REFEREE_ACTIVE_TRUST_MIN) {
   const trust = Number(user.trustScore ?? 0);
-  const officialVerified = user.refereeProfile?.licenseVerified || user.refereeLicenseVerified;
   if (trust < minTrust) return { grade: "WAIT", label: "활동 정지", tone: "neutral" };
-  if (officialVerified) return { grade: "PRO", label: "공식 심판", tone: "gold" };
-  if (trust >= 96 && stats.completed >= 20 && stats.disputeRate <= 15) return { grade: "S", label: "엘리트 심판", tone: "gold" };
-  if (trust >= 94 && stats.completed >= 10) return { grade: "A", label: "상급 심판", tone: "green" };
-  if (trust >= 90 && stats.completed >= 3) return { grade: "B", label: "검증 심판", tone: "blue" };
-  return { grade: "C", label: "입문 심판", tone: "neutral" };
+  const grade = user.refereeProfile?.licenseVerified || user.refereeLicenseVerified
+    ? "official"
+    : user.refereeProfile?.grade ?? user.refereeGrade ?? "candidate";
+  const meta = REFEREE_GRADE_META[grade] ?? REFEREE_GRADE_META.candidate;
+  return { grade: meta.code, label: meta.label, tone: meta.tone };
 }
 
 export default function RefereeHoverCard({ user, matches = [], minTrust: _minTrust = REFEREE_ACTIVE_TRUST_MIN, children, className = "", to }) {
@@ -75,9 +75,9 @@ export default function RefereeHoverCard({ user, matches = [], minTrust: _minTru
 
   const stats = getRefereeStats(user, matches);
   const activeMinTrust = REFEREE_ACTIVE_TRUST_MIN;
-  const tier = getRefereeTier(user, stats, activeMinTrust);
+  const tier = getRefereeTier(user, activeMinTrust);
   const qualification = getRefereeQualification(user);
-  const profilePath = to ?? `/app/players/${user.id}`;
+  const profilePath = to ?? `/app/referees/${user.id}`;
   return (
     <HoverCardTrigger
       anchorRef={anchorRef}
@@ -122,12 +122,12 @@ export default function RefereeHoverCard({ user, matches = [], minTrust: _minTru
           <span><b>{stats.recentLabel}</b><em><Star size={12} /> 최근</em></span>
         </span>
         <span className="referee-hover-note">
-          심판 티어는 현재 신뢰도, 심판 배정 경기 수, 이의 발생률로 임시 계산합니다. 정식 라이선스와 자격시험은 추후 검증 데이터로 고정합니다.
+          심판 등급은 서버에 등록된 현재 자격을 기준으로 표시합니다.
         </span>
         <Link className="ui-compact-action hover-card-action" to={profilePath} onClick={(event) => {
           event.stopPropagation();
           closePinned();
-        }}>선수 프로필 보기</Link>
+        }}>심판 프로필 보기</Link>
       </HoverPortal>
     </HoverCardTrigger>
   );
