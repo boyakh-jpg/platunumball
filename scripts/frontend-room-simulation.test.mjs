@@ -7,7 +7,10 @@ import {
   blockUser,
   checkInMatchPlayer,
   confirmRecruitingMatch,
+  createMatch,
   createRecruitingPost,
+  declineRecruitingInvitation,
+  deleteSoloRecord,
   disputeMatch,
   endMatch,
   finalizeMatchByAuthority,
@@ -53,7 +56,7 @@ import {
   normalizeTeamScoresDisputeRequest,
 } from "../src/lib/matchUtils.js";
 import { inferRegionSelection } from "../src/lib/profileSetup.js";
-import { getLocalRivalries } from "../src/lib/season.js";
+import { getLocalRivalries, getTeamScoreSummary } from "../src/lib/season.js";
 import { buildSettingsActions } from "../src/hooks/appData/actions/settingsActions.js";
 
 const MODE_CAPACITY = Object.freeze({
@@ -820,6 +823,28 @@ test("시즌 라이벌은 내 팀이 포함된 지역 매치업만 반환한다"
   assert.ok(rivalries.every((pair) => pair.teamA.region === pair.teamB.region));
 });
 
+test("팀 득실 통계는 현재 상세과 archive 중복을 제거한다", () => {
+  const matches = [{
+    id: "match-1",
+    status: "confirmed",
+    result: { scoreA: 21, scoreB: 18 },
+    teamA: { teamId: "team-a" },
+    teamB: { teamId: "team-b" },
+  }];
+  const summary = getTeamScoreSummary(matches, [
+    { matchId: "match-1", score: 21, opponentScore: 18 },
+    { matchId: "match-2", score: 14, opponentScore: 16 },
+  ], "team-a");
+  assert.deepEqual(summary, {
+    games: 2,
+    pointsFor: 35,
+    pointsAgainst: 34,
+    averagePointsFor: 17.5,
+    averagePointsAgainst: 17,
+    averageMargin: 0.5,
+  });
+});
+
 test("시즌 directory 실패 응답은 같은 사용자 재시도를 열어 둔다", async () => {
   const source = await readFile(new URL("../src/pages/Season.jsx", import.meta.url), "utf8");
   assert.match(source, /const \[loadRetrySequence, setLoadRetrySequence\] = useState\(0\)/);
@@ -1078,7 +1103,16 @@ test("로컬 프론트 경기시계는 정규 쿼터와 반복 연장을 순서�
     null,
     () => nowMs,
   );
+  for (const shotClockSeconds of [0, 24, 30, 60]) {
+    const configured = await clockClient(confirmed.matchId, "configure", {
+      controllerId: PRACTICE_SELF_ID,
+      shotClockSeconds,
+    });
+    assert.equal(configured.clock.shotClockSeconds, shotClockSeconds);
+    assert.equal(configured.clock.shotRemainingMs, shotClockSeconds * 1000);
+  }
   assert.equal((await clockClient(confirmed.matchId, "start")).clock.status, "running");
+  assert.equal((await clockClient(confirmed.matchId, "resetShot")).clock.shotRemainingMs, 60_000);
   assert.equal((await clockClient(confirmed.matchId, "endPeriod")).clock.status, "break");
   let clock = (await clockClient(confirmed.matchId, "startPeriod")).clock;
   assert.equal(clock.currentPeriod, 2);
@@ -1490,4 +1524,88 @@ test("팀·대회·설정 mutation은 재입력과 실패를 화면 경계에서
   assert.match(affiliations, /directoryLoadPendingRef\.current/);
   assert.match(settingsCourt, /if \(!normalizedAddressQuery\)/);
   assert.match(settingsReferee, /window\.setTimeout\(\(\) => setRefereeClock\(Date\.now\(\)\)/);
+});
+
+test("actual player invitation decline permits a clean reinvite and acceptance", () => {
+  const postId = "actual-invitation-decline-reinvite";
+  let state = {
+    ...structuredClone(demoFlowState),
+    currentUserId: "u1",
+    matches: [],
+    recruitingPosts: [],
+    notifications: [],
+  };
+  state = createRecruitingPost(state, {
+    id: postId,
+    title: postId,
+    visibility: "private",
+    timingType: "instant",
+    hostJoinMode: "player",
+    mode: "1v1",
+    sideCapacity: 1,
+    benchCapacity: 0,
+    ranked: false,
+    formationMode: "prearranged",
+    matchPurpose: "friendly",
+    gameClockEnabled: false,
+    court: "Simulation Court",
+  });
+  state = inviteRecruitingPlayers(asActor(state, "u1"), postId, {
+    side: "teamB",
+    playerIds: ["u6"],
+    joinMode: "player",
+  });
+  const firstInviteId = state.recruitingPosts[0].roomState.invitations[0].id;
+  state = declineRecruitingInvitation(asActor(state, "u6"), postId, firstInviteId);
+  assert.equal(state.recruitingPosts[0].roomState.invitations.length, 0);
+
+  state = inviteRecruitingPlayers(asActor(state, "u1"), postId, {
+    side: "teamB",
+    playerIds: ["u6"],
+    joinMode: "player",
+  });
+  state = acceptActualInvitation(state, postId, "u6");
+  const lobby = getRecruitingLobby(state.recruitingPosts[0], state);
+  assert.ok(lobby.sides.teamB.players.includes("u6"));
+});
+
+test("personal record creation and owner-only deletion complete in local frontend state", () => {
+  const schedule = getKstSchedule(-60_000);
+  let state = {
+    ...structuredClone(demoFlowState),
+    currentUserId: "u1",
+    matches: [],
+    notifications: [],
+  };
+  state = createMatch(state, {
+    id: "actual-personal-record",
+    title: "actual-personal-record",
+    recordType: "solo",
+    recordEntryMode: "quick",
+    visibility: "public",
+    mode: "3v3",
+    ...schedule,
+    soloScoreFor: 21,
+    soloScoreAgainst: 18,
+    soloStats: {
+      points: 7,
+      rebounds: 4,
+      assists: 3,
+      steals: 2,
+      blocks: 1,
+      turnovers: 2,
+      fouls: 1,
+    },
+  });
+  const created = state.matches[0];
+  assert.equal(created.status, "confirmed");
+  assert.equal(created.result.scoreA, 21);
+  assert.equal(created.result.playerStats.u1.turnovers, 2);
+  assert.equal(created.ratingScale, 0);
+  assert.deepEqual(created.ratingResult, []);
+
+  state = deleteSoloRecord(asActor(state, "u6"), created.id);
+  assert.equal(state.matches[0].status, "confirmed");
+  state = deleteSoloRecord(asActor(state, "u1"), created.id);
+  assert.equal(state.matches[0].status, "cancelled");
 });

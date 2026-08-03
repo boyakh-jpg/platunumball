@@ -54,8 +54,7 @@ const REGION_SIDO_ALIASES = new Map([
 ]);
 
 export function shouldSetupProfile(user = {}) {
-  const hasLockedBirthYear = Boolean(user?.birthYearLockedAt && user?.birthYear);
-  return Boolean(!user?.onboardingComplete || !user?.handleLockedAt || !hasLockedBirthYear);
+  return user?.onboardingComplete !== true;
 }
 
 export function isProfileGateReady({ authUserId = "", profileAuthUserId = "", remoteReady = false, serverProfileBound = false } = {}) {

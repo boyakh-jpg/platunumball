@@ -52,6 +52,45 @@ export function getSideResult(match, sideName) {
   return sideScore > otherScore ? "win" : "loss";
 }
 
+export function getTeamScoreSummary(matches = [], archiveRecords = [], teamId = "") {
+  const rows = [];
+  const seenMatchIds = new Set();
+
+  matches.forEach((match) => {
+    if (!isConfirmed(match)) return;
+    const sideName = getTeamSide(match, teamId);
+    if (!sideName) return;
+    if (match.id) seenMatchIds.add(String(match.id));
+    rows.push({
+      pointsFor: getSideScore(match, sideName),
+      pointsAgainst: getSideScore(match, getOppositeSide(sideName)),
+    });
+  });
+
+  archiveRecords.forEach((record) => {
+    const matchId = String(record?.matchId ?? "").trim();
+    if (matchId && seenMatchIds.has(matchId)) return;
+    const pointsFor = Number(record?.score);
+    const pointsAgainst = Number(record?.opponentScore);
+    if (!Number.isFinite(pointsFor) || !Number.isFinite(pointsAgainst)) return;
+    if (matchId) seenMatchIds.add(matchId);
+    rows.push({ pointsFor, pointsAgainst });
+  });
+
+  const totals = rows.reduce((summary, row) => ({
+    pointsFor: summary.pointsFor + row.pointsFor,
+    pointsAgainst: summary.pointsAgainst + row.pointsAgainst,
+  }), { pointsFor: 0, pointsAgainst: 0 });
+  const games = rows.length;
+  return {
+    games,
+    ...totals,
+    averagePointsFor: games ? totals.pointsFor / games : 0,
+    averagePointsAgainst: games ? totals.pointsAgainst / games : 0,
+    averageMargin: games ? (totals.pointsFor - totals.pointsAgainst) / games : 0,
+  };
+}
+
 export function getCurrentSeason(state = {}) {
   return state.seasons?.find((season) => season.active) ?? state.seasons?.[0] ?? fallbackSeason;
 }

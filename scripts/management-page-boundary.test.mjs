@@ -12,7 +12,7 @@ import { submitRefereeRequest } from "../src/data/repository/courts.js";
 import { updateSettings } from "../src/data/repository/settings.js";
 import { buildProfileTeamActions } from "../src/hooks/appData/actions/profileTeamActions.js";
 import { buildSettingsActions } from "../src/hooks/appData/actions/settingsActions.js";
-import { isProfileGateReady, normalizeProfileName, PROFILE_NAME_MAX_LENGTH } from "../src/lib/profileSetup.js";
+import { isProfileGateReady, normalizeProfileName, PROFILE_NAME_MAX_LENGTH, shouldSetupProfile } from "../src/lib/profileSetup.js";
 
 const root = path.resolve(new URL("../", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1"));
 const read = (relativePath) => readFile(path.join(root, relativePath), "utf8");
@@ -32,6 +32,8 @@ test("가입정보 guard는 현재 인증 사용자의 프로필 hydration 뒤�
   assert.equal(isProfileGateReady({ authUserId: "auth-1", profileAuthUserId: "auth-2", remoteReady: true, serverProfileBound: false }), false);
   assert.equal(isProfileGateReady({ authUserId: "auth-1", profileAuthUserId: "auth-1", remoteReady: true, serverProfileBound: true }), true);
   assert.equal(isProfileGateReady({ authUserId: "test-rankball-001", remoteReady: true, serverProfileBound: false }), true);
+  assert.equal(shouldSetupProfile({ onboardingComplete: true }), false);
+  assert.equal(shouldSetupProfile({ onboardingComplete: false, handleLockedAt: "2026-01-01", birthYearLockedAt: "2026-01-01" }), true);
 });
 
 test("계정 전환 첫 렌더는 이전 계정의 원격 준비 상태를 재사용하지 않는다", async () => {

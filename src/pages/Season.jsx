@@ -337,7 +337,7 @@ export default function Season({ app }) {
               <div className="rivalry-challenge-actions">
                 <Button
                   as={Link}
-                  to="/app/create"
+                  to={`/app/create?challengeTeamAId=${encodeURIComponent(myTeam.id)}&challengeTeamBId=${encodeURIComponent(opponentTeam.id)}`}
                   state={{ challengeTeamAId: myTeam.id, challengeTeamBId: opponentTeam.id }}
                   size="sm"
                 >
