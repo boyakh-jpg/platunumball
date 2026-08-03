@@ -30,7 +30,7 @@ function getClockControllerLabel(player = {}) {
 }
 
 export default function MatchClockPanelView({ context }) {
-  const { activePlayers, applyResponse, attendanceQr, breakElapsedMs, breakLimitMinutes, breakLimitMs, breakOvertimeMs, breakRemainingMs, canEndMatch, canResetShotClock, clockClient, clockEditableScoreSides, closeFocusMode, configurationDirtyRef, confirmAction, controller, controllerCanEditScores, deadlineRemainingMs, deviceNotice, directScoreControlsEnabled, editableScoreSides, enableMediaControl, error, focusMode, halftimeAfterPeriod, hasRemainingPeriodTime, incrementScore, isBreak, isEnded, isHalftimeBreak, isPending, isRunning, lastMediaResetAtRef, liveClock, liveControllerCanEditScores, match, matchEndedNotifiedRef, matchRules, mediaControlEligible, mediaResetEnabled, nowMs, onEndMatch, onIncrementScore, onMatchEnded, onRosterChanged, openFocusMode, pendingAction, periodDisplayLabel, recognition, regulationEnded, requestMatchEnd, requestWakeLock, rosterRevisionRef, runAction, saveConfiguration, score, scoreError, scorePendingSide, scoreboardEnabled, selectController, selectShotClock, selectedControllerId, setActivePlayers, setAttendanceQr, setDeviceNotice, setError, setFocusMode, setNowMs, setPendingAction, setScore, setScoreError, setScorePendingSide, setSelectedControllerId, setShotClockSeconds, setSnapshot, setVolume, setWakeLockActive, setWakeLockRequested, shotClockEnabled, shotClockSeconds, showAttendanceQr, snapshot, soundedRef, testBuzzer, tied, toggleWakeLock, volume, wakeLockActive, wakeLockRef, wakeLockRequested, wakeLockRequestedRef } = context;
+  const { activePlayers, applyResponse, attendanceQr, breakElapsedMs, breakLimitMinutes, breakLimitMs, breakOvertimeMs, breakRemainingMs, canEndMatch, canResetShotClock, canResumeEndedClock, clockClient, clockEditableScoreSides, closeFocusMode, configurationDirtyRef, confirmAction, controller, controllerCanEditScores, deadlineRemainingMs, deviceNotice, directScoreControlsEnabled, editableScoreSides, enableMediaControl, error, focusMode, halftimeAfterPeriod, hasRemainingPeriodTime, incrementScore, isBreak, isEnded, isHalftimeBreak, isPending, isRunning, lastMediaResetAtRef, liveClock, liveControllerCanEditScores, match, matchEndedNotifiedRef, matchRules, mediaControlEligible, mediaResetEnabled, nowMs, onEndMatch, onIncrementScore, onMatchEnded, onRosterChanged, openFocusMode, pendingAction, periodDisplayLabel, recognition, regulationEnded, requestMatchEnd, requestWakeLock, requiresForcedMatchEnd, rosterRevisionRef, runAction, saveConfiguration, score, scoreError, scorePendingSide, scoreboardEnabled, selectController, selectShotClock, selectedControllerId, setActivePlayers, setAttendanceQr, setDeviceNotice, setError, setFocusMode, setNowMs, setPendingAction, setScore, setScoreError, setScorePendingSide, setSelectedControllerId, setShotClockSeconds, setSnapshot, setVolume, setWakeLockActive, setWakeLockRequested, shotClockEnabled, shotClockSeconds, showAttendanceQr, snapshot, soundedRef, testBuzzer, tied, toggleWakeLock, volume, wakeLockActive, wakeLockRef, wakeLockRequested, wakeLockRequestedRef } = context;
   if (!liveClock) {
     return (
       <section className="ui-match-clock-panel ui-panel" aria-label="경기시계">
@@ -240,12 +240,13 @@ export default function MatchClockPanelView({ context }) {
             </div>
           ) : null}
 
-          {!isEnded && (
-            liveClock.canControl
+          {(
+            (!isEnded && liveClock.canControl)
+            || canResumeEndedClock
             || (canEndMatch && onEndMatch && !match.endedAt)
           ) ? (
             <div className="ui-match-clock-actions ui-action-row">
-              {liveClock.canControl ? (
+              {liveClock.canControl && !isEnded ? (
                 <>
                   {isRunning && hasRemainingPeriodTime ? (
                     <Button type="button" size="sm" variant="secondary" onClick={() => void runAction("pause")}>
@@ -296,15 +297,20 @@ export default function MatchClockPanelView({ context }) {
                   ) : null}
                 </>
               ) : null}
+              {canResumeEndedClock ? (
+                <Button type="button" size="sm" onClick={() => void runAction("resume")}>
+                  <Play size={18} /> 계속
+                </Button>
+              ) : null}
               {canEndMatch && onEndMatch && !match.endedAt ? (
                 <Button
                   type="button"
                   size="sm"
-                  variant="secondary"
+                  variant={requiresForcedMatchEnd ? "danger" : "secondary"}
                   disabled={Boolean(pendingAction)}
                   onClick={() => void requestMatchEnd()}
                 >
-                  경기 종료
+                  {requiresForcedMatchEnd ? "강제 종료" : "경기 종료"}
                 </Button>
               ) : null}
             </div>

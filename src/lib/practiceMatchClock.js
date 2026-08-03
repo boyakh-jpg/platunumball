@@ -207,6 +207,16 @@ export function createPracticeClockClient(
         throw error;
       }
     }
+    const canResumeEndedClock = clock.status === "ended"
+      && !match?.endedAt
+      && !(clock.startedWithinWindow
+        && clock.endedExplicitly
+        && Number(clock.activeElapsedMs || 0) >= Number(clock.minimumActiveMs || 0));
+    if (action === "resume" && clock.status !== "paused" && !canResumeEndedClock) {
+      const error = new Error("match_clock_resume_forbidden");
+      error.code = error.message;
+      throw error;
+    }
     if (action === "configure") {
       clock = {
         ...clock,
@@ -224,6 +234,8 @@ export function createPracticeClockClient(
           : clock.startedWithinWindow,
         clockStartedAt: clock.clockStartedAt || new Date(nowMs).toISOString(),
         lastResumedAt: new Date(nowMs).toISOString(),
+        clockEndedAt: action === "resume" ? null : clock.clockEndedAt,
+        endedExplicitly: action === "resume" ? false : clock.endedExplicitly,
       };
     } else if (action === "pause") {
       clock = { ...clock, status: "paused", lastResumedAt: null };

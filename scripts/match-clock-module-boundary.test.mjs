@@ -94,6 +94,24 @@ test("경기시계 인정 진행률은 전체 시간이 아니라 최소 인정�
   assert.match(viewSource, /aria-label=\{`\$\{label\} 점수 조정`\}/u);
   assert.match(viewSource, /!match\.refereeId/u);
   assert.match(viewSource, /`연장 \$\{liveClock\.overtimeCount\} 종료`/u);
+  assert.match(viewSource, /canResumeEndedClock[\s\S]*runAction\("resume"\)/u);
+  assert.match(viewSource, /requiresForcedMatchEnd \? "강제 종료" : "경기 종료"/u);
+});
+
+test("인정 전 종료한 경기시계만 재개하고 경기 강제 종료는 별도 lifecycle action으로 유지한다", async () => {
+  const [migration, panelSource, clockStyles] = await Promise.all([
+    readFile(path.join(ROOT, "supabase/migrations/20260803120000_resume_unrecognized_match_clock.sql"), "utf8"),
+    readFile(path.join(ROOT, "src/components/match/MatchClockPanel.jsx"), "utf8"),
+    readFile(path.join(ROOT, "src/styles/responsive/match-clock-responsive.css"), "utf8"),
+  ]);
+
+  assert.match(migration, /session_row\.status not in \('paused', 'ended'\)/u);
+  assert.match(migration, /session_row\.clock_ended_at := null/u);
+  assert.match(migration, /current_match\.ended_at is not null/u);
+  assert.match(panelSource, /인정시간이 부족해 경기시계는 미사용 처리됩니다/u);
+  assert.match(clockStyles, /@container \(width > 680px\)[\s\S]*grid-template-areas: "score shot"/u);
+  assert.match(clockStyles, /@container \(width > 960px\)[\s\S]*grid-template-areas: "score attendance shot"/u);
+  assert.doesNotMatch(migration, /\b(?:delete|truncate|drop table)\b/iu);
 });
 
 test("actual referee match keeps one clock lifecycle from start through overtime and result sync", async () => {

@@ -734,11 +734,13 @@ test("internal legacy wrappers are inlined and dropped by exact signature", () =
 test("schema snapshot tails match the internal-wrapper and repaired participant reducer", () => {
   const wrapperMarker = "-- Final internal legacy RPC wrapper removal.";
   const participantMarker = "-- Final match-record participant operation reducer.";
+  const nextMarker = "-- Allow the current controller to recover an accidentally ended, unrecognized clock.";
   const wrapperIndex = schemaSource.lastIndexOf(wrapperMarker);
   const participantIndex = schemaSource.lastIndexOf(participantMarker);
+  const nextIndex = schemaSource.lastIndexOf(nextMarker);
   assert.notEqual(wrapperIndex, -1);
   assert.notEqual(participantIndex, -1);
-  assert.ok(wrapperIndex < participantIndex);
+  assert.ok(wrapperIndex < participantIndex && participantIndex < nextIndex);
   assert.equal(
     normalizeExecutableSql(
       schemaSource.slice(wrapperIndex + wrapperMarker.length, participantIndex),
@@ -766,7 +768,7 @@ test("schema snapshot tails match the internal-wrapper and repaired participant 
     matchRecordParticipantsSource,
   );
   assert.equal(
-    normalizeExecutableSql(schemaSource.slice(participantIndex + participantMarker.length)),
+    normalizeExecutableSql(schemaSource.slice(participantIndex + participantMarker.length, nextIndex)),
     normalizeExecutableSql(repairedParticipantSource),
   );
 });

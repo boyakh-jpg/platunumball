@@ -110,6 +110,7 @@
 .ui-match-clock-display-grid {
   --match-clock-display-gap: clamp(var(--space-5), 1.6cqi, var(--space-8));
   --match-clock-secondary-panel-height: clamp(156px, 20cqi, 200px);
+  --match-clock-secondary-panel-width: clamp(156px, 20cqi, 220px);
 
   display: grid;
   grid-template-areas:

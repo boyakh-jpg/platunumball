@@ -249,6 +249,11 @@ test("연습 경기 전체 흐름은 더미 state 안에서만 진행되고 rati
   const endedClock = await clockClient(confirmed.matchId, "endClock");
   assert.equal(endedClock.clock.status, "ended");
   assert.equal(endedClock.clock.clockUsed, false);
+  const resumedClock = await clockClient(confirmed.matchId, "resume");
+  assert.equal(resumedClock.clock.status, "running");
+  assert.equal(resumedClock.clock.clockEndedAt, null);
+  assert.equal(resumedClock.clock.clockUsed, false);
+  assert.equal((await clockClient(confirmed.matchId, "endClock")).clock.status, "ended");
   assert.equal(Boolean(stateRef.current.matches[0].endedAt), false);
   state = submitPracticeSampleResult(stateRef.current, confirmed.matchId);
   assert.ok(state.matches[0].endedAt);

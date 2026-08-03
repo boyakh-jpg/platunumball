@@ -1,3 +1,28 @@
+@container (width > 680px) {
+  .ui-match-clock-panel:not(.ui-match-clock-panel-focus)
+    .ui-match-clock-display-grid:not(.ui-match-clock-display-grid-single):not(.ui-match-clock-display-grid-with-attendance) {
+    grid-template-areas: "score shot";
+    grid-template-columns: minmax(0, 1fr) var(--match-clock-secondary-panel-width);
+  }
+
+  .ui-match-clock-panel:not(.ui-match-clock-panel-focus)
+    .ui-match-clock-display-grid-single.ui-match-clock-display-grid-with-attendance {
+    grid-template-areas: "score attendance";
+    grid-template-columns: minmax(0, 1fr) var(--match-clock-secondary-panel-width);
+  }
+}
+
+@container (width > 960px) {
+  .ui-match-clock-panel:not(.ui-match-clock-panel-focus)
+    .ui-match-clock-display-grid-with-attendance:not(.ui-match-clock-display-grid-single) {
+    grid-template-areas: "score attendance shot";
+    grid-template-columns:
+      minmax(0, 1fr)
+      var(--match-clock-secondary-panel-width)
+      var(--match-clock-secondary-panel-width);
+  }
+}
+
 @media (orientation: portrait) and (width <= 720px) {
   .ui-match-clock-focus-backdrop {
     inset: 0 auto auto 0;
