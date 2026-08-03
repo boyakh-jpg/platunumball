@@ -2420,3 +2420,8 @@ UI 수정 전:
 8. 중복 제거 기준선은 같은 파일 부분 중복 `89개`, feature/global 같은 값 중복 `111개`, 다른 값 충돌 `46개`, 전체 로드 순서 같은 값 중복 `20개`, `!important` `27개`, literal 선 두께 `336개`였다. 정리 후 각각 `0개`, `0개`, `0개`, `0개`, `7개`, `0개`이며 `scripts/css-cascade-guards.test.mjs`와 `scripts/css-refactor-metrics.mjs`가 회귀를 감시한다.
 9. production CSS 파일은 import-only manifest 또는 500줄 이하 leaf여야 한다. 현재 25개 대형 파일을 79개 책임 leaf로 분리했고, 분할 전후 cascade 순서와 선언 SHA-256이 같아야 한다.
 10. `scripts/css-source-tree.mjs`가 중첩 manifest를 재귀 해석한다. 테스트·측정 도구가 top-level import만 읽어 leaf를 누락하면 안 된다.
+
+## 2026-08-03 팀·프로필 통계 표시
+
+1. 팀 상세는 경쟁전 전적 카드와 전체 확정 경기 득실 통계 카드를 구분한다.
+2. 내 프로필은 기존 `rank-stat-grid`로 전체 전적과 심판 검증 개인 기록 평균을 표시한다.

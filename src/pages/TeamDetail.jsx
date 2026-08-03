@@ -10,8 +10,6 @@ import TierBadge from "../components/rating/TierBadge.jsx";
 import {
   MAX_TEAM_MEMBERS,
   MAX_TEAM_MEMBERSHIPS,
-  TEAM_INVITE_ROLES,
-  getTeamRoleLabel,
   isMercenaryTeamRole,
 } from "../lib/constants.js";
 import { getMatchSideScore as getSideScore, isMatchWithinRecordDetailWindow } from "../lib/matchUtils.js";
@@ -23,16 +21,12 @@ import {
 } from "../lib/teamEmblem.js";
 import { formatEmblemDate, getNextEmblemUploadAt, isEmblemUploadLocked } from "../lib/emblemPolicy.js";
 import { getUserHashtag } from "../lib/handles.js";
-import { getTeamSide } from "../lib/season.js";
+import { getTeamScoreSummary, getTeamSide } from "../lib/season.js";
 import TeamDetailView from "./TeamDetailView.jsx";
 
 function isHistoryInDetailWindow(match) {
   return isMatchWithinRecordDetailWindow(match);
 }
-
-const managedTeamRoleOptions = TEAM_INVITE_ROLES.map((role) => [role, getTeamRoleLabel(role)]);
-const inviteRoleOptions = managedTeamRoleOptions;
-
 
 export default function TeamDetail({ app }) {
   const { teamId } = useParams();
@@ -152,6 +146,7 @@ export default function TeamDetail({ app }) {
   const history = app.state.matches.filter((match) => match.status === "confirmed" && getTeamSide(match, team.id));
   const detailHistory = history.filter(isHistoryInDetailWindow);
   const archivedHistory = teamRecordArchive.rows ?? [];
+  const teamScoreSummary = getTeamScoreSummary(history, archivedHistory, team.id);
   const historyIds = new Set(history.map((match) => match.id));
   const historyCount = history.length + archivedHistory.filter((record) => !historyIds.has(record.matchId)).length;
   const loadedWins = history.filter((match) => {
@@ -339,5 +334,5 @@ export default function TeamDetail({ app }) {
   const emblemUploadLocked = moderationLocked || isEmblemUploadLocked(team.emblemUploadCount, team.emblemUploadedAt);
   const emblemSource = team.emblemSource ?? (team.emblemKey ? "upload" : "initial");
 
-  return <TeamDetailView controller={{ addUserId, app, archivedHistory, availableUsers, canAddMember, canManage, captain, confirmEmblemUpload, confirmedCount, cooldownNextAt, deleteArmed, deleteTeam, detailHistory, directoryPending, emblemAbbreviationCharacterCount, emblemCanRestore, emblemFeedback, emblemFile, emblemInputRef, emblemPending, emblemSource, emblemStatusRequestRef, emblemStyleDraft, emblemUploadLocked, favoriteTeamIds, firstAddableUser, history, historyCount, historyIds, inviteMember, isFavoriteTeam, loadDirectory, loadTeamEmblemStatus, loadTeamRecords, loadedLosses, loadedWins, losses, memberDraft, memberQuery, membershipCounts, moderationBlockedAt, moderationLocked, nextEmblemUploadAt, pendingTargetIds, pendingTeamInvitations, regularMembers, renderInviteSearchItem, renderMembers, reserveMembers, restorePreviousEmblem, saveEmblemStyle, selectEmblemSource, selectedCount, selectedHistoryMatchId, selectedInviteProfile, selectedInviteUser, selectedRemoteUser, setDeleteArmed, setEmblemCanRestore, setEmblemFeedback, setEmblemFile, setEmblemPending, setEmblemStyleDraft, setMemberDraft, setMemberQuery, setSelectedHistoryMatchId, setSelectedInviteProfile, team, teamFull, teamId, teamRecordArchive, uploadEmblem, userMap, winRate, wins }} />;
+  return <TeamDetailView controller={{ addUserId, app, archivedHistory, availableUsers, canAddMember, canManage, captain, confirmEmblemUpload, confirmedCount, cooldownNextAt, deleteArmed, deleteTeam, detailHistory, directoryPending, emblemAbbreviationCharacterCount, emblemCanRestore, emblemFeedback, emblemFile, emblemInputRef, emblemPending, emblemSource, emblemStatusRequestRef, emblemStyleDraft, emblemUploadLocked, favoriteTeamIds, firstAddableUser, history, historyCount, historyIds, inviteMember, isFavoriteTeam, loadDirectory, loadTeamEmblemStatus, loadTeamRecords, loadedLosses, loadedWins, losses, memberDraft, memberQuery, membershipCounts, moderationBlockedAt, moderationLocked, nextEmblemUploadAt, pendingTargetIds, pendingTeamInvitations, regularMembers, renderInviteSearchItem, renderMembers, reserveMembers, restorePreviousEmblem, saveEmblemStyle, selectEmblemSource, selectedCount, selectedHistoryMatchId, selectedInviteProfile, selectedInviteUser, selectedRemoteUser, setDeleteArmed, setEmblemCanRestore, setEmblemFeedback, setEmblemFile, setEmblemPending, setEmblemStyleDraft, setMemberDraft, setMemberQuery, setSelectedHistoryMatchId, setSelectedInviteProfile, team, teamFull, teamId, teamRecordArchive, teamScoreSummary, uploadEmblem, userMap, winRate, wins }} />;
 }

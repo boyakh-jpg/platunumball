@@ -178,7 +178,7 @@ import { readJsonBody } from "../server/api/_supabaseAdmin.js";
 import { compactClientUser } from "../server/lib/clientProjection.js";
 import { getRecruitingListCardCounts, getRecruitingListCardLobby, isPaidRecruitingCourt } from "../src/lib/recruiting.js";
 import { mergeRecruitingPostsById } from "../src/hooks/useAppData.js";
-import { getPlayerSeasonActivity } from "../src/lib/season.js";
+import { getPlayerSeasonActivity, getTeamScoreSummary } from "../src/lib/season.js";
 import { fromRemoteProfile } from "../src/data/profileMappers.js";
 import { IMAGE_CONTEXT_MENU_ALLOW_ATTRIBUTE, getProtectedImageTarget } from "../src/hooks/useImageInteractionGuard.js";
 import { REFEREE_EXAM_VERSION } from "../src/lib/refereeExamBank.js";
@@ -1448,8 +1448,30 @@ test("season hub is player-centered while regional MMR stays separate", async ()
   assert.match(styles, /\.season-race-list > \.player-hover-trigger/);
 });
 
+test("team score summary deduplicates current and archived matches", () => {
+  const summary = getTeamScoreSummary([{
+    id: "match-1",
+    status: "confirmed",
+    result: { scoreA: 21, scoreB: 18 },
+    teamA: { teamId: "team-a" },
+    teamB: { teamId: "team-b" },
+  }], [
+    { matchId: "match-1", score: 21, opponentScore: 18 },
+    { matchId: "match-2", score: 14, opponentScore: 16 },
+  ], "team-a");
+  assert.deepEqual(summary, {
+    games: 2,
+    pointsFor: 35,
+    pointsAgainst: 34,
+    averagePointsFor: 17.5,
+    averagePointsAgainst: 17,
+    averageMargin: 0.5,
+  });
+});
+
 test("team detail keeps navigation preview and always refreshes authoritative team data once", async () => {
   const teamDetailPage = await readSource("src/pages/TeamDetail.jsx");
+  const teamDetailView = await readSource("src/pages/TeamDetailView.jsx");
   assert.match(teamDetailPage, /location\.state\?\.teamPreview\?\.id === teamId/);
   assert.match(teamDetailPage, /const authoritativeTeam = app\.state\.teams\.find/);
   assert.match(teamDetailPage, /const team = authoritativeTeam \?\? previewTeam/);
@@ -1457,6 +1479,8 @@ test("team detail keeps navigation preview and always refreshes authoritative te
   assert.match(teamDetailPage, /if \(detailRequestRef\.current !== teamId\)/);
   assert.match(teamDetailPage, /detailRequestRef\.current = teamId;\s+refreshTeam\(\);/);
   assert.match(teamDetailPage, /!team && app\.remoteReady !== false && Boolean\(loadDirectory\)/);
+  assert.match(teamDetailView, /const inviteRoleOptions = TEAM_INVITE_ROLES\.map/);
+  assert.match(teamDetailView, /result=\{record\.result\}/);
 });
 
 test("user input rejects executable markup without blocking ordinary chat", async () => {

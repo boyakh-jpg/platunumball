@@ -10,7 +10,7 @@ import TeamEmblem from "../components/team/TeamEmblem.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import ProfileEmblem from "../components/profile/ProfileEmblem.jsx";
 import TierEmblem from "../components/rating/TierEmblem.jsx";
-import { MAX_TEAM_MEMBERS, MAX_TEAM_MEMBERSHIPS, getTeamRoleLabel, normalizeTeamRole } from "../lib/constants.js";
+import { MAX_TEAM_MEMBERS, MAX_TEAM_MEMBERSHIPS, TEAM_INVITE_ROLES, getTeamRoleLabel, normalizeTeamRole } from "../lib/constants.js";
 import { getMatchSideScore as getSideScore } from "../lib/matchUtils.js";
 import { getSideResult, getTeamSide } from "../lib/season.js";
 import {
@@ -26,8 +26,15 @@ function myTeamCountLabel(canManage) {
   return canManage ? "관리" : "조회";
 }
 
+const inviteRoleOptions = TEAM_INVITE_ROLES.map((role) => [role, getTeamRoleLabel(role)]);
+
+function getManagedRoleOptions(member, captainId) {
+  if (member.userId === captainId) return [["captain", getTeamRoleLabel("captain")]];
+  return inviteRoleOptions;
+}
+
 export default function TeamDetailView({ controller }) {
-  const { addUserId, app, archivedHistory, availableUsers, canAddMember, canManage, captain, confirmEmblemUpload, confirmedCount, cooldownNextAt, deleteArmed, deleteTeam, detailHistory, directoryPending, emblemAbbreviationCharacterCount, emblemCanRestore, emblemFeedback, emblemFile, emblemInputRef, emblemPending, emblemSource, emblemStatusRequestRef, emblemStyleDraft, emblemUploadLocked, favoriteTeamIds, firstAddableUser, history, historyCount, historyIds, inviteMember, isFavoriteTeam, loadDirectory, loadTeamEmblemStatus, loadTeamRecords, loadedLosses, loadedWins, losses, memberDraft, memberQuery, membershipCounts, moderationBlockedAt, moderationLocked, nextEmblemUploadAt, pendingTargetIds, pendingTeamInvitations, regularMembers, renderInviteSearchItem, renderMembers, reserveMembers, restorePreviousEmblem, saveEmblemStyle, selectEmblemSource, selectedCount, selectedHistoryMatchId, selectedInviteProfile, selectedInviteUser, selectedRemoteUser, setDeleteArmed, setEmblemCanRestore, setEmblemFeedback, setEmblemFile, setEmblemPending, setEmblemStyleDraft, setMemberDraft, setMemberQuery, setSelectedHistoryMatchId, setSelectedInviteProfile, team, teamFull, teamId, teamRecordArchive, uploadEmblem, userMap, winRate, wins } = controller;
+  const { addUserId, app, archivedHistory, availableUsers, canAddMember, canManage, captain, confirmEmblemUpload, confirmedCount, cooldownNextAt, deleteArmed, deleteTeam, detailHistory, directoryPending, emblemAbbreviationCharacterCount, emblemCanRestore, emblemFeedback, emblemFile, emblemInputRef, emblemPending, emblemSource, emblemStatusRequestRef, emblemStyleDraft, emblemUploadLocked, favoriteTeamIds, firstAddableUser, history, historyCount, historyIds, inviteMember, isFavoriteTeam, loadDirectory, loadTeamEmblemStatus, loadTeamRecords, loadedLosses, loadedWins, losses, memberDraft, memberQuery, membershipCounts, moderationBlockedAt, moderationLocked, nextEmblemUploadAt, pendingTargetIds, pendingTeamInvitations, regularMembers, renderInviteSearchItem, renderMembers, reserveMembers, restorePreviousEmblem, saveEmblemStyle, selectEmblemSource, selectedCount, selectedHistoryMatchId, selectedInviteProfile, selectedInviteUser, selectedRemoteUser, setDeleteArmed, setEmblemCanRestore, setEmblemFeedback, setEmblemFile, setEmblemPending, setEmblemStyleDraft, setMemberDraft, setMemberQuery, setSelectedHistoryMatchId, setSelectedInviteProfile, team, teamFull, teamId, teamRecordArchive, teamScoreSummary, uploadEmblem, userMap, winRate, wins } = controller;
   return (
     <div className="page-stack team-detail-page rank-team-page">
       <EntityProfileHero
@@ -57,6 +64,7 @@ export default function TeamDetailView({ controller }) {
       />
 
       <nav className="rank-profile-tabs">
+        <a href="#team-stats">통계</a>
         <a href="#team-history">전적</a>
         <a href="#team-roster">로스터</a>
         <a href="#team-control">관리</a>
@@ -93,6 +101,24 @@ export default function TeamDetailView({ controller }) {
           </div>
         </Card>
       </section>
+
+      <Card id="team-stats" className="section-card rank-record-card">
+        <div className="section-title-row">
+          <div>
+            <p className="eyebrow">Team Scoring</p>
+            <h2>전체 확정 경기 득실 통계</h2>
+          </div>
+          <Badge tone="blue">불러온 기록 {teamScoreSummary.games}경기</Badge>
+        </div>
+        <div className="rank-stat-grid">
+          <span><strong>{teamScoreSummary.pointsFor}</strong>누적 득점</span>
+          <span><strong>{teamScoreSummary.pointsAgainst}</strong>누적 실점</span>
+          <span><strong>{teamScoreSummary.averagePointsFor.toFixed(1)}</strong>평균 득점</span>
+          <span><strong>{teamScoreSummary.averagePointsAgainst.toFixed(1)}</strong>평균 실점</span>
+          <span><strong>{teamScoreSummary.pointsFor - teamScoreSummary.pointsAgainst > 0 ? "+" : ""}{teamScoreSummary.pointsFor - teamScoreSummary.pointsAgainst}</strong>누적 득실차</span>
+          <span><strong>{teamScoreSummary.averageMargin > 0 ? "+" : ""}{teamScoreSummary.averageMargin.toFixed(1)}</strong>평균 득실차</span>
+        </div>
+      </Card>
 
       <div className="content-grid wide-left">
         <div className="page-stack">
@@ -138,12 +164,11 @@ export default function TeamDetailView({ controller }) {
                 </button>
               ) : null}
               {archivedHistory.map((record) => {
-                const outcome = getScoreOutcome(record.score, record.opponentScore);
                 return (
                   <RecentMatchRow
                     key={record.matchId}
                     record={record}
-                    result={outcome}
+                    result={record.result}
                     side={{ name: record.teamName, teamId: team.id }}
                     opponent={{ name: record.opponentTeamName }}
                     score={record.score}

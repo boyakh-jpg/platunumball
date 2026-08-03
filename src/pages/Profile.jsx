@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import { PersonalRecordMetaLabels } from "../components/match/MatchRecordMeta.jsx";
@@ -11,9 +12,9 @@ import AffiliationEditor from "../components/profile/AffiliationEditor.jsx";
 import ProgressionChecklist from "../components/rating/ProgressionChecklist.jsx";
 import RatingCard from "../components/rating/RatingCard.jsx";
 import ShareCard from "../components/share/ShareCard.jsx";
-import { BASKETBALL_POSITIONS } from "../lib/constants.js";
+import { BASKETBALL_POSITIONS, PLAYER_STAT_FIELDS } from "../lib/constants.js";
 import { getUserHashtag } from "../lib/handles.js";
-import { getMatchSideScore as getSideScore, getPlayerMatchResult, getPlayerRecentRecordMatches, getPlayerSideName, isPersonalRecordMatch } from "../lib/matchUtils.js";
+import { getMatchSideScore as getSideScore, getPlayerMatchResult, getPlayerRecentRecordMatches, getPlayerSideName, hasVerifiedPlayerStats, isPersonalRecordMatch } from "../lib/matchUtils.js";
 import { canChangeProfileName, formatProfileDate, getNextNameChangeDate, getRegionDistrictOptions, inferRegionSelection } from "../lib/profileSetup.js";
 import { isPlacementComplete } from "../lib/rating.js";
 import { MatchRoomModal } from "./Matches.jsx";
@@ -144,6 +145,20 @@ export default function Profile({ app }) {
     });
   }, [app.actions, app.remoteReady, myRecords.length, user.id]);
   const averageFouls = getProfileAverageFouls(user, app.state.matches);
+  const matchSummary = user.matchSummary ?? null;
+  const fallbackMatches = myRecords.filter((match) => !isPersonalRecordMatch(match));
+  const fallbackStatMatches = fallbackMatches.filter((match) => hasVerifiedPlayerStats(match, user.id));
+  const fallbackTotals = Object.fromEntries(PLAYER_STAT_FIELDS.map((field) => [
+    field.id,
+    fallbackStatMatches.reduce((sum, match) => sum + Number(match.result?.playerStats?.[user.id]?.[field.id] ?? 0), 0),
+  ]));
+  const matchCount = Number(matchSummary?.matchCount ?? fallbackMatches.length);
+  const statMatchCount = Number(matchSummary?.statMatchCount ?? fallbackStatMatches.length);
+  const matchWins = Number(matchSummary?.wins ?? fallbackMatches.filter((match) => getPlayerMatchResult(match, user.id) === "W").length);
+  const matchLosses = Number(matchSummary?.losses ?? fallbackMatches.filter((match) => getPlayerMatchResult(match, user.id) === "L").length);
+  const matchDraws = Number(matchSummary?.draws ?? fallbackMatches.filter((match) => getPlayerMatchResult(match, user.id) === "D").length);
+  const matchWinRate = matchCount ? Math.round((matchWins / matchCount) * 100) : 0;
+  const matchTotals = matchSummary?.totals ?? fallbackTotals;
   const recordsPending = (!app.actions.profileRecordsLoaded || recordsLoading) && !myRecords.length;
   return (
     <div className="page-stack profile-page">
@@ -202,6 +217,33 @@ export default function Profile({ app }) {
               <RatingCard className="profile-rating-mode" key={mode} title={mode} mmr={mmr} ratings={user.ratings} mode={mode} />
             )) : null}
           </section>
+          <Card className="section-card rank-record-card">
+            <div className="section-title-row">
+              <div>
+                <p className="eyebrow">Match Summary</p>
+                <h2>프로필 통계</h2>
+              </div>
+              <Badge tone={matchCount ? "green" : "neutral"}>{matchSummary ? `${matchCount}경기` : `최근 ${matchCount}경기`}</Badge>
+            </div>
+            <div className="rank-stat-grid">
+              <span><strong>{matchWins}</strong>승</span>
+              <span><strong>{matchLosses}</strong>패</span>
+              <span><strong>{matchDraws}</strong>무</span>
+              <span><strong>{matchWinRate}%</strong>승률</span>
+            </div>
+            {statMatchCount ? (
+              <>
+                <h3>심판 검증 개인 기록 평균</h3>
+                <div className="rank-stat-grid">
+                  {PLAYER_STAT_FIELDS.map((field) => (
+                    <span key={field.id}><strong>{(Number(matchTotals[field.id] ?? 0) / statMatchCount).toFixed(1)}</strong>평균 {field.label}</span>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="ui-empty-state-compact">심판이 확정한 개인 기록이 없습니다.</div>
+            )}
+          </Card>
           <RecentRecordCard records={myRecords} userId={user.id} teams={app.state.teams} onOpenRecord={setSelectedRecordMatchId} loading={recordsPending} />
         </div>
         <aside className="page-stack profile-side-grid">
