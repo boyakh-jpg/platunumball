@@ -140,6 +140,7 @@ const pageSources = {
   teams: read("src/pages/Teams.jsx"),
   teamDetail: teamDetailSource,
   playerDetail: read("src/pages/PlayerDetail.jsx"),
+  refereeDetail: read("src/pages/RefereeDetail.jsx"),
   rankings: read("src/pages/Rankings.jsx"),
   settings: settingsSource,
 };
@@ -306,6 +307,14 @@ test("player detail uses shared record rows and one support rail", () => {
   assert.doesNotMatch(pageSources.playerDetail, /form-pill/);
   assert.doesNotMatch(globalSearchStyles, /\.form-pill(?:-row)?\s*\{/);
   assert.match(globalSurfaceStyles, /\.profile-detail-page \.profile-hero\s*\{[^}]*--page-hero-bg:\s*var\(--bg-profile\);/);
+});
+
+test("referee detail uses the profile layout and a deployable hero asset", () => {
+  assert.ok(fs.statSync("public/assets/rankball-referee-profile-v1.webp").size > 0);
+  assert.match(pageSources.refereeDetail, /className="profile-hero rank-profile-hero referee-profile-hero"/);
+  assert.match(pageSources.refereeDetail, /className="referee-profile-body"/);
+  assert.match(pageSources.refereeDetail, /"--page-hero-bg": `url\("\$\{assetUrl\("\/assets\/rankball-referee-profile-v1\.webp"\)\}"\)`/);
+  assert.match(globalSearchStyles, /\.referee-profile-body\s*\{[^}]*grid-template-columns:/s);
 });
 
 test("win loss draw record borders keep semantic colors in every theme", () => {

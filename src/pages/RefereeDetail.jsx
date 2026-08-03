@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { ArrowUpRight, ShieldCheck } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import Badge from "../components/common/Badge.jsx";
 import BasketballLoader from "../components/common/BasketballLoader.jsx";
@@ -8,6 +9,7 @@ import RecentMatchRow from "../components/match/RecentMatchRow.jsx";
 import EntityProfileHero from "../components/profile/EntityProfileHero.jsx";
 import ProfileEmblem from "../components/profile/ProfileEmblem.jsx";
 import { REFEREE_GRADE_META } from "../lib/admin.js";
+import { assetUrl } from "../lib/assets.js";
 import { getUserHashtag } from "../lib/handles.js";
 import { compareMatchRecency, getMatchSideScore } from "../lib/matchUtils.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
@@ -115,22 +117,36 @@ export default function RefereeDetail({ app }) {
   return (
     <div className="page-stack rank-profile-page profile-detail-page referee-detail-page">
       <EntityProfileHero
+        className="profile-hero rank-profile-hero referee-profile-hero"
+        style={{
+          "--page-hero-bg": `url("${assetUrl("/assets/rankball-referee-profile-v1.webp")}")`,
+          "--page-hero-bg-position": "center",
+        }}
         eyebrow="Referee Profile"
         title={referee.name}
         subtitle={`${getUserHashtag(referee)} · ${referee.region ?? "지역 미설정"}`}
         leading={<ProfileEmblem user={referee} className="hero-avatar" />}
         badges={(
           <>
-            <Badge tone={gradeMeta.tone}>{gradeMeta.label}</Badge>
-            <Badge tone="blue">신뢰도 {referee.trustScore ?? "-"}</Badge>
-            <Badge tone="green">활동 중</Badge>
+            <Badge tone={gradeMeta.tone} className="ui-liquid-glass">{gradeMeta.label}</Badge>
+            <Badge tone="blue" className="ui-liquid-glass">신뢰도 {referee.trustScore ?? "-"}</Badge>
+            <Badge tone="green" className="ui-liquid-glass">활동 중</Badge>
           </>
         )}
-        action={<Button as={Link} size="sm" variant="secondary" to={`/app/players/${referee.id}`}>선수 프로필</Button>}
+        action={(
+          <Button as={Link} size="sm" variant="secondary" className="ui-liquid-glass referee-profile-player-link" to={`/app/players/${referee.id}`}>
+            선수 프로필
+            <ArrowUpRight size={15} aria-hidden="true" />
+          </Button>
+        )}
         visual={(
-          <div className="referee-hover-tier">
-            <span className={`referee-hover-grade ${gradeMeta.tone}`}>{gradeMeta.code}</span>
-            <span><b>{gradeMeta.label}</b><em>{gradeMeta.requirement}</em></span>
+          <div className={`referee-profile-grade referee-profile-grade-${gradeMeta.tone}`}>
+            <span className="referee-profile-grade-code">{gradeMeta.code}</span>
+            <span>
+              <small>Current License</small>
+              <b>{gradeMeta.label}</b>
+              <em>{gradeMeta.requirement}</em>
+            </span>
           </div>
         )}
       />
@@ -140,50 +156,75 @@ export default function RefereeDetail({ app }) {
         <a href="#referee-history">최근 경기</a>
       </nav>
 
-      <Card id="referee-stats" className="section-card rank-record-card">
-        <div className="section-title-row">
-          <div>
-            <p className="eyebrow">Referee Stats</p>
-            <h2>심판 활동 통계</h2>
-          </div>
-          <Badge tone="green">확정 {stats.completed ?? 0}경기</Badge>
-        </div>
-        <div className="rank-stat-grid">
-          <span><strong>{gradeMeta.code}</strong>현재 등급</span>
-          <span><strong>{stats.completed ?? 0}</strong>확정 경기</span>
-          <span><strong>{stats.ranked ?? 0}</strong>경쟁전</span>
-          <span><strong>{stats.official ?? 0}</strong>공식 경기</span>
-          <span><strong>{stats.recent ?? matches.length}</strong>최근 경기</span>
-          <span><strong>{formatActivityDate(stats.lastMatchAt)}</strong>최근 활동</span>
-        </div>
-      </Card>
+      <div className="referee-profile-body">
+        <aside className="page-stack referee-profile-rail">
+          <Card className="section-card referee-license-card">
+            <div className="section-title-row">
+              <div>
+                <p className="eyebrow">License</p>
+                <h2>심판 자격</h2>
+              </div>
+              <ShieldCheck size={22} aria-hidden="true" />
+            </div>
+            <div className="referee-license-summary">
+              <strong>{gradeMeta.code}</strong>
+              <span><b>{gradeMeta.label}</b><em>{gradeMeta.requirement}</em></span>
+            </div>
+            <dl className="referee-profile-facts">
+              <div><dt>활동 상태</dt><dd>활동 중</dd></div>
+              <div><dt>신뢰도</dt><dd>{referee.trustScore ?? "-"}</dd></div>
+              <div><dt>최근 활동</dt><dd>{formatActivityDate(stats.lastMatchAt)}</dd></div>
+            </dl>
+          </Card>
+        </aside>
 
-      <Card id="referee-history" className="section-card">
-        <div className="section-title-row">
-          <div>
-            <p className="eyebrow">Recent Officiating</p>
-            <h2>최근 심판 경기</h2>
-          </div>
-          <Badge tone="blue">{matches.length}경기</Badge>
+        <div className="page-stack referee-profile-main">
+          <Card id="referee-stats" className="section-card rank-record-card">
+            <div className="section-title-row">
+              <div>
+                <p className="eyebrow">Referee Stats</p>
+                <h2>심판 활동 통계</h2>
+              </div>
+              <Badge tone="green">확정 {stats.completed ?? 0}경기</Badge>
+            </div>
+            <div className="rank-stat-grid">
+              <span><strong>{gradeMeta.code}</strong>현재 등급</span>
+              <span><strong>{stats.completed ?? 0}</strong>확정 경기</span>
+              <span><strong>{stats.ranked ?? 0}</strong>경쟁전</span>
+              <span><strong>{stats.official ?? 0}</strong>공식 경기</span>
+              <span><strong>{stats.recent ?? matches.length}</strong>최근 경기</span>
+              <span><strong>{formatActivityDate(stats.lastMatchAt)}</strong>최근 활동</span>
+            </div>
+          </Card>
+
+          <Card id="referee-history" className="section-card">
+            <div className="section-title-row">
+              <div>
+                <p className="eyebrow">Recent Officiating</p>
+                <h2>최근 심판 경기</h2>
+              </div>
+              <Badge tone="blue">{matches.length}경기</Badge>
+            </div>
+            <div className="recent-match-list">
+              {matches.map((match) => (
+                <RecentMatchRow
+                  key={match.id}
+                  record={match}
+                  result="neutral"
+                  side={match.teamA}
+                  opponent={match.teamB}
+                  score={getMatchSideScore(match, "teamA")}
+                  opponentScore={getMatchSideScore(match, "teamB")}
+                  teams={teams}
+                  to={`/app/matches?match=${match.id}`}
+                  detail={match.official ? "공식 경기 심판" : match.ranked !== false ? "경쟁전 심판" : "친선전 심판"}
+                />
+              ))}
+              {!matches.length ? <div className="ui-empty-state-compact">공개된 확정 심판 경기가 아직 없습니다.</div> : null}
+            </div>
+          </Card>
         </div>
-        <div className="recent-match-list">
-          {matches.map((match) => (
-            <RecentMatchRow
-              key={match.id}
-              record={match}
-              result="neutral"
-              side={match.teamA}
-              opponent={match.teamB}
-              score={getMatchSideScore(match, "teamA")}
-              opponentScore={getMatchSideScore(match, "teamB")}
-              teams={teams}
-              to={`/app/matches?match=${match.id}`}
-              detail={match.official ? "공식 경기 심판" : match.ranked !== false ? "경쟁전 심판" : "친선전 심판"}
-            />
-          ))}
-          {!matches.length ? <div className="ui-empty-state-compact">공개된 확정 심판 경기가 아직 없습니다.</div> : null}
-        </div>
-      </Card>
+      </div>
     </div>
   );
 }
