@@ -18,6 +18,7 @@ export function useCreateMatchValidationEffects(context, { refereeCandidates }) 
     getRepresentativePlayerIds,
     getSelectableTeamPlayerIds,
     getSeoulTimeInputValue,
+    hasTeamChallenge,
     isDefaultCreateTitle,
     isDefaultTournamentTitle,
     isMatchRecordRoom,
@@ -184,7 +185,7 @@ export function useCreateMatchValidationEffects(context, { refereeCandidates }) 
   }, [isPickupMatch]);
 
   useEffect(() => {
-    if (canCreateTeamRoom) return;
+    if (canCreateTeamRoom || hasTeamChallenge) return;
     setDraft((current) => current.hostJoinMode === "team"
       ? {
         ...current,
@@ -197,7 +198,7 @@ export function useCreateMatchValidationEffects(context, { refereeCandidates }) 
         opponentLeaderId: "",
       }
       : current);
-  }, [canCreateTeamRoom]);
+  }, [canCreateTeamRoom, hasTeamChallenge]);
 
   useEffect(() => {
     if (!isTeamRoom || !selectedTeamA) return;
