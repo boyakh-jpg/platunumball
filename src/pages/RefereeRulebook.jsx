@@ -3,7 +3,6 @@ import { Link, useSearchParams } from "react-router-dom";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
-import { assetUrl } from "../lib/assets.js";
 import {
   REFEREE_RULEBOOK_CHECKLIST,
   REFEREE_RULEBOOK_EASY_SECTIONS,
@@ -74,11 +73,11 @@ function getRulebookImageTheme(theme) {
 function RulebookIllustration({ scene, theme = "dark" }) {
   const title = SCENE_COPY[scene] ?? SCENE_COPY.standard;
   const imageTheme = getRulebookImageTheme(theme);
-  const fallbackSrc = assetUrl(`/assets/referee-rulebook/${scene}.svg`);
+  const fallbackSrc = `/assets/referee-rulebook/${scene}.svg`;
   return (
     <figure className="rulebook-asset">
       <img
-        src={`${assetUrl(`/assets/referee-rulebook-rendered/${imageTheme}/${scene}.webp`)}?v=${RULEBOOK_ASSET_VERSION}`}
+        src={`/assets/referee-rulebook-rendered/${imageTheme}/${scene}.webp?v=${RULEBOOK_ASSET_VERSION}`}
         alt={`${title} 일러스트`}
         loading="lazy"
         onError={(event) => {

@@ -2548,6 +2548,8 @@ test("referee rulebook matches current FIBA and BOXTIER operating rules", async 
   assert.match(page, /FIBA 경기규칙 2024/);
   assert.match(page, /FIBA 통계 매뉴얼 2024/);
   assert.match(page, /RULEBOOK_ASSET_VERSION/);
+  assert.match(page, /src=\{`\/assets\/referee-rulebook-rendered/);
+  assert.doesNotMatch(page, /assetUrl/u);
   assert.match(page, /쉬운 규칙/);
   assert.match(page, /상세 규칙/);
   assert.match(page, /searchParams\.get\("level"\) === "detail"/);
