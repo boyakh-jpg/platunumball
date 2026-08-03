@@ -3700,6 +3700,7 @@ flowchart TD
 13. 무심판 score-only 경기도 일반 경기수·승패·전적에는 포함할 수 있지만 누적 개인 스탯과 평균 분모에는 포함하지 않는다. `profile_match_summaries.stat_match_count`는 실제 배정 심판이 저장한 stats row가 있는 확정 경기만 센다.
 14. `personal_record`의 경기수·승패·자기 스탯은 `profile_personal_record_summaries`에 별도 집계한다. `profile_match_summaries`, 프로필 아이콘 업적, 개인·팀 MMR에는 포함하지 않는다.
 15. 개인 기록 공개 상태는 기록 단위다. 비공개는 서비스 역할을 제외하면 생성자만 읽고, 공개는 생성자 프로필의 기록 API에서만 다른 로그인 사용자에게 제공한다.
+15-1. 타인 선수 프로필의 통계는 내 기록 화면과 같은 `종합 / 공식기록 / 무심판 / 사후기록 / 내 기록` 분류를 사용한다. 타인 조회에서는 공개 기록만 각 분류와 합계에 포함하고, `statSummary`가 비공개면 통계 카드 전체를 표시하지 않는다.
 16. 장기 보관 인덱스 `match_record_participants`는 `record_type`, `visibility`, `owner_profile_id`를 보존한다. 타인 프로필 조회는 archive payload를 읽기 전에 `personal_record + public + owner` 조건으로 먼저 제한한다.
 17. 일반 무심판 경기의 점수 증감은 `live` 단계에서만 허용하고 종료 후에는 정확한 사이드·요청 점수 이의의 수락·거절만 사용한다. 배정 심판은 종료 후 최종 확정 전까지 점수와 개인 스탯을 수정할 수 있다. 사후 `match_record`는 명단 확정 뒤 생성자에게 최초 팀 점수 입력을 허용하되 이의 상태에서는 직접 수정하지 않는다.
 18. 경기시계를 사용하지 않는 경기에도 `incrementMatchScore`와 같은 revision 기반 점수 control을 표시한다. 경기시계를 사용하는 1v1·2v2·3v3·5v5는 시계 점수판에서 같은 control을 사용하며 개인 PTS 제출로 팀 점수를 다시 계산하지 않는다.

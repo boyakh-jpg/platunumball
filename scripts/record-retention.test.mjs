@@ -16,7 +16,7 @@ import {
   REMOTE_CLIENT_RECORD_MONTHS,
 } from "../src/lib/constants.js";
 import { getReadableMatchStatRows } from "../src/data/matchMappers.js";
-import { getMatchPlayedDate, getPlayerRecentRecordMatches, getProfileRecordCategory, getProfileRecordFolder, groupProfileRecordsByCourt, hasVerifiedPlayerStats, summarizeProfileRecords } from "../src/lib/matchUtils.js";
+import { filterProfileRecords, getMatchPlayedDate, getPlayerRecentRecordMatches, getProfileRecordCategory, getProfileRecordFolder, groupProfileRecordsByCourt, hasVerifiedPlayerStats, summarizeProfileRecords } from "../src/lib/matchUtils.js";
 import { getRecordWindowDates, isRecordDetailDate } from "../src/lib/recordRetention.js";
 
 const root = new URL("../", import.meta.url);
@@ -75,6 +75,11 @@ test("profile record folders separate sources and only average verified player s
   assert.equal(summary.totals.points, 8);
   assert.equal(summary.averages.fouls, 2);
   assert.deepEqual(groupProfileRecordsByCourt([official], "player").map(({ name, summary: item }) => [name, item.games]), [["한강 코트", 1]]);
+
+  const publicPersonal = { id: "public-personal", visibility: "public", rules: { recordType: "personal_record" } };
+  const privatePersonal = { id: "private-personal", visibility: "private", rules: { recordType: "personal_record" } };
+  assert.deepEqual(filterProfileRecords([official, noReferee, publicPersonal, privatePersonal], { playerId: "player" }).map(({ id }) => id), ["official", "no-referee"]);
+  assert.deepEqual(filterProfileRecords([publicPersonal, privatePersonal], { folder: "personal", playerId: "player", visibility: "public" }).map(({ id }) => id), ["public-personal"]);
 });
 
 test("profile preview is the first six rows of the recent record detail list", () => {
@@ -261,6 +266,8 @@ test("profile and team records use the dedicated archive-backed API", async () =
     readSource("supabase/migrations/20260722223000_match_record_archive.sql"),
     readSource("supabase/migrations/20260722223500_match_record_archive_simulation_guard.sql"),
   ]);
+  const profileRecordSummarySource = await readSource("src/components/profile/ProfileRecordSummaryCard.jsx");
+  const profileRecordUiSource = `${profileSource}\n${profileRecordSummarySource}`;
   assert.match(apiSource, /scope === RECORD_SCOPE_TEAM/);
   assert.match(apiSource, /match_record_participants/);
   assert.match(apiSource, /match_record_teams/);
@@ -279,15 +286,15 @@ test("profile and team records use the dedicated archive-backed API", async () =
   assert.match(hookSource, /includeArchive: !loadMoreDetail/);
   assert.match(hookSource, /if \(!isRequestCurrent\(\) \|\| error\?\.code === "stale_auth_request"\) return false/);
   assert.match(profileSource, /6개월 초과 · 최근 5년/);
-  assert.match(profileSource, /\{ id: "official", label: "공식기록" \}/);
-  assert.match(profileSource, /\{ id: "no_referee", label: "무심판" \}/);
-  assert.match(profileSource, /\{ id: "postgame", label: "사후기록" \}/);
-  assert.match(profileSource, /role="tablist"/);
-  assert.match(profileSource, /OFFICIAL_SECTIONS/);
-  assert.match(profileSource, /PERSONAL_VISIBILITY_FILTERS/);
-  assert.match(profileSource, /MODE_FILTERS/);
-  assert.match(profileSource, /matchesModeFilter/);
-  assert.match(profileSource, /getPersonalSummaryByVisibility/);
+  assert.match(profileRecordUiSource, /\{ id: "official", label: "공식기록" \}/);
+  assert.match(profileRecordUiSource, /\{ id: "no_referee", label: "무심판" \}/);
+  assert.match(profileRecordUiSource, /\{ id: "postgame", label: "사후기록" \}/);
+  assert.match(profileRecordUiSource, /role="tablist"/);
+  assert.match(profileRecordUiSource, /OFFICIAL_SECTIONS/);
+  assert.match(profileRecordUiSource, /PERSONAL_VISIBILITY_FILTERS/);
+  assert.match(profileRecordUiSource, /MODE_FILTERS/);
+  assert.match(profileSource, /filterProfileRecords/);
+  assert.match(profileRecordSummarySource, /getPersonalSummaryByVisibility/);
   assert.doesNotMatch(profileSource, /날짜별 기록 수|const dateRows/);
   assert.match(apiSource, /publicSummary/);
   assert.match(apiSource, /publicProfileOnly/);

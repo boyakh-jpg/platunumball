@@ -122,6 +122,7 @@ const shareCardSource = read("src/components/share/ShareCard.jsx");
 const teamDetailSource = readSourceGroupSync(read, TEAM_DETAIL_SOURCE_PATHS);
 const courtDetailSource = read("src/pages/CourtDetail.jsx");
 const entityProfileHeroSource = read("src/components/profile/EntityProfileHero.jsx");
+const profileRecordSummarySource = read("src/components/profile/ProfileRecordSummaryCard.jsx");
 const placementEmblemPath = "public/assets/tier-emblems/tier-placement-v2.webp";
 const hoverSurfaceStyles = [
   readCssTree("src/styles/global-foundation.css"),
@@ -308,7 +309,11 @@ test("player detail uses shared record rows and one support rail", () => {
   assert.match(pageSources.playerDetail, /getActualMatchPlayerSideName/);
   assert.match(pageSources.playerDetail, /player\.privacy\?\.statSummary !== false/);
   assert.match(pageSources.playerDetail, /to=\{`\/app\/referees\/\$\{player\.id\}`\}/);
-  assert.match(pageSources.playerDetail, /<strong>\{confirmedHistory\.length\}<\/strong>확정 경기/);
+  assert.match(pageSources.playerDetail, /<ProfileRecordSummaryCard/);
+  assert.match(pageSources.profileRecords, /<ProfileRecordSummaryCard/);
+  assert.match(profileRecordSummarySource, /className="profile-record-folder-tabs"/);
+  assert.match(pageSources.playerDetail, /match\.visibility \?\? match\.rules\?\.visibility \?\? "private"/);
+  assert.doesNotMatch(pageSources.playerDetail, /Career Totals|personal-record-profile-card/);
   assert.doesNotMatch(pageSources.playerDetail, /form-pill/);
   assert.doesNotMatch(globalSearchStyles, /\.form-pill(?:-row)?\s*\{/);
   assert.match(globalSurfaceStyles, /\.profile-detail-page \.profile-hero\s*\{[^}]*--page-hero-bg:\s*var\(--bg-profile\);/);

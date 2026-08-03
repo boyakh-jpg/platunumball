@@ -29,6 +29,26 @@ export function getProfileRecordFolder(record = {}, playerId = "") {
     : "no_referee";
 }
 
+export function filterProfileRecords(records = [], {
+  folder = "summary",
+  officialSection = "general",
+  playerId = "",
+  mode = "all",
+  visibility = "all",
+} = {}) {
+  return records.filter((record) => {
+    const recordFolder = getProfileRecordFolder(record, playerId);
+    if (folder === "summary" ? recordFolder === "personal" : recordFolder !== folder) return false;
+    if (folder === "official" && officialSection !== "venue") {
+      if (officialSection === "tournament" ? !record.tournamentId : record.tournamentId) return false;
+    }
+    if (folder === "personal") {
+      return visibility === "all" || (record.visibility ?? record.rules?.visibility ?? "private") === visibility;
+    }
+    return mode === "all" || record.mode === mode;
+  });
+}
+
 export function getProfileRecordLine(record = {}, playerId = "") {
   if (record.matchId && !record.id) {
     return {

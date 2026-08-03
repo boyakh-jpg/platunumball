@@ -434,10 +434,6 @@
 .match-record-meta__court {
   flex: 0 1 auto;
 }
-.personal-record-profile-card .personal-record-history-list,
-.personal-record-profile-card .personal-record-archive-list {
-  margin-top: var(--space-5);
-}
 .recent-match-row strong {
   min-width: 0;
   overflow: hidden;
