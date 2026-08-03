@@ -2099,11 +2099,13 @@ test("profile fills a missing match summary after a thin home bootstrap", async 
 });
 
 test("referee profiles use canonical grades and public confirmed officiating history", async () => {
-  const [appSource, dispatcherSource, pageSource, hoverSource, apiSource, querySource, adminSource] = await Promise.all([
+  const [appSource, dispatcherSource, pageSource, hoverSource, homeSearchSource, favoriteSource, apiSource, querySource, adminSource] = await Promise.all([
     readSource("src/App.jsx"),
     readSource("api/index.js"),
     readSource("src/pages/RefereeDetail.jsx"),
     readSource("src/components/referee/RefereeHoverCard.jsx"),
+    readSource("src/pages/useHomeSearchModel.jsx"),
+    readSource("src/pages/useSettingsFavorites.jsx"),
     readSource("server/api/referees/detail.js"),
     readSource("server/api/matches/_listQueries.js"),
     readSource("src/lib/adminPolicy.js"),
@@ -2113,6 +2115,8 @@ test("referee profiles use canonical grades and public confirmed officiating his
   assert.match(pageSource, /EntityProfileHero/);
   assert.match(pageSource, /RecentMatchRow/);
   assert.match(hoverSource, /`\/app\/referees\/\$\{user\.id\}`/);
+  assert.match(homeSearchSource, /item\.kind === "referee" \? `\/app\/referees\/\$\{item\.id\}`/);
+  assert.match(favoriteSource, /to=\{`\/app\/referees\/\$\{item\.id\}`\}/);
   assert.match(apiSource, /referee_appointments/);
   assert.match(querySource, /\.eq\("referee_id", safeRefereeId\)/);
   assert.match(querySource, /\.eq\("status", "confirmed"\)/);

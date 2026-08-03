@@ -22,3 +22,12 @@ export function isWithinOneEdit(source = "", target = "") {
   }
   return edits + Number(sourceIndex < source.length || targetIndex < target.length) <= 1;
 }
+
+export function preferExactSearchMatches(items = [], query = "", getName = (item) => item?.name ?? item?.label ?? "") {
+  const normalizedQuery = String(query ?? "").normalize("NFKC").trim().toLowerCase().replace(/\s+/g, " ");
+  if (!normalizedQuery || normalizedQuery.startsWith("#")) return items;
+  const exact = items.filter((item) => (
+    String(getName(item) ?? "").normalize("NFKC").trim().toLowerCase().replace(/\s+/g, " ") === normalizedQuery
+  ));
+  return exact.length ? exact : items;
+}

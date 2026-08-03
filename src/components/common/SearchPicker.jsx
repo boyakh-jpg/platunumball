@@ -1,6 +1,7 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Search } from "lucide-react";
 import { postServerAction } from "../../lib/serverActions.js";
+import { preferExactSearchMatches } from "../../../shared/lib/fuzzyText.js";
 
 function normalizeSearchText(value = "") {
   return String(value ?? "").trim().toLowerCase().replace(/\s+/g, " ");
@@ -65,6 +66,11 @@ function getItemKey(item = {}, fallbackCategory = "") {
     item.label ?? entity.label,
     item.name ?? entity.name,
   ].filter(Boolean).join(":");
+}
+
+function getItemName(item = {}) {
+  const entity = item.player ?? item.team ?? item.court ?? item.referee ?? item;
+  return entity.name ?? item.label ?? "";
 }
 
 function mergeSearchItems(localItems = [], remoteItems = [], fallbackCategory = "") {
@@ -153,7 +159,11 @@ export default function SearchPicker({
       .filter((entry) => entry.score >= 0)
       .sort((a, b) => b.score - a.score || a.index - b.index)
       .map((entry) => entry.item);
-    return mergeSearchItems(localItems, mappedRemoteItems, remoteSearchCategory);
+    return preferExactSearchMatches(
+      mergeSearchItems(localItems, mappedRemoteItems, remoteSearchCategory),
+      query,
+      getItemName,
+    );
   }, [canSearch, getSearchText, idleItems, items, mappedRemoteItems, query, remoteSearchCategory]);
   const canShow = floating
     ? focused && (canSearch || showIdleOnFocus)

@@ -8,7 +8,7 @@ import {
 } from "../shared/lib/adminReview.js";
 import * as sharedConstants from "../shared/lib/constants.js";
 import * as sharedCourtPolicy from "../shared/lib/courtPolicy.js";
-import { isWithinOneEdit } from "../shared/lib/fuzzyText.js";
+import { isWithinOneEdit, preferExactSearchMatches } from "../shared/lib/fuzzyText.js";
 import * as sharedMatchUtils from "../shared/lib/matchUtils.js";
 import { normalizeNaverAddress } from "../shared/lib/naverAddress.js";
 import { sortPlainObject } from "../shared/lib/plainObject.js";
@@ -121,6 +121,9 @@ test("small cross-runtime utilities keep one shared implementation", async () =>
   assert.equal(sharedIsHighImpactAdminReviewAction("dismissReport"), false);
   assert.equal(isWithinOneEdit("court", "cour"), true);
   assert.equal(isWithinOneEdit("court", "coast"), false);
+  const people = [{ name: "박지민" }, { name: "박지후" }, { name: "박지호" }];
+  assert.deepEqual(preferExactSearchMatches(people, "박지후"), [{ name: "박지후" }]);
+  assert.deepEqual(preferExactSearchMatches(people, "박지"), people);
   assert.deepEqual(sortPlainObject({ z: 1, a: { y: 1, b: 2 } }), {
     a: { b: 2, y: 1 },
     z: 1,

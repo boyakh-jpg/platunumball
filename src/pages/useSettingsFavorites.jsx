@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import Button from "../components/common/Button.jsx";
 import ProfileEmblem from "../components/profile/ProfileEmblem.jsx";
 import TeamEmblem from "../components/team/TeamEmblem.jsx";
@@ -96,13 +97,13 @@ export default function useSettingsFavorites({ app, registeredCourts }) {
     if (item.kind === "referee") {
       return (
         <div key={`favorite-referee-${item.id}`} className="favorite-result-row" onMouseDown={(event) => event.preventDefault()}>
-          <span className="favorite-result-identity">
+          <Link className="favorite-result-identity" to={`/app/referees/${item.id}`}>
             <ProfileEmblem user={item} className="small" />
             <span>
               <strong>{item.name}</strong>
               <em>{getUserHashtag(item)} · 신뢰도 {item.trustScore}</em>
             </span>
-          </span>
+          </Link>
           <Button type="button" size="sm" variant={favoriteRefereeIds.includes(item.id) ? "primary" : "secondary"} disabled={Boolean(favoriteActionPendingKey)} onClick={() => { void toggleFavoriteItem("referee", app.actions.toggleFavoriteReferee, item, true); }}>
             {favoriteActionPendingKey === `referee:${item.id}` ? "저장 중" : favoriteRefereeIds.includes(item.id) ? "해제" : "저장"}
           </Button>
