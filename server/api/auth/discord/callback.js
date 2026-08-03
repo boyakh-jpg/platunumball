@@ -48,8 +48,21 @@ async function exchangeCodeForToken(code) {
     },
     body,
   });
-  if (!tokenResponse.ok) throw new Error(`token_exchange_failed:${tokenResponse.status}`);
+  if (!tokenResponse.ok) {
+    let errorCode = "unknown";
+    try {
+      errorCode = normalizeDiscordOAuthErrorCode((await tokenResponse.json())?.error);
+    } catch {
+      // Keep malformed provider responses out of logs.
+    }
+    throw new Error(`token_exchange_failed:${tokenResponse.status}:${errorCode}`);
+  }
   return tokenResponse.json();
+}
+
+export function normalizeDiscordOAuthErrorCode(value) {
+  const code = String(value || "");
+  return /^[a-z0-9_]{1,64}$/.test(code) ? code : "unknown";
 }
 
 async function fetchDiscordUser(accessToken) {

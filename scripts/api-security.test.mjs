@@ -24,6 +24,7 @@ import {
   verifyDiscordOAuthStateTicket,
 } from "../server/api/auth/_discordOAuthProof.js";
 import { getDiscordOAuthStateCookiePath } from "../server/api/auth/_discordOAuthCookies.js";
+import { normalizeDiscordOAuthErrorCode } from "../server/api/auth/discord/callback.js";
 import { getPublicAppUrl, getPublicAppWebUrl } from "../server/api/_publicAppUrl.js";
 import {
   isActiveReportInsertConflict,
@@ -591,6 +592,12 @@ test("Discord OAuth state cookie follows only supported callback paths", () => {
     getDiscordOAuthStateCookiePath("https://boxtier.kr/api/other/callback"),
     "/api/auth/discord/callback",
   );
+});
+
+test("Discord OAuth logs only bounded provider error codes", () => {
+  assert.equal(normalizeDiscordOAuthErrorCode("invalid_client"), "invalid_client");
+  assert.equal(normalizeDiscordOAuthErrorCode("secret leaked"), "unknown");
+  assert.equal(normalizeDiscordOAuthErrorCode("x".repeat(65)), "unknown");
 });
 
 test("referee exam attempts preserve the first start and first terminal grading", async () => {
