@@ -1,5 +1,6 @@
+import { useRef } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
-import { clampNumericStepperValue } from "../../lib/numericStepper.js";
+import { clampNumericStepperValue, getNumericInputBlurValue } from "../../lib/numericStepper.js";
 
 export default function NumericStepper({
   value,
@@ -14,6 +15,7 @@ export default function NumericStepper({
   integer = true,
 }) {
   const numericValue = clampNumericStepperValue(value, min, max, integer);
+  const blurFallbackRef = useRef(numericValue);
   const setNextValue = (nextValue) => onChange?.(
     clampNumericStepperValue(nextValue, min, max, integer),
   );
@@ -39,10 +41,12 @@ export default function NumericStepper({
         disabled={disabled}
         value={inputValue}
         onFocus={() => {
+          blurFallbackRef.current = numericValue;
           if (clearOnFocus || (clearZeroOnFocus && numericValue === 0)) onChange?.("");
         }}
         onBlur={(event) => {
-          if (event.currentTarget.value === "") setNextValue(numericValue);
+          const blurValue = getNumericInputBlurValue(event.currentTarget.value, blurFallbackRef.current);
+          if (blurValue !== event.currentTarget.value) setNextValue(blurValue);
         }}
         onChange={(event) => {
           if (event.target.value === "") {

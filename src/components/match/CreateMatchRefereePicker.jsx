@@ -1,7 +1,6 @@
 export function CreateMatchRefereePicker({ context, className = "" }) {
   const {
     Button,
-    REFEREE_TRUST_MIN,
     SearchPicker,
     activePlayerIds,
     clearReferee,
@@ -56,17 +55,12 @@ export function CreateMatchRefereePicker({ context, className = "" }) {
           />
         </label>
       </div>
-      <div className="stat-integrity-note create-referee-note">
-        <span>
-          {selectedReferee
-            ? `초대할 심판: ${selectedReferee.name} · 신뢰도 ${selectedReferee.trustScore}`
-            : "심판 초대 안 함 · 무심판 경기는 팀 점수만 기록"}
-          {` · 신규 자격 기준 ${REFEREE_TRUST_MIN} · 활성 심판 자격 필요`}
-        </span>
-        {selectedReferee ? (
+      {selectedReferee ? (
+        <div className="stat-integrity-note create-referee-note">
+          <span>{`초대할 심판: ${selectedReferee.name}`}</span>
           <Button type="button" variant="secondary" size="sm" onClick={clearReferee}>초대 해제</Button>
-        ) : null}
-      </div>
+        </div>
+      ) : null}
     </>
   );
 }

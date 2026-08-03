@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { clampNumericStepperValue, isDirectNumericEntryPointer } from "../src/lib/numericStepper.js";
+import {
+  clampNumericStepperValue,
+  getNumericInputBlurValue,
+  isDirectNumericEntryPointer,
+} from "../src/lib/numericStepper.js";
 import {
   MATCH_ROOM_SOURCE_PATHS,
   RECRUITING_PAGE_SOURCE_PATHS,
@@ -39,10 +43,17 @@ test("기록 화면은 공용 NumericStepper만 사용한다", async () => {
 });
 
 test("empty numeric input restores its valid default on blur", async () => {
-  const [source, createValidationSource] = await Promise.all([
+  assert.equal(getNumericInputBlurValue("", 12), 12);
+  assert.equal(getNumericInputBlurValue("7", 12), "7");
+
+  const [stepperSource, inlineInputSource, createValidationSource] = await Promise.all([
     readFile(new URL("../src/components/common/NumericStepper.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/common/InlineValidatedInput.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/components/match/useCreateMatchValidationController.js", import.meta.url), "utf8"),
   ]);
-  assert.match(source, /onBlur=\{\(event\) => \{[\s\S]*?if \(event\.currentTarget\.value === ""\) setNextValue\(numericValue\)/);
+  assert.match(stepperSource, /blurFallbackRef\.current = numericValue/);
+  assert.match(stepperSource, /getNumericInputBlurValue\(event\.currentTarget\.value, blurFallbackRef\.current\)/);
+  assert.match(inlineInputSource, /blurFallbackRef\.current = inputProps\.value/);
+  assert.match(inlineInputSource, /getNumericInputBlurValue\(event\.currentTarget\.value, blurFallbackRef\.current\)/);
   assert.match(createValidationSource, /setDraft\(\(current\) => \(\{[\s\S]*?soloStats: \{ \.\.\.\(current\.soloStats/);
 });

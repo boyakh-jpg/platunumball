@@ -1308,10 +1308,10 @@ test("CreateMatch persists bench capacity at top level and inside rules", () => 
   assert.doesNotMatch(pickupSwapMigration, /delete\s+from|drop\s+table|truncate\s+table/i);
 });
 
-test("무심판 생성 안내는 개인 기록이 아니라 팀 점수 전용 정책을 표시한다", () => {
+test("심판 미선택 상태는 중복 설명 행을 표시하지 않는다", () => {
   const source = readPageSourceGroup(CREATE_MATCH_PAGE_SOURCE_PATHS);
-  assert.doesNotMatch(source, /심판 없으면 개인 기록은 득점 중심/);
-  assert.match(source, /심판 초대 안 함 · 무심판 경기는 팀 점수만 기록/);
+  assert.doesNotMatch(source, /심판 초대 안 함|무심판 경기는 팀 점수만 기록|신규 자격 기준/);
+  assert.match(source, /selectedReferee \? \([\s\S]*초대할 심판:[\s\S]*초대 해제/);
 });
 
 test("원격 심판 검색에서 선택한 프로필은 일반 경기 후보에 유지한다", () => {

@@ -8,3 +8,7 @@ export function clampNumericStepperValue(value, min, max, integer = true) {
 export function isDirectNumericEntryPointer(clientX, inputRight, spinnerWidth = 24) {
   return Number.isFinite(clientX) && Number.isFinite(inputRight) && clientX < inputRight - spinnerWidth;
 }
+
+export function getNumericInputBlurValue(value, fallbackValue) {
+  return value === "" ? fallbackValue : value;
+}
