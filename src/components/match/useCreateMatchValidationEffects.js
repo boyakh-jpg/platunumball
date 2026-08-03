@@ -36,11 +36,25 @@ export function useCreateMatchValidationEffects(context, { refereeCandidates }) 
     selectedTournamentTeamProfiles,
     selectedTeamA,
     selectedTeamB,
+    challengeTeamAId,
+    challengeTeamBId,
     setDraft,
     setRefereeQuery,
     today,
     useEffect,
   } = context;
+
+  useEffect(() => {
+    if (!hasTeamChallenge) return;
+    setDraft((current) => ({
+      ...current,
+      visibility: "private",
+      hostJoinMode: "team",
+      teamOnly: true,
+      teamAId: challengeTeamAId,
+      teamBId: challengeTeamBId,
+    }));
+  }, [challengeTeamAId, challengeTeamBId, hasTeamChallenge]);
 
   useEffect(() => {
     if (isRecordCreateIntent) {
@@ -124,6 +138,7 @@ export function useCreateMatchValidationEffects(context, { refereeCandidates }) 
 
   useEffect(() => {
     if (isTeamRoom && !isTournamentRoom) {
+      if (hasTeamChallenge) return;
       setDraft((current) => {
         const alreadyEmpty = !current.teamAId
           && !current.teamBId
@@ -167,7 +182,7 @@ export function useCreateMatchValidationEffects(context, { refereeCandidates }) 
         && tournamentTeamIds.every((teamId, index) => teamId === current.tournamentTeamIds[index])) return current;
       return { ...current, tournamentTeamIds };
     });
-  }, [app.state.teams, defaultTournamentTeamB?.id, isTeamRoom, isTournamentRoom, myTeams, representativeTournamentTeam?.id, selectedTournamentTeamProfiles]);
+  }, [app.state.teams, defaultTournamentTeamB?.id, hasTeamChallenge, isTeamRoom, isTournamentRoom, myTeams, representativeTournamentTeam?.id, selectedTournamentTeamProfiles]);
 
   useEffect(() => {
     if (!isPickupMatch) return;
