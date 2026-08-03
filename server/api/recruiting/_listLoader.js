@@ -154,7 +154,18 @@ export async function loadCompactRecruitingList(context, {
       adminLevel,
     );
     if (skipCardReferenceRows && !fallbackPostIds.length) {
-      const responsePosts = targetPostIds.map((postId) => cardById.get(postId)).filter(Boolean);
+      const cardCourtIds = collectRecruitingCardScope(countedTargetCards).courtIds;
+      const { courtRows } = await fetchRecruitingReferenceRows(
+        context.supabase,
+        { profileIds: [], teamIds: [], courtIds: cardCourtIds },
+        context.profileId,
+        { loadTeamMembers: false },
+      );
+      const courtById = firstBy(courtRows ?? [], "id");
+      const responsePosts = targetPostIds
+        .map((postId) => cardById.get(postId))
+        .filter(Boolean)
+        .map((card) => attachRecruitingCardReferences(card, courtById));
       const state = normalizeState({
         currentUserId: currentUser.id,
         users: [currentUser],

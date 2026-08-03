@@ -98,13 +98,13 @@ export function collectMissingMatchCardReferences(cards = []) {
       match?.teamA?.teamId && !match?.teamA?.name ? match.teamA.teamId : "",
       match?.teamB?.teamId && !match?.teamB?.name ? match.teamB.teamId : "",
     ])),
-    courtIds: unique((cards ?? []).map((match) => (match?.courtId && !match?.court ? match.courtId : ""))),
+    courtIds: unique((cards ?? []).map((match) => match?.courtId)),
   };
 }
 
 export function attachMatchCardReferences(match = {}, teamById = {}, courtById = {}) {
   if (!match?.id) return match;
-  const courtName = match.court ?? courtById[match.courtId]?.name;
+  const courtName = courtById[match.courtId]?.name ?? match.court;
   const teamAId = match.teamA?.teamId;
   const teamBId = match.teamB?.teamId;
   return {
@@ -270,7 +270,7 @@ export function toClientMatch(row = {}, playersByMatch = new Map(), teamById = {
     title: row.title,
     mode: row.mode,
     courtId: row.court_id ?? null,
-    court: row.court_name ?? courtById[row.court_id]?.name ?? "\uBBF8\uC815",
+    court: courtById[row.court_id]?.name ?? row.court_name ?? "\uBBF8\uC815",
     visibility: row.visibility ?? row.rules?.visibility ?? "public",
     scheduledDate: row.scheduled_date,
     scheduledTime: row.scheduled_time ? String(row.scheduled_time).slice(0, 5) : "",

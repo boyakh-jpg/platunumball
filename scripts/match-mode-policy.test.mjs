@@ -367,6 +367,7 @@ test("RPC grant health distinguishes current entry points from retired signature
     migrationSource,
     registryDeltaSource,
     seasonRegistrySource,
+    courtVerificationRegistrySource,
     previousGeneralHealthSource,
     previousAuthoritativeHealthSource,
   ] = await Promise.all([
@@ -388,6 +389,13 @@ test("RPC grant health distinguishes current entry points from retired signature
     readFile(
       new URL(
         "../supabase/migrations/20260801007000_canonical_season_rankings.sql",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+    readFile(
+      new URL(
+        "../supabase/migrations/20260803222000_court_request_ai_verification.sql",
         import.meta.url,
       ),
       "utf8",
@@ -419,7 +427,7 @@ test("RPC grant health distinguishes current entry points from retired signature
     );
   };
   const registryRows = [
-    ...`${migrationSource}\n${registryDeltaSource}\n${seasonRegistrySource}`.matchAll(
+    ...`${migrationSource}\n${registryDeltaSource}\n${seasonRegistrySource}\n${courtVerificationRegistrySource}`.matchAll(
       /\('(general|authoritative)',\s*'([^']+)',\s*'([^']+)',\s*'([^']+)',\s*'(active|retired)',\s*(true|false)\)/g,
     ),
   ].map((match) => ({

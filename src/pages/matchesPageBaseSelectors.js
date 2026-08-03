@@ -211,8 +211,7 @@ export function compareSchedule(a, b) {
 }
 
 export function formatMatchTime(match) {
-  if (isInstantScheduleRoom(match)) return getRoomScheduleLabel(match);
-  return match.scheduledAt ?? match.createdAt?.slice(0, 16)?.replace("T", " ") ?? "시간 미정";
+  return getRoomScheduleLabel(match);
 }
 
 export function getMatchProcessMeta(match, now = new Date()) {

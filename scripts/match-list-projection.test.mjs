@@ -12,6 +12,19 @@ import {
   normalizeMatchupText,
 } from "../src/lib/matchListProjection.js";
 import { attachMatchPlayerCountsToCards } from "../server/api/matches/_listEnrichment.js";
+import { attachMatchCardReferences, collectMissingMatchCardReferences } from "../server/api/matches/_listProjection.js";
+import { attachRecruitingCardReferences } from "../server/api/recruiting/_listProjection.js";
+import { formatMatchTime } from "../src/pages/matchesPageBaseSelectors.js";
+
+test("목록 카드는 승인 구장 원본과 실제 일정만 표시한다", () => {
+  const courtById = { "court-1": { id: "court-1", name: "성산 농구장" } };
+  const staleCard = { id: "match-1", courtId: "court-1", court: "미정" };
+
+  assert.deepEqual(collectMissingMatchCardReferences([staleCard]).courtIds, ["court-1"]);
+  assert.equal(attachMatchCardReferences(staleCard, {}, courtById).court, "성산 농구장");
+  assert.equal(attachRecruitingCardReferences(staleCard, courtById).court, "성산 농구장");
+  assert.equal(formatMatchTime({ createdAt: "2026-08-03T12:34:00.000Z" }), "일정 미정");
+});
 
 test("대진 제목 비교는 대소문자와 공백만 정규화한다", () => {
   assert.equal(normalizeMatchupText("  Team A   VS   Team B  "), "team a vs team b");

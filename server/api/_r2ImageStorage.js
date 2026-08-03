@@ -1,6 +1,7 @@
 const DEFAULT_R2_BUCKET = "rankball";
 const WEBP_CONTENT_TYPE = "image/webp";
 const IMMUTABLE_ASSET_CACHE_CONTROL = "public, max-age=31536000, immutable";
+const PRIVATE_IMAGE_CACHE_CONTROL = "private, no-store";
 
 function httpError(statusCode, message) {
   const error = new Error(message);
@@ -16,6 +17,13 @@ export function getR2Config() {
   return { accountId, apiToken, bucket };
 }
 
+export function getPrivateR2Config() {
+  const config = getR2Config();
+  const bucket = String(process.env.CLOUDFLARE_R2_PRIVATE_BUCKET || "").trim();
+  if (!bucket) throw httpError(503, "cloudflare_private_r2_not_configured");
+  return { ...config, bucket };
+}
+
 function getObjectApiUrl(config, objectKey) {
   const encodedKey = String(objectKey || "").split("/").map((part) => encodeURIComponent(part)).join("/");
   return `https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(config.accountId)}/r2/buckets/${encodeURIComponent(config.bucket)}/objects/${encodedKey}`;
@@ -27,11 +35,19 @@ async function readCloudflareError(response) {
 }
 
 export async function uploadR2Webp(config, objectKey, bytes, contextLabel = "image") {
+  return uploadR2WebpWithCache(config, objectKey, bytes, IMMUTABLE_ASSET_CACHE_CONTROL, contextLabel);
+}
+
+export async function uploadPrivateR2Webp(config, objectKey, bytes, contextLabel = "private image") {
+  return uploadR2WebpWithCache(config, objectKey, bytes, PRIVATE_IMAGE_CACHE_CONTROL, contextLabel);
+}
+
+async function uploadR2WebpWithCache(config, objectKey, bytes, cacheControl, contextLabel) {
   const response = await fetch(getObjectApiUrl(config, objectKey), {
     method: "PUT",
     headers: {
       Authorization: `Bearer ${config.apiToken}`,
-      "Cache-Control": IMMUTABLE_ASSET_CACHE_CONTROL,
+      "Cache-Control": cacheControl,
       "Content-Type": WEBP_CONTENT_TYPE,
     },
     body: bytes,
@@ -40,6 +56,17 @@ export async function uploadR2Webp(config, objectKey, bytes, contextLabel = "ima
     console.error(`Cloudflare R2 ${contextLabel} upload failed.`, await readCloudflareError(response));
     throw httpError(503, "cloudflare_r2_upload_failed");
   }
+}
+
+export async function readR2Object(config, objectKey, contextLabel = "image") {
+  const response = await fetch(getObjectApiUrl(config, objectKey), {
+    headers: { Authorization: `Bearer ${config.apiToken}` },
+  });
+  if (!response.ok) {
+    console.error(`Cloudflare R2 ${contextLabel} read failed.`, await readCloudflareError(response));
+    throw httpError(response.status === 404 ? 404 : 503, response.status === 404 ? "cloudflare_r2_object_not_found" : "cloudflare_r2_read_failed");
+  }
+  return Buffer.from(await response.arrayBuffer());
 }
 
 export async function deleteR2Object(config, objectKey, contextLabel = "image") {

@@ -442,7 +442,7 @@ export function collectRecruitingCardScope(cards = [], profileId = "") {
 export function attachRecruitingCardReferences(card = {}, courtById = {}) {
   if (!card?.id) return card;
   const court = courtById[card.courtId];
-  const courtName = card.court ?? court?.name;
+  const courtName = court?.name ?? card.court;
   return {
     ...card,
     ...(courtName ? { court: courtName } : {}),

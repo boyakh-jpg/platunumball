@@ -53,13 +53,13 @@ const loadDirectory = app.actions.loadDirectory;
   const { reportMatchId, setReportMatchId, reportReason, setReportReason, reportTargetQuery, setReportTargetQuery, reportCourtRequestId, setReportCourtRequestId, reportCourtId, setReportCourtId, reportCourtReviewId, setReportCourtReviewId, reportTeamId, setReportTeamId, reportRemoteTarget, setReportRemoteTarget, reportMemo, setReportMemo, reportedUserIds, setReportedUserIds, reportSubmitPending, setReportSubmitPending, reportSubmitStatus, setReportSubmitStatus, reportMatchesLoading, setReportMatchesLoading, reportMatchesError, setReportMatchesError, recentReportMatches, reportTargetType, isVoidRestoreReport, reportableMatchCandidates, reportNeedsMatchData, reportableCourtRequests, reportableCourts, reportableCourtReviews, reportableTeams, selectedReportMatchId, selectedReportMatch, selectedReportCourtRequest, selectedReportCourt, selectedReportCourtReview, selectedReportTeam, selectedTeamHasUploadedEmblem, reportParticipantRows, reportParticipantIds, selectedReportedUserIds, reportTargetSearchItems, reportRemoteSearchTypes, mapRemoteReportTarget, hasValidVoidRestoreMemo, canSubmitReport, selectReportTarget, changeReportTargetQuery, renderReportTargetSearchItem, submitReport, toggleReportedUser } = useSettingsReportController({ app, userMap, matchMap, courtRequests, approvedCourts, courtReviews });
   const currentTrustScore = Number(app.currentUser?.trustScore ?? 0);
   const {
-    courtAddressQuery, setCourtAddressQuery, naverAddressResults, setNaverAddressResults,
-    courtLookupStatus, courtAddressSearchPending, courtPinPending, courtSubmitPending,
-    courtPinConfirmed, courtNearbyConfirmed, setCourtNearbyConfirmed,
-    courtDraft, naverMapKeyReady, courtAddressSelected, courtDisplayName, courtHasMapPin,
-    courtNearbyCandidates, courtRequiresUnit, courtNearbyReviewRequired, courtDuplicate,
-    courtDuplicateMessage, courtSourceUrlInvalid, canOpenCourtRequestForm, canSubmitCourtRequest,
-    updateCourtDraft, searchCourtAddress, pickCourtMapPin, selectNaverAddress, submitCourtRequest,
+    courtAddressQuery, setCourtAddressQuery, naverAddressResults, setNaverAddressResults, courtLookupStatus,
+    courtAddressSearchPending, courtPinPending, courtSubmitPending, courtPinConfirmed,
+    courtNearbyConfirmed, setCourtNearbyConfirmed, courtDraft, courtPhotos, courtPhotoPending,
+    courtFieldLocation, courtFieldLocationPending, naverMapKeyReady, courtAddressSelected, courtDisplayName,
+    courtHasMapPin, courtNearbyCandidates, courtRequiresUnit, courtNearbyReviewRequired, courtDuplicate,
+    courtDuplicateMessage, courtSourceUrlInvalid, canOpenCourtRequestForm, canSubmitCourtRequest, updateCourtDraft,
+    searchCourtAddress, pickCourtMapPin, selectNaverAddress, selectCourtPhotos, removeCourtPhoto, confirmCourtFieldLocation, submitCourtRequest,
   } = useSettingsCourtRequestController({ app, currentTrustScore });
   const {
     refereeDraft, refereeExamQuestions, refereeExamOpen, refereeExamAnswers, refereeExamResult,
@@ -402,7 +402,7 @@ const loadDirectory = app.actions.loadDirectory;
     courtPinConfirmed,
     courtNearbyConfirmed,
     setCourtNearbyConfirmed,
-    courtDraft,
+    courtDraft, courtPhotos, courtPhotoPending, courtFieldLocation, courtFieldLocationPending,
     refereeDraft,
     refereeExamQuestions,
     refereeExamOpen,
@@ -483,7 +483,7 @@ const loadDirectory = app.actions.loadDirectory;
     updateCourtDraft,
     searchCourtAddress,
     pickCourtMapPin,
-    selectNaverAddress,
+    selectNaverAddress, selectCourtPhotos, removeCourtPhoto, confirmCourtFieldLocation,
     selectTheme,
     connectDiscord,
     saveGeneralSettings,

@@ -59,8 +59,8 @@ function createBodyError(code, statusCode) {
   return error;
 }
 
-function parseJsonBody(raw = "") {
-  if (Buffer.byteLength(raw, "utf8") > MAX_API_JSON_BODY_BYTES) throw createBodyError("request_body_too_large", 413);
+function parseJsonBody(raw = "", maxBytes = MAX_API_JSON_BODY_BYTES) {
+  if (Buffer.byteLength(raw, "utf8") > maxBytes) throw createBodyError("request_body_too_large", 413);
   try {
     return JSON.parse(raw || "{}");
   } catch {
@@ -68,26 +68,27 @@ function parseJsonBody(raw = "") {
   }
 }
 
-function validateJsonBody(body) {
-  assertSafeInputPayload(body, { path: "$body" });
+function validateJsonBody(body, options = {}) {
+  assertSafeInputPayload(body, { path: "$body", ...(options.maxStringLength ? { maxStringLength: options.maxStringLength } : {}) });
   return body;
 }
 
-export async function readJsonBody(request) {
-  if (Buffer.isBuffer(request.body)) return validateJsonBody(parseJsonBody(request.body.toString("utf8")));
-  if (request.body && typeof request.body === "object") return validateJsonBody(request.body);
-  if (typeof request.body === "string") return validateJsonBody(parseJsonBody(request.body));
+export async function readJsonBody(request, options = {}) {
+  const maxBytes = Number(options.maxBytes) > 0 ? Number(options.maxBytes) : MAX_API_JSON_BODY_BYTES;
+  if (Buffer.isBuffer(request.body)) return validateJsonBody(parseJsonBody(request.body.toString("utf8"), maxBytes), options);
+  if (request.body && typeof request.body === "object") return validateJsonBody(request.body, options);
+  if (typeof request.body === "string") return validateJsonBody(parseJsonBody(request.body, maxBytes), options);
 
   const chunks = [];
   let bodyBytes = 0;
   for await (const chunk of request) {
     const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
     bodyBytes += buffer.length;
-    if (bodyBytes > MAX_API_JSON_BODY_BYTES) throw createBodyError("request_body_too_large", 413);
+    if (bodyBytes > maxBytes) throw createBodyError("request_body_too_large", 413);
     chunks.push(buffer);
   }
   const raw = Buffer.concat(chunks).toString("utf8").trim();
-  return validateJsonBody(parseJsonBody(raw));
+  return validateJsonBody(parseJsonBody(raw, maxBytes), options);
 }
 
 export function bearerTokenMatches(request, expectedToken = "") {

@@ -269,7 +269,7 @@ export function fromRemoteMatch(row, context) {
     title: row.title,
     mode: row.mode,
     courtId: row.court_id ?? null,
-    court: row.court_name ?? context.courtById[row.court_id]?.name ?? "미정",
+    court: context.courtById[row.court_id]?.name ?? row.court_name ?? "미정",
     visibility: row.visibility ?? row.rules?.visibility ?? "public",
     scheduledDate: row.scheduled_date,
     scheduledTime: row.scheduled_time ? String(row.scheduled_time).slice(0, 5) : "",

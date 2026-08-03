@@ -20,6 +20,8 @@ import {
   DEFAULT_COURT_REQUEST,
   getCourtAddressDong,
 } from "./settingsPageModel.js";
+import { COURT_REQUEST_FIELD_CAPTURE_MAX_AGE_MS, COURT_REQUEST_PHOTO_MAX, getCoordinateDistanceMeters } from "../../shared/lib/courtRequestImagePolicy.js";
+import { getCourtRequestPhotoErrorMessage, prepareCourtRequestPhotos } from "../lib/courtRequestImages.js";
 
 export default function useSettingsCourtRequestController({ app, currentTrustScore }) {
   const [courtAddressQuery, setCourtAddressQueryState] = useState("");
@@ -32,6 +34,10 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
   const [courtServerNearbyCandidates, setCourtServerNearbyCandidates] = useState([]);
   const [courtNearbyLookupFailed, setCourtNearbyLookupFailed] = useState(false);
   const [courtNearbyConfirmed, setCourtNearbyConfirmed] = useState(false);
+  const [courtPhotos, setCourtPhotos] = useState([]);
+  const [courtPhotoPending, setCourtPhotoPending] = useState(false);
+  const [courtFieldLocation, setCourtFieldLocation] = useState(null);
+  const [courtFieldLocationPending, setCourtFieldLocationPending] = useState(false);
   const courtAddressSearchRef = useRef(0);
   const courtPinPendingRef = useRef(false);
   const courtSubmitPendingRef = useRef(false);
@@ -91,6 +97,8 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
     && !courtDuplicate
     && !courtSourceUrlInvalid
     && !courtNearbyLookupFailed
+    && courtPhotos.length > 0
+    && Boolean(courtFieldLocation)
     && (!courtNearbyReviewRequired || courtNearbyConfirmed)
     && (!courtRequiresUnit || Boolean(courtDraft.courtUnit.trim()));
 
@@ -100,6 +108,10 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
 
   const updateCourtDraft = (patch) => {
     if (Object.keys(patch).some((key) => COURT_NEARBY_REVIEW_FIELDS.has(key))) setCourtNearbyConfirmed(false);
+    if (Object.keys(patch).some((key) => ["addressText", "lat", "lng"].includes(key))) {
+      setCourtFieldLocation(null);
+      setCourtPhotos([]);
+    }
     setCourtDraft((current) => ({ ...current, ...patch }));
   };
   const resetCourtNearbyLookup = () => {
@@ -224,6 +236,58 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
     setCourtPinConfirmed(false);
     setCourtLookupStatus("근처 주소를 선택했습니다. 지도 핀으로 실제 구장 위치를 확정해 주세요.");
   };
+  const selectCourtPhotos = async (event) => {
+    const files = event.target.files;
+    event.target.value = "";
+    if (!files?.length) return;
+    if (!courtFieldLocation || Date.now() - Date.parse(courtFieldLocation.capturedAt) > COURT_REQUEST_FIELD_CAPTURE_MAX_AGE_MS) {
+      setCourtFieldLocation(null);
+      setCourtPhotos([]);
+      setCourtLookupStatus("현장 위치를 다시 확인한 뒤 사진을 촬영해 주세요.");
+      return;
+    }
+    if (courtPhotos.length >= COURT_REQUEST_PHOTO_MAX) {
+      setCourtLookupStatus("현장 사진은 최대 4장까지 촬영할 수 있습니다.");
+      return;
+    }
+    setCourtPhotoPending(true);
+    try {
+      const prepared = await prepareCourtRequestPhotos(files);
+      setCourtPhotos((current) => [...current, ...prepared].slice(0, COURT_REQUEST_PHOTO_MAX));
+      setCourtLookupStatus("현장 사진을 촬영하고 자동 최적화했습니다.");
+    } catch (error) {
+      setCourtLookupStatus(getCourtRequestPhotoErrorMessage(error?.code));
+    } finally {
+      setCourtPhotoPending(false);
+    }
+  };
+  const removeCourtPhoto = (index) => setCourtPhotos((current) => current.filter((_, photoIndex) => photoIndex !== index));
+  const confirmCourtFieldLocation = () => {
+    if (!navigator.geolocation || courtFieldLocationPending) {
+      setCourtLookupStatus("이 브라우저에서는 현장 위치를 확인할 수 없습니다.");
+      return;
+    }
+    setCourtFieldLocationPending(true);
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        const location = {
+          lat: coords.latitude,
+          lng: coords.longitude,
+          accuracy: coords.accuracy,
+          distanceMeters: getCoordinateDistanceMeters(courtDraft.lat, courtDraft.lng, coords.latitude, coords.longitude),
+          capturedAt: new Date().toISOString(),
+        };
+        setCourtFieldLocation(location);
+        setCourtLookupStatus(`현장 위치 확인됨 · 오차 ${Math.round(location.accuracy)}m · 핀과 ${Math.round(location.distanceMeters)}m`);
+        setCourtFieldLocationPending(false);
+      },
+      () => {
+        setCourtLookupStatus("현장 위치 권한을 확인하지 못했습니다. 신청은 관리자 검토로 접수할 수 있습니다.");
+        setCourtFieldLocationPending(false);
+      },
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 15_000 },
+    );
+  };
   const submitCourtRequest = async (event) => {
     event.preventDefault();
     if (courtSubmitPendingRef.current) return;
@@ -243,12 +307,24 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
       setCourtLookupStatus("공식 안내 링크는 https:// 주소로 입력해 주세요.");
       return;
     }
+    if (!courtPhotos.length) {
+      setCourtLookupStatus("현장 사진을 1장 이상 선택해 주세요.");
+      return;
+    }
+    if (!courtFieldLocation || Date.now() - Date.parse(courtFieldLocation.capturedAt) > COURT_REQUEST_FIELD_CAPTURE_MAX_AGE_MS) {
+      setCourtFieldLocation(null);
+      setCourtLookupStatus("현장 위치를 다시 확인한 뒤 사진을 촬영해 주세요.");
+      return;
+    }
     if (!canSubmitCourtRequest) return;
     courtSubmitPendingRef.current = true;
     setCourtSubmitPending(true);
     try {
-      const requestId = await app.actions.submitCourtRequest(courtDraft);
-      if (!requestId) {
+      const result = await app.actions.submitCourtRequest(
+        { ...courtDraft, fieldLocation: courtFieldLocation },
+        courtPhotos.map(({ imageBase64, byteSize, width, height }) => ({ imageBase64, byteSize, width, height })),
+      );
+      if (!result?.requestId) {
         setCourtLookupStatus("구장 등록 요청을 저장하지 못했습니다. 입력 내용을 확인한 뒤 다시 시도해 주세요.");
         return;
       }
@@ -257,11 +333,13 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
       setCourtPinConfirmed(false);
       resetCourtNearbyLookup();
       setCourtNearbyConfirmed(false);
+      setCourtPhotos([]);
+      setCourtFieldLocation(null);
       setCourtDraft({
         ...DEFAULT_COURT_REQUEST,
         region: app.currentUser?.region ?? DEFAULT_COURT_REQUEST.region,
       });
-      setCourtLookupStatus("구장 등록요청 저장됨");
+      setCourtLookupStatus(result.autoApproved ? "AI 검증 후 구장 자동승인 완료" : "구장 등록요청 저장됨 · AI 또는 관리자 검토 대기");
     } catch {
       setCourtLookupStatus("구장 등록 요청을 저장하지 못했습니다. 입력 내용을 확인한 뒤 다시 시도해 주세요.");
     } finally {
@@ -283,6 +361,10 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
     courtNearbyConfirmed,
     setCourtNearbyConfirmed,
     courtDraft,
+    courtPhotos,
+    courtPhotoPending,
+    courtFieldLocation,
+    courtFieldLocationPending,
     naverMapKeyReady,
     courtAddressSelected,
     courtDisplayName,
@@ -299,6 +381,9 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
     searchCourtAddress,
     pickCourtMapPin,
     selectNaverAddress,
+    selectCourtPhotos,
+    removeCourtPhoto,
+    confirmCourtFieldLocation,
     submitCourtRequest,
   };
 }

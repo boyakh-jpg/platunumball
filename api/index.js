@@ -10,6 +10,7 @@ import discordCallback from "../server/api/auth/discord/callback.js";
 import discordComplete from "../server/api/auth/discord/complete.js";
 import discordStart from "../server/api/auth/discord/start.js";
 import courtRequestApprove from "../server/api/court-requests/approve.js";
+import courtRequestEvidence from "../server/api/court-requests/evidence.js";
 import courtRequestReport from "../server/api/court-requests/report.js";
 import courtRequestSubmit from "../server/api/court-requests/submit.js";
 import courtAddressSearch from "../server/api/courts/address-search.js";
@@ -75,6 +76,7 @@ export const API_ROUTES = new Map([
   ["/auth/discord/start", route(discordStart, ["POST"], "user")],
   ["/discord/callback", route(discordCallback, ["GET"], "oauthCallback")],
   ["/court-requests/approve", route(courtRequestApprove, ["POST"], "admin")],
+  ["/court-requests/evidence", route(courtRequestEvidence, ["POST"], "admin")],
   ["/court-requests/report", route(courtRequestReport, ["POST"], "user")],
   ["/court-requests/submit", route(courtRequestSubmit, ["POST"], "user")],
   ["/courts/address-search", route(courtAddressSearch, ["POST"], "user")],

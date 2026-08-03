@@ -309,7 +309,7 @@ updateSettings: (patch) => {
   toggleFavoriteTeam: (teamId, targetSnapshot) => applyFavoriteToggle("team", teamId, "favoriteTeamIds", toggleFavoriteTeam, targetSnapshot),
   toggleFavoriteCourt: (courtId, targetSnapshot) => applyFavoriteToggle("court", courtId, "favoriteCourtIds", toggleFavoriteCourt, targetSnapshot),
   toggleFavoriteReferee: (userId, targetSnapshot) => applyFavoriteToggle("referee", userId, "favoriteRefereeIds", toggleFavoriteReferee, targetSnapshot),
-  submitCourtRequest: (draft) => {
+  submitCourtRequest: (draft, photos = []) => {
     if (!ensureRemoteReady("구장 등록요청")) return Promise.resolve(null);
     let createdRequest = null;
     let rollbackState = null;
@@ -321,13 +321,21 @@ updateSettings: (patch) => {
       return next;
     });
     if (!createdRequest) return Promise.resolve(null);
-    if (!isSupabaseConfigured) return Promise.resolve(createdRequest.id);
+    if (!isSupabaseConfigured) return Promise.resolve({ ok: true, requestId: createdRequest.id, status: "pending", autoApproved: false });
     return rollbackIfServerFailed(
-      runServerAction("/api/court-requests/submit", { request: createdRequest }),
+      runServerAction("/api/court-requests/submit", { request: { ...createdRequest, fieldLocation: draft.fieldLocation }, photos }),
       rollbackState,
       "구장 등록요청",
       { requestId: createdRequest.id },
-    ).then((result) => (result && result.ok !== false ? result.requestId ?? createdRequest.id : null));
+    ).then((result) => {
+      if (!result || result.ok === false) return null;
+      if (result.autoApproved) setState((prev) => mergeCourtApprovalResult(prev, createdRequest.id, result, "system:court-ai"));
+      return { ...result, requestId: result.requestId ?? createdRequest.id };
+    });
+  },
+  loadCourtRequestEvidence: (requestId) => {
+    if (!isSupabaseConfigured || !ensureRemoteReady("구장 검증자료")) return Promise.resolve(null);
+    return runServerAction("/api/court-requests/evidence", { requestId });
   },
   submitCourtReview: (matchId, draft) => {
     let submittedReview = null;

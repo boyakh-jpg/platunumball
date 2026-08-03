@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { ExternalLink } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
@@ -14,6 +15,44 @@ import {
 import {
   DetailList,
 } from "./AdminPageParts.jsx";
+
+function CourtRequestEvidence({ app, requestId, verification }) {
+  const [result, setResult] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    setResult(null);
+    if (!requestId || !app.actions.loadCourtRequestEvidence) return undefined;
+    setLoading(true);
+    app.actions.loadCourtRequestEvidence(requestId)
+      .then((next) => { if (active) setResult(next?.ok === false ? null : next); })
+      .catch(() => { if (active) setResult(null); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [app, requestId]);
+
+  const evidence = result?.evidence;
+  if (!loading && !evidence && !verification) return null;
+  const confidence = Number(evidence?.aiConfidence ?? verification?.confidence);
+  const formatMeters = (value) => value !== null && value !== "" && Number.isFinite(Number(value)) ? `${Math.round(Number(value))}m` : "-";
+  return (
+    <section className="admin-court-evidence">
+      <div>
+        <strong>현장 검증자료</strong>
+        <Badge tone={evidence?.autoApproved ? "green" : evidence?.decision === "auto_approve" ? "orange" : "neutral"}>
+          {loading ? "불러오는 중" : evidence?.autoApproved ? "AI 자동승인" : "관리자 검토"}
+        </Badge>
+      </div>
+      {evidence ? <small>AI {evidence.aiStatus} · 신뢰도 {Number.isFinite(confidence) ? `${Math.round(confidence * 100)}%` : "-"} · GPS 오차 {formatMeters(evidence.fieldAccuracyMeters)} · 핀과 {formatMeters(evidence.fieldDistanceMeters)}</small> : null}
+      {result?.photos?.length ? (
+        <div className="admin-court-evidence-photos">
+          {result.photos.map((photo, index) => <img key={index} src={photo} alt={`구장 검증 사진 ${index + 1}`} />)}
+        </div>
+      ) : null}
+    </section>
+  );
+}
 
 export function AdminDetailPanel({ controller }) {
   const {
@@ -168,6 +207,7 @@ export function AdminDetailPanel({ controller }) {
                     ) : null}
                   </div>
                   {selectedCourtRequest.locationNote ? <p className="admin-court-note">{selectedCourtRequest.locationNote}</p> : null}
+                  <CourtRequestEvidence app={app} requestId={selectedCourtRequest.id} verification={selectedCourtRequest.verification} />
                   {selectedCourtRequest.status === "pending" ? (
                     <div className="admin-court-verification">
                       <div className="admin-court-verification-head">
