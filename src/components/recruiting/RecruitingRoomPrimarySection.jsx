@@ -81,7 +81,7 @@ export function RecruitingRoomPrimarySection({ context }) {
     renderSlotCommand, renderSourceMatchRecordBoard, requiresPaidCourtNotice, roomCompetitionLabel, roomDisplayTitle, roomMatchTypeLabel,
     roomOwnerId, roomPhaseBadge, roomPhaseSectionsAfterVersus, roomPhaseSectionsBeforeVersus, roomPhaseViewModel, roomReadyLabel,
     roomShareEnabled, roomShareStatus, roomState, roomTeamACandidates, roomTeamBCandidates, roomTeamFeedback,
-    roomTeamQuery, roomTeamSavingSide, roomTeamSelectionOpen, roomTitleSizeClass, roomVisibilityLabel, roomVisibilityTone,
+    roomTeamQuery, roomTeamSavingSide, roomTeamSelectionOpen, showRoomTeamSelection, roomTitleSizeClass, roomVisibilityLabel, roomVisibilityTone,
     saveRoomTeam, selectedMatchRules, selectedPost, selectedRoomTeamA, selectedRoomTeamAId, selectedRoomTeamB,
     selectedRoomTeamBId, sendInvites, setAttendanceStartStatus, setInviteDraft, setRoomTeamQuery, setSlotActionDraft,
     shareRoom, showCaptainBadge, slotPositions, sourceMatch, sourceMatchAttendance, sourceMatchCheckedInIds,
@@ -147,7 +147,7 @@ export function RecruitingRoomPrimarySection({ context }) {
                   }}
                 />
 
-                {roomTeamSelectionOpen ? (
+                {showRoomTeamSelection ? (
                   <section className="arena-record-setup-panel ui-modal-section">
                     <header>
                       <strong>팀 선택</strong>

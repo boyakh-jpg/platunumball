@@ -20,7 +20,7 @@ const lobby = getRecruitingLobby(selectedPost, app.state);
         const individualOnlyRoom = isIndividualOnlyRecruitingRoom(selectedPost);
         const teamOnlyRoom = isTeamOnlyRoom(selectedPost) && !individualOnlyRoom;
         const selectedRoomTeamAId = getLobbyPrimaryTeamId(lobby, "teamA") ?? selectedPost.teamId ?? "";
-        const selectedRoomTeamBId = getLobbyPrimaryTeamId(lobby, "teamB") ?? selectedPost.opponentTeamId ?? selectedPost.targetTeamId ?? "";
+        const selectedRoomTeamBId = getLobbyPrimaryTeamId(lobby, "teamB") || selectedPost.opponentTeamId || selectedPost.targetTeamId || "";
         const selectedRoomTeamA = teamById[selectedRoomTeamAId] ?? null;
         const selectedRoomTeamB = teamById[selectedRoomTeamBId] ?? null;
         const roomTargetMmr = getRecruitingTargetMmr(selectedPost, app.state);
@@ -106,6 +106,12 @@ const lobby = getRecruitingLobby(selectedPost, app.state);
           && selectedPost.status === "open"
           && !recruitingRoomConfirmed
           && (!selectedRoomTeamAId || !selectedRoomTeamBId);
+        const showRoomTeamSelection = roomTeamSelectionOpen || Boolean(
+          teamOnlyRoom
+          && selectedPost.visibility === "private"
+          && selectedRoomTeamBId
+          && !getLobbyPrimaryTeamId(lobby, "teamB")
+        );
         const getRoomTeamSelectionEligibility = (team, sideName) => {
           const eligibility = getTeamEventEligibility(team, app.state.users, {
             capacity: getRecruitingSideCapacity(selectedPost),
@@ -372,7 +378,7 @@ const lobby = getRecruitingLobby(selectedPost, app.state);
     matchRoom, recruitingRoomConfirmed, storedRoomPost, slotPositions, roomOwnerId, mine,
     myEntry, alreadyApplied, currentUserIsRoomReferee, changeApprovalSource, scheduleProposalProgress, scheduleChangePending,
     canInviteFromRoom, canChat, selectedRoomState, refereeWanted, getJoinRosterPatch, teamJoinValid,
-    canJoinReferee, joinMmrLimitMode, joinTierAllowed, canJoin, roomTeamSelectionOpen, getRoomTeamSelectionEligibility,
+    canJoinReferee, joinMmrLimitMode, joinTierAllowed, canJoin, roomTeamSelectionOpen, showRoomTeamSelection, getRoomTeamSelectionEligibility,
     roomTeamACandidates, roomTeamBCandidates, saveRoomTeam, renderRoomTeamResult, joiningThisRoom, joinModeEntries,
     selectedRange, roomEditDraft, roomEditStatus, roomEditCurrentCourt, roomEditCourtOptions, roomEditRange,
     roomEditCourt, roomEditCourtWarning, selectedRoomPolicySource, selectedMatchRules, selectedMatchRuleRows, selectedCreationSummary,

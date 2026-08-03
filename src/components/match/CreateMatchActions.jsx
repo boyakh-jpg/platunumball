@@ -8,7 +8,7 @@ export function createCreateMatchActions(context) {
     normalizeSoloRecordRosterInput, onRecruitingCreated, practiceMode, recordComposition, remakeDraft, remakeSourceId, remakeSourceMatchId,
     representativeTournamentTeam, selectCourt, selectedCourt, selectedTeamA, selectedTournamentCourts, setDraft, setOpponentTeamQuery,
     setRefereeQuery, setSelectedTournamentTeamProfiles, setSelectedTournamentRefereeProfiles, setSubmitFeedback, setSubmitting, sideCapacity, sortedTeams, submitDisabled,
-    submitDisabledReason, submitting, submittingRef, update,
+    submitDisabledReason, submitting, submittingRef, update, finalWizardStep, wizardStep,
   } = context;
   const selectTeamA = (teamAId) => {
     if (!myTeams.some((team) => team.id === teamAId)) return;
@@ -240,6 +240,7 @@ export function createCreateMatchActions(context) {
   );
   const submit = async (event) => {
     event.preventDefault();
+    if (wizardStep !== finalWizardStep) return;
     if (submittingRef.current || submitting) return;
     if (practiceMode && (
       isSoloRecord

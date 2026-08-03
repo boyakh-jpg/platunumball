@@ -46,14 +46,16 @@ test("empty numeric input restores its valid default on blur", async () => {
   assert.equal(getNumericInputBlurValue("", 12), 12);
   assert.equal(getNumericInputBlurValue("7", 12), "7");
 
-  const [stepperSource, inlineInputSource, createValidationSource] = await Promise.all([
+  const [stepperSource, inlineInputSource, createValidationSource, createLayoutSource] = await Promise.all([
     readFile(new URL("../src/components/common/NumericStepper.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/components/common/InlineValidatedInput.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/components/match/useCreateMatchValidationController.js", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/match/CreateMatchLayout.jsx", import.meta.url), "utf8"),
   ]);
   assert.match(stepperSource, /blurFallbackRef\.current = numericValue/);
   assert.match(stepperSource, /getNumericInputBlurValue\(event\.currentTarget\.value, blurFallbackRef\.current\)/);
   assert.match(inlineInputSource, /blurFallbackRef\.current = inputProps\.value/);
   assert.match(inlineInputSource, /getNumericInputBlurValue\(event\.currentTarget\.value, blurFallbackRef\.current\)/);
   assert.match(createValidationSource, /setDraft\(\(current\) => \(\{[\s\S]*?soloStats: \{ \.\.\.\(current\.soloStats/);
+  assert.match(createLayoutSource, /onPointerDownCapture=\{\(event\) => \{[\s\S]*?activeElement\.type === "number"[\s\S]*?activeElement\.value === ""[\s\S]*?activeElement\.blur\(\)/);
 });

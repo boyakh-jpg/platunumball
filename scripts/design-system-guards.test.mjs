@@ -761,7 +761,7 @@ test("같은 행의 랜딩 칸과 생성 control은 같은 폭과 높이를 사�
   );
   assert.match(
     matchCreationWizardSource,
-    /match-creation-wizard-secondary-actions[\s\S]*취소하기[\s\S]*이전[\s\S]*match-creation-wizard-primary-actions[\s\S]*다음[\s\S]*type="submit"/,
+    /match-creation-wizard-secondary-actions[\s\S]*취소하기[\s\S]*이전[\s\S]*match-creation-wizard-primary-actions[\s\S]*다음[\s\S]*<Button type="button" disabled=\{submitDisabled\} onClick=\{onSubmit\}/,
   );
 });
 

@@ -67,6 +67,7 @@ export function MatchCreationWizardActions({
   submitLabel = "",
   submitDisabled = false,
   submitFeedback = "",
+  onSubmit,
 }) {
   const currentIndex = Math.max(0, steps.findIndex((step) => step.id === currentStep));
   const previousStep = steps[currentIndex - 1];
@@ -93,7 +94,7 @@ export function MatchCreationWizardActions({
             다음 <ChevronRight size={17} />
           </Button>
         ) : submitLabel ? (
-          <Button type="submit" disabled={submitDisabled}>{submitLabel}</Button>
+          <Button type="button" disabled={submitDisabled} onClick={onSubmit}>{submitLabel}</Button>
         ) : null}
       </span>
     </div>

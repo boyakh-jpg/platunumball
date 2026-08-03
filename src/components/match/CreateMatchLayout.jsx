@@ -12,7 +12,16 @@ export function CreateMatchLayout({ context }) {
   } = context;
 
   return (
-<form className="page-stack create-match-page" onSubmit={submit}>
+<form
+      className="page-stack create-match-page"
+      onSubmit={(event) => event.preventDefault()}
+      onPointerDownCapture={(event) => {
+        const activeElement = event.currentTarget.ownerDocument.activeElement;
+        if (activeElement?.tagName === "INPUT" && activeElement.type === "number" && activeElement.value === "" && activeElement !== event.target) {
+          activeElement.blur();
+        }
+      }}
+    >
       {!embedded ? <header className={`page-header create-match-hero ui-page-hero ui-design-app-hero ${isRecordCreateIntent ? "is-record" : "is-match"}`}>
         <div className="ui-page-hero__copy">
           <p className="eyebrow">{isRecordCreateIntent ? "RecordMatch" : "CreateMatch"}</p>
@@ -65,6 +74,7 @@ export function CreateMatchLayout({ context }) {
           : ""}
         submitDisabled={submitDisabled || submitting}
         submitFeedback={wizardStep === finalWizardStep ? submitFeedback : ""}
+        onSubmit={submit}
         onCancel={() => {
           if (onCancel) onCancel();
           else navigate("/app");

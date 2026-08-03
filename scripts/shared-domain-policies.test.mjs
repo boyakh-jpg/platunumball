@@ -1110,11 +1110,14 @@ test("notification actions keep tournament links and failed team invites in plac
 });
 
 test("season rival challenge closes the created room when the B-team invite fails", async () => {
-  const [season, createController, createEffects, createActions] = await Promise.all([
+  const [season, createController, createEffects, createActions, createWizard, createLayout, roomPolicy] = await Promise.all([
     readSource("src/pages/Season.jsx"),
     readSource("src/components/match/useCreateMatchBaseController.js"),
     readSource("src/components/match/useCreateMatchValidationEffects.js"),
     readSource("src/components/match/CreateMatchActions.jsx"),
+    readSource("src/components/match/MatchCreationWizard.jsx"),
+    readSource("src/components/match/CreateMatchLayout.jsx"),
+    readSource("src/components/recruiting/RecruitingRoomPolicyModel.jsx"),
   ]);
   assert.match(season, /challengeTeamAId=\$\{encodeURIComponent\(myTeam\.id\)\}&challengeTeamBId=\$\{encodeURIComponent\(opponentTeam\.id\)\}/u);
   assert.match(createController, /challengeSearchParams\.get\("challengeTeamAId"\)/u);
@@ -1124,6 +1127,11 @@ test("season rival challenge closes the created room when the B-team invite fail
   assert.match(createEffects, /if \(canCreateTeamRoom \|\| hasTeamChallenge\) return;/u);
   assert.match(createActions, /const result = await app\.actions\.setRecruitingRoomTeam\(postId, "teamB", presetTeamBId, "시즌 라이벌 매치업에서 보낸 팀 초대입니다\."\)/u);
   assert.match(createActions, /if \(!result \|\| result\?\.ok === false\) \{[\s\S]{0,240}closeRecruitingPost\(postId, "B팀 초대 실패로 생성 취소"\)[\s\S]{0,240}return;/u);
+  assert.match(createActions, /if \(wizardStep !== finalWizardStep\) return;/u);
+  assert.match(createWizard, /<Button type="button" disabled=\{submitDisabled\} onClick=\{onSubmit\}>\{submitLabel\}<\/Button>/u);
+  assert.match(createLayout, /onSubmit=\{\(event\) => event\.preventDefault\(\)\}/u);
+  assert.match(roomPolicy, /getLobbyPrimaryTeamId\(lobby, "teamB"\) \|\| selectedPost\.opponentTeamId \|\| selectedPost\.targetTeamId \|\| ""/u);
+  assert.match(roomPolicy, /const showRoomTeamSelection = roomTeamSelectionOpen \|\| Boolean\([\s\S]*selectedRoomTeamBId[\s\S]*!getLobbyPrimaryTeamId\(lobby, "teamB"\)/u);
 });
 
 test("remote favorite search hydrates the selected entity before optimistic toggle", async () => {
