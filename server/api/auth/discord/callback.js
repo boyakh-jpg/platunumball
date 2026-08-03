@@ -36,12 +36,15 @@ function redirectToSettingsDiscord(request, response, params = {}) {
 }
 
 async function exchangeCodeForToken(code) {
+  const clientId = String(process.env.DISCORD_CLIENT_ID || "").trim();
+  const clientSecret = String(process.env.DISCORD_CLIENT_SECRET || "").trim();
+  const redirectUri = String(process.env.DISCORD_REDIRECT_URI || "").trim();
   const body = new URLSearchParams({
     grant_type: "authorization_code",
     code,
-    redirect_uri: process.env.DISCORD_REDIRECT_URI,
+    redirect_uri: redirectUri,
   });
-  const credentials = Buffer.from(`${process.env.DISCORD_CLIENT_ID}:${process.env.DISCORD_CLIENT_SECRET}`).toString("base64");
+  const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
   const tokenResponse = await fetch(DISCORD_TOKEN_URL, {
     method: "POST",
     headers: {

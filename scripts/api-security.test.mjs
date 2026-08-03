@@ -604,6 +604,7 @@ test("Discord OAuth requests use the required API user agent", async () => {
   const callbackSource = await readSource("server/api/auth/discord/callback.js");
   assert.equal(callbackSource.match(/"User-Agent": DISCORD_USER_AGENT/g)?.length, 2);
   assert.match(callbackSource, /DiscordBot \(https:\/\/boxtier\.kr, 1\.0\)/);
+  assert.equal(callbackSource.match(/process\.env\.DISCORD_(?:CLIENT_ID|CLIENT_SECRET|REDIRECT_URI) \|\| ""\)\.trim\(\)/g)?.length, 3);
 });
 
 test("referee exam attempts preserve the first start and first terminal grading", async () => {
