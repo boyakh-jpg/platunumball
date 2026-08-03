@@ -351,6 +351,12 @@
   font-size: 0.78rem;
 }
 
+.arena-room-referee-line > span {
+  color: var(--muted);
+  font-size: var(--font-size-meta);
+  font-weight: var(--font-weight-support);
+}
+
 .arena-room-referee-card {
   display: inline-flex;
   min-width: 0;

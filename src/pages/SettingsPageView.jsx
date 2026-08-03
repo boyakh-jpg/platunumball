@@ -14,11 +14,6 @@ export default function SettingsPageView({ controller, auth }) {
           <p className="eyebrow">{sectionMeta.eyebrow}</p>
           <h1>{sectionMeta.title}</h1>
         </div>
-        {settingsSection === "main" && auth ? (
-          <Button type="button" variant="secondary" onClick={auth.signOut} disabled={auth.authActionPending}>
-            <LogOut size={16} /> 로그아웃
-          </Button>
-        ) : null}
         {settingsSection !== "main" ? (
           <Button as={Link} variant="secondary" to="/app/settings">설정</Button>
         ) : null}
@@ -30,6 +25,13 @@ export default function SettingsPageView({ controller, auth }) {
       </div>
 
       <SettingsRefereeSection controller={controller} />
+      {settingsSection === "main" && auth ? (
+        <div className="ui-action-row settings-signout-row">
+          <Button type="button" variant="secondary" onClick={auth.signOut} disabled={auth.authActionPending}>
+            <LogOut size={16} /> 로그아웃
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
 }

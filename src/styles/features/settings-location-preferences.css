@@ -293,6 +293,11 @@
   padding: 9px 10px;
 }
 
+.settings-signout-row {
+  justify-content: flex-end;
+  padding-block: var(--space-6);
+}
+
 @media (max-width: 560px) {
   .settings-address-results button {
     grid-template-columns: minmax(0, 1fr);

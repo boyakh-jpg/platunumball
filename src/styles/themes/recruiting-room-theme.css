@@ -422,7 +422,7 @@ html[data-theme="light"] .arena-side-roster .arena-room-player-slot:not(.empty) 
   gap: 12px;
 }
 
-.arena-room-rule-panel strong,
+.arena-room-rule-head > strong,
 .arena-owner-panel strong,
 .arena-invite-panel header strong,
 .arena-room-chat header span {
@@ -434,7 +434,6 @@ html[data-theme="light"] .arena-side-roster .arena-room-player-slot:not(.empty) 
   text-transform: uppercase;
 }
 
-.arena-room-rule-panel span,
 .arena-owner-panel span,
 .arena-invite-panel header span,
 .arena-room-chat p {

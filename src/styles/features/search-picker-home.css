@@ -70,8 +70,8 @@
 }
 .search-picker-title {
   color: var(--gold);
-  font-size: 0.72rem;
-  font-weight: 950;
+  font-size: var(--font-size-meta);
+  font-weight: var(--font-weight-title);
   padding-inline: 4px;
 }
 .search-picker-idle-toggle,
@@ -90,7 +90,8 @@
   color: var(--text);
   cursor: pointer;
   font: inherit;
-  font-weight: 950;
+  font-size: var(--control-font-size);
+  font-weight: var(--font-weight-control);
   padding: 8px 10px;
   text-align: left;
 }
@@ -98,7 +99,8 @@
   border-radius: 999px;
   background: rgba(255, 211, 108, 0.16);
   color: var(--gold);
-  font-size: 0.72rem;
+  font-size: var(--ui-badge-font-size);
+  font-weight: var(--ui-badge-font-weight);
   padding: 3px 7px;
 }
 .search-picker-idle-panel {
@@ -135,7 +137,10 @@
   grid-template-columns: minmax(0, 1fr) auto;
   color: var(--text);
   cursor: pointer;
-  font: inherit;
+  font-family: var(--font-body);
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-body);
+  line-height: 1.35;
   text-align: left;
 }
 .search-picker-result-row-actionable {
@@ -156,6 +161,16 @@
   font: inherit;
   padding: 4px;
   text-align: left;
+}
+.search-picker-result-row strong, .search-picker-result-main strong {
+  color: var(--text);
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-title);
+}
+.search-picker-result-main > span {
+  color: var(--muted);
+  font-size: var(--font-size-meta);
+  font-weight: var(--font-weight-support);
 }
 .search-picker-favorite-action {
   display: grid;
@@ -216,9 +231,9 @@
   grid-column: 2;
   align-self: center;
   color: var(--gold);
-  font-size: 0.7rem;
+  font-size: var(--control-font-size);
   font-style: normal;
-  font-weight: 950;
+  font-weight: var(--font-weight-control);
   white-space: nowrap;
 }
 html[data-theme="light"] .search-picker-results.is-floating {
@@ -301,12 +316,12 @@ html[data-theme="light"] .search-picker-result-row.selected {
   min-width: 0;
   overflow-wrap: anywhere;
 }
-.home-search-results em {
+.home-search-results:not(.search-picker-results) em {
   grid-column: 2;
   color: var(--muted);
-  font-size: 0.78rem;
+  font-size: var(--control-font-size);
   font-style: normal;
-  font-weight: 850;
+  font-weight: var(--font-weight-body);
 }
 .connection-list .ui-profile-identity-inline em {
   margin-left: auto;

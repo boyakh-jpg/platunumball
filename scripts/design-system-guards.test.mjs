@@ -73,6 +73,7 @@ const primitiveStyles = readCssTree("src/styles/ui-primitives.css");
 const tokenStyles = read("src/styles/tokens.css");
 const foundationStyles = readCssTree("src/styles/global-foundation.css");
 const globalSearchStyles = readCssTree("src/styles/global-search-profile.css");
+const searchPickerStyles = read("src/styles/features/search-picker-home.css");
 const visualSystemStyles = readCssTree("src/styles/global-visual-system.css");
 const courtControlStyles = readCssTree("src/styles/global-court-controls.css");
 const globalAdminStyles = readCssTree("src/styles/global-admin-layout.css");
@@ -345,6 +346,8 @@ test("signed-in login redirects and settings exposes logout", () => {
   assert.match(settingsSource, /<SettingsPageView controller=\{controller\} auth=\{props\.auth\} \/>/);
   assert.match(settingsSource, /onClick=\{auth\.signOut\}/);
   assert.match(settingsSource, /<LogOut size=\{16\} \/> 로그아웃/);
+  assert.doesNotMatch(settingsSource, /<header[^>]*>[\s\S]*?auth\.signOut[\s\S]*?<\/header>/);
+  assert.match(settingsSource, /<SettingsRefereeSection controller=\{controller\} \/>[\s\S]*?settings-signout-row/);
 });
 
 test("regular room referee invitations live only in the room modal", () => {
@@ -361,7 +364,17 @@ test("regular room referee invitations live only in the room modal", () => {
   assert.match(recruitingPageSource, /<RefereeInvitePanel/);
   assert.match(recruitingStyles, /\.arena-referee-invite-panel header strong\s*\{[^}]*font-size:\s*var\(--font-size-title-sm\);/s);
   assert.match(recruitingStyles, /\.arena-referee-invite-panel header span\s*\{[^}]*font-size:\s*var\(--font-size-meta\);/s);
-  assert.match(recruitingStyles, /\.arena-referee-invite-panel \.arena-invite-search input\s*\{[^}]*font-size:\s*var\(--control-font-size\);/s);
+  assert.doesNotMatch(recruitingStyles, /\.arena-referee-invite-panel \.arena-invite-search input\s*\{/);
+});
+
+test("shared SearchPicker owns canonical result typography", () => {
+  assert.match(searchPickerStyles, /\.search-picker-title\s*\{[^}]*font-size:\s*var\(--font-size-meta\);[^}]*font-weight:\s*var\(--font-weight-title\);/s);
+  assert.match(searchPickerStyles, /\.search-picker-result-row\s*\{[^}]*font-family:\s*var\(--font-body\);[^}]*font-size:\s*var\(--font-size-body-sm\);[^}]*font-weight:\s*var\(--font-weight-body\);/s);
+  assert.match(searchPickerStyles, /\.search-picker-result-row strong,[\s\S]*?\.search-picker-result-main strong\s*\{[^}]*font-size:\s*var\(--font-size-body-sm\);[^}]*font-weight:\s*var\(--font-weight-title\);/s);
+  assert.match(searchPickerStyles, /\.search-picker-result-main > span\s*\{[^}]*font-size:\s*var\(--font-size-meta\);[^}]*font-weight:\s*var\(--font-weight-support\);/s);
+  assert.match(searchPickerStyles, /\.search-picker-result-row em,[\s\S]*?\.search-picker-result-main em\s*\{[^}]*font-size:\s*var\(--control-font-size\);[^}]*font-weight:\s*var\(--font-weight-control\);/s);
+  assert.match(searchPickerStyles, /\.home-search-results:not\(\.search-picker-results\) em\s*\{/);
+  assert.doesNotMatch(recruitingStyles, /\.arena-room-rule-panel (?:strong|span)\s*\{/);
 });
 
 test("win loss draw record borders keep semantic colors in every theme", () => {
@@ -588,7 +601,7 @@ test("KBO는 스포츠 표시, Pretendard는 읽기와 조작 UI에 사용한다
   );
   assert.match(
     recruitingStyles,
-    /\.arena-room-rule-panel strong,[\s\S]*?\.arena-room-chat header span\s*\{[^}]*font-family:\s*var\(--font-body\);[^}]*font-size:\s*var\(--font-size-section-title\);[^}]*font-weight:\s*var\(--font-weight-title\);/,
+    /\.arena-room-rule-head > strong,[\s\S]*?\.arena-room-chat header span\s*\{[^}]*font-family:\s*var\(--font-body\);[^}]*font-size:\s*var\(--font-size-section-title\);[^}]*font-weight:\s*var\(--font-weight-title\);/,
   );
   assert.doesNotMatch(visualSystemStyles, /\.page-header h1,\s*\.auth-card h1/);
   assert.doesNotMatch(globalSearchStyles, /\.approval-teaser-card \.compact-list a > span\s*\{[^}]*var\(--sports-display-font\)/);
