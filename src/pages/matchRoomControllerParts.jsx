@@ -92,7 +92,7 @@ export function createMatchRoomHeroRenderers(context) {
           {Array.from({ length: openSlots }).map((_item, index) => (
             <div key={`${sideName}-reserve-empty-${index}`} className="gm-player-slot reserve empty">
               <UsersRound size={18} />
-              <strong>후보 슬롯</strong>
+              <strong>후보</strong>
               <em>SUB</em>
             </div>
           ))}

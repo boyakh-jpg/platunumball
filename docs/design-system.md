@@ -241,7 +241,7 @@
 ## 2026-07-23 CSS primitive와 lint 강제
 
 1. `tokens.css`는 색상, border, radius, shadow, control 높이, modal surface의 유일한 시각 원본이다. 새 UI는 raw 색상·수치 대신 `--ui-*`, `--rb-*`, `--radius-*` token을 사용한다.
-2. 공용 primitive는 `.ui-card`, `.ui-button`, `.ui-badge`, `.ui-panel`, `.ui-control`, `.ui-control-surface`, `.ui-action-row`, `.ui-modal-shell`, `.ui-modal-section`, `.ui-status-strip`을 기준으로 한다. 새 page selector가 같은 표면·테두리·높이를 다시 정의하지 않는다.
+2. 공용 primitive는 `.ui-card`, `.ui-button`, `.ui-badge`, `.ui-panel`, `.ui-control`, `.ui-control-surface`, `.ui-segmented-control`, `.ui-choice-group`, `.ui-choice-tile`, `.ui-compact-action`, `.ui-action-row`, `.ui-modal-shell`, `.ui-modal-section`, `.ui-status-strip`을 기준으로 한다. 새 page selector가 같은 표면·테두리·높이를 다시 정의하지 않는다.
 3. feature CSS는 grid, flex, gap, 정렬, 배치, 반응형처럼 해당 화면의 layout만 정의한다. card/control/button/modal의 색상, border, radius, shadow, 높이는 primitive selector에 먼저 반영한다.
 4. 공용 방 모달 skin과 panel은 한 공용 room-modal style layer에서 한 번만 import한다. `globals.css`, 모집, 경기, 플레이 page CSS에 같은 room selector를 중복 추가하거나 뒤쪽 override로 맞추지 않는다.
 5. Stylelint는 `tokens.css` 밖의 hex·rgb·rgba 직접 색상, primitive 밖의 임의 `border-radius`, 공용 control 밖의 고정 button/input 높이, allowlist 밖의 `!important`, 동일 scope의 중복 selector를 오류로 처리한다. 원형의 `50%`, pill의 공용 token, 이미지 overlay, native control·portal 위치 보정은 명시적 allowlist만 허용한다.
@@ -251,6 +251,7 @@
 9. 일반 `input`, `select`, `textarea`의 기본 표면은 `primitives/shared-controls.css`, focus 표면은 `primitives/hover-disclosure.css`가 유일하게 소유한다. page·theme CSS에서 generic selector로 다시 덮어쓰지 않는다.
 10. 공통화 전후 공용 방 모달의 `gap`, `padding`, grid·flex, width, `white-space`, `word-break`, `overflow-wrap`, `line-height`와 텍스트 줄 수는 같아야 한다. mobile·desktop × dark·light에서 computed layout과 가로 overflow를 비교하고 차이가 있으면 해당 공통화를 되돌린다.
 11. `.ui-control-surface`는 입력형 행·정보 행의 공통 border·background·radius만 소유한다. feature selector는 배치·간격·padding과 업무 상태별 `--ui-*` 값만 소유한다.
+12. 버튼·탭·상태 설명 같은 고정 UI 문구는 말줄임표에 의존하지 않고 의미가 통하는 짧은 라벨을 사용한다. 팀명·선수명·구장명·주소 같은 원본 데이터는 임의 축약하지 않으며 좁은 화면에서 줄바꿈으로 보존한다.
 
 ## 2026-07-22 압축 경기 생성과 추천 UI
 

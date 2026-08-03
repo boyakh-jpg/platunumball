@@ -73,7 +73,7 @@ export function CreateMatchDetailsSection({ context }) {
             {!isTournamentRoom && !isSoloRecord && !isMatchRecordRoom ? (
               <div className="field-block create-timing-field">
                 <span className="field-label">일정</span>
-                <div className="segmented-control compact-segments">
+                <div className="ui-segmented-control segmented-control compact-segments">
                   <button type="button" className={draft.timingType === "scheduled" ? "active" : ""} disabled={practiceMode} onClick={() => update({ timingType: "scheduled" })}>일정 지정</button>
                   <button type="button" className={draft.timingType === "instant" ? "active" : ""} onClick={() => update({ timingType: "instant" })}>즉시</button>
                 </div>

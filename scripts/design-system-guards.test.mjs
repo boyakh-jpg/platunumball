@@ -1520,3 +1520,38 @@ test("control-like surfaces use one primitive visual owner", () => {
     assert.match(read(file), /ui-control-surface/, `${file}: ui-control-surface required`);
   }
 });
+
+test("shared control families and fixed labels keep canonical ownership", () => {
+  const sourceEntries = sourceFiles.map((file) => [file, read(file)]);
+  const sharedControlStyles = `${read("src/styles/primitives/shared-controls.css")}\n${read("src/styles/primitives/hover-disclosure.css")}`;
+  const segmentedOccurrences = sourceEntries.flatMap(([file, source]) => (
+    [...source.matchAll(/className="([^"]*\bsegmented-control\b[^"]*)"/g)]
+      .map((match) => ({ file, className: match[1] }))
+  ));
+
+  assert.ok(segmentedOccurrences.length > 0, "segmented-control source occurrence required");
+  for (const occurrence of segmentedOccurrences) {
+    assert.match(occurrence.className, /(?:^|\s)ui-segmented-control(?:\s|$)/, `${occurrence.file}: segmented-control must compose ui-segmented-control`);
+  }
+
+  assert.match(sharedControlStyles, /\.ui-segmented-control button/);
+  assert.match(sharedControlStyles, /button\.ui-choice-tile/);
+  assert.match(sharedControlStyles, /\.ui-compact-action/);
+  assert.doesNotMatch(sharedControlStyles, /\.(?:create-mode-grid|favorite-type-grid|referee-exam-choice-grid) button/);
+
+  const matchesSource = read("src/pages/MatchesPageView.jsx");
+  const matchSelectors = read("src/pages/matchesPageBaseSelectors.js");
+  const recentMatchStyles = read("src/styles/features/rank-profile-records.css");
+  const fixedSlotLabels = [
+    read("src/pages/matchRoomControllerParts.jsx"),
+    read("src/components/recruiting/RecruitingRoomCommandPanels.jsx"),
+    read("src/components/recruiting/RecruitingRoomRosterPanels.jsx"),
+  ].join("\n");
+  assert.doesNotMatch(`${matchesSource}\n${matchSelectors}`, /취소 후 7일 보관|소속 팀 진행·예정|내 대회·팀 초대 대회/);
+  assert.match(`${matchesSource}\n${matchSelectors}`, /7일 보관/);
+  assert.match(matchesSource, /진행·예정/);
+  assert.match(matchesSource, /내 대회·초대/);
+  assert.doesNotMatch(fixedSlotLabels, /후보 슬롯/);
+  assert.match(read("src/components/recruiting/RecruitingRoomPrimarySection.jsx"), /arena-lobby-actions[\s\S]*?getMatchPeriodLabel/);
+  assert.match(recentMatchStyles, /\.recent-match-matchup \.team-hover-trigger > strong\s*\{[^}]*text-overflow:\s*clip;[^}]*white-space:\s*normal;/);
+});

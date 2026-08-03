@@ -142,7 +142,7 @@ export default function PlayerHoverCard({ user, teams = [], children, className 
             <em>없음</em>
           )}
         </span>
-        <Link className="hover-card-action" to={profilePath} state={{ playerPreview: user }} onClick={(event) => {
+        <Link className="ui-compact-action hover-card-action" to={profilePath} state={{ playerPreview: user }} onClick={(event) => {
           event.stopPropagation();
           closePinned();
         }}>프로필 보기</Link>

@@ -280,7 +280,7 @@ export default function Notifications({ app }) {
             <h2>{notificationView === "past" ? `지난 알림 ${pastNotifications.length}개` : `읽지 않은 알림 ${unreadCount}개`}</h2>
           </div>
           <div className="notification-inbox-controls">
-            <div className="segmented-control notification-view-tabs" role="tablist" aria-label="알림 보기">
+            <div className="ui-segmented-control segmented-control notification-view-tabs" role="tablist" aria-label="알림 보기">
               <button
                 type="button"
                 role="tab"
@@ -357,7 +357,7 @@ export default function Notifications({ app }) {
                 {notificationView === "past" ? (
                   <button
                     type="button"
-                    className="notification-delete-button"
+                    className="ui-compact-action notification-delete-button"
                     title="알림 삭제"
                     aria-label={`${notification.title} 알림 삭제`}
                     disabled={Boolean(deletingNotificationId)}

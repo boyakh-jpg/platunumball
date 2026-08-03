@@ -73,7 +73,7 @@ export function RecruitingRoomPrimarySection({ context }) {
     app, attendanceScanState, benchCapacity, canInspectMatchAttendance, canInvitePlayerByRoom, canInviteSideFromRoom,
     canManageEntry, canManageMatchCheckin, canMoveMatchSides, closeModal, contextPanel, copyRoomShareUrl,
     courtByName, disabledInvitePlayerIds, entryPoint, favoritePlayerIds, favoriteTeamIds, getInviteAllowedTeamId,
-    getLobbyPrimaryTeamId, getMatchRuleSummary, getPickupParticipantIds, getRecruitingSideCapacity, getRoomRefereeLabel, getRoomScheduleLabel,
+    getLobbyPrimaryTeamId, getMatchPeriodLabel, getPickupParticipantIds, getRecruitingSideCapacity, getRoomRefereeLabel, getRoomScheduleLabel,
     getRoomTeamSelectionEligibility, getTeamCaptainId, getTeamHashtag, individualOnlyRoom, invitations, inviteError,
     lobby, matchRoom, mine, moveCandidate, openInviteSlot, openSelfSlotAction,
     pickupAssignmentPolicy, pickupPoolMode, referee, remoteDirectoryEnabled, removeCandidate, renderMatchRecordSetupPanels,
@@ -263,7 +263,7 @@ export function RecruitingRoomPrimarySection({ context }) {
                     ? `참가 ${getPickupParticipantIds(lobby).length}/${(getRecruitingSideCapacity(selectedPost) + benchCapacity) * 2}`
                     : `${getRecruitingSideCapacity(selectedPost)} vs ${getRecruitingSideCapacity(selectedPost)}`}</span></div>
                   <div><ShieldCheck size={17} /><span>{selectedPost.ranked === false ? "티어 자유" : "MMR 서버 검증"}</span></div>
-                  {!sourceMatchIsRecordRoom ? <div><Swords size={17} /><span>{getMatchRuleSummary(selectedMatchRules, selectedPost.mode)}</span></div> : null}
+                  {!sourceMatchIsRecordRoom ? <div><Swords size={17} /><span>{getMatchPeriodLabel(selectedMatchRules, selectedPost.mode)}</span></div> : null}
                 </div>
               </div>
               {renderSlotCommand()}

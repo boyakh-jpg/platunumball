@@ -84,7 +84,7 @@ export default function SettingsRefereeSection({ controller }) {
                       {refereeExamQuestions.map((question) => (
                         <div key={question.id} className="referee-exam-question">
                           <strong>{question.number}. {question.stem}</strong>
-                          <div className="referee-exam-choice-grid">
+                          <div className="ui-choice-group referee-exam-choice-grid">
                             {question.choices.map((choice, index) => {
                               const review = refereeExamResult?.reviewedById?.[question.id];
                               const selected = refereeExamAnswers[question.id] === index;
@@ -95,7 +95,7 @@ export default function SettingsRefereeSection({ controller }) {
                                 <button
                                   key={choice}
                                   type="button"
-                                  className={`${selected ? "selected" : ""} ${correct ? "correct" : ""} ${wrong ? "wrong" : ""}`}
+                                  className={`ui-choice-tile ${selected ? "selected" : ""} ${correct ? "correct" : ""} ${wrong ? "wrong" : ""}`}
                                   disabled={Boolean(refereeActionPending) || Boolean(refereeExamResult)}
                                   onClick={() => selectRefereeExamAnswer(question.id, index)}
                                 >

@@ -26,22 +26,20 @@ html[data-theme="light"] .profile-side-grid > .card {
 .auth-browser-actions button,
 .auth-browser-actions a,
 .auth-session-line button,
-.segmented-control button,
+.ui-segmented-control button,
 .team-picker,
 .court-search-popover button,
-.report-player-picker button,
-.referee-exam-choice-grid button {
+.report-player-picker button {
   min-height: var(--control-height);
 }
 .provider-button,
 .auth-browser-actions button,
 .auth-browser-actions a,
 .auth-session-line button,
-.segmented-control button,
+.ui-segmented-control button,
 .team-picker,
 .court-search-popover button,
 .report-player-picker button,
-.referee-exam-choice-grid button,
 .arena-start-date-filter button {
   border-radius: var(--control-radius);
   font-size: var(--control-font-size);
@@ -62,22 +60,20 @@ html[data-theme="light"] .profile-side-grid > .card {
 .auth-browser-actions button,
 .auth-browser-actions a,
 .auth-session-line button,
-.segmented-control,
-.segmented-control button,
+.ui-segmented-control,
+.ui-segmented-control button,
 .team-picker,
 .court-search-popover button,
 .report-player-picker button,
-.referee-exam-choice-grid button,
 .arena-start-date-filter button {
   border: var(--ui-button-border-width) solid var(--control-border);
   background: var(--button-secondary-bg);
   color: var(--rb-text);
 }
-.segmented-control button.active,
+.ui-segmented-control button.active,
 .team-picker.selected,
 .court-search-popover button.selected,
-.report-player-picker button.selected,
-.referee-exam-choice-grid button.selected {
+.report-player-picker button.selected {
   background: var(--button-primary-bg);
   color: #fff;
 }
@@ -173,17 +169,9 @@ html[data-theme="light"] .bottom-nav {
   box-shadow: none;
 }
 /* 2026-07-01 standard UI cleanup: shared boxes, controls, and hero typography. */
-.create-mode-grid button,
-.favorite-type-grid button,
-.notification-actions button,
-.compact-list button,
+button.ui-choice-tile,
+.ui-compact-action,
 .admin-action-panel button,
-.hover-card-close,
-.hover-card-action,
-.search-picker-more,
-.home-search-more,
-.court-address-results button,
-.referee-exam-choice-grid button,
 .settings-page .section-card button:not(.button):not(.favorite-toggle-button) {
   min-height: var(--control-height);
   border: var(--ui-button-border-width) solid var(--ui-button-border);
@@ -195,9 +183,7 @@ html[data-theme="light"] .bottom-nav {
   font-weight: 900;
   letter-spacing: 0;
 }
-.create-mode-grid button.active,
-.favorite-type-grid button.active,
-.referee-exam-choice-grid button.selected,
+button.ui-choice-tile:is(.active, .selected),
 .provider-test,
 .settings-page .section-card button.active:not(.favorite-toggle-button) {
   background: var(--button-primary-bg);
@@ -337,21 +323,19 @@ html[data-theme="light"] .rank-home .rank-tier-rail .rank-mode-pill {
   border-color: var(--ui-card-border);
   background: var(--ui-control-bg);
 }
-.segmented-control,
-.favorite-type-grid,
-.theme-choice-card .segmented-control,
-.auth-browser-actions,
-.referee-exam-choice-grid {
+.ui-segmented-control,
+.ui-choice-group,
+.theme-choice-card .ui-segmented-control,
+.auth-browser-actions {
   gap: var(--ui-control-group-gap);
   border-radius: var(--ui-control-group-radius);
   padding: var(--ui-control-group-padding);
 }
-.segmented-control,
-.favorite-type-grid,
-.theme-choice-card .segmented-control,
+.ui-segmented-control,
+.ui-choice-group,
+.theme-choice-card .ui-segmented-control,
 .auth-browser-actions,
-.arena-start-date-filter,
-.referee-exam-choice-grid {
+.arena-start-date-filter {
   align-items: stretch;
   border: var(--ui-control-group-border-width) solid var(--ui-control-group-border);
   background: var(--ui-control-group-bg);
@@ -362,19 +346,12 @@ html[data-theme="light"] .rank-home .rank-tier-rail .rank-mode-pill {
 .auth-browser-actions button,
 .auth-browser-actions a,
 .auth-session-line button,
-.segmented-control button,
-.favorite-type-grid button,
-.create-mode-grid button,
-.notification-actions button,
+.ui-segmented-control button,
+button.ui-choice-tile,
+.ui-compact-action,
 .team-picker,
 .court-search-popover button,
-.court-address-results button,
 .report-player-picker button,
-.referee-exam-choice-grid button,
-.hover-card-close,
-.hover-card-action,
-.search-picker-more,
-.home-search-more,
 .settings-page .section-card button:not(.button):not(.favorite-toggle-button) {
   min-height: var(--ui-button-height);
 }

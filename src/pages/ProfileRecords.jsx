@@ -210,7 +210,7 @@ export default function ProfileRecords({ app }) {
           ))}
         </div>
         {recordFolder === "official" ? (
-          <div className="segmented-control profile-record-section-filter" aria-label="공식기록 구분">
+          <div className="ui-segmented-control segmented-control profile-record-section-filter" aria-label="공식기록 구분">
             {OFFICIAL_SECTIONS.map((item) => (
               <button
                 key={item.id}
@@ -225,7 +225,7 @@ export default function ProfileRecords({ app }) {
           </div>
         ) : null}
         {recordFolder !== "personal" ? (
-          <div className="segmented-control profile-record-mode-filter" aria-label="경기 인원 구분">
+          <div className="ui-segmented-control segmented-control profile-record-mode-filter" aria-label="경기 인원 구분">
             {MODE_FILTERS.map((item) => (
               <button
                 key={item.id}
@@ -240,7 +240,7 @@ export default function ProfileRecords({ app }) {
           </div>
         ) : null}
         {recordFolder === "personal" ? (
-          <div className="segmented-control profile-record-visibility-filter" aria-label="내 기록 공개 범위">
+          <div className="ui-segmented-control segmented-control profile-record-visibility-filter" aria-label="내 기록 공개 범위">
             {PERSONAL_VISIBILITY_FILTERS.map((item) => (
               <button
                 key={item.id}

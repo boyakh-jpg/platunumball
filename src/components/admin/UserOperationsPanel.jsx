@@ -222,7 +222,7 @@ export default function UserOperationsPanel({ app }) {
           <Button type="button" variant="secondary" disabled={actionPending} onClick={applySearch}>검색</Button>
           <Button type="button" variant="secondary" disabled={loading || actionPending} onClick={() => loadPage({ offset: 0 })}><RefreshCw size={16} /> 새로고침</Button>
         </div>
-        <div className="segmented-control compact-segments admin-user-ops-mode">
+        <div className="ui-segmented-control segmented-control compact-segments admin-user-ops-mode">
           <button type="button" className={riskOnly ? "active" : ""} disabled={actionPending} onClick={() => setRiskOnly(true)}>주의 신호 {result.summary.signalUsers ?? 0}</button>
           <button type="button" className={!riskOnly ? "active" : ""} disabled={actionPending} onClick={() => setRiskOnly(false)}>전체 사용자</button>
         </div>

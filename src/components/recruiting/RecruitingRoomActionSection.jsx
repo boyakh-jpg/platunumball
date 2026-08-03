@@ -274,7 +274,7 @@ export function RecruitingRoomActionSection({ context }) {
                       </div>
                     ) : (
                     <>
-                    <div className="segmented-control compact-segments">
+                    <div className="ui-segmented-control segmented-control compact-segments">
                       {joinModeEntries.map(([mode, meta]) => (
                         <button
                           key={mode}

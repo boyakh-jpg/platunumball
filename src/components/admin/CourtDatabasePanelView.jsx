@@ -119,7 +119,7 @@ const modal = open ? (
         </header>
 
         <div className="court-db-modal-body">
-          <div className="segmented-control compact-segments court-db-tabs">
+          <div className="ui-segmented-control segmented-control compact-segments court-db-tabs">
             <button type="button" className={tab === "courts" ? "active" : ""} onClick={() => changeTab("courts")}>구장 검색</button>
             <button type="button" className={tab === "history" ? "active" : ""} onClick={() => changeTab("history")}>수정 이력</button>
           </div>

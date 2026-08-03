@@ -26,7 +26,7 @@ export function CreateMatchIntentSection({ context }) {
               <>
                 <button
                   type="button"
-                  className={draft.recordType === RECORD_TYPES.match && draft.visibility === "private" ? "active" : ""}
+                  className={draft.recordType === RECORD_TYPES.match && draft.visibility === "private" ? "ui-choice-tile active" : "ui-choice-tile"}
                   onClick={() => {
                     const team = defaultTeamA ?? selectedTeamA;
                     const mode = getMatchModeOrDefault(draft.mode, defaultMode);
@@ -61,7 +61,7 @@ export function CreateMatchIntentSection({ context }) {
                 </button>
                 <button
                   type="button"
-                  className={draft.recordType === RECORD_TYPES.match && draft.visibility === "public" ? "active" : ""}
+                  className={draft.recordType === RECORD_TYPES.match && draft.visibility === "public" ? "ui-choice-tile active" : "ui-choice-tile"}
                   disabled={practiceMode}
                   onClick={() => {
                     const team = defaultTeamA ?? selectedTeamA;
@@ -93,7 +93,7 @@ export function CreateMatchIntentSection({ context }) {
                     <em>매칭 목록에서 선수·팀을 모집합니다.</em>
                   </span>
                 </button>
-                <button type="button" className={isTournamentRoom ? "active" : ""} disabled={practiceMode} onClick={() => {
+                <button type="button" className={isTournamentRoom ? "ui-choice-tile active" : "ui-choice-tile"} disabled={practiceMode} onClick={() => {
                   setTeamRegion("전체");
                   const mode = getMatchModeOrDefault(draft.mode, defaultMode);
                   update({
@@ -120,7 +120,7 @@ export function CreateMatchIntentSection({ context }) {
               <>
                 <button
                   type="button"
-                  className={isMatchRecordRoom ? "active" : ""}
+                  className={isMatchRecordRoom ? "ui-choice-tile active" : "ui-choice-tile"}
                   onClick={() => {
                     const nextMode = getMatchModeOrDefault(draft.mode, defaultMode);
                     update({
@@ -164,7 +164,7 @@ export function CreateMatchIntentSection({ context }) {
                 </button>
                 <button
                   type="button"
-                  className={isSoloRecord ? "active" : ""}
+                  className={isSoloRecord ? "ui-choice-tile active" : "ui-choice-tile"}
                   onClick={() => update({
                     ...getMatchModeChangePatch(draft, "1v1"),
                     recordType: RECORD_TYPES.personalRecord,

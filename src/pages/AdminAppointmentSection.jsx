@@ -129,7 +129,7 @@ export function AdminAppointmentSection({ controller }) {
             ))}
           </div>
         ) : null}
-        <div className="segmented-control compact-segments admin-queue-filter">
+        <div className="ui-segmented-control segmented-control compact-segments admin-queue-filter">
           <button type="button" className={queueMode === "pending" ? "active" : ""} onClick={() => setQueueMode("pending")}>활성·대기</button>
           <button type="button" className={queueMode === "history" ? "active" : ""} onClick={() => setQueueMode("history")}>전체 이력</button>
         </div>

@@ -130,7 +130,7 @@ export default function SettingsSideColumn({ controller }) {
               {blockedUserIds.length ? blockedUserIds.map((userId) => (
                 <div key={userId}>
                   <span>{userMap[userId]?.name ?? app.state.settings?.blockedUserProfiles?.[userId]?.name ?? "플레이어"}</span>
-                  <button type="button" disabled={blockSavePending} onClick={() => releaseBlock(userId)}>해제</button>
+                  <button type="button" className="ui-compact-action" disabled={blockSavePending} onClick={() => releaseBlock(userId)}>해제</button>
                 </div>
               )) : <div><span>차단한 플레이어가 없습니다.</span><strong>0</strong></div>}
             </div>
@@ -183,7 +183,7 @@ export default function SettingsSideColumn({ controller }) {
                   {naverAddressResults.length ? (
                     <div className="settings-address-results">
                       {naverAddressResults.map((result) => (
-                        <button key={result.id} type="button" onClick={() => selectNaverAddress(result)}>
+                        <button key={result.id} type="button" className="ui-choice-tile" onClick={() => selectNaverAddress(result)}>
                           <strong>{result.roadAddress || result.addressText}</strong>
                           <span>{result.jibunAddress || result.addressText}</span>
                           <em>지도 이동 기준</em>
@@ -392,7 +392,7 @@ export default function SettingsSideColumn({ controller }) {
                   <div key={request.id}>
                     <span>{request.name} · {request.addressText} · 공개 여부 {getCourtPublicAccessLabel(request)} · {requester?.name ?? "요청자"} 신뢰도 {request.requestedByTrustScore ?? requester?.trustScore ?? "-"}</span>
                     <strong>{getAdminStatusLabel(request.status)}</strong>
-                    <button type="button" disabled={!canReportRequest} onClick={() => reportCourtRequest(request)}>
+                    <button type="button" className="ui-compact-action" disabled={!canReportRequest} onClick={() => reportCourtRequest(request)}>
                       {alreadyReported ? "신고됨" : "신고 선택"}
                     </button>
                   </div>

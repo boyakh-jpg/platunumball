@@ -352,7 +352,7 @@ export default function SearchPicker({
           {hasMore ? (
             <button
               type="button"
-              className="home-search-more search-picker-more"
+              className="ui-compact-action home-search-more search-picker-more"
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => {
                 if (detailStep) {

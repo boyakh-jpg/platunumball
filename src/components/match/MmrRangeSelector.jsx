@@ -6,7 +6,7 @@ export default function MmrRangeSelector({
   ariaLabel = "정규전 허용구간",
 }) {
   return (
-    <div className="segmented-control compact-segments" role="radiogroup" aria-label={ariaLabel}>
+    <div className="ui-segmented-control segmented-control compact-segments" role="radiogroup" aria-label={ariaLabel}>
       {Object.entries(MMR_RANGE_POLICIES).map(([mode, policy]) => (
         <button
           key={mode}

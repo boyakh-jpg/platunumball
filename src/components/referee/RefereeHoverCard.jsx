@@ -124,7 +124,7 @@ export default function RefereeHoverCard({ user, matches = [], minTrust: _minTru
         <span className="referee-hover-note">
           심판 티어는 현재 신뢰도, 심판 배정 경기 수, 이의 발생률로 임시 계산합니다. 정식 라이선스와 자격시험은 추후 검증 데이터로 고정합니다.
         </span>
-        <Link className="hover-card-action" to={profilePath} onClick={(event) => {
+        <Link className="ui-compact-action hover-card-action" to={profilePath} onClick={(event) => {
           event.stopPropagation();
           closePinned();
         }}>선수 프로필 보기</Link>

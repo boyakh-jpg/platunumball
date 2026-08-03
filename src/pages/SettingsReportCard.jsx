@@ -230,7 +230,7 @@ export function SettingsReportCard({ controller }) {
                     {reportParticipantRows.map((row) => {
                       const checked = selectedReportedUserIds.includes(row.userId);
                       return (
-                        <button key={row.userId} type="button" className={checked ? "selected" : ""} onClick={() => toggleReportedUser(row.userId)}>
+                        <button key={row.userId} type="button" className={checked ? "ui-choice-tile selected" : "ui-choice-tile"} onClick={() => toggleReportedUser(row.userId)}>
                           <ProfileEmblem user={row.user} className="small" />
                           <span className="report-player-info">
                             <strong>{row.user.name}</strong>

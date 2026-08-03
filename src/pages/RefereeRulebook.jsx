@@ -125,7 +125,7 @@ export default function RefereeRulebook({ theme = "dark" }) {
         <RulebookIllustration scene="standard" theme={theme} />
       </Card>
 
-      <div className="segmented-control compact-segments rulebook-level-switch" aria-label="룰북 난이도">
+      <div className="ui-segmented-control segmented-control compact-segments rulebook-level-switch" aria-label="룰북 난이도">
         <button
           type="button"
           className={isEasyRulebook ? "active" : ""}

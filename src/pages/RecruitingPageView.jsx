@@ -81,7 +81,7 @@ export default function RecruitingPageView({
                   {regionDistrictOptions.map((district) => <option key={district} value={district}>{district}</option>)}
                 </select>
               </label>
-              <div className="segmented-control compact-segments arena-filter-segment">
+              <div className="ui-segmented-control segmented-control compact-segments arena-filter-segment">
                 <button type="button" className={queue === "all" ? "active" : ""} onClick={() => setQueue("all")}>전체</button>
                 <button type="button" className={queue === "ranked" ? "active" : ""} onClick={() => setQueue("ranked")}>정규전</button>
                 <button type="button" className={queue === "friendly" ? "active" : ""} onClick={() => setQueue("friendly")}>친선전</button>

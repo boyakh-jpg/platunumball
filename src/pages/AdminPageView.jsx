@@ -203,7 +203,7 @@ if (!canAdmin && (!app.adminStatus?.loaded || app.adminStatus?.loading)) {
               </Button>
             </div>
           </div>
-          <div className="segmented-control compact-segments admin-queue-filter">
+          <div className="ui-segmented-control segmented-control compact-segments admin-queue-filter">
             <button type="button" className={queueMode === "pending" ? "active" : ""} disabled={reviewActionPending} onClick={() => setQueueMode("pending")}>
               처리 대기{queueMode === "pending" ? ` ${activeQueueTotal}` : ""}
             </button>

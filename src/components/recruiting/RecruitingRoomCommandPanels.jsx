@@ -89,7 +89,7 @@ export function SlotCommandPanel({
     <CommandPopoverFrame floating={floating} anchor={anchor} className="arena-slot-command-popover" onClose={pending ? null : onClose}>
       <header>
         <div>
-          <strong>{poolMode ? "참가자 초대" : `${SIDE_LABELS[sideName]} ${reserve ? "후보 슬롯" : "빈 슬롯"}`}</strong>
+          <strong>{poolMode ? "참가자 초대" : `${SIDE_LABELS[sideName]} ${reserve ? "후보" : "빈 슬롯"}`}</strong>
           <span>{poolMode ? "픽업 참가자 풀의 빈자리에 선수를 초대합니다." : "이 자리로 이동하거나 선수를 초대할 수 있습니다."}</span>
         </div>
         <button type="button" className="arena-icon-button" aria-label="닫기" disabled={pending} onClick={onClose}><X size={16} /></button>

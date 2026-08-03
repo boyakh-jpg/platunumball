@@ -159,7 +159,7 @@ export function MatchRosterPolicyFields({ draft, onChange }) {
     <div className="match-roster-policy-fields">
       <div className="field-block">
         <span className="field-label">{pickup ? "추가 참가 인원" : "후보 정원"}</span>
-        <div className="segmented-control compact-segments match-bench-capacity-control">
+        <div className="ui-segmented-control segmented-control compact-segments match-bench-capacity-control">
           {BENCH_CAPACITY_OPTIONS.map((benchCapacity) => (
             <button
               key={benchCapacity}

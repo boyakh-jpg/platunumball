@@ -109,7 +109,7 @@ return (
           <span>
             <small>TEAM</small>
             <strong>내 팀 경기</strong>
-            <em>소속 팀 진행·예정</em>
+            <em>진행·예정</em>
           </span>
           <b>{teamMatchList.status === MATCH_LIST_STATUSES.LOADING ? "..." : teamScheduleCount}</b>
         </button>
@@ -122,7 +122,7 @@ return (
           <span>
             <small>EVENT</small>
             <strong>비공개 대회</strong>
-            <em>내 대회·팀 초대 대회</em>
+            <em>내 대회·초대</em>
           </span>
           <b>{activeTournaments.length}</b>
         </button>
@@ -148,7 +148,7 @@ return (
           <section className="om-calendar-filter-bar" aria-label="경기 필터">
             {panelMode !== "team" ? <div className="om-calendar-filter-row">
               <span className="om-calendar-filter-label">관계</span>
-              <div className="segmented-control compact-segments om-relation-filter-grid" role="group" aria-label="관계 필터">
+              <div className="ui-segmented-control segmented-control compact-segments om-relation-filter-grid" role="group" aria-label="관계 필터">
                 <button type="button" className={relationFilter === "all" ? "active" : ""} onClick={() => applyFilterState({ relationFilter: "all" })}>전체</button>
                 <button type="button" className={relationFilter === "created" ? "active" : ""} onClick={() => applyFilterState({ relationFilter: "created" })}>내가 만든 방</button>
                 <button type="button" className={relationFilter === "joined" ? "active" : ""} onClick={() => applyFilterState({ relationFilter: "joined" })}>내 참여방</button>
@@ -157,7 +157,7 @@ return (
             </div> : null}
             {panelMode !== "team" ? <div className="om-calendar-filter-row">
               <span className="om-calendar-filter-label">유형</span>
-              <div className="segmented-control compact-segments om-branch-filter-grid" role="group" aria-label="유형 필터">
+              <div className="ui-segmented-control segmented-control compact-segments om-branch-filter-grid" role="group" aria-label="유형 필터">
                 {SCHEDULE_BRANCH_FILTERS.map((option) => (
                   <button
                     key={option.id}

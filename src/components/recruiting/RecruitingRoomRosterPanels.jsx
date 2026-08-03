@@ -224,7 +224,7 @@ export function ReserveLine({
                   onClick={(event) => onInviteSlot?.(sideName, true, slotKey, event)}
                 >
                   <UserRound size={17} />
-                  <span>후보 슬롯</span>
+                  <span>후보</span>
                   {canInvite ? <em>{inviteLabel}</em> : null}
                 </button>
               </div>

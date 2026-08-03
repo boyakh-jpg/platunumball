@@ -84,7 +84,7 @@ export default function SettingsPrimaryColumn({ controller }) {
               </div>
               {themeDraft === "light" ? <Sun size={22} /> : <Moon size={22} />}
             </div>
-            <div className="segmented-control">
+            <div className="ui-segmented-control segmented-control">
               <button
                 type="button"
                 className={themeDraft === "light" ? "active" : ""}
@@ -132,12 +132,12 @@ export default function SettingsPrimaryColumn({ controller }) {
               renderItem={renderFavoriteSearchItem}
             />
             {favoriteActionError ? <small role="status" className="form-warning">{favoriteActionError}</small> : null}
-            <div className="favorite-type-grid ui-design-borderless-list ui-design-borderless-surface">
+            <div className="ui-choice-group favorite-type-grid ui-design-borderless-list ui-design-borderless-surface">
               {Object.entries(favoriteListConfig).map(([type, config]) => (
                 <button
                   key={type}
                   type="button"
-                  className={favoriteListType === type ? "active" : ""}
+                  className={favoriteListType === type ? "ui-choice-tile active" : "ui-choice-tile"}
                   aria-pressed={favoriteListType === type}
                   onClick={() => setFavoriteListType((current) => (current === type ? "" : type))}
                 >

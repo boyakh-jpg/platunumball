@@ -77,7 +77,7 @@ export function HoverCardCloseButton({ onClose }) {
   return (
     <button
       type="button"
-      className="hover-card-close"
+      className="ui-compact-action hover-card-close"
       aria-label="닫기"
       onClick={(event) => {
         event.preventDefault();

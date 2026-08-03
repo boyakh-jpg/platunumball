@@ -105,7 +105,7 @@ export default function TeamHoverCard({ team, children, className = "", as = "li
           <span><b>{winRate}%</b><em>승률</em></span>
           <span><b>{rosterCountLabel}</b><em>로스터</em></span>
         </span>
-        <Link className="hover-card-action" to={teamPath} state={{ teamPreview: team }} onClick={(event) => {
+        <Link className="ui-compact-action hover-card-action" to={teamPath} state={{ teamPreview: team }} onClick={(event) => {
           event.stopPropagation();
           closePinned();
         }}>팀 보기</Link>
