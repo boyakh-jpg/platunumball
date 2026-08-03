@@ -1497,3 +1497,24 @@ test("admin court controls use canonical primitives without feature-owned skins"
     /\.court-db-quick-status button\s*\{[^}]*(?:border-radius|background:|color:|cursor:)/,
   );
 });
+
+test("control-like surfaces use one primitive visual owner", () => {
+  const controlSurfaceRule = getRuleBody(primitiveStyles, ".ui-control-surface");
+  assert.match(controlSurfaceRule, /border:\s*var\(--ui-card-border-width\) solid var\(--ui-control-border\);/);
+  assert.match(controlSurfaceRule, /border-radius:\s*var\(--ui-control-radius\);/);
+  assert.match(controlSurfaceRule, /background:\s*var\(--ui-control-bg\);/);
+
+  for (const file of [
+    "src/components/admin/UserOperationsPanel.jsx",
+    "src/components/match/MatchDisputeQueue.jsx",
+    "src/components/rating/ProgressionChecklist.jsx",
+    "src/components/recruiting/RecruitingRoomManagementSection.jsx",
+    "src/pages/AdminAppointmentSection.jsx",
+    "src/pages/AdminDetailPanel.jsx",
+    "src/pages/Affiliations.jsx",
+    "src/pages/CourtDetail.jsx",
+    "src/pages/TeamDetailView.jsx",
+  ]) {
+    assert.match(read(file), /ui-control-surface/, `${file}: ui-control-surface required`);
+  }
+});

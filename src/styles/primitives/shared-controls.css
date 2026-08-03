@@ -173,49 +173,11 @@ html[data-theme="light"] .bottom-nav {
   box-shadow: none;
 }
 /* 2026-07-01 standard UI cleanup: shared boxes, controls, and hero typography. */
-.section-card,
-.admin-action-panel,
-.gm-rule-summary-card,
-.stat-referee-panel,
-.stat-trust-panel,
-.match-card,
-.notification-invitation-card,
-.affiliation-card,
-.profile-record-card,
-.profile-records-summary,
-.discord-link-card,
-.trust-star-card,
-.court-review-card,
-.review-controls-card {
-  border: var(--ui-card-border-width) solid var(--card-border);
-  border-radius: var(--card-radius);
-  background: var(--card-bg);
-  box-shadow: var(--card-shadow);
-}
-html[data-theme="light"] .section-card,
-html[data-theme="light"] .admin-action-panel,
-html[data-theme="light"] .gm-rule-summary-card,
-html[data-theme="light"] .stat-referee-panel,
-html[data-theme="light"] .stat-trust-panel,
-html[data-theme="light"] .match-card,
-html[data-theme="light"] .notification-invitation-card,
-html[data-theme="light"] .affiliation-card,
-html[data-theme="light"] .profile-record-card,
-html[data-theme="light"] .profile-records-summary,
-html[data-theme="light"] .discord-link-card,
-html[data-theme="light"] .trust-star-card,
-html[data-theme="light"] .court-review-card,
-html[data-theme="light"] .review-controls-card {
-  border-color: var(--card-border);
-  background: var(--card-bg);
-  box-shadow: var(--card-shadow);
-}
 .create-mode-grid button,
 .favorite-type-grid button,
 .notification-actions button,
 .compact-list button,
 .admin-action-panel button,
-.favorite-toggle-button,
 .hover-card-close,
 .hover-card-action,
 .search-picker-more,
@@ -338,29 +300,6 @@ html[data-theme="light"] .rank-home .rank-tier-rail .rank-mode-pill {
 }
 /* 2026-07-01 final UI primitive module.
    Keep page controls on tokenized buttons/groups instead of local one-off skins. */
-.section-card,
-.selector-panel,
-.ranking-filter-card,
-.profile-main-stack > .card,
-.profile-side-grid > .card,
-.admin-action-panel,
-.gm-rule-summary-card,
-.stat-referee-panel,
-.stat-trust-panel,
-.match-card,
-.notification-invitation-card,
-.affiliation-card,
-.profile-record-card,
-.profile-records-summary,
-.discord-link-card,
-.trust-star-card,
-.court-review-card,
-.review-controls-card {
-  border: var(--ui-card-border-width) solid var(--ui-card-border);
-  border-radius: var(--ui-card-radius);
-  background: var(--ui-card-bg);
-  box-shadow: var(--ui-card-shadow);
-}
 .hover-portal-card {
   border: var(--ui-card-border-width) solid var(--ui-card-border);
   border-radius: var(--ui-card-radius);
@@ -432,7 +371,6 @@ html[data-theme="light"] .rank-home .rank-tier-rail .rank-mode-pill {
 .court-address-results button,
 .report-player-picker button,
 .referee-exam-choice-grid button,
-.favorite-toggle-button,
 .hover-card-close,
 .hover-card-action,
 .search-picker-more,

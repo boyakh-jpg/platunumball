@@ -89,9 +89,6 @@
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 9px var(--space-7);
   padding: 13px;
-  border: var(--ui-card-border-width) solid var(--ui-control-border);
-  border-radius: var(--ui-control-radius);
-  background: var(--ui-control-bg);
 }
 
 .court-review-author {

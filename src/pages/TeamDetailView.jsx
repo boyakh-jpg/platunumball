@@ -269,7 +269,7 @@ export default function TeamDetailView({ controller }) {
                     {pendingTeamInvitations.map((invitation) => {
                       const user = userMap[invitation.targetUserId];
                       return (
-                        <div key={invitation.id} className="member-control-row">
+                        <div key={invitation.id} className="member-control-row ui-control-surface">
                           <PlayerHoverCard className="member-control-identity" user={user} teams={app.state.teams}>
                             <span className="member-control-copy">
                               <strong>{user?.name ?? "초대 대상"}</strong>
@@ -293,7 +293,7 @@ export default function TeamDetailView({ controller }) {
                     const isCaptainMember = member.userId === captain?.userId;
                     const roleOptions = getManagedRoleOptions(member, captain?.userId);
                     return (
-                      <div key={`${team.id}-${member.userId}-control`} className="member-control-row">
+                      <div key={`${team.id}-${member.userId}-control`} className="member-control-row ui-control-surface">
                         <PlayerHoverCard className="ui-profile-identity-inline" user={user} teams={app.state.teams}>
                           <ProfileEmblem user={user} className="small" />
                           <strong>{user.name}</strong>

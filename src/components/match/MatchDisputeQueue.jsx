@@ -96,7 +96,7 @@ export default function MatchDisputeQueue({
       </div>
       <div className="match-dispute-queue-list">
         {openDisputes.map((dispute) => (
-          <article className="match-dispute-queue-item" key={dispute.id}>
+          <article className="match-dispute-queue-item ui-control-surface" key={dispute.id}>
             <div>
               <strong>{userById[dispute.by]?.name ?? "참여자"}</strong>
               <span>{getDisputeRequestSummary(dispute, match)}</span>

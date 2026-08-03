@@ -363,7 +363,7 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
           </div>
         </div>
         <div className="court-profile-information-grid ui-design-borderless-list">
-          <section>
+          <section className="ui-control-surface">
             <h3><Building2 size={17} /> 시설</h3>
             <dl>
               {facilityDetails.map(([label, value]) => (
@@ -371,7 +371,7 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
               ))}
             </dl>
           </section>
-          <section>
+          <section className="ui-control-surface">
             <h3><Clock3 size={17} /> 이용</h3>
             <dl>
               {accessDetails.map(([label, value]) => (
@@ -379,7 +379,7 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
               ))}
             </dl>
           </section>
-          <section>
+          <section className="ui-control-surface">
             <h3><MapPin size={17} /> 위치·안내</h3>
             <dl>
               <div><dt>도로명</dt><dd>{court.roadAddress || court.addressText || "확인 필요"}</dd></div>
@@ -389,7 +389,7 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
               <div><dt>이용 안내</dt><dd>{court.accessNote || "등록된 안내 없음"}</dd></div>
             </dl>
           </section>
-          <section>
+          <section className="ui-control-surface">
             <h3><Phone size={17} /> 연락·예약</h3>
             <dl>
               <div><dt>연락처</dt><dd>{court.contactPhone || "확인 필요"}</dd></div>
@@ -420,7 +420,7 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
           {reviews.length ? (
             <div className="court-review-list">
               {reviews.map((review) => (
-                <article className="court-review-row" key={review.id}>
+                <article className="court-review-row ui-control-surface" key={review.id}>
                   <div className="court-review-author">
                     <ProfileEmblem user={review.reviewer} className="small" initial={(review.reviewer?.name || "참").slice(0, 1)} />
                     <div>

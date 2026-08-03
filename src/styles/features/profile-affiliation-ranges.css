@@ -153,9 +153,6 @@
 .affiliation-challenge-list > div {
   display: grid;
   gap: var(--ui-control-group-gap);
-  border: var(--ui-card-border-width) solid var(--ui-control-border);
-  border-radius: var(--ui-control-radius);
-  background: var(--ui-control-bg);
   padding: var(--ui-control-group-padding);
 }
 .affiliation-challenge-list span {

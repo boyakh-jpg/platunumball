@@ -227,6 +227,8 @@
 }
 
 .stat-referee-panel {
+  --ui-card-padding: 0;
+
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-4);
@@ -257,12 +259,13 @@
 }
 
 .stat-trust-panel {
+  --ui-card-padding: 12px;
+  --ui-card-border: rgba(116, 169, 255, 0.18);
+  --ui-card-bg: rgba(116, 169, 255, 0.055);
+  --ui-card-radius: var(--radius);
+
   display: grid;
   gap: var(--space-5);
-  border: var(--ui-card-border-width) solid rgba(116, 169, 255, 0.18);
-  border-radius: var(--radius);
-  background: rgba(116, 169, 255, 0.055);
-  padding: 12px;
 }
 
 .stat-trust-head {

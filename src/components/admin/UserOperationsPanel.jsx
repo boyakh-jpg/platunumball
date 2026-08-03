@@ -280,7 +280,7 @@ export default function UserOperationsPanel({ app }) {
                 <Badge tone={selectedRisk.tone}>{selectedRisk.label} {Number(selected.riskScore ?? 0)}</Badge>
               </div>
 
-              <section className="admin-user-signal-panel">
+              <section className="admin-user-signal-panel ui-control-surface">
                 <div><AlertTriangle size={18} /><strong>검토 신호</strong><small>수치만으로 경고·제재하지 않습니다.</small></div>
                 <div className="admin-user-signal-list">
                   {selectedSignals.map((signal) => <span key={signal.id} title={signal.description}>{signal.label}</span>)}

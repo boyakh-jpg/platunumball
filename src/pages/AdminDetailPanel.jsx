@@ -132,7 +132,7 @@ export function AdminDetailPanel({ controller }) {
               ) : null}
 
               {view === "teams" && ["team_name", "affiliation_name"].includes(selectedReport?.type) ? (
-                <section className="admin-name-moderation-detail">
+                <section className="admin-name-moderation-detail ui-control-surface">
                   <span>{selectedReport.type === "team_name" ? "현재 팀명" : "현재 소속명"}</span>
                   <strong>{selectedRow.team?.name ?? selectedRow.affiliation?.name ?? selectedRow.title}</strong>
                   <small>{selectedReport.type === "affiliation_name" ? `${selectedRow.affiliation?.memberCount ?? 0}명 소속` : selectedRow.team?.region ?? "지역 미정"}</small>
@@ -231,7 +231,7 @@ export function AdminDetailPanel({ controller }) {
               ) : null}
 
               {selectedReport ? (
-              <div className="admin-action-panel">
+              <div className="admin-action-panel ui-control-surface">
                 <div>
                   <strong>{workflow.actionTitle}</strong>
                   <small>선택한 신고 한 건만 처리합니다. 직접 제재와 숨김은 경기관리자 이상만 확정할 수 있습니다.</small>

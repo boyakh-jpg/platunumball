@@ -129,7 +129,7 @@ export function RecruitingRoomManagementSection({ context }) {
                   <Badge tone="neutral" className="arena-room-rule-badge">공격권: {selectedMatchRules.attackRule}</Badge>
                   <Badge tone="neutral" className="arena-room-rule-badge">파울: {selectedMatchRules.foulRule}</Badge>
                 </div>
-                <div className="arena-room-referee-line">
+                <div className="arena-room-referee-line ui-control-surface">
                   <strong>심판</strong>
                   {referee ? (
                     <RefereeHoverCard user={referee} matches={app.state.matches} minTrust={selectedPost.refereeTrustMin} className="arena-room-referee-card">

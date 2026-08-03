@@ -122,10 +122,11 @@ html[data-theme="light"] .scroll-to-top-button {
 }
 
 .data-sources-card {
+  --ui-card-padding: clamp(20px, 4vw, 32px);
+
   width: min(100%, 760px);
   display: grid;
   gap: var(--space-11);
-  padding: clamp(20px, 4vw, 32px);
 }
 
 .data-sources-header {
@@ -226,11 +227,19 @@ html[data-theme="light"] .scroll-to-top-button {
 }
 
 .legal-document {
+  --ui-card-padding: clamp(20px, 4.5vw, 44px);
+
   display: grid;
   width: min(100%, 920px);
   gap: clamp(var(--space-14), 5vw, 44px);
   margin: 0 auto;
-  padding: clamp(20px, 4.5vw, 44px);
+}
+
+@media (max-width: 720px) {
+  .data-sources-card,
+  .legal-document {
+    --ui-card-padding: 14px;
+  }
 }
 
 .legal-document-header,

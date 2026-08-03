@@ -121,9 +121,6 @@ html[data-theme="light"] .referee-rulebook-page .referee-rulebook-intro h2 {
 .court-profile-information-grid > section {
   min-width: 0;
   padding: 16px;
-  border: var(--ui-card-border-width) solid var(--ui-control-border);
-  border-radius: var(--ui-control-radius);
-  background: var(--ui-control-bg);
 }
 
 .court-profile-information-grid h3 {

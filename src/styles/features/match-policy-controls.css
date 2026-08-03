@@ -103,9 +103,6 @@
   gap: var(--space-3);
 }
 .match-dispute-queue-item {
-  border: var(--ui-card-border-width) solid var(--ui-control-border);
-  border-radius: var(--ui-control-radius);
-  background: var(--ui-control-bg);
   padding: 10px;
 }
 .match-dispute-queue-item p {

@@ -343,9 +343,6 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
-  border: var(--ui-card-border-width) solid var(--ui-control-border);
-  border-radius: var(--ui-control-radius);
-  background: var(--ui-control-bg);
   padding: 8px 9px;
 }
 

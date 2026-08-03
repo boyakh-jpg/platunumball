@@ -125,7 +125,7 @@ export default function Affiliations({ app }) {
           </div>
           <div className="compact-list">
             {challengeRows.map((affiliation) => (
-              <div key={`${affiliation.id}-target`}>
+              <div key={`${affiliation.id}-target`} className="ui-control-surface">
                 <span>
                   {affiliation.target
                     ? affiliation.challengeType === "chase"

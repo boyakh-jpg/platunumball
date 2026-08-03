@@ -289,9 +289,6 @@
 .admin-user-signal-panel {
   display: grid;
   gap: 9px;
-  border: var(--ui-card-border-width) solid var(--ui-control-border);
-  border-radius: var(--ui-control-radius);
-  background: var(--ui-control-bg);
   padding: 11px;
 }
 
@@ -447,9 +444,6 @@
 .admin-action-panel,
 .admin-appointment-row {
   min-width: 0;
-  border: var(--ui-card-border-width) solid var(--ui-control-border);
-  border-radius: var(--ui-control-radius);
-  background: var(--ui-control-bg);
   padding: 10px;
 }
 

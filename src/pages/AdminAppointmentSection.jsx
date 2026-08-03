@@ -102,7 +102,7 @@ export function AdminAppointmentSection({ controller }) {
         </div>
         <div className="admin-grade-strip">
           {appointments.grades.map((grade) => (
-            <div key={grade.id}>
+            <div key={grade.id} className="ui-control-surface">
               <strong>{grade.label}</strong>
               <span>Lv.{grade.level}</span>
               <em>{grade.defaultTermDays}일 · {grade.scope}</em>
@@ -111,7 +111,7 @@ export function AdminAppointmentSection({ controller }) {
         </div>
         <div className="admin-referee-grade-strip">
           {Object.entries(REFEREE_GRADE_META).map(([id, grade]) => (
-            <div key={id}>
+            <div key={id} className="ui-control-surface">
               <strong>{grade.label}</strong>
               <span>Lv.{grade.level}</span>
               <em>{grade.requirement}</em>
@@ -121,7 +121,7 @@ export function AdminAppointmentSection({ controller }) {
         {appointments.refereeGrades.length ? (
           <div className="admin-referee-score-list">
             {appointments.refereeGrades.map((row) => (
-              <div key={row.userId}>
+              <div key={row.userId} className="ui-control-surface">
                 <strong>{row.userName}</strong>
                 <span>{row.gradeLabel} · 점수 {row.score}</span>
                 <em>심판 {row.matchCount}경기 · 추천 {row.thumbsUp} · 신고 {row.reportCount}</em>
@@ -155,7 +155,7 @@ export function AdminAppointmentSection({ controller }) {
         </div>
         <div className="admin-appointment-list">
           {appointments.rows.map((row) => (
-            <div key={row.id} className="admin-appointment-row">
+            <div key={row.id} className="admin-appointment-row ui-control-surface">
               <span>
                 <strong>{row.userName}</strong>
                 <em>{row.roleLabel} · {row.gradeLabel} · {row.reason || row.source}</em>
@@ -173,7 +173,7 @@ export function AdminAppointmentSection({ controller }) {
             {app.adminStatus?.loading ? "불러오는 중" : `더 보기 (${appointments.rows.length}/${activeAdminPage.total})`}
           </Button>
         ) : null}
-        <div className="admin-action-panel admin-appointment-action-panel">
+        <div className="admin-action-panel admin-appointment-action-panel ui-control-surface">
           <div>
             <strong>임명·연장·회수 처리</strong>
             <small>처리 결과는 서버에 저장되며, 저장이 완료되면 최신 정보로 화면이 갱신됩니다.</small>

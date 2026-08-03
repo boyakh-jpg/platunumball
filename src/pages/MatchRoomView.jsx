@@ -220,7 +220,7 @@ return (
             {!canSubmitResult ? (
               <div className="ui-empty-state-compact">{match.status === "contract" ? "동의 필요" : "수정 잠김"}</div>
             ) : null}
-            <div className="stat-referee-panel">
+            <div className="stat-referee-panel ui-card">
               <div>
                 <span>기록 권한</span>
                 <strong>
@@ -289,7 +289,7 @@ return (
               <div className="stat-integrity-note">
                 팀 점수와 개인 PTS 합계는 별도로 저장합니다. 값이 다르면 최종 확정 전에 경고만 표시합니다.
               </div>
-              <div className="stat-trust-panel">
+              <div className="stat-trust-panel ui-card">
                 <div className="stat-trust-head">
                   <div>
                     <strong>개인 기록 신뢰도</strong>

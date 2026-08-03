@@ -389,6 +389,12 @@ html[data-theme] .app-main :is(.recent-match-row.result-d, .rank-match-draw) {
   font-size: var(--ui-control-xs-font-size, 0.7rem);
 }
 
+.ui-control-surface {
+  border: var(--ui-card-border-width) solid var(--ui-control-border);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
+}
+
 .ui-field-span-all {
   grid-column: 1 / -1;
   min-width: 0;
