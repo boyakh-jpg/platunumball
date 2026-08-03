@@ -38,6 +38,7 @@ export function buildLoaderActions(context) {
   return ({
 loadMatchDetail,
     loadCourtDetail,
+    loadRefereeDetail: (refereeId, limit = 12) => runServerAction("/api/referees/detail", { refereeId, limit }),
     loadMatchRecruitingSchedule,
     loadMatchTeamSchedule,
     refreshCurrentProfile,

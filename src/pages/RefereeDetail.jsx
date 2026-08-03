@@ -56,7 +56,7 @@ function getLocalDetail(app, refereeId) {
 
 export default function RefereeDetail({ app }) {
   const { refereeId = "" } = useParams();
-  const runServerAction = app.actions?.runServerAction;
+  const loadRefereeDetail = app.actions?.loadRefereeDetail;
   const [detail, setDetail] = useState(null);
   const [status, setStatus] = useState("loading");
 
@@ -68,10 +68,20 @@ export default function RefereeDetail({ app }) {
       setStatus("loaded");
       return undefined;
     }
+    if (!loadRefereeDetail) {
+      setDetail(null);
+      setStatus("error");
+      return undefined;
+    }
     setStatus("loading");
-    Promise.resolve(runServerAction?.("/api/referees/detail", { refereeId, limit: RECENT_REFEREE_MATCH_LIMIT }))
+    Promise.resolve(loadRefereeDetail(refereeId, RECENT_REFEREE_MATCH_LIMIT))
       .then((result) => {
         if (cancelled) return;
+        if (result?.ok === false && result.error !== "referee_not_found") {
+          setDetail(null);
+          setStatus("error");
+          return;
+        }
         setDetail(result?.referee ? {
           referee: result.referee,
           matches: result.state?.matches ?? [],
@@ -84,7 +94,7 @@ export default function RefereeDetail({ app }) {
         if (!cancelled) setStatus("error");
       });
     return () => { cancelled = true; };
-  }, [app.remoteReady, app.state.matches, app.state.settings?.refereeAppointments, app.state.teams, app.state.users, refereeId, runServerAction]);
+  }, [app.remoteReady, app.state.matches, app.state.settings?.refereeAppointments, app.state.teams, app.state.users, loadRefereeDetail, refereeId]);
 
   const grade = detail?.referee?.refereeProfile?.grade ?? detail?.referee?.refereeGrade ?? "candidate";
   const gradeMeta = REFEREE_GRADE_META[grade] ?? REFEREE_GRADE_META.candidate;
