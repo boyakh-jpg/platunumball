@@ -17,6 +17,8 @@ import {
   verifyDiscordOAuthStateTicket,
 } from "../_discordOAuthProof.js";
 
+const DISCORD_USER_AGENT = "DiscordBot (https://boxtier.kr, 1.0)";
+
 function redirectToSettingsDiscord(request, response, params = {}) {
   const baseUrl = getPublicAppUrl(request);
   if (!baseUrl) {
@@ -45,6 +47,7 @@ async function exchangeCodeForToken(code) {
     headers: {
       Authorization: `Basic ${credentials}`,
       "Content-Type": "application/x-www-form-urlencoded",
+      "User-Agent": DISCORD_USER_AGENT,
     },
     body,
   });
@@ -67,7 +70,10 @@ export function normalizeDiscordOAuthErrorCode(value) {
 
 async function fetchDiscordUser(accessToken) {
   const userResponse = await fetch(DISCORD_CURRENT_USER_URL, {
-    headers: { Authorization: `Bearer ${accessToken}` },
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "User-Agent": DISCORD_USER_AGENT,
+    },
   });
   if (!userResponse.ok) throw new Error(`user_fetch_failed:${userResponse.status}`);
   return userResponse.json();

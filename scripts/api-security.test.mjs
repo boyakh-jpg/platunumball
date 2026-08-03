@@ -600,6 +600,12 @@ test("Discord OAuth logs only bounded provider error codes", () => {
   assert.equal(normalizeDiscordOAuthErrorCode("x".repeat(65)), "unknown");
 });
 
+test("Discord OAuth requests use the required API user agent", async () => {
+  const callbackSource = await readSource("server/api/auth/discord/callback.js");
+  assert.equal(callbackSource.match(/"User-Agent": DISCORD_USER_AGENT/g)?.length, 2);
+  assert.match(callbackSource, /DiscordBot \(https:\/\/boxtier\.kr, 1\.0\)/);
+});
+
 test("referee exam attempts preserve the first start and first terminal grading", async () => {
   const [source, migrationSource] = await Promise.all([
     readSource("server/api/referee/sync.js"),
