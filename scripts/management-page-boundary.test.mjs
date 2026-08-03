@@ -547,6 +547,7 @@ test("계정·설정 변경은 선택 대상과 저장 요청을 안전하게 �
   assert.match(profilePage, /profileSavePendingRef\.current/u);
   assert.match(signupPage, /if \(!result \|\| result\.ok === false\)/u);
   assert.match(settingsController, /generalSettingsSavePendingRef\.current/u);
+  assert.match(settingsController, /discordOAuthResult\.error === "discord_oauth_cancelled"[\s\S]{0,120}Discord 연동을 취소했습니다\./u);
   assert.match(settingsController, /if \(!result \|\| result\.ok === false\) throw new Error\(result\?\.error \|\| "discord_profile_save_failed"\)/u);
   assert.match(settingsController, /if \(!settingsResult \|\| settingsResult\.ok === false\)/u);
   assert.match(settingsController, /if \(!profileResult \|\| profileResult\.ok === false\)/u);

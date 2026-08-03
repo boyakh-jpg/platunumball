@@ -17,6 +17,8 @@ import {
   verifyDiscordOAuthStateTicket,
 } from "../_discordOAuthProof.js";
 
+const DISCORD_USER_AGENT = "DiscordBot (https://boxtier.kr, 1.0)";
+
 function redirectToSettingsDiscord(request, response, params = {}) {
   const baseUrl = getPublicAppUrl(request);
   if (!baseUrl) {
@@ -34,27 +36,47 @@ function redirectToSettingsDiscord(request, response, params = {}) {
 }
 
 async function exchangeCodeForToken(code) {
+  const clientId = String(process.env.DISCORD_CLIENT_ID || "").trim();
+  const clientSecret = String(process.env.DISCORD_CLIENT_SECRET || "").trim();
+  const redirectUri = String(process.env.DISCORD_REDIRECT_URI || "").trim();
   const body = new URLSearchParams({
     grant_type: "authorization_code",
     code,
-    redirect_uri: process.env.DISCORD_REDIRECT_URI,
+    redirect_uri: redirectUri,
   });
-  const credentials = Buffer.from(`${process.env.DISCORD_CLIENT_ID}:${process.env.DISCORD_CLIENT_SECRET}`).toString("base64");
+  const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
   const tokenResponse = await fetch(DISCORD_TOKEN_URL, {
     method: "POST",
     headers: {
       Authorization: `Basic ${credentials}`,
       "Content-Type": "application/x-www-form-urlencoded",
+      "User-Agent": DISCORD_USER_AGENT,
     },
     body,
   });
-  if (!tokenResponse.ok) throw new Error(`token_exchange_failed:${tokenResponse.status}`);
+  if (!tokenResponse.ok) {
+    let errorCode = "unknown";
+    try {
+      errorCode = normalizeDiscordOAuthErrorCode((await tokenResponse.json())?.error);
+    } catch {
+      // Keep malformed provider responses out of logs.
+    }
+    throw new Error(`token_exchange_failed:${tokenResponse.status}:${errorCode}`);
+  }
   return tokenResponse.json();
+}
+
+export function normalizeDiscordOAuthErrorCode(value) {
+  const code = String(value || "");
+  return /^[a-z0-9_]{1,64}$/.test(code) ? code : "unknown";
 }
 
 async function fetchDiscordUser(accessToken) {
   const userResponse = await fetch(DISCORD_CURRENT_USER_URL, {
-    headers: { Authorization: `Bearer ${accessToken}` },
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "User-Agent": DISCORD_USER_AGENT,
+    },
   });
   if (!userResponse.ok) throw new Error(`user_fetch_failed:${userResponse.status}`);
   return userResponse.json();
