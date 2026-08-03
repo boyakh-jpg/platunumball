@@ -6,46 +6,17 @@ body {
 .app-main {
   padding: var(--page-gutter);
 }
-.card,
-.section-card,
-.modal,
-.selector-panel,
-.team-card,
-.rating-card,
-.profile-records-summary,
-.home-search-panel,
-.home-action-card,
-.match-focus-card,
-.home-recent-card,
-.rank-leaderboard-card,
-.season-mini-card,
-.settings-page .section-card {
-  box-shadow: var(--shadow);
-}
-.card {
-  background: rgba(10, 14, 21, 0.92);
-  background-image: none;
-}
-.button,
-input,
-select,
-textarea,
 .segmented-control,
 .contract-grid div,
 .two-column > div,
 .search-picker-results.is-floating {
   border-radius: var(--radius-md);
 }
-.button,
 .provider-button,
 button,
-a,
-input,
-select,
-textarea {
+a {
   touch-action: manipulation;
 }
-.button,
 .provider-button,
 .bottom-nav a,
 .nav-item,
@@ -61,7 +32,7 @@ textarea {
   border-radius: var(--radius-lg);
   background: rgba(9, 13, 20, 0.92);
   background-image: none;
-  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.34);
+  box-shadow: none;
 }
 .auth-form h1 {
   font-size: clamp(2.05rem, 7vw, 2.8rem);
@@ -110,9 +81,6 @@ textarea {
   border-radius: var(--radius-lg);
   background: rgba(10, 14, 21, 0.9);
 }
-.home-search-box {
-  border-radius: var(--radius-md);
-}
 .home-action-row {
   border-left: 3px solid rgba(70, 224, 182, 0.55);
   border-radius: var(--radius-md);
@@ -134,27 +102,9 @@ textarea {
 .home-side-stack {
   min-width: 0;
 }
-html[data-theme="light"] .card,
-html[data-theme="light"] .section-card,
-html[data-theme="light"] .home-search-panel,
-html[data-theme="light"] .home-action-card,
-html[data-theme="light"] .match-focus-card,
-html[data-theme="light"] .home-recent-card,
-html[data-theme="light"] .rank-leaderboard-card,
-html[data-theme="light"] .season-mini-card,
-html[data-theme="light"] .settings-page .section-card {
-  border-color: rgba(32, 56, 68, 0.14);
-  background: rgba(255, 255, 255, 0.92);
-  background-image: none;
-}
 html[data-theme="light"] .auth-card {
   border-color: rgba(32, 56, 68, 0.14);
   background: rgba(255, 255, 255, 0.94);
-}
-html[data-theme="light"] input,
-html[data-theme="light"] select,
-html[data-theme="light"] textarea {
-  background: rgba(238, 244, 240, 0.94);
 }
 @media (max-width: 1020px) {
   .app-main {
@@ -203,7 +153,6 @@ html[data-theme="light"] textarea {
     gap: var(--space-6);
   }
 
-  .card,
   .section-card {
     padding: 14px;
   }
@@ -243,15 +192,6 @@ html[data-theme="light"] .app-main {
   background: color-mix(in srgb, var(--rb-orange) 12%, transparent);
   box-shadow: none;
 }
-.card,
-.section-card,
-.home-search-panel,
-.home-action-card {
-  border-color: var(--card-border);
-  background-color: var(--card-bg);
-  box-shadow: var(--card-shadow);
-}
-.button-primary,
 .provider-test {
   background: var(--button-primary-bg);
 }
@@ -268,10 +208,12 @@ html[data-theme="light"] .app-main {
     var(--scoreboard-2);
   box-shadow: 0 14px 34px rgba(0, 0, 0, 0.22);
 }
-.rank-home .rank-mode-pill,
-.home-action-row,
-.home-search-box {
-  border: var(--ui-stroke-width) solid rgba(199, 223, 232, 0.16);
+.rank-home .rank-mode-pill {
+  border: var(--ui-card-border-width) solid rgba(199, 223, 232, 0.16);
+  background: rgba(255, 255, 255, 0.052);
+}
+.home-action-row {
+  border: var(--ui-card-border-width) solid rgba(199, 223, 232, 0.16);
   background: rgba(255, 255, 255, 0.052);
 }
 .rank-home .rank-mode-pill {
@@ -287,9 +229,6 @@ html[data-theme="light"] .app-main {
 }
 html[data-theme="light"] .rank-home .rank-summary-grid {
   border-color: rgba(184, 118, 19, 0.2);
-}
-html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head h1 {
-  text-shadow: none;
 }
 html[data-theme="light"] .rank-home .rank-mode-pill,
 html[data-theme="light"] .home-action-row,
@@ -315,41 +254,14 @@ html[data-theme="light"] .home-side-stack .compact-list > .team-hover-trigger {
   background: rgba(238, 244, 240, 0.64);
 }
 /* 2026-07-01 imweb fitness tone pass: charcoal surface, orange CTA, condensed heroes. */
-.card,
-.section-card,
-.modal,
-.selector-panel,
-.team-card,
-.rating-card,
-.profile-records-summary,
-.home-search-panel,
-.home-action-card,
-.match-focus-card,
-.home-recent-card,
-.rank-leaderboard-card,
-.season-mini-card,
-.settings-page .section-card {
+.modal {
   border-color: var(--rb-line);
   background-color: var(--rb-surface);
 }
-.button {
-  min-height: 38px;
-  border-radius: var(--radius-xs);
-  padding: 0 14px;
-  font-size: 12px;
-  font-weight: 900;
-  text-transform: uppercase;
-}
-.button-primary,
 .provider-test,
 .rank-home .home-rank-board-head .button {
   background: var(--rb-orange);
   color: #fff;
-}
-.button-secondary {
-  border: var(--ui-stroke-width) solid var(--rb-line);
-  background: var(--rb-surface);
-  box-shadow: none;
 }
 .button-icon {
   width: 32px;
@@ -357,21 +269,16 @@ html[data-theme="light"] .home-side-stack .compact-list > .team-hover-trigger {
   border-radius: var(--radius-xs);
   background: rgba(255, 255, 255, 0.07);
 }
-.button:disabled,
 button:disabled,
 .search-picker-result-row:disabled {
   cursor: not-allowed;
   opacity: 0.58;
 }
-.button:focus-visible,
 .provider-button:focus-visible,
 .bottom-nav a:focus-visible,
 .nav-item:focus-visible,
 button:focus-visible,
-a:focus-visible,
-input:focus-visible,
-select:focus-visible,
-textarea:focus-visible {
+a:focus-visible {
   outline: 2px solid rgba(255, 118, 88, 0.72);
   outline-offset: 2px;
 }
@@ -455,21 +362,7 @@ html[data-theme="light"] body {
     linear-gradient(90deg, rgba(30, 24, 18, 0.024) 1px, transparent 1px) 0 0 / 44px 44px,
     var(--rb-bg);
 }
-html[data-theme="light"] .card,
-html[data-theme="light"] .section-card,
-html[data-theme="light"] .home-search-panel,
-html[data-theme="light"] .home-action-card {
-  background-color: var(--rb-surface);
-}
 /* 2026-07-01 warm cream light mode and shared app controls. */
-input,
-select,
-textarea,
-.auth-card select {
-  border-color: var(--rb-line);
-  border-radius: var(--radius-md);
-}
-.button:hover,
 .provider-button:hover {
   filter: brightness(0.96);
 }

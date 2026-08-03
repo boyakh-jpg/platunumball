@@ -37,6 +37,7 @@ export function reportMatch(state, matchId, reason = "", reportedUserIds = []) {
   if (disciplineBlock) return disciplineBlock;
   const match = state.matches.find((item) => item.id === matchId);
   if (!match) return state;
+  if (hasUnresolvedUserReport(state, "match", matchId)) return state;
   const safeReason = String(reason).trim();
   const isVoidRestoreRequest = safeReason.startsWith(VOID_MATCH_RESTORE_REPORT_REASON);
   if (isVoidRestoreRequest && !canRequestVoidMatchRestore(match, state.currentUserId)) return state;

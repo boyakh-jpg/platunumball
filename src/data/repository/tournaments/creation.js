@@ -49,7 +49,6 @@ export function createTournament(state, draft) {
     rosterReady: { teamA: false, teamB: false },
   };
   const tournamentTeamSnapshots = Object.fromEntries(invitedTeams.map((team) => [team.id, getLocalTournamentTeamSnapshot(state, team, {
-    mode: draft.mode,
     capacity: sideCapacity,
     ranked: draft.ranked,
     mmrLimitMode,
@@ -128,7 +127,7 @@ export function createTournament(state, draft) {
       notifications: [{
         id: makeId("n"),
         title: "심판 자격 필요",
-        body: `대회 주최자는 신뢰도 ${REFEREE_TRUST_MIN} 이상인 자격심판이어야 합니다.`,
+        body: "대회 주최자는 대회 종료일까지 유효한 자격심판이어야 합니다.",
         tone: "match",
       }, ...state.notifications],
     };
@@ -138,7 +137,7 @@ export function createTournament(state, draft) {
     const body = refereePoolValidation.refereeIds.length < refereePoolValidation.requiredCount
       ? `${teamIds.length}팀 대회는 자격심판 ${refereePoolValidation.requiredCount}명 이상을 초대해야 합니다.`
       : refereePoolValidation.ineligibleRefereeId
-        ? "자격 또는 신뢰도 조건을 충족하지 못한 심판이 포함되어 있습니다."
+        ? "대회 종료일까지 유효한 자격이 없는 심판이 포함되어 있습니다."
         : "모든 가능한 대진에 양 팀과 무관한 중립 심판을 배정할 수 있어야 합니다.";
     return {
       ...state,

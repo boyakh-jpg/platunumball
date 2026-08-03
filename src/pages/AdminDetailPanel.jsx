@@ -132,7 +132,7 @@ export function AdminDetailPanel({ controller }) {
               ) : null}
 
               {view === "teams" && ["team_name", "affiliation_name"].includes(selectedReport?.type) ? (
-                <section className="admin-name-moderation-detail">
+                <section className="admin-name-moderation-detail ui-control-surface">
                   <span>{selectedReport.type === "team_name" ? "현재 팀명" : "현재 소속명"}</span>
                   <strong>{selectedRow.team?.name ?? selectedRow.affiliation?.name ?? selectedRow.title}</strong>
                   <small>{selectedReport.type === "affiliation_name" ? `${selectedRow.affiliation?.memberCount ?? 0}명 소속` : selectedRow.team?.region ?? "지역 미정"}</small>
@@ -231,7 +231,7 @@ export function AdminDetailPanel({ controller }) {
               ) : null}
 
               {selectedReport ? (
-              <div className="admin-action-panel">
+              <div className="admin-action-panel ui-control-surface">
                 <div>
                   <strong>{workflow.actionTitle}</strong>
                   <small>선택한 신고 한 건만 처리합니다. 직접 제재와 숨김은 경기관리자 이상만 확정할 수 있습니다.</small>
@@ -255,7 +255,7 @@ export function AdminDetailPanel({ controller }) {
                     처리할 신고
                     <select
                       value={selectedReport?.id ?? ""}
-                      disabled={!reportOptions.length}
+                      disabled={reviewActionPending || !reportOptions.length}
                       onChange={(event) => setSelectedReportIdByScope((current) => ({ ...current, [selectedReportScope]: event.target.value }))}
                     >
                       {!reportOptions.length ? <option value="">신고 없음</option> : null}
@@ -268,14 +268,14 @@ export function AdminDetailPanel({ controller }) {
                   </label>
                   <label>
                     처리 유형
-                    <select value={actionDraft.actionType} disabled={!visibleActionOptions.length || selectedReport.status !== "open"} onChange={(event) => changeReviewActionType(event.target.value)}>
+                    <select value={actionDraft.actionType} disabled={reviewActionPending || !visibleActionOptions.length || selectedReport.status !== "open"} onChange={(event) => changeReviewActionType(event.target.value)}>
                       {visibleActionOptions.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
                     </select>
                   </label>
                   {selectedReportIsVoidRestore ? (
                     <label>
                       별도 제재
-                      <select value={actionDraft.penaltyType} onChange={(event) => updateActionDraft({ penaltyType: event.target.value })}>
+                      <select value={actionDraft.penaltyType} disabled={reviewActionPending} onChange={(event) => updateActionDraft({ penaltyType: event.target.value })}>
                         <option value="">제재 없음</option>
                         <option value="public_room_suspension">공개방 참가 제한</option>
                         <option value="suspension">전체 활동 제한</option>
@@ -288,6 +288,7 @@ export function AdminDetailPanel({ controller }) {
                       <input
                         value={actionDraft.replacementName}
                         maxLength={actionDraft.actionType === "renameTeam" ? 14 : 40}
+                        disabled={reviewActionPending}
                         onChange={(event) => updateActionDraft({ replacementName: event.target.value })}
                       />
                     </label>
@@ -301,7 +302,7 @@ export function AdminDetailPanel({ controller }) {
                   ) : (
                     <label>
                       대상
-                      <select value={selectedTargetUserId} disabled={!targetCandidates.length} onChange={(event) => updateActionDraft({ targetUserId: event.target.value })}>
+                      <select value={selectedTargetUserId} disabled={reviewActionPending || !targetCandidates.length} onChange={(event) => updateActionDraft({ targetUserId: event.target.value })}>
                         {!targetCandidates.length ? <option value="">검증된 대상 없음</option> : null}
                         {targetCandidates.map((user) => <option key={user.id} value={user.id}>{user.name} · 신뢰도 {user.trustScore ?? "-"}</option>)}
                       </select>
@@ -326,7 +327,7 @@ export function AdminDetailPanel({ controller }) {
                           key={item.id}
                           type="button"
                           className="search-picker-result-row"
-                          disabled={item.id === selectedReport?.targetId}
+                          disabled={reviewActionPending || item.id === selectedReport?.targetId}
                           onClick={() => { setMergeAffiliationQuery(item.name); updateActionDraft({ mergeTargetId: item.id }); }}
                         >
                           <span><strong>{item.name}</strong><small>{item.memberCount ?? 0}명</small></span>
@@ -338,17 +339,17 @@ export function AdminDetailPanel({ controller }) {
                 ) : null}
                 {actionNeedsTarget ? <label>
                   제재 기간
-                  <select value={actionDraft.durationDays} onChange={(event) => updateActionDraft({ durationDays: Number(event.target.value) })}>
+                  <select value={actionDraft.durationDays} disabled={reviewActionPending} onChange={(event) => updateActionDraft({ durationDays: Number(event.target.value) })}>
                     {SUSPENSION_TIERS.map((tier) => <option key={tier.id} value={tier.days}>{tier.label}</option>)}
                   </select>
                 </label> : null}
                 <label>
                   처리 사유
-                  <textarea value={actionDraft.reason} maxLength={reviewReasonMaxLength} placeholder="관리자 처리 사유" onChange={(event) => updateActionDraft({ reason: event.target.value })} />
+                  <textarea value={actionDraft.reason} maxLength={reviewReasonMaxLength} placeholder="관리자 처리 사유" disabled={reviewActionPending} onChange={(event) => updateActionDraft({ reason: event.target.value })} />
                 </label>
                 <label>
                   신고자 피드백
-                  <textarea value={actionDraft.feedback} maxLength={500} placeholder={ADMIN_REVIEW_ACTIONS[actionDraft.actionType]?.feedback} onChange={(event) => updateActionDraft({ feedback: event.target.value })} />
+                  <textarea value={actionDraft.feedback} maxLength={500} placeholder={ADMIN_REVIEW_ACTIONS[actionDraft.actionType]?.feedback} disabled={reviewActionPending} onChange={(event) => updateActionDraft({ feedback: event.target.value })} />
                 </label>
                 {!visibleActionOptions.length ? <small>현재 권한으로 실행할 수 있는 처리가 없습니다.</small> : null}
                 {actionDraft.actionType === "markCourtDuplicate" ? <small className="form-warning">대상 구장은 비활성화되고 중복 판정과 관리자 감사 기록이 남습니다.</small> : null}
@@ -430,7 +431,7 @@ export function AdminDetailPanel({ controller }) {
                       <strong>{request.name}</strong>
                       <em>{request.addressText} · {request.hashtag ?? "해시태그 자동"}</em>
                     </span>
-                    <span className="admin-row-actions">
+                    <span className="ui-action-row admin-row-actions">
                       <Badge tone={request.status === "reported" ? "orange" : request.status === "approved" ? "green" : "neutral"}>{getAdminStatusLabel(request.status)}</Badge>
                       {request.status !== "approved" ? <em>구장 신청 탭에서 확인 후 승인</em> : null}
                     </span>

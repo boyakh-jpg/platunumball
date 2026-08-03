@@ -35,21 +35,41 @@ import {
   normalizeBenchCapacity,
 } from "../src/lib/constants.js";
 import { getDbScheduleParts } from "../src/data/scheduleUtils.js";
+import {
+  acceptTeamInvitation,
+  cancelTeamInvitation,
+  createTeam,
+  declineTeamInvitation,
+  deleteTeam,
+  inviteTeamMember,
+  removeTeamMember,
+  updateTeamMemberRole,
+} from "../src/data/repository/account.js";
 import { getRoomScheduleLabel } from "../src/lib/matchUtils.js";
-import { matchesReportSearchQuery } from "../src/pages/settingsPageModel.js";
+import { getResumableRefereeExamAttempt, matchesReportSearchQuery } from "../src/pages/settingsPageModel.js";
 import { fromRemoteApprovedCourt } from "../src/data/remotePayloadMappers.js";
 import { toApprovedCourtRow } from "../src/data/remoteRowSerializers.js";
 import {
+  blockUser,
   finalizeMatchByAuthority,
   configureServerRatingAuthority,
   incrementMatchScore,
   markAllNotificationsRead,
+  reportCourtReview,
+  reportMatch,
+  reportTeamEmblem,
   resolveMatchDispute,
   submitMatchResult,
+  toggleFavoriteCourt,
+  toggleFavoritePlayer,
+  toggleFavoriteReferee,
+  toggleFavoriteTeam,
+  unblockUser,
   updateTournamentMatchSchedule,
   voidMatch as applyMatchVoid,
 } from "../src/data/repository.js";
 import { SERVER_RATING_AUTHORITY } from "../server/lib/ratingAuthority.js";
+import { isCourtFuzzyMatch } from "../server/api/search.js";
 
 configureServerRatingAuthority(SERVER_RATING_AUTHORITY);
 
@@ -141,7 +161,7 @@ import {
   getReportTargetType,
 } from "../src/lib/reportReasons.js";
 import { getRoomPhaseViewModel } from "../src/lib/roomFlow.js";
-import { PROFILE_ICON_CATALOG } from "../src/lib/profileIcons.js";
+import { DEFAULT_UNLOCKED_PROFILE_ICON_KEYS, PROFILE_ICON_CATALOG } from "../src/lib/profileIcons.js";
 import {
   getCourtAccessLabel,
   getCourtHoopCount,
@@ -176,19 +196,12 @@ import {
 } from "../server/api/_r2ImageStorage.js";
 import { readJsonBody } from "../server/api/_supabaseAdmin.js";
 import { compactClientUser } from "../server/lib/clientProjection.js";
-import {
-  getPlayerMatchModeMmr,
-  getRecruitingListCardCounts,
-  getRecruitingListCardLobby,
-  getRecruitingTargetMmr,
-  getTeamEventEligibility,
-  isPaidRecruitingCourt,
-} from "../src/lib/recruiting.js";
+import { getRecruitingListCardCounts, getRecruitingListCardLobby, isPaidRecruitingCourt } from "../src/lib/recruiting.js";
 import { mergeRecruitingPostsById } from "../src/hooks/useAppData.js";
-import { getLocalRivalries, getPlayerSeasonActivity, getTeamScoreSummary } from "../src/lib/season.js";
+import { getPlayerSeasonActivity } from "../src/lib/season.js";
 import { fromRemoteProfile } from "../src/data/profileMappers.js";
 import { IMAGE_CONTEXT_MENU_ALLOW_ATTRIBUTE, getProtectedImageTarget } from "../src/hooks/useImageInteractionGuard.js";
-import { REFEREE_EXAM_VERSION } from "../src/lib/refereeExamBank.js";
+import { createRefereeExamSet, hasCompleteRefereeExamAnswers, REFEREE_EXAM_SIZE, REFEREE_EXAM_VERSION } from "../src/lib/refereeExamBank.js";
 import {
   REFEREE_RULEBOOK_CHECKLIST,
   REFEREE_RULEBOOK_EASY_SECTIONS,
@@ -670,6 +683,7 @@ test("무심판 경기의 최종 확정은 방장만 수행한다", () => {
 test("match clock keeps shot settings stable and fullscreen compact", async () => {
   const panelSource = await readSourceGroup(readSource, MATCH_CLOCK_PANEL_SOURCE_PATHS);
   const clockStyles = await readCssTree("src/styles/match-clock.css");
+  const qrStyles = await readSource("src/styles/primitives/ui-entity-feedback.css");
   const recruitingSource = await readRecruitingPageSource();
   const matchRoomSource = await readSourceGroup(readSource, MATCH_ROOM_SOURCE_PATHS);
   const forceEndMigration = [
@@ -723,26 +737,14 @@ test("match clock keeps shot settings stable and fullscreen compact", async () =
   assert.match(clockStyles, /@media \(width <= 720px\)[\s\S]*\.ui-match-score-control-grid[\s\S]*grid-template-columns: minmax\(0, 1fr\)/);
   assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-device-notice \{[^}]*pointer-events: none;/);
   assert.match(clockStyles, /\.ui-match-clock-display-grid-with-attendance:not\(\.ui-match-clock-display-grid-single\) \{[^}]*grid-template-areas:\s*"score score"\s*"attendance shot";[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/);
-  assert.match(clockStyles, /\.ui-match-clock-scoreboard \{[^}]*grid-area: score;/);
-  assert.match(clockStyles, /\.ui-match-clock-attendance-qr,\s*\.ui-match-shot-clock \{[^}]*height: var\(--match-clock-secondary-panel-height\);[^}]*min-height: 0;[^}]*max-height: none;/);
-  assert.match(
-    clockStyles,
-    /\.ui-match-clock-panel-focus:not\(\.ui-match-clock-panel-pending\)[\s\S]*?clamp\(112px, 20cqi, 210px\)[\s\S]*?repeat\(4, minmax\(0, 1fr\)\)[\s\S]*?grid-template-rows: minmax\(0, 1fr\) repeat\(6, max-content\);/,
-  );
-  assert.match(clockStyles, /\.ui-match-clock-panel-focus:not\(\.ui-match-clock-panel-pending\) \.ui-match-clock-live \{[^}]*display: contents;/);
-  assert.match(clockStyles, /\.ui-match-clock-panel-focus:not\(\.ui-match-clock-panel-pending\) \.ui-match-clock-display-grid \{[^}]*display: contents;/);
-  assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-scoreboard \{[^}]*grid-column: 1 \/ -1;[^}]*grid-row: 1;/);
-  assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-attendance-qr,\s*\.ui-match-clock-panel-focus \.ui-match-shot-clock \{[^}]*grid-row: 4 \/ 7;[^}]*height: 100%;/);
-  assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-attendance-qr \{[^}]*grid-column: 1;/);
-  assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-shot-clock \{[^}]*grid-column: 6;/);
-  assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-actions \{[^}]*grid-column: 2 \/ 5;[^}]*grid-row: 4;[^}]*width: 100%;/);
-  assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-match-actions \{[^}]*grid-column: 5;[^}]*grid-row: 4;/);
-  assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-device-tools \{[^}]*display: contents;/);
-  assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-device-tools \.ui-button:nth-child\(3\) \{[^}]*grid-column: 2 \/ 4;[^}]*grid-row: 6;/);
-  assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-volume \{[^}]*grid-column: 4 \/ 6;[^}]*grid-row: 6;/);
-  assert.doesNotMatch(clockStyles, /\.ui-match-clock-panel:not\(\.ui-match-clock-panel-focus\) \.ui-match-clock-attendance-qr \{[^}]*width: min\(100%, 180px\);/);
-  assert.doesNotMatch(clockStyles, /@media \(width <= 720px\)[\s\S]*?\.ui-match-shot-clock \{[^}]*max-height: none;/);
+  assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-actions \{[^}]*grid-column: 2;[^}]*grid-row: 4;[^}]*width: 100%;/);
+  assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-attendance-qr \{[^}]*grid-template-rows: auto auto;[^}]*align-content: center;/);
+  assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-attendance-qr svg \{[^}]*margin-inline: auto;/);
+  assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-device-tools \{[^}]*grid-template-columns: repeat\(3, minmax\(0, 0\.72fr\)\) minmax\(0, 2fr\);[^}]*grid-column: 2;[^}]*grid-row: 5;/);
+  assert.doesNotMatch(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-device-tools \.ui-button:nth-child/);
+  assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-volume \{[^}]*flex: 0 1 clamp\(160px, 22vw, 240px\);/);
   assert.doesNotMatch(clockStyles, /@media \(width >= 721px\)[\s\S]*?\.ui-match-clock-panel-focus \.ui-match-clock-display-grid/);
+  assert.match(qrStyles, /\.ui-qr-expand-backdrop\s*\{[^}]*z-index:\s*4000;/);
   assert.match(clockStyles, /\.ui-match-clock-score-actions \.ui-button \{[^}]*min-height: 44px;/);
   assert.match(clockStyles, /\.ui-match-clock-score-controls \{[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/);
   assert.match(
@@ -753,6 +755,7 @@ test("match clock keeps shot settings stable and fullscreen compact", async () =
     clockStyles,
     /\.ui-match-clock-panel-focus \.ui-match-clock-score-actions \{[^}]*grid-template-columns: repeat\(4, minmax\(34px, 1fr\)\);/,
   );
+  assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-score-control-side \{[^}]*background: transparent;[^}]*border: 0;/);
   assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-main-time time \{[^}]*font-size: clamp\(3rem, 16vmin, 8rem\);/);
   assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-shot-clock-value \{[^}]*font-size: clamp\(2rem, 8vmin, 3\.5rem\);/);
   assert.match(clockStyles, /\.ui-match-shot-clock-action \{[^}]*background: var\(--rb-orange\);/);
@@ -1079,7 +1082,7 @@ test("room schedule labels stay canonical across all recruiting surfaces", async
   assert.equal(getRoomScheduleLabel({
     timingType: "instant",
     createdAt: "2026-07-22T10:00:00",
-  }), "즉시 · 12:00 종료");
+  }), "즉시");
   assert.equal(getRoomScheduleLabel({}), "일정 미정");
 
   const [home, recruiting, notifications] = await Promise.all([
@@ -1090,6 +1093,59 @@ test("room schedule labels stay canonical across all recruiting surfaces", async
   const scheduleConsumers = `${home}\n${recruiting}\n${notifications}`;
   assert.doesNotMatch(scheduleConsumers, /function\s+getRecruitingSchedule\s*\(/);
   [home, recruiting, notifications].forEach((source) => assert.match(source, /getRoomScheduleLabel/));
+});
+
+test("notification actions keep tournament links and failed team invites in place", async () => {
+  const notifications = await readSource("src/pages/Notifications.jsx");
+  const bootstrap = await readSource("src/hooks/appData/bootstrap.js");
+  const runtimeHydration = await readSource("src/hooks/appData/orchestrator/runtimeHydration.js");
+  assert.match(notifications, /getNotificationHref\(notification\)/u);
+  assert.match(notifications, /loadDirectory\?\.\(\{ kind: "self", force: true \}\)/u);
+  assert.match(notifications, /const result = await runInvitationAction\([\s\S]{0,160}app\.actions\.acceptTeamInvitation\(invitation\.id\)/u);
+  assert.match(notifications, /if \(!result \|\| result\.ok === false\) return/u);
+  assert.match(notifications, /pendingInvitationKeysRef\.current\.has\(key\)/u);
+  assert.match(bootstrap, /pathname === "\/app\/notifications"[\s\S]{0,120}includeTeamInvitations: true/u);
+  assert.match(bootstrap, /includeExtraProfiles: includeFavorites \|\| includeTeamInvitations/u);
+  assert.match(runtimeHydration, /includeTeamInvitations: initialLoadOptions\.includeTeamInvitations === true/u);
+});
+
+test("season rival challenge closes the created room when the B-team invite fails", async () => {
+  const [season, createController, createEffects, createActions] = await Promise.all([
+    readSource("src/pages/Season.jsx"),
+    readSource("src/components/match/useCreateMatchBaseController.js"),
+    readSource("src/components/match/useCreateMatchValidationEffects.js"),
+    readSource("src/components/match/CreateMatchActions.jsx"),
+  ]);
+  assert.match(season, /challengeTeamAId=\$\{encodeURIComponent\(myTeam\.id\)\}&challengeTeamBId=\$\{encodeURIComponent\(opponentTeam\.id\)\}/u);
+  assert.match(createController, /challengeSearchParams\.get\("challengeTeamAId"\)/u);
+  assert.match(createController, /challengeSearchParams\.get\("challengeTeamBId"\)/u);
+  assert.match(createEffects, /if \(!hasTeamChallenge\) return;[\s\S]*visibility: "private",[\s\S]*teamAId: challengeTeamAId,[\s\S]*teamBId: challengeTeamBId/u);
+  assert.match(createEffects, /if \(isTeamRoom && !isTournamentRoom\) \{\s*if \(hasTeamChallenge\) return;/u);
+  assert.match(createEffects, /if \(canCreateTeamRoom \|\| hasTeamChallenge\) return;/u);
+  assert.match(createActions, /const result = await app\.actions\.setRecruitingRoomTeam\(postId, "teamB", presetTeamBId, "시즌 라이벌 매치업에서 보낸 팀 초대입니다\."\)/u);
+  assert.match(createActions, /if \(!result \|\| result\?\.ok === false\) \{[\s\S]{0,240}closeRecruitingPost\(postId, "B팀 초대 실패로 생성 취소"\)[\s\S]{0,240}return;/u);
+});
+
+test("remote favorite search hydrates the selected entity before optimistic toggle", async () => {
+  const favoriteSource = await readSource("src/pages/useSettingsFavorites.jsx");
+  const settingsActions = await readSource("src/hooks/appData/actions/settingsActions.js");
+  const serverActions = await readSource("src/hooks/appData/orchestrator/serverActions.js");
+  assert.match(favoriteSource, /const result = await toggleAction\(item\.id, item\)/);
+  assert.match(favoriteSource, /if \(!result \|\| result\?\.ok === false\)/);
+  assert.match(favoriteSource, /favoriteActionPendingRef\.current/);
+  assert.match(settingsActions, /toggleFavoritePlayer: \(userId, targetSnapshot\)[\s\S]*toggleFavoriteReferee: \(userId, targetSnapshot\)/);
+  assert.match(serverActions, /active && targetSnapshot\?\.id === safeTargetId/);
+  assert.match(serverActions, /mergeRemoteProfileState\(current, targetType === "team"/);
+  assert.match(serverActions, /approvedCourts: mergeCourtSearchCourts/);
+});
+
+test("report success survives a synchronous directory refresh failure", async () => {
+  const settingsReport = await readSource("src/pages/useSettingsReportController.jsx");
+  assert.match(settingsReport, /const loadDirectory = app\.actions\.loadDirectory/u);
+  assert.match(settingsReport, /setReportSubmitStatus\(result\.duplicate[\s\S]*if \(loadDirectory\)/u);
+  assert.match(settingsReport, /Promise\.resolve\(\)\s*\.then\(\(\) => loadDirectory\(/u);
+  assert.match(settingsReport, /current === "신고가 접수됐습니다\."/u);
+  assert.doesNotMatch(settingsReport, /Promise\.resolve\(loadDirectory\(/u);
 });
 
 test("room chat limits and row mapping stay shared", () => {
@@ -1313,10 +1369,11 @@ test("profile icon background choice and image preview stay persistent and separ
 });
 
 test("profile icon picker lists owned icons only and locked achievements conceal artwork", async () => {
-  const [dialog, achievements, achievementApi, styles] = await Promise.all([
+  const [dialog, achievements, achievementApi, profileActions, styles] = await Promise.all([
     readSource("src/components/profile/ProfileIconDialog.jsx"),
     readSource("src/pages/ProfileAchievements.jsx"),
     readSource("server/api/_profileIconAchievements.js"),
+    readSource("src/hooks/appData/actions/profileTeamActions.js"),
     readCssTree("src/styles/features/profile-emblems.css"),
   ]);
   assert.match(dialog, /group\.icons\.filter\(\(icon\) => unlockedSet\.has\(icon\.id\)\)/);
@@ -1331,6 +1388,7 @@ test("profile icon picker lists owned icons only and locked achievements conceal
   assert.equal(PROFILE_ICON_CATALOG.some((icon) => icon.id.includes("four-on-four")), false);
   assert.equal(PROFILE_ICON_CATALOG.some((icon) => icon.id.startsWith("226-five-on-five-")), true);
   assert.equal(PROFILE_ICON_CATALOG.filter((icon) => /^22[1-5]-referee-exam-/.test(icon.id)).length, 5);
+  assert.equal(DEFAULT_UNLOCKED_PROFILE_ICON_KEYS.length, 5);
   assert.deepEqual(
     PROFILE_ICON_CATALOG
       .filter((icon) => /^22[1-5]-referee-exam-/.test(icon.id))
@@ -1340,6 +1398,10 @@ test("profile icon picker lists owned icons only and locked achievements conceal
   assert.match(achievementApi, /referee_exam_attempts/);
   assert.match(achievementApi, /refereeExamCompletedCount/);
   assert.match(achievementApi, /activeUnlockedRows = \(unlockedRows \?\? \[\]\)\.filter\(\(row\) => PROFILE_ICON_ID_SET\.has\(row\.icon_key\)\)/);
+  assert.match(profileActions, /if \(!isSupabaseConfigured\)[\s\S]*DEFAULT_UNLOCKED_PROFILE_ICON_KEYS/);
+  assert.match(profileActions, /saveLocalProfileIconPatch/);
+  assert.match(profileActions, /isEmblemHexColor/);
+  assert.match(profileActions, /discord_avatar_unavailable/);
 });
 
 test("image native menus and drag stay blocked by one shared guard", async () => {
@@ -1445,95 +1507,318 @@ test("season hub is player-centered while regional MMR stays separate", async ()
     readGlobalStyles(),
   ]);
   assert.match(seasonPage, /getPlayerSeasonRows\(app\.state\.users, app\.state\.matches, season, "전체"\)/);
+  assert.match(seasonPage, /const mySeasonRow = seasonPlayerRows\.find\(\(user\) => user\.id === app\.currentUser\.id\)/);
+  assert.match(seasonPage, /const blockedUserIds = new Set\(app\.state\.settings\?\.blockedUserIds \?\? \[\]\)/);
+  assert.equal((seasonPage.match(/\.filter\(\(user\) => !blockedUserIds\.has\(user\.id\)\)/g) ?? []).length, 2);
   assert.match(seasonPage, /전국 개인 승격권/);
   assert.match(seasonPage, /이번 시즌 플레이/);
   assert.match(seasonPage, /state=\{\{ teamPreview: team \}\}/);
   assert.match(seasonPage, /<TeamEmblem team=\{team\} size="sm" \/>/);
+  assert.match(seasonPage, /to="\/app\/rankings\?view=promotion"[\s\S]*?>전체 순위<\/Button>/);
+  assert.match(seasonPage, /to="\/app\/rankings\?view=promotion&tab=teams"[\s\S]*?>전체 팀 순위<\/Button>/);
   assert.doesNotMatch(seasonPage, /운영 체크|처리할 경기|getOperationsSummary|MatchRoomModal/);
   assert.match(rankingsPage, /\{ id: "region", label: "지역" \}/);
-  assert.match(rankingsPage, /useState\("integrated"\)/);
+  assert.match(rankingsPage, /\{ id: "2v2", label: "2v2" \}/);
+  assert.match(rankingsPage, /const promotionView = searchParams\.get\("view"\) === "promotion"/);
+  assert.match(rankingsPage, /const canonicalEnabled = isSupabaseConfigured && app\.remoteReady && promotionView/);
+  assert.match(rankingsPage, /useCanonicalSeasonRankings\(canonicalEnabled, season\.id\)/);
+  assert.match(rankingsPage, /canonicalRankings\.data\.players/);
+  assert.match(rankingsPage, /canonicalRankings\.data\.teams/);
+  assert.match(rankingsPage, /승격권 기록을 불러오지 못했습니다/);
+  assert.match(rankingsPage, /promotionLoading \? <BasketballLoader label="승격권 기록 불러오는 중"/);
+  assert.match(rankingsPage, /directoryStatusMatches[\s\S]*placementCompleteOnly === placementCompleteOnly[\s\S]*rankingSort === rankingSort/);
+  assert.match(rankingsPage, /<SeasonPromotionTable/);
+  assert.match(rankingsPage, /nextSearchParams\.set\("tab", nextTab\)/);
   assert.match(styles, /\.season-race-list > \.player-hover-trigger/);
 });
 
-test("team score summary deduplicates current and archived matches", () => {
-  const summary = getTeamScoreSummary([{
-    id: "match-1",
-    status: "confirmed",
-    result: { scoreA: 21, scoreB: 18 },
-    teamA: { teamId: "team-a" },
-    teamB: { teamId: "team-b" },
-  }], [
-    { matchId: "match-1", score: 21, opponentScore: 18 },
-    { matchId: "match-2", score: 14, opponentScore: 16 },
-  ], "team-a");
-  assert.deepEqual(summary, {
-    games: 2,
-    pointsFor: 35,
-    pointsAgainst: 34,
-    averagePointsFor: 17.5,
-    averagePointsAgainst: 17,
-    averageMargin: 0.5,
-  });
-});
-
-test("season rival challenge fixes my team and opponent before opening the room", async () => {
-  const rivalries = getLocalRivalries([
-    { id: "mine-a", region: "서울", mmr: 1200, wins: 0 },
-    { id: "mine-b", region: "서울", mmr: 1250, wins: 0 },
-    { id: "rival", region: "서울", mmr: 1230, wins: 0 },
-    { id: "far", region: "경기", mmr: 1220, wins: 0 },
-  ], [], "서울", 6, ["mine-a", "mine-b"]);
-  assert.deepEqual(rivalries.map((pair) => pair.id).sort(), ["mine-a-rival", "mine-b-rival"]);
-
-  const [seasonPage, createController, createEffects, createActions, room] = await Promise.all([
-    readSource("src/pages/Season.jsx"),
-    readSource("src/components/match/useCreateMatchBaseController.js"),
-    readSource("src/components/match/useCreateMatchValidationEffects.js"),
-    readSource("src/components/match/CreateMatchActions.jsx"),
-    readSource("src/components/recruiting/RecruitingRoomPrimarySection.jsx"),
-  ]);
-  assert.match(seasonPage, /challengeTeamAId=\$\{encodeURIComponent\(myTeam\.id\)\}&challengeTeamBId=\$\{encodeURIComponent\(opponentTeam\.id\)\}/);
-  assert.match(createController, /challengeSearchParams\.get\("challengeTeamAId"\)/);
-  assert.match(createEffects, /if \(!hasTeamChallenge\) return;[\s\S]{0,240}teamBId: challengeTeamBId/);
-  assert.match(createActions, /setRecruitingRoomTeam\(postId, "teamB", challengeTeamBId, "시즌 라이벌 매치업에서 보낸 팀 초대입니다\."\)/);
-  assert.match(room, /<strong>B사이드<\/strong>\s*\{selectedRoomTeamBId \? \(/);
-});
-
-test("recruiting MMR follows match mode while age eligibility stays enforced", async () => {
-  const host = { id: "host", ageGroup: "open", ratings: { integrated: 1250, modes: { "1v1": 1100, "5v5": 1450 } } };
-  const junior = { id: "junior", ageGroup: "junior", ratings: { integrated: 1250, modes: { "1v1": 1100, "5v5": 1450 } } };
-  const state = { users: [host, junior], teams: [] };
-  const team = { id: "team", members: [{ userId: "host", role: "captain" }, { userId: "junior", role: "member" }] };
-
-  assert.equal(getPlayerMatchModeMmr(host, "1v1"), 1100);
-  assert.equal(getPlayerMatchModeMmr(host, "5v5"), 1450);
-  assert.equal(getRecruitingTargetMmr({ playerId: "host", mode: "1v1" }, state), 1100);
-  assert.equal(getRecruitingTargetMmr({ playerId: "host", mode: "5v5" }, state), 1450);
-  assert.deepEqual(getTeamEventEligibility(team, state.users, {
-    mode: "1v1",
-    capacity: 1,
-    ranked: true,
-    mmrLimitMode: "block",
-    targetMmr: 1100,
-    allowedAgeGroups: ["open"],
-  }).eligiblePlayerIds, ["host"]);
-
-  const createValidation = await readSource("src/components/match/useCreateMatchValidationController.js");
-  assert.match(createValidation, /getRecruitingTierRange\(getPlayerMatchModeMmr\(app\.currentUser, draft\.mode\)/);
+test("랭킹 디렉터리 실패는 요청 범위를 보존해 재시도 화면을 연다", async () => {
+  const directoryLoader = await readSource("src/hooks/appData/orchestrator/directoryLoaders.js");
+  assert.match(directoryLoader, /const requestPage = \{[\s\S]*placementCompleteOnly,[\s\S]*rankingSort,/);
+  assert.match(directoryLoader, /loading: true, error: "", page: requestPage, cacheKey/);
+  assert.match(directoryLoader, /loading: false, loaded: false[\s\S]*page: requestPage, cacheKey/);
 });
 
 test("team detail keeps navigation preview and always refreshes authoritative team data once", async () => {
   const teamDetailPage = await readSource("src/pages/TeamDetail.jsx");
   const teamDetailView = await readSource("src/pages/TeamDetailView.jsx");
+  const teamHoverCard = await readSource("src/components/team/TeamHoverCard.jsx");
   assert.match(teamDetailPage, /location\.state\?\.teamPreview\?\.id === teamId/);
   assert.match(teamDetailPage, /const authoritativeTeam = app\.state\.teams\.find/);
-  assert.match(teamDetailPage, /const team = authoritativeTeam \?\? previewTeam/);
-  assert.match(teamDetailPage, /loadDirectory\?\.\(\{ force: true, teamId \}\)/);
+  assert.match(teamDetailPage, /const team = authoritativeTeam \?\? \(!teamDetailReady \? previewTeam : null\)/);
+  assert.match(teamDetailPage, /const canManage = teamDetailReady[\s\S]{0,180}authoritativeCaptain\?\.userId === app\.currentUser\.id/);
+  assert.match(teamDetailPage, /authoritativeTeam\?\.membersPartial !== true/);
+  assert.match(teamDetailPage, /const refreshTeamDetail = useCallback\(async \(\) => \{/);
+  assert.match(teamDetailPage, /const loaded = await loadDirectory\(\{ force: true, teamId \}\)/);
+  assert.match(teamDetailPage, /error: loaded === true \? "" : "팀 정보를 불러오지 못했습니다\."/);
   assert.match(teamDetailPage, /if \(detailRequestRef\.current !== teamId\)/);
   assert.match(teamDetailPage, /detailRequestRef\.current = teamId;\s+refreshTeam\(\);/);
-  assert.match(teamDetailPage, /!team && app\.remoteReady !== false && Boolean\(loadDirectory\)/);
-  assert.match(teamDetailView, /const inviteRoleOptions = TEAM_INVITE_ROLES\.map/);
-  assert.match(teamDetailView, /result=\{record\.result\}/);
+  assert.match(teamDetailPage, /!team && teamDetailError/);
+  assert.match(teamDetailPage, /!team && !teamDetailReady && app\.remoteReady !== false/);
+  assert.match(teamDetailView, /teamDetailError[\s\S]{0,420}refreshTeamDetail\(\)[\s\S]{0,120}다시 시도/);
+  assert.match(teamDetailPage, /const result = await app\.actions\.inviteTeamMember/);
+  assert.match(teamDetailPage, /if \(!result \|\| result\.ok === false\)/);
+  assert.match(teamDetailPage, /if \(!canAddMember \|\| teamInvitePendingRef\.current \|\| teamManagementPendingRef\.current\) return;/);
+  assert.match(teamDetailView, /disabled=\{!canAddMember \|\| teamControlPending\}/);
+  assert.match(teamDetailView, /result=\{record\.result\}/u);
+  assert.doesNotMatch(teamDetailView, /getScoreOutcome/u);
+  assert.match(teamDetailView, /const inviteRoleOptions = TEAM_INVITE_ROLES\.map/u);
+  assert.match(teamDetailView, /function getManagedRoleOptions\(member, captainId\)/u);
+  assert.match(teamDetailPage, /const result = await app\.actions\.toggleFavoriteTeam\(team\.id, team\)/);
+  assert.match(teamDetailPage, /if \(deleted\) navigate\("\/app\/teams", \{ replace: true \}\)/);
+  assert.match(teamDetailView, /toggleTeamFavorite\(\)/);
+  assert.match(teamHoverCard, /navigate\(teamPath, \{ state: \{ teamPreview: team \} \}\)/);
+  assert.match(teamHoverCard, /state=\{\{ teamPreview: team \}\}/);
+});
+
+test("blocked player labels remain identifiable after directory filtering", async () => {
+  const [settingsRepository, settingsActions, settingsServer, settingsView] = await Promise.all([
+    readSource("src/data/repository/settings.js"),
+    readSource("src/hooks/appData/actions.js"),
+    readSource("server/api/settings/sync.js"),
+    readSource("src/pages/SettingsSideColumn.jsx"),
+  ]);
+  assert.match(settingsRepository, /blockedUserProfiles/);
+  assert.match(settingsRepository, /userProfile\?\.id === userId \? userProfile/);
+  assert.match(settingsActions, /syncSettingsServer\(\{ blockedUserIds: nextBlockedUserIds, blockedUserProfiles: nextBlockedUserProfiles \}\)/);
+  assert.match(settingsActions, /targetProfile \?\? stateRef\.current\.users\.find/);
+  assert.match(settingsServer, /settingsPatch\.blockedUserProfiles/);
+  assert.match(settingsView, /blockedUserProfiles\?\.\[userId\]\?\.name/);
+});
+
+test("team creation requires one active approved home court selection", async () => {
+  const [teamsPage, teamRepository, teamServer, backendSimulation] = await Promise.all([
+    readSource("src/pages/Teams.jsx"),
+    readSource("src/data/repository/account.js"),
+    readSource("server/api/teams/sync-team.js"),
+    readSource("scripts/simulate-backend-flow.mjs"),
+  ]);
+  assert.match(teamsPage, /homeCourtId: ""/);
+  assert.match(teamsPage, /court\.id === draft\.homeCourtId && court\.name === draft\.homeCourt/);
+  assert.match(teamsPage, /homeCourt: court\.name, homeCourtId: court\.id/);
+  assert.match(teamsPage, /teamNameInvalid \|\| homeCourtInvalid/);
+  assert.match(teamsPage, /teamCreatePendingRef\.current \|\| teamCreatePending/);
+  assert.match(teamsPage, /teamCreatePendingRef\.current = true[\s\S]*finally \{[\s\S]*teamCreatePendingRef\.current = false/);
+  assert.match(teamsPage, /setSelectedSearchTeam\(team\)/);
+  assert.match(teamsPage, /selectedSearchTeam && !rankingTeams\.some/);
+  assert.match(teamRepository, /homeCourtId: teamDraft\.homeCourtId/);
+  assert.match(teamServer, /from\("approved_courts"\)[\s\S]*?\.eq\("id", team\.homeCourtId\)[\s\S]*?\.eq\("status", "active"\)/);
+  assert.match(teamServer, /new Error\("invalid_team_home_court"\)/);
+  assert.match(teamServer, /team\.homeCourt = approvedCourt\.name/);
+  assert.match(backendSimulation, /runTeamLifecycleScenario[\s\S]*?homeCourtId: simulationCourtId/);
+  assert.match(backendSimulation, /runTeamEmblemModerationScenario[\s\S]*?homeCourtId: simulationCourtId/);
+  assert.match(backendSimulation, /setRepresentativeTeam[\s\S]*?rejectNonMemberRepresentativeTeam[\s\S]*?representativeTeamDeleteFallback/);
+  assert.match(backendSimulation, /memberRoleUpdated: true[\s\S]*?memberRemoved: true/);
+});
+
+test("team lifecycle reducer preserves invitation, role, removal, and deletion invariants", () => {
+  let state = {
+    currentUserId: "captain",
+    users: [{ id: "captain" }, { id: "member" }],
+    teams: [],
+    teamInvitations: [],
+    recruitingPosts: [],
+    notifications: [],
+    settings: {},
+  };
+  state = createTeam(state, { name: "QA TEAM", homeCourt: "QA COURT", homeCourtId: "court-qa", region: "서울" });
+  const teamId = state.teams[0].id;
+  state = inviteTeamMember(state, teamId, "member", "regular");
+  const invitationId = state.teamInvitations[0].id;
+  state = acceptTeamInvitation({ ...state, currentUserId: "member" }, invitationId);
+  assert.equal(state.teams[0].members.find((member) => member.userId === "member")?.role, "regular");
+  state = updateTeamMemberRole({ ...state, currentUserId: "captain" }, teamId, "member", "mercenary");
+  assert.equal(state.teams[0].members.find((member) => member.userId === "member")?.role, "mercenary");
+  state = removeTeamMember(state, teamId, "member");
+  assert.deepEqual(state.teams[0].members, [{ userId: "captain", role: "captain" }]);
+  state = deleteTeam(state, teamId);
+  assert.equal(state.teams.length, 0);
+  assert.deepEqual(state.deletedTeamIds, [teamId]);
+});
+
+test("team deletion expires pending invitations and falls back from the deleted representative team", () => {
+  const state = {
+    currentUserId: "captain",
+    teams: [
+      { id: "deleted", name: "삭제 팀", members: [{ userId: "captain", role: "captain" }] },
+      { id: "fallback", name: "대체 팀", members: [{ userId: "captain", role: "regular" }] },
+    ],
+    teamInvitations: [
+      { id: "pending", teamId: "deleted", status: "pending" },
+      { id: "accepted", teamId: "deleted", status: "accepted" },
+    ],
+    recruitingPosts: [],
+    notifications: [],
+    settings: { representativeTeamId: "deleted", favoriteTeamIds: ["deleted"] },
+  };
+  const next = deleteTeam(state, "deleted");
+  assert.deepEqual(next.teams.map(({ id }) => id), ["fallback"]);
+  assert.equal(next.teamInvitations.find(({ id }) => id === "pending").status, "expired");
+  assert.equal(next.teamInvitations.find(({ id }) => id === "accepted").status, "accepted");
+  assert.equal(next.settings.representativeTeamId, "fallback");
+  assert.deepEqual(next.settings.favoriteTeamIds, []);
+});
+
+test("team invitation reducer preserves authority and terminal states", () => {
+  const team = {
+    id: "team-guard",
+    name: "GUARD",
+    members: [{ userId: "captain", role: "captain" }],
+  };
+  const base = {
+    currentUserId: "outsider",
+    users: [{ id: "captain" }, { id: "member" }],
+    teams: [team],
+    teamInvitations: [],
+    notifications: [],
+    settings: {},
+  };
+  const denied = inviteTeamMember(base, team.id, "member");
+  assert.equal(denied.teamInvitations.length, 0);
+  assert.match(denied.notifications[0].title, /권한 없음/);
+
+  const invited = inviteTeamMember({ ...base, currentUserId: "captain" }, team.id, "member");
+  const invitationId = invited.teamInvitations[0].id;
+  assert.equal(acceptTeamInvitation({ ...invited, currentUserId: "outsider" }, invitationId).teams[0].members.length, 1);
+  assert.equal(declineTeamInvitation({ ...invited, currentUserId: "member" }, invitationId).teamInvitations[0].status, "declined");
+  assert.equal(cancelTeamInvitation(invited, invitationId).teamInvitations[0].status, "cancelled");
+  assert.equal(inviteTeamMember(invited, team.id, "member").teamInvitations.length, 1);
+});
+
+test("favorite reducers add, remove, and validate current or retired targets", () => {
+  const users = [
+    { id: "me", name: "나" },
+    { id: "player", name: "선수" },
+    { id: "referee", name: "심판", trustScore: 95 },
+  ];
+  const state = {
+    currentUserId: "me",
+    users,
+    teams: [{ id: "team", members: [] }],
+    settings: {
+      approvedCourts: [{ id: "court", name: "구장", status: "active" }],
+      refereeAppointments: [{ userId: "referee", role: "referee", grade: "candidate", status: "active" }],
+      favoritePlayerIds: [],
+      favoriteTeamIds: [],
+      favoriteCourtIds: [],
+      favoriteRefereeIds: [],
+    },
+  };
+  const added = [
+    [toggleFavoritePlayer, "player", "favoritePlayerIds"],
+    [toggleFavoriteTeam, "team", "favoriteTeamIds"],
+    [toggleFavoriteCourt, "court", "favoriteCourtIds"],
+    [toggleFavoriteReferee, "referee", "favoriteRefereeIds"],
+  ].reduce((current, [toggle, id]) => toggle(current, id), state);
+  assert.deepEqual(added.settings.favoritePlayerIds, ["player"]);
+  assert.deepEqual(added.settings.favoriteTeamIds, ["team"]);
+  assert.deepEqual(added.settings.favoriteCourtIds, ["court"]);
+  assert.deepEqual(added.settings.favoriteRefereeIds, ["referee"]);
+  assert.deepEqual(toggleFavoritePlayer(added, "missing").settings.favoritePlayerIds, ["player"]);
+  assert.deepEqual(toggleFavoriteReferee(added, "player").settings.favoriteRefereeIds, ["referee"]);
+  assert.deepEqual(toggleFavoritePlayer(added, "player").settings.favoritePlayerIds, []);
+  const retired = {
+    ...added,
+    users: [{ id: "me" }],
+    teams: [],
+    settings: { ...added.settings, approvedCourts: [], refereeAppointments: [] },
+  };
+  assert.deepEqual(toggleFavoritePlayer(retired, "player").settings.favoritePlayerIds, []);
+  assert.deepEqual(toggleFavoriteTeam(retired, "team").settings.favoriteTeamIds, []);
+  assert.deepEqual(toggleFavoriteCourt(retired, "court").settings.favoriteCourtIds, []);
+  assert.deepEqual(toggleFavoriteReferee(retired, "referee").settings.favoriteRefereeIds, []);
+});
+
+test("court review and uploaded team emblem reports preserve eligibility and duplicate guards", () => {
+  const base = {
+    currentUserId: "reporter",
+    users: [{ id: "reporter" }, { id: "reviewer" }, { id: "captain" }],
+    teams: [{
+      id: "team",
+      name: "신고 팀",
+      emblemSource: "upload",
+      emblemKey: "team/team.webp",
+      members: [{ userId: "captain", role: "captain" }],
+    }],
+    reports: [],
+    notifications: [],
+    settings: { courtReviews: [{ id: "review", reviewerId: "reviewer", courtName: "신고 구장" }] },
+  };
+  const reviewReported = reportCourtReview(base, "review", "허위 리뷰");
+  assert.equal(reviewReported.reports[0].type, "court_review");
+  assert.equal(reportCourtReview(reviewReported, "review", "중복").reports.length, 1);
+  assert.equal(reportCourtReview({ ...base, currentUserId: "reviewer" }, "review").reports.length, 0);
+
+  const emblemReported = reportTeamEmblem(base, "team", "부적절한 이미지");
+  assert.equal(emblemReported.reports[0].type, "team_emblem");
+  assert.deepEqual(emblemReported.reports[0].reportedUserIds, ["captain"]);
+  assert.equal(reportTeamEmblem(emblemReported, "team", "중복").reports.length, 1);
+  assert.equal(reportTeamEmblem({ ...base, currentUserId: "captain" }, "team").reports.length, 0);
+});
+
+test("match reports keep one unresolved row per reporter and match", () => {
+  const state = {
+    currentUserId: "reporter",
+    matches: [{
+      id: "match",
+      title: "신고 경기",
+      endedAt: new Date().toISOString(),
+      teamA: { players: ["reporter"] },
+      teamB: { players: ["opponent"] },
+    }],
+    reports: [],
+    notifications: [],
+    settings: {},
+  };
+  const first = reportMatch(state, "match", "첫 신고", ["opponent"]);
+  const duplicate = reportMatch(first, "match", "중복 신고", ["opponent"]);
+  assert.equal(first.reports.length, 1);
+  assert.equal(duplicate, first);
+});
+
+test("court fuzzy search tolerates one edit without opening one-character queries", () => {
+  const court = { name: "연북중학교 농구장", address_text: "서울특별시 마포구 연남동" };
+  assert.equal(isCourtFuzzyMatch(court, "연북중학고"), true);
+  assert.equal(isCourtFuzzyMatch(court, "연남동"), true);
+  assert.equal(isCourtFuzzyMatch(court, "연"), false);
+  assert.equal(isCourtFuzzyMatch(court, "부산진구"), false);
+});
+
+test("search keeps player and referee identities separate and remote blocking updates immediately", async () => {
+  const searchPicker = await readSource("src/components/common/SearchPicker.jsx");
+  assert.match(searchPicker, /categoryKey = String\(category \|\| "entity"\)\.toLowerCase\(\) === "profile"/);
+  assert.match(searchPicker, /`id:\$\{categoryKey\}:\$\{identity\}`/);
+  assert.match(searchPicker, /mergeSearchItems\(localItems, mappedRemoteItems, remoteSearchCategory\)/);
+
+  const state = {
+    currentUserId: "me",
+    users: [{ id: "me", name: "나" }],
+    settings: { blockedUserIds: [] },
+    teamInvitations: [
+      { id: "blocked-team", targetUserId: "me", fromUserId: "remote-user" },
+      { id: "visible-team", targetUserId: "me", fromUserId: "other-user" },
+    ],
+    recruitingPosts: [{
+      id: "room",
+      roomState: { invitations: [
+        { id: "blocked-room", targetUserId: "me", fromUserId: "remote-user" },
+        { id: "visible-room", targetUserId: "me", fromUserId: "other-user" },
+      ] },
+    }],
+    notifications: [
+      { id: "blocked-notice", targetUserId: "me", fromUserId: "remote-user" },
+      { id: "visible-notice", targetUserId: "me", fromUserId: "other-user" },
+    ],
+  };
+  const next = blockUser(state, "remote-user", { id: "remote-user", name: "원격 선수", hashtag: "#remote" });
+  assert.deepEqual(next.settings.blockedUserIds, ["remote-user"]);
+  assert.deepEqual(next.settings.blockedUserProfiles["remote-user"], { name: "원격 선수", hashtag: "#remote" });
+  assert.deepEqual(next.teamInvitations.map(({ id }) => id), ["visible-team"]);
+  assert.deepEqual(next.recruitingPosts[0].roomState.invitations.map(({ id }) => id), ["visible-room"]);
+  assert.equal(next.notifications.some(({ id }) => id === "blocked-notice"), false);
+  const unblocked = unblockUser(next, "remote-user");
+  assert.deepEqual(unblocked.settings.blockedUserIds, []);
+  assert.deepEqual(unblocked.settings.blockedUserProfiles, {});
 });
 
 test("user input rejects executable markup without blocking ordinary chat", async () => {
@@ -1719,6 +2004,14 @@ test("notification read action and terminal trigger stay server-atomic", async (
   assert.match(migration, /supersededBy/);
 });
 
+test("깨진 대회 알림 보정은 식별된 단일 운영 row만 갱신한다", async () => {
+  const migration = await readSource("supabase/migrations/20260802010000_repair_corrupted_tournament_notification.sql");
+  assert.match(migration, /created_at = timestamptz '2026-07-26 18:26:59\.25077\+00'/);
+  assert.match(migration, /payload->>'tournamentId' = 'trn_mrzoso61_499880eb3c'/);
+  assert.match(migration, /title = '\?\?\? \?\?\?'/);
+  assert.doesNotMatch(migration.replace(/--[^\r\n]*/g, ""), /\b(?:delete|truncate|drop table)\b/i);
+});
+
 test("profile record result and recency helpers preserve match semantics", () => {
   const older = { scheduledAt: "2026-07-20T10:00:00.000Z" };
   const newer = { scheduledAt: "2026-07-21T10:00:00.000Z" };
@@ -1791,6 +2084,12 @@ test("home recent records hydrate authoritative played and reserve fields", asyn
   const source = await readSource("server/api/matches/_listLoader.js");
   assert.match(source, /const recentCompletedIds = new Set\(recentCompletedPage\?\.ids \?\? \[\]\)/);
   assert.match(source, /!feedCardIds\.has\(id\) \|\| recentCompletedIds\.has\(id\)/);
+});
+
+test("home loads the authoritative profile record page when bootstrap has no record detail", async () => {
+  const source = await readSource("src/pages/Home.jsx");
+  assert.match(source, /!app\.remoteReady \|\| app\.actions\.profileRecordsLoaded \|\| !app\.actions\.loadProfileRecords/);
+  assert.match(source, /app\.actions\.loadProfileRecords\(\)/);
 });
 
 test("court map URLs pin stored coordinates and fall back to address search", () => {
@@ -2127,6 +2426,26 @@ test("pickup player invitation keeps multi-select enabled", async () => {
   assert.ok((recruitingPage.match(/onTogglePlayer=\{toggleInvitePlayer\}/g) ?? []).length >= 2);
 });
 
+test("team management mutations are serialized and participant setup stays recoverable", async () => {
+  const [teamDetail, teamDetailView, participantSetup] = await Promise.all([
+    readSource("src/pages/TeamDetail.jsx"),
+    readSource("src/pages/TeamDetailView.jsx"),
+    readSource("src/components/recruiting/MatchRecordParticipantSetupPanel.jsx"),
+  ]);
+
+  assert.match(teamDetail, /teamManagementPendingRef\.current/);
+  assert.match(teamDetail, /const runTeamManagementMutation = async/);
+  assert.match(teamDetail, /finally \{\s*teamManagementPendingRef\.current = false;\s*setTeamManagementPending\(false\);/);
+  assert.match(teamDetailView, /const teamControlPending = teamInvitePending \|\| teamManagementPending/);
+  assert.doesNotMatch(teamDetailView, /app\.actions\.(cancelTeamInvitation|updateTeamMemberRole|removeTeamMember)/);
+  assert.match(participantSetup, /getTeamCaptainMemberId\(team\)/);
+  assert.match(participantSetup, /if \(team\.id === teamAId\) return "A사이드와 같은 팀"/);
+  assert.match(participantSetup, /if \(captainId === selectedTeamACaptainId\) return "A사이드와 같은 팀장"/);
+  assert.match(participantSetup, /disabled=\{Boolean\(ineligibilityReason\)\}/);
+  assert.doesNotMatch(participantSetup, /match\?\.updatedAt/);
+  assert.match(participantSetup, /catch \{\s*setFeedback\("참가자 구성을 저장하지 못했습니다\. 잠시 후 다시 시도해 주세요\."\);\s*\} finally \{\s*setSaving\(false\);/);
+});
+
 test("team discovery uses canonical regions and bounded deduplicated groups", () => {
   const currentUser = {
     id: "me",
@@ -2195,6 +2514,7 @@ test("referee rulebook matches current FIBA and BOXTIER operating rules", async 
   assert.equal(REFEREE_RULEBOOK_EASY_SECTIONS.length, 6);
   assert.match(rulebookText, /QR 출석과 실제 출전은 다름/);
   assert.match(rulebookText, /개인기록은 심판 경기만/);
+  assert.match(rulebookText, /턴오버\(TO\).*공격권을 상대에게 넘긴 선수/);
   assert.doesNotMatch(rulebookText, /림 위 원통|4번 드리블|낮은 가중치/);
   assert.match(rulebookText, /1m 안에서 밀착 수비/);
   assert.match(rulebookText, /비접촉 테크니컬/);
@@ -2215,7 +2535,7 @@ test("referee rulebook matches current FIBA and BOXTIER operating rules", async 
   assert.doesNotMatch(rulebookText, /일반 live 경기|personal_record|match_record|결과 revision|교체 transaction/);
   assert.match(rulebookText, /상세 산식과 내부 보정값은 공개하지 않습니다/);
   assert.doesNotMatch(rulebookText, /1v1 10%|2v2 20%|3v3 35%|5v5 50%|상위 최대 5명 평균|정규멤버 비율만큼|-150부터 \+150/);
-  assert.match(tutorial, /상세 산식과 내부 보정값은 공개하지 않습니다/);
+  assert.match(tutorial, /상세 산식은 공개하지 않습니다/);
   assert.doesNotMatch(tutorial, /1v1 10%|2v2 20%|3v3 35%|5v5 50%|상위 5명 평균|정규멤버 비율만큼|MMR 100%|성과 보정은 0%/);
   assert.doesNotMatch(recruiting, /MMR 반영률:|현장 직접 90%|완전 랜덤 100%|MMR 균형 110%|팀원의 비율을 기준|ratingScale \* 100/);
   assert.doesNotMatch(matchRoom, /정규 · MMR \$\{|ratingScale \?\?/);
@@ -2231,4 +2551,75 @@ test("referee rulebook matches current FIBA and BOXTIER operating rules", async 
   assert.match(page, /쉬운 규칙/);
   assert.match(page, /상세 규칙/);
   assert.match(page, /searchParams\.get\("level"\) === "detail"/);
+});
+
+test("심판 시험은 저장된 시작 attempt를 복구하고 정확한 전체 답안만 완료한다", async () => {
+  const { questionIds, questions } = createRefereeExamSet("referee-resume", REFEREE_EXAM_SIZE);
+  const startedAttempt = {
+    id: "rea_resume",
+    userId: "user-a",
+    status: "started",
+    startedAt: "2026-07-31T10:00:00.000Z",
+    questions,
+  };
+  const completedAttempt = { ...startedAttempt, id: "rea_done", status: "passed", startedAt: "2026-07-24T10:00:00.000Z", finishedAt: "2026-07-24T10:10:00.000Z" };
+  const answers = Object.fromEntries(questionIds.map((questionId) => [questionId, 0]));
+
+  assert.equal(getResumableRefereeExamAttempt([completedAttempt, startedAttempt], "user-a")?.id, startedAttempt.id);
+  assert.equal(getResumableRefereeExamAttempt([completedAttempt], "user-a"), null);
+  assert.equal(hasCompleteRefereeExamAnswers(questionIds, answers), true);
+  assert.equal(hasCompleteRefereeExamAnswers(questionIds, { ...answers, [questionIds[0]]: 4 }), false);
+  assert.equal(hasCompleteRefereeExamAnswers(questionIds, Object.fromEntries(Object.entries(answers).slice(1))), false);
+  assert.equal(hasCompleteRefereeExamAnswers(questionIds, { ...answers, extra: 0 }), false);
+  const refereeSyncSource = await readSource("server/api/referee/sync.js");
+  const refereeControllerSource = await readSource("src/pages/useSettingsRefereeController.js");
+  const refereeSectionSource = await readSource("src/pages/SettingsRefereeSection.jsx");
+  assert.match(refereeSyncSource, /hasCompleteRefereeExamAnswers\(questionIds, attempt\.answers\)/);
+  assert.match(refereeSyncSource, /incomplete_exam_answers/);
+  assert.match(refereeControllerSource, /getResumableRefereeExamAttempt/);
+  assert.match(refereeControllerSource, /refereeActionPendingRef\.current/);
+  assert.match(refereeSectionSource, /disabled=\{Boolean\(refereeActionPending\)/);
+});
+
+test("랭킹·홈·선수 상세·소속 화면은 원격 페이지와 실패 상태를 보존한다", async () => {
+  const [rankings, loaderActions, home, homeSearch, playerDetail, affiliations] = await Promise.all([
+    readSource("src/pages/Rankings.jsx"),
+    readSource("src/hooks/appData/actions/loaderActions.js"),
+    readSource("src/pages/Home.jsx"),
+    readSource("src/pages/useHomeSearchModel.jsx"),
+    readSource("src/pages/PlayerDetail.jsx"),
+    readSource("src/pages/Affiliations.jsx"),
+  ]);
+  assert.match(rankings, /rankingSort/);
+  assert.match(rankings, /const directoryLoading = !promotionView && !directoryLoadError/);
+  assert.match(rankings, /directoryLoading[\s\S]*?<BasketballLoader label="랭킹 불러오는 중"/);
+  assert.match(rankings, /useEffect\(\(\) => \{\s*if \(promotionView\) return;/);
+  assert.match(rankings, /\{!promotionView && directoryStatusMatches && app\.directoryStatus\?\.page\?\.hasMore/);
+  assert.match(loaderActions, /rankingSort: current\.page\?\.rankingSort/);
+  assert.match(home, /!blockedUserIds\.includes\(item\.id\)/);
+  assert.match(homeSearch, /blockedUserIdSet\.has\(item\.id\)\) return null/);
+  assert.match(homeSearch, /favoritePlayerIds[\s\S]*blockedUserIdSet\.has\(playerId\)/);
+  assert.match(homeSearch, /favoriteRefereeIds[\s\S]*blockedUserIdSet\.has\(refereeId\)/);
+  assert.match(playerDetail, /profileId: playerId/);
+  assert.match(playerDetail, /선수 프로필을 불러오지 못했습니다/);
+  assert.match(playerDetail, /선수 프로필을 찾을 수 없습니다/);
+  assert.doesNotMatch(playerDetail, /<Navigate/);
+  assert.match(affiliations, /refreshAffiliations\(true\)/);
+  assert.match(affiliations, /typeRankById/);
+  assert.match(affiliations, /#\{affiliation\.rank\}/);
+});
+
+test("이름 신고는 rejected 요청 뒤 pending을 풀고 실패 피드백을 남긴다", async () => {
+  const source = await readSource("src/components/common/NameReportForm.jsx");
+
+  assert.match(source, /try \{[\s\S]*await onSubmit\(reason\)/);
+  assert.match(source, /catch \{[\s\S]*신고를 접수하지 못했습니다\./);
+  assert.match(source, /finally \{[\s\S]*setPending\(false\)/);
+});
+
+test("팀 초대 검색 결과는 선택 표면 안에서 hover card를 열지 않는다", async () => {
+  const source = await readSource("src/pages/TeamDetail.jsx");
+
+  assert.match(source, /<span className="search-picker-player-identity">/);
+  assert.doesNotMatch(source, /<PlayerHoverCard as="span"[^>]*search-picker-player-identity/);
 });

@@ -13,13 +13,6 @@
   pointer-events: none;
 }
 
-.om-kicker {
-  color: var(--gold);
-  font-size: 0.78rem;
-  font-weight: 950;
-  text-transform: uppercase;
-}
-
 .om-match-copy h1 {
   margin-top: 8px;
 }
@@ -264,7 +257,7 @@
 
 .om-tournament-head-actions button {
   min-height: 32px;
-  border: var(--ui-stroke-width) solid rgba(255, 211, 108, 0.24);
+  border: var(--ui-button-border-width) solid rgba(255, 211, 108, 0.24);
   border-radius: var(--radius-xs);
   background: rgba(255, 211, 108, 0.1);
   color: var(--gold);
@@ -361,7 +354,7 @@
 
 .om-tournament-actions button {
   min-height: 36px;
-  border: var(--ui-stroke-width) solid rgba(255, 211, 108, 0.24);
+  border: var(--ui-button-border-width) solid rgba(255, 211, 108, 0.24);
   border-radius: var(--radius-xs);
   background: rgba(255, 211, 108, 0.12);
   color: var(--gold);

@@ -58,6 +58,7 @@ export default function UserOperationsPanel({ app }) {
   const loadUsers = app.actions.loadAdminUserOperations;
   const commitOperation = app.actions.commitAdminUserOperation;
   const requestVersionRef = useRef(0);
+  const selectedUserIdRef = useRef("");
   const [riskOnly, setRiskOnly] = useState(true);
   const [search, setSearch] = useState("");
   const [appliedSearch, setAppliedSearch] = useState("");
@@ -115,6 +116,7 @@ export default function UserOperationsPanel({ app }) {
   const selectedAction = ADMIN_USER_OPERATION_ACTIONS[draft.actionType] ?? ADMIN_USER_OPERATION_ACTIONS.warning;
 
   useEffect(() => {
+    selectedUserIdRef.current = selected?.id ?? "";
     setConfirming(false);
     setActionStatus("");
     setDraft((current) => ({ ...current, reason: "", message: "" }));
@@ -145,6 +147,10 @@ export default function UserOperationsPanel({ app }) {
   const commit = async () => {
     if (!selected || actionPending) return;
     const operationDraft = { ...draft, targetUserId: selected.id };
+    const requestTargetUserId = selected.id;
+    const setRequestStatus = (message) => {
+      if (selectedUserIdRef.current === requestTargetUserId) setActionStatus(message);
+    };
     const validationError = validateAdminUserOperationDraft(operationDraft);
     if (validationError) {
       setActionStatus(validationError);
@@ -161,15 +167,17 @@ export default function UserOperationsPanel({ app }) {
     try {
       const response = await commitOperation?.(operationDraft);
       if (!response || response.ok === false) {
-        setActionStatus(getOperationErrorMessage(response?.error));
+        setRequestStatus(getOperationErrorMessage(response?.error));
         return;
       }
-      setDraft((current) => ({ ...current, reason: "", message: "" }));
-      setConfirming(false);
-      setActionStatus(draft.actionType === "warning" ? "경고 알림을 보냈습니다." : "제재와 사용자 알림을 저장했습니다.");
+      if (selectedUserIdRef.current === requestTargetUserId) {
+        setDraft((current) => ({ ...current, reason: "", message: "" }));
+        setConfirming(false);
+        setActionStatus(draft.actionType === "warning" ? "경고 알림을 보냈습니다." : "제재와 사용자 알림을 저장했습니다.");
+      }
       await loadPage({ offset: 0 });
     } catch (error) {
-      setActionStatus(getOperationErrorMessage(error));
+      setRequestStatus(getOperationErrorMessage(error));
     } finally {
       setActionPending(false);
     }
@@ -200,6 +208,7 @@ export default function UserOperationsPanel({ app }) {
               <input
                 value={search}
                 placeholder="이름, #해시태그, ID, 지역"
+                disabled={actionPending}
                 onChange={(event) => setSearch(event.target.value)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter") {
@@ -210,12 +219,12 @@ export default function UserOperationsPanel({ app }) {
               />
             </span>
           </label>
-          <Button type="button" variant="secondary" onClick={applySearch}>검색</Button>
-          <Button type="button" variant="secondary" disabled={loading} onClick={() => loadPage({ offset: 0 })}><RefreshCw size={16} /> 새로고침</Button>
+          <Button type="button" variant="secondary" disabled={actionPending} onClick={applySearch}>검색</Button>
+          <Button type="button" variant="secondary" disabled={loading || actionPending} onClick={() => loadPage({ offset: 0 })}><RefreshCw size={16} /> 새로고침</Button>
         </div>
-        <div className="segmented-control compact-segments admin-user-ops-mode">
-          <button type="button" className={riskOnly ? "active" : ""} onClick={() => setRiskOnly(true)}>주의 신호 {result.summary.signalUsers ?? 0}</button>
-          <button type="button" className={!riskOnly ? "active" : ""} onClick={() => setRiskOnly(false)}>전체 사용자</button>
+        <div className="ui-segmented-control segmented-control compact-segments admin-user-ops-mode">
+          <button type="button" className={riskOnly ? "active" : ""} disabled={actionPending} onClick={() => setRiskOnly(true)}>주의 신호 {result.summary.signalUsers ?? 0}</button>
+          <button type="button" className={!riskOnly ? "active" : ""} disabled={actionPending} onClick={() => setRiskOnly(false)}>전체 사용자</button>
         </div>
       </Card>
 
@@ -234,6 +243,7 @@ export default function UserOperationsPanel({ app }) {
                   key={user.id}
                   type="button"
                   className={selected?.id === user.id ? "admin-user-risk-row active" : "admin-user-risk-row"}
+                  disabled={actionPending}
                   onClick={() => setSelectedId(user.id)}
                 >
                   <span>
@@ -252,7 +262,7 @@ export default function UserOperationsPanel({ app }) {
             {loading && !result.rows.length ? <div className="ui-empty-state-compact">불러오는 중</div> : null}
           </div>
           {result.page.hasMore ? (
-            <Button type="button" variant="secondary" disabled={loading} onClick={() => loadPage({ offset: result.page.nextOffset, append: true })}>
+            <Button type="button" variant="secondary" disabled={loading || actionPending} onClick={() => loadPage({ offset: result.page.nextOffset, append: true })}>
               {loading ? "불러오는 중" : `더 보기 (${result.rows.length}/${result.page.total})`}
             </Button>
           ) : null}
@@ -270,7 +280,7 @@ export default function UserOperationsPanel({ app }) {
                 <Badge tone={selectedRisk.tone}>{selectedRisk.label} {Number(selected.riskScore ?? 0)}</Badge>
               </div>
 
-              <section className="admin-user-signal-panel">
+              <section className="admin-user-signal-panel ui-control-surface">
                 <div><AlertTriangle size={18} /><strong>검토 신호</strong><small>수치만으로 경고·제재하지 않습니다.</small></div>
                 <div className="admin-user-signal-list">
                   {selectedSignals.map((signal) => <span key={signal.id} title={signal.description}>{signal.label}</span>)}
@@ -297,12 +307,12 @@ export default function UserOperationsPanel({ app }) {
                   <small>사유는 감사 로그, 안내 문구는 사용자 앱 알림에 저장됩니다.</small>
                 </div>
                 {Number(selected.roomRemakeCount ?? 0) > 0 ? (
-                  <Button type="button" variant="secondary" onClick={fillRoomRemakeWarning}>반복 다시 만들기 경고문 채우기</Button>
+                  <Button type="button" variant="secondary" disabled={actionPending} onClick={fillRoomRemakeWarning}>반복 다시 만들기 경고문 채우기</Button>
                 ) : null}
                 <div className="arena-field-grid">
                   <label>
                     조치
-                    <select value={draft.actionType} onChange={(event) => updateDraft({ actionType: event.target.value })}>
+                    <select value={draft.actionType} disabled={actionPending} onChange={(event) => updateDraft({ actionType: event.target.value })}>
                       {ACTION_OPTIONS.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
                     </select>
                     <small>{selectedAction.description}</small>
@@ -310,7 +320,7 @@ export default function UserOperationsPanel({ app }) {
                   {draft.actionType !== "warning" ? (
                     <label>
                       기간
-                      <select value={draft.durationDays} onChange={(event) => updateDraft({ durationDays: Number(event.target.value) })}>
+                      <select value={draft.durationDays} disabled={actionPending} onChange={(event) => updateDraft({ durationDays: Number(event.target.value) })}>
                         {SUSPENSION_TIERS.map((tier) => <option key={tier.id} value={tier.days}>{tier.label}</option>)}
                       </select>
                     </label>
@@ -318,17 +328,17 @@ export default function UserOperationsPanel({ app }) {
                 </div>
                 <label>
                   관리 사유
-                  <textarea value={draft.reason} maxLength={300} placeholder="운영자가 확인한 근거와 판단 사유" onChange={(event) => updateDraft({ reason: event.target.value })} />
+                  <textarea value={draft.reason} maxLength={300} placeholder="운영자가 확인한 근거와 판단 사유" disabled={actionPending} onChange={(event) => updateDraft({ reason: event.target.value })} />
                 </label>
                 <label>
                   사용자 안내
-                  <textarea value={draft.message} maxLength={500} placeholder="사용자에게 보낼 정중하고 구체적인 안내" onChange={(event) => updateDraft({ message: event.target.value })} />
+                  <textarea value={draft.message} maxLength={500} placeholder="사용자에게 보낼 정중하고 구체적인 안내" disabled={actionPending} onChange={(event) => updateDraft({ message: event.target.value })} />
                 </label>
                 {confirming ? (
                   <div className="admin-user-action-confirm">
                     <AlertTriangle size={18} />
                     <span><strong>{selectedAction.label} · {draft.durationDays}일</strong><em>저장 즉시 제한과 알림이 적용됩니다.</em></span>
-                    <Button type="button" variant="secondary" onClick={() => setConfirming(false)}>취소</Button>
+                    <Button type="button" variant="secondary" disabled={actionPending} onClick={() => setConfirming(false)}>취소</Button>
                   </div>
                 ) : null}
                 <Button type="button" disabled={actionPending} onClick={commit}>

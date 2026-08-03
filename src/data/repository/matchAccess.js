@@ -1,9 +1,9 @@
 import { getActualMatchPlayerIds } from "../../lib/matchUtils.js";
+import { canOperateAssignedMatchReferee } from "../../lib/matchUtils.js";
 import { getMatchHostPlayerId as getMatchHostPlayerIdFromMatch } from "../../lib/matchUtils.js";
 import { getMatchRoomPhase } from "../../lib/matchUtils.js";
 import { getMatchRosterSideName } from "../../lib/matchUtils.js";
 import { getMatchSideLeaderId } from "../../lib/matchUtils.js";
-import { isEligibleReferee } from "../../lib/matchUtils.js";
 import { isMatchReferee } from "../../lib/matchUtils.js";
 
 function getMatchHostPlayerId(state, match) {
@@ -20,7 +20,10 @@ function currentUserIsMatchHost(state, match) {
 
 function currentUserIsEligibleMatchReferee(state, match) {
   const currentUser = state.users.find((user) => user.id === state.currentUserId);
-  return Boolean(isMatchReferee(match, state.currentUserId) && isEligibleReferee(currentUser, match?.refereeTrustMin, state.settings?.refereeAppointments));
+  return Boolean(
+    isMatchReferee(match, state.currentUserId)
+    && canOperateAssignedMatchReferee(currentUser, match, state.settings?.refereeAppointments),
+  );
 }
 
 function currentUserCanOperateMatch(state, match) {

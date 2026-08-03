@@ -4,6 +4,7 @@ import { isValidBenchCapacity } from "../../../shared/lib/constants.js";
 import { addTeamRoster, assertProfilesExist, assertTeamRosterMembers } from "../_rosterEligibility.js";
 import { normalizeRecruitingMmrRangeMode } from "../../../shared/lib/recruiting.js";
 import { getAgeGroupByBirthYear } from "../../../shared/lib/profileSetup.js";
+import { isActiveReferee } from "../../lib/refereeEligibilityPolicy.js";
 
 import {
   getCanonicalBenchCapacity, getCanonicalHostJoinMode, getExplicitBenchCapacity,
@@ -450,27 +451,6 @@ export function validateLockedRecruitingCore(profileId, existingPost, nextPost, 
     existingCore.playerIds = nextCore.playerIds;
   }
   if (!sameJson(existingCore, nextCore)) reject(403, "recruiting_core_locked");
-}
-
-async function isActiveReferee(supabase, userId, minTrust = 0) {
-  if (!userId) return false;
-  const [{ data, error }, { data: profile, error: profileError }] = await Promise.all([
-    supabase
-    .from("referee_appointments")
-    .select("id, ends_at")
-    .eq("user_id", userId)
-      .eq("status", "active"),
-    supabase
-      .from("profiles")
-      .select("id, trust_score")
-      .eq("id", userId)
-      .maybeSingle(),
-  ]);
-  if (error) throw error;
-  if (profileError) throw profileError;
-  if (Number(profile?.trust_score ?? 0) < Number(minTrust || 0)) return false;
-  const now = Date.now();
-  return toArray(data).some((row) => !row.ends_at || Date.parse(row.ends_at) > now);
 }
 
 export async function validateRefereeAction(supabase, profileId, existingPost, nextPost, body) {

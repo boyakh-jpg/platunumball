@@ -8,6 +8,7 @@ export const MATCH_VOID_REASON_MAX_LENGTH = 500;
 export function MatchFinalizeDialog({
   open,
   pending = false,
+  error = "",
   openDisputeCount = 0,
   authorityLabel = "방장",
   onClose,
@@ -45,7 +46,8 @@ export function MatchFinalizeDialog({
           <input type="checkbox" checked={acknowledged} onChange={(event) => setAcknowledged(event.target.checked)} />
           <span>열린 이의가 없고 현장 최종 점수를 확인했습니다.</span>
         </label>
-        <div className="app-confirm-actions">
+        {error ? <small role="status" className="form-warning">{error}</small> : null}
+        <div className="ui-action-row app-confirm-actions">
           <Button type="button" variant="secondary" disabled={pending} onClick={onClose}>취소</Button>
           <Button type="submit" disabled={blocked || pending}>
             {pending ? "승인 중" : "최종 승인"}
@@ -102,7 +104,7 @@ export default function MatchVoidDialog({ open, pending = false, onClose, onConf
           <input type="checkbox" checked={acknowledged} onChange={(event) => setAcknowledged(event.target.checked)} />
           <span>경기 전체를 무효 처리하는 강한 조치임을 확인했습니다.</span>
         </label>
-        <div className="app-confirm-actions">
+        <div className="ui-action-row app-confirm-actions">
           <Button type="button" variant="secondary" disabled={pending} onClick={onClose}>취소</Button>
           <Button type="submit" className="danger-button" disabled={!canSubmit}>{pending ? "처리 중" : "경기 무효 처리"}</Button>
         </div>

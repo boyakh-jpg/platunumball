@@ -141,7 +141,6 @@
   font-size: clamp(3.7rem, 8vw, 7.8rem);
   letter-spacing: -0.065em;
   line-height: 0.88;
-  text-shadow: none;
 }
 
 [data-design="editorial"] .ui-design-hero__copy > p {
@@ -151,12 +150,6 @@
   font-size: clamp(1rem, 2vw, 1.26rem);
   font-weight: 780;
   line-height: 1.6;
-}
-
-[data-design="editorial"] .ui-design-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-5);
 }
 
 [data-design="editorial"] .ui-design-hero__stats {

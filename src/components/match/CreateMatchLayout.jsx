@@ -13,8 +13,8 @@ export function CreateMatchLayout({ context }) {
 
   return (
 <form className="page-stack create-match-page" onSubmit={submit}>
-      {!embedded ? <header className={`page-header create-match-hero ${isRecordCreateIntent ? "is-record" : "is-match"}`}>
-        <div>
+      {!embedded ? <header className={`page-header create-match-hero ui-page-hero ui-design-app-hero ${isRecordCreateIntent ? "is-record" : "is-match"}`}>
+        <div className="ui-page-hero__copy">
           <p className="eyebrow">{isRecordCreateIntent ? "RecordMatch" : "CreateMatch"}</p>
           <h1>{isRecordCreateIntent ? "기록하기" : "경기/대회 만들기"}</h1>
           {remakeDraft ? <Badge tone="orange">취소된 방 설정을 불러왔습니다. 새 일정을 확인해 주세요.</Badge> : null}

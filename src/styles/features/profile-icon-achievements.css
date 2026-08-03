@@ -132,7 +132,7 @@
   display: grid;
   min-height: 320px;
   place-items: center;
-  border: var(--ui-stroke-width) solid var(--ui-control-border);
+  border: var(--ui-card-border-width) solid var(--ui-control-border);
   border-radius: var(--ui-panel-radius);
   background-color: var(--ui-control-bg);
   background-image:
@@ -221,7 +221,7 @@
   grid-template-columns: 64px minmax(0, 1fr);
   align-items: center;
   gap: var(--space-5);
-  border: var(--ui-stroke-width) solid var(--ui-control-border);
+  border: var(--ui-card-border-width) solid var(--ui-control-border);
   border-radius: var(--ui-control-radius);
   background: var(--ui-control-bg);
   padding: 10px;

@@ -18,7 +18,7 @@ const SOURCE_LINKS = [
 export default function DataSources() {
   return (
     <main className="data-sources-page">
-      <article className="section-card data-sources-card">
+      <article className="section-card ui-card data-sources-card">
         <header className="data-sources-header">
           <p className="eyebrow">DATA SOURCES</p>
           <h1>데이터 출처</h1>

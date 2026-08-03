@@ -54,9 +54,6 @@ export function disputeMatch(state, matchId, disputeInput = "") {
     : normalizeTeamScoresDisputeRequest(rawRequest);
   if (!disputeRequest || disputeRequest.baseRevision !== getMatchResultRevision(match)) return state;
   if (match.refereeId && disputeRequest.playerId !== state.currentUserId) return state;
-  if (!match.refereeId
-    && disputeRequest.requestedScoreA === Number(match.result.scoreA ?? 0)
-    && disputeRequest.requestedScoreB === Number(match.result.scoreB ?? 0)) return state;
   if (!currentUserCanFileMatchDispute(state, match)) {
     return {
       ...state,
@@ -145,9 +142,14 @@ export function resolveMatchDispute(state, matchId, disputeId, decision, resolut
   const targetDispute = (match?.disputes ?? []).find((dispute) => dispute.id === disputeId && dispute.status === "open");
   if (!match?.result || match.status !== "disputed" || !targetDispute || !safeDecision || !safeResolutionReason) return state;
   if (!currentUserCanResolveMatchDispute(state, match)) return state;
+  const currentRevision = getMatchResultRevision({ result: match.disputeDraftResult ?? match.result });
+  const baseRevision = Number(targetDispute.request?.baseRevision);
   if (
     safeDecision === "accepted"
-    && Number(targetDispute.request?.baseRevision) !== getMatchResultRevision({ result: match.disputeDraftResult ?? match.result })
+    && (
+      baseRevision > currentRevision
+      || (targetDispute.request?.kind === "team_scores" && baseRevision !== currentRevision)
+    )
   ) return state;
 
   const resolvedAt = new Date().toISOString();

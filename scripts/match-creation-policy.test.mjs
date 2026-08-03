@@ -34,7 +34,11 @@ import {
   validatePickupRecruitingShape,
   validatePickupRecruitingUpdate,
 } from "../server/api/recruiting/sync-post.js";
-import { getRecordCreationWindowStatus, isEligibleReferee } from "../src/lib/matchUtils.js";
+import {
+  canOperateAssignedMatchReferee,
+  getRecordCreationWindowStatus,
+  isEligibleReferee,
+} from "../src/lib/matchUtils.js";
 import {
   MATCH_CLOCK_FORCE_END_MINUTES,
   MATCH_MAX_REGULATION_MINUTES,
@@ -50,8 +54,10 @@ import {
   confirmRecruitingMatch,
   configureServerRatingAuthority,
   createRecruitingPost,
+  declineRecruitingInvitation,
   interestRecruitingPost,
   inviteRecruitingPlayers,
+  joinRecruitingSideParty,
   setRecruitingRoomTeam,
 } from "../src/data/repository.js";
 import { SERVER_RATING_AUTHORITY } from "../server/lib/ratingAuthority.js";
@@ -61,8 +67,36 @@ import {
   isIndividualOnlyRecruitingRoom,
   normalizeRecruitingMmrRangeMode,
 } from "../src/lib/recruiting.js";
+import { getTeamChallengeEligibilityPolicy } from "../src/lib/createMatchPage.js";
 
 configureServerRatingAuthority(SERVER_RATING_AUTHORITY);
+
+test("라이벌 매치는 출전 인원을 채우는 최소 MMR·연령 범위를 고른다", () => {
+  const makeTeam = (id, prefix, mmrs) => ({
+    id,
+    mmr: 1200,
+    members: mmrs.map((_, index) => ({ userId: `${prefix}${index + 1}`, role: index === 0 ? "captain" : "member" })),
+  });
+  const makeUsers = (prefix, mmrs) => mmrs.map((mmr, index) => ({
+    id: `${prefix}${index + 1}`,
+    ageGroup: "open",
+    ratings: { integrated: mmr },
+  }));
+  const teamA = makeTeam("team-a", "a", [1200, 1300, 1400, 1600, 1700]);
+  const teamB = makeTeam("team-b", "b", [1200, 1300, 1400, 1600, 1700]);
+  const users = [...makeUsers("a", [1200, 1300, 1400, 1600, 1700]), ...makeUsers("b", [1200, 1300, 1400, 1600, 1700])];
+
+  const policy = getTeamChallengeEligibilityPolicy({ teamA, teamB, users, capacity: 3, currentUserId: "a1", ranked: true });
+  assert.equal(policy?.mmrRangeMode, "normal");
+  assert.equal(policy?.mmrLimitMode, "block");
+  assert.equal(policy?.ageRestriction, "open");
+
+  const narrowUsers = users.map((user) => ({ ...user, ratings: { integrated: user.id.endsWith("3") ? 1310 : 1200 } }));
+  assert.equal(getTeamChallengeEligibilityPolicy({ teamA, teamB, users: narrowUsers, capacity: 3, currentUserId: "a1", ranked: true })?.mmrRangeMode, "narrow");
+
+  const distantUsers = users.map((user) => ({ ...user, ratings: { integrated: user.id.endsWith("1") ? 1200 : 1800 } }));
+  assert.equal(getTeamChallengeEligibilityPolicy({ teamA, teamB, users: distantUsers, capacity: 3, currentUserId: "a1", ranked: true })?.mmrLimitMode, "off");
+});
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const readPageSourceGroup = (paths) => readSourceGroupSync(
@@ -106,6 +140,10 @@ const teamMemberPublicJoinMigrationSource = fs.readFileSync(
 );
 const teamMemberPostGuardMigrationSource = fs.readFileSync(
   path.join(root, "supabase/migrations/20260728122000_team_member_room_post_guard.sql"),
+  "utf8",
+);
+const declinedTeamInvitationMigrationSource = fs.readFileSync(
+  path.join(root, "supabase/migrations/20260731010000_release_declined_team_invitation.sql"),
   "utf8",
 );
 
@@ -905,6 +943,23 @@ test("empty team rooms select teams only through the central reducer", () => {
   );
   const duplicate = setRecruitingRoomTeam(withB, emptyPost.id, "teamB", "team-b");
   assert.equal(duplicate.recruitingPosts[0].roomState.invitations.length, 1);
+
+  const invitation = selectedPost.roomState.invitations[0];
+  const declined = declineRecruitingInvitation(
+    { ...withB, currentUserId: invitation.targetUserId },
+    emptyPost.id,
+    invitation.id,
+  );
+  assert.equal(declined.recruitingPosts[0].targetTeamId, null);
+  assert.equal(declined.recruitingPosts[0].roomState.invitations.length, 0);
+  const reinvited = setRecruitingRoomTeam(
+    { ...declined, currentUserId: "host" },
+    emptyPost.id,
+    "teamB",
+    "team-b",
+  );
+  assert.equal(reinvited.recruitingPosts[0].targetTeamId, "team-b");
+  assert.equal(reinvited.recruitingPosts[0].roomState.invitations.length, 1);
 });
 
 test("team selection is routed through the server and DB authority", () => {
@@ -915,11 +970,16 @@ test("team selection is routed through the server and DB authority", () => {
     fs.readFileSync(path.join(root, "server/api/recruiting/_syncPostManagementActions.js"), "utf8"),
   ].join("\n");
   const authoritativeSource = fs.readFileSync(path.join(root, "server/api/_authoritativeState.js"), "utf8");
+  const schemaSource = fs.readFileSync(path.join(root, "supabase/schema.sql"), "utf8");
   assert.match(serverSource, /team_room_must_start_without_team_selection/);
   assert.match(serverSource, /operation\.action === "setRecruitingRoomTeam"/);
   assert.match(serverSource, /rankball_recruiting_set_room_team_action/);
   assert.match(serverSource, /recruiting_set_room_team_rpc_required/);
+  assert.match(serverSource, /data\?\.fallback\)\s+return applyRecruitingManagementAction\(context, operation\)/);
   assert.doesNotMatch(authoritativeSource, /setRecruitingRoomTeam/u);
+  assert.match(schemaSource, /create or replace function public\.rankball_recruiting_set_room_team_action/);
+  assert.match(schemaSource, /recruiting_team_member_required/);
+  assert.match(schemaSource, /recruiting_team_representative_ineligible/);
 
   const migrationName = fs.readdirSync(path.join(root, "supabase/migrations"))
     .filter((name) => name.endsWith(".sql"))
@@ -948,6 +1008,25 @@ test("team selection is routed through the server and DB authority", () => {
   assert.match(teamMemberPostGuardMigrationSource, /recruiting_team_representative_ineligible/);
   assert.match(teamMemberPostGuardMigrationSource, /host_result->'eligiblePlayerIds'/);
   assert.doesNotMatch(teamMemberPostGuardMigrationSource, /delete\s+from|drop\s+table|truncate\s+table/i);
+  assert.match(declinedTeamInvitationMigrationSource, /target_team_id = case/);
+  assert.match(declinedTeamInvitationMigrationSource, /invitation->>'joinMode'.*'team'/);
+  assert.match(declinedTeamInvitationMigrationSource, /invitation->>'side' = 'teamB'/);
+  assert.doesNotMatch(declinedTeamInvitationMigrationSource, /delete\s+from|drop\s+table|truncate\s+table/i);
+});
+
+test("scoped recruiting confirmation loads active referee qualifications", () => {
+  const stateLoaderSource = fs.readFileSync(
+    path.join(root, "src/data/repository/remote/stateLoader.js"),
+    "utf8",
+  );
+  assert.match(
+    stateLoaderSource,
+    /includeRefereeAppointments = includeUserScoped \|\| matchPageScope \|\| recruitingPageScope \|\| tournamentPageScope/,
+  );
+  assert.match(
+    stateLoaderSource,
+    /includeRefereeAppointments \? fetchOptionalRows\("referee_appointments"/,
+  );
 });
 
 test("public team joins persist only the applying team member as side leader", () => {
@@ -1062,6 +1141,54 @@ test("public team joins persist only the applying team member as side leader", (
   assert.doesNotMatch(recruitingSource, /상대 팀 현재 주장이 B사이드로 참가/);
 });
 
+test("기존 후보의 팀 파티 합류는 후보 배치와 기존 파티장을 유지한다", () => {
+  const post = {
+    id: "mixed-party-room",
+    title: "혼합 팀 파티",
+    status: "open",
+    visibility: "public",
+    mode: "3v3",
+    sideCapacity: 3,
+    benchCapacity: 3,
+    hostJoinMode: "team",
+    teamOnly: false,
+    playerId: "host",
+    roomState: { ownerId: "host", partyLeaders: {}, partyReserves: {} },
+    rules: { teamOnly: false, mmrLimitMode: "off", allowedAgeGroups: [] },
+    applicants: [
+      { kind: "player", joinMode: "player", playerId: "leader", side: "teamB", status: "ready", reserve: false },
+      { kind: "player", joinMode: "player", playerId: "reserve", side: "teamB", status: "ready", reserve: true },
+    ],
+  };
+  const state = {
+    currentUserId: "reserve",
+    users: [
+      { id: "host", position: "PG", trustScore: 100, ratings: { integrated: 1200 } },
+      { id: "leader", position: "SG", trustScore: 100, ratings: { integrated: 1200 } },
+      { id: "reserve", position: "SF", trustScore: 100, ratings: { integrated: 1200 } },
+    ],
+    teams: [{
+      id: "team-b",
+      name: "B팀",
+      members: [
+        { userId: "leader", role: "captain" },
+        { userId: "reserve", role: "regular" },
+      ],
+    }],
+    recruitingPosts: [post],
+    notifications: [],
+    settings: {},
+  };
+
+  const joined = joinRecruitingSideParty(state, post.id, "team-b", "teamB", "leader");
+  const party = joined.recruitingPosts[0].applicants.find((entry) => entry.kind === "team");
+  assert.equal(party.playerId, "leader");
+  assert.deepEqual(party.playerIds, ["leader"]);
+  assert.deepEqual(joined.recruitingPosts[0].roomState.partyReserves["team:team-b"], ["reserve"]);
+  assert.equal(joined.recruitingPosts[0].roomState.partyLeaders["team:team-b"], "leader");
+  assert.strictEqual(joinRecruitingSideParty(joined, post.id, "team-b", "teamB", party.id), joined);
+});
+
 test("pickup participant slots keep a fixed width and use available desktop columns", () => {
   const componentSource = fs.readFileSync(path.join(root, "src/components/match/PickupParticipantPool.jsx"), "utf8");
   const cssSource = readCssTreeSync("src/styles/recruiting-arena.css");
@@ -1093,6 +1220,14 @@ test("CreateMatch persists bench capacity at top level and inside rules", () => 
   const source = readPageSourceGroup(CREATE_MATCH_PAGE_SOURCE_PATHS);
   assert.match(source, /benchCapacity: creationPolicyPayload\.benchCapacity/);
   assert.match(source, /rules:\s*\{[\s\S]*\.\.\.creationPolicyPayload/);
+  assert.match(source, /teamId:\s*""[\s\S]*opponentTeamId:\s*""/);
+  assert.match(source, /presetTeamAId[\s\S]*setRecruitingRoomTeam\(postId, "teamA"/);
+  assert.match(source, /if \(!result \|\| result\?\.ok === false\)[\s\S]*closeRecruitingPost\(postId, "A팀 선택 실패로 생성 취소"\)/);
+  assert.match(source, /else if \(!remakeDraft && createAsTeam && presetTeamAReady && effectiveVisibility === "private" && presetTeamBId\)/);
+  assert.match(source, /if \(submittingRef\.current \|\| submitting\) return/);
+  assert.match(source, /submittingRef\.current = true[\s\S]*finally \{[\s\S]*submittingRef\.current = false/);
+  assert.match(source, /remakeDraft && draft\.remakeReinvite[\s\S]*const result = await app\.actions\.setRecruitingRoomTeam\(postId, "teamB"[\s\S]*B팀 재초대 실패로 생성 취소/);
+  assert.match(source, /const result = await app\.actions\.inviteRecruitingPlayers\(postId[\s\S]*선수 재초대 실패로 생성 취소/);
   assert.match(source, /MatchCreationWizardNav/);
   assert.match(source, /wizardStep === finalWizardStep/);
   assert.doesNotMatch(source, /official:\s*true/);
@@ -1117,6 +1252,7 @@ test("CreateMatch persists bench capacity at top level and inside rules", () => 
   assert.doesNotMatch(ruleSelectorSource, /type="checkbox" checked=\{rules\.winByTwo\}/);
   assert.match(source, /getScopedMatchCreationPolicyPayload\(draft, "match_record"\)/);
   assert.match(source, /getScopedMatchCreationPolicyPayload\(draft, "tournament"\)/);
+  assert.match(source, /getMatchConfigurationChangePatch\(draft, \{ matchPurpose: "competitive", formationMode: "prearranged" \}\)/);
   assert.match(source, /getDefaultCreateTitle\(draft\.mode, patch\.matchIntent\)/);
   assert.match(source, /getMatchCreationWizardType\(draft, \{ recordIntent: isRecordCreateIntent \}\)/);
   assert.match(wizardSource, /step\.id === 4 \? \{ \.\.\.step, label: "구장" \}/);
@@ -1191,6 +1327,22 @@ test("원격 심판 검색에서 선택한 프로필은 일반 경기 후보에 
   assert.match(source, /mapRemoteItem=\{\(user\) => activePlayerIds\.has\(user\.id\) \? null : user\}/);
 });
 
+test("대회 원격 팀 검색 선택은 로컬 directory 밖에서도 snapshot으로 유지한다", () => {
+  const source = readPageSourceGroup(CREATE_MATCH_PAGE_SOURCE_PATHS);
+  const validationEffectsSource = fs.readFileSync(
+    path.join(root, "src/components/match/useCreateMatchValidationEffects.js"),
+    "utf8",
+  );
+
+  assert.match(source, /const \[selectedTournamentTeamProfiles, setSelectedTournamentTeamProfiles\] = useState\(\[\]\)/);
+  assert.match(source, /\[\.\.\.selectedTournamentTeamProfiles, \.\.\.app\.state\.teams\]\.map\(\(team\) => \[team\.id, team\]\)/);
+  assert.match(source, /const toggleTournamentTeam = \(teamOrId\) => \{/);
+  assert.match(source, /setSelectedTournamentTeamProfiles\(\(current\) => \(/);
+  assert.match(source, /if \(isTournamentRoom\) toggleTournamentTeam\(team\)/);
+  assert.match(validationEffectsSource, /\[\.\.\.app\.state\.teams, \.\.\.selectedTournamentTeamProfiles\]\.map\(\(team\) => team\.id\)/);
+  assert.match(source, /teamIds: draft\.tournamentTeamIds/);
+});
+
 test("알파 테스트 심판은 운영 신뢰도와 무관하게 심판 검색 자격을 유지한다", () => {
   assert.equal(isEligibleReferee({
     id: "test-referee",
@@ -1202,4 +1354,70 @@ test("알파 테스트 심판은 운영 신뢰도와 무관하게 심판 검색 
     testLoginId: "rankball-012",
     trustScore: 82,
   }), false);
+});
+
+test("심판 초대는 활성 자격만 보고 신뢰도를 다시 평가하지 않는다", () => {
+  const appointment = {
+    userId: "active-referee",
+    role: "referee",
+    grade: "candidate",
+    status: "active",
+  };
+  assert.equal(isEligibleReferee({
+    id: "active-referee",
+    trustScore: 70,
+  }, 90, [appointment]), true);
+  assert.equal(isEligibleReferee({
+    id: "active-referee",
+    trustScore: 69,
+  }, 90, [appointment]), true);
+  assert.equal(isEligibleReferee({
+    id: "active-referee",
+    trustScore: 100,
+  }, 90, [{ ...appointment, status: "revoked" }]), false);
+});
+
+test("경기 시작 뒤 신뢰도 자동 회수된 기존 배정 심판만 경기 완료 권한을 유지한다", () => {
+  const referee = { id: "active-referee", trustScore: 69 };
+  const autoRevokedAppointment = {
+    userId: referee.id,
+    role: "referee",
+    grade: "candidate",
+    status: "revoked",
+    autoRevoked: true,
+    revokeReason: "referee_trust_below_70",
+    revokedAt: "2026-07-30T12:05:00.000Z",
+  };
+  assert.equal(canOperateAssignedMatchReferee(referee, {
+    id: "ongoing-match",
+    refereeId: referee.id,
+    startedAt: "2026-07-30T12:00:00.000Z",
+    status: "agreed",
+  }, [autoRevokedAppointment]), true);
+  assert.equal(canOperateAssignedMatchReferee(referee, {
+    id: "ongoing-match",
+    refereeId: referee.id,
+    startedAt: "2026-07-30T12:00:00.000Z",
+    status: "agreed",
+  }, [{ ...autoRevokedAppointment, autoRevoked: false, revokeReason: "manual_revoke" }]), false);
+  assert.equal(canOperateAssignedMatchReferee(referee, {
+    id: "late-started-match",
+    refereeId: referee.id,
+    startedAt: "2026-07-30T12:10:00.000Z",
+    status: "agreed",
+  }, [autoRevokedAppointment]), false);
+  assert.equal(canOperateAssignedMatchReferee(referee, {
+    id: "future-match",
+    refereeId: referee.id,
+    status: "agreed",
+  }, [autoRevokedAppointment]), false);
+});
+
+test("DB 미연결 생성 액션은 현재 state snapshot으로 결과를 판정한다", () => {
+  const appActionsSource = fs.readFileSync(new URL("../src/hooks/appData/actions.js", import.meta.url), "utf8");
+  const matchActionsSource = fs.readFileSync(new URL("../src/hooks/appData/actions/matchActions.js", import.meta.url), "utf8");
+  const recruitingActionsSource = fs.readFileSync(new URL("../src/hooks/appData/actions/recruitingActions.js", import.meta.url), "utf8");
+  assert.match(appActionsSource, /applyRecruitingPostMutation[\s\S]*if \(!isSupabaseConfigured\)[\s\S]*stateRef\.current = next;[\s\S]*applyMatchMutation[\s\S]*if \(!isSupabaseConfigured\)[\s\S]*stateRef\.current = next;/);
+  assert.match(matchActionsSource, /previousState = stateRef\.current;[\s\S]*stateRef\.current = next;[\s\S]*return createdMatch\.id;/);
+  assert.match(recruitingActionsSource, /previousState = stateRef\.current;[\s\S]*stateRef\.current = next;[\s\S]*return createdPost\.id;/);
 });

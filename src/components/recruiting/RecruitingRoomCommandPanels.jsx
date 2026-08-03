@@ -11,6 +11,11 @@ import {
   PLAYER_POSITIONS,
   SIDE_LABEL_TEXT as SIDE_LABELS,
 } from "../../lib/constants.js";
+import {
+  getPartyOptionKey,
+  getPartyOptionLabel,
+  isPartyEntry,
+} from "./RecruitingRoomSlotCore.jsx";
 
 
 
@@ -74,27 +79,28 @@ export function SlotCommandPanel({
   canMoveHere = false,
   partyJoinOptions = [],
   poolMode = false,
+  pending = false,
   onMoveHere,
   onJoinParty,
   onClose,
   children,
 }) {
   return (
-    <CommandPopoverFrame floating={floating} anchor={anchor} className="arena-slot-command-popover" onClose={onClose}>
+    <CommandPopoverFrame floating={floating} anchor={anchor} className="arena-slot-command-popover" onClose={pending ? null : onClose}>
       <header>
         <div>
-          <strong>{poolMode ? "참가자 초대" : `${SIDE_LABELS[sideName]} ${reserve ? "후보 슬롯" : "빈 슬롯"}`}</strong>
+          <strong>{poolMode ? "참가자 초대" : `${SIDE_LABELS[sideName]} ${reserve ? "후보" : "빈 슬롯"}`}</strong>
           <span>{poolMode ? "픽업 참가자 풀의 빈자리에 선수를 초대합니다." : "이 자리로 이동하거나 선수를 초대할 수 있습니다."}</span>
         </div>
-        <button type="button" className="arena-icon-button" aria-label="닫기" onClick={onClose}><X size={16} /></button>
+        <button type="button" className="arena-icon-button" aria-label="닫기" disabled={pending} onClick={onClose}><X size={16} /></button>
       </header>
       {!poolMode ? (
         <div className="arena-slot-command-actions">
-          <Button type="button" size="sm" variant="secondary" disabled={!canMoveHere} onClick={onMoveHere}>
-            이 자리로 이동
+          <Button type="button" size="sm" variant="secondary" disabled={pending || !canMoveHere} onClick={onMoveHere}>
+            {pending ? "처리 중" : "이 자리로 이동"}
           </Button>
           {partyJoinOptions.map((option) => (
-            <Button key={getPartyOptionKey(option)} type="button" size="sm" variant="secondary" onClick={() => onJoinParty(option.team.id, option.entry?.id)}>
+            <Button key={getPartyOptionKey(option)} type="button" size="sm" variant="secondary" disabled={pending} onClick={() => onJoinParty(option.team.id, option.entry?.id)}>
               {partyJoinOptions.length === 1 ? "파티 새로고침" : `${getPartyOptionLabel(option)} 파티 새로고침`}
             </Button>
           ))}
@@ -115,6 +121,7 @@ export function SelfSlotCommandPanel({
   canLeaveParty = false,
   partyJoinOptions = [],
   currentPosition = "",
+  pending = false,
   onPositionChange,
   onLeaveParty,
   onJoinParty,
@@ -123,21 +130,21 @@ export function SelfSlotCommandPanel({
 }) {
   const inParty = isPartyEntry(entry);
   const fromParty = Boolean(!inParty && sourceTeam);
-  const partyText = inParty && entry?.team
-    ? `${entry.team.name} 파티 연결됨`
+  const partyText = entry?.kind === "team" && entry?.team
+    ? `${entry.team.name} ${inParty ? "파티 연결됨" : "팀 참여 중"}`
     : fromParty
       ? `${sourceTeam.name} 파티에서 나와 개인 참여 중`
       : "개인 참여 중";
   const safeCurrentPosition = PLAYER_POSITIONS.includes(currentPosition) ? currentPosition : PLAYER_POSITIONS[0];
 
   return (
-    <CommandPopoverFrame floating anchor={anchor} className="arena-slot-command-popover arena-self-slot-popover" onClose={onClose}>
+    <CommandPopoverFrame floating anchor={anchor} className="arena-slot-command-popover arena-self-slot-popover" onClose={pending ? null : onClose}>
       <header>
         <div>
           <strong>{heading}</strong>
           <span>{SIDE_LABELS[sideName]} · {reserve ? "후보" : "출전"} · {partyText}</span>
         </div>
-        <button type="button" className="arena-icon-button" aria-label="닫기" onClick={onClose}><X size={16} /></button>
+        <button type="button" className="arena-icon-button" aria-label="닫기" disabled={pending} onClick={onClose}><X size={16} /></button>
       </header>
       <div className="arena-self-slot-status">
         <Badge tone={inParty ? "green" : fromParty ? "orange" : "neutral"}>{partyText}</Badge>
@@ -145,7 +152,7 @@ export function SelfSlotCommandPanel({
       {onPositionChange ? (
         <label className="arena-self-position-control">
           <span>슬롯 포지션</span>
-          <select value={safeCurrentPosition} onChange={(event) => onPositionChange(event.target.value)}>
+          <select disabled={pending} value={safeCurrentPosition} onChange={(event) => onPositionChange(event.target.value)}>
             {PLAYER_POSITIONS.map((position) => <option key={position} value={position}>{position}</option>)}
           </select>
         </label>
@@ -153,12 +160,12 @@ export function SelfSlotCommandPanel({
       {children}
       <div className="arena-slot-command-actions">
         {canLeaveParty ? (
-          <Button type="button" size="sm" variant="secondary" onClick={onLeaveParty}>
-            파티 나가기
+          <Button type="button" size="sm" variant="secondary" disabled={pending} onClick={onLeaveParty}>
+            {pending ? "처리 중" : "파티 나가기"}
           </Button>
         ) : null}
         {partyJoinOptions.map((option) => (
-          <Button key={getPartyOptionKey(option)} type="button" size="sm" variant="secondary" onClick={() => onJoinParty(option.team.id, option.entry?.id)}>
+          <Button key={getPartyOptionKey(option)} type="button" size="sm" variant="secondary" disabled={pending} onClick={() => onJoinParty(option.team.id, option.entry?.id)}>
             {getPartyOptionLabel(option)} 파티 합류
           </Button>
         ))}

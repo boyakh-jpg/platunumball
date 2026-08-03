@@ -26,14 +26,13 @@ import {
 import {
   CourtReviewRating,
 } from "./MatchRoomParts.jsx";
-
 import { MatchRoomReviewPanels } from "./MatchRoomReviewPanels.jsx";
 import { MatchRoomStatEditor } from "./MatchRoomStatEditor.jsx";
 export default function MatchRoomView({ controller }) {
-  const { app, match, score, disputeReason, setDisputeReason, disputeCustomReason, setDisputeCustomReason, disputeRequestedStats, setDisputeRequestedStats, disputeRequestedScoreA, setDisputeRequestedScoreA, disputeRequestedScoreB, setDisputeRequestedScoreB, reportReason, setReportReason, statEditorPlayerId, setStatEditorPlayerId, reviewControlsOpen, setReviewControlsOpen, resultSaveFeedback, courtReviewSaveFeedback, courtReviewSaving, matchDetailRefreshing, soloRecordDeleteOpen, setSoloRecordDeleteOpen, voidDialogOpen, setVoidDialogOpen, voidActionPending, finalizeDialogOpen, setFinalizeDialogOpen, finalizeActionPending, voidRestoreDetail, setVoidRestoreDetail, voidRestoreStatus, existingCourtReview, courtReviewDraft, userMap, statEditorPlayer, isSharedRecord, status, cancelCopy, cancelActionLabel, teamAAgreement, teamBAgreement, currentUserSideName, recordWindow, referee, hasReferee, isSoloRecord, currentUserIsEligibleReferee, currentUserSubmitted, benchCapacity, isMatchHost, matchPhase, startedAuthorityPhase, currentUserCanEndMatch, currentUserCanResolveDispute, currentUserCanRefreshReview, resultEntryPermission, canEditDisputeDraft, canSubmitLiveResult, canSubmitResult, canCancel, requestCancelMatch, canFinalizeMatch, finalAuthorityLabel, openDisputes, hasOwnOpenDispute, canDispute, canRequestMatchDispute, canRequestOwnPointDispute, canRequestScoreDispute, canVoid, canRequestVoidRestore, canDeleteSoloRecord, requestFinalizeMatch, submitFinalizeMatch, canReport, isContractStage, shouldShowResultEntry, shouldShowWaitingPanel, scoreA, scoreB, draftScoreA, draftScoreB, teamASide, teamBSide, teamA, teamB, teamAMmr, teamBMmr, winnerName, matchKind, recordLockReason, renderHeroRoster, renderHeroReserves, updatePlayerStat, submitResult, submitDispute, submitVoidMatch, submitVoidRestoreRequest, refreshMatchDetail, canEditPlayerStat, editableStatFields, getPlayerStatState, permissionTitle, permissionDetail, nextAction, statTrustSteps, statTrustPercent, canSubmitCourtReview, courtReviewRatingReady, updateCourtReviewDraft, submitCourtReview, deleteSoloRecord, confirmDeleteSoloRecord, normalizedRules, ruleItems } = controller;
+  const { app, match, score, setScore, disputeReason, setDisputeReason, disputeCustomReason, setDisputeCustomReason, disputeRequestedStats, setDisputeRequestedStats, disputeRequestedScoreA, setDisputeRequestedScoreA, disputeRequestedScoreB, setDisputeRequestedScoreB, reportReason, setReportReason, statEditorPlayerId, setStatEditorPlayerId, reviewControlsOpen, setReviewControlsOpen, resultSaveFeedback, resultSavePending, courtReviewSaveFeedback, courtReviewSaving, matchDetailRefreshing, soloRecordDeleteOpen, setSoloRecordDeleteOpen, managementActionPending, managementActionFeedback, voidDialogOpen, setVoidDialogOpen, voidActionPending, finalizeDialogOpen, setFinalizeDialogOpen, finalizeActionPending, finalizeActionError, voidRestoreDetail, setVoidRestoreDetail, voidRestoreStatus, existingCourtReview, courtReviewDraft, userMap, statEditorPlayer, isSharedRecord, status, cancelCopy, cancelActionLabel, teamAAgreement, teamBAgreement, currentUserSideName, recordWindow, referee, hasReferee, isSoloRecord, currentUserIsEligibleReferee, currentUserSubmitted, benchCapacity, isMatchHost, matchPhase, startedAuthorityPhase, currentUserCanEndMatch, currentUserCanResolveDispute, currentUserCanRefreshReview, resultEntryPermission, canEditDisputeDraft, canSubmitLiveResult, canSubmitResult, canCancel, requestCancelMatch, agreeCurrentUser, canFinalizeMatch, finalAuthorityLabel, openDisputes, hasOwnOpenDispute, canDispute, canRequestMatchDispute, canRequestOwnPointDispute, canRequestScoreDispute, canVoid, canRequestVoidRestore, canDeleteSoloRecord, requestFinalizeMatch, submitFinalizeMatch, canReport, isContractStage, shouldShowResultEntry, shouldShowWaitingPanel, scoreA, scoreB, draftScoreA, draftScoreB, liveStatScoreA, liveStatScoreB, teamASide, teamBSide, teamA, teamB, teamAMmr, teamBMmr, winnerName, matchKind, recordLockReason, renderHeroRoster, renderHeroReserves, updatePlayerStat, submitResult, submitDispute, submitVoidMatch, submitVoidRestoreRequest, refreshMatchDetail, canEditPlayerStat, editableStatFields, getPlayerStatState, permissionTitle, permissionDetail, nextAction, statTrustSteps, statTrustPercent, canSubmitCourtReview, courtReviewRatingReady, updateCourtReviewDraft, submitCourtReview, deleteSoloRecord, confirmDeleteSoloRecord, normalizedRules, ruleItems } = controller;
 return (
     <div className="page-stack match-room">
-      <section className={match.ranked === false ? "gm-room-hero gm-friendly" : "gm-room-hero gm-ranked"}>
+      <section className={match.ranked === false ? "gm-room-hero ui-page-hero gm-friendly" : "gm-room-hero ui-page-hero gm-ranked"}>
         <div className="gm-room-topline">
           <div className="badge-row">
             <Badge tone={isSoloRecord ? "green" : match.ranked === false ? "neutral" : "gold"}>{matchKind}</Badge>
@@ -42,13 +41,11 @@ return (
           </div>
           <span>{match.mode}</span>
         </div>
-
-        <div className="gm-room-title">
-          <span>{match.official ? "OFFICIAL ROOM" : "CUSTOM ROOM"}</span>
+        <div className="gm-room-title ui-page-hero__copy">
+          <span className="eyebrow">{match.official ? "OFFICIAL ROOM" : "CUSTOM ROOM"}</span>
           <h1>{matchKind}</h1>
           <p><MapPin size={16} />{match.court} · {match.scheduledAt}</p>
         </div>
-
         <div className="gm-versus-stage">
           <div className="gm-team-panel team-a">
             <div className="gm-team-head">
@@ -58,7 +55,6 @@ return (
             </div>
             {renderHeroRoster("teamA")}
           </div>
-
           <div className="gm-score-core">
             <strong>{scoreA}</strong>
             <i>VS</i>
@@ -88,15 +84,15 @@ return (
           <div><Trophy size={17} /><span>{match.rules?.targetScore ?? 21}점 · {match.rules?.timeLimit ?? 12}분</span></div>
         </div>
       </section>
-
       {soloRecordDeleteOpen ? (
-        <div className="app-confirm-backdrop" role="presentation" onMouseDown={() => setSoloRecordDeleteOpen(false)}>
+        <div className="app-confirm-backdrop" role="presentation" onMouseDown={() => !managementActionPending && setSoloRecordDeleteOpen(false)}>
           <div className="app-confirm-dialog" role="dialog" aria-modal="true" aria-label="개인 기록 삭제 확인" onMouseDown={(event) => event.stopPropagation()}>
             <strong>개인 기록 삭제</strong>
             <p>삭제하면 내 기록 목록에서 사라집니다. MMR은 변하지 않습니다.</p>
-            <div className="app-confirm-actions">
-              <Button type="button" variant="secondary" onClick={() => setSoloRecordDeleteOpen(false)}>취소</Button>
-              <Button type="button" variant="danger" onClick={confirmDeleteSoloRecord}>삭제하기</Button>
+            {managementActionFeedback ? <small role="status" className="form-warning">{managementActionFeedback}</small> : null}
+            <div className="ui-action-row app-confirm-actions">
+              <Button type="button" variant="secondary" disabled={Boolean(managementActionPending)} onClick={() => setSoloRecordDeleteOpen(false)}>취소</Button>
+              <Button type="button" variant="danger" disabled={Boolean(managementActionPending)} onClick={confirmDeleteSoloRecord}>{managementActionPending === "delete" ? "삭제 중" : "삭제하기"}</Button>
             </div>
           </div>
         </div>
@@ -111,12 +107,13 @@ return (
         {canFinalizeMatch ? (
           <Button type="button" onClick={requestFinalizeMatch}>최종 승인</Button>
         ) : nextAction.type === "agree" ? (
-          <Button type="button" onClick={() => app.actions.agreeMatch(match.id, currentUserSideName, app.currentUser.id)}>{nextAction.button}</Button>
+          <Button type="button" disabled={Boolean(managementActionPending)} onClick={() => void agreeCurrentUser()}>{nextAction.button}</Button>
         ) : nextAction.href ? (
           <Button as="a" href={nextAction.href}>{nextAction.button}</Button>
         ) : (
           <Badge tone={status.tone}>{status.label}</Badge>
         )}
+        {managementActionFeedback ? <small role="status" className="form-warning">{managementActionFeedback}</small> : null}
       </Card>
 
       <Card className="section-card gm-rule-summary-card">
@@ -147,10 +144,11 @@ return (
             <Badge tone={canCancel || canDeleteSoloRecord ? "orange" : "neutral"}>{canDeleteSoloRecord ? "삭제 가능" : canCancel ? "취소 가능" : "잠김"}</Badge>
           </div>
           <p className="muted">{canDeleteSoloRecord ? "이 개인 기록은 내 기록에서 삭제할 수 있습니다." : canCancel ? `현재 운영 권한으로 ${cancelCopy.actionLabel}가 가능합니다.` : `현재 단계에서는 ${cancelCopy.actionLabel}가 잠겼습니다.`}</p>
-          <Button type="button" variant="danger" disabled={!canCancel} onClick={requestCancelMatch}>{cancelActionLabel}</Button>
+          <Button type="button" variant="danger" disabled={!canCancel || Boolean(managementActionPending)} onClick={requestCancelMatch}>{managementActionPending === "cancel" ? "처리 중" : cancelActionLabel}</Button>
           {canDeleteSoloRecord ? (
-            <Button type="button" variant="danger" onClick={deleteSoloRecord}>개인 기록 삭제</Button>
+            <Button type="button" variant="danger" disabled={Boolean(managementActionPending)} onClick={deleteSoloRecord}>개인 기록 삭제</Button>
           ) : null}
+          {managementActionFeedback ? <small role="status" className="form-warning">{managementActionFeedback}</small> : null}
         </Card>
       ) : null}
 
@@ -161,7 +159,7 @@ return (
           canEndMatch={currentUserCanEndMatch}
           onEndMatch={() => app.actions.endMatch(match.id)}
           onRosterChanged={() => void refreshMatchDetail()}
-          editableScoreSides={resultEntryPermission.editableScoreSides}
+          editableScoreSides={hasReferee ? [] : resultEntryPermission.editableScoreSides} displayScoreA={hasReferee ? liveStatScoreA : null} displayScoreB={hasReferee ? liveStatScoreB : null}
           onIncrementScore={(sideName, delta, revisions) => app.actions.incrementMatchScore?.(
             match.id,
             sideName === "teamA" ? delta : 0,
@@ -170,7 +168,7 @@ return (
           )}
         />
       ) : null}
-      {matchPhase === "live" && normalizedRules.gameClockEnabled === false && resultEntryPermission.editableScoreSides.length ? (
+      {matchPhase === "live" && normalizedRules.gameClockEnabled === false && !hasReferee && resultEntryPermission.editableScoreSides.length ? (
         <MatchScoreControls
           match={match}
           editableScoreSides={resultEntryPermission.editableScoreSides}
@@ -191,7 +189,7 @@ return (
               teams={app.state.teams}
               users={app.state.users}
               currentUserId={app.currentUser.id}
-              onAgree={(sideName, playerId) => app.actions.agreeMatch(match.id, sideName, playerId)}
+              onAgree={(sideName, playerId) => agreeCurrentUser(sideName, playerId)}
             />
           </div>
         </div>
@@ -222,7 +220,7 @@ return (
             {!canSubmitResult ? (
               <div className="ui-empty-state-compact">{match.status === "contract" ? "동의 필요" : "수정 잠김"}</div>
             ) : null}
-            <div className="stat-referee-panel">
+            <div className="stat-referee-panel ui-card">
               <div>
                 <span>기록 권한</span>
                 <strong>
@@ -245,7 +243,7 @@ return (
                 <em>경기 종료 후 {normalizeDisputeWindowMinutes(match.disputeMinutes)}분</em>
               </div>
             </div>
-            {match.endedAt && resultEntryPermission.editableScoreSides.length ? (
+            {match.endedAt && !hasReferee && resultEntryPermission.editableScoreSides.length ? (
               <MatchScoreControls
                 match={match}
                 label="최종 팀 점수"
@@ -261,27 +259,37 @@ return (
             <form className="score-form" onSubmit={submitResult}>
               <label>
                 {teamASide.name}
-                <input type="number" min="0" max="999" aria-label={`${teamASide.name} 팀 점수`} disabled value={draftScoreA} readOnly />
+                <input
+                  type="number" min="0" max="999"
+                  aria-label={`${teamASide.name} 팀 점수`}
+                  disabled={!resultEntryPermission.editableScoreSides.includes("teamA")}
+                  value={draftScoreA} onChange={(event) => setScore((current) => ({ ...current, scoreA: event.target.value }))}
+                />
               </label>
               <span>:</span>
               <label>
                 {teamBSide.name}
-                <input type="number" min="0" max="999" aria-label={`${teamBSide.name} 팀 점수`} disabled value={draftScoreB} readOnly />
+                <input
+                  type="number" min="0" max="999"
+                  aria-label={`${teamBSide.name} 팀 점수`}
+                  disabled={!resultEntryPermission.editableScoreSides.includes("teamB")}
+                  value={draftScoreB} onChange={(event) => setScore((current) => ({ ...current, scoreB: event.target.value }))}
+                />
               </label>
               <div className="match-action-row stat-entry-actions">
                 <Button type="button" variant="secondary" disabled={matchDetailRefreshing} onClick={refreshMatchDetail}>
                   <RotateCcw size={16} />
                   새로고침
                 </Button>
-                <Button type="submit" disabled={!canSubmitResult}>
-                  {canEditDisputeDraft ? "이의 수정안 저장" : canSubmitLiveResult ? "실시간 기록 저장" : hasReferee ? "심판 기록 제출" : currentUserSubmitted ? "내 기록 다시 제출" : "내 기록 제출"}
+                <Button type="submit" disabled={!canSubmitResult || resultSavePending}>
+                  {resultSavePending ? "저장 중" : canEditDisputeDraft ? "이의 수정안 저장" : canSubmitLiveResult ? "실시간 기록 저장" : hasReferee ? "심판 기록 제출" : currentUserSubmitted ? "내 기록 다시 제출" : "내 기록 제출"}
                 </Button>
               </div>
               {resultSaveFeedback ? <div className="stat-save-feedback">{resultSaveFeedback}</div> : null}
               <div className="stat-integrity-note">
                 팀 점수와 개인 PTS 합계는 별도로 저장합니다. 값이 다르면 최종 확정 전에 경고만 표시합니다.
               </div>
-              <div className="stat-trust-panel">
+              <div className="stat-trust-panel ui-card">
                 <div className="stat-trust-head">
                   <div>
                     <strong>개인 기록 신뢰도</strong>
@@ -362,7 +370,8 @@ return (
                     })}
                   </div>
                 )}
-                {canFinalizeMatch ? <Button type="button" onClick={requestFinalizeMatch}>최종 승인</Button> : null}
+                {canFinalizeMatch ? <Button type="button" disabled={finalizeActionPending} onClick={requestFinalizeMatch}>{finalizeActionPending ? "승인 중" : "최종 승인"}</Button> : null}
+                {isSoloRecord && finalizeActionError ? <small role="status" className="form-warning">{finalizeActionError}</small> : null}
               </Card>
             ) : null}
             {isSharedRecord && match.rules?.recordSetupReady === true ? (
@@ -479,6 +488,7 @@ return (
       <MatchFinalizeDialog
         open={finalizeDialogOpen}
         pending={finalizeActionPending}
+        error={finalizeActionError}
         openDisputeCount={openDisputes.length}
         authorityLabel={finalAuthorityLabel}
         onClose={() => setFinalizeDialogOpen(false)}

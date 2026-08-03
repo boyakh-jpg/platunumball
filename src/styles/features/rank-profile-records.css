@@ -154,7 +154,7 @@
 .rank-list .rank-row {
   display: grid;
   width: 100%;
-  border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.1);
+  border: var(--ui-card-border-width) solid rgba(255, 255, 255, 0.1);
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.045);
   padding: 9px;
@@ -348,7 +348,7 @@
 }
 .connection-list .ui-profile-identity-inline {
   width: 100%;
-  border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.1);
+  border: var(--ui-card-border-width) solid rgba(255, 255, 255, 0.1);
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.045);
   padding: 10px;
@@ -482,4 +482,18 @@
 .recent-result-pill.result-l,
 .recent-match-row.result-l b {
   background: var(--danger);
+}
+@media (max-width: 430px) {
+  .recent-match-matchup {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    overflow: visible;
+    white-space: normal;
+  }
+  .recent-match-matchup > :is(.team-hover-trigger, span),
+  .recent-match-matchup .team-hover-trigger > strong {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+  }
 }

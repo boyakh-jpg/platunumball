@@ -1,7 +1,7 @@
 import { DEFAULT_RATING, MATCH_SIDES, MODE_SIZES, ROOM_KINDS, normalizeBenchCapacity } from "./constants.js";
 import { normalizeCourtOptionalBoolean } from "./courtPolicy.js";
 import { getAgeGroupForUser } from "./profileSetup.js";
-import { getPlayerMatchModeMmr, isMmrInRecruitingRange, normalizeRecruitingMmrRangeMode } from "./recruitingMmrPolicy.js";
+import { isMmrInRecruitingRange, normalizeRecruitingMmrRangeMode } from "./recruitingMmrPolicy.js";
 
 export const SYNTHETIC_MATCH_ROOM_PREFIX = "match-room-";
 const FREE_RECRUITING_COURT_FEE_VALUES = new Set(["0", "0원", "무료", "free", "없음"]);
@@ -66,6 +66,12 @@ export function unique(items = []) {
 }
 export function getRecruitingEntryParticipantIds(entry = {}) {
   return unique([...(entry.players ?? []), ...(entry.reserves ?? [])]);
+}
+export function getRecruitingEntryPlacementIds(entry = {}) {
+  const activeIds = entry.reserve ? [] : unique(entry.players ?? []);
+  const reserveIds = unique(entry.reserve ? entry.players : entry.reserves)
+    .filter((playerId) => !activeIds.includes(playerId));
+  return { activeIds, reserveIds };
 }
 export function isRecruitingPartyEntry(entry = {}) {
   return entry?.kind === "team" && getRecruitingEntryParticipantIds(entry).length >= 2;
@@ -233,7 +239,7 @@ export function getRecruitingJoinMode(entry = {}) {
   return "player";
 }
 export function isSoloIndividualRecruitingRoom(post = {}) {
-  return getRecruitingSideCapacity(post) <= 1 && (post.hostJoinMode === "player" || !post.teamId);
+  return getRecruitingSideCapacity(post) <= 1 && !isTeamRecruitingRoom(post);
 }
 export function isPickupRecruitingRoom(post = {}) {
   return (post.formationMode ?? post.rules?.formationMode) === "pickup"
@@ -280,7 +286,7 @@ export function getTeamEventEligibility(team = null, users = [], options = {}) {
     const user = userById.get(playerId);
     if (!user) return false;
     if (allowedAgeGroups && !allowedAgeGroups.has(getAgeGroupForUser(user))) return false;
-    const playerMmr = getPlayerMatchModeMmr(user, options.mode);
+    const playerMmr = Number(user.ratings?.integrated ?? user.mmr ?? DEFAULT_RATING);
     return !enforceMmr || isMmrInRecruitingRange(playerMmr, targetMmr, true, rangeMode);
   });
   const missingCount = Math.max(0, capacity - eligiblePlayerIds.length);

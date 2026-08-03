@@ -12,6 +12,7 @@ import {
   getPickupParticipantIds,
   getPickupParticipantCapacity,
 } from "./roomFlowPickup.js";
+import { getRecruitingEntryPlacementIds } from "./recruiting.js";
 export { ROOM_BODY_MODES, isPickupRoomFlow, getPickupRotationPolicy, getPickupTeamAssignmentPolicy, getPickupRerollState, buildPickupTeamAssignment, getPickupParticipants, getPickupParticipantIds, getPickupParticipantCapacity } from "./roomFlowPickup.js";
 
 export function getRoomScheduleProposal(room = {}) {
@@ -214,8 +215,7 @@ export function getPickupOpenSlotPlacements(lobby = {}, { sideCapacity = 0, benc
 
   (lobby.entries ?? []).forEach((entry) => {
     const side = entry.side === "teamB" ? "teamB" : "teamA";
-    const activeIds = entry.reserve ? [] : (entry.players ?? []);
-    const reserveIds = entry.reserve ? (entry.players ?? []) : (entry.reserves ?? []);
+    const { activeIds, reserveIds } = getRecruitingEntryPlacementIds(entry);
     activeIds.forEach((playerId) => {
       if (!playerId || seenPlayerIds.has(playerId)) return;
       seenPlayerIds.add(playerId);

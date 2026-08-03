@@ -10,13 +10,13 @@ export function useCreateMatchBaseController({
   syncStepToUrl = true,
 }) {
   const {
-    COURT_MAP_SEARCH_LIMIT, COURT_MAP_SEARCH_PURPOSE, DEFAULT_MATCH_MEMO, DEFAULT_TOURNAMENT_MMR_GAP, DIRECTORY_PICKER_PAGE_LIMIT, DISPUTE_WINDOW_MINUTES, MAX_PARTY_RESERVES,
+    COURT_MAP_SEARCH_LIMIT, COURT_MAP_SEARCH_PURPOSE, DEFAULT_MATCH_MEMO, DEFAULT_TOURNAMENT_MMR_GAP, DIRECTORY_PICKER_PAGE_LIMIT, DISPUTE_WINDOW_MINUTES, MATCH_MODES, MAX_PARTY_RESERVES,
     RECORD_TYPES, REGIONS, ROOM_SCHEDULE_MAX_DAYS, SCHEDULE_MAX_DAYS, addDateDays, getAgeGroupForUser, getAgeRestrictionOption,
     getCanonicalRegion, getCourtPickerResults, getCourtRecommendationScore, getCreateStepFromSearch, getCreateStepSearch, getDefaultCreateMode, getDefaultCreateTitle,
     getDefaultMatchCreationPolicy, getDefaultMmrLimitMode, getDefaultTeamPlayerIds, getLocalDateInputValue, getMatchCreationSteps, getMatchCreationValidation, getMatchCreationWizardType,
     getMatchFormationMode, getMatchModeChangePatch, getMmrSpread, getNextQueueSchedule, getOpponentTeam, getPartyPlayerIds, getPartyReserveIds,
     getPublicRoomMaxDateInput, getRecordComposition, getRecordEntryMode, getRecruitingSideCapacity, getRegisteredCourts, getRepresentativePlayerIds, getRepresentativeTeam,
-    getRoomKindFromDraft, getRoomRemakeDraft, getSoloRecordRosterError, getSoloRecordSelectedIdentitySet, getTeamEventEligibility, getTeamHashtag, includesQuery,
+    getRoomKindFromDraft, getRoomRemakeDraft, getSoloRecordRosterError, getSoloRecordSelectedIdentitySet, getTeamChallengeEligibilityPolicy, getTeamEventEligibility, getTeamHashtag, includesQuery,
     inferRegionSelection, isCourtInRegion, isDefaultCreateTitle, isDefaultTournamentTitle, isHashtagQuery, isSameRegion, makeEmptySoloStats,
     mergeCourtSearchCourts, normalizeRecruitingMmrRangeMode, postServerAction, useCallback, useEffect, useLocation, useMemo,
     useNavigate, useRef, useState,
@@ -115,9 +115,9 @@ const navigate = useNavigate();
   const [opponentTeamQuery, setOpponentTeamQuery] = useState("");
   const [courtQuery, setCourtQuery] = useState("");
   const [courtMapOpen, setCourtMapOpen] = useState(false);
-  const [courtMapReloadVersion, setCourtMapReloadVersion] = useState(0);
   const [courtDetailCourtId, setCourtDetailCourtId] = useState("");
   const [refereeQuery, setRefereeQuery] = useState("");
+  const [selectedTournamentTeamProfiles, setSelectedTournamentTeamProfiles] = useState([]);
   const [selectedTournamentRefereeProfiles, setSelectedTournamentRefereeProfiles] = useState([]);
   const [soloTeamAUserQuery, setSoloTeamAUserQuery] = useState("");
   const [soloTeamBUserQuery, setSoloTeamBUserQuery] = useState("");
@@ -125,11 +125,6 @@ const navigate = useNavigate();
   const [courtRegion, setCourtRegion] = useState(currentCourtRegion);
   const teamSelectableRegions = useMemo(() => ["전체", ...new Set([currentRegion, ...REGIONS].filter(Boolean))], [currentRegion]);
   const courtMapRegion = courtRegion;
-  const retryCourtMapDirectory = () => {
-    loadedCourtMapRegionsRef.current.delete(`${courtMapRegion}:map`);
-    setCourtMapDirectoryStatus({ loading: true, error: "" });
-    setCourtMapReloadVersion((value) => value + 1);
-  };
   const defaultAgeRestriction = getAgeGroupForUser(app.currentUser);
   const favoriteTeamIds = app.state.settings?.favoriteTeamIds ?? [];
   const favoriteRefereeIds = app.state.settings?.favoriteRefereeIds ?? [];
@@ -204,6 +199,7 @@ const navigate = useNavigate();
     ...(initialDraft ?? {}),
   });
   const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false);
   const [submitFeedback, setSubmitFeedback] = useState("");
   const [wizardStep, setWizardStep] = useState(1);
 
@@ -273,13 +269,13 @@ const navigate = useNavigate();
       setCourtMapDirectoryStatus({ loading: false, error: "" });
     }).catch(() => {
       if (courtMapRequestIdRef.current !== requestId) return;
-      setCourtMapDirectoryStatus({ loading: false, error: "등록 구장을 불러오지 못했습니다. 다시 시도해 주세요." });
+      setCourtMapDirectoryStatus({ loading: false, error: "등록 구장을 불러오지 못했습니다. 다시 열어 주세요." });
     });
 
     return () => {
       if (courtMapRequestIdRef.current === requestId) courtMapRequestIdRef.current += 1;
     };
-  }, [app.remoteReady, courtMapOpen, courtMapRegion, courtMapReloadVersion, remoteDirectoryEnabled, wizardStep]);
+  }, [app.remoteReady, courtMapOpen, courtMapRegion, remoteDirectoryEnabled, wizardStep]);
 
   const sortedTeams = useMemo(() => {
     const hashtagSearch = isHashtagQuery(teamQuery);
@@ -312,6 +308,21 @@ const navigate = useNavigate();
 
   const selectedTeamA = app.state.teams.find((team) => team.id === draft.teamAId);
   const selectedTeamB = app.state.teams.find((team) => team.id === draft.teamBId);
+  const challengePolicyByMode = useMemo(() => new Map(
+    MATCH_MODES
+      .filter((mode) => mode.size > 1)
+      .map((mode) => [mode.id, getTeamChallengeEligibilityPolicy({
+        teamA: selectedTeamA,
+        teamB: selectedTeamB,
+        users: app.state.users,
+        capacity: mode.size,
+        currentUserId: app.currentUser.id,
+        ranked: draft.ranked,
+      })])
+      .filter(([, policy]) => Boolean(policy)),
+  ), [app.currentUser.id, app.state.users, draft.ranked, selectedTeamA, selectedTeamB]);
+  const challengeModeIds = useMemo(() => new Set(challengePolicyByMode.keys()), [challengePolicyByMode]);
+  const challengeEligibilityPolicy = challengePolicyByMode.get(draft.mode) ?? null;
   const isSoloRecord = draft.recordType === RECORD_TYPES.personalRecord;
   const isMatchRecordRoom = draft.recordType === RECORD_TYPES.matchRecord;
   const recordEntryMode = getRecordEntryMode(draft);
@@ -409,10 +420,12 @@ const navigate = useNavigate();
   const opponentLeaderId = opponentInviteTargetIds.includes(draft.opponentLeaderId)
     ? draft.opponentLeaderId
     : opponentInviteTargetIds[0] ?? "";
-  const tournamentTeams = useMemo(
-    () => (draft.tournamentTeamIds ?? []).map((teamId) => app.state.teams.find((team) => team.id === teamId)).filter(Boolean),
-    [app.state.teams, draft.tournamentTeamIds],
-  );
+  const tournamentTeams = useMemo(() => {
+    const teamsById = new Map(
+      [...selectedTournamentTeamProfiles, ...app.state.teams].map((team) => [team.id, team]),
+    );
+    return (draft.tournamentTeamIds ?? []).map((teamId) => teamsById.get(teamId)).filter(Boolean);
+  }, [app.state.teams, draft.tournamentTeamIds, selectedTournamentTeamProfiles]);
   const getTournamentTeamEligibility = (team) => {
     const eligibility = getTeamEligibility(team, team?.mmr);
     const isMyTeam = myTeams.some((item) => item.id === team?.id);
@@ -459,12 +472,12 @@ const navigate = useNavigate();
     defaultCapacity, defaultTournamentCapacity, currentRegion, currentCourtRegionSelection, currentCourtRegion, favoriteCourtIds, defaultTeamAPlayerIds,
     defaultTeamB, defaultTournamentTeamB, defaultTeamBPlayerIds, defaultMmrLimitMode, directoryCourts, discoveredCourts, setDiscoveredCourts,
     courtMapDirectoryStatus, setCourtMapDirectoryStatus, registeredCourts, defaultCourt, teamQuery, setTeamQuery, opponentTeamQuery,
-    setOpponentTeamQuery, courtQuery, setCourtQuery, courtMapOpen, setCourtMapOpen, retryCourtMapDirectory, courtDetailCourtId, setCourtDetailCourtId,
-    refereeQuery, setRefereeQuery, selectedTournamentRefereeProfiles, setSelectedTournamentRefereeProfiles, soloTeamAUserQuery, setSoloTeamAUserQuery, soloTeamBUserQuery,
+    setOpponentTeamQuery, courtQuery, setCourtQuery, courtMapOpen, setCourtMapOpen, courtDetailCourtId, setCourtDetailCourtId,
+    refereeQuery, setRefereeQuery, selectedTournamentTeamProfiles, setSelectedTournamentTeamProfiles, selectedTournamentRefereeProfiles, setSelectedTournamentRefereeProfiles, soloTeamAUserQuery, setSoloTeamAUserQuery, soloTeamBUserQuery,
     setSoloTeamBUserQuery, teamRegion, setTeamRegion, courtRegion, setCourtRegion, teamSelectableRegions, courtMapRegion,
     defaultAgeRestriction, favoriteTeamIds, favoriteRefereeIds, isFavoriteTeam, isFavoriteCourt, defaultSchedule, draft,
-    setDraft, submitting, setSubmitting, submitFeedback, setSubmitFeedback, wizardStep, setWizardStep,
-    sortedTeams, sortedCourts, favoriteTeams, favoriteCourts, selectedTeamA, selectedTeamB, isSoloRecord,
+    setDraft, submitting, setSubmitting, submittingRef, submitFeedback, setSubmitFeedback, wizardStep, setWizardStep,
+    sortedTeams, sortedCourts, favoriteTeams, favoriteCourts, selectedTeamA, selectedTeamB, challengePolicyByMode, challengeModeIds, challengeEligibilityPolicy, isSoloRecord,
     isMatchRecordRoom, recordEntryMode, recordComposition, soloRosterError, soloRecordSelectedIdentitySet, isPublicRoom, isTournamentRoom,
     isPickupMatch, isTeamRoom, isStandardCreateWizard, creationWizardType, creationWizardSteps, finalWizardStep, wizardStepIds,
     goToWizardStep, matchCreationValidation, matchCreationPolicy, currentRoomKind, sideCapacity, ageRestrictionOption, getTeamEligibility,

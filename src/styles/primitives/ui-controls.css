@@ -5,6 +5,8 @@
   border: var(--ui-card-border-width) solid var(--ui-card-border);
   border-radius: var(--ui-card-radius);
   box-shadow: var(--ui-card-shadow);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 
 .ui-tier-label {
@@ -98,6 +100,7 @@ html[data-theme] .app-main :is(.recent-match-row.result-d, .rank-match-draw) {
   justify-content: center;
   gap: 8px;
   min-height: var(--ui-button-height);
+  padding-block: 0;
   padding-inline: var(--ui-button-padding-x);
   color: var(--ui-button-color);
   font: inherit;
@@ -109,7 +112,7 @@ html[data-theme] .app-main :is(.recent-match-row.result-d, .rank-match-draw) {
   background: var(--ui-button-bg);
   border: var(--ui-button-border-width) solid var(--ui-button-border);
   border-radius: var(--ui-button-radius);
-  box-shadow: none;
+  box-shadow: var(--ui-button-shadow, none);
   transition:
     border-color 140ms ease,
     background-color 140ms ease,
@@ -374,6 +377,22 @@ html[data-theme] .app-main :is(.recent-match-row.result-d, .rank-match-draw) {
 
 .ui-control:hover:not(:disabled) {
   border-color: var(--rb-line-strong);
+}
+
+.ui-control.ui-control-xs {
+  width: 100%;
+  min-width: 0;
+  min-height: var(--ui-control-xs-height, 25px);
+  height: var(--ui-control-xs-height, 25px);
+  padding: var(--ui-control-xs-padding, 2px 6px);
+  border-radius: var(--ui-control-xs-radius, var(--radius-xs));
+  font-size: var(--ui-control-xs-font-size, 0.7rem);
+}
+
+.ui-control-surface {
+  border: var(--ui-card-border-width) solid var(--ui-control-border);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
 }
 
 .ui-field-span-all {

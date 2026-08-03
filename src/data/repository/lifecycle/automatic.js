@@ -17,6 +17,7 @@ import { normalizeDisputeWindowMinutes } from "../../../lib/constants.js";
 import { normalizeRecruitingApplicants } from "../../../lib/recruiting.js";
 import { normalizeRecruitingPost } from "../../../lib/recruiting.js";
 import { normalizeRecruitingRoomState } from "../../../lib/recruiting.js";
+import { isPracticeEntity } from "../../../lib/practiceMode.js";
 import { uniquePlayerIds } from "../../rowUtils.js";
 import { getServerRatingValue } from "../runtime.js";
 import { finalizeMatch } from "./matches.js";
@@ -56,13 +57,14 @@ function applyAutomaticMatchDecisions(state, now = new Date()) {
         };
         continue;
       }
+      const practiceMatch = isPracticeEntity(current);
       const nextMatch = {
         ...current,
-        ranked: true,
+        ranked: practiceMatch ? false : true,
         mmrExcludedPlayerIds: verification.unconfirmedIds,
         rules: {
           ...(current.rules ?? {}),
-          ratingScale: getServerRatingValue("getPostgameRecordMmrScale", current),
+          ratingScale: practiceMatch ? 0 : getServerRatingValue("getPostgameRecordMmrScale", current),
           mmrExcludedPlayerIds: verification.unconfirmedIds,
           teamRatingDisabled: true,
           matchRecordVerificationStatus: "confirmed",

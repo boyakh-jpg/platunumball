@@ -14,7 +14,6 @@
     display: none;
   }
 
-  .arena-compose-drawer,
   .arena-lobby-modal {
     width: 100%;
     max-height: calc(100dvh - 20px);
@@ -80,8 +79,7 @@
   }
 }
 
-html[data-theme="light"] .arena-filter-bar button,
-html[data-theme="light"] .arena-filter-select select {
+html[data-theme="light"] .arena-filter-bar button {
   border-color: rgba(30, 24, 18, 0.14);
   background: rgba(255, 255, 255, 0.72);
   color: var(--rb-text);
@@ -294,7 +292,6 @@ html[data-theme="light"] .arena-room-party-group::after {
   max-width: 12ch;
   font-size: clamp(64px, 8vw, 112px);
   line-height: 0.84;
-  text-shadow: 0 16px 34px rgba(0, 0, 0, 0.5);
 }
 
 .arena-hero-copy p {

@@ -28,7 +28,7 @@ export default function RecruitingRoomActionFeedback({ context }) {
           <div className="app-confirm-dialog" role="dialog" aria-modal="true" aria-label="유료 구장 참여 확인" onMouseDown={(event) => event.stopPropagation()}>
             <strong>유료 구장입니다.</strong>
             <p>참가비나 대관료를 미리 확인하고 참여해 주세요.</p>
-            <div className="app-confirm-actions">
+            <div className="ui-action-row app-confirm-actions">
               <Button type="button" variant="secondary" onClick={() => setPaidCourtJoinPrompt(null)}>취소</Button>
               <Button type="button" variant="primary" onClick={confirmPaidCourtJoin}>계속 참여</Button>
             </div>

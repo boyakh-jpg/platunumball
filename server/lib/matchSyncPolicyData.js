@@ -1,4 +1,5 @@
 import { MATCH_SYNC_DEPENDENCIES } from "./matchSyncDependencies.js";
+export { isActiveReferee } from "./refereeEligibilityPolicy.js";
 
 export const {
 
@@ -96,32 +97,5 @@ export function normalizeResultSnapshot(result = null, statRows = []) {
     scoreA: toFiniteNumber(result.score_a ?? result.scoreA),
     scoreB: toFiniteNumber(result.score_b ?? result.scoreB),
     playerStats: result.playerStats ? normalizePlayerStats(result.playerStats) : normalizeStatRows(statRows),
-  });
-}
-
-export async function isActiveReferee(supabase, userId, minTrust = 90) {
-  if (!userId) return false;
-
-  const { data: profile, error: profileError } = await supabase
-    .from("profiles")
-    .select("trust_score")
-    .eq("id", userId)
-    .maybeSingle();
-  if (profileError) throw profileError;
-  if (Number(profile?.trust_score ?? 0) < Number(minTrust ?? 90)) return false;
-
-  const { data, error } = await supabase
-    .from("referee_appointments")
-    .select("id, role, grade, status, starts_at, ends_at")
-    .eq("user_id", userId)
-    .eq("role", "referee")
-    .eq("status", "active");
-  if (error) throw error;
-
-  const now = Date.now();
-  return toArray(data).some((row) => {
-    const startsAt = row.starts_at ? Date.parse(row.starts_at) : 0;
-    const endsAt = row.ends_at ? Date.parse(row.ends_at) : 0;
-    return isRefereeGrade(row.grade) && (!startsAt || startsAt <= now) && (!endsAt || endsAt > now);
   });
 }

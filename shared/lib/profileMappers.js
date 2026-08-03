@@ -202,12 +202,19 @@ export function getRemoteAppSettings(profile = {}) {
   const notificationChannels = settings.notificationChannels && typeof settings.notificationChannels === "object" && !Array.isArray(settings.notificationChannels)
     ? settings.notificationChannels
     : null;
+  const blockedUserIds = Array.isArray(settings.blockedUserIds)
+    ? [...new Set(settings.blockedUserIds.filter((userId) => typeof userId === "string" && userId))]
+    : null;
+  const blockedUserProfiles = settings.blockedUserProfiles && typeof settings.blockedUserProfiles === "object" && !Array.isArray(settings.blockedUserProfiles)
+    ? Object.fromEntries((blockedUserIds ?? []).flatMap((userId) => settings.blockedUserProfiles[userId] ? [[userId, settings.blockedUserProfiles[userId]]] : []))
+    : {};
   const showHomeGuideCard = typeof settings.showHomeGuideCard === "boolean" ? settings.showHomeGuideCard : null;
   return {
     ...(theme ? { theme } : {}),
     ...(privacy ? { privacy } : {}),
     ...(representativeTeamId ? { representativeTeamId } : {}),
     ...(notificationChannels ? { notificationChannels } : {}),
+    ...(blockedUserIds ? { blockedUserIds, blockedUserProfiles } : {}),
     ...(showHomeGuideCard !== null ? { showHomeGuideCard } : {}),
   };
 }

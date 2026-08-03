@@ -1,17 +1,16 @@
 export function createCreateMatchActions(context) {
   const {
-    RECORD_TYPES, Star, ageRestrictionOption, app, appendSoloRecordUser, challengeTeamAId, challengeTeamBId, currentRegion, draft,
+    RECORD_TYPES, Star, ageRestrictionOption, app, appendSoloRecordUser, challengeTeamAId, challengeTeamBId, currentRegion, draft, hasTeamChallenge,
     favoriteRefereeIds, favoriteTeamIds, formatCreateSaveError, getAvailableTeamPlayerIds, getCourtAddress, getCourtHashtag, getCourtLayoutLabel,
     getCourtSurfaceLabel, getMatchCreationPolicyPayload, getMatchRulesPayload, getOpponentTeam, getPersonalRecordDraftPayload, getRepresentativePlayerIds, getScopedMatchCreationPolicyPayload,
     getTeamEligibility, getTeamHashtag, getTournamentTeamEligibility, getUserHashtag, isFavoriteCourt, isInstantRoom, isMatchRecordRoom,
     isMmrInRecruitingRange, isPublicRoom, isSoloRecord, isTeamRoom, isTournamentRoom, myTeams, navigate,
     normalizeSoloRecordRosterInput, onRecruitingCreated, practiceMode, recordComposition, remakeDraft, remakeSourceId, remakeSourceMatchId,
     representativeTournamentTeam, selectCourt, selectedCourt, selectedTeamA, selectedTournamentCourts, setDraft, setOpponentTeamQuery,
-    setRefereeQuery, setSelectedTournamentRefereeProfiles, setSubmitFeedback, setSubmitting, sideCapacity, sortedTeams, submitDisabled,
-    submitDisabledReason, submitting, update,
+    setRefereeQuery, setSelectedTournamentTeamProfiles, setSelectedTournamentRefereeProfiles, setSubmitFeedback, setSubmitting, sideCapacity, sortedTeams, submitDisabled,
+    submitDisabledReason, submitting, submittingRef, update,
   } = context;
-
-const selectTeamA = (teamAId) => {
+  const selectTeamA = (teamAId) => {
     if (!myTeams.some((team) => team.id === teamAId)) return;
     const team = app.state.teams.find((item) => item.id === teamAId);
     const teamEligibility = getTeamEligibility(team, team?.mmr);
@@ -71,9 +70,13 @@ const selectTeamA = (teamAId) => {
     if (side === "A") selectTeamA(teamId);
     if (side === "B") selectTeamB(teamId);
   };
-  const toggleTournamentTeam = (teamId) => {
+  const toggleTournamentTeam = (teamOrId) => {
+    const teamId = typeof teamOrId === "string" ? teamOrId : teamOrId?.id;
+    if (!teamId) return;
     const teamIds = draft.tournamentTeamIds ?? [];
-    const team = app.state.teams.find((item) => item.id === teamId);
+    const team = typeof teamOrId === "string"
+      ? app.state.teams.find((item) => item.id === teamId)
+      : teamOrId;
     if (teamIds.includes(teamId) && teamId === representativeTournamentTeam?.id) {
       setSubmitFeedback("내 대표팀은 대회 참가팀에서 해제할 수 없습니다.");
       return;
@@ -84,6 +87,11 @@ const selectTeamA = (teamAId) => {
         setSubmitFeedback(`${team?.name ?? "선택 팀"}: ${eligibility.reason}`);
         return;
       }
+      setSelectedTournamentTeamProfiles((current) => (
+        current.some((item) => item.id === teamId) ? current : [...current, team]
+      ));
+    } else {
+      setSelectedTournamentTeamProfiles((current) => current.filter((item) => item.id !== teamId));
     }
     setDraft((current) => {
       const currentTeamIds = current.tournamentTeamIds ?? [];
@@ -131,7 +139,7 @@ const selectTeamA = (teamAId) => {
         disabled={!eligibility.allowed && !invited}
         onMouseDown={(event) => event.preventDefault()}
         onClick={() => {
-          if (isTournamentRoom) toggleTournamentTeam(team.id);
+          if (isTournamentRoom) toggleTournamentTeam(team);
           else assignTeam(team.id, "A");
         }}
       >
@@ -232,7 +240,7 @@ const selectTeamA = (teamAId) => {
   );
   const submit = async (event) => {
     event.preventDefault();
-    if (submitting) return;
+    if (submittingRef.current || submitting) return;
     if (practiceMode && (
       isSoloRecord
       || isMatchRecordRoom
@@ -247,6 +255,7 @@ const selectTeamA = (teamAId) => {
       return;
     }
     setSubmitFeedback("");
+    submittingRef.current = true;
     setSubmitting(true);
     try {
     if (isSoloRecord) {
@@ -368,7 +377,8 @@ const selectTeamA = (teamAId) => {
       return;
     }
     const creationPolicyPayload = getMatchCreationPolicyPayload(draft);
-    const createAsTeam = creationPolicyPayload.hostJoinMode === "team" && creationPolicyPayload.teamOnly;
+    const effectiveVisibility = hasTeamChallenge ? "private" : draft.visibility;
+    const createAsTeam = hasTeamChallenge || creationPolicyPayload.hostJoinMode === "team" && creationPolicyPayload.teamOnly;
     const remakeInvitationContext = remakeDraft
       ? [
           "취소된 방을 같은 설정으로 다시 만들었습니다.",
@@ -378,9 +388,9 @@ const selectTeamA = (teamAId) => {
     const postId = await app.actions.createRecruitingPost({
       ...creationPolicyPayload,
       ...(remakeDraft ? { remakeSourceId, remakeSourceMatchId } : {}),
-      visibility: draft.visibility,
+      visibility: effectiveVisibility,
       title: draft.title,
-      hostJoinMode: creationPolicyPayload.hostJoinMode,
+      hostJoinMode: createAsTeam ? "team" : creationPolicyPayload.hostJoinMode,
       teamOnly: createAsTeam,
       teamId: "",
       playerIds: [],
@@ -427,42 +437,44 @@ const selectTeamA = (teamAId) => {
         creationPolicyPayload.venuePaymentType === "paid_reserved" ? `구장 예약: ${creationPolicyPayload.venueFee ? `${creationPolicyPayload.venueFee}원` : "예약 있음"}` : "",
         remakeDraft && draft.remakeCancellationReason ? `이전 방 취소 사유: ${draft.remakeCancellationReason}` : "",
         draft.memo,
-        isPublicRoom ? "공개방: 빈 슬롯은 방에서 공개 모집합니다." : "비공개방: 초대/선택된 인원만 참여합니다.",
+        effectiveVisibility === "public" ? "공개방: 빈 슬롯은 방에서 공개 모집합니다." : "비공개방: 초대/선택된 인원만 참여합니다.",
       ].filter(Boolean).join("\n"),
     });
     if (typeof postId === "string" && postId) {
-      if (!remakeDraft && createAsTeam && challengeTeamAId) {
-        const teamAResult = await app.actions.setRecruitingRoomTeam(postId, "teamA", challengeTeamAId);
-        if (!teamAResult || teamAResult?.ok === false) {
+      const presetTeamAId = remakeDraft ? draft.remakeTeamAId : challengeTeamAId;
+      const presetTeamBId = remakeDraft ? draft.remakeTeamBId : challengeTeamBId;
+      let presetTeamAReady = false;
+      if (createAsTeam && presetTeamAId) {
+        const result = await app.actions.setRecruitingRoomTeam(postId, "teamA", presetTeamAId);
+        if (!result || result?.ok === false) {
           await app.actions.closeRecruitingPost(postId, "A팀 선택 실패로 생성 취소");
-          setSubmitFeedback(formatCreateSaveError(teamAResult, "A팀을 선택하지 못해 생성한 방을 종료했습니다."));
+          setSubmitFeedback(formatCreateSaveError(result, "A팀을 선택하지 못해 생성한 방을 종료했습니다."));
           return;
         }
-        if (draft.visibility === "private" && challengeTeamBId) {
-          const teamBResult = await app.actions.setRecruitingRoomTeam(postId, "teamB", challengeTeamBId, "시즌 라이벌 매치업에서 보낸 팀 초대입니다.");
-          if (!teamBResult || teamBResult?.ok === false) {
-            await app.actions.closeRecruitingPost(postId, "B팀 초대 실패로 생성 취소");
-            setSubmitFeedback(formatCreateSaveError(teamBResult, "상대 B팀을 초대하지 못해 생성한 방을 종료했습니다."));
-            return;
-          }
-        }
-      }
-      if (remakeDraft && createAsTeam && draft.remakeTeamAId) {
-        await app.actions.setRecruitingRoomTeam(postId, "teamA", draft.remakeTeamAId);
+        presetTeamAReady = true;
       }
       if (remakeDraft && draft.remakeReinvite) {
-        if (createAsTeam && draft.remakeTeamBId) {
-          await app.actions.setRecruitingRoomTeam(postId, "teamB", draft.remakeTeamBId, remakeInvitationContext);
+        if (createAsTeam && presetTeamAReady && presetTeamBId) {
+          const result = await app.actions.setRecruitingRoomTeam(postId, "teamB", presetTeamBId, remakeInvitationContext);
+          if (!result || result?.ok === false) { await app.actions.closeRecruitingPost(postId, "B팀 재초대 실패로 생성 취소"); setSubmitFeedback(formatCreateSaveError(result, "이전 상대 B팀을 다시 초대하지 못해 생성한 방을 종료했습니다.")); return; }
         } else if (!createAsTeam) {
           for (const group of draft.remakeInvitationGroups ?? []) {
-            await app.actions.inviteRecruitingPlayers(postId, {
+            const result = await app.actions.inviteRecruitingPlayers(postId, {
               side: group.side,
               reserve: group.reserve,
               playerIds: group.playerIds,
               joinMode: "player",
               contextMessage: remakeInvitationContext,
             });
+            if (!result || result?.ok === false) { await app.actions.closeRecruitingPost(postId, "선수 재초대 실패로 생성 취소"); setSubmitFeedback(formatCreateSaveError(result, "이전 참가자를 다시 초대하지 못해 생성한 방을 종료했습니다.")); return; }
           }
+        }
+      } else if (!remakeDraft && createAsTeam && presetTeamAReady && effectiveVisibility === "private" && presetTeamBId) {
+        const result = await app.actions.setRecruitingRoomTeam(postId, "teamB", presetTeamBId, "시즌 라이벌 매치업에서 보낸 팀 초대입니다.");
+        if (!result || result?.ok === false) {
+          await app.actions.closeRecruitingPost(postId, "B팀 초대 실패로 생성 취소");
+          setSubmitFeedback(formatCreateSaveError(result, "상대 B팀을 초대하지 못해 생성한 방을 종료했습니다."));
+          return;
         }
       }
       if (onRecruitingCreated) onRecruitingCreated(postId);
@@ -475,6 +487,7 @@ const selectTeamA = (teamAId) => {
     } catch (error) {
       setSubmitFeedback(formatCreateSaveError(error, "경기를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요."));
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
     }
   };

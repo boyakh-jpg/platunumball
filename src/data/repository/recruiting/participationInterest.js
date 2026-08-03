@@ -1,3 +1,4 @@
+import { DEFAULT_RATING } from "../../../lib/constants.js";
 import { MATCH_SIDES } from "../../../lib/constants.js";
 import { SIDE_LABEL_TEXT } from "../../../lib/constants.js";
 import { currentUserCanRefereeRecruitingRoom } from "../../../lib/recruiting.js";
@@ -8,7 +9,6 @@ import { getRecruitingApplicantKind } from "../../../lib/recruiting.js";
 import { getRecruitingBenchCapacity } from "../../../lib/recruiting.js";
 import { getRecruitingBestSide } from "../../../lib/recruiting.js";
 import { getRecruitingFit } from "../../../lib/recruiting.js";
-import { getPlayerMatchModeMmr } from "../../../lib/recruiting.js";
 import { getRecruitingLobby } from "../../../lib/recruiting.js";
 import { getRecruitingSideCapacity } from "../../../lib/recruiting.js";
 import { getRecruitingTargetMmr } from "../../../lib/recruiting.js";
@@ -252,7 +252,6 @@ export function interestRecruitingPost(state, postId, application = {}) {
     : sideCapacity;
   const reserveSelectionCapacity = Math.max(0, benchCapacity - (sideState?.reserveCandidates?.length ?? 0));
   const teamEligibility = team ? getTeamEventEligibility(team, state.users, {
-    mode: post.mode,
     capacity: sideCapacity,
     ranked: post.ranked,
     mmrLimitMode: post.mmrLimitMode ?? roomState.mmrLimitMode,
@@ -304,8 +303,8 @@ export function interestRecruitingPost(state, postId, application = {}) {
     ? [...selectedPlayerIds, ...selectedReservePlayerIds].filter((playerId) => playerId && playerId !== state.currentUserId)
     : [];
   const candidateMmr = applicantKind === "team"
-    ? getAveragePlayerMmr(state, selectedPlayerIds, team?.mmr ?? getPlayerMatchModeMmr(user, post.mode), post.mode)
-    : getPlayerMatchModeMmr(user, post.mode);
+    ? getAveragePlayerMmr(state, selectedPlayerIds, team?.mmr ?? user?.ratings?.integrated ?? DEFAULT_RATING)
+    : user?.ratings?.integrated ?? DEFAULT_RATING;
   const fit = getRecruitingFit(post, candidateMmr, state);
   const mmrLimitMode = normalizeRecruitingMmrLimitMode(post.mmrLimitMode ?? roomState.mmrLimitMode);
   if (mmrLimitMode === "block" && !fit.allowed) {

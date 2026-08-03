@@ -1,4 +1,5 @@
 import {
+  REFEREE_ACTIVE_TRUST_MIN,
   REFEREE_TRUST_MIN,
   TEST_REFEREE_LOGIN_IDS,
   isRefereeGrade,
@@ -25,6 +26,24 @@ function isActiveRefereeTerm(record = {}, nowMs = Date.now(), throughMs = nowMs)
   const normalizedEnd = Number.isFinite(endsAt) ? endsAt : Infinity;
   const normalizedThrough = Number.isFinite(throughMs) ? Math.max(nowMs, throughMs) : nowMs;
   return normalizedStart <= nowMs && normalizedThrough <= normalizedEnd;
+}
+
+function isTrustAutoRevokedRefereeAppointment(appointment = {}, userId = "", startedAt = "") {
+  const payload = appointment.payload && typeof appointment.payload === "object"
+    ? appointment.payload
+    : {};
+  const startedMs = new Date(startedAt).getTime();
+  const revokedMs = new Date(appointment.revokedAt ?? payload.revokedAt ?? "").getTime();
+  return (
+    (appointment.userId ?? appointment.user_id) === userId
+    && (appointment.role ?? "referee") === "referee"
+    && appointment.status === "revoked"
+    && (appointment.autoRevoked ?? payload.autoRevoked) === true
+    && (appointment.revokeReason ?? payload.revokeReason) === "referee_trust_below_70"
+    && Number.isFinite(startedMs)
+    && Number.isFinite(revokedMs)
+    && startedMs <= revokedMs
+  );
 }
 
 function hasRefereeQualification(
@@ -71,7 +90,7 @@ export function getMatchReferee(match = {}, users = []) {
 
 export function isEligibleReferee(
   user = {},
-  minTrust = REFEREE_TRUST_MIN,
+  _minTrust = REFEREE_TRUST_MIN,
   refereeAppointments = [],
   throughDate = null,
 ) {
@@ -83,12 +102,34 @@ export function isEligibleReferee(
     ).getTime()
     : Date.now();
   if (TEST_REFEREE_LOGIN_ID_SET.has(String(user?.testLoginId ?? "").toLowerCase())) return true;
-  return (
-    Number(user?.trustScore ?? 0) >= Number(minTrust ?? REFEREE_TRUST_MIN)
-    && hasRefereeQualification(user, refereeAppointments, Date.now(), parsedThroughMs)
-  );
+  return hasRefereeQualification(user, refereeAppointments, Date.now(), parsedThroughMs);
 }
 
 export function isMatchReferee(match = {}, userId) {
   return Boolean(match.refereeId && userId && match.refereeId === userId);
+}
+
+export function isOngoingAssignedMatchReferee(match = {}, userId) {
+  return Boolean(
+    isMatchReferee(match, userId)
+    && match.startedAt
+    && !match.confirmedAt
+    && !["cancelled", "void", "voided", "closed", "confirmed"].includes(match.status),
+  );
+}
+
+export function canOperateAssignedMatchReferee(
+  user = {},
+  match = {},
+  refereeAppointments = [],
+) {
+  if (!isMatchReferee(match, user?.id)) return false;
+  if (isEligibleReferee(user, match.refereeTrustMin, refereeAppointments)) return true;
+  return (
+    Number(user?.trustScore ?? 0) < REFEREE_ACTIVE_TRUST_MIN
+    && isOngoingAssignedMatchReferee(match, user.id)
+    && refereeAppointments.some((appointment) => (
+      isTrustAutoRevokedRefereeAppointment(appointment, user.id, match.startedAt)
+    ))
+  );
 }

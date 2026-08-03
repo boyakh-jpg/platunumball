@@ -1,15 +1,17 @@
+import InlineValidatedInput from "../common/InlineValidatedInput.jsx";
+
 export function CreateMatchCourtRosterSection({ context }) {
   const {
     AGE_GROUPS, Badge, Button, Card, ClipboardList, CourtDetailModal, CourtMapPicker,
     Globe2, MapIcon, MapPin, MatchCostPolicyFields, MeetingPointFields, MmrRangeSelector, NumericStepper,
     PLAYER_STAT_FIELDS, REGION_TREE, SearchPicker, ShieldCheck, TeamHoverCard, UsersRound, X,
-    activePlayerIds, ageRestrictionBlocked, ageRestrictionOption, app, clearSelectedCourt, courtDetailCourtId, courtMapDirectoryStatus,
+    activePlayerIds, ageRestrictionBlocked, ageRestrictionOption, app, challengeTeamAId, challengeTeamBId, clearSelectedCourt, courtDetailCourtId, courtMapDirectoryStatus,
     courtMapOpen, courtMapRegion, courtPlayWarning, courtQuery, courtRegion, courtSummary, draft,
     favoriteCourts, favoriteReferees, favoriteTeams, getCourtAddress, getCourtLayoutLabel, getCourtSearchText, getCourtSurfaceLabel,
-    getTournamentTeamEligibility, isMatchRecordRoom, isPublicRoom, isSoloRecord, isStandardCreateWizard, isTeamRoom, isTournamentRoom,
-    mmrLimitOptions, mmrRangePolicy, recordComposition, refereeQuery, refereeSearchResults, registeredCourts,
+    getTournamentTeamEligibility, hasTeamChallenge, isMatchRecordRoom, isPublicRoom, isSoloRecord, isStandardCreateWizard, isTeamRoom, isTournamentRoom,
+    loadedCourtMapRegionsRef, mmrLimitOptions, mmrRangePolicy, recordComposition, refereeQuery, refereeSearchResults, registeredCourts,
     remoteDirectoryEnabled, removeTournamentCourt, removeTournamentReferee, renderCourtSearchItem, renderCreateTeamSearchItem, renderRefereeSearchItem, representativeTournamentTeam,
-    requiredTournamentRefereeCount, retryCourtMapDirectory, roomTierRange, selectCourt, selectedCourt, selectedTournamentCourts, selectedTournamentReferees, setCourtDetailCourtId,
+    requiredTournamentRefereeCount, roomTierRange, selectCourt, selectedCourt, selectedTournamentCourts, selectedTournamentReferees, setCourtDetailCourtId,
     setCourtMapOpen, setCourtQuery, setCourtRegion, setRefereeQuery, setTeamQuery, setTeamRegion, sortedCourts,
     sortedTeams, teamOptions, teamQuery, teamRegion, teamSelectableRegions, teamTierBlocked, teamTierWarned,
     toggleAgeRestriction, toggleTournamentTeam, tournamentMmrBlocked, tournamentMmrPolicyOptions, tournamentMmrSpread, tournamentRefereeCandidates, tournamentTeams,
@@ -47,7 +49,7 @@ export function CreateMatchCourtRosterSection({ context }) {
                 type="button"
                 variant="secondary"
                 onClick={() => {
-                  retryCourtMapDirectory();
+                  loadedCourtMapRegionsRef.current.delete(`${courtMapRegion}:map`);
                   setCourtMapOpen(true);
                 }}
               >
@@ -161,7 +163,6 @@ export function CreateMatchCourtRosterSection({ context }) {
           currentRegion={courtMapRegion}
           loading={courtMapDirectoryStatus.loading}
           loadError={courtMapDirectoryStatus.error}
-          onRetry={retryCourtMapDirectory}
           onClose={() => setCourtMapOpen(false)}
           onSelect={(court) => {
             selectCourt(court);
@@ -204,7 +205,7 @@ export function CreateMatchCourtRosterSection({ context }) {
                       value={(draft.soloStats ?? {})[field.id] ?? 0}
                       max={999}
                       label={field.id === "points" ? "내 득점" : field.label}
-                      clearZeroOnFocus
+                      clearOnFocus
                       onChange={(value) => updateSoloStat(field.id, value)}
                     />
                   </label>
@@ -229,29 +230,30 @@ export function CreateMatchCourtRosterSection({ context }) {
                   <div className="mmr-range-summary-row">
                     <div>
                       <span>경쟁전 허용구간</span>
-                      <strong>{isTournamentRoom ? `${mmrRangePolicy.label} · 팀별 MMR 기준` : isTeamRoom ? `${mmrRangePolicy.label} · A팀 선택 후 확정` : roomTierRange.detail}</strong>
-                      <em>{isTournamentRoom ? "각 팀의 조건 충족 선수 수를 검사" : isTeamRoom ? "방 모달에서 선택한 A팀 MMR 기준" : `${app.currentUser.name} 기준`} · {mmrRangePolicy.detail}</em>
+                      <strong>{hasTeamChallenge ? `${mmrRangePolicy.label} · 양 팀 출전 가능 인원 자동 계산` : isTournamentRoom ? `${mmrRangePolicy.label} · 팀별 MMR 기준` : isTeamRoom ? `${mmrRangePolicy.label} · A팀 선택 후 확정` : roomTierRange.detail}</strong>
+                      <em>{hasTeamChallenge ? "필요 인원을 채우는 최소 범위로 고정" : isTournamentRoom ? "각 팀의 조건 충족 선수 수를 검사" : isTeamRoom ? "방 모달에서 선택한 A팀 MMR 기준" : `${app.currentUser.name} 기준`} · {mmrRangePolicy.detail}</em>
                     </div>
                     <Badge tone={teamTierBlocked || teamTierWarned ? "orange" : "green"}>{teamTierBlocked ? "차단" : teamTierWarned ? "경고" : "허용"}</Badge>
                   </div>
-                  <MmrRangeSelector value={draft.mmrRangeMode} onChange={(mmrRangeMode) => update({ mmrRangeMode })} />
+                  <MmrRangeSelector value={draft.mmrRangeMode} disabled={hasTeamChallenge} onChange={(mmrRangeMode) => update({ mmrRangeMode })} />
                 </div>
               ) : null}
               <div className={ageRestrictionBlocked ? "mmr-range-mode-control create-eligibility-control ui-design-borderless-surface tier-range-note-warning" : "mmr-range-mode-control create-eligibility-control ui-design-borderless-surface"}>
                 <div className="mmr-range-summary-row">
                   <div>
                     <span>연령 제한</span>
-                    <strong>{ageRestrictionOption.label}</strong>
-                    <em>{ageRestrictionOption.desc}</em>
+                    <strong>{ageRestrictionOption.label}{hasTeamChallenge ? " · 자동" : ""}</strong>
+                    <em>{hasTeamChallenge ? "양 팀이 출전 인원을 채우는 최소 연령 범위" : ageRestrictionOption.desc}</em>
                   </div>
                   <Badge tone={ageRestrictionBlocked ? "orange" : "green"}>{ageRestrictionBlocked ? "차단" : "허용"}</Badge>
                 </div>
-                <div className="segmented-control compact-segments age-restriction-segments">
+                <div className="ui-segmented-control segmented-control compact-segments age-restriction-segments">
                   {AGE_GROUPS.map((option) => (
                     <button
                       key={option.id}
                       type="button"
                       className={ageRestrictionOption.allowedGroups.includes(option.id) ? "active" : ""}
+                      disabled={hasTeamChallenge}
                       onClick={() => update({ ageRestriction: toggleAgeRestriction(draft.ageRestriction, option.id) })}
                     >
                       {option.label}
@@ -272,7 +274,7 @@ export function CreateMatchCourtRosterSection({ context }) {
               {isTournamentRoom ? (
                 <label>
                   허용 MMR 차이
-                  <input type="number" min="0" step="10" value={draft.tournamentMaxMmrGap} onChange={(event) => update({ tournamentMaxMmrGap: event.target.value })} />
+                  <InlineValidatedInput clearOnDirectEntry type="number" min="0" step="10" value={draft.tournamentMaxMmrGap} onChange={(event) => update({ tournamentMaxMmrGap: event.target.value })} />
                 </label>
               ) : null}
               {isTournamentRoom ? (
@@ -392,9 +394,11 @@ export function CreateMatchCourtRosterSection({ context }) {
             <div className="create-public-note ui-design-borderless-surface">
               <UsersRound size={17} />
               <span>
-                {isPublicRoom
-                  ? "빈 팀방을 만든 뒤 공용 방 모달에서 A팀을 선택합니다. B사이드는 상대 팀 주장이 참가합니다."
-                  : "빈 팀방을 만든 뒤 공용 방 모달에서 A팀과 B팀을 순서대로 선택합니다. B팀 현재 주장에게 초대 1건이 자동 생성됩니다."}
+                {hasTeamChallenge
+                  ? `${app.state.teams.find((team) => team.id === challengeTeamAId)?.name ?? "내 팀"}으로 방을 만든 뒤 ${app.state.teams.find((team) => team.id === challengeTeamBId)?.name ?? "라이벌 팀"} 현재 주장에게 자동 초대합니다.`
+                  : isPublicRoom
+                  ? "빈 팀방을 만든 뒤 경기방에서 A팀을 선택합니다. B사이드는 상대 팀 주장이 참가합니다."
+                  : "빈 팀방을 만든 뒤 경기방에서 A팀과 B팀을 순서대로 선택합니다. B팀 현재 주장에게 초대 1건이 자동 생성됩니다."}
               </span>
             </div>
           ) : null}

@@ -10,18 +10,12 @@ export function normalizeRecruitingMmrRangeMode(mode = "narrow") {
   if (mode === "standard") return "normal";
   return MMR_RANGE_POLICIES[mode] ? mode : "narrow";
 }
-export function getPlayerMatchModeMmr(user = {}, mode = "") {
-  const modeMmr = Number(user.ratings?.modes?.[mode]);
-  if (Number.isFinite(modeMmr)) return modeMmr;
-  const fallbackMmr = Number(user.ratings?.integrated ?? user.mmr);
-  return Number.isFinite(fallbackMmr) ? fallbackMmr : DEFAULT_RATING;
-}
 export function getRecruitingTargetMmr(post = {}, state = {}) {
   if (post.teamId) {
     return state.teams?.find((team) => team.id === post.teamId)?.mmr ?? DEFAULT_RATING;
   }
   if (post.playerId) {
-    return getPlayerMatchModeMmr(state.users?.find((user) => user.id === post.playerId), post.mode ?? post.rules?.mode);
+    return state.users?.find((user) => user.id === post.playerId)?.ratings?.integrated ?? DEFAULT_RATING;
   }
   return DEFAULT_RATING;
 }

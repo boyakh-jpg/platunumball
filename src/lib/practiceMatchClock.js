@@ -1,4 +1,5 @@
 import { normalizeMatchRules } from "./matchRules.js";
+import { getPracticeMatchAttendanceQrResponse } from "./matchAttendance.js";
 import { PRACTICE_ID_PREFIX, isPracticeEntity } from "./practiceMode.js";
 import { getMatchReservePlayerIds } from "./matchUtils.js";
 
@@ -95,10 +96,12 @@ export function createPracticeClockClient(
       score: {
         a: Number(match?.result?.scoreA ?? match?.teamA?.score ?? 0),
         b: Number(match?.result?.scoreB ?? match?.teamB?.score ?? 0),
+        revisionA: Number(match?.result?.scoreRevisionA ?? 0),
+        revisionB: Number(match?.result?.scoreRevisionB ?? 0),
         updatedAt: match?.result?.submittedAt ?? null,
       },
       activePlayers: controllerCandidates,
-      attendanceQr: null,
+      attendanceQr: canControl ? getPracticeMatchAttendanceQrResponse(match).qr : null,
     };
   };
   const getClock = (matchId) => {
@@ -108,24 +111,30 @@ export function createPracticeClockClient(
     if (!isPracticeEntity(match)) throw new Error("practice_match_required");
     const rules = normalizeMatchRules(match.rules, { mode: match.mode });
     const now = new Date(getNowMs());
+    const autoStart = Boolean(match.refereeId && match.startedAt);
+    const clockStartedAt = autoStart ? match.startedAt : null;
+    const configuredShotClock = [0, 24, 30, 60].includes(Number(match.rules?.shotClockSeconds))
+      ? Number(match.rules.shotClockSeconds)
+      : 0;
     const periodMs = rules.periodMinutes * 60 * 1000;
     const clock = {
       matchId,
-      status: "pending",
+      status: autoStart ? "running" : "pending",
       serverNow: now.toISOString(),
-      startDeadlineAt: new Date(now.getTime() + 5 * 60 * 1000).toISOString(),
-      startedWithinWindow: false,
+      startDeadlineAt: new Date(Date.parse(match.startedAt || now.toISOString()) + 5 * 60 * 1000).toISOString(),
+      startedWithinWindow: autoStart,
       clockUsed: false,
       currentPeriod: 1,
       expectedPeriodCount: rules.periodCount,
       overtimeCount: 0,
       periodRemainingMs: periodMs,
-      shotClockSeconds: 0,
-      shotRemainingMs: 0,
+      shotClockSeconds: configuredShotClock,
+      shotRemainingMs: configuredShotClock * 1000,
       activeElapsedMs: 0,
       minimumActiveMs: rules.periodCount * periodMs * 0.7,
-      controllerId: match.teamA?.players?.[0] || PRACTICE_SELF_ID,
-      lastResumedAt: null,
+      controllerId: autoStart ? match.refereeId : match.teamA?.players?.[0] || PRACTICE_SELF_ID,
+      lastResumedAt: clockStartedAt,
+      clockStartedAt,
       clockEndedAt: null,
       endedExplicitly: false,
       matchEndedAt: null,
@@ -159,12 +168,13 @@ export function createPracticeClockClient(
       return getResponse(matchId, clock);
     }
     if (match?.endedAt && clock.status !== "ended") {
+      const refereeLifecycleEnd = Boolean(match.refereeId && clock.clockStartedAt);
       clock = {
         ...clock,
         status: "ended",
         lastResumedAt: null,
         clockEndedAt: clock.clockEndedAt || match.endedAt,
-        endedExplicitly: false,
+        endedExplicitly: refereeLifecycleEnd,
         matchEndedAt: match.endedAt,
       };
     }

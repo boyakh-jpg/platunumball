@@ -9,7 +9,7 @@
   grid-template-columns: auto minmax(0, 1fr);
   align-items: start;
   gap: var(--space-4);
-  border: var(--ui-stroke-width) solid var(--line);
+  border: var(--ui-button-border-width) solid var(--line);
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.045);
   color: var(--text);

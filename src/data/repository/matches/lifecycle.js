@@ -69,7 +69,7 @@ export function requestMatchRefereeAbsence(state, matchId) {
     : null;
   if (isTournamentGovernanceEnabled(tournament)) return state;
   if (getMatchRoomPhase(match).phase !== "checkin" || match.startedAt || match.endedAt || match.result) return state;
-  if (match.refereeAbsenceRequest?.confirmedAt) return state;
+  if (match.refereeAbsenceRequest?.status === "pending" || match.refereeAbsenceRequest?.confirmedAt) return state;
   const now = new Date().toISOString();
   const nextMatch = {
     ...match,
@@ -82,7 +82,6 @@ export function requestMatchRefereeAbsence(state, matchId) {
 
   return {
     ...state,
-    users: adjustUserTrust(state.users, match.refereeId, -REFEREE_ABSENCE_TRUST_PENALTY),
     matches: state.matches.map((item) => (item.id === matchId ? nextMatch : item)),
     notifications: [
       {
@@ -121,6 +120,7 @@ export function confirmMatchRefereeAbsence(state, matchId) {
 
   return {
     ...state,
+    users: adjustUserTrust(state.users, match.refereeId, -REFEREE_ABSENCE_TRUST_PENALTY),
     matches: state.matches.map((item) => (item.id === matchId ? nextMatch : item)),
     notifications: [
       {
@@ -281,18 +281,18 @@ export function startMatch(state, matchId) {
 
 export function endMatch(state, matchId) {
   const match = state.matches.find((item) => item.id === matchId);
-  if (!match || match.status !== "agreed" || match.endedAt) return state;
+  if (!match || match.status !== "agreed" || !match.startedAt || match.endedAt) return state;
   if (!currentUserCanOperateStartedMatch(state, match)) return state;
   const now = new Date().toISOString();
   const nextMatch = {
     ...match,
     status: match.status,
     approvals: match.approvals,
-    startedAt: match.startedAt ?? match.rules?.startedAt ?? now,
+    startedAt: match.startedAt,
     endedAt: now,
     rules: {
       ...(match.rules ?? {}),
-      startedAt: match.rules?.startedAt ?? match.startedAt ?? now,
+      startedAt: match.rules?.startedAt ?? match.startedAt,
     },
   };
   return {

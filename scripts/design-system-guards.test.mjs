@@ -59,6 +59,7 @@ const matchCreationWizardSource = read("src/components/match/MatchCreationWizard
 const matchRecordMetaSource = read("src/components/match/MatchRecordMeta.jsx");
 const recentMatchRowSource = read("src/components/match/RecentMatchRow.jsx");
 const mmrRangeSelectorSource = read("src/components/match/MmrRangeSelector.jsx");
+const approvalPanelSource = read("src/components/match/ApprovalPanel.jsx");
 const profileBasicsFieldsSource = read("src/components/profile/ProfileBasicsFields.jsx");
 const signupSource = read("src/pages/Signup.jsx");
 const matchOperationsFieldsSource = matchCreationWizardSource.slice(
@@ -74,8 +75,14 @@ const globalSearchStyles = readCssTree("src/styles/global-search-profile.css");
 const visualSystemStyles = readCssTree("src/styles/global-visual-system.css");
 const courtControlStyles = readCssTree("src/styles/global-court-controls.css");
 const globalAdminStyles = readCssTree("src/styles/global-admin-layout.css");
+const courtDatabaseControlSource = read("src/components/admin/CourtDatabaseControls.jsx");
+const courtDatabasePanelSource = read("src/components/admin/CourtDatabasePanelView.jsx");
+const courtDatabaseDuplicateSource = read("src/components/admin/CourtDatabaseDuplicateReview.jsx");
+const courtDatabaseMapStyles = read("src/styles/features/admin-court-database-map.css");
+const courtDatabaseShellStyles = read("src/styles/features/admin-court-database-shell.css");
 const globalWorkflowStyles = readCssTree("src/styles/global-workflows.css");
 const globalSurfaceStyles = readCssTree("src/styles/global-surfaces.css");
+const landingScoreThemeStyles = read("src/styles/themes/landing-score-theme.css");
 const classicDesignStyles = readCssTree("src/styles/design-classic.css");
 const editorialDesignStyles = readCssTree("src/styles/design-editorial.css");
 const visualDirectionDemoSource = read("src/pages/VisualDirectionDemo.jsx");
@@ -176,7 +183,7 @@ test("앱은 분류 박스 없는 표준 디자인을 사용하고 비교 데모
   ].forEach((source) => assert.match(source, /ui-design-app-hero/));
   assert.doesNotMatch(pageSources.settings, /화면 구성|분류 박스 없음 사용 중|selectDesignMode/);
   assert.match(pageSources.landing, /className="ui-design-host ui-design-public-main" data-design="editorial"/);
-  assert.match(pageSources.landing, /className="ui-design-hero ui-design-main-hero"/);
+  assert.match(pageSources.landing, /className="ui-design-hero ui-design-main-hero ui-page-hero"/);
   assert.match(pageSources.landing, /지금 열려 있는 경기/);
   assert.match(pageSources.landing, /Team basketball/);
   assert.match(pageSources.landing, /Season ranking/);
@@ -239,7 +246,7 @@ assert.match(editorialDesignStyles, /\.ui-design-spotlight__stats > div\s*\{[^}]
   assert.match(gettingStartedSource, /getting-started-chapter-nav ui-panel ui-design-info-surface/);
   assert.match(gettingStartedSource, /getting-started-steps ui-design-borderless-list/);
   assert.match(courtDetailSource, /court-map-link ui-liquid-glass/);
-  assert.match(courtDetailSource, /court-detail-hero ui-design-app-hero/);
+  assert.match(courtDetailSource, /court-detail-hero ui-page-hero ui-design-app-hero/);
   assert.match(courtDetailSource, /court-profile-information ui-design-content-surface/);
   assert.match(primitiveStyles, /\.ui-tier-label\s*\{[^}]*font-family:\s*var\(--sports-display-font\);[^}]*font-style:\s*normal;[^}]*font-weight:\s*(?:950|var\(--font-weight-sports\));/);
   assert.match(read("src/components/rating/RatingCard.jsx"), /className="ui-tier-label"/);
@@ -335,6 +342,15 @@ test("받은 팀 초대와 팀 상세 로스터는 무테두리 목록과 inline
     teamDetailSource,
     /className="member-name-line ui-profile-identity-inline"[\s\S]*?<strong>\{user\.name\}<\/strong>[\s\S]*?<MemberTypeBadge role=\{member\.role\} \/>/,
   );
+});
+
+test("팀 목록 카드는 전체가 팀 상세 링크이고 공용 무테두리 폭을 따른다", () => {
+  const teamCardSource = read("src/components/team/TeamCard.jsx");
+
+  assert.match(teamCardSource, /import \{ Link \} from "react-router-dom";/);
+  assert.match(teamCardSource, /<Card[\s\S]*?as=\{linked \? Link : "section"\}[\s\S]*?to=\{linked \? `\/app\/teams\/\$\{team\.id\}` : undefined\}/);
+  assert.doesNotMatch(teamCardSource, /TeamHoverCard/);
+  assert.match(tokenStyles, /\[data-design="editorial"\] \.ui-design-app\s*\{[^}]*--ui-card-border-width:\s*0px;/);
 });
 
 test("team emblem text controls keep one height at every form factor", () => {
@@ -528,6 +544,11 @@ test("공용 CTA는 ui-button-block 하나로 너비만 확장한다", () => {
   assert.equal(countClassToken(pageSources.recruiting, "ui-button-block"), 2);
   assert.equal(countClassToken(pageSources.season, "ui-button-block"), 1);
   assert.match(primitiveStyles, /\.ui-button-block\s*\{\s*width:\s*100%;\s*\}/);
+  assert.doesNotMatch(allStyleSources, /\.season-play-report > a\s*\{[^}]*display:\s*block/);
+  assert.doesNotMatch(allStyleSources, /\.ranking-name span\s*\{/);
+  for (const source of [pageSources.home, pageSources.matches, pageSources.recruiting]) {
+    assert.match(source, /to="\/app\/create\?intent=record" variant="secondary"/);
+  }
 });
 
 test("공용 버튼과 badge 라벨은 한 줄을 유지한다", () => {
@@ -574,6 +595,13 @@ test("guide screenshots ship with the app and the shot clock has one separated o
     matchClockStyles,
     /\.ui-match-shot-clock(?::[^{]+)?\s*\{[^}]*box-shadow:[^}]*(?:0 5px 0|0 2px 0)/,
   );
+  assert.match(matchClockStyles, /\.ui-match-clock-panel-focus:not\(\.ui-match-clock-panel-pending\)\s*\{[^}]*grid-template-columns:\s*minmax\(0, 0\.72fr\)\s*minmax\(280px, 1\.56fr\)\s*minmax\(0, 0\.72fr\);/);
+  assert.match(matchClockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-device-tools\s*\{[^}]*grid-template-columns:\s*repeat\(3, minmax\(0, 0\.72fr\)\) minmax\(0, 2fr\);/);
+  assert.match(matchClockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-volume input\[type="range"\]\s*\{[^}]*min-width:\s*0;/);
+  assert.match(matchClockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-score-actions \.ui-button\s*\{[^}]*min-height:\s*calc\(var\(--ui-button-height\) \+ var\(--space-4\)\);/);
+  assert.match(matchClockStyles, /\.ui-match-clock-attendance-qr\s*\{[^}]*border:\s*0;/);
+  assert.match(matchClockStyles, /\.ui-match-clock-score-control-side-a \.ui-button\s*\{[^}]*background:\s*var\(--team-home\);/);
+  assert.match(matchClockStyles, /\.ui-match-clock-score-control-side-b \.ui-button\s*\{[^}]*background:\s*var\(--team-away\);/);
   assert.match(matchClockSource, /className="ui-match-clock-period">\{periodDisplayLabel\}/);
   assert.match(matchClockSource, /`\$\{liveClock\?\.currentPeriod \|\| 1\}Q`/);
   assert.doesNotMatch(matchClockSource, /<Badge[^>]*>\{getMatchClockPeriodLabel\(liveClock\)\}<\/Badge>/);
@@ -639,11 +667,11 @@ test("같은 정책 행은 명시형 선택 필드와 중앙 control 정렬을 �
   assert.match(matchesStyles, /\.tournament-schedule-list form\s*\{[^}]*align-items:\s*center;/);
 
   assert.match(
-    globalWorkflowStyles,
-    /input:focus,\s*select:focus,\s*textarea:focus\s*\{[^}]*border-color:\s*var\(--rb-orange\);[^}]*box-shadow:\s*var\(--focus-ring\);/,
+    visualSystemStyles,
+    /input:not\(\[type="checkbox"\]\):not\(\[type="radio"\]\):not\(\[type="color"\]\):focus,\s*select:focus,\s*textarea:focus\s*\{[^}]*border-color:\s*var\(--rb-orange\);[^}]*box-shadow:\s*var\(--focus-ring\);/,
   );
   assert.doesNotMatch(
-    globalWorkflowStyles,
+    visualSystemStyles,
     /input:focus,\s*select:focus,\s*textarea:focus\s*\{[^}]*var\(--green\)/,
   );
 });
@@ -910,7 +938,7 @@ test("알파 온보딩은 기록 중심 무료 핵심 흐름을 안내한다", (
   assert.match(gettingStartedSource, /QR 토큰은 5분마다 바뀌며 경기 20분 전부터 로그인한 사전 등록 선수/);
   assert.match(gettingStartedSource, /출전·후보 선수가 모두 출석하면 예정시간 전에도 시작/);
   assert.match(gettingStartedSource, /QR 출석과 실제 출전은 다릅니다/);
-  assert.match(gettingStartedSource, /체크인 참가자 표는 3초, 경기 전 QR 패널은 15초, 경기시계와 지각 QR은 3초/);
+  assert.match(gettingStartedSource, /출석판과 QR 상태는 자동으로 갱신/);
   assert.match(gettingStartedSource, /만료된 QR, 다른 경기의 QR, 서명이 잘못된 QR, 미등록 사용자 스캔은 거부/);
   assert.match(gettingStartedSource, /출전·팀 배치를 자동 확정하지 않습니다/);
   assert.doesNotMatch(gettingStartedSource, /양쪽 실제 출전 선수의 과반 승인/);
@@ -941,7 +969,7 @@ test("알파 온보딩은 기록 중심 무료 핵심 흐름을 안내한다", (
   assert.match(gettingStartedSource, /isHomeGuideCardVisible\(app\.state\.settings\)/);
   assert.match(gettingStartedSource, /updateSettings\(\{\s*showHomeGuideCard: !homeGuideCardVisible,/);
   assert.match(gettingStartedSource, /홈에서 사용 설명 안 보기/);
-  assert.match(gettingStartedSource, /숨겨도 사용 설명과 연습 경기는 계속 이용할 수 있습니다/);
+  assert.doesNotMatch(gettingStartedSource, /숨겨도 사용 설명과 연습 경기는 계속 이용할 수 있습니다/);
   assert.match(practiceMatchSource, /aria-current=\{index \+ 1 === progress\.step \? "step" : undefined\}/);
   assert.match(practiceMatchSource, /className="practice-match-banner__actions ui-action-row"/);
   assert.doesNotMatch(practiceMatchSource, /practice-room-guide ui-panel|practice-room-guide ui-modal-section/);
@@ -957,7 +985,7 @@ test("알파 온보딩은 기록 중심 무료 핵심 흐름을 안내한다", (
 
 test("hero inner boards share one readable liquid-glass system", () => {
   assert.equal(count(tokenStyles, "--hero-copy-color: var(--rb-cream);"), 2);
-  assert.equal(count(tokenStyles, "0 4px 12px"), 2);
+  assert.equal(count(tokenStyles, "--hero-title-shadow: 0 2px 12px rgba(0, 0, 0, 0.26);"), 2);
   assert.equal(count(tokenStyles, "0 3px 8px"), 2);
   assert.doesNotMatch(tokenStyles, /--hero-title-shadow:[\s\S]{0,100}?14px 34px/);
   assert.doesNotMatch(tokenStyles, /--hero-copy-shadow:[\s\S]{0,100}?8px 20px/);
@@ -985,7 +1013,7 @@ test("hero inner boards share one readable liquid-glass system", () => {
   assert.match(pageSources.teams, /team-hub-board ui-liquid-glass/);
   assert.match(pageSources.matches, /om-match-panel ui-liquid-glass[\s\S]*om-match-stats ui-liquid-glass-segments/);
   assert.match(pageSources.recruiting, /arena-hero-panel ui-liquid-glass[\s\S]*arena-hero-stats ui-liquid-glass-segments/);
-  assert.match(pageSources.season, /<header className="page-header">/);
+  assert.match(pageSources.season, /<header className="page-header ui-page-hero ui-design-app-hero">/);
   assert.match(pageSources.season, /section-card season-overview-card/);
   assert.match(pageSources.season, /className="rank-stat-grid season-summary-grid"/);
   assert.match(pageSources.season, /className="card-grid season-board-grid"/);
@@ -995,7 +1023,7 @@ test("hero inner boards share one readable liquid-glass system", () => {
   assert.match(visualSystemStyles, /\.om-match-hero,\s*\.arena-recruit-hero[\s\S]*?grid-template-columns:\s*minmax\(0,\s*1fr\) minmax\(0,\s*var\(--ui-hero-status-width\)\);/);
   assert.match(visualSystemStyles, /\.om-match-panel,\s*\.arena-hero-panel[\s\S]*?width:\s*min\(100%,\s*var\(--ui-hero-status-width\)\);/);
   assert.match(visualSystemStyles, /\.om-match-actions,\s*\.arena-hero-actions[\s\S]*?height:\s*var\(--ui-button-height\);/);
-  assert.match(visualSystemStyles, /\.home-rank-board-head[\s\S]*?\)\s*\.eyebrow,[\s\S]*?color:\s*var\(--rb-orange-2\);/);
+  assert.match(visualSystemStyles, /\.eyebrow\s*\{[^}]*color:\s*var\(--rb-orange-2\);/);
   assert.match(visualSystemStyles, /\.home-hero-next > strong,[\s\S]*?\.arena-hero-stats strong[\s\S]*?color:\s*var\(--hero-title-color\);/);
   assert.doesNotMatch(pageSources.landing, /landing-compact-summary/);
   assert.match(
@@ -1004,6 +1032,69 @@ test("hero inner boards share one readable liquid-glass system", () => {
   );
   assert.equal(count(primitiveStyles, "-webkit-mask-composite: xor;"), 1);
   assert.equal(count(primitiveStyles, "mask-composite: exclude;"), 1);
+});
+
+test("page heroes keep shared eyebrows without implementation copy", () => {
+  const heroSources = [
+    ...Object.values(pageSources),
+    matchRoomPageSource,
+    courtDetailSource,
+    entityProfileHeroSource,
+    gettingStartedSource,
+    practiceMatchSource,
+    read("src/pages/AdminPageView.jsx"),
+    read("src/pages/Recorder.jsx"),
+    read("src/pages/RefereeRulebook.jsx"),
+    read("src/pages/TournamentDetailView.jsx"),
+  ].join("\n");
+
+  assert.doesNotMatch(heroSources, /kicker/);
+  assert.doesNotMatch(allStyleSources, /kicker/);
+  assert.match(heroSources, /className="eyebrow">MATCH QUEUE</);
+  assert.match(heroSources, /className="eyebrow">Team Hub</);
+  assert.match(heroSources, /className="eyebrow">Study guide</);
+  assert.doesNotMatch(heroSources, /공용 방 모달|저장 통로|같은 값|현재 알파 테스트|서버 원본|내부 보정값|실제 공용 방 모달|현재 서비스 화면/);
+
+  const standardizedHeroSources = [
+    pageSources.landing,
+    pageSources.home,
+    pageSources.profile,
+    pageSources.profileRecords,
+    pageSources.matches,
+    pageSources.recruiting,
+    pageSources.season,
+    pageSources.teams,
+    pageSources.rankings,
+    pageSources.settings,
+    matchRoomPageSource,
+    courtDetailSource,
+    entityProfileHeroSource,
+    read("src/components/match/CreateMatchLayout.jsx"),
+    read("src/pages/AdminPageView.jsx"),
+    read("src/pages/Affiliations.jsx"),
+    read("src/pages/Notifications.jsx"),
+    read("src/pages/ProfileAchievements.jsx"),
+    read("src/pages/Recorder.jsx"),
+    read("src/pages/RefereeRulebook.jsx"),
+    read("src/pages/Signup.jsx"),
+    read("src/pages/TournamentDetailView.jsx"),
+  ];
+  standardizedHeroSources.forEach((source) => {
+    assert.match(source, /ui-page-hero/);
+    assert.match(source, /ui-page-hero__copy/);
+  });
+  assert.match(visualSystemStyles, /\.ui-page-hero__copy h1\s*\{[^}]*text-shadow:\s*var\(--hero-title-shadow\);[^}]*font-family:\s*var\(--hero-title-font\);/);
+  assert.match(visualSystemStyles, /\.ui-page-hero__copy p:not\(\.eyebrow\)\s*\{[^}]*color:\s*var\(--hero-copy-color\);[^}]*text-shadow:\s*var\(--hero-copy-shadow\);/);
+  assert.doesNotMatch(
+    [matchesStyles, recruitingStyles, matchRoomStyles].join("\n"),
+    /\.(?:om-match-copy|arena-hero-copy|tournament-hero|gm-room-title)[^{]*\{[^}]*var\(--hero-title-/,
+  );
+
+  const allComponentSources = sourceFiles.map((file) => read(file)).join("\n");
+  assert.doesNotMatch(
+    allComponentSources,
+    /className="(?:om-list-head|arena-queue-controls-head|getting-started-section__head|referee-rulebook-head|settings-nearby-courts-head|league-panel-head|court-db-review-section-head|ui-design-section-heading)/,
+  );
 });
 
 test("팀 허브 대표팀 보드는 팀 전용 너비와 고정 노랑 팀명을 사용한다", () => {
@@ -1111,7 +1202,7 @@ test("배정 전 엠블럼은 공용 자산이며 방 슬롯 아바타 뒤에도
 test("팀 경기 히스토리는 공용 최근 경기 행을 사용한다", () => {
   assert.match(teamDetailSource, /import \{ getSideResult, getTeamSide \} from "\.\.\/lib\/season\.js"/);
   assert.match(teamDetailSource, /detailHistory\.map[\s\S]*?<RecentMatchRow/);
-  assert.match(teamDetailSource, /archivedHistory\.map[\s\S]*?<RecentMatchRow/);
+  assert.match(teamDetailSource, /archivedHistory\.filter\(\(record\) => !historyIds\.has\(record\.matchId\)\)\.map[\s\S]*?<RecentMatchRow/);
   assert.doesNotMatch(teamDetailSource, /history-item rank-match-item|outcomeLabel|compact-roster/);
   assert.doesNotMatch(teamDetailSource, /\(side\?\.players \?\? \[\]\)\.map/);
 });
@@ -1224,6 +1315,40 @@ test("경기 기록 팀명과 픽업 운영 행은 공용 스포츠·버튼 타�
   assert.doesNotMatch(pageSources.recruiting, />기록방</);
 });
 
+test("경기 기록 참가 확인은 공용 surface token과 모달 밀도를 사용한다", () => {
+  assert.match(approvalPanelSource, /className="approval-panel record-approval-panel"/);
+  assert.match(
+    globalWorkflowStyles,
+    /\.approval-panel \.approval-grid > div\s*\{[^}]*border:\s*var\(--ui-card-border-width\) solid var\(--ui-card-border\);[^}]*background:\s*var\(--ui-card-bg\);/,
+  );
+  assert.match(
+    globalAdminStyles,
+    /\.approval-panel \.approval-voter-list button\s*\{[^}]*border:\s*var\(--ui-button-border-width\) solid var\(--ui-button-border\);[^}]*background:\s*var\(--ui-button-bg\);/,
+  );
+  assert.match(
+    globalAdminStyles,
+    /\.approval-panel \.approval-guard-note\s*\{[^}]*border:\s*var\(--ui-control-group-border-width\) solid var\(--ui-control-group-border\);[^}]*background:\s*var\(--ui-control-group-bg\);/,
+  );
+  assert.match(
+    globalWorkflowStyles,
+    /\.record-approval-panel\.approval-panel\s*\{[^}]*display:\s*grid;[^}]*gap:\s*var\(--space-6\);/,
+  );
+  assert.match(
+    globalWorkflowStyles,
+    /\.arena-match-source-record-board > \.record-approval-panel\.approval-panel\s*\{[^}]*background:\s*transparent;[^}]*box-shadow:\s*none;[^}]*padding:\s*0;/,
+  );
+  assert.match(
+    globalWorkflowStyles,
+    /\.arena-lobby-modal \.record-approval-panel\.approval-panel > \.section-title-row h2\s*\{[^}]*font-size:\s*var\(--font-size-title-md\);/,
+  );
+  assert.match(
+    landingScoreThemeStyles,
+    /@media \(max-width:\s*640px\)[\s\S]*?\.approval-panel \.approval-grid,[\s\S]*?grid-template-columns:\s*1fr;/,
+  );
+  assert.doesNotMatch(globalAdminStyles, /\.approval-panel \.approval-(?:voter-list|guard-note)[^}]*rgba\(/);
+  assert.doesNotMatch(globalAdminStyles, /html\[data-theme="light"\] \.approval-(?:grid|voter-list)/);
+});
+
 test("방모달 참가자 상태와 관리 action은 선수 오른쪽 열과 공용 구분선을 사용한다", () => {
   assert.match(
     recruitingStyles,
@@ -1284,10 +1409,9 @@ test("방 채팅은 아이콘 안전 여백과 말풍선 stream을 사용한다"
 test("MMR 허용구간과 프로필 기본 입력은 공용 컴포넌트를 사용한다", () => {
   assert.match(mmrRangeSelectorSource, /Object\.entries\(MMR_RANGE_POLICIES\)\.map/);
   assert.match(mmrRangeSelectorSource, /role="radiogroup"/);
-  assert.match(pageSources.recruiting, /<MmrRangeSelector value=\{draft\.mmrRangeMode\}/);
   assert.match(createMatchPageSource, /<MmrRangeSelector value=\{draft\.mmrRangeMode\}/);
   assert.doesNotMatch(
-    [pageSources.recruiting, createMatchPageSource].join("\n"),
+    createMatchPageSource,
     /Object\.entries\(MMR_RANGE_POLICIES\)\.map\(\(\[mode, policy\]\) => \(\s*<button/,
   );
 
@@ -1299,4 +1423,138 @@ test("MMR 허용구간과 프로필 기본 입력은 공용 컴포넌트를 사�
   for (const source of [pageSources.profile, signupSource]) {
     assert.doesNotMatch(source, /POSITION_OPTIONS\.map|REGION_TREE\.map/);
   }
+});
+
+test("shared visual roles stay on canonical primitives", () => {
+  const rolePairs = [
+    ["button", "ui-button"],
+    ["card", "ui-card"],
+    ["badge", "ui-badge"],
+  ];
+  const actionRoles = [
+    "admin-row-actions",
+    "app-confirm-actions",
+    "court-correction-actions",
+    "court-detail-actions",
+    "court-detail-state-actions",
+    "home-alert-heading-actions",
+    "home-invitation-actions",
+    "my-team-actions",
+    "notification-actions",
+    "profile-icon-card-actions",
+    "profile-icon-dialog-actions",
+    "referee-exam-actions",
+    "season-section-actions",
+    "settings-address-actions",
+    "settings-place-name-actions",
+    "tournament-referee-actions",
+    "tournament-sanction-actions",
+    "ui-design-actions",
+  ];
+  const sourceEntries = sourceFiles.map((file) => [file, read(file)]);
+
+  for (const [file, source] of sourceEntries) {
+    const classValues = [...source.matchAll(/(?:className\s*=\s*|\.className\s*=\s*)["'`]([^"'`]+)["'`]/g)]
+      .map((match) => match[1]);
+    for (const classValue of classValues) {
+      const tokens = classValue.split(/\s+/);
+      for (const [legacyRole, canonicalRole] of rolePairs) {
+        if (tokens.includes(legacyRole)) {
+          assert.ok(tokens.includes(canonicalRole), `${file}: ${legacyRole} must include ${canonicalRole}`);
+        }
+      }
+    }
+  }
+
+  for (const role of actionRoles) {
+    const occurrences = sourceEntries.flatMap(([file, source]) => (
+      [...source.matchAll(new RegExp(`className="([^"]*\\b${role}\\b[^"]*)"`, "g"))]
+        .map((match) => ({ file, className: match[1] }))
+    ));
+    assert.ok(occurrences.length > 0, `${role}: source occurrence required`);
+    for (const occurrence of occurrences) {
+      assert.match(occurrence.className, /(?:^|\s)ui-action-row(?:\s|$)/, `${occurrence.file}: ${role} must compose ui-action-row`);
+    }
+  }
+
+  assert.doesNotMatch(allStyleSources, /^\s*\.(?:card|button|badge)\s*(?:,|\{)/m);
+  assert.match(primitiveStyles, /\.ui-button\s*\{[^}]*padding-block:\s*0;/);
+  assert.match(primitiveStyles, /\.ui-card\s*\{[^}]*backdrop-filter:\s*none;/);
+  assert.match(primitiveStyles, /\.ui-empty-state-compact\s*\{[^}]*font-size:\s*var\(--font-size-meta\);/);
+  assert.equal(count(read("src/pages/SettingsPrimaryColumn.jsx"), "onPointerUp={(event) => event.currentTarget.blur()}"), 2);
+});
+
+test("admin court controls use canonical primitives without feature-owned skins", () => {
+  assert.match(courtDatabaseControlSource, /className="ui-control ui-control-xs"/);
+  assert.match(courtDatabaseControlSource, /<Button[\s\S]*?className=\{selected \? "selected" : ""\}/);
+  assert.match(courtDatabasePanelSource, /className="ui-control"/);
+  assert.match(courtDatabaseDuplicateSource, /className="ui-control"/);
+  assert.doesNotMatch(
+    courtDatabaseMapStyles,
+    /\.court-db-review-scenarios button\s*\{[^}]*(?:border-radius|background\s*:|color\s*:|cursor\s*:)/,
+  );
+  assert.doesNotMatch(
+    courtDatabaseMapStyles,
+    /\.court-db-review-unit-chips button,\s*\.court-db-review-chip-group button\s*\{[^}]*(?:border-radius|background\s*:|color\s*:|cursor\s*:)/,
+  );
+  assert.doesNotMatch(
+    courtDatabaseShellStyles,
+    /\.court-db-quick-status button\s*\{[^}]*(?:border-radius|background:|color:|cursor:)/,
+  );
+});
+
+test("control-like surfaces use one primitive visual owner", () => {
+  const controlSurfaceRule = getRuleBody(primitiveStyles, ".ui-control-surface");
+  assert.match(controlSurfaceRule, /border:\s*var\(--ui-card-border-width\) solid var\(--ui-control-border\);/);
+  assert.match(controlSurfaceRule, /border-radius:\s*var\(--ui-control-radius\);/);
+  assert.match(controlSurfaceRule, /background:\s*var\(--ui-control-bg\);/);
+
+  for (const file of [
+    "src/components/admin/UserOperationsPanel.jsx",
+    "src/components/match/MatchDisputeQueue.jsx",
+    "src/components/rating/ProgressionChecklist.jsx",
+    "src/components/recruiting/RecruitingRoomManagementSection.jsx",
+    "src/pages/AdminAppointmentSection.jsx",
+    "src/pages/AdminDetailPanel.jsx",
+    "src/pages/Affiliations.jsx",
+    "src/pages/CourtDetail.jsx",
+    "src/pages/TeamDetailView.jsx",
+  ]) {
+    assert.match(read(file), /ui-control-surface/, `${file}: ui-control-surface required`);
+  }
+});
+
+test("shared control families and fixed labels keep canonical ownership", () => {
+  const sourceEntries = sourceFiles.map((file) => [file, read(file)]);
+  const sharedControlStyles = `${read("src/styles/primitives/shared-controls.css")}\n${read("src/styles/primitives/hover-disclosure.css")}`;
+  const segmentedOccurrences = sourceEntries.flatMap(([file, source]) => (
+    [...source.matchAll(/className="([^"]*\bsegmented-control\b[^"]*)"/g)]
+      .map((match) => ({ file, className: match[1] }))
+  ));
+
+  assert.ok(segmentedOccurrences.length > 0, "segmented-control source occurrence required");
+  for (const occurrence of segmentedOccurrences) {
+    assert.match(occurrence.className, /(?:^|\s)ui-segmented-control(?:\s|$)/, `${occurrence.file}: segmented-control must compose ui-segmented-control`);
+  }
+
+  assert.match(sharedControlStyles, /\.ui-segmented-control button/);
+  assert.match(sharedControlStyles, /button\.ui-choice-tile/);
+  assert.match(sharedControlStyles, /\.ui-compact-action/);
+  assert.doesNotMatch(sharedControlStyles, /\.(?:create-mode-grid|favorite-type-grid|referee-exam-choice-grid) button/);
+
+  const matchesSource = read("src/pages/MatchesPageView.jsx");
+  const matchSelectors = read("src/pages/matchesPageBaseSelectors.js");
+  const recentMatchStyles = read("src/styles/features/rank-profile-records.css");
+  const fixedSlotLabels = [
+    read("src/pages/matchRoomControllerParts.jsx"),
+    read("src/components/recruiting/RecruitingRoomCommandPanels.jsx"),
+    read("src/components/recruiting/RecruitingRoomRosterPanels.jsx"),
+  ].join("\n");
+  assert.doesNotMatch(`${matchesSource}\n${matchSelectors}`, /취소 후 7일 보관|소속 팀 진행·예정|내 대회·팀 초대 대회/);
+  assert.match(`${matchesSource}\n${matchSelectors}`, /7일 보관/);
+  assert.match(matchesSource, /진행·예정/);
+  assert.match(matchesSource, /내 대회·초대/);
+  assert.doesNotMatch(fixedSlotLabels, /후보 슬롯/);
+  assert.match(read("src/components/recruiting/RecruitingRoomPrimarySection.jsx"), /arena-lobby-actions[\s\S]*?getMatchPeriodLabel/);
+  assert.match(recentMatchStyles, /\.recent-match-matchup \.team-hover-trigger > strong\s*\{[^}]*text-overflow:\s*clip;[^}]*white-space:\s*normal;/);
 });

@@ -2,7 +2,7 @@ import { allowRequestMethod, getAuthenticatedContext, readJsonBody, sendJson } f
 import { verifyDiscordOAuthProof } from "../auth/_discordOAuthProof.js";
 import { loadCurrentProfileState, PROFILE_ME_COLUMNS } from "./me.js";
 import { DEFAULT_PLAYER_RATINGS } from "../../../shared/lib/matchConstants.js";
-import { getAgeGroupByBirthYear } from "../../../shared/lib/profileSetup.js";
+import { getAgeGroupByBirthYear, normalizeProfileName } from "../../../shared/lib/profileSetup.js";
 import { getDiscordCdnAvatarUrl } from "../../../shared/lib/discordProtocol.js";
 import { getProfileShellId as makeProfileId } from "../../../shared/lib/profileMappers.js";
 
@@ -142,7 +142,12 @@ async function buildProfileRow({ existing, profile, authUser, authUserId }) {
   const hasLockedBirthYear = Boolean(existing?.birth_year_locked_at && existing?.birth_year);
   const nextBirthYear = hasLockedBirthYear ? existing.birth_year : requestedBirthYear;
   const nextAgeGroup = getAgeGroupByBirthYear(nextBirthYear);
-  const requestedName = String(profile.name ?? existing?.name ?? authUser.email?.split("@")[0] ?? "신규 선수").trim().slice(0, 20);
+  const requestedName = normalizeProfileName(profile.name ?? existing?.name ?? authUser.email?.split("@")[0] ?? "신규 선수");
+  if (!requestedName) {
+    const error = new Error("invalid_profile_name");
+    error.statusCode = 400;
+    throw error;
+  }
   const nextName = existing && requestedName !== existing.name && !canChangeName(existing) ? existing.name : requestedName;
   const discordConnection = await getRequestedDiscordConnection(profile, existing);
   const requestedRegion = getRequestedRegion(profile, existing);

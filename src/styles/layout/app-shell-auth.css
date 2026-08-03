@@ -302,7 +302,7 @@ body.rankball-scroll-locked .app-main {
 .auth-card {
   display: grid;
   gap: var(--space-11);
-  border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.14);
+  border: 0;
   padding: 22px;
   backdrop-filter: blur(18px);
 }
@@ -324,7 +324,7 @@ body.rankball-scroll-locked .app-main {
 }
 
 .auth-message {
-  border: var(--ui-stroke-width) solid rgba(70, 224, 182, 0.22);
+  border: 0;
   border-radius: var(--radius);
   background: rgba(70, 224, 182, 0.065);
   padding: 10px;
@@ -333,7 +333,7 @@ body.rankball-scroll-locked .app-main {
 .auth-browser-warning {
   display: grid;
   gap: var(--space-5);
-  border: var(--ui-stroke-width) solid rgba(255, 205, 96, 0.28);
+  border: 0;
   border-radius: var(--radius);
   background: rgba(255, 205, 96, 0.08);
   padding: 12px;
@@ -365,7 +365,6 @@ body.rankball-scroll-locked .app-main {
   justify-content: center;
   gap: var(--space-3);
   min-height: 38px;
-  border: var(--ui-stroke-width) solid rgba(255, 205, 96, 0.28);
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.07);
   color: var(--text);
@@ -379,7 +378,7 @@ body.rankball-scroll-locked .app-main {
   min-width: 0;
   align-items: center;
   gap: var(--space-5);
-  border: var(--ui-stroke-width) solid var(--line);
+  border: 0;
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.045);
   padding: 10px;
@@ -398,7 +397,6 @@ body.rankball-scroll-locked .app-main {
   align-items: center;
   gap: var(--space-3);
   margin-left: auto;
-  border: var(--ui-stroke-width) solid var(--line);
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.055);
   color: var(--text);
@@ -418,7 +416,6 @@ body.rankball-scroll-locked .app-main {
   justify-content: center;
   gap: var(--space-5);
   min-height: 52px;
-  border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.14);
   background: rgba(255, 255, 255, 0.06);
   color: var(--text);
   cursor: pointer;
@@ -452,7 +449,7 @@ body.rankball-scroll-locked .app-main {
 .auth-test-login {
   display: grid;
   gap: var(--space-5);
-  border: var(--ui-stroke-width) solid var(--line);
+  border: 0;
   padding: 10px;
 }
 

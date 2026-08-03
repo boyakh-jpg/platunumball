@@ -52,7 +52,7 @@ export default function AdminCourtMapPopup() {
         try {
           await loadNaverPanoramaSdk();
         } catch {
-          if (!cancelled) setStatus("확대 18 지도는 표시됐습니다. 거리뷰 모듈을 불러오지 못했습니다.");
+          if (!cancelled) setStatus("확대 18 지도는 표시됐습니다. 거리뷰를 불러오지 못했습니다.");
           return;
         }
         if (cancelled || !panoramaRef.current) return;

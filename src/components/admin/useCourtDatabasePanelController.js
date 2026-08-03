@@ -97,24 +97,32 @@ const [open, setOpen] = useState(true);
     requestRef.current = requestId;
     setLoading(true);
     if (!preserveStatus) setStatus("");
-    const result = tab === "courts"
-      ? await app.actions.loadAdminCourtDatabase?.(courtQuery)
-      : await app.actions.loadAdminCourtNameHistory?.(historyQuery);
-    if (requestRef.current !== requestId) return null;
-    setLoading(false);
-    if (!result || result.ok === false) {
-      setStatus("목록을 불러오지 못했습니다.");
-      return result ?? null;
+    try {
+      const result = tab === "courts"
+        ? await app.actions.loadAdminCourtDatabase?.(courtQuery)
+        : await app.actions.loadAdminCourtNameHistory?.(historyQuery);
+      if (requestRef.current !== requestId) return null;
+      if (!result || result.ok === false) {
+        setStatus("목록을 불러오지 못했습니다. 필터 적용을 눌러 다시 시도해 주세요.");
+        return result ?? null;
+      }
+      if (tab === "courts") {
+        setCourtRows(result.rows ?? []);
+        setCourtPage(result.page ?? { page: 1, pageSize: 100, total: 0, pageCount: 1 });
+        setReasonOptional(result.capabilities?.reasonOptional === true);
+      } else {
+        setHistoryRows(result.rows ?? []);
+        setHistoryPage(result.page ?? { page: 1, pageSize: 100, total: 0, pageCount: 1 });
+      }
+      return result;
+    } catch {
+      if (requestRef.current === requestId) {
+        setStatus("목록을 불러오지 못했습니다. 필터 적용을 눌러 다시 시도해 주세요.");
+      }
+      return null;
+    } finally {
+      if (requestRef.current === requestId) setLoading(false);
     }
-    if (tab === "courts") {
-      setCourtRows(result.rows ?? []);
-      setCourtPage(result.page ?? { page: 1, pageSize: 100, total: 0, pageCount: 1 });
-      setReasonOptional(result.capabilities?.reasonOptional === true);
-    } else {
-      setHistoryRows(result.rows ?? []);
-      setHistoryPage(result.page ?? { page: 1, pageSize: 100, total: 0, pageCount: 1 });
-    }
-    return result;
   };
 
   useEffect(() => {
@@ -430,6 +438,5 @@ const [open, setOpen] = useState(true);
     moveDuplicateReview,
     closeDuplicateReview,
     verifyDuplicateGroup,
-    modal,
   };
 }

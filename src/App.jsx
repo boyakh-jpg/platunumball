@@ -1,5 +1,5 @@
 import { Component, Suspense, lazy, useEffect, useLayoutEffect } from "react";
-import { Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation, useParams } from "react-router-dom";
 import RequireAdmin from "./components/auth/RequireAdmin.jsx";
 import RequireAuth from "./components/auth/RequireAuth.jsx";
 import BasketballLoader from "./components/common/BasketballLoader.jsx";
@@ -9,7 +9,7 @@ import { useAuthSession } from "./hooks/useAuthSession.js";
 import { useAppData } from "./hooks/useAppData.js";
 import useImageInteractionGuard from "./hooks/useImageInteractionGuard.js";
 import { BRAND_NAME } from "./lib/brand.js";
-import { getSafeAppRedirect, shouldRecheckAgeGroup, shouldSetupProfile } from "./lib/profileSetup.js";
+import { getSafeAppRedirect, isProfileGateReady, shouldRecheckAgeGroup, shouldSetupProfile } from "./lib/profileSetup.js";
 
 const Admin = lazy(() => import("./pages/Admin.jsx"));
 const AdminCourtMapPopup = lazy(() => import("./pages/AdminCourtMapPopup.jsx"));
@@ -22,7 +22,6 @@ const Home = lazy(() => import("./pages/Home.jsx"));
 const Landing = lazy(() => import("./pages/Landing.jsx"));
 const Login = lazy(() => import("./pages/Login.jsx"));
 const Matches = lazy(() => import("./pages/Matches.jsx"));
-const MatchRoom = lazy(() => import("./pages/MatchRoom.jsx"));
 const Notifications = lazy(() => import("./pages/Notifications.jsx"));
 const PlayerDetail = lazy(() => import("./pages/PlayerDetail.jsx"));
 const Privacy = lazy(() => import("./pages/Privacy.jsx"));
@@ -56,6 +55,23 @@ function preloadCoreAppRoutes() {
   ]);
 }
 
+function LegacyMatchRoomRedirect() {
+  const { matchId = "" } = useParams();
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  searchParams.set("match", matchId);
+  return (
+    <Navigate
+      to={{
+        pathname: "/app/matches",
+        search: `?${searchParams.toString()}`,
+        hash: location.hash,
+      }}
+      replace
+    />
+  );
+}
+
 class AppErrorBoundary extends Component {
   constructor(props) {
     super(props);
@@ -84,7 +100,7 @@ class AppErrorBoundary extends Component {
           <p className="eyebrow">{BRAND_NAME}</p>
           <h1>화면을 불러오지 못했습니다</h1>
           <p>일시적인 오류가 발생했습니다. 새로고침한 뒤 다시 시도해 주세요.</p>
-          <button type="button" className="button button-primary button-md" onClick={() => window.location.reload()}>
+          <button type="button" className="button ui-button button-primary ui-button-primary button-md ui-button-md" onClick={() => window.location.reload()}>
             새로고침
           </button>
         </section>
@@ -99,7 +115,12 @@ export default function App() {
   const app = useAppData(auth.user ?? null, location);
   useImageInteractionGuard();
   const theme = app.state.settings?.theme === "light" ? "light" : "dark";
-  const profileGateReady = Boolean(!auth.user || app.remoteReady);
+  const profileGateReady = isProfileGateReady({
+    authUserId: auth.user?.id,
+    profileAuthUserId: app.currentUser?.authUserId,
+    remoteReady: app.remoteReady,
+    serverProfileBound: app.serverProfileBound,
+  });
   const ageRecheckRequired = Boolean(
     auth.user &&
       profileGateReady &&
@@ -174,7 +195,7 @@ export default function App() {
             <Route path="/app/guide/practice" element={<PracticeMatch app={app} />} />
             <Route path="/app/create" element={<CreateMatch app={app} />} />
             <Route path="/app/courts/:courtId" element={<CourtDetail app={app} />} />
-            <Route path="/app/matches/:matchId" element={<MatchRoom app={app} />} />
+            <Route path="/app/matches/:matchId" element={<LegacyMatchRoomRedirect />} />
             <Route path="/app/matches" element={<Matches app={app} />} />
             <Route path="/app/recorder" element={<Recorder app={app} />} />
             <Route path="/app/referee-rulebook" element={<RefereeRulebook theme={theme} />} />

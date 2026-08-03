@@ -181,6 +181,104 @@ test("여러 참가자의 이의를 병렬 접수하고 심판이 건별 처리�
   assert.equal(finished.matches[0].status, "confirmed");
 });
 
+test("심판은 같은 revision에서 접수된 서로 다른 선수 이의를 순서대로 가결한다", () => {
+  const start = makeState("host");
+  const first = disputeMatch(start, "match-queue", requestFor(start, "host", 8));
+  const secondInput = { ...first, currentUserId: "guest" };
+  const queued = disputeMatch(secondInput, "match-queue", requestFor(secondInput, "guest", 9));
+  const disputes = getOpenMatchDisputes(queued.matches[0]);
+  const hostDispute = disputes.find((dispute) => dispute.by === "host");
+  const guestDispute = disputes.find((dispute) => dispute.by === "guest");
+
+  const firstAccepted = resolveMatchDispute(
+    { ...queued, currentUserId: "referee" },
+    "match-queue",
+    hostDispute.id,
+    "accepted",
+    "호스트 개인 기록을 확인했습니다.",
+  );
+  const allAccepted = resolveMatchDispute(
+    firstAccepted,
+    "match-queue",
+    guestDispute.id,
+    "accepted",
+    "상대 선수 개인 기록도 확인했습니다.",
+  );
+
+  assert.equal(getOpenMatchDisputes(allAccepted.matches[0]).length, 0);
+  assert.equal(allAccepted.matches[0].status, "approval");
+  assert.equal(allAccepted.matches[0].result.playerStats.host.points, 8);
+  assert.equal(allAccepted.matches[0].result.playerStats.guest.points, 9);
+});
+
+test("무심판 팀 점수 이의는 첫 가결 뒤 오래된 revision을 다시 적용하지 않는다", () => {
+  const start = makeState("guest");
+  const noRefereeMatch = {
+    ...start.matches[0],
+    refereeId: undefined,
+    result: { ...start.matches[0].result, playerStats: {}, statSubmissions: {} },
+  };
+  const noRefereeState = { ...start, matches: [noRefereeMatch] };
+  const first = disputeMatch(noRefereeState, "match-queue", {
+    kind: "team_scores",
+    requestedScoreA: 6,
+    requestedScoreB: 8,
+    baseRevision: 0,
+    reason: "첫 점수 수정 요청",
+  });
+  const second = disputeMatch({ ...first, currentUserId: "host" }, "match-queue", {
+    kind: "team_scores",
+    requestedScoreA: 9,
+    requestedScoreB: 7,
+    baseRevision: 0,
+    reason: "두 번째 점수 수정 요청",
+  });
+  const disputes = getOpenMatchDisputes(second.matches[0]);
+  const guestDispute = disputes.find((dispute) => dispute.by === "guest");
+  const hostDispute = disputes.find((dispute) => dispute.by === "host");
+  const firstAccepted = resolveMatchDispute(
+    { ...second, currentUserId: "host" },
+    "match-queue",
+    guestDispute.id,
+    "accepted",
+    "첫 점수 요청을 확인했습니다.",
+  );
+  const staleAttempt = resolveMatchDispute(
+    firstAccepted,
+    "match-queue",
+    hostDispute.id,
+    "accepted",
+    "오래된 점수 요청입니다.",
+  );
+
+  assert.strictEqual(staleAttempt, firstAccepted);
+  assert.equal(getOpenMatchDisputes(staleAttempt.matches[0]).length, 1);
+  assert.equal(staleAttempt.matches[0].disputeDraftResult.scoreA, 6);
+  assert.equal(staleAttempt.matches[0].disputeDraftResult.scoreB, 8);
+});
+
+test("무심판 경기도 점수 변경 없는 사유 이의를 접수한다", () => {
+  const start = makeState("guest");
+  const noRefereeState = {
+    ...start,
+    matches: [{
+      ...start.matches[0],
+      refereeId: undefined,
+      result: { ...start.matches[0].result, playerStats: {}, statSubmissions: {} },
+    }],
+  };
+  const next = disputeMatch(noRefereeState, "match-queue", {
+    kind: "team_scores",
+    requestedScoreA: 5,
+    requestedScoreB: 7,
+    baseRevision: 0,
+    reason: "교체 출전 기록을 확인해 주세요.",
+  });
+
+  assert.equal(getOpenMatchDisputes(next.matches[0]).length, 1);
+  assert.equal(next.matches[0].disputes[0].reason, "교체 출전 기록을 확인해 주세요.");
+});
+
 test("일반 경기 참가자 승인 경로는 폐기되고 경기 권한자의 명시적 최종 승인만 남는다", () => {
   const state = makeState("guest");
   const approved = approveMatch(state, "match-queue", "teamB", "guest");
@@ -278,6 +376,7 @@ test("심판 개인기록이 미완성이면 disputeMinutes 뒤에도 보험성 
 
 test("DB와 목록 API가 병렬 큐를 새로고침 가능한 형태로 조회한다", async () => {
   const migration = await readSource("supabase/migrations/20260722120000_parallel_match_dispute_queue.sql");
+  const edgeMigration = await readSource("supabase/migrations/20260801006000_fix_match_dispute_and_referee_absence_edges.sql");
   const listApi = await readSource("server/api/matches/_listEnrichment.js");
   assert.match(migration, /match_disputes_one_open_per_user_idx/);
   assert.match(migration, /rankball_match_resolve_dispute_action/);
@@ -302,6 +401,36 @@ test("DB와 목록 API가 병렬 큐를 새로고침 가능한 형태로 조회�
   assert.match(liveAuthorityMigration, /'nextResult', after_result/u);
   assert.match(liveAuthorityMigration, /resolved_result := public\.rankball_match_resolve_dispute_pre_reason/u);
   assert.match(liveAuthorityMigration, /return resolved_result \|\| jsonb_build_object/u);
+  assert.match(edgeMigration, /base_revision > greatest/u);
+  assert.match(edgeMigration, /request_kind = 'team_scores'/u);
+  assert.match(edgeMigration, /match_dispute_revision_guard_shape_changed/u);
   assert.match(listApi, /attachOpenDisputeQueues/);
   assert.match(listApi, /\.eq\("status", "open"\)/);
+});
+
+test("이의 상태 경기방은 무효 처리 대화상자를 import한 뒤 렌더한다", async () => {
+  const sourceMatchPanels = await readSource("src/components/recruiting/RecruitingSourceMatchPanels.jsx");
+  assert.match(sourceMatchPanels, /import MatchVoidDialog from "\.\.\/match\/MatchVoidDialog\.jsx";/);
+  assert.match(sourceMatchPanels, /<MatchVoidDialog\b/);
+});
+
+test("사유만 있는 이의제기를 저장하고 제출·심판 화면을 즉시 갱신한다", async () => {
+  const migration = await readSource("supabase/migrations/20260731233000_allow_reason_only_match_disputes.sql");
+  const teamScoreMigration = await readSource("supabase/migrations/20260802011000_allow_reason_only_team_score_disputes.sql");
+  const interactions = await readSource("src/components/recruiting/useRecruitingRoomModalInteractions.js");
+  const controller = await readSource("src/components/recruiting/useRecruitingRoomController.js");
+  assert.match(migration, /match_stat_dispute_no_change/);
+  assert.match(migration, /execute function_definition/);
+  assert.match(teamScoreMigration, /match_reason_only_team_dispute_shape_changed/);
+  assert.match(teamScoreMigration, /execute replace\(function_definition, old_guard, new_guard\)/);
+  assert.match(interactions, /await app\.actions\.disputeMatch/);
+  assert.match(interactions, /await refreshSourceMatchReview\?\.\(\)/);
+  assert.match(controller, /window\.setInterval\(refreshReview, 5000\)/);
+});
+
+test("기록완료 뒤 현재 사용자 기록 목록을 강제 갱신한다", async () => {
+  const controller = await readSource("src/components/recruiting/useRecruitingRoomController.js");
+  const actions = await readSource("src/components/recruiting/RecruitingRoomActionSection.jsx");
+  assert.match(controller, /loadProfileRecords\?\.\(\{ force: true \}\)/);
+  assert.match(actions, />\s*기록완료\s*</);
 });

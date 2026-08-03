@@ -43,6 +43,7 @@ function normalizeTeam(team = {}, actorProfileId = "") {
     name,
     region: team.region || null,
     homeCourt: team.homeCourt || team.home_court || null,
+    homeCourtId: String(team.homeCourtId || team.home_court_id || "").trim() || null,
     accent: team.accent || "#58d2c0",
     members,
   };
@@ -57,6 +58,23 @@ async function syncTeam(context, rawTeam, notifications = []) {
   if (existingMembersError) throw existingMembersError;
   const existingMemberIds = new Set(toArray(existingMembers).map((member) => member.user_id));
   const isExistingTeam = existingMemberIds.size > 0;
+  if (!isExistingTeam) {
+    const { data: approvedCourt, error: approvedCourtError } = team.homeCourtId
+      ? await context.supabase
+        .from("approved_courts")
+        .select("id,name")
+        .eq("id", team.homeCourtId)
+        .eq("status", "active")
+        .maybeSingle()
+      : { data: null, error: null };
+    if (approvedCourtError) throw approvedCourtError;
+    if (!approvedCourt?.id) {
+      const error = new Error("invalid_team_home_court");
+      error.statusCode = 400;
+      throw error;
+    }
+    team.homeCourt = approvedCourt.name;
+  }
   if (!isExistingTeam && (
     team.members.length !== 1
     || team.members[0].userId !== context.profileId

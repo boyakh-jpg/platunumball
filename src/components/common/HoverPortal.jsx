@@ -57,6 +57,7 @@ export function HoverCardTrigger({
         onActivate?.(event);
       })}
       onKeyDown={(event) => {
+        if (event.target !== event.currentTarget) return;
         if (event.key === "Escape") onDismiss?.(event);
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
@@ -76,7 +77,7 @@ export function HoverCardCloseButton({ onClose }) {
   return (
     <button
       type="button"
-      className="hover-card-close"
+      className="ui-compact-action hover-card-close"
       aria-label="닫기"
       onClick={(event) => {
         event.preventDefault();

@@ -62,49 +62,82 @@
   display: grid;
   gap: var(--space-4);
 }
-.approval-panel {
-  display: grid;
-  gap: var(--space-6);
-}
-.approval-panel .section-title-row h2,
-.trust-star-card .section-title-row h2 {
-  font-family: var(--font-body);
-  font-size: var(--font-size-section-title);
-  font-weight: var(--font-weight-title);
-  line-height: 1.15;
-}
-.approval-summary {
-  color: var(--muted);
-  font-size: var(--font-size-meta);
-  font-weight: var(--font-weight-control);
-  white-space: nowrap;
-}
-.approval-grid {
+.approval-panel .approval-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-6);
 }
-.approval-side {
+.approval-panel .approval-grid > div {
   display: grid;
   gap: var(--space-5);
-  min-width: 0;
+  border: var(--ui-card-border-width) solid var(--ui-card-border);
+  border-radius: var(--ui-card-radius);
+  background: var(--ui-card-bg);
+  padding: var(--card-padding);
 }
-.approval-side + .approval-side {
-  border-inline-start: var(--ui-stroke-width) solid var(--ui-liquid-glass-divider);
-  padding-inline-start: var(--space-6);
-}
-.approval-grid span {
+.approval-panel .approval-grid span {
   color: var(--muted);
 }
-.approval-side-header > strong {
-  font-family: var(--font-body);
+.record-approval-panel.approval-panel {
+  display: grid;
+  gap: var(--space-6);
+}
+.arena-match-source-record-board > .record-approval-panel.approval-panel {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+.arena-lobby-modal .record-approval-panel.approval-panel {
+  gap: var(--space-4);
+  padding: var(--space-5);
+}
+.arena-lobby-modal .arena-match-source-record-board > .record-approval-panel.approval-panel {
+  padding: 0;
+}
+.arena-lobby-modal .record-approval-panel.approval-panel > .section-title-row h2 {
   font-size: var(--font-size-title-md);
-  font-weight: var(--font-weight-title);
   line-height: 1.2;
 }
-.approval-side-header > span {
+.arena-lobby-modal .record-approval-panel .approval-grid {
+  gap: var(--ui-control-group-gap);
+}
+.arena-lobby-modal .record-approval-panel .approval-grid > div {
+  gap: var(--ui-control-group-gap);
+  padding: var(--space-5);
+}
+.arena-lobby-modal .record-approval-panel .approval-side-header {
+  flex-wrap: wrap;
+  gap: var(--ui-control-group-gap);
+}
+.arena-lobby-modal .record-approval-panel .approval-side-header > strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: var(--font-size-title-sm);
+  line-height: 1.2;
+}
+.arena-lobby-modal .record-approval-panel .approval-side-header > span {
+  margin-left: auto;
   font-size: var(--font-size-meta);
-  font-weight: var(--font-weight-body);
+  text-align: right;
+}
+.arena-lobby-modal .record-approval-panel .approval-voter-list {
+  gap: var(--ui-control-group-gap);
+}
+.arena-lobby-modal .record-approval-panel .approval-voter-list button {
+  gap: var(--ui-control-group-gap);
+  min-height: var(--ui-button-height);
+  padding: var(--ui-control-group-padding);
+}
+.arena-lobby-modal .record-approval-panel .approval-voter-list button > strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: var(--font-size-body-sm);
+  line-height: 1.25;
+}
+.arena-lobby-modal .record-approval-panel .approval-guard-note {
+  margin-top: 0;
 }
 .approval-status-strip {
   display: grid;
@@ -230,7 +263,7 @@
   display: grid;
   width: min(720px, 100%);
   gap: var(--space-7);
-  border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.16);
+  border: 0;
   border-radius: var(--radius-md);
   background: rgba(16, 20, 27, 0.96);
   padding: clamp(22px, 5vw, 44px);

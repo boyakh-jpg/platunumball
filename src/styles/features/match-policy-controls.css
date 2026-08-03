@@ -103,9 +103,6 @@
   gap: var(--space-3);
 }
 .match-dispute-queue-item {
-  border: var(--ui-stroke-width) solid var(--ui-control-border);
-  border-radius: var(--ui-control-radius);
-  background: var(--ui-control-bg);
   padding: 10px;
 }
 .match-dispute-queue-item p {
@@ -261,7 +258,7 @@
 }
 .stat-strip span {
   display: grid;
-  border: var(--ui-stroke-width) solid var(--line);
+  border: var(--ui-card-border-width) solid var(--line);
   border-radius: var(--radius);
   background: var(--surface-2);
   padding: 10px;
@@ -283,7 +280,7 @@
   grid-template-columns: auto minmax(0, 1fr) auto auto;
   align-items: center;
   gap: var(--space-5);
-  border: var(--ui-stroke-width) solid var(--line);
+  border: var(--ui-card-border-width) solid var(--line);
   border-radius: var(--radius);
   padding: 10px;
 }
@@ -293,8 +290,8 @@
   display: grid;
   gap: var(--space-1);
 }
-.member-main span,
-.ranking-name span {
+.member-main > span,
+.ranking-name > div > span {
   color: var(--muted);
   font-size: 0.78rem;
 }

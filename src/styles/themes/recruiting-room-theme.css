@@ -163,14 +163,6 @@ html[data-theme="light"] .arena-side-roster .arena-room-player-slot:not(.empty) 
   font-weight: 900;
 }
 
-.arena-filter-select select {
-  min-height: 38px;
-  border: var(--ui-stroke-width) solid var(--rb-line);
-  border-radius: var(--radius-xs);
-  font-size: 12px;
-  font-weight: 900;
-}
-
 .arena-filter-bar .arena-start-date-filter {
   gap: 8px;
 }
@@ -185,12 +177,6 @@ html[data-theme="light"] .arena-side-roster .arena-room-player-slot:not(.empty) 
   align-items: flex-end;
   background: rgba(0, 0, 0, var(--sheet-backdrop-opacity, 0.42));
   padding: 10px 10px max(10px, env(safe-area-inset-bottom, 0px));
-}
-
-.arena-compose-drawer {
-  border: var(--ui-stroke-width) solid var(--rb-line);
-  background: rgba(36, 37, 38, 0.97);
-  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.46);
 }
 
 .arena-lobby-arena {
@@ -244,7 +230,7 @@ html[data-theme="light"] .arena-side-roster .arena-room-player-slot:not(.empty) 
 .arena-lobby-team-panel,
 .arena-lobby-score-core,
 .arena-lobby-actions > div {
-  border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.12);
+  border: var(--ui-room-panel-border-width) solid rgba(255, 255, 255, 0.12);
   border-radius: var(--radius-md);
   background: rgba(0, 0, 0, 0.16);
   backdrop-filter: none;

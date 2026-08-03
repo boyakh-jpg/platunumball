@@ -326,6 +326,20 @@ export function validateLockedMatchCore(existingMatch, existingPlayers, nextMatc
     if (!sameOrderedIds(existingTeamA, nextTeamA) || !sameOrderedIds(existingTeamB, nextTeamB)) {
       reject(403, "match_roster_locked");
     }
+    const playerTeamChanged = MATCH_SIDES.some((sideName) => (
+      existingPlayers
+        .filter((player) => player.side === sideName && player.user_id)
+        .some((player) => {
+          const existingTeamId = String(player.team_id ?? "").trim();
+          const nextTeamId = String(
+            nextMatch[sideName]?.playerTeams?.[player.user_id]
+            ?? nextMatch[sideName]?.teamId
+            ?? "",
+          ).trim();
+          return existingTeamId !== nextTeamId;
+        })
+    ));
+    if (playerTeamChanged) reject(403, "match_player_team_locked");
   }
 
   if (action === "submitMatchResult") {

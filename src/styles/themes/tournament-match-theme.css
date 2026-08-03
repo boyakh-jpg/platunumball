@@ -54,34 +54,6 @@ html[data-theme="light"] .om-match-panel {
   box-shadow: var(--card-shadow);
 }
 
-.om-calendar-filter-bar select {
-  min-height: var(--control-height);
-  border: var(--ui-stroke-width) solid var(--control-border);
-  border-radius: var(--control-radius);
-  font-size: var(--control-font-size);
-  font-weight: 900;
-}
-
-/* 2026-07-01 standard UI cleanup: matches controls follow shared primitives. */
-
-.om-match-copy h1,
-.tournament-hero h1 {
-  color: var(--hero-title-color);
-  text-shadow: var(--hero-title-shadow);
-}
-
-.om-match-copy p,
-.tournament-hero p {
-  color: var(--hero-copy-color);
-  text-shadow: var(--hero-copy-shadow);
-}
-
-.om-match-copy .eyebrow,
-.tournament-hero .eyebrow,
-.tournament-card-kicker {
-  color: var(--rb-orange);
-}
-
 .om-calendar-panel,
 .om-tournament-panel,
 .om-tournament-card,
@@ -101,31 +73,6 @@ html[data-theme="light"] .tournament-schedule-list {
   border-color: var(--card-border);
   background: var(--card-bg);
   box-shadow: var(--card-shadow);
-}
-
-.om-calendar-toolbar button,
-.om-calendar-grid button,
-.om-tournament-head-actions button,
-.om-tournament-actions button,
-.tournament-team-list button,
-.tournament-schedule-list button,
-.tournament-back-link {
-  min-height: var(--control-height);
-  border: var(--ui-stroke-width) solid var(--control-border);
-  border-radius: var(--control-radius);
-  background: var(--button-secondary-bg);
-  color: var(--rb-text);
-  font-size: var(--control-font-size);
-  font-weight: 900;
-}
-
-.om-calendar-grid button.active,
-.om-tournament-head-actions button.active,
-.om-tournament-actions button.active,
-.tournament-team-list button.active,
-.tournament-schedule-list button.active {
-  background: var(--button-primary-bg);
-  color: #fff;
 }
 
 .om-view-card.active {
@@ -164,7 +111,6 @@ html[data-theme="light"] .tournament-schedule-list {
   overflow: visible;
 }
 
-.om-calendar-filter-bar select,
 .om-calendar-toolbar button,
 .om-calendar-grid button,
 .om-tournament-head-actions button,
@@ -181,11 +127,6 @@ html[data-theme="light"] .tournament-schedule-list {
   font-size: var(--ui-button-font-size);
   font-weight: var(--ui-button-font-weight);
   letter-spacing: 0;
-}
-
-.om-calendar-filter-bar select {
-  border-color: var(--ui-control-border);
-  background: var(--ui-control-bg);
 }
 
 .om-calendar-toolbar button.active,
@@ -211,30 +152,7 @@ html[data-theme="light"] .tournament-schedule-list {
   background: color-mix(in srgb, var(--rb-orange) 14%, var(--ui-card-bg));
 }
 
-.om-match-copy .eyebrow,
-.om-match-copy h1,
-.om-match-copy p,
-html[data-theme="light"] .om-match-copy .eyebrow,
-html[data-theme="light"] .om-match-copy h1,
-html[data-theme="light"] .om-match-copy p {
-  color: var(--rb-orange);
-  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.26);
-}
-
-.om-match-copy p,
-html[data-theme="light"] .om-match-copy p {
-  color: var(--rb-orange-2);
-}
-
-html[data-theme="light"] .om-match-copy h1 {
-  color: var(--rb-cream);
-}
-
-html[data-theme="light"] .tournament-hero h1 {
-  color: var(--rb-cream);
-}
-
-/* 2026-07-02 final matches hero guard: no wash/blur and shared title font. */
+/* 2026-07-02 final matches hero guard: no wash or blur. */
 
 .om-match-hero,
 html[data-theme="light"] .om-match-hero {
@@ -266,27 +184,6 @@ html[data-theme="light"] .tournament-hero::after {
   display: none;
   background: none;
   opacity: 0;
-}
-
-.om-match-copy h1,
-.tournament-hero h1,
-html[data-theme="light"] .om-match-copy h1,
-html[data-theme="light"] .tournament-hero h1 {
-  font-family: var(--hero-title-font);
-  font-size: var(--hero-title-size);
-  font-weight: 950;
-  line-height: var(--hero-title-line-height);
-  letter-spacing: var(--hero-title-letter-spacing);
-  text-transform: uppercase;
-}
-
-@media (max-width: 720px) {
-  .om-match-copy h1,
-  .tournament-hero h1,
-  html[data-theme="light"] .om-match-copy h1,
-  html[data-theme="light"] .tournament-hero h1 {
-    font-size: var(--hero-title-size-mobile);
-  }
 }
 
 /* 2026-07-02 page width guard: matches follows the shared app container. */

@@ -20,7 +20,7 @@ export default function LegalDocumentPage({ eyebrow, title, lead, effectiveDate,
 
   return (
     <main className="legal-page">
-      <article className="section-card legal-document">
+      <article className="section-card ui-card legal-document">
         <header className="legal-document-header">
           <div className="legal-brand-row">
             <Link className="legal-brand-link" to="/">{BRAND_NAME}</Link>

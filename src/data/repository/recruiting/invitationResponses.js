@@ -1,3 +1,4 @@
+import { DEFAULT_RATING } from "../../../lib/constants.js";
 import { MATCH_SIDES } from "../../../lib/constants.js";
 import { SIDE_LABEL_TEXT } from "../../../lib/constants.js";
 import { currentUserCanRefereeRecruitingRoom } from "../../../lib/recruiting.js";
@@ -7,7 +8,6 @@ import { getRecruitingApplicantKey } from "../../../lib/recruiting.js";
 import { getRecruitingBenchCapacity } from "../../../lib/recruiting.js";
 import { getRecruitingBestSide } from "../../../lib/recruiting.js";
 import { getRecruitingFit } from "../../../lib/recruiting.js";
-import { getPlayerMatchModeMmr } from "../../../lib/recruiting.js";
 import { getRecruitingLobby } from "../../../lib/recruiting.js";
 import { getRecruitingRoomOwnerId } from "../../../lib/recruiting.js";
 import { getRecruitingSideCapacity } from "../../../lib/recruiting.js";
@@ -190,8 +190,8 @@ export function acceptRecruitingInvitation(state, postId, invitationId) {
     ? state.teams.find((team) => team.id === invitationTeamId && team.members.some((member) => member.userId === state.currentUserId))
     : null;
   const candidateMmr = invitedTeam
-    ? invitedTeam.mmr ?? getPlayerMatchModeMmr(user, post.mode)
-    : getPlayerMatchModeMmr(user, post.mode);
+    ? invitedTeam.mmr ?? user?.ratings?.integrated ?? DEFAULT_RATING
+    : user?.ratings?.integrated ?? DEFAULT_RATING;
   const fit = getRecruitingFit(post, candidateMmr, state);
   const mmrLimitMode = normalizeRecruitingMmrLimitMode(post.mmrLimitMode ?? roomState.mmrLimitMode);
   const expireInvitation = (body) => ({
@@ -438,12 +438,19 @@ export function declineRecruitingInvitation(state, postId, invitationId) {
   const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
   const invitation = roomState.invitations.find((item) => item.id === invitationId && item.targetUserId === state.currentUserId);
   if (!invitation) return state;
+  const clearsTargetTeam = invitation.joinMode === "team"
+    && invitation.side === "teamB"
+    && invitation.teamId === post.targetTeamId;
 
   return {
     ...state,
     recruitingPosts: (state.recruitingPosts ?? []).map((item) => (
       item.id === postId
-        ? { ...item, roomState: { ...roomState, invitations: roomState.invitations.filter((candidate) => candidate.id !== invitationId) } }
+        ? {
+            ...item,
+            targetTeamId: clearsTargetTeam ? null : item.targetTeamId,
+            roomState: { ...roomState, invitations: roomState.invitations.filter((candidate) => candidate.id !== invitationId) },
+          }
         : item
     )),
   };

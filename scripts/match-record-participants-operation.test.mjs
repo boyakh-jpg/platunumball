@@ -4,6 +4,8 @@ import test from "node:test";
 
 const [
   migrationSource,
+  repairMigrationSource,
+  schemaSource,
   matchSqlActionsSource,
   matchSyncPolicySource,
   matchSyncHandlerSource,
@@ -17,6 +19,8 @@ const [
   storageDocSource,
 ] = await Promise.all([
   readFile(new URL("../supabase/migrations/20260730017000_match_record_participants_operation.sql", import.meta.url), "utf8"),
+  readFile(new URL("../supabase/migrations/20260730190000_fix_match_record_participant_team_ids.sql", import.meta.url), "utf8"),
+  readFile(new URL("../supabase/schema.sql", import.meta.url), "utf8"),
   readFile(new URL("../server/lib/matchSqlCoreActions.js", import.meta.url), "utf8"),
   readFile(new URL("../server/lib/matchSyncPolicy.js", import.meta.url), "utf8"),
   readFile(new URL("../server/lib/matchSyncHandler.js", import.meta.url), "utf8"),
@@ -62,6 +66,28 @@ test("match-record participant setup is one locked service-only SQL reducer", ()
   );
   assert.doesNotMatch(migrationSource.replace(/--[^\r\n]*/gu, ""), /\bcascade\b/iu);
   assert.doesNotMatch(migrationSource, /\b(?:drop table|truncate)\b/iu);
+});
+
+test("match-record team selection avoids PL/pgSQL team id shadowing", () => {
+  assert.match(repairMigrationSource, /pg_get_functiondef\(function_signature\)/u);
+  assert.match(repairMigrationSource, /selected_team_a_id/u);
+  assert.match(repairMigrationSource, /selected_team_b_id/u);
+  assert.match(repairMigrationSource, /\[\[:space:\]\]\*team_a_id text;/u);
+  assert.match(repairMigrationSource, /\[\[:space:\]\]\*selected_team_a_id text;/u);
+  assert.match(repairMigrationSource, /match_record_participant_team_id_repair_incomplete/u);
+  assert.doesNotMatch(repairMigrationSource, /\b(?:drop table|truncate|delete from)\b/iu);
+
+  const functionStart = schemaSource.indexOf(
+    "create or replace function public.rankball_match_record_participants_action",
+  );
+  const functionEnd = schemaSource.indexOf(
+    "insert into public.rankball_rpc_contract_registry",
+    functionStart,
+  );
+  const functionSource = schemaSource.slice(functionStart, functionEnd);
+  assert.match(functionSource, /selected_team_a_id text;/u);
+  assert.match(functionSource, /selected_team_b_id text;/u);
+  assert.doesNotMatch(functionSource, /\bteam_[ab]_id text;/u);
 });
 
 test("server routes setup operation directly to SQL without full-state replay", () => {

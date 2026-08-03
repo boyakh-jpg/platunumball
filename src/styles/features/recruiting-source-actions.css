@@ -138,21 +138,21 @@
 .arena-match-source-record-board {
   display: grid;
   gap: 12px;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-  padding: 0;
+  border: var(--ui-room-panel-border-width) solid var(--ui-room-panel-border, var(--line));
+  border-radius: var(--ui-card-radius, var(--radius));
+  background: var(--ui-room-panel-bg, rgba(255, 255, 255, 0.05));
+  box-shadow: var(--ui-card-shadow, none);
+  padding: 14px;
 }
 
 .arena-source-record-summary {
   display: grid;
   gap: 10px;
   margin-top: 8px;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  padding: 0;
+  border: var(--ui-card-border-width) solid rgba(70, 224, 182, 0.18);
+  border-radius: var(--radius-xs);
+  background: rgba(70, 224, 182, 0.06);
+  padding: 10px;
 }
 
 .arena-source-record-score {
@@ -207,13 +207,11 @@
   display: grid;
   gap: 8px;
   align-items: center;
-  border-top: var(--ui-stroke-width) solid var(--ui-liquid-glass-divider);
-  border-radius: 0;
-  background: transparent;
-  padding: 7px 0;
+  border-bottom: var(--ui-stroke-width) solid var(--ui-liquid-glass-divider, var(--line));
+  padding: 6px 8px;
 }
 
-.arena-source-record-side > div > span {
+.arena-source-record-side span {
   overflow: hidden;
   color: var(--text);
   font-weight: 900;
@@ -222,21 +220,10 @@
 }
 
 .arena-source-record-side em {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2px 0;
   color: var(--text);
   font-style: normal;
   line-height: 1.25;
-}
-
-.arena-source-record-stat {
-  white-space: nowrap;
-}
-
-.arena-source-record-stat:not(:last-child)::after {
-  content: " · ";
-  white-space: pre;
+  overflow-wrap: anywhere;
 }
 
 .arena-participation-fields {
@@ -370,19 +357,21 @@ html[data-theme="light"] .arena-party-member-card.reserve {
   background: rgba(196, 143, 28, 0.1);
 }
 
+html[data-theme="light"] .arena-source-record-summary {
+  border-color: var(--ui-card-border);
+  background: var(--ui-card-bg);
+}
+
+html[data-theme="light"] .arena-source-record-side > div {
+  border-color: var(--ui-control-group-border);
+}
+
 html[data-theme="light"] .arena-source-record-side em {
   color: #244f5d;
 }
 
 .bottom-nav {
   grid-template-columns: repeat(7, minmax(0, 1fr));
-}
-
-html[data-theme="light"] .arena-recruit-hero,
-html[data-theme="light"] .arena-compose-drawer {
-  background:
-    linear-gradient(90deg, rgba(246, 248, 242, 0.98), rgba(246, 248, 242, 0.78) 52%, rgba(246, 248, 242, 0.54)),
-    var(--bg-ball) var(--hero-bg-position-ball) / var(--hero-bg-size) no-repeat;
 }
 
 html[data-theme="light"] .arena-hero-copy p {

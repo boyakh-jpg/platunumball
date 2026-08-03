@@ -1,5 +1,6 @@
 import { Check, ChevronLeft, ChevronRight, X } from "lucide-react";
 import Button from "../common/Button.jsx";
+import InlineValidatedInput from "../common/InlineValidatedInput.jsx";
 import { BENCH_CAPACITY_OPTIONS } from "../../lib/constants.js";
 import {
   MATCH_FORMATION_OPTIONS,
@@ -99,7 +100,7 @@ export function MatchCreationWizardActions({
   );
 }
 
-export function MatchIntentPresetSelector({ matchPurpose, formationMode, onPurposeSelect, onFormationSelect }) {
+export function MatchIntentPresetSelector({ matchPurpose, formationMode, onPurposeSelect, onFormationSelect, formationLocked = false }) {
   const pickup = formationMode === "pickup";
   const purposeValue = matchPurpose;
   return (
@@ -137,6 +138,7 @@ export function MatchIntentPresetSelector({ matchPurpose, formationMode, onPurpo
                 role="radio"
                 aria-checked={active}
                 className={active ? "active" : ""}
+                disabled={formationLocked && option.id === "pickup"}
                 onClick={() => {
                   if (option.id !== formationMode) onFormationSelect(option.id);
                 }}
@@ -159,7 +161,7 @@ export function MatchRosterPolicyFields({ draft, onChange }) {
     <div className="match-roster-policy-fields">
       <div className="field-block">
         <span className="field-label">{pickup ? "추가 참가 인원" : "후보 정원"}</span>
-        <div className="segmented-control compact-segments match-bench-capacity-control">
+        <div className="ui-segmented-control segmented-control compact-segments match-bench-capacity-control">
           {BENCH_CAPACITY_OPTIONS.map((benchCapacity) => (
             <button
               key={benchCapacity}
@@ -249,11 +251,11 @@ export function MatchCostPolicyFields({ draft, onChange }) {
         </label>
       </div>
       <div className="match-cost-components-grid">
-        <label>대관료<input type="number" min="0" step="100" value={freeVenue ? policy.venueFee : getMoneyInputValue("venueFee")} disabled={freeVenue} onChange={(event) => onChange({ venueFee: event.target.value, courtFee: event.target.value })} /></label>
-        <label>심판비<input type="number" min="0" step="100" value={getMoneyInputValue("refereeFee")} onChange={(event) => onChange({ refereeFee: event.target.value })} /></label>
-        <label>기록비<input type="number" min="0" step="100" value={getMoneyInputValue("recordingFee")} onChange={(event) => onChange({ recordingFee: event.target.value })} /></label>
-        <label>장비비<input type="number" min="0" step="100" value={getMoneyInputValue("equipmentFee")} onChange={(event) => onChange({ equipmentFee: event.target.value })} /></label>
-        <label>기타비<input type="number" min="0" step="100" value={getMoneyInputValue("otherFee")} onChange={(event) => onChange({ otherFee: event.target.value })} /></label>
+        <label>대관료<InlineValidatedInput clearOnDirectEntry type="number" min="0" step="100" value={freeVenue ? policy.venueFee : getMoneyInputValue("venueFee")} disabled={freeVenue} onChange={(event) => onChange({ venueFee: event.target.value, courtFee: event.target.value })} /></label>
+        <label>심판비<InlineValidatedInput clearOnDirectEntry type="number" min="0" step="100" value={getMoneyInputValue("refereeFee")} onChange={(event) => onChange({ refereeFee: event.target.value })} /></label>
+        <label>기록비<InlineValidatedInput clearOnDirectEntry type="number" min="0" step="100" value={getMoneyInputValue("recordingFee")} onChange={(event) => onChange({ recordingFee: event.target.value })} /></label>
+        <label>장비비<InlineValidatedInput clearOnDirectEntry type="number" min="0" step="100" value={getMoneyInputValue("equipmentFee")} onChange={(event) => onChange({ equipmentFee: event.target.value })} /></label>
+        <label>기타비<InlineValidatedInput clearOnDirectEntry type="number" min="0" step="100" value={getMoneyInputValue("otherFee")} onChange={(event) => onChange({ otherFee: event.target.value })} /></label>
       </div>
       <div className="form-grid two">
         <label>

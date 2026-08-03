@@ -60,15 +60,6 @@
   grid-column: span 2;
 }
 
-html[data-theme="light"] .team-card,
-html[data-theme="light"] .rating-card,
-html[data-theme="light"] .home-action-card,
-html[data-theme="light"] .rank-leaderboard-card,
-html[data-theme="light"] .rank-mode-card,
-html[data-theme="light"] .profile-records-summary {
-  background: rgba(255, 255, 255, 0.88);
-}
-
 @media (max-width: 1020px) {
 
   .bottom-nav a svg {
@@ -102,29 +93,6 @@ html[data-theme="light"] .profile-records-summary {
   }
 }
 
-/* Flat card surface standard: no gradients inside content boxes. */
-.section-card,
-.team-card,
-.elite-team-card,
-.rating-card,
-.profile-records-summary,
-.selector-panel,
-.team-create-panel,
-.my-team-management-card,
-.team-search-card,
-.home-search-panel,
-.home-action-card,
-.rank-profile-card,
-.rank-mode-card,
-.rank-leaderboard-card,
-.rank-record-card,
-.match-focus-card,
-.home-recent-card,
-.season-mini-card {
-  background-color: rgba(10, 14, 21, 0.9);
-  background-image: none;
-}
-
 .rank-stat-grid span,
 .stat-strip span,
 .rank-record-main,
@@ -154,28 +122,6 @@ html[data-theme="light"] .profile-records-summary {
 
 .elite-team-card::before {
   display: none;
-}
-
-html[data-theme="light"] .section-card,
-html[data-theme="light"] .team-card,
-html[data-theme="light"] .elite-team-card,
-html[data-theme="light"] .rating-card,
-html[data-theme="light"] .profile-records-summary,
-html[data-theme="light"] .selector-panel,
-html[data-theme="light"] .team-create-panel,
-html[data-theme="light"] .my-team-management-card,
-html[data-theme="light"] .team-search-card,
-html[data-theme="light"] .home-search-panel,
-html[data-theme="light"] .home-action-card,
-html[data-theme="light"] .rank-profile-card,
-html[data-theme="light"] .rank-mode-card,
-html[data-theme="light"] .rank-leaderboard-card,
-html[data-theme="light"] .rank-record-card,
-html[data-theme="light"] .match-focus-card,
-html[data-theme="light"] .home-recent-card,
-html[data-theme="light"] .season-mini-card {
-  background-color: rgba(255, 255, 255, 0.9);
-  background-image: none;
 }
 
 html[data-theme="light"] .rank-stat-grid span,

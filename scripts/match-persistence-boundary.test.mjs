@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 
 import {
   getDbScheduleParts,
@@ -13,6 +14,36 @@ import {
   toAuthoritativeMatchRow,
   toAuthoritativePlayerStatRows,
 } from "../server/api/matches/sync-match.js";
+import { getSidePlayerRows } from "../server/lib/matchSnapshotRows.js";
+import { validateMatchRosterEligibility } from "../server/lib/matchSnapshotValidation.js";
+import { validateLockedMatchCore } from "../server/lib/matchSyncPolicy.js";
+import { fromRemoteMatch } from "../shared/lib/matchMappers.js";
+import { getMatchPlayerTeamId } from "../shared/lib/matchRoster.js";
+
+function makeRosterSupabase({ profileIds = [], memberships = [] } = {}) {
+  return {
+    from(table) {
+      const filters = {};
+      const builder = {
+        select() { return builder; },
+        in(column, values) {
+          filters[column] = values;
+          return builder;
+        },
+        then(resolve, reject) {
+          const data = table === "profiles"
+            ? profileIds.filter((id) => filters.id.includes(id)).map((id) => ({ id }))
+            : memberships.filter((row) => (
+              filters.team_id.includes(row.team_id) && filters.user_id.includes(row.user_id)
+            ));
+          return Promise.resolve({ data, error: null }).then(resolve, reject);
+        },
+      };
+      return builder;
+    },
+  };
+}
+import { toClientMatch } from "../server/api/matches/_listProjection.js";
 
 function makeMatchFixture() {
   return {
@@ -208,4 +239,177 @@ test("shared schedule projection preserves instant and scheduled DB shapes", () 
     scheduledTime: null,
     scheduledAt: null,
   });
+});
+
+test("legacy mixed recruiting player team provenance survives the match player round trip", () => {
+  const match = {
+    id: "legacy-mixed-match",
+    title: "legacy mixed",
+    mode: "3v3",
+    timingType: "instant",
+    teamA: { teamId: null, players: ["solo-a"], playerTeams: {} },
+    teamB: {
+      teamId: null,
+      players: ["party-b1", "party-b2", "solo-b"],
+      playerTeams: { "party-b1": "team-b", "party-b2": "team-b" },
+    },
+    rules: { timingType: "instant" },
+  };
+  const matchRow = toAuthoritativeMatchRow(match, "solo-a");
+  const playerRows = getSidePlayerRows(match);
+
+  assert.equal(matchRow.team_a_id, null);
+  assert.equal(matchRow.team_b_id, null);
+  assert.deepEqual(
+    Object.fromEntries(playerRows.map((row) => [row.user_id, row.team_id])),
+    { "solo-a": null, "party-b1": "team-b", "party-b2": "team-b", "solo-b": null },
+  );
+
+  const reloaded = fromRemoteMatch(matchRow, {
+    playersByMatch: new Map([[match.id, playerRows]]),
+    resultsByMatch: {},
+    statsByMatch: new Map(),
+    disputesByMatch: new Map(),
+    agreementsByMatch: new Map(),
+    approvalsByMatch: new Map(),
+    teamById: { "team-b": { id: "team-b", name: "B 파티" } },
+    courtById: {},
+  });
+
+  assert.equal(reloaded.teamA.teamId, null);
+  assert.equal(reloaded.teamB.teamId, null);
+  assert.deepEqual(reloaded.teamA.playerTeams, {});
+  assert.deepEqual(reloaded.teamB.playerTeams, { "party-b1": "team-b", "party-b2": "team-b" });
+
+  const teamOnlyRows = getSidePlayerRows({
+    id: "team-only-match",
+    teamA: { teamId: "team-a", players: ["team-a1", "team-a2"], playerTeams: {} },
+    teamB: { teamId: "team-b", players: ["team-b1"], playerTeams: {} },
+  });
+  assert.deepEqual(teamOnlyRows.map((row) => row.team_id), ["team-a", "team-a", "team-b"]);
+});
+
+test("per-player team provenance must stay inside its side roster and match current membership", async () => {
+  const supabase = makeRosterSupabase({
+    profileIds: ["solo-a", "party-b1", "solo-b"],
+    memberships: [{ team_id: "team-b", user_id: "party-b1" }],
+  });
+  const match = {
+    teamA: { players: ["solo-a"], teamId: null, playerTeams: {} },
+    teamB: {
+      players: ["party-b1", "solo-b"],
+      teamId: null,
+      playerTeams: { "party-b1": "team-b" },
+    },
+    reservePlayers: { teamA: [], teamB: [] },
+    playedPlayerIds: { teamA: [], teamB: [] },
+  };
+
+  await validateMatchRosterEligibility(supabase, match);
+  await assert.rejects(
+    validateMatchRosterEligibility(supabase, {
+      ...match,
+      teamB: { ...match.teamB, playerTeams: { "outside-player": "team-b" } },
+    }),
+    { message: "match_player_team_outside_roster", statusCode: 403 },
+  );
+  await assert.rejects(
+    validateMatchRosterEligibility(supabase, {
+      ...match,
+      teamB: { ...match.teamB, playerTeams: { "solo-b": "team-b" } },
+    }),
+    { message: "match_team_roster_not_member", statusCode: 403 },
+  );
+});
+
+test("roster-locked actions cannot rewrite persisted per-player team provenance", () => {
+  const existingMatch = { visibility: "public" };
+  const existingPlayers = [
+    { user_id: "solo-a", side: "teamA", slot_order: 0, team_id: null },
+    { user_id: "party-b1", side: "teamB", slot_order: 0, team_id: "team-b" },
+  ];
+  const nextMatch = {
+    visibility: "public",
+    teamA: { players: ["solo-a"], teamId: null, playerTeams: {} },
+    teamB: { players: ["party-b1"], teamId: null, playerTeams: { "party-b1": "team-b" } },
+  };
+
+  validateLockedMatchCore(existingMatch, existingPlayers, nextMatch, "startMatch");
+  assert.throws(
+    () => validateLockedMatchCore(existingMatch, existingPlayers, {
+      ...nextMatch,
+      teamB: { ...nextMatch.teamB, playerTeams: { "party-b1": "other-team" } },
+    }, "startMatch"),
+    { message: "match_player_team_locked", statusCode: 403 },
+  );
+});
+
+test("match list projection restores mixed player teams", () => {
+  const row = {
+    id: "legacy-mixed-list-match",
+    title: "legacy mixed list",
+    mode: "3v3",
+    team_a_id: null,
+    team_b_id: null,
+    rules: {},
+  };
+  const playerRows = [
+    { match_id: row.id, side: "teamA", user_id: "solo-a", team_id: null, slot_order: 0 },
+    { match_id: row.id, side: "teamB", user_id: "party-b1", team_id: "team-b", slot_order: 0 },
+    { match_id: row.id, side: "teamB", user_id: "party-b2", team_id: "team-b", slot_order: 1 },
+  ];
+
+  const match = toClientMatch(row, new Map([[row.id, playerRows]]));
+
+  assert.deepEqual(match.teamA.playerTeams, {});
+  assert.deepEqual(match.teamB.playerTeams, {
+    "party-b1": "team-b",
+    "party-b2": "team-b",
+  });
+  assert.deepEqual(match.parties, []);
+});
+
+test("match list projection always returns canonical party arrays", () => {
+  const row = {
+    id: "legacy-party-map-list-match",
+    title: "legacy party map",
+    mode: "3v3",
+    team_a_id: null,
+    team_b_id: null,
+    rules: {
+      parties: {
+        teamParty: {
+          kind: "team",
+          side: "teamB",
+          teamId: "team-b",
+          players: ["party-b1"],
+          reserves: ["party-b-reserve"],
+        },
+      },
+    },
+  };
+
+  const match = toClientMatch(row);
+  const remoteMatch = fromRemoteMatch(row, {
+    playersByMatch: new Map(),
+    resultsByMatch: {},
+    statsByMatch: new Map(),
+    disputesByMatch: new Map(),
+    agreementsByMatch: new Map(),
+    approvalsByMatch: new Map(),
+    teamById: {},
+    courtById: {},
+  });
+
+  assert.equal(Array.isArray(match.parties), true);
+  assert.equal(match.parties[0].teamId, "team-b");
+  assert.equal(getMatchPlayerTeamId(match, "teamB", "party-b-reserve"), "team-b");
+  assert.equal(Array.isArray(remoteMatch.parties), true);
+  assert.equal(getMatchPlayerTeamId(remoteMatch, "teamB", "party-b-reserve"), "team-b");
+});
+
+test("match list loader hydrates teams referenced only by player rows", async () => {
+  const source = await readFile(new URL("../server/api/matches/_listLoader.js", import.meta.url), "utf8");
+
+  assert.match(source, /playersByMatch\.get\(row\.id\).*\.map\(\(player\) => player\.team_id\)/s);
 });

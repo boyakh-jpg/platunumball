@@ -15,7 +15,6 @@ import {
   getRecruitingBenchCapacity,
   getRecruitingBestSide,
   getRecruitingLobby,
-  getPlayerMatchModeMmr,
   getRecruitingSideCapacity,
   isIndividualOnlyRecruitingRoom,
   isTeamOnlyRecruitingRoom,
@@ -48,7 +47,7 @@ export function getDefaultRecruitingTitle(draft) {
   return `${draft.ranked ? "정규전" : "친선전"} ${draft.mode} 매치 큐`;
 }
 
-function getRecruitingCardTitle(post) {
+export function getRecruitingCardTitle(post) {
   const title = cleanRoomTitle(post.title, "")
     .replace(/^(정규전|친선전)\s+(1v1|2v2|3v3|5v5)\s*/i, "")
     .replace(/\s+(1v1|2v2|3v3|5v5)$/i, "")
@@ -176,11 +175,9 @@ export function getDefaultJoinRoster(post, lobby, team, currentUser, sideName, r
   };
 }
 
-export function getPlayerMmrAverage(playerIds = [], userById = {}, fallback = DEFAULT_RATING, mode = "") {
+export function getPlayerMmrAverage(playerIds = [], userById = {}, fallback = DEFAULT_RATING) {
   const values = playerIds
-    .map((playerId) => userById[playerId])
-    .filter(Boolean)
-    .map((user) => getPlayerMatchModeMmr(user, mode))
+    .map((playerId) => Number(userById[playerId]?.ratings?.integrated))
     .filter((value) => Number.isFinite(value));
   if (!values.length) return fallback;
   return Math.round(values.reduce((sum, value) => sum + value, 0) / values.length);

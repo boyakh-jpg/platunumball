@@ -12,7 +12,7 @@ export function RecruitingRoomDialogSection({ context }) {
                   <div className="app-confirm-dialog" role="dialog" aria-modal="true" aria-label="개인 기록 삭제 확인" onMouseDown={(event) => event.stopPropagation()}>
                     <strong>개인 기록 삭제</strong>
                     <p>삭제하면 내 기록 목록에서 사라집니다. MMR은 변하지 않습니다.</p>
-                    <div className="app-confirm-actions">
+                    <div className="ui-action-row app-confirm-actions">
                       <Button type="button" variant="secondary" onClick={() => setSoloRecordDeleteTarget(null)}>취소</Button>
                       <Button type="button" variant="primary" className="danger-button" onClick={confirmDeleteSourceSoloRecord}>삭제하기</Button>
                     </div>
@@ -58,7 +58,7 @@ export function RecruitingRoomDialogSection({ context }) {
                     <small className={roomCancellationTarget.error ? "error" : ""}>
                       {roomCancellationTarget.error || `${roomCancellationTarget.reason.length}/200`}
                     </small>
-                    <div className="app-confirm-actions">
+                    <div className="ui-action-row app-confirm-actions">
                       <Button type="button" variant="secondary" disabled={roomCancellationPending} onClick={() => setRoomCancellationTarget(null)}>돌아가기</Button>
                       <Button
                         type="submit"

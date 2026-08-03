@@ -4,9 +4,11 @@ import { canRequestVoidMatchRestore, getReportableMatchTimeMs } from "../lib/mat
 import { REPORT_MATCH_WINDOW_MS } from "../lib/constants.js";
 import { getCourtHashtag, getMatchHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
 import { DIRECTORY_SELF_PAGE_LIMIT } from "../lib/queryPolicy.js";
+import { isSupabaseConfigured } from "../lib/supabase.js";
 import { getReportParticipantRows, getMatchReportTitle, matchesReportSearchQuery } from "./settingsPageModel.js";
 
 export default function useSettingsReportController({ app, userMap, matchMap, courtRequests, approvedCourts, courtReviews }) {
+const loadDirectory = app.actions.loadDirectory;
 const [reportMatchId, setReportMatchId] = useState("");
 const [reportReason, setReportReason] = useState("");
 const [reportTargetQuery, setReportTargetQuery] = useState("");
@@ -18,6 +20,7 @@ const [reportRemoteTarget, setReportRemoteTarget] = useState(null);
 const [reportMemo, setReportMemo] = useState("");
 const [reportedUserIds, setReportedUserIds] = useState([]);
 const [reportSubmitPending, setReportSubmitPending] = useState(false);
+const reportSubmitPendingRef = useRef(false);
 const [reportSubmitStatus, setReportSubmitStatus] = useState("");
 const [reportMatchesLoading, setReportMatchesLoading] = useState(false);
 const [reportMatchesError, setReportMatchesError] = useState("");
@@ -46,6 +49,7 @@ const reportableMatchCandidates = useMemo(
 const reportNeedsMatchData = [REPORT_TARGET_TYPES.player, REPORT_TARGET_TYPES.match, REPORT_TARGET_TYPES.mixed].includes(reportTargetType);
 useEffect(() => {
     if (!reportNeedsMatchData || !app.currentUserId || reportMatchesLoadRef.current === app.currentUserId) return;
+    if (!isSupabaseConfigured) return;
     const loadReportableMatches = app.actions.loadReportableMatches;
     if (!loadReportableMatches) return;
     reportMatchesLoadRef.current = app.currentUserId;
@@ -175,7 +179,7 @@ const reportTargetSearchItems = useMemo(() => {
         const requester = userMap[request.requestedBy];
         const hashtag = request.hashtag ? getCourtHashtag(request) : "";
         items.push({
-          id: `court:${request.id}`,
+          id: `court-request:${request.id}`,
           kind: "court_request",
           request,
           title: request.name,
@@ -380,8 +384,9 @@ const renderReportTargetSearchItem = (item) => (
   );
 const submitReport = async (event) => {
     event.preventDefault();
-    if (!canSubmitReport || reportSubmitPending) return;
+    if (!canSubmitReport || reportSubmitPendingRef.current) return;
     const memo = reportMemo.trim();
+    reportSubmitPendingRef.current = true;
     setReportSubmitPending(true);
     setReportSubmitStatus("신고 저장 중");
     try {
@@ -425,10 +430,12 @@ const submitReport = async (event) => {
         setReportSubmitStatus("신고를 접수하지 못했습니다. 입력 내용을 확인한 뒤 다시 시도해 주세요.");
         return;
       }
-      if (loadDirectory) {
-        await Promise.resolve(loadDirectory({ kind: "self", limit: DIRECTORY_SELF_PAGE_LIMIT, offset: 0, force: true })).catch(() => false);
-      }
       setReportSubmitStatus(result.duplicate ? "이미 접수된 신고입니다." : "신고가 접수됐습니다.");
+      if (loadDirectory) {
+        await Promise.resolve()
+          .then(() => loadDirectory({ kind: "self", limit: DIRECTORY_SELF_PAGE_LIMIT, offset: 0, force: true }))
+          .catch(() => false);
+      }
       setReportReason("");
       setReportMatchId("");
       setReportedUserIds([]);
@@ -440,8 +447,13 @@ const submitReport = async (event) => {
       setReportTargetQuery("");
       setReportMemo("");
     } catch {
-      setReportSubmitStatus("신고를 접수하지 못했습니다. 입력 내용은 유지됩니다.");
+      setReportSubmitStatus((current) => (
+        current === "신고가 접수됐습니다." || current === "이미 접수된 신고입니다."
+          ? current
+          : "신고를 접수하지 못했습니다. 입력 내용은 유지됩니다."
+      ));
     } finally {
+      reportSubmitPendingRef.current = false;
       setReportSubmitPending(false);
     }
   };

@@ -35,6 +35,7 @@ export default function HomeRightRail({
   priorityItems,
   priorityNoticeItems,
   processingInviteId,
+  inviteActionError,
   rankSpotlightLabel,
   recentFiveWins,
   seasonProgress,
@@ -85,10 +86,11 @@ export default function HomeRightRail({
                         <span className="home-action-main">
                           <strong>{item.title}</strong>
                           <em>{item.meta}</em>
+                          {inviteActionError?.key === `${item.postId}:${item.invitationId}` ? <small role="status" className="form-warning">{inviteActionError.message}</small> : null}
                         </span>
                         <span className="home-action-buttons">
-                          <Button size="sm" type="button" disabled={isProcessing} onClick={() => acceptHomeRecruitingInvitation(item.postId, item.invitationId)}>{isProcessing ? "수락 중" : "수락"}</Button>
-                          <Button size="sm" type="button" variant="secondary" disabled={isProcessing} onClick={() => declineHomeRecruitingInvitation(item.postId, item.invitationId)}>{isProcessing ? "처리 중" : "거절"}</Button>
+                          <Button size="sm" type="button" disabled={Boolean(processingInviteId)} onClick={() => acceptHomeRecruitingInvitation(item.postId, item.invitationId)}>{isProcessing ? "수락 중" : "수락"}</Button>
+                          <Button size="sm" type="button" variant="secondary" disabled={Boolean(processingInviteId)} onClick={() => declineHomeRecruitingInvitation(item.postId, item.invitationId)}>{isProcessing ? "처리 중" : "거절"}</Button>
                           <Button as={Link} variant="secondary" size="sm" to={item.href} onClick={(event) => openActionRoom(event, item)}>보기</Button>
                         </span>
                       </div>
@@ -139,7 +141,7 @@ export default function HomeRightRail({
               <p className="eyebrow">Alerts</p>
               <h2>알림</h2>
             </div>
-            <div className="home-alert-heading-actions">
+            <div className="ui-action-row home-alert-heading-actions">
               <Button as={Link} to="/app/notifications" variant="secondary" size="sm">지난 알림</Button>
               <Badge tone={homeNoticeItems.length ? "orange" : "neutral"}>{homeNoticeItems.length}개</Badge>
             </div>
@@ -251,7 +253,7 @@ export default function HomeRightRail({
           </div>
           <div className="ui-entity-list ui-design-borderless-list">
             {localRivals.length ? localRivals.map((team) => (
-              <TeamHoverCard className="ui-control ui-entity-row" key={team.id} team={team}>
+              <TeamHoverCard className="ui-control ui-entity-row" directNavigation key={team.id} team={team}>
                 <TeamEmblem team={team} size="xs" />
                 <span className="ui-entity-copy">
                   <strong>{team.name}</strong>
@@ -273,7 +275,7 @@ export default function HomeRightRail({
           </div>
           <div className="ui-entity-list ui-design-borderless-list">
             {myTeams.length ? myTeams.slice(0, 5).map((team) => (
-              <TeamHoverCard className="ui-control ui-entity-row" key={team.id} team={team}>
+              <TeamHoverCard className="ui-control ui-entity-row" directNavigation key={team.id} team={team}>
                 <TeamEmblem team={team} size="xs" />
                 <span className="ui-entity-copy">
                   <strong>{team.name}</strong>

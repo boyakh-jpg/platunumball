@@ -246,7 +246,7 @@
   display: grid;
   gap: 8px;
   align-items: center;
-  border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.1);
+  border: var(--ui-card-border-width) solid rgba(255, 255, 255, 0.1);
   border-radius: var(--radius);
   background: rgba(8, 11, 16, 0.66);
   padding: 10px;
@@ -300,7 +300,7 @@
   align-items: end;
   justify-content: space-between;
   gap: 12px;
-  border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.1);
+  border: var(--ui-card-border-width) solid rgba(255, 255, 255, 0.1);
   border-radius: var(--radius);
   background: rgba(8, 11, 16, 0.62);
   padding: 14px;
@@ -344,6 +344,7 @@ html[data-theme="light"] .om-list-head,
 html[data-theme="light"] .tournament-summary-grid > div,
 html[data-theme="light"] .tournament-team-list article,
 html[data-theme="light"] .tournament-referee-list article,
+html[data-theme="light"] .tournament-match-referee-list form,
 html[data-theme="light"] .tournament-sanction-panel,
 html[data-theme="light"] .tournament-cup-bracket,
 html[data-theme="light"] .tournament-vertical-bracket,
@@ -360,6 +361,12 @@ html[data-theme="light"] .tournament-empty {
 
 html[data-theme="light"] .tournament-schedule-list input {
   background: rgba(255, 255, 255, 0.9);
+}
+
+html[data-theme="light"] .tournament-match-referee-list select,
+html[data-theme="light"] .tournament-referee-actions button.secondary {
+  border-color: rgba(16, 20, 28, 0.12);
+  background: rgba(16, 20, 28, 0.06);
 }
 
 @media (max-width: 1120px) {

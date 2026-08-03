@@ -1,4 +1,6 @@
 const ERROR_LABELS = Object.freeze({
+  invalid_shot_clock_seconds: "샷클락은 사용 안 함, 24초, 30초, 1분 중에서 선택해 주세요.",
+  match_clock_configure_forbidden: "경기시계 시작 전 방장 또는 배정 심판만 담당자와 샷클락을 변경할 수 있습니다.",
   match_clock_forbidden: "이 경기의 시계를 볼 권한이 없습니다.",
   match_clock_controller_must_be_active: "현재 출전·후보 선수 또는 심판만 시계를 받을 수 있습니다.",
   match_clock_start_forbidden: "지정된 시계 담당 선수만 시작할 수 있습니다.",
@@ -26,8 +28,8 @@ const BUZZER_PATTERNS = Object.freeze({
   ]),
 });
 
-let buzzerMediaElement = null;
 let matchClockControlMediaElement = null;
+let buzzerAudioContext = null;
 const buzzerMediaUrls = new Map();
 
 export function getMatchClockErrorLabel(error) {
@@ -87,20 +89,6 @@ function getBuzzerMediaUrl(patternName) {
   return url;
 }
 
-export function getBuzzerMediaElement() {
-  if (buzzerMediaElement) return buzzerMediaElement;
-  buzzerMediaElement = new Audio();
-  buzzerMediaElement.preload = "auto";
-  buzzerMediaElement.setAttribute("playsinline", "");
-  buzzerMediaElement.setAttribute("webkit-playsinline", "");
-  buzzerMediaElement.setAttribute("aria-hidden", "true");
-  buzzerMediaElement.hidden = true;
-  buzzerMediaElement.src = getBuzzerMediaUrl("period");
-  document.body.appendChild(buzzerMediaElement);
-  buzzerMediaElement.load();
-  return buzzerMediaElement;
-}
-
 function getMatchClockControlMediaElement() {
   if (matchClockControlMediaElement) return matchClockControlMediaElement;
   matchClockControlMediaElement = new Audio();
@@ -154,17 +142,29 @@ export function deactivateMatchClockMediaSession() {
 export async function playMatchClockBuzzer(patternName = "period", volume = 1) {
   if (volume <= 0) return false;
   try {
-    const mediaElement = getBuzzerMediaElement();
-    const nextSource = getBuzzerMediaUrl(patternName);
-    mediaElement.pause();
-    if (mediaElement.src !== nextSource) {
-      mediaElement.src = nextSource;
-      mediaElement.load();
-    }
-    mediaElement.currentTime = 0;
-    mediaElement.muted = false;
-    mediaElement.volume = Math.min(1, Math.max(0, volume));
-    await mediaElement.play();
+    const AudioContextConstructor = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextConstructor) return false;
+    buzzerAudioContext ??= new AudioContextConstructor();
+    if (buzzerAudioContext.state === "suspended") await buzzerAudioContext.resume();
+    const gainValue = Math.min(1, Math.max(0, volume)) * 0.35;
+    let segmentStart = buzzerAudioContext.currentTime;
+    (BUZZER_PATTERNS[patternName] || BUZZER_PATTERNS.period).forEach((segment) => {
+      const segmentEnd = segmentStart + segment.durationMs / 1000;
+      if (segment.frequency > 0) {
+        const oscillator = buzzerAudioContext.createOscillator();
+        const gain = buzzerAudioContext.createGain();
+        oscillator.type = "square";
+        oscillator.frequency.value = segment.frequency;
+        gain.gain.setValueAtTime(0, segmentStart);
+        gain.gain.linearRampToValueAtTime(gainValue, segmentStart + 0.005);
+        gain.gain.setValueAtTime(gainValue, Math.max(segmentStart + 0.005, segmentEnd - 0.01));
+        gain.gain.linearRampToValueAtTime(0, segmentEnd);
+        oscillator.connect(gain).connect(buzzerAudioContext.destination);
+        oscillator.start(segmentStart);
+        oscillator.stop(segmentEnd);
+      }
+      segmentStart = segmentEnd;
+    });
     return true;
   } catch {
     return false;

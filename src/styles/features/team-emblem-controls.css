@@ -42,9 +42,6 @@
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--space-5);
-  border: var(--ui-stroke-width) solid var(--ui-control-border);
-  border-radius: var(--ui-control-radius);
-  background: var(--ui-control-bg);
   padding: 10px;
 }
 
@@ -401,11 +398,7 @@
 
 .profile-icon-card-actions,
 .profile-icon-dialog-actions {
-  display: flex;
-  align-items: center;
   justify-content: flex-end;
-  gap: var(--space-4);
-  flex-wrap: wrap;
 }
 
 .profile-icon-card-feedback {

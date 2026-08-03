@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Search } from "lucide-react";
 import { postServerAction } from "../../lib/serverActions.js";
 
@@ -52,11 +52,14 @@ function getSearchScore(text = "", query = "") {
   return -1;
 }
 
-function getItemKey(item = {}) {
+function getItemKey(item = {}, fallbackCategory = "") {
   const entity = item.player ?? item.team ?? item.court ?? item.referee ?? item;
-  const category = item.type ?? item.kind ?? entity.type ?? entity.kind;
+  const category = item.kind ?? entity.kind ?? item.type ?? entity.type ?? fallbackCategory;
   const identity = item.entityId ?? entity.entityId ?? item.id ?? entity.id ?? item.hashtag ?? entity.hashtag ?? item.handle ?? entity.handle;
-  if (identity) return `id:${identity}`;
+  const categoryKey = String(category || "entity").toLowerCase() === "profile"
+    ? "player"
+    : String(category || "entity").toLowerCase();
+  if (identity) return `id:${categoryKey}:${identity}`;
   return [
     category,
     item.label ?? entity.label,
@@ -64,10 +67,10 @@ function getItemKey(item = {}) {
   ].filter(Boolean).join(":");
 }
 
-function mergeSearchItems(localItems = [], remoteItems = []) {
+function mergeSearchItems(localItems = [], remoteItems = [], fallbackCategory = "") {
   const seen = new Set();
   return [...localItems, ...remoteItems].filter((item) => {
-    const key = getItemKey(item);
+    const key = getItemKey(item, fallbackCategory);
     if (!key) return true;
     if (seen.has(key)) return false;
     seen.add(key);
@@ -111,15 +114,20 @@ export default function SearchPicker({
   const [visibleLimit, setVisibleLimit] = useState(Math.max(1, Number(limit) || 10));
   const [remoteItems, setRemoteItems] = useState([]);
   const [remoteLoading, setRemoteLoading] = useState(false);
+  const [remoteError, setRemoteError] = useState(false);
+  const [remoteRetrySequence, setRemoteRetrySequence] = useState(0);
   const [floatingPlacement, setFloatingPlacement] = useState("below");
   const [floatingMaxHeight, setFloatingMaxHeight] = useState(320);
   const pickerRef = useRef(null);
+  const inputRef = useRef(null);
+  const resultsId = useId();
   const remoteRequestIdRef = useRef(0);
   const query = value.trim();
   const baseLimit = Math.max(1, Number(limit) || 10);
   const maxDetailLimit = Math.max(baseLimit, Number(detailLimit) || baseLimit);
   const detailStep = Math.max(0, Number(loadMoreStep) || 0);
   const remoteSearchKey = Array.isArray(remoteSearchType) ? remoteSearchType.join(",") : String(remoteSearchType || "");
+  const remoteSearchCategory = typeof remoteSearchType === "string" ? remoteSearchType : "";
   const remoteSearchContextKey = useMemo(() => {
     if (!remoteSearchContext) return "";
     try {
@@ -135,7 +143,7 @@ export default function SearchPicker({
   const canRemoteSearch = canSearch || (remoteSearchOnFocus && focused);
   const mappedRemoteItems = useMemo(() => remoteItems.map(mapRemoteItem).filter(Boolean), [mapRemoteItem, remoteItems]);
   const activeItems = useMemo(() => {
-    if (!canSearch) return mergeSearchItems(idleItems, mappedRemoteItems);
+    if (!canSearch) return mergeSearchItems(idleItems, mappedRemoteItems, remoteSearchCategory);
     const localItems = (items ?? [])
       .map((item, index) => ({
         item,
@@ -145,8 +153,8 @@ export default function SearchPicker({
       .filter((entry) => entry.score >= 0)
       .sort((a, b) => b.score - a.score || a.index - b.index)
       .map((entry) => entry.item);
-    return mergeSearchItems(localItems, mappedRemoteItems);
-  }, [canSearch, getSearchText, idleItems, items, mappedRemoteItems, query]);
+    return mergeSearchItems(localItems, mappedRemoteItems, remoteSearchCategory);
+  }, [canSearch, getSearchText, idleItems, items, mappedRemoteItems, query, remoteSearchCategory]);
   const canShow = floating
     ? focused && (canSearch || showIdleOnFocus)
     : canSearch || (showIdleOnFocus && focused);
@@ -161,12 +169,23 @@ export default function SearchPicker({
     setShowIdlePanel(false);
     setVisibleLimit(baseLimit);
   };
+  const moveResultFocus = (event, direction) => {
+    const focusable = [...(pickerRef.current?.querySelectorAll(".search-picker-results button:not(:disabled), .search-picker-results a[href], .search-picker-results [tabindex='0']") ?? [])];
+    if (!focusable.length) return;
+    event.preventDefault();
+    const currentIndex = focusable.indexOf(document.activeElement);
+    const nextIndex = currentIndex < 0
+      ? direction > 0 ? 0 : focusable.length - 1
+      : (currentIndex + direction + focusable.length) % focusable.length;
+    focusable[nextIndex]?.focus();
+  };
 
   useEffect(() => {
     if (!remoteSearchKey || !canRemoteSearch) {
       remoteRequestIdRef.current += 1;
       setRemoteItems([]);
       setRemoteLoading(false);
+      setRemoteError(false);
       return undefined;
     }
 
@@ -174,6 +193,7 @@ export default function SearchPicker({
     remoteRequestIdRef.current = requestId;
     setRemoteItems([]);
     setRemoteLoading(true);
+    setRemoteError(false);
     const timer = window.setTimeout(async () => {
       try {
         const result = await postServerAction("/api/search", {
@@ -186,14 +206,17 @@ export default function SearchPicker({
         if (remoteRequestIdRef.current !== requestId) return;
         setRemoteItems(Array.isArray(result?.items) ? result.items : []);
       } catch {
-        if (remoteRequestIdRef.current === requestId) setRemoteItems([]);
+        if (remoteRequestIdRef.current === requestId) {
+          setRemoteItems([]);
+          setRemoteError(true);
+        }
       } finally {
         if (remoteRequestIdRef.current === requestId) setRemoteLoading(false);
       }
     }, 300);
 
     return () => window.clearTimeout(timer);
-  }, [baseLimit, canRemoteSearch, forceSearch, query, remoteLimit, remoteSearchContextKey, remoteSearchKey, remoteSearchOnFocus]);
+  }, [baseLimit, canRemoteSearch, forceSearch, query, remoteLimit, remoteRetrySequence, remoteSearchContextKey, remoteSearchKey, remoteSearchOnFocus]);
 
   useEffect(() => {
     setExpanded(false);
@@ -239,11 +262,18 @@ export default function SearchPicker({
       <div className={`search-picker-field${fieldClassName ? ` ${fieldClassName}` : ""}`}>
         <Search size={18} />
         <input
+          ref={inputRef}
           value={value}
           placeholder={placeholder}
+          aria-controls={canShow ? resultsId : undefined}
+          aria-expanded={canShow}
           onFocus={() => setFocused(true)}
           onBlur={() => window.setTimeout(() => setFocused(false), 120)}
           onKeyDown={(event) => {
+            if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+              moveResultFocus(event, event.key === "ArrowDown" ? 1 : -1);
+              return;
+            }
             if (event.key === "Escape") {
               event.preventDefault();
               closeResults();
@@ -252,6 +282,7 @@ export default function SearchPicker({
             if (event.key !== "Enter") return;
             event.preventDefault();
             setSubmittedQuery(value.trim());
+            setRemoteRetrySequence((current) => current + 1);
             setFocused(true);
             setExpanded(false);
             setShowIdlePanel(false);
@@ -269,11 +300,21 @@ export default function SearchPicker({
       </div>
       {canShow ? (
         <div
+          id={resultsId}
           className={`home-search-results unified search-picker-results${floating ? ` is-floating opens-${floatingPlacement}` : ""}${resultsClassName ? ` ${resultsClassName}` : ""}`}
           style={floating ? { "--search-picker-max-height": `${floatingMaxHeight}px` } : undefined}
           onPointerDown={(event) => event.preventDefault()}
+          onKeyDown={(event) => {
+            if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+              moveResultFocus(event, event.key === "ArrowDown" ? 1 : -1);
+            } else if (event.key === "Escape") {
+              event.preventDefault();
+              closeResults();
+              inputRef.current?.focus();
+            }
+          }}
           onClickCapture={(event) => {
-            if (!closeOnResultClick || event.target?.closest?.(".search-picker-more, .home-search-more, .search-picker-idle-toggle")) return;
+            if (!closeOnResultClick || event.target?.closest?.(".search-picker-more, .home-search-more, .search-picker-idle-toggle, .search-picker-retry")) return;
             window.setTimeout(closeResults, 0);
           }}
         >
@@ -297,11 +338,21 @@ export default function SearchPicker({
               ) : null}
             </>
           ) : null}
-          {visibleItems.length ? visibleItems.map(renderItem) : <div className="ui-empty-state-compact">{remoteLoading ? "검색 중..." : emptyText}</div>}
+          {visibleItems.length ? visibleItems.map(renderItem) : <div className="ui-empty-state-compact">{remoteLoading ? "검색 중..." : remoteError ? "검색 결과를 불러오지 못했습니다." : emptyText}</div>}
+          {remoteError && !remoteLoading ? (
+            <button
+              type="button"
+              className="button ui-button button-secondary ui-button-secondary button-sm ui-button-sm search-picker-retry"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => setRemoteRetrySequence((current) => current + 1)}
+            >
+              누락된 검색 결과 다시 불러오기
+            </button>
+          ) : null}
           {hasMore ? (
             <button
               type="button"
-              className="home-search-more search-picker-more"
+              className="ui-compact-action home-search-more search-picker-more"
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => {
                 if (detailStep) {

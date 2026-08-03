@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { Link, Navigate, useLocation, useParams } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 import { MessageCircle } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import BasketballLoader from "../components/common/BasketballLoader.jsx";
+import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import { PersonalRecordMetaLabels } from "../components/match/MatchRecordMeta.jsx";
 import RecentMatchRow from "../components/match/RecentMatchRow.jsx";
@@ -55,11 +56,31 @@ export default function PlayerDetail({ app }) {
   const { playerId } = useParams();
   const location = useLocation();
   const [selectedMatchId, setSelectedMatchId] = useState("");
+  const [profileLoadAttempt, setProfileLoadAttempt] = useState(0);
+  const [profileLoadState, setProfileLoadState] = useState({ playerId: "", status: "idle" });
   const loadDirectory = app.actions?.loadDirectory;
   const loadPublicProfileRecords = app.actions?.loadPublicProfileRecords;
   useEffect(() => {
-    loadDirectory?.();
-  }, [loadDirectory]);
+    if (!playerId || app.remoteReady === false) return undefined;
+    let cancelled = false;
+    if (!isSupabaseConfigured) {
+      setProfileLoadState({ playerId, status: "loaded" });
+      return undefined;
+    }
+    setProfileLoadState({ playerId, status: "loading" });
+    Promise.resolve(loadDirectory?.({
+      force: profileLoadAttempt > 0,
+      kind: "players",
+      profileId: playerId,
+      limit: 1,
+      offset: 0,
+    })).then((result) => {
+      if (!cancelled) setProfileLoadState({ playerId, status: result === false ? "error" : "loaded" });
+    }).catch(() => {
+      if (!cancelled) setProfileLoadState({ playerId, status: "error" });
+    });
+    return () => { cancelled = true; };
+  }, [app.remoteReady, loadDirectory, playerId, profileLoadAttempt]);
   useEffect(() => {
     if (!app.remoteReady || !playerId || !loadPublicProfileRecords) return;
     void loadPublicProfileRecords(playerId);
@@ -70,10 +91,29 @@ export default function PlayerDetail({ app }) {
   const player = app.state.users.find((user) => user.id === playerId) ?? previewPlayer;
 
   const directoryPending = app.remoteReady === false
-    || app.directoryStatus?.loading
-    || (app.directoryStatus?.loaded === false && !app.directoryStatus?.error);
+    || profileLoadState.playerId !== playerId
+    || ["idle", "loading"].includes(profileLoadState.status);
   if (!player && directoryPending) return <BasketballLoader overlay label="선수 프로필 불러오는 중" />;
-  if (!player) return <Navigate to="/app/rankings" replace />;
+  if (!player && profileLoadState.status === "error") {
+    return (
+      <Card className="section-card court-detail-state">
+        <h1>선수 프로필을 불러오지 못했습니다.</h1>
+        <p>연결 상태를 확인한 뒤 다시 시도해 주세요.</p>
+        <div className="ui-action-row">
+          <Button type="button" onClick={() => setProfileLoadAttempt((attempt) => attempt + 1)}>다시 시도</Button>
+          <Button as={Link} to="/app/rankings" variant="secondary">랭킹으로</Button>
+        </div>
+      </Card>
+    );
+  }
+  if (!player) {
+    return (
+      <Card className="section-card court-detail-state">
+        <h1>선수 프로필을 찾을 수 없습니다.</h1>
+        <Button as={Link} to="/app/rankings" variant="secondary">랭킹으로</Button>
+      </Card>
+    );
+  }
 
   const isOwnProfile = player.id === app.currentUser.id;
   const canViewTeamHistory = isOwnProfile || player.privacy?.teamHistory === true || (!isSupabaseConfigured && player.privacy?.teamHistory !== false);
@@ -211,6 +251,13 @@ export default function PlayerDetail({ app }) {
           </div>
         )}
       />
+
+      {profileLoadState.status === "error" ? (
+        <Card className="section-card court-detail-state">
+          <p>최신 선수 프로필을 불러오지 못했습니다. 현재 보이는 정보는 이전 화면의 미리보기일 수 있습니다.</p>
+          <Button type="button" variant="secondary" onClick={() => setProfileLoadAttempt((attempt) => attempt + 1)}>다시 시도</Button>
+        </Card>
+      ) : null}
 
       {canViewStatSummary || canViewTeamHistory ? (
         <nav className="rank-profile-tabs">
@@ -433,6 +480,12 @@ export default function PlayerDetail({ app }) {
                 {!history.length && !archivedPublicHistory.length
                   ? <div className="ui-empty-state-compact">공개 경기 기록이 아직 없습니다.</div>
                   : null}
+                {profileRecordArchive?.error ? (
+                  <div className="ui-empty-state-compact">
+                    공개 경기 기록을 불러오지 못했습니다.
+                    <Button type="button" size="sm" variant="secondary" onClick={() => loadPublicProfileRecords?.(player.id, { force: true })}>다시 시도</Button>
+                  </div>
+                ) : null}
               </div>
             </Card>
           ) : null}

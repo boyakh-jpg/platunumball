@@ -108,14 +108,14 @@ export default function CourtHoverCard({ court, courtName = "", children, classN
         ) : null}
         <span className="court-hover-actions">
           {courtPath ? (
-            <Link className="hover-card-action" to={courtPath} onClick={(event) => {
+            <Link className="ui-compact-action hover-card-action" to={courtPath} onClick={(event) => {
               event.stopPropagation();
               closePinned();
             }}>
               <MapPin size={16} /> 구장 정보 보기
             </Link>
           ) : null}
-          <a className="hover-card-action hover-card-action-secondary" href={mapUrl} target="_blank" rel="noreferrer" onClick={(event) => {
+          <a className="ui-compact-action hover-card-action hover-card-action-secondary" href={mapUrl} target="_blank" rel="noreferrer" onClick={(event) => {
             event.stopPropagation();
             closePinned();
           }}>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { ADMIN_REVIEW_ACTIONS, buildAdminAppointmentModel, buildAdminReviewModel, getAdminActionTargetUserIds, getAdminReviewMetrics, isHighImpactAdminReviewAction } from "../lib/admin.js";
 import { getCourtCorrectionPatch, getCourtFacilityBaseName, getCourtLocationMatches, getCourtMapUrl, getCourtStandardName, normalizeCourtSourceUrl } from "../lib/courts.js";
@@ -65,9 +65,14 @@ const [searchParams, setSearchParams] = useSearchParams();
     multipleCourtsVerified: false,
   });
   const [courtApprovalStatus, setCourtApprovalStatus] = useState("");
+  const courtApprovalPendingRef = useRef(false);
+  const selectedCourtRequestIdRef = useRef("");
   const [reviewActionStatus, setReviewActionStatus] = useState("");
   const [reviewActionPending, setReviewActionPending] = useState(false);
   const [reviewActionConfirming, setReviewActionConfirming] = useState(false);
+  const selectedReportIdRef = useRef("");
+  const [appointmentActionPending, setAppointmentActionPending] = useState(false);
+  const [appointmentActionStatus, setAppointmentActionStatus] = useState("");
   const canAdmin = adminLevel >= 30;
   const adminViewState = app.adminState ?? app.state;
   const model = useMemo(() => buildAdminReviewModel(adminViewState), [adminViewState]);
@@ -84,6 +89,9 @@ const [searchParams, setSearchParams] = useSearchParams();
     () => appointments.rows.filter((row) => row.active && row.source !== "current_profile" && row.source !== "server_context"),
     [appointments.rows],
   );
+  const selectedActiveAppointmentId = activeAppointmentOptions.some((row) => row.id === appointmentDraft.appointmentId)
+    ? appointmentDraft.appointmentId
+    : activeAppointmentOptions[0]?.id ?? "";
   const reviewRows = useMemo(() => {
     const rows = model[view] ?? [];
     if (view === "courts") {
@@ -108,11 +116,17 @@ const [searchParams, setSearchParams] = useSearchParams();
   const userMap = useMemo(() => Object.fromEntries((adminViewState.users ?? []).map((user) => [user.id, user])), [adminViewState.users]);
   const matchMap = useMemo(() => Object.fromEntries((adminViewState.matches ?? []).map((match) => [match.id, match])), [adminViewState.matches]);
   const selectedReport = reportOptions.find((report) => report.id === selectedReportId) ?? reportOptions.find((report) => report.status === "open") ?? reportOptions[0] ?? null;
+  useEffect(() => {
+    selectedReportIdRef.current = selectedReport?.id ?? "";
+  }, [selectedReport?.id]);
   const selectedMatch = selectedRow?.match ?? matchMap[selectedReport?.sourceMatchId] ?? null;
   const selectedReportIsVoidRestore = selectedReport?.matchReviewType === "void_restore";
   const selectedCourtRequest = selectedRow?.courtRequests?.find(isPendingCourtRequest)
     ?? selectedRow?.courtRequests?.[0]
     ?? null;
+  useEffect(() => {
+    selectedCourtRequestIdRef.current = selectedCourtRequest?.id ?? "";
+  }, [selectedCourtRequest?.id]);
   const selectedCourtRequester = selectedCourtRequest ? userMap[selectedCourtRequest.requestedBy] : null;
   const courtLocationMatches = useMemo(
     () => selectedCourtRequest
@@ -304,12 +318,35 @@ const [searchParams, setSearchParams] = useSearchParams();
     setAppointmentUserQuery(user.name ?? user.handle ?? user.hashtag ?? user.id);
     updateAppointmentDraft({ userId: user.id });
   };
+  const changeAppointmentUserQuery = (value) => {
+    setAppointmentUserQuery(value);
+    const selectedLabel = appointmentUserSnapshot?.name
+      ?? appointmentUserSnapshot?.handle
+      ?? appointmentUserSnapshot?.hashtag
+      ?? appointmentUserSnapshot?.id
+      ?? "";
+    if (value === selectedLabel) return;
+    setAppointmentUserSnapshot(null);
+    updateAppointmentDraft({ userId: "" });
+  };
   const updateCourtApprovalDraft = (patch) => setCourtApprovalDraft((current) => ({ ...current, ...patch }));
   const approveSelectedCourt = async () => {
-    if (!selectedCourtRequest) return;
+    if (!selectedCourtRequest || courtApprovalPendingRef.current) return;
+    const requestCourtId = selectedCourtRequest.id;
+    courtApprovalPendingRef.current = true;
     setCourtApprovalStatus("승인 중");
-    const result = await app.actions.approveCourtRequest(selectedCourtRequest.id, courtApprovalDraft);
-    setCourtApprovalStatus(result && result.ok !== false ? "승인되었습니다." : "승인하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+    try {
+      const result = await app.actions.approveCourtRequest(requestCourtId, courtApprovalDraft);
+      if (selectedCourtRequestIdRef.current === requestCourtId) {
+        setCourtApprovalStatus(result && result.ok !== false ? "승인되었습니다." : "승인하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+      }
+    } catch {
+      if (selectedCourtRequestIdRef.current === requestCourtId) {
+        setCourtApprovalStatus("승인하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+      }
+    } finally {
+      courtApprovalPendingRef.current = false;
+    }
   };
   const commitSelectedAction = async () => {
     if (!selectedReport || reviewActionPending) return;
@@ -317,6 +354,10 @@ const [searchParams, setSearchParams] = useSearchParams();
       setReviewActionStatus("처리 사유와 신고자 안내를 각각 4자 이상 입력하고 대상을 확인해 주세요.");
       return;
     }
+    const requestReportId = selectedReport.id;
+    const setRequestStatus = (message) => {
+      if (selectedReportIdRef.current === requestReportId) setReviewActionStatus(message);
+    };
     setReviewActionPending(true);
     setReviewActionStatus("처리 중");
     try {
@@ -326,18 +367,18 @@ const [searchParams, setSearchParams] = useSearchParams();
         reportId: selectedReport.id,
       });
       if (!result || result.ok === false) {
-        setReviewActionStatus(result?.error === "report_already_processed"
+        setRequestStatus(result?.error === "report_already_processed"
           ? "이미 다른 관리자가 처리했습니다. 최신 목록으로 갱신했습니다."
           : selectedReport.type === "team_emblem"
           ? getTeamEmblemErrorMessage(result?.error || "admin_review_action_failed")
           : "관리자 처리를 완료하지 못했습니다.");
       } else if (result.storageCleanupPending) {
-        setReviewActionStatus("엠블럼은 기본값으로 전환되었습니다. 이전 사진 정리는 잠시 후 다시 확인해 주세요.");
+        setRequestStatus("엠블럼은 기본값으로 전환되었습니다. 이전 사진 정리는 잠시 후 다시 확인해 주세요.");
       } else {
-        setReviewActionStatus("처리가 완료되었습니다.");
+        setRequestStatus("처리가 완료되었습니다.");
       }
     } catch (error) {
-      setReviewActionStatus(selectedReport.type === "team_emblem"
+      setRequestStatus(selectedReport.type === "team_emblem"
         ? getTeamEmblemErrorMessage(error?.code || error?.message)
         : "관리자 처리를 완료하지 못했습니다.");
     } finally {
@@ -345,15 +386,28 @@ const [searchParams, setSearchParams] = useSearchParams();
       setReviewActionConfirming(false);
     }
   };
-  const commitAppointmentAction = () => {
+  const commitAppointmentAction = async () => {
+    if (appointmentActionPending) return;
     const appointmentId = ["revokeAppointment", "extendAppointment"].includes(appointmentDraft.actionType)
-      ? appointmentDraft.appointmentId || activeAppointmentOptions[0]?.id || ""
+      ? selectedActiveAppointmentId
       : "";
-    app.actions.commitAdminAppointmentAction({
-      ...appointmentDraft,
-      userId: appointmentDraft.userId,
-      appointmentId,
-    });
+    setAppointmentActionPending(true);
+    setAppointmentActionStatus("저장 중");
+    try {
+      const result = await app.actions.commitAdminAppointmentAction({
+        ...appointmentDraft,
+        userId: appointmentDraft.userId,
+        appointmentId,
+      });
+      setAppointmentActionStatus(!result || result.ok === false ? "처리하지 못했습니다." : "처리했습니다.");
+      if (result && result.ok !== false) {
+        setAppointmentDraft((current) => ({ ...current, appointmentId: "" }));
+      }
+    } catch {
+      setAppointmentActionStatus("처리하지 못했습니다.");
+    } finally {
+      setAppointmentActionPending(false);
+    }
   };
   return {
     app,
@@ -373,7 +427,7 @@ const [searchParams, setSearchParams] = useSearchParams();
     setMergeAffiliationQuery,
     appointmentDraft,
     appointmentUserQuery,
-    setAppointmentUserQuery,
+    setAppointmentUserQuery: changeAppointmentUserQuery,
     appointmentUserSnapshot,
     courtApprovalDraft,
     courtApprovalStatus,
@@ -381,11 +435,14 @@ const [searchParams, setSearchParams] = useSearchParams();
     reviewActionPending,
     reviewActionConfirming,
     setReviewActionConfirming,
+    appointmentActionPending,
+    appointmentActionStatus,
     canAdmin,
     adminViewState,
     appointments,
     appointmentUsers,
     activeAppointmentOptions,
+    selectedActiveAppointmentId,
     activeRows,
     selectedRow,
     reportOptions,

@@ -66,38 +66,6 @@ label {
 .field-label {
   display: block;
 }
-input,
-select,
-textarea {
-  width: 100%;
-  border: var(--ui-stroke-width) solid var(--line);
-  border-radius: var(--radius);
-  background: var(--surface-2);
-  color: var(--text);
-  min-height: 42px;
-  padding: 10px 12px;
-  outline: none;
-}
-select option,
-select optgroup {
-  background-color: #f8fbfd;
-  color: #13252d;
-}
-select option:disabled {
-  color: #8a98a3;
-}
-textarea {
-  resize: vertical;
-}
-input:focus,
-select:focus,
-textarea:focus {
-  border-color: var(--rb-orange);
-  box-shadow: var(--focus-ring);
-}
-input[type="color"] {
-  padding: 4px;
-}
 .switch-line {
   display: flex;
   align-items: center;

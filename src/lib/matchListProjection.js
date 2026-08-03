@@ -55,10 +55,12 @@ export function getMatchListRoomTypeLabel(room = {}, lobby = null) {
 }
 
 export function getScheduleMatchSideCount(match = {}, sideName = "") {
+  const activeIds = uniqueIds(match?.[sideName]?.players ?? []);
   const declaredCount = Number(match?.[sideName]?.count);
-  if (Number.isFinite(declaredCount)) return Math.max(0, declaredCount);
-  const players = match?.[sideName]?.players;
-  return Array.isArray(players) ? players.length : 0;
+  const activeCount = Number.isFinite(declaredCount) ? Math.max(0, declaredCount) : activeIds.length;
+  const reserveCount = getMatchReservePlayerIds(match, sideName)
+    .filter((playerId) => !activeIds.includes(playerId)).length;
+  return activeCount + reserveCount;
 }
 
 export function getScheduleMatchRosterProjection(match = {}) {

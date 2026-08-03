@@ -49,25 +49,27 @@ export function getMatchRoomPost(match, state) {
   const explicitTeamRoom = MATCH_SIDES.some(hasExplicitSideTeam);
   const soloRecord = isPersonalRecordMatch(sourceMatch);
   const soloPlayedPlayerIds = sourceMatch.playedPlayerIds ?? sourceMatch.rules?.playedPlayerIds ?? {};
+  const pickupAssignmentUsesMatchRoster = (
+    (sourceMatch.formationMode ?? sourceMatch.rules?.formationMode) === "pickup"
+    || (sourceMatch.matchIntent ?? sourceMatch.rules?.matchIntent) === "pickup"
+  );
+  const detailedMatchRosterAvailable = (
+    Array.isArray(sourceMatch.teamA?.players)
+    && Array.isArray(sourceMatch.teamB?.players)
+  );
+  const matchRosterIsAuthoritative = pickupAssignmentUsesMatchRoster || detailedMatchRosterAvailable;
   const sourceTeamAPlayers = uniquePlayerIds(soloRecord ? soloPlayedPlayerIds.teamA ?? [] : sourceMatch.teamA?.players ?? []);
   const sourceTeamBPlayers = uniquePlayerIds(soloRecord ? soloPlayedPlayerIds.teamB ?? [] : sourceMatch.teamB?.players ?? []);
   const fallbackTeamAPlayers = uniquePlayerIds(sourcePostLobby?.sides?.teamA?.projectedPlayers ?? []);
   const fallbackTeamBPlayers = uniquePlayerIds(sourcePostLobby?.sides?.teamB?.projectedPlayers ?? []);
-  const teamAPlayers = sourceTeamAPlayers.length ? sourceTeamAPlayers : fallbackTeamAPlayers;
-  const teamBPlayers = sourceTeamBPlayers.length ? sourceTeamBPlayers : fallbackTeamBPlayers;
+  const teamAPlayers = matchRosterIsAuthoritative || sourceTeamAPlayers.length ? sourceTeamAPlayers : fallbackTeamAPlayers;
+  const teamBPlayers = matchRosterIsAuthoritative || sourceTeamBPlayers.length ? sourceTeamBPlayers : fallbackTeamBPlayers;
   const sourceTeamAReserves = uniquePlayerIds(getMatchReservePlayerIds(sourceMatch, "teamA"));
   const sourceTeamBReserves = uniquePlayerIds(getMatchReservePlayerIds(sourceMatch, "teamB"));
   const fallbackTeamAReserves = uniquePlayerIds((sourcePostLobby?.sides?.teamA?.reserveCandidates ?? []).map((candidate) => candidate.playerId));
   const fallbackTeamBReserves = uniquePlayerIds((sourcePostLobby?.sides?.teamB?.reserveCandidates ?? []).map((candidate) => candidate.playerId));
-  const teamAReserves = sourceTeamAReserves.length ? sourceTeamAReserves : fallbackTeamAReserves;
-  const teamBReserves = sourceTeamBReserves.length ? sourceTeamBReserves : fallbackTeamBReserves;
-  const pickupAssignmentUsesMatchRoster = (
-    (sourceMatch.formationMode ?? sourceMatch.rules?.formationMode) === "pickup"
-    || (sourceMatch.matchIntent ?? sourceMatch.rules?.matchIntent) === "pickup"
-  ) && (
-    ["draft", "confirmed"].includes(sourceMatch.rules?.sideAssignmentStatus)
-    || Number(sourceMatch.rules?.sideAssignmentRevision ?? 0) > 0
-  );
+  const teamAReserves = matchRosterIsAuthoritative || sourceTeamAReserves.length ? sourceTeamAReserves : fallbackTeamAReserves;
+  const teamBReserves = matchRosterIsAuthoritative || sourceTeamBReserves.length ? sourceTeamBReserves : fallbackTeamBReserves;
   const assignedHostSide = MATCH_SIDES.find((sideName) => (
     sideName === "teamA"
       ? [...sourceTeamAPlayers, ...sourceTeamAReserves].includes(hostPlayerId)

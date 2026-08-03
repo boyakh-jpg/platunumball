@@ -26,7 +26,12 @@ import {
   runPracticeReducer,
   submitPracticeSampleResult,
 } from "../src/lib/practiceMatch.js";
-import { getMatchFinalizationWindow, getMatchReservePlayerIds } from "../src/lib/matchUtils.js";
+import {
+  getMatchFinalizationWindow,
+  getMatchReservePlayerIds,
+  getRoomCompetitionLabel,
+} from "../src/lib/matchUtils.js";
+import { getPracticeMatchAttendanceQrResponse } from "../src/lib/matchAttendance.js";
 import { getRegisteredCourts } from "../src/lib/courts.js";
 import { getRecruitingLobby } from "../src/lib/recruiting.js";
 import {
@@ -68,6 +73,33 @@ test("공용 방 모달은 경기 snapshot이 아직 없어도 최종 승인 상
   });
 });
 
+test("연습 경기 출석은 운영 API 없이 격리 state로 시작 가능 여부를 계산한다", () => {
+  const match = {
+    id: "practice-match-attendance",
+    practiceMode: true,
+    ranked: false,
+    rules: { practiceMode: true },
+    teamA: { players: ["host"] },
+    teamB: { players: ["guest"] },
+    reservePlayers: { teamA: ["reserve-a"], teamB: [] },
+    attendance: { teamA: ["host"], teamB: [] },
+  };
+  const pending = getPracticeMatchAttendanceQrResponse(match);
+  assert.equal(pending.startStatus.checkedInCount, 1);
+  assert.equal(pending.startStatus.requiredCount, 3);
+  assert.equal(pending.startStatus.canStart, false);
+  assert.equal(pending.startStatus.blockReason, "attendance_pending");
+  assert.match(pending.qr.value, /\/app\/guide\/practice\?practiceMatch=practice-match-attendance$/);
+
+  const ready = getPracticeMatchAttendanceQrResponse({
+    ...match,
+    attendance: { teamA: ["host", "reserve-a"], teamB: ["guest"] },
+  });
+  assert.equal(ready.startStatus.canStart, true);
+  assert.equal(ready.startStatus.missingCount, 0);
+  assert.equal(getRoomCompetitionLabel(match), "연습경기");
+});
+
 test("홈 사용 설명 카드는 기본 표시이며 false 설정을 서버 mapper가 보존한다", () => {
   assert.equal(DEFAULT_SETTINGS.showHomeGuideCard, true);
   assert.equal(isHomeGuideCardVisible({}), true);
@@ -75,6 +107,10 @@ test("홈 사용 설명 카드는 기본 표시이며 false 설정을 서버 map
   assert.deepEqual(
     getRemoteAppSettings({ app_settings: { showHomeGuideCard: false } }),
     { showHomeGuideCard: false },
+  );
+  assert.deepEqual(
+    getRemoteAppSettings({ app_settings: { blockedUserIds: ["remote-user"], blockedUserProfiles: { "remote-user": { name: "원격 선수" }, stale: { name: "제외" } } } }),
+    { blockedUserIds: ["remote-user"], blockedUserProfiles: { "remote-user": { name: "원격 선수" } } },
   );
 });
 
@@ -131,6 +167,7 @@ test("연습 경기 전체 흐름은 더미 state 안에서만 진행되고 rati
   assert.equal(post.roomState.invitations.length, 5);
   assert.equal(post.ranked, false);
   assert.equal(post.practiceMode, true);
+  assert.equal(post.rules.qrAttendanceEnabled, true);
 
   state = acceptPracticeInvitations(state, created.postId);
   const confirmed = confirmPracticeRecruitingRoom(state, created.postId);
@@ -138,6 +175,7 @@ test("연습 경기 전체 흐름은 더미 state 안에서만 진행되고 rati
   assert.ok(confirmed.matchId.startsWith("practice-"));
   assert.equal(state.matches[0].practiceMode, true);
   assert.equal(state.matches[0].ranked, false);
+  assert.equal(state.matches[0].rules.qrAttendanceEnabled, true);
 
   const blockedStart = runPracticeReducer(state, "startMatch", [confirmed.matchId]);
   assert.equal(blockedStart.applied, false);
@@ -162,6 +200,7 @@ test("연습 경기 전체 흐름은 더미 state 안에서만 진행되고 rati
   const initialClock = await clockClient(confirmed.matchId, "read");
   assert.equal(initialClock.clock.status, "pending");
   assert.equal(initialClock.clock.canControl, true);
+  assert.ok(initialClock.attendanceQr?.value);
   await clockClient(confirmed.matchId, "configure", {
     controllerId: PRACTICE_SELF_ID,
     shotClockSeconds: 30,
@@ -184,6 +223,20 @@ test("연습 경기 전체 흐름은 더미 state 안에서만 진행되고 rati
   stateRef.current = scoreUpdated.state;
   assert.equal(stateRef.current.matches[0].result.scoreA, 1);
   assert.equal(stateRef.current.matches[0].result.scoreB, 2);
+  const refreshedScore = await clockClient(confirmed.matchId, "read");
+  const scoreUpdatedAgain = runPracticeReducer(stateRef.current, "incrementMatchScore", [
+    confirmed.matchId,
+    1,
+    0,
+    {
+      expectedRevisionA: refreshedScore.score.revisionA,
+      expectedRevisionB: refreshedScore.score.revisionB,
+      clockController: true,
+    },
+  ], PRACTICE_SELF_ID);
+  assert.equal(scoreUpdatedAgain.applied, true);
+  stateRef.current = scoreUpdatedAgain.state;
+  assert.equal(stateRef.current.matches[0].result.scoreA, 2);
   const nextControllerId = runningClock.activePlayers.find((player) => player.id !== PRACTICE_SELF_ID)?.id;
   const transferredClock = await clockClient(confirmed.matchId, "transfer", { controllerId: nextControllerId });
   assert.equal(transferredClock.clock.canControl, false);
@@ -200,17 +253,8 @@ test("연습 경기 전체 흐름은 더미 state 안에서만 진행되고 rati
   state = submitPracticeSampleResult(stateRef.current, confirmed.matchId);
   assert.ok(state.matches[0].endedAt);
   assert.equal(state.matches[0].status, "agreed");
-  state = approvePracticeDummyPlayers(state, confirmed.matchId);
-  assert.equal(state.matches[0].status, "agreed");
-  const finalizableAt = new Date(Date.now() - 4 * 60_000).toISOString();
-  state = {
-    ...state,
-    matches: state.matches.map((match) => match.id === confirmed.matchId ? {
-      ...match,
-      endedAt: finalizableAt,
-      result: { ...match.result, submittedAt: finalizableAt },
-    } : match),
-  };
+  assert.equal(state.matches[0].result.scoreA, 21);
+  assert.equal(state.matches[0].result.scoreB, 17);
   state = approvePracticeDummyPlayers(state, confirmed.matchId);
   assert.equal(state.matches[0].status, "confirmed");
   assert.deepEqual(state.notifications, []);
@@ -453,12 +497,10 @@ test("심판과 시계 담당 화면을 바꾸면 실제 권한처럼 시작과 
   );
   const managerClock = await clockClient(ready.matchId, "read");
   assert.equal(managerClock.clock.canManage, true);
-  assert.equal(managerClock.clock.canControl, false);
+  assert.equal(managerClock.clock.canControl, true);
+  assert.equal(managerClock.clock.status, "running");
+  assert.equal(managerClock.clock.startedWithinWindow, true);
   const controllerId = managerClock.clock.controllerId;
-  await clockClient(ready.matchId, "configure", { controllerId, shotClockSeconds: 30 });
-  actorId = controllerId;
-  assert.equal((await clockClient(ready.matchId, "read")).clock.canControl, true);
-  await clockClient(ready.matchId, "start");
   const nextControllerId = managerClock.activePlayers.find((player) => player.id !== controllerId).id;
   assert.equal((await clockClient(ready.matchId, "transfer", { controllerId: nextControllerId })).clock.canControl, false);
   await assert.rejects(clockClient(ready.matchId, "pause"), /match_clock_start_forbidden/);
@@ -592,7 +634,8 @@ test("연습 adapter와 화면은 브라우저 저장소나 실서버 호출을 
   assert.doesNotMatch(pageSource, /actorId === statRecorders\.teamB \? "B 기록원"/);
   assert.match(pageSource, /key=\{`\$\{matchId\}:\$\{practiceActorId\}`\}/);
   assert.match(matchClockPanelSource, /regulationEnded && \(!scoreboardEnabled \|\| tied\)/);
-  assert.match(matchClockPanelSource, /onClick=\{\(\) => confirmAction\("경기시계 운용을 종료할까요\?", "endClock"\)\}/);
+  assert.match(matchClockPanelSource, /!match\.refereeId/);
+  assert.match(matchClockPanelSource, /경기 종료/);
   assert.match(matchClockPanelSource, /canEndMatch && onEndMatch && !match\.endedAt/);
   assert.match(recruitingSource, /canEndSourceMatch && !selectedMatchRules\.gameClockEnabled/);
   assert.match(settingsSyncSource, /typeof source\.showHomeGuideCard === "boolean"/);

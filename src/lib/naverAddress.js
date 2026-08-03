@@ -27,7 +27,10 @@ function loadExternalScript(id, src) {
   if (existing?.dataset.loading === "true") {
     return new Promise((resolve, reject) => {
       existing.addEventListener("load", resolve, { once: true });
-      existing.addEventListener("error", () => reject(new Error("지도 기능을 불러오지 못했습니다.")), { once: true });
+      existing.addEventListener("error", () => {
+        existing.remove();
+        reject(new Error("지도 기능을 불러오지 못했습니다."));
+      }, { once: true });
     });
   }
 
@@ -44,7 +47,6 @@ function loadExternalScript(id, src) {
       resolve();
     }, { once: true });
     script.addEventListener("error", () => {
-      script.dataset.loading = "false";
       script.remove();
       reject(new Error("지도 기능을 불러오지 못했습니다."));
     }, { once: true });
@@ -105,7 +107,7 @@ export async function loadNaverPanoramaSdk(clientId = getNaverMapClientId()) {
   await loadExternalScript(NAVER_PANORAMA_SCRIPT_ID, "https://oapi.map.naver.com/openapi/v3/maps-panorama.js");
   const startedAt = Date.now();
   while (!hasNaverPanorama()) {
-    if (Date.now() - startedAt >= 8000) throw new Error("거리뷰 모듈을 불러오지 못했습니다.");
+    if (Date.now() - startedAt >= 8000) throw new Error("거리뷰를 불러오지 못했습니다.");
     await new Promise((resolve) => window.setTimeout(resolve, 50));
   }
 }
@@ -338,7 +340,7 @@ export async function openNaverMapPinPicker(court = {}, clientId = getNaverMapCl
     const panel = applyInlineStyle(document.createElement("div"), {
       width: "min(720px, 100%)",
       background: "var(--surface)",
-      border: "1px solid var(--line)",
+      border: "0",
       borderRadius: "8px",
       overflow: "hidden",
       boxShadow: "0 20px 60px rgba(0, 0, 0, 0.35)",
@@ -361,7 +363,7 @@ export async function openNaverMapPinPicker(court = {}, clientId = getNaverMapCl
     title.textContent = "실제 구장 위치 선택";
     const closeButton = document.createElement("button");
     closeButton.type = "button";
-    closeButton.className = "button button-secondary button-sm button-icon naver-pin-picker-close";
+    closeButton.className = "button ui-button button-secondary ui-button-secondary button-sm ui-button-sm button-icon naver-pin-picker-close";
     closeButton.setAttribute("aria-label", "닫기");
     closeButton.title = "닫기";
     closeButton.textContent = "×";
@@ -390,11 +392,11 @@ export async function openNaverMapPinPicker(court = {}, clientId = getNaverMapCl
     footerActions.className = "naver-pin-picker-actions";
     const cancelButton = document.createElement("button");
     cancelButton.type = "button";
-    cancelButton.className = "button button-secondary button-md";
+    cancelButton.className = "button ui-button button-secondary ui-button-secondary button-md ui-button-md";
     cancelButton.textContent = "취소";
     const submitButton = document.createElement("button");
     submitButton.type = "button";
-    submitButton.className = "button button-primary button-md";
+    submitButton.className = "button ui-button button-primary ui-button-primary button-md ui-button-md";
     submitButton.textContent = "이 위치로 주소 확정";
 
     header.append(title, closeButton);
@@ -411,24 +413,37 @@ export async function openNaverMapPinPicker(court = {}, clientId = getNaverMapCl
       if (settled) return;
       settled = true;
       cleanup();
-      reject(new Error("지도 선택이 닫혔습니다."));
+      const error = new Error("지도 선택이 닫혔습니다.");
+      error.code = "naver_pin_picker_cancelled";
+      reject(error);
     };
     closeButton.addEventListener("click", cancel);
     cancelButton.addEventListener("click", cancel);
 
-    const center = new window.naver.maps.LatLng(initial.lat, initial.lng);
-    const map = new window.naver.maps.Map(mapElement, { center, zoom: 16 });
-    const marker = new window.naver.maps.Marker({ position: center, map, draggable: true });
-    let selectedPosition = center;
+    let center;
+    let map;
+    let marker;
+    let selectedPosition;
     const setSelectedPosition = (latLng) => {
       selectedPosition = latLng;
       marker.setPosition(latLng);
       map.setCenter(latLng);
     };
-    window.naver.maps.Event.addListener(map, "click", (event) => setSelectedPosition(event.coord));
-    window.naver.maps.Event.addListener(marker, "dragend", () => {
-      selectedPosition = marker.getPosition();
-    });
+    try {
+      center = new window.naver.maps.LatLng(initial.lat, initial.lng);
+      map = new window.naver.maps.Map(mapElement, { center, zoom: 16 });
+      marker = new window.naver.maps.Marker({ position: center, map, draggable: true });
+      selectedPosition = center;
+      window.naver.maps.Event.addListener(map, "click", (event) => setSelectedPosition(event.coord));
+      window.naver.maps.Event.addListener(marker, "dragend", () => {
+        selectedPosition = marker.getPosition();
+      });
+    } catch (error) {
+      settled = true;
+      cleanup();
+      reject(error);
+      return;
+    }
     submitButton.addEventListener("click", async () => {
       if (settled || resolving) return;
       resolving = true;
@@ -454,8 +469,16 @@ export async function openNaverMapPinPicker(court = {}, clientId = getNaverMapCl
       }
     });
     window.setTimeout(() => {
-      if (typeof map.refresh === "function") map.refresh();
-      map.setCenter(center);
+      try {
+        if (typeof map.refresh === "function") map.refresh();
+        map.setCenter(center);
+      } catch {
+        if (!settled) {
+          settled = true;
+          cleanup();
+          reject(new Error("지도 화면을 초기화하지 못했습니다."));
+        }
+      }
     }, 0);
   });
 }

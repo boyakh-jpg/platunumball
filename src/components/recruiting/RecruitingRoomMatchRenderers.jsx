@@ -10,10 +10,10 @@ export function createRecruitingRoomMatchRenderers(context) {
     individualOnlyRoom, isMatchSideTeamParty, isPartyEntry, lobby, matchRoom, mine,
     moveCandidate, navigate, onRemake, openInviteSlot, openSelfSlotAction, playingIds,
     recruitingRoomTerminalStatus, refreshSourceMatchReview, removeCandidate, roomCancellationPending, roomCancellationTarget, roomOwnerId,
-    roomState, selectedPost, setRoomCancellationPending, setRoomCancellationTarget, showCaptainBadge, showSourceMatchRecordSummary,
+    roomState, selectedPost, setRoomCancellationPending, setRoomCancellationTarget, setSourceMatchDraftScore, showCaptainBadge, showSourceMatchRecordSummary,
     slotPositions, sourceMatch, sourceMatchAction, sourceMatchIsPersonalRecord, sourceMatchIsRecordRoom, sourceMatchPhase,
     sourceMatchRecordBoardFirst, sourceMatchRecordWindow, sourceMatchResultSubmitLabel, sourceMatchReviewRefreshing, sourceMatchSideLeaderIds, sourceMatchSlotManagementOpen,
-    sourceRoomReadOnly, teamOnlyRoom, userById,
+    sourceMatchResultEntryPermission, sourceRoomReadOnly, teamOnlyRoom, userById,
   } = context;
 
 const renderSourceMatchRecordBoard = () => {
@@ -50,7 +50,9 @@ const renderSourceMatchRecordBoard = () => {
                   userById={userById}
                   canReview={false}
                   getEditableStatFields={getEditableSourceMatchStatFields}
+                  editableScoreSides={sourceMatchResultEntryPermission?.editableScoreSides ?? []}
                   submitLabel={sourceMatchResultSubmitLabel}
+                  onDraftScoreChange={setSourceMatchDraftScore}
                   onSave={(draft) => app.actions.submitMatchResult(sourceMatch.id, draft)}
                 />
               ) : null}
@@ -83,7 +85,10 @@ const renderSourceMatchRecordBoard = () => {
         const renderRoomReserveLine = (sideName) => (
           <ReserveLine
             sideName={sideName}
-            candidates={lobby.sides[sideName].reserveCandidates}
+            candidates={[
+              ...lobby.sides[sideName].fillSlots,
+              ...lobby.sides[sideName].reserveCandidates,
+            ]}
             playingIds={playingIds}
             {...getRecruitingRoomRosterProps(context, sideName)}
             capacity={benchCapacity}
@@ -161,7 +166,7 @@ const renderSourceMatchRecordBoard = () => {
             const result = roomCancellationTarget.kind === "match"
               ? await app.actions.cancelMatch(roomCancellationTarget.id, reason)
               : await app.actions.closeRecruitingPost(roomCancellationTarget.id, reason);
-            if (result?.ok === false) {
+            if (!result || result?.ok === false) {
               setRoomCancellationTarget((current) => ({ ...current, error: "취소하지 못했습니다. 잠시 후 다시 시도해 주세요." }));
               return;
             }

@@ -2,7 +2,7 @@ import { DEFAULT_RATING } from "../../lib/constants.js";
 import { MAX_TEAM_MEMBERS } from "../../lib/constants.js";
 import { MAX_TEAM_MEMBERSHIPS } from "../../lib/constants.js";
 import { MAX_TEAM_NAME_LENGTH } from "../../lib/constants.js";
-import { canChangeProfileName } from "../../lib/profileSetup.js";
+import { canChangeProfileName, normalizeProfileName } from "../../lib/profileSetup.js";
 import { findDiscordConnectionOwner } from "../../lib/discord.js";
 import { getDiscordConnectionUserId } from "../../lib/discord.js";
 import { getProfileRegionSnapshot } from "../profileMappers.js";
@@ -77,6 +77,11 @@ export function updateProfile(state, patch, targetUserId = state.currentUserId) 
     return state;
   }
   const profilePatch = { ...patch };
+  if (Object.prototype.hasOwnProperty.call(profilePatch, "name")) {
+    const name = normalizeProfileName(profilePatch.name);
+    if (!name) return state;
+    profilePatch.name = name;
+  }
   if (Object.prototype.hasOwnProperty.call(profilePatch, "discordConnection")) {
     profilePatch.discordUserId = getDiscordConnectionUserId(profilePatch.discordConnection) || null;
   }
@@ -159,6 +164,7 @@ export function createTeam(state, teamDraft) {
     id: makeId("t"),
     name: teamName,
     homeCourt: teamDraft.homeCourt,
+    homeCourtId: teamDraft.homeCourtId,
     region: teamDraft.region,
     mmr: DEFAULT_RATING,
     wins: 0,
@@ -194,12 +200,20 @@ export function deleteTeam(state, teamId) {
     };
   }
 
+  const now = new Date().toISOString();
+  const remainingTeams = state.teams.filter((item) => item.id !== teamId);
+  const representativeTeamId = state.settings?.representativeTeamId === teamId
+    ? remainingTeams.find((item) => item.members?.some((member) => member.userId === state.currentUserId))?.id ?? ""
+    : state.settings?.representativeTeamId ?? "";
+
   return {
     ...state,
     deletedTeamIds: Array.from(new Set([...(state.deletedTeamIds ?? []), teamId])),
-    teams: state.teams.filter((item) => item.id !== teamId),
+    teams: remainingTeams,
+    teamInvitations: expirePendingTeamInvitations(state.teamInvitations, teamId, now),
     settings: {
       ...state.settings,
+      representativeTeamId,
       favoriteTeamIds: (state.settings?.favoriteTeamIds ?? []).filter((id) => id !== teamId),
     },
     recruitingPosts: (state.recruitingPosts ?? []).map((post) => (

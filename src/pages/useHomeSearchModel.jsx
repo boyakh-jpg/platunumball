@@ -1,11 +1,8 @@
 import { useMemo } from "react";
 import { Link } from "react-router-dom";
-import CourtHoverCard, { CourtIdentityIcon } from "../components/court/CourtHoverCard.jsx";
-import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
+import { CourtIdentityIcon } from "../components/court/CourtHoverCard.jsx";
 import ProfileEmblem from "../components/profile/ProfileEmblem.jsx";
-import RefereeHoverCard from "../components/referee/RefereeHoverCard.jsx";
 import TeamEmblem from "../components/team/TeamEmblem.jsx";
-import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { DEFAULT_RATING } from "../lib/constants.js";
 import { getCourtHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
 import { isPlacementComplete } from "../lib/rating.js";
@@ -17,6 +14,7 @@ export function useHomeSearchModel({
   SEARCH_DETAIL_LIMIT, seasonRows, myCompletedMatches, getUserResult, upcomingItems,
   getUserMatchLine,
 }) {
+  const blockedUserIdSet = useMemo(() => new Set(blockedUserIds), [blockedUserIds]);
   const searchResults = useMemo(() => {
     if (!searchText) return [];
 
@@ -80,6 +78,7 @@ export function useHomeSearchModel({
   }, [app.state.teams, app.state.users, blockedUserIds, favoriteCourtIds, favoritePlayerIds, favoriteRefereeIds, favoriteTeamIds, registeredCourts, searchText, user.region]);
   const homeFavoriteSearchItems = useMemo(() => {
     const favoritePlayers = favoritePlayerIds
+      .filter((playerId) => !blockedUserIdSet.has(playerId))
       .map((playerId) => app.state.users.find((item) => item.id === playerId))
       .filter(Boolean)
       .map((item) => {
@@ -129,6 +128,7 @@ export function useHomeSearchModel({
         };
       });
     const favoriteReferees = favoriteRefereeIds
+      .filter((refereeId) => !blockedUserIdSet.has(refereeId))
       .map((refereeId) => app.state.users.find((item) => item.id === refereeId))
       .filter(Boolean)
       .map((item) => {
@@ -146,7 +146,7 @@ export function useHomeSearchModel({
         };
       });
     return [...favoritePlayers, ...favoriteTeams, ...favoriteCourts, ...favoriteReferees].slice(0, SEARCH_DETAIL_LIMIT);
-  }, [app.state.teams, app.state.users, favoriteCourtIds, favoritePlayerIds, favoriteRefereeIds, favoriteTeamIds, registeredCourts]);
+  }, [app.state.teams, app.state.users, blockedUserIdSet, favoriteCourtIds, favoritePlayerIds, favoriteRefereeIds, favoriteTeamIds, registeredCourts]);
   const topRankers = seasonRows.slice(0, 5);
   const recentFiveMatches = myCompletedMatches.slice(0, 5);
   const recentFiveWins = recentFiveMatches.filter((match) => getUserResult(match, user.id) === "W").length;
@@ -172,21 +172,10 @@ export function useHomeSearchModel({
       <small>{item.kind} · {item.hashtag}</small>
       </>
     );
-    if (item.kind === "COURT") {
-      return <CourtHoverCard key={item.id} court={item.court} className="home-search-entity-trigger">{content}</CourtHoverCard>;
-    }
-    if (item.kind === "TEAM") {
-      return <TeamHoverCard key={item.id} team={item.team} className="home-search-entity-trigger">{content}</TeamHoverCard>;
-    }
-    if (item.kind === "REFEREE") {
-      return <RefereeHoverCard key={item.id} user={item.user} matches={app.state.matches} className="home-search-entity-trigger">{content}</RefereeHoverCard>;
-    }
-    if (item.user) {
-      return <PlayerHoverCard key={item.id} user={item.user} teams={app.state.teams} className="home-search-entity-trigger">{content}</PlayerHoverCard>;
-    }
-    return <Link key={item.id} to={item.href}>{content}</Link>;
+    return <Link key={item.id} className="home-search-entity-trigger" to={item.href}>{content}</Link>;
   };
   const mapRemoteHomeSearchItem = (item) => {
+    if (["player", "referee"].includes(item.kind) && blockedUserIdSet.has(item.id)) return null;
     if (item.kind === "team") {
       const hashtag = getTeamHashtag(item);
       return {

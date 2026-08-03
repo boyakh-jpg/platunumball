@@ -37,11 +37,14 @@ export function AdminAppointmentSection({ controller }) {
     reviewActionPending,
     reviewActionConfirming,
     setReviewActionConfirming,
+    appointmentActionPending,
+    appointmentActionStatus,
     canAdmin,
     adminViewState,
     appointments,
     appointmentUsers,
     activeAppointmentOptions,
+    selectedActiveAppointmentId,
     activeRows,
     selectedRow,
     reportOptions,
@@ -99,7 +102,7 @@ export function AdminAppointmentSection({ controller }) {
         </div>
         <div className="admin-grade-strip">
           {appointments.grades.map((grade) => (
-            <div key={grade.id}>
+            <div key={grade.id} className="ui-control-surface">
               <strong>{grade.label}</strong>
               <span>Lv.{grade.level}</span>
               <em>{grade.defaultTermDays}일 · {grade.scope}</em>
@@ -108,7 +111,7 @@ export function AdminAppointmentSection({ controller }) {
         </div>
         <div className="admin-referee-grade-strip">
           {Object.entries(REFEREE_GRADE_META).map(([id, grade]) => (
-            <div key={id}>
+            <div key={id} className="ui-control-surface">
               <strong>{grade.label}</strong>
               <span>Lv.{grade.level}</span>
               <em>{grade.requirement}</em>
@@ -118,7 +121,7 @@ export function AdminAppointmentSection({ controller }) {
         {appointments.refereeGrades.length ? (
           <div className="admin-referee-score-list">
             {appointments.refereeGrades.map((row) => (
-              <div key={row.userId}>
+              <div key={row.userId} className="ui-control-surface">
                 <strong>{row.userName}</strong>
                 <span>{row.gradeLabel} · 점수 {row.score}</span>
                 <em>심판 {row.matchCount}경기 · 추천 {row.thumbsUp} · 신고 {row.reportCount}</em>
@@ -126,7 +129,7 @@ export function AdminAppointmentSection({ controller }) {
             ))}
           </div>
         ) : null}
-        <div className="segmented-control compact-segments admin-queue-filter">
+        <div className="ui-segmented-control segmented-control compact-segments admin-queue-filter">
           <button type="button" className={queueMode === "pending" ? "active" : ""} onClick={() => setQueueMode("pending")}>활성·대기</button>
           <button type="button" className={queueMode === "history" ? "active" : ""} onClick={() => setQueueMode("history")}>전체 이력</button>
         </div>
@@ -145,14 +148,14 @@ export function AdminAppointmentSection({ controller }) {
               }}
             />
           </label>
-          <div className="admin-row-actions">
+          <div className="ui-action-row admin-row-actions">
             <Button type="button" variant="secondary" onClick={applyQueueFilter}>적용</Button>
             {appliedQueueFilter ? <Button type="button" variant="secondary" onClick={clearQueueFilter}>초기화</Button> : null}
           </div>
         </div>
         <div className="admin-appointment-list">
           {appointments.rows.map((row) => (
-            <div key={row.id} className="admin-appointment-row">
+            <div key={row.id} className="admin-appointment-row ui-control-surface">
               <span>
                 <strong>{row.userName}</strong>
                 <em>{row.roleLabel} · {row.gradeLabel} · {row.reason || row.source}</em>
@@ -170,7 +173,7 @@ export function AdminAppointmentSection({ controller }) {
             {app.adminStatus?.loading ? "불러오는 중" : `더 보기 (${appointments.rows.length}/${activeAdminPage.total})`}
           </Button>
         ) : null}
-        <div className="admin-action-panel admin-appointment-action-panel">
+        <div className="admin-action-panel admin-appointment-action-panel ui-control-surface">
           <div>
             <strong>임명·연장·회수 처리</strong>
             <small>처리 결과는 서버에 저장되며, 저장이 완료되면 최신 정보로 화면이 갱신됩니다.</small>
@@ -185,7 +188,7 @@ export function AdminAppointmentSection({ controller }) {
             {["revokeAppointment", "extendAppointment"].includes(appointmentDraft.actionType) ? (
               <label>
                 {appointmentDraft.actionType === "extendAppointment" ? "연장 대상" : "회수 대상"}
-                <select value={appointmentDraft.appointmentId || activeAppointmentOptions[0]?.id || ""} onChange={(event) => updateAppointmentDraft({ appointmentId: event.target.value })}>
+                <select value={selectedActiveAppointmentId} disabled={appointmentActionPending} onChange={(event) => updateAppointmentDraft({ appointmentId: event.target.value })}>
                   {!activeAppointmentOptions.length ? <option value="">활성 임명 없음</option> : null}
                   {activeAppointmentOptions.map((row) => <option key={row.id} value={row.id}>{row.userName} · {row.roleLabel} · {row.gradeLabel}</option>)}
                 </select>
@@ -252,13 +255,14 @@ export function AdminAppointmentSection({ controller }) {
           <Button
             type="button"
             variant="secondary"
-            disabled={["revokeAppointment", "extendAppointment"].includes(appointmentDraft.actionType)
+            disabled={appointmentActionPending || (["revokeAppointment", "extendAppointment"].includes(appointmentDraft.actionType)
               ? !activeAppointmentOptions.length
-              : !appointmentDraft.userId}
+              : !appointmentDraft.userId)}
             onClick={commitAppointmentAction}
           >
-            임명/연장/회수 적용
+            {appointmentActionPending ? "저장 중" : "임명/연장/회수 적용"}
           </Button>
+          {appointmentActionStatus ? <small role="status">{appointmentActionStatus}</small> : null}
         </div>
           <small>{ADMIN_PERMISSION_NOTICE}</small>
         </Card>

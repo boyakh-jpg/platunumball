@@ -171,10 +171,6 @@ html[data-theme="light"] .arena-room-chat {
   font-weight: 900;
 }
 
-.arena-filter-select select {
-  background: var(--input-bg);
-}
-
 .arena-filter-bar button.active,
 .arena-filter-bar .segmented-control button.active,
 .arena-filter-bar .arena-start-date-filter button.active,
@@ -186,7 +182,6 @@ html[data-theme="light"] .arena-room-chat {
 
 /* 2026-07-01 standard UI cleanup: recruiting controls follow shared primitives. */
 
-.arena-hero-copy h1,
 .arena-lobby-title h1 {
   color: var(--hero-title-color);
   font-family: var(--hero-title-font);
@@ -198,13 +193,11 @@ html[data-theme="light"] .arena-room-chat {
   text-transform: uppercase;
 }
 
-.arena-hero-copy p,
 .arena-lobby-title p {
   color: var(--hero-copy-color);
   text-shadow: var(--hero-copy-shadow);
 }
 
-.arena-hero-copy .eyebrow,
 .arena-lobby-title .eyebrow,
 .arena-owner-panel .eyebrow,
 .arena-room-rule-panel .eyebrow,
@@ -214,7 +207,6 @@ html[data-theme="light"] .arena-room-chat {
 }
 
 .arena-hero-panel,
-.arena-compose-drawer,
 .arena-slot-command-popover,
 .arena-lobby-team-panel,
 .arena-reserve-panel,
@@ -229,7 +221,6 @@ html[data-theme="light"] .arena-room-chat {
 }
 
 html[data-theme="light"] .arena-hero-panel,
-html[data-theme="light"] .arena-compose-drawer,
 html[data-theme="light"] .arena-slot-command-popover,
 html[data-theme="light"] .arena-lobby-team-panel,
 html[data-theme="light"] .arena-reserve-panel,
@@ -268,7 +259,6 @@ html[data-theme="light"] .arena-party-member-card {
 }
 
 @media (max-width: 720px) {
-  .arena-hero-copy h1,
   .arena-lobby-title h1 {
     font-size: var(--hero-title-size-mobile);
   }
@@ -279,7 +269,6 @@ html[data-theme="light"] .arena-party-member-card {
 
 .arena-filter-bar,
 .arena-hero-panel,
-.arena-compose-drawer,
 .arena-lobby-team-panel,
 .arena-reserve-panel,
 .arena-room-edit-panel,

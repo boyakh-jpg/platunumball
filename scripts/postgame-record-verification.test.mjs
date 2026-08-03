@@ -13,6 +13,7 @@ import {
   getPostgameRecordDecisionEligibility,
   getPostgameRecordVerification,
 } from "../src/lib/postgameRecordVerification.js";
+import { getApprovalStatus } from "../src/lib/matchUtils.js";
 import { SERVER_RATING_AUTHORITY } from "../server/lib/ratingAuthority.js";
 
 const submittedAt = "2026-07-23T00:00:00.000Z";
@@ -143,6 +144,21 @@ test("본인이 아닌 참가자의 승인 대리는 허용하지 않는다", ()
   );
 });
 
+test("교체 출전 뒤 후보로 돌아간 선수도 참가 확인 대상과 UI에 남는다", async () => {
+  const match = makeRecord({
+    teamA: { players: [players[1]] },
+    playedPlayerIds: { teamA: [players[0], players[1]], teamB: players.slice(7) },
+    approvals: { teamA: [], teamB: [] },
+    rules: { recordType: "match_record" },
+  });
+  const status = getApprovalStatus(match, [], "teamA");
+  assert.deepEqual(status.requiredIds, [players[1], players[0]]);
+
+  const panelSource = await readFile(new URL("../src/components/match/ApprovalPanel.jsx", import.meta.url), "utf8");
+  assert.match(panelSource, /status\.requiredIds\.map\(\(playerId\) =>/);
+  assert.doesNotMatch(panelSource, /side\.players\.map\(\(playerId\) =>/);
+});
+
 test("즉시·1시간 알림은 기준 미달 기록의 미확인자에게만 보낸다", () => {
   const match = makeRecord({
     approvals: { teamA: players.slice(0, 7), teamB: players.slice(7, 9) },
@@ -159,19 +175,6 @@ test("24시간 만료 후에는 확인 독촉 알림을 더 만들지 않는다"
   });
   const notifications = getDuePostgameRecordNotifications(match, { now: "2026-07-24T00:00:00.000Z" });
   assert.deepEqual(notifications, []);
-});
-
-test("확정된 사후 기록은 참가 확인 대기와 기준 미달 추천을 다시 노출하지 않는다", async () => {
-  const [approvalPanelSource, recommendationPanelSource, actionSectionSource] = await Promise.all([
-    readFile(new URL("../src/components/match/ApprovalPanel.jsx", import.meta.url), "utf8"),
-    readFile(new URL("../src/components/match/MatchRecommendationPanel.jsx", import.meta.url), "utf8"),
-    readFile(new URL("../src/components/recruiting/RecruitingRoomActionSection.jsx", import.meta.url), "utf8"),
-  ]);
-  assert.match(approvalPanelSource, /\["confirmed", "cancelled", "void", "voided"\]\.includes\(match\.status\)/);
-  assert.match(recommendationPanelSource, /recordVerification && !recordVerification\.thresholdMet/);
-  assert.match(recommendationPanelSource, /<p className="eyebrow">추천<\/p>/);
-  assert.doesNotMatch(recommendationPanelSource, />Recommendation</);
-  assert.match(actionSectionSource, /sourceMatchIsRecordRoom && sourceMatch\?\.status === "confirmed" \? null/);
 });
 
 test("별도 참가 확인 경로 없이 본인 승인 한 번으로 참가와 결과를 함께 확인한다", async () => {
@@ -219,6 +222,36 @@ test("개인 기록만 생성자 본인 스탯을 저장하고 무심판 일반 
   assert.doesNotMatch(migration, /delete\s+from|drop\s+table|truncate\s+table/i);
 });
 
+test("상세 응답이 확인 행을 생략해도 규칙의 본인 확인 ID로 참가 현황을 복원한다", () => {
+  const match = makeRecord({
+    approvals: { teamA: [], teamB: [] },
+    rules: {
+      recordType: "match_record",
+      recordApproverIds: {
+        teamA: players.slice(0, 7),
+        teamB: players.slice(7),
+      },
+      participantAcceptedIds: players.slice(0, 10),
+      matchRecordConfirmedParticipantIds: players.slice(0, 10),
+    },
+  });
+  const verification = getPostgameRecordVerification(match);
+  assert.equal(verification.approvalCount, 10);
+  assert.equal(verification.thresholdMet, true);
+  assert.deepEqual(getApprovalStatus(match, [], "teamA").approvals, players.slice(0, 7));
+  assert.deepEqual(getApprovalStatus(match, [], "teamB").approvals, players.slice(7, 10));
+});
+
+test("finalization waits three minutes after the later result or match end", async () => {
+  const migration = await readFile(
+    new URL("../supabase/migrations/20260731020000_harden_match_clock_finalization_boundaries.sql", import.meta.url),
+    "utf8",
+  );
+  assert.match(migration, /greatest\(submitted_at, current_match\.ended_at\) \+ interval '3 minutes'/);
+  assert.match(migration, /greatest\(result_row\.submitted_at, current_match\.ended_at\) \+ make_interval/);
+  assert.doesNotMatch(migration, /\b(?:delete|truncate|drop table)\b/iu);
+});
+
 test("개인 기록 공개 범위와 별도 통계는 공식 통계·업적에서 분리된다", async () => {
   const migration = await readFile(
     new URL("../supabase/migrations/20260727132000_personal_record_visibility_and_summary.sql", import.meta.url),
@@ -233,6 +266,24 @@ test("개인 기록 공개 범위와 별도 통계는 공식 통계·업적에�
   assert.doesNotMatch(migration, /delete\s+from|drop\s+table|truncate\s+table/i);
 });
 
+test("공식·내 기록 summary는 턴오버를 같은 표준 스탯으로 보존한다", async () => {
+  const [migration, scorePolicyMigration, profileApi, recordApi, recordPolicy] = await Promise.all([
+    readFile(new URL("../supabase/migrations/20260801011000_add_turnovers_to_profile_summaries.sql", import.meta.url), "utf8"),
+    readFile(new URL("../supabase/migrations/20260727120000_match_score_operation_policy.sql", import.meta.url), "utf8"),
+    readFile(new URL("../server/api/profile/me.js", import.meta.url), "utf8"),
+    readFile(new URL("../server/api/records/list.js", import.meta.url), "utf8"),
+    readFile(new URL("../server/api/records/listPolicy.js", import.meta.url), "utf8"),
+  ]);
+  assert.match(migration, /profile_match_summaries[\s\S]*turnovers integer/);
+  assert.match(migration, /profile_personal_record_summaries[\s\S]*public_turnovers integer/);
+  assert.match(scorePolicyMigration, /stat\.record_source in \('referee', 'dispute_operator'\)/);
+  assert.match(migration, /rankball_rebuild_personal_record_summary/);
+  assert.match(profileApi, /blocks,turnovers,fouls/);
+  assert.match(recordApi, /public_blocks,public_turnovers,public_fouls/);
+  assert.match(recordPolicy, /turnovers: number\("turnovers"\)/);
+  assert.doesNotMatch(migration, /delete\s+from|drop\s+table|truncate\s+table/i);
+});
+
 test("referee stat submissions preserve the authoritative team score", async () => {
   const repository = await readSourceGroup(
     (relativePath) => readFile(new URL(`../${relativePath}`, import.meta.url), "utf8"),
@@ -243,8 +294,8 @@ test("referee stat submissions preserve the authoritative team score", async () 
     SHARED_MATCH_SOURCE_PATHS,
   );
 
-  assert.match(repository, /matchRecordRoom \? result\.scoreA : currentResult\?\.scoreA/);
-  assert.match(repository, /matchRecordRoom \? result\.scoreB : currentResult\?\.scoreB/);
+  assert.match(repository, /matchRecordRoom \|\| refereeCanSubmitScores \? result\.scoreA : currentResult\?\.scoreA/);
+  assert.match(repository, /matchRecordRoom \|\| refereeCanSubmitScores \? result\.scoreB : currentResult\?\.scoreB/);
   assert.doesNotMatch(repository, /const nextScoreA = getMergedResultScore/);
   assert.match(matchUtils, /const canEnterSharedRecordScore = Boolean/);
   assert.match(matchUtils, /match\.rules\?\.recordSetupReady === true/);

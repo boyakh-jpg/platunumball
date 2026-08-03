@@ -23,6 +23,8 @@ import {
   verifyDiscordOAuthProof,
   verifyDiscordOAuthStateTicket,
 } from "../server/api/auth/_discordOAuthProof.js";
+import { getDiscordOAuthStateCookiePath } from "../server/api/auth/_discordOAuthCookies.js";
+import { normalizeDiscordOAuthErrorCode } from "../server/api/auth/discord/callback.js";
 import { getPublicAppUrl, getPublicAppWebUrl } from "../server/api/_publicAppUrl.js";
 import {
   isActiveReportInsertConflict,
@@ -32,6 +34,7 @@ import {
   getAdminReviewErrorStatus,
   normalizeAdminReviewInput,
 } from "../server/api/admin/review-action.js";
+import { isActiveReferee } from "../server/lib/refereeEligibilityPolicy.js";
 
 const root = new URL("../", import.meta.url);
 const readSource = (path) => readFile(new URL(path, root), "utf8");
@@ -70,6 +73,31 @@ function createResponse() {
   };
 }
 
+function createRefereeEligibilitySupabase({ profile = null, appointments = [] } = {}) {
+  return {
+    from(table) {
+      const result = table === "profiles"
+        ? { data: profile, error: null }
+        : { data: appointments, error: null };
+      const builder = {
+        select() {
+          return builder;
+        },
+        eq() {
+          return builder;
+        },
+        maybeSingle() {
+          return Promise.resolve(result);
+        },
+        then(resolve, reject) {
+          return Promise.resolve(result).then(resolve, reject);
+        },
+      };
+      return builder;
+    },
+  };
+}
+
 async function invokeApi({ path = "search", method = "POST", query = {}, headers = {} } = {}) {
   const queryString = new URLSearchParams(query).toString();
   const response = createResponse();
@@ -99,7 +127,7 @@ test("공용 method guard는 route별 허용 method와 405 응답을 보존한�
 });
 
 test("API routes use deny-by-default method and credential policies", async () => {
-  const validAuthModes = new Set(["user", "admin", "internal", "signedWebhook", "oauthCallback", "alphaTest"]);
+  const validAuthModes = new Set(["user", "admin", "internal", "signedWebhook", "oauthCallback", "alphaTest", "publicRead"]);
   assert.ok(API_ROUTES.size > 40);
   for (const [path, route] of API_ROUTES) {
     assert.match(path, /^\/[a-z0-9/-]+$/);
@@ -122,7 +150,7 @@ test("API routes use deny-by-default method and credential policies", async () =
   }
   assert.deepEqual(
     [...API_ROUTES].filter(([, route]) => route.auth === "oauthCallback").map(([path]) => path),
-    ["/auth/discord/callback"],
+    ["/auth/discord/callback", "/discord/callback"],
   );
   const systemRequestSource = await readSource("server/api/system/_systemRequest.js");
   const internalSources = await Promise.all([
@@ -142,6 +170,19 @@ test("API routes use deny-by-default method and credential policies", async () =
       : source;
   }));
   internalSources.forEach((source) => assert.match(source, /bearerTokenMatches\(request,/));
+});
+
+test("public landing stats exposes aggregate counts only", async () => {
+  const route = API_ROUTES.get("/landing/stats");
+  const source = await readSource("server/api/landing/stats.js");
+
+  assert.equal(route?.auth, "publicRead");
+  assert.deepEqual(route?.methods, ["GET"]);
+  assert.match(source, /select\("id", \{ count: "exact", head: true \}\)/);
+  assert.match(source, /\.eq\("status", "open"\)[\s\S]*?\.eq\("visibility", "public"\)/);
+  assert.match(source, /\.eq\("status", "confirmed"\)[\s\S]*?\.eq\("visibility", "public"\)/);
+  assert.match(source, /\.is\("deleted_at", null\)/);
+  assert.doesNotMatch(source, /getAuthenticatedContext|select\("\*"\)/);
 });
 
 test("Discord delivery cron uses Vault and stays separate from system maintenance", async () => {
@@ -242,11 +283,79 @@ test("referee search supports qualified discovery on focus only", async () => {
     refereeSearchSource.indexOf("if (query) testProfileQuery"),
   );
   assert.doesNotMatch(testProfileQuerySource, /\.gte\("trust_score", 90\)/);
-  assert.match(refereeSearchSource, /Number\(profile\.trust_score \?\? 0\) >= 90 \|\| testProfileIdSet\.has\(profile\.id\)/);
+  assert.doesNotMatch(refereeSearchSource, /\.gte\("trust_score", REFEREE_ACTIVE_TRUST_MIN\)/);
+  assert.doesNotMatch(refereeSearchSource, /Number\(profile\.trust_score \?\? 0\) >= REFEREE_ACTIVE_TRUST_MIN/);
   assert.match(refereeSearchSource, /\.in\("id", appointmentProfileIds\)/);
   assert.match(pickerSource, /const canRemoteSearch = canSearch \|\| \(remoteSearchOnFocus && focused\);/);
+  assert.match(pickerSource, /setRemoteRetrySequence\(\(current\) => current \+ 1\)/);
+  assert.match(pickerSource, /remoteRetrySequence, remoteSearchContextKey/);
+  assert.match(pickerSource, /remoteError \? "검색 결과를 불러오지 못했습니다\." : emptyText/);
   assert.match(createMatchSource, /remoteSearchOnFocus=\{remoteDirectoryEnabled\}/);
   assert.match(createMatchSource, /mapRemoteItem=\{\(user\) => activePlayerIds\.has\(user\.id\) \? null : user\}/);
+});
+
+test("referee entry trust and active trust stay separated", async () => {
+  const [appointmentSource, localAppointmentSource, migrationSource, eligibilityMigrationSource] = await Promise.all([
+    readSource("server/api/admin/appointment-action.js"),
+    readSource("src/data/repository/admin/appointment.js"),
+    readSource("supabase/migrations/20260730213000_referee_trust_lifecycle.sql"),
+    readSource("supabase/migrations/20260730230000_align_alpha_referee_creation_eligibility.sql"),
+  ]);
+  assert.match(appointmentSource, /actionType === "appointReferee"/);
+  assert.match(appointmentSource, /trust_score \?\? 0\) < REFEREE_TRUST_MIN/);
+  assert.match(localAppointmentSource, /targetUser\.trustScore \?\? 0\) < REFEREE_TRUST_MIN/);
+  assert.match(migrationSource, /coalesce\(profile\.trust_score, 0\) >= 70/);
+  assert.match(migrationSource, /referee_entry_trust_too_low/);
+  assert.match(migrationSource, /rankball_referee_active_trust_guard/);
+  assert.match(migrationSource, /referee_trust_below_70/);
+  assert.match(migrationSource, /rankball_tournament_referee_authorized/);
+  assert.match(migrationSource, /test_login_id[\s\S]*?'rankball-001', 'rankball-011'/);
+  assert.match(migrationSource, /payload->>'autoRevoked' = 'true'/);
+  assert.match(migrationSource, /recruiting_referee_fixed_trust_shape_changed/);
+  assert.match(migrationSource, /recruiting_referee_stored_trust_shape_changed/);
+  assert.doesNotMatch(migrationSource, /delete\s+from|truncate\s+table|drop\s+table/i);
+  assert.match(eligibilityMigrationSource, /rankball_referee_assignment_eligible/);
+  assert.match(eligibilityMigrationSource, /test_login_id[\s\S]*?'rankball-001', 'rankball-011'/);
+  assert.match(eligibilityMigrationSource, /appointment\.grade in \('candidate', 'silver', 'gold', 'platinum', 'official'\)/);
+  assert.match(eligibilityMigrationSource, /recruiting_referee_trust_shape_changed/);
+  assert.match(eligibilityMigrationSource, /alphaTestException/);
+  assert.doesNotMatch(eligibilityMigrationSource, /delete\s+from|truncate\s+table|drop\s+table/i);
+});
+
+test("server referee eligibility matches alpha discovery and active appointment rules", async () => {
+  assert.equal(await isActiveReferee(createRefereeEligibilitySupabase({
+    profile: { id: "alpha-referee", trust_score: 10, test_login_id: "rankball-001" },
+  }), "alpha-referee"), true);
+  assert.equal(await isActiveReferee(createRefereeEligibilitySupabase({
+    profile: { id: "regular-referee", trust_score: 70, test_login_id: null },
+    appointments: [{
+      user_id: "regular-referee",
+      role: "referee",
+      grade: "candidate",
+      status: "active",
+      starts_at: "2026-01-01T00:00:00.000Z",
+      ends_at: "2099-01-01T00:00:00.000Z",
+    }],
+  }), "regular-referee"), true);
+  assert.equal(await isActiveReferee(createRefereeEligibilitySupabase({
+    profile: { id: "low-trust-referee", trust_score: 69, test_login_id: null },
+    appointments: [{
+      user_id: "low-trust-referee",
+      role: "referee",
+      grade: "candidate",
+      status: "active",
+    }],
+  }), "low-trust-referee"), true);
+  assert.equal(await isActiveReferee(createRefereeEligibilitySupabase({
+    profile: { id: "expired-referee", trust_score: 90, test_login_id: null },
+    appointments: [{
+      user_id: "expired-referee",
+      role: "referee",
+      grade: "candidate",
+      status: "active",
+      ends_at: "2026-01-01T00:00:00.000Z",
+    }],
+  }), "expired-referee"), false);
 });
 
 test("report insert conflicts and admin review input fail safely", async () => {
@@ -468,4 +577,75 @@ test("future public database objects are deny-by-default", async () => {
   assert.match(migrationSource, /revoke execute on functions from public, anon, authenticated, service_role/);
   assert.match(migrationSource, /revoke all on sequences from anon, authenticated, service_role/);
   assert.doesNotMatch(migrationSource, /drop table|truncate table|delete from/i);
+});
+
+test("Discord OAuth state cookie follows only supported callback paths", () => {
+  assert.equal(
+    getDiscordOAuthStateCookiePath("https://boxtier.kr/api/discord/callback"),
+    "/api/discord/callback",
+  );
+  assert.equal(
+    getDiscordOAuthStateCookiePath("https://boxtier.kr/api/auth/discord/callback"),
+    "/api/auth/discord/callback",
+  );
+  assert.equal(
+    getDiscordOAuthStateCookiePath("https://boxtier.kr/api/other/callback"),
+    "/api/auth/discord/callback",
+  );
+});
+
+test("Discord OAuth logs only bounded provider error codes", () => {
+  assert.equal(normalizeDiscordOAuthErrorCode("invalid_client"), "invalid_client");
+  assert.equal(normalizeDiscordOAuthErrorCode("secret leaked"), "unknown");
+  assert.equal(normalizeDiscordOAuthErrorCode("x".repeat(65)), "unknown");
+});
+
+test("Discord OAuth requests use the required API user agent", async () => {
+  const callbackSource = await readSource("server/api/auth/discord/callback.js");
+  assert.equal(callbackSource.match(/"User-Agent": DISCORD_USER_AGENT/g)?.length, 2);
+  assert.match(callbackSource, /DiscordBot \(https:\/\/boxtier\.kr, 1\.0\)/);
+  assert.equal(callbackSource.match(/process\.env\.DISCORD_(?:CLIENT_ID|CLIENT_SECRET|REDIRECT_URI) \|\| ""\)\.trim\(\)/g)?.length, 3);
+});
+
+test("referee exam attempts preserve the first start and first terminal grading", async () => {
+  const [source, migrationSource] = await Promise.all([
+    readSource("server/api/referee/sync.js"),
+    readSource("supabase/migrations/20260803012000_serialize_referee_requests.sql"),
+  ]);
+  assert.match(source, /\.from\("referee_exam_attempts"\)\s*\.insert\(row\)/);
+  assert.doesNotMatch(source, /\.from\("referee_exam_attempts"\)\s*\.upsert\(row/);
+  assert.match(source, /\.update\(row\)[\s\S]{0,180}\.eq\("status", "started"\)[\s\S]{0,120}\.maybeSingle\(\)/);
+  assert.match(source, /exam_attempt_state_conflict/);
+  assert.match(source, /\.from\("referee_requests"\)\s*\.insert\(row\)/);
+  assert.doesNotMatch(source, /\.from\("referee_requests"\)\s*\.upsert\(row/);
+  assert.match(migrationSource, /pg_advisory_xact_lock/);
+  assert.match(migrationSource, /referee_request_pending_exists/);
+  assert.doesNotMatch(migrationSource, /delete\s+from|truncate\s+table|drop\s+table/i);
+});
+
+test("retired favorite targets can still be removed", async () => {
+  const source = await readSource("server/api/favorites/sync.js");
+  assert.match(source, /if \(active\) \{\s+await assertTargetExists\(context, targetType, targetId\)/u);
+  assert.doesNotMatch(source, /await assertTargetExists\(context, targetType, targetId\);\s+if \(active\)/u);
+});
+
+test("legacy favorite constraint accepts referee targets", async () => {
+  const source = await readSource("supabase/migrations/20260802012000_allow_referee_favorites.sql");
+  assert.match(source, /drop constraint if exists favorites_target_type_check/u);
+  assert.match(source, /target_type in \('player', 'team', 'court', 'referee'\)/u);
+  assert.doesNotMatch(source, /delete from|truncate table|drop table/iu);
+});
+
+test("settings and referee writes do not report derived cleanup as a failed canonical save", async () => {
+  const [settingsSource, refereeSource, refereeControllerSource] = await Promise.all([
+    readSource("server/api/settings/sync.js"),
+    readSource("server/api/referee/sync.js"),
+    readSource("src/pages/useSettingsRefereeController.js"),
+  ]);
+  assert.match(settingsSource, /console\.warn\("Queued Discord delivery cleanup failed after settings save\."/u);
+  assert.doesNotMatch(settingsSource, /if \(cancelError\) throw cancelError/u);
+  assert.match(refereeSource, /\.eq\("requested_by", context\.profileId\)[\s\S]*?\.eq\("status", "pending"\)/u);
+  assert.match(refereeSource, /duplicate: true/u);
+  assert.doesNotMatch(refereeSource, /if \(notificationError\) throw notificationError/u);
+  assert.match(refereeControllerSource, /if \(hasPendingRefereeRequest\)/u);
 });

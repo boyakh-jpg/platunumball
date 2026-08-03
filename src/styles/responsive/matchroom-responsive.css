@@ -19,7 +19,7 @@
 
 /* 2026-07-01 standard UI cleanup: match room follows shared primitives. */
 .gm-room-topline > span,
-.gm-room-title > span,
+.gm-room-title > .eyebrow,
 .gm-team-head span {
   color: var(--rb-orange);
 }
@@ -84,34 +84,6 @@ html[data-theme="light"] .gm-room-hero::after {
   display: none;
   background: none;
   opacity: 0;
-}
-
-.gm-room-title h1,
-html[data-theme="light"] .gm-room-title h1 {
-  font-family: var(--hero-title-font);
-  font-size: var(--hero-title-size);
-  font-weight: 950;
-  line-height: var(--hero-title-line-height);
-  letter-spacing: var(--hero-title-letter-spacing);
-  text-transform: uppercase;
-}
-
-@media (max-width: 720px) {
-  .gm-room-title h1,
-  html[data-theme="light"] .gm-room-title h1 {
-    font-size: var(--hero-title-size-mobile);
-  }
-
-  .approval-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .approval-side + .approval-side {
-    border-block-start: var(--ui-stroke-width) solid var(--ui-liquid-glass-divider);
-    border-inline-start: 0;
-    padding-block-start: var(--space-5);
-    padding-inline-start: 0;
-  }
 }
 
 /* 2026-07-14 compact match-room content while preserving hero and slot dimensions. */

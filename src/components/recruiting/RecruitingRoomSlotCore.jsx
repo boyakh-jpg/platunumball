@@ -102,7 +102,7 @@ export function getLobbySideMeta(lobby, sideName, userById, { useSideName = fals
   };
 }
 
-function getPlayerPosition(user) {
+export function getPlayerPosition(user) {
   return user?.position || "포지션 자유";
 }
 
@@ -133,7 +133,7 @@ export function getPartyOptionKey(option) {
   return `${option.sideName}-${option.team.id}-${option.entry?.id ?? "entry"}`;
 }
 
-function RoomSlotAvatar({ user, mmr = DEFAULT_RATING, position = null }) {
+export function RoomSlotAvatar({ user, mmr = DEFAULT_RATING, position = null }) {
   const [failed, setFailed] = useState(false);
   const normalizedPosition = String(position ?? user?.position ?? "").trim().toUpperCase();
   const avatarSrc = getRoomSlotPositionAvatarSrc(normalizedPosition);

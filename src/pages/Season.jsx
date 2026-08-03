@@ -1,8 +1,9 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowRight, CalendarClock, ClipboardCheck, MapPin, Swords, Trophy } from "lucide-react";
 import { Link } from "react-router-dom";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
+import BasketballLoader from "../components/common/BasketballLoader.jsx";
 import Card from "../components/common/Card.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import ProfileEmblem from "../components/profile/ProfileEmblem.jsx";
@@ -18,6 +19,8 @@ import {
 } from "../lib/season.js";
 import { DIRECTORY_PICKER_PAGE_LIMIT } from "../lib/queryPolicy.js";
 import { isPlacementComplete } from "../lib/rating.js";
+import { isSupabaseConfigured } from "../lib/supabase.js";
+import useCanonicalSeasonRankings from "../hooks/useCanonicalSeasonRankings.js";
 
 function formatDate(value) {
   return value ? value.replaceAll("-", ".") : "일정 미정";
@@ -26,13 +29,30 @@ function formatDate(value) {
 export default function Season({ app }) {
   const directoryLoadKeyRef = useRef("");
   const recordLoadKeyRef = useRef("");
+  const [directoryLoadFailed, setDirectoryLoadFailed] = useState(false);
+  const [recordLoadFailed, setRecordLoadFailed] = useState(false);
+  const [loadRetrySequence, setLoadRetrySequence] = useState(0);
   const season = getCurrentSeason(app.state);
+  const canonicalEnabled = isSupabaseConfigured && app.remoteReady;
+  const canonicalRankings = useCanonicalSeasonRankings(canonicalEnabled, season.id);
   const region = app.currentUser.region;
   const progress = getSeasonProgress(season);
-  const nationalPlayerRows = getPlayerSeasonRows(app.state.users, app.state.matches, season, "전체")
+  const blockedUserIds = new Set(app.state.settings?.blockedUserIds ?? []);
+  const localPlayerRows = getPlayerSeasonRows(app.state.users, app.state.matches, season, "전체");
+  const localTeamRows = getTeamSeasonRows(app.state.teams, app.state.matches, season, "전체");
+  const seasonPlayerRows = canonicalEnabled && canonicalRankings.data
+    ? (canonicalRankings.data.players ?? [])
+    : localPlayerRows;
+  const seasonTeamRows = canonicalEnabled && canonicalRankings.data
+    ? (canonicalRankings.data.teams ?? [])
+    : localTeamRows;
+  const nationalPlayerRows = seasonPlayerRows
+    .filter((user) => !blockedUserIds.has(user.id))
     .filter((user) => isPlacementComplete(user.ratings));
-  const nationalTeamRows = getTeamSeasonRows(app.state.teams, app.state.matches, season, "전체");
-  const regionalPlayerRows = getPlayerSeasonRows(app.state.users, app.state.matches, season, region)
+  const nationalTeamRows = seasonTeamRows;
+  const regionalPlayerRows = seasonPlayerRows
+    .filter((user) => user.region === region)
+    .filter((user) => !blockedUserIds.has(user.id))
     .filter((user) => isPlacementComplete(user.ratings))
     .filter((user) => user.id === app.currentUser.id || user.privacy?.regionRanking !== false);
   const myTeamIds = app.state.teams
@@ -49,51 +69,94 @@ export default function Season({ app }) {
   const myRegionalRankIndex = regionalPlayerRows.findIndex((user) => user.id === app.currentUser.id);
   const myNationalRank = myNationalRankIndex >= 0 ? myNationalRankIndex + 1 : null;
   const myRegionalRank = myRegionalRankIndex >= 0 ? myRegionalRankIndex + 1 : null;
-  const mySeasonRow = myNationalRankIndex >= 0 ? nationalPlayerRows[myNationalRankIndex] : null;
+  const mySeasonRow = seasonPlayerRows.find((user) => user.id === app.currentUser.id) ?? null;
   const loadDirectory = app.actions.loadDirectory;
   const loadProfileRecords = app.actions.loadProfileRecords;
   const profileRecordsLoaded = app.actions.profileRecordsLoaded;
 
   useEffect(() => {
-    if (!app.remoteReady || !loadDirectory || !app.currentUser.id) return;
+    if (!canonicalEnabled || !loadDirectory || !app.currentUser.id) return;
     if (directoryLoadKeyRef.current === app.currentUser.id) return;
     directoryLoadKeyRef.current = app.currentUser.id;
+    setDirectoryLoadFailed(false);
     const request = loadDirectory({ kind: "all", limit: DIRECTORY_PICKER_PAGE_LIMIT, offset: 0 });
     if (!request?.then) {
-      if (!request) directoryLoadKeyRef.current = "";
-      return;
-    }
-    request.catch(() => {
-      directoryLoadKeyRef.current = "";
-    });
-  }, [app.currentUser.id, app.remoteReady, loadDirectory]);
-
-  useEffect(() => {
-    if (!app.remoteReady || !loadProfileRecords || profileRecordsLoaded || !app.currentUser.id) return;
-    if (recordLoadKeyRef.current === app.currentUser.id) return;
-    recordLoadKeyRef.current = app.currentUser.id;
-    const request = loadProfileRecords();
-    if (!request?.then) {
-      if (!request) recordLoadKeyRef.current = "";
+      if (!request) {
+        directoryLoadKeyRef.current = "";
+        setDirectoryLoadFailed(true);
+      }
       return;
     }
     request.then((result) => {
-      if (result === false) recordLoadKeyRef.current = "";
+      if (result === false) {
+        directoryLoadKeyRef.current = "";
+        setDirectoryLoadFailed(true);
+      }
+    }).catch(() => {
+      directoryLoadKeyRef.current = "";
+      setDirectoryLoadFailed(true);
+    });
+  }, [app.currentUser.id, canonicalEnabled, loadDirectory, loadRetrySequence]);
+
+  useEffect(() => {
+    if (!canonicalEnabled || !loadProfileRecords || profileRecordsLoaded || !app.currentUser.id) return;
+    if (recordLoadKeyRef.current === app.currentUser.id) return;
+    recordLoadKeyRef.current = app.currentUser.id;
+    setRecordLoadFailed(false);
+    const request = loadProfileRecords();
+    if (!request?.then) {
+      if (!request) {
+        recordLoadKeyRef.current = "";
+        setRecordLoadFailed(true);
+      }
+      return;
+    }
+    request.then((result) => {
+      if (result === false) {
+        recordLoadKeyRef.current = "";
+        setRecordLoadFailed(true);
+      }
     }).catch(() => {
       recordLoadKeyRef.current = "";
+      setRecordLoadFailed(true);
     });
-  }, [app.currentUser.id, app.remoteReady, loadProfileRecords, profileRecordsLoaded]);
+  }, [app.currentUser.id, canonicalEnabled, loadProfileRecords, loadRetrySequence, profileRecordsLoaded]);
+
+  const retrySeasonLoads = () => {
+    directoryLoadKeyRef.current = "";
+    recordLoadKeyRef.current = "";
+    setDirectoryLoadFailed(false);
+    setRecordLoadFailed(false);
+    canonicalRankings.retry();
+    setLoadRetrySequence((current) => current + 1);
+  };
 
   return (
     <div className="page-stack season-page">
-      <header className="page-header">
-        <div>
+      <header className="page-header ui-page-hero ui-design-app-hero">
+        <div className="ui-page-hero__copy">
           <p className="eyebrow">Season</p>
           <h1>시즌</h1>
           <p>{season.name} · {season.subtitle}</p>
         </div>
         <Badge tone="gold">진행 중</Badge>
       </header>
+
+      {canonicalRankings.loading && !canonicalRankings.data ? (
+        <Card className="section-card"><BasketballLoader label="시즌 순위 불러오는 중" /></Card>
+      ) : null}
+
+      {directoryLoadFailed || recordLoadFailed || canonicalRankings.error ? (
+        <Card className="section-card">
+          <div className="section-title-row">
+            <div>
+              <h2>시즌 정보를 불러오지 못했습니다.</h2>
+              <p>기존 정보는 유지됩니다. 다시 시도해 주세요.</p>
+            </div>
+            <Button type="button" variant="secondary" onClick={retrySeasonLoads}>다시 시도</Button>
+          </div>
+        </Card>
+      ) : null}
 
       <Card className="section-card season-overview-card">
         <div className="section-title-row">
@@ -132,9 +195,9 @@ export default function Season({ app }) {
                 <p className="eyebrow">Promotion Race</p>
                 <h2>전국 개인 승격권</h2>
               </div>
-              <div className="season-section-actions">
+              <div className="ui-action-row season-section-actions">
                 <Badge tone="gold">TOP {season.promotionLine ?? 4}</Badge>
-                <Button as={Link} to="/app/rankings" variant="secondary">전체 순위</Button>
+                <Button as={Link} to="/app/rankings?view=promotion" variant="secondary">전체 순위</Button>
               </div>
             </div>
             <div className="season-race-list ranking-table ui-design-borderless-list">
@@ -168,6 +231,10 @@ export default function Season({ app }) {
               <div>
                 <p className="eyebrow">Squad Race</p>
                 <h2>전국 팀 승격권</h2>
+              </div>
+              <div className="ui-action-row season-section-actions">
+                <Badge tone="gold">TOP {season.promotionLine ?? 4}</Badge>
+                <Button as={Link} to="/app/rankings?view=promotion&tab=teams" variant="secondary">전체 팀 순위</Button>
               </div>
             </div>
             <div className="season-race-list team-race-list ranking-table ui-design-borderless-list">

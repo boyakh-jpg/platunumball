@@ -39,6 +39,16 @@ export default function MatchClockPanelView({ context }) {
       </section>
     );
   }
+  const expectedPeriodCount = Number(liveClock.expectedPeriodCount || 1);
+  const singlePeriod = expectedPeriodCount === 1;
+  const periodEndLabel = Number(liveClock.overtimeCount || 0) > 0
+    ? `연장 ${liveClock.overtimeCount} 종료`
+    : singlePeriod
+      ? "정규 구간 종료"
+      : expectedPeriodCount === 2
+        ? "하프 종료"
+        : "쿼터 종료";
+  const nextPeriodLabel = expectedPeriodCount === 2 ? "후반 시작" : "다음 쿼터 시작";
 
   const clockPanel = (
     <section
@@ -56,8 +66,10 @@ export default function MatchClockPanelView({ context }) {
             <Badge tone={isRunning ? "green" : isEnded ? "neutral" : "gold"}>
               {isRunning ? "진행 중" : isEnded ? "시계 종료" : isPending ? "시작 대기" : isBreak ? "휴식" : "일시정지"}
             </Badge>
-            <Badge tone={recognition.recognized ? "green" : "neutral"}>
-              인정 시간 {Math.round(recognition.ratio * 100)}%
+            <Badge tone={isEnded && recognition.recognized ? "green" : "neutral"}>
+              {isEnded
+                ? recognition.recognized ? "정상 사용" : "미사용 처리"
+                : `인정 기준 진행 ${Math.round(recognition.ratio * 100)}%`}
             </Badge>
           </div>
           {focusMode ? (
@@ -81,7 +93,7 @@ export default function MatchClockPanelView({ context }) {
                 <select
                   className="ui-control"
                   value={selectedControllerId}
-                  disabled={pendingAction === "configure"}
+                  disabled={Boolean(pendingAction)}
                   onChange={(event) => selectController(event.target.value)}
                 >
                   {activePlayers.map((player) => (
@@ -99,7 +111,7 @@ export default function MatchClockPanelView({ context }) {
                       size="sm"
                       variant={shotClockSeconds === option.value ? "primary" : "secondary"}
                       aria-pressed={shotClockSeconds === option.value}
-                      disabled={pendingAction === "configure" || !selectedControllerId}
+                      disabled={Boolean(pendingAction) || !selectedControllerId}
                       onClick={() => selectShotClock(option.value)}
                     >
                       {option.label}
@@ -188,14 +200,13 @@ export default function MatchClockPanelView({ context }) {
             <div className="ui-match-clock-score-controls" aria-label="점수 조정">
               {[
                 clockEditableScoreSides.includes("teamA")
-                  ? { side: "teamA", label: "A", value: score.a }
+                  ? { side: "teamA", label: "A" }
                   : null,
                 clockEditableScoreSides.includes("teamB")
-                  ? { side: "teamB", label: "B", value: score.b }
+                  ? { side: "teamB", label: "B" }
                   : null,
-              ].filter(Boolean).map(({ side, label, value }) => (
+              ].filter(Boolean).map(({ side, label }) => (
                 <div key={side} className={`ui-match-clock-score-control-side ui-match-clock-score-control-side-${label.toLowerCase()}`}>
-                  <strong>{label} 점수 {value}</strong>
                   <div className="ui-match-clock-score-actions" aria-label={`${label} 점수 조정`}>
                     {[-1, 1, 2, 3].map((delta) => (
                       <Button key={delta} type="button" size="sm" variant="secondary" disabled={Boolean(scorePendingSide)} onClick={() => void incrementScore(side, delta)}>
@@ -210,63 +221,92 @@ export default function MatchClockPanelView({ context }) {
 
           {isBreak ? (
             <div className={`ui-match-clock-break${breakOvertimeMs > 0 ? " ui-match-clock-break-over" : ""}`} role="timer">
-              <span>{isHalftimeBreak ? "하프타임" : "쿼터 휴식"}</span>
-              <strong>
-                {breakOvertimeMs > 0
-                  ? `${formatClockTime(breakOvertimeMs)} 초과`
-                  : `${formatClockTime(breakRemainingMs)} 남음`}
-              </strong>
-              <small>권장 휴식 {breakLimitMinutes}분 · 다음 구간 시작은 언제든 가능</small>
+              <span>{regulationEnded ? periodEndLabel : isHalftimeBreak ? "하프타임" : "쿼터 휴식"}</span>
+              {regulationEnded ? (
+                <>
+                  <strong>연장 또는 시계 종료 선택</strong>
+                  <small>{singlePeriod ? "단일 경기에는 다음 쿼터가 없습니다." : "설정한 정규 구간을 모두 마쳤습니다."}</small>
+                </>
+              ) : (
+                <>
+                  <strong>
+                    {breakOvertimeMs > 0
+                      ? `${formatClockTime(breakOvertimeMs)} 초과`
+                      : `${formatClockTime(breakRemainingMs)} 남음`}
+                  </strong>
+                  <small>권장 휴식 {breakLimitMinutes}분 · 다음 구간 시작은 언제든 가능</small>
+                </>
+              )}
             </div>
           ) : null}
 
-          {!isEnded && liveClock.canControl ? (
+          {!isEnded && (
+            liveClock.canControl
+            || (canEndMatch && onEndMatch && !match.endedAt)
+          ) ? (
             <div className="ui-match-clock-actions ui-action-row">
-              {isRunning && hasRemainingPeriodTime ? (
-                <Button type="button" size="sm" variant="secondary" onClick={() => void runAction("pause")}>
-                  <Pause size={18} /> 일시정지
-                </Button>
-              ) : !isBreak && hasRemainingPeriodTime ? (
-                <Button type="button" size="sm" onClick={() => void runAction("resume")}>
-                  <Play size={18} /> 계속
-                </Button>
+              {liveClock.canControl ? (
+                <>
+                  {isRunning && hasRemainingPeriodTime ? (
+                    <Button type="button" size="sm" variant="secondary" onClick={() => void runAction("pause")}>
+                      <Pause size={18} /> 정지
+                    </Button>
+                  ) : !isBreak && hasRemainingPeriodTime ? (
+                    <Button type="button" size="sm" onClick={() => void runAction("resume")}>
+                      <Play size={18} /> 계속
+                    </Button>
+                  ) : null}
+                  {!isBreak ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => confirmAction(`${getMatchClockPeriodLabel(liveClock)}를 종료할까요?`, "endPeriod")}
+                    >
+                      {periodEndLabel}
+                    </Button>
+                  ) : null}
+                  {isBreak && !regulationEnded && liveClock.overtimeCount === 0 ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => confirmAction(`${nextPeriodLabel}할까요?`, "startPeriod")}
+                    >
+                      {nextPeriodLabel}
+                    </Button>
+                  ) : null}
+                  {isBreak && regulationEnded && (!scoreboardEnabled || tied) ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => confirmAction(`연장 ${liveClock.overtimeCount + 1}을 시작할까요?`, "startOvertime")}
+                    >
+                      연장 {liveClock.overtimeCount + 1}
+                    </Button>
+                  ) : null}
+                  {!match.refereeId && !focusMode ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => confirmAction("경기시계 운용을 종료할까요?", "endClock")}
+                    >
+                      시계 종료
+                    </Button>
+                  ) : null}
+                </>
               ) : null}
-              {!isBreak ? (
+              {canEndMatch && onEndMatch && !match.endedAt ? (
                 <Button
                   type="button"
                   size="sm"
                   variant="secondary"
-                  onClick={() => confirmAction(`${getMatchClockPeriodLabel(liveClock)}를 종료할까요?`, "endPeriod")}
+                  disabled={Boolean(pendingAction)}
+                  onClick={() => void requestMatchEnd()}
                 >
-                  쿼터 종료
+                  경기 종료
                 </Button>
               ) : null}
-              {isBreak && !regulationEnded && liveClock.overtimeCount === 0 ? (
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={() => confirmAction(`${liveClock.currentPeriod + 1}쿼터를 시작할까요?`, "startPeriod")}
-                >
-                  다음 쿼터 시작
-                </Button>
-              ) : null}
-              {isBreak && regulationEnded && (!scoreboardEnabled || tied) ? (
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={() => confirmAction(`연장 ${liveClock.overtimeCount + 1}을 시작할까요?`, "startOvertime")}
-                >
-                  연장 {liveClock.overtimeCount + 1} 시작
-                </Button>
-              ) : null}
-              <Button
-                type="button"
-                size="sm"
-                variant="secondary"
-                onClick={() => confirmAction("경기시계 운용을 종료할까요?", "endClock")}
-              >
-                경기시계 종료
-              </Button>
             </div>
           ) : null}
 
@@ -295,20 +335,6 @@ export default function MatchClockPanelView({ context }) {
         </div>
       )}
 
-      {canEndMatch && onEndMatch && !match.endedAt ? (
-        <div className="ui-match-clock-match-actions ui-action-row">
-          <Button
-            type="button"
-            size="sm"
-            variant="secondary"
-            disabled={Boolean(pendingAction)}
-            onClick={() => void requestMatchEnd()}
-          >
-            경기 종료
-          </Button>
-        </div>
-      ) : null}
-
       <div className="ui-match-clock-device-tools">
         <Button
           type="button"
@@ -318,7 +344,7 @@ export default function MatchClockPanelView({ context }) {
           onClick={() => void (focusMode ? closeFocusMode() : openFocusMode())}
         >
           {focusMode ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
-          {focusMode ? "전체화면 닫기" : "시계 전체화면"}
+          {focusMode ? "화면 닫기" : "전체화면"}
         </Button>
         <Button
           type="button"
@@ -328,10 +354,10 @@ export default function MatchClockPanelView({ context }) {
           onClick={() => void toggleWakeLock()}
         >
           <Power size={16} />
-          {wakeLockActive ? "화면 유지 켜짐" : wakeLockRequested ? "화면 유지 재연결" : "화면 유지 켜기"}
+          {wakeLockActive ? "유지 켜짐" : wakeLockRequested ? "유지 재연결" : "화면 유지"}
         </Button>
-        <Button type="button" size="sm" variant="primary" onClick={() => void testBuzzer()}>
-          <BellRing size={16} /> 부저 시험
+        <Button type="button" size="sm" variant="primary" onPointerDown={(event) => event.stopPropagation()} onClick={() => void testBuzzer()}>
+          <BellRing size={16} /> 부저
         </Button>
         <label className="ui-match-clock-volume">
           {volume > 0 ? <Volume2 size={17} /> : <VolumeX size={17} />}

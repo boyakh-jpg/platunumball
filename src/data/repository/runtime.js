@@ -1,5 +1,4 @@
 import { DEFAULT_RATING } from "../../lib/constants.js";
-import { getPlayerMatchModeMmr } from "../../lib/recruiting.js";
 
 let serverRatingAuthority = null;
 
@@ -11,11 +10,9 @@ function getServerRatingValue(method, ...args) {
   return serverRatingAuthority?.[method]?.(...args);
 }
 
-function getAveragePlayerMmr(state = {}, playerIds = [], fallback = DEFAULT_RATING, mode = "") {
+function getAveragePlayerMmr(state = {}, playerIds = [], fallback = DEFAULT_RATING) {
   const values = [...new Set(playerIds.filter(Boolean))]
-    .map((playerId) => state.users?.find((user) => user.id === playerId))
-    .filter(Boolean)
-    .map((user) => getPlayerMatchModeMmr(user, mode))
+    .map((playerId) => Number(state.users?.find((user) => user.id === playerId)?.ratings?.integrated))
     .filter(Number.isFinite);
   return values.length
     ? Math.round(values.reduce((sum, value) => sum + value, 0) / values.length)

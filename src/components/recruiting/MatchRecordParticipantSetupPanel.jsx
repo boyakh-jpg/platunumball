@@ -4,6 +4,7 @@ import Button from "../common/Button.jsx";
 import SearchPicker from "../common/SearchPicker.jsx";
 import ProfileEmblem from "../profile/ProfileEmblem.jsx";
 import TeamEmblem from "../team/TeamEmblem.jsx";
+import { getTeamCaptainMemberId } from "../../data/teamMappers.js";
 import {
   MATCH_SIDES,
   SIDE_LABEL_TEXT as SIDE_LABELS,
@@ -25,6 +26,10 @@ export default function MatchRecordParticipantSetupPanel({
   const composition = match?.rules?.recordComposition === "team" ? "team" : "individual";
   const setupStatus = getMatchRecordSetupStatus(match);
   const capacity = getRecruitingSideCapacity(match);
+  const savedTeamAId = match?.teamA?.teamId || "";
+  const savedTeamBId = match?.teamB?.teamId || "";
+  const savedTeamAPlayerKey = getMatchSidePlayerIds(match, "teamA").join("|");
+  const savedTeamBPlayerKey = getMatchSidePlayerIds(match, "teamB").join("|");
   const [teamAPlayerIds, setTeamAPlayerIds] = useState(() => getMatchSidePlayerIds(match, "teamA"));
   const [teamBPlayerIds, setTeamBPlayerIds] = useState(() => getMatchSidePlayerIds(match, "teamB"));
   const [userSnapshots, setUserSnapshots] = useState({});
@@ -33,11 +38,10 @@ export default function MatchRecordParticipantSetupPanel({
     () => teams.filter((team) => (team.members ?? []).some((member) => member.userId === currentUserId)),
     [currentUserId, teams],
   );
-  const [teamAId, setTeamAId] = useState(match?.teamA?.teamId || myTeams[0]?.id || "");
+  const [teamAId, setTeamAId] = useState(savedTeamAId || myTeams[0]?.id || "");
   const [teamBSnapshot, setTeamBSnapshot] = useState(() => {
-    const savedTeamId = match?.teamB?.teamId || "";
-    return teams.find((team) => team.id === savedTeamId)
-      ?? (savedTeamId ? { id: savedTeamId, name: match?.teamB?.name || "B사이드" } : null);
+    return teams.find((team) => team.id === savedTeamBId)
+      ?? (savedTeamBId ? { id: savedTeamBId, name: match?.teamB?.name || "B사이드" } : null);
   });
   const [teamQuery, setTeamQuery] = useState("");
   const [saving, setSaving] = useState(false);
@@ -50,24 +54,30 @@ export default function MatchRecordParticipantSetupPanel({
   useEffect(() => {
     setTeamAPlayerIds(getMatchSidePlayerIds(match, "teamA"));
     setTeamBPlayerIds(getMatchSidePlayerIds(match, "teamB"));
-    setTeamAId(match?.teamA?.teamId || myTeams[0]?.id || "");
-    const savedTeamId = match?.teamB?.teamId || "";
-    setTeamBSnapshot((current) => teams.find((team) => team.id === savedTeamId)
-      ?? (current?.id === savedTeamId
-        ? current
-        : savedTeamId
-          ? { id: savedTeamId, name: match?.teamB?.name || "B사이드" }
-          : null));
+    setTeamAId(savedTeamAId);
+    setTeamBSnapshot(savedTeamBId
+      ? { id: savedTeamBId, name: match?.teamB?.name || "B사이드" }
+      : null);
     setFeedback("");
   }, [
     match?.id,
-    match?.updatedAt,
-    match?.teamA?.teamId,
-    match?.teamB?.teamId,
-    match?.teamB?.name,
-    myTeams,
-    teams,
+    savedTeamAId,
+    savedTeamAPlayerKey,
+    savedTeamBId,
+    savedTeamBPlayerKey,
   ]);
+
+  useEffect(() => {
+    if (savedTeamAId || !myTeams[0]?.id) return;
+    setTeamAId((current) => current || myTeams[0].id);
+  }, [match?.id, myTeams, savedTeamAId]);
+
+  useEffect(() => {
+    if (!savedTeamBId) return;
+    const loadedTeam = teams.find((team) => team.id === savedTeamBId);
+    if (!loadedTeam) return;
+    setTeamBSnapshot((current) => current?.id === savedTeamBId ? loadedTeam : current);
+  }, [savedTeamBId, teams]);
 
   const selectedIds = new Set([...teamAPlayerIds, ...teamBPlayerIds]);
   const togglePlayer = (sideName, user) => {
@@ -122,52 +132,73 @@ export default function MatchRecordParticipantSetupPanel({
       })}
     </div>
   );
-  const teamCandidates = teams.filter((team) => team.id !== teamAId);
-  const renderTeamResult = (team) => (
-    <div key={team.id} className="search-picker-result-row search-picker-result-row-actionable">
-      <button
-        type="button"
-        className="search-picker-result-main"
-        onClick={() => {
-          setTeamBSnapshot(team);
-          setTeamQuery("");
-          setFeedback("");
-        }}
-      >
-        <strong>{team.name}</strong>
-        <span>{getTeamHashtag(team)} · {team.region ?? "지역 미정"}</span>
-      </button>
-    </div>
-  );
+  const selectedTeamA = teams.find((team) => team.id === teamAId)
+    ?? myTeams.find((team) => team.id === teamAId);
+  const selectedTeamACaptainId = getTeamCaptainMemberId(selectedTeamA);
+  const getOpponentTeamIneligibilityReason = (team) => {
+    if (!team?.id) return "팀 정보 없음";
+    if (team.id === teamAId) return "A사이드와 같은 팀";
+    if (!selectedTeamACaptainId) return "A사이드 팀장 정보 없음";
+    const captainId = getTeamCaptainMemberId(team);
+    if (!captainId) return "팀장 정보 없음";
+    if (captainId === selectedTeamACaptainId) return "A사이드와 같은 팀장";
+    return "";
+  };
+  const teamCandidates = teams.filter((team) => !getOpponentTeamIneligibilityReason(team));
+  const renderTeamResult = (team) => {
+    const ineligibilityReason = getOpponentTeamIneligibilityReason(team);
+    return (
+      <div key={team.id} className="search-picker-result-row search-picker-result-row-actionable">
+        <button
+          type="button"
+          className="search-picker-result-main"
+          disabled={Boolean(ineligibilityReason)}
+          onClick={() => {
+            setTeamBSnapshot(team);
+            setTeamQuery("");
+            setFeedback("");
+          }}
+        >
+          <strong>{team.name}</strong>
+          <span>{getTeamHashtag(team)} · {team.region ?? "지역 미정"}</span>
+          <em>{ineligibilityReason || "상대 팀 선택"}</em>
+        </button>
+      </div>
+    );
+  };
   const individualReady = (
     teamAPlayerIds.length === capacity
     && teamBPlayerIds.length === capacity
     && teamAPlayerIds.includes(currentUserId)
   );
-  const teamReady = Boolean(teamAId && teamBSnapshot?.id && teamAId !== teamBSnapshot.id);
-  const savedTeamAId = match?.teamA?.teamId || "";
-  const savedTeamBId = match?.teamB?.teamId || "";
+  const opponentTeamError = teamBSnapshot ? getOpponentTeamIneligibilityReason(teamBSnapshot) : "";
+  const teamReady = Boolean(teamAId && teamBSnapshot?.id && !opponentTeamError);
   const teamSelectionChanged = teamAId !== savedTeamAId || (teamBSnapshot?.id || "") !== savedTeamBId;
   const saveReady = composition === "individual" ? individualReady : teamReady && teamSelectionChanged;
   const save = async () => {
     if (saving || !saveReady) return;
     setSaving(true);
     setFeedback("");
-    const result = await onSave?.(composition === "individual"
-      ? { composition, teamAPlayerIds, teamBPlayerIds }
-      : { composition, teamAId, teamBId: teamBSnapshot.id });
-    if (!result || result?.ok === false) {
-      setFeedback("참가자 구성을 저장하지 못했습니다. 선택값과 권한을 확인해 주세요.");
-    } else {
-      setFeedback(composition === "team"
-        ? "팀 선택을 저장했습니다. 각 팀장이 실제 출전 명단을 확정해 주세요."
-        : "실제 참가자를 저장했습니다.");
+    try {
+      const result = await onSave?.(composition === "individual"
+        ? { composition, teamAPlayerIds, teamBPlayerIds }
+        : { composition, teamAId, teamBId: teamBSnapshot.id });
+      if (!result || result?.ok === false) {
+        setFeedback("참가자 구성을 저장하지 못했습니다. 선택값과 권한을 확인해 주세요.");
+      } else {
+        setFeedback(composition === "team"
+          ? "팀 선택을 저장했습니다. 각 팀장이 실제 출전 명단을 확정해 주세요."
+          : "실제 참가자를 저장했습니다.");
+      }
+    } catch {
+      setFeedback("참가자 구성을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   };
 
   return (
-    <div className="arena-record-setup-panel">
+    <div className="arena-record-setup-panel ui-panel">
       <header>
         <span>
           <strong>경기 기록 참가자 구성</strong>
@@ -225,7 +256,7 @@ export default function MatchRecordParticipantSetupPanel({
               value={teamQuery}
               onChange={setTeamQuery}
               placeholder="팀명, #해시태그 검색"
-              items={teamCandidates}
+              items={teams}
               remoteSearchType="team"
               idleItems={teamCandidates.slice(0, 8)}
               title="상대 팀 검색"
@@ -236,11 +267,16 @@ export default function MatchRecordParticipantSetupPanel({
               renderItem={renderTeamResult}
             />
             {teamBSnapshot ? (
-              <span className="arena-record-team-selected">
-                <TeamEmblem team={teamBSnapshot} />
-                <strong>{teamBSnapshot.name}</strong>
-                <button type="button" onClick={() => setTeamBSnapshot(null)}>해제</button>
-              </span>
+              <>
+                <span className="arena-record-team-selected">
+                  <TeamEmblem team={teamBSnapshot} />
+                  <strong>{teamBSnapshot.name}</strong>
+                  <Button type="button" variant="secondary" size="sm" onClick={() => setTeamBSnapshot(null)}>
+                    해제
+                  </Button>
+                </span>
+                {opponentTeamError ? <span className="form-warning">{opponentTeamError}</span> : null}
+              </>
             ) : null}
           </label>
         </div>

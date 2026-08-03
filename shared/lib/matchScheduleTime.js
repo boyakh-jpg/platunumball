@@ -51,16 +51,8 @@ function getInstantRoomExpiresAt(room = {}) {
   return new Date(createdAt.getTime() + INSTANT_ROOM_EXPIRE_MINUTES * MINUTE_MS);
 }
 
-function formatLocalClock(date) {
-  if (!(date instanceof Date) || !Number.isFinite(date.getTime())) return "";
-  return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
-}
-
 export function getRoomScheduleLabel(room = {}) {
-  if (isInstantRoom(room)) {
-    const expiresLabel = formatLocalClock(getInstantRoomExpiresAt(room));
-    return expiresLabel ? `즉시 · ${expiresLabel} 종료` : "즉시";
-  }
+  if (isInstantRoom(room)) return "즉시";
   return [room.scheduledDate, room.scheduledTime].filter(Boolean).join(" ")
     || room.scheduledAt
     || "일정 미정";

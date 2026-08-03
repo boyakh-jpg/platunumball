@@ -1,6 +1,6 @@
 export default function RankingTabs({ value, options, onChange }) {
   return (
-    <div className="segmented-control">
+    <div className="ui-segmented-control segmented-control">
       {options.map((option) => (
         <button
           className={value === option.id ? "active" : ""}

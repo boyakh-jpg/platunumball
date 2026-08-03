@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Clock3, RefreshCw, ScanLine, UsersRound } from "lucide-react";
 import QrCode from "../common/QrCode.jsx";
 import Button from "../common/Button.jsx";
@@ -31,28 +31,38 @@ export default function MatchAttendanceQrPanel({ match, onChanged, onStatusChang
   const [nowMs, setNowMs] = useState(Date.now());
   const [lastUpdatedAt, setLastUpdatedAt] = useState(0);
   const [lastUpdateKind, setLastUpdateKind] = useState("initial");
+  const loadRequestIdRef = useRef(0);
+  const attendanceRevision = ["teamA", "teamB"]
+    .map((side) => [...(match?.attendance?.[side] ?? [])].sort().join(","))
+    .join("|");
 
   const load = useCallback(async ({ quiet = false, reason = "manual" } = {}) => {
     if (!match?.id) return;
+    const requestId = loadRequestIdRef.current + 1;
+    loadRequestIdRef.current = requestId;
     if (!quiet) setPending(true);
     try {
-      const next = await requestMatchAttendanceQr(match.id);
+      const next = await requestMatchAttendanceQr(match);
+      if (loadRequestIdRef.current !== requestId) return;
       setResponse(next);
       setError("");
       setLastUpdatedAt(Date.now());
       setLastUpdateKind(reason);
     } catch (loadError) {
-      setError(getErrorLabel(loadError));
+      if (loadRequestIdRef.current === requestId) setError(getErrorLabel(loadError));
     } finally {
-      if (!quiet) setPending(false);
+      if (loadRequestIdRef.current === requestId) setPending(false);
     }
-  }, [match?.id]);
+  }, [match]);
 
   useEffect(() => {
     void load({ reason: "initial" });
     const pollId = window.setInterval(() => void load({ quiet: true, reason: "auto" }), 15000);
-    return () => window.clearInterval(pollId);
-  }, [load]);
+    return () => {
+      window.clearInterval(pollId);
+      loadRequestIdRef.current += 1;
+    };
+  }, [attendanceRevision, load]);
 
   useEffect(() => {
     const tickId = window.setInterval(() => setNowMs(Date.now()), 1000);

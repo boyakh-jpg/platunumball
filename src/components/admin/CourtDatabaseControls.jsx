@@ -19,13 +19,14 @@ export function SortIcon({ active, direction }) {
 export function FilterControl({ column, value, onChange, onEnter }) {
   if (SELECT_OPTIONS[column.type]) {
     return (
-      <select aria-label={`${column.label} 필터`} value={value} onChange={(event) => onChange(event.target.value)}>
+      <select className="ui-control ui-control-xs" aria-label={`${column.label} 필터`} value={value} onChange={(event) => onChange(event.target.value)}>
         {SELECT_OPTIONS[column.type].map(([id, label]) => <option key={id || "all"} value={id}>{label}</option>)}
       </select>
     );
   }
   return (
     <input
+      className="ui-control ui-control-xs"
       aria-label={`${column.label} 필터`}
       type={column.type === "date" ? "date" : "search"}
       value={value}
@@ -54,6 +55,7 @@ export function CellEditor({ column, value, disabled, onChange, onEscape }) {
     const selected = value === null || value === undefined ? "__null__" : String(value);
     return (
       <select
+        className="ui-control ui-control-xs"
         aria-label={`${column.label} 수정`}
         value={selected}
         autoFocus
@@ -70,6 +72,7 @@ export function CellEditor({ column, value, disabled, onChange, onEscape }) {
   }
   return (
     <input
+      className="ui-control ui-control-xs"
       aria-label={`${column.label} 수정`}
       type={column.editor === "number" ? "number" : column.editor === "url" ? "url" : column.editor === "tel" ? "tel" : "text"}
       value={value ?? ""}
@@ -92,16 +95,18 @@ export function ReviewChipGroup({ group, value, dirty, disabled, onChange }) {
         {group.options.map(([optionValue, label]) => {
           const selected = Object.is(value ?? null, optionValue ?? null);
           return (
-            <button
+            <Button
               key={`${group.key}-${String(optionValue)}`}
               type="button"
+              size="sm"
+              variant="secondary"
               className={selected ? "selected" : ""}
               aria-pressed={selected}
               disabled={disabled}
               onClick={() => onChange(group.key, optionValue)}
             >
               {label}
-            </button>
+            </Button>
           );
         })}
       </div>

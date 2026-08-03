@@ -1,36 +1,9 @@
 html[data-theme="light"] .sidebar,
 html[data-theme="light"] .auth-card,
-html[data-theme="light"] .modal,
-html[data-theme="light"] .selector-panel,
-html[data-theme="light"] .team-card,
-html[data-theme="light"] .rating-card,
-html[data-theme="light"] .profile-records-summary,
-html[data-theme="light"] .match-focus-card,
-html[data-theme="light"] .home-recent-card,
-html[data-theme="light"] .rank-leaderboard-card,
-html[data-theme="light"] .season-mini-card,
-html[data-theme="light"] .settings-page .section-card {
+html[data-theme="light"] .modal {
   border-color: var(--rb-line);
   background-color: var(--rb-surface);
   box-shadow: var(--shadow);
-}
-html[data-theme="light"] input,
-html[data-theme="light"] select,
-html[data-theme="light"] textarea,
-html[data-theme="light"] .auth-card select {
-  border-color: rgba(30, 24, 18, 0.14);
-  background: rgba(255, 255, 255, 0.78);
-  color: var(--rb-text);
-}
-html[data-theme="light"] input::placeholder,
-html[data-theme="light"] textarea::placeholder {
-  color: var(--rb-soft);
-}
-html[data-theme="light"] input:focus-visible,
-html[data-theme="light"] select:focus-visible,
-html[data-theme="light"] textarea:focus-visible {
-  outline: 0;
-  box-shadow: 0 0 0 3px rgba(229, 85, 63, 0.16);
 }
 html[data-theme="light"] .button-primary,
 html[data-theme="light"] .provider-test,
@@ -277,30 +250,13 @@ body {
   background: rgba(255, 255, 255, 0.045);
   box-shadow: none;
 }
-.card,
-.section-card,
-.modal,
-.selector-panel,
-.team-card,
-.rating-card,
-.profile-records-summary,
-.match-focus-card,
-.home-search-panel,
-.home-action-card,
-.home-recent-card,
-.rank-profile-card,
-.rank-mode-card,
-.rank-leaderboard-card,
-.rank-record-card,
-.season-mini-card,
-.settings-page .section-card {
+.modal {
   border: var(--ui-stroke-width) solid var(--rb-line);
   border-radius: var(--radius-md);
   background: var(--rb-surface);
   box-shadow: none;
   backdrop-filter: none;
 }
-.home-search-box,
 .home-search-results a,
 .home-search-results .team-hover-trigger,
 .home-action-row,
@@ -308,27 +264,32 @@ body {
 .home-side-stack .compact-list a,
 .home-side-stack .compact-list > div,
 .home-side-stack .compact-list > .team-hover-trigger,
-.team-card .member-row,
+.team-card .member-row {
+  border: var(--ui-card-border-width) solid var(--rb-line);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.045);
+}
 .segmented-control button,
 .favorite-type-grid button {
-  border: var(--ui-stroke-width) solid var(--rb-line);
+  border: var(--ui-button-border-width) solid var(--rb-line);
   border-radius: var(--radius-sm);
   background: rgba(255, 255, 255, 0.045);
   box-shadow: none;
 }
-.button:not(:focus-visible),
+.home-search-box {
+  border: var(--ui-stroke-width) solid var(--rb-line);
+  border-radius: var(--radius-sm);
+}
 .provider-button:not(:focus-visible),
 button:not(:focus-visible) {
   box-shadow: none;
 }
-.button-primary,
 .rank-home .home-rank-board-head .button,
 .auth-test-login .provider-button {
   border: 0;
   background: var(--rb-orange);
   color: #fff;
 }
-.button-primary:hover,
 .rank-home .home-rank-board-head .button:hover,
 .auth-test-login .provider-button:hover {
   background: var(--rb-orange-2);
@@ -383,7 +344,6 @@ button:not(:focus-visible) {
 .rank-home .rank-summary-grid .home-rank-board-head h1 {
   color: #fff;
   word-break: keep-all;
-  text-shadow: 0 12px 30px rgba(0, 0, 0, 0.38);
 }
 .rank-home .rank-summary-grid .rank-hero-top > div {
   width: 100%;

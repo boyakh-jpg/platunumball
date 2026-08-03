@@ -1,3 +1,5 @@
+import { useRef, useState } from "react";
+
 export function useRecruitingRoomModalInteractions({
   useCallback, setRoomShareStatus, roomShareStatusTimerRef, copyTextToClipboard, roomShareUrl,
   getRecruitingDisplayTitle, selectedPost, BRAND_NAME, getRoomScheduleLabel, setInviteDraft,
@@ -5,8 +7,12 @@ export function useRecruitingRoomModalInteractions({
   app, soloRecordDeleteTarget, sheetDragTimerRef, setSheetDragSettling, setSheetDragOffset,
   inviteDraft, slotActionDraft, pendingRosterOpen, getRoomEditDraftByPost, lobbyModalRef,
   sheetDragRef, sheetDragOffset, sourceMatch, sourceDisputeDraft, getMatchResultRevision,
-  buildMatchDisputeRequest, PLAYER_STAT_FIELDS,
+  buildMatchDisputeRequest, PLAYER_STAT_FIELDS, refreshSourceMatchReview,
 }) {
+  const soloRecordDeletePendingRef = useRef(false);
+  const sourceDisputePendingRef = useRef(false);
+  const [sourceDisputePending, setSourceDisputePending] = useState(false);
+  const [sourceDisputeStatus, setSourceDisputeStatus] = useState("");
   const showRoomShareStatus = useCallback((message) => {
     setRoomShareStatus(message);
     window.clearTimeout(roomShareStatusTimerRef.current);
@@ -49,13 +55,21 @@ export function useRecruitingRoomModalInteractions({
     if (!match?.id || !isPersonalRecordMatch(match) || match.createdBy !== app.currentUser.id) return;
     setSoloRecordDeleteTarget(match);
   };
-  const confirmDeleteSourceSoloRecord = () => {
-    const matchId = soloRecordDeleteTarget?.id;
-    if (!matchId) return;
-    setSoloRecordDeleteTarget(null);
-    const request = app.actions.deleteSoloRecord?.(matchId);
-    if (request?.then) request.finally(closeModal);
-    else closeModal();
+  const confirmDeleteSourceSoloRecord = async () => {
+    const target = soloRecordDeleteTarget;
+    const matchId = target?.id;
+    if (!matchId || soloRecordDeletePendingRef.current) return;
+    soloRecordDeletePendingRef.current = true;
+    try {
+      const result = await app.actions.deleteSoloRecord?.(matchId);
+      if (result === false || result?.ok === false) throw new Error("solo_record_delete_failed");
+      setSoloRecordDeleteTarget(null);
+      closeModal();
+    } catch {
+      showRoomShareStatus("개인 기록을 삭제하지 못했습니다.");
+    } finally {
+      soloRecordDeletePendingRef.current = false;
+    }
   };
   const resetSheetDrag = () => {
     window.clearTimeout(sheetDragTimerRef.current);
@@ -131,36 +145,47 @@ export function useRecruitingRoomModalInteractions({
   const sheetDragProgress = sheetDragOffset ? Math.min(1, sheetDragOffset / getSheetDismissDistance()) : 0;
   const sheetBackdropOpacity = 0.82 - (sheetDragProgress * 0.34);
   const sheetModalOpacity = 1 - (sheetDragProgress * 0.34);
-  const submitSourceDispute = (event) => {
+  const submitSourceDispute = async (event) => {
     event.preventDefault();
-    if (!sourceMatch?.id) return;
-    if (!sourceMatch.refereeId) {
-      app.actions.disputeMatch(sourceMatch.id, {
+    if (!sourceMatch?.id || sourceDisputePendingRef.current) return;
+    const request = !sourceMatch.refereeId
+      ? {
         kind: "team_scores",
         requestedScoreA: Number(sourceDisputeDraft.requestedScoreA),
         requestedScoreB: Number(sourceDisputeDraft.requestedScoreB),
         baseRevision: getMatchResultRevision(sourceMatch),
         reason: sourceDisputeDraft.customReason.trim() || sourceDisputeDraft.reason,
-
+      }
+      : buildMatchDisputeRequest({
+        match: sourceMatch,
+        playerId: app.currentUser.id,
+        requestedStats: Object.fromEntries(PLAYER_STAT_FIELDS.map(({ id }) => [
+          id,
+          Number(sourceDisputeDraft.requestedStats?.[id]),
+        ])),
+        reason: sourceDisputeDraft.reason,
+        customReason: sourceDisputeDraft.customReason,
       });
-      return;
+    sourceDisputePendingRef.current = true;
+    setSourceDisputePending(true);
+    setSourceDisputeStatus("");
+    try {
+      const result = await app.actions.disputeMatch(sourceMatch.id, request);
+      if (!result || result.ok === false) throw new Error("match_dispute_failed");
+      await refreshSourceMatchReview?.();
+      setSourceDisputeStatus("이의제기를 접수했습니다.");
+    } catch {
+      setSourceDisputeStatus("이의제기를 접수하지 못했습니다. 다시 시도해 주세요.");
+    } finally {
+      sourceDisputePendingRef.current = false;
+      setSourceDisputePending(false);
     }
-    app.actions.disputeMatch(sourceMatch.id, buildMatchDisputeRequest({
-      match: sourceMatch,
-      playerId: app.currentUser.id,
-      requestedStats: Object.fromEntries(PLAYER_STAT_FIELDS.map(({ id }) => [
-        id,
-        Number(sourceDisputeDraft.requestedStats?.[id]),
-      ])),
-      reason: sourceDisputeDraft.reason,
-      customReason: sourceDisputeDraft.customReason,
-    }));
   };
 
   return {
     showRoomShareStatus, copyRoomShareUrl, shareRoom, closeModal, closeFromBackdrop,
     deleteSourceSoloRecord, confirmDeleteSourceSoloRecord, resetSheetDrag, getSheetDismissDistance, isSheetDragInteractiveTarget,
     canDismissBySheetDrag, startSheetDrag, moveSheetDrag, finishSheetDrag, cancelSheetDrag,
-    sheetDragProgress, sheetBackdropOpacity, sheetModalOpacity, submitSourceDispute,
+    sheetDragProgress, sheetBackdropOpacity, sheetModalOpacity, sourceDisputePending, sourceDisputeStatus, submitSourceDispute,
   };
 }

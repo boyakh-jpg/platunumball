@@ -17,6 +17,7 @@ export const DEFAULT_SETTINGS = {
     },
   },
   blockedUserIds: [],
+  blockedUserProfiles: {},
   favoritePlayerIds: [],
   favoriteTeamIds: [],
   representativeTeamId: "",

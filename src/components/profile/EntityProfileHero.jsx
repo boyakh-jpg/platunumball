@@ -12,8 +12,8 @@ export default function EntityProfileHero({
 }) {
   const copy = (
     <>
+      <p className="eyebrow">{eyebrow}</p>
       <div className="team-detail-heading-row entity-profile-hero-heading-row">
-        <p className="eyebrow">{eyebrow}</p>
         {action}
       </div>
       <h1>{title}</h1>
@@ -23,8 +23,8 @@ export default function EntityProfileHero({
   );
 
   return (
-    <section className={`entity-profile-hero ${className}`.trim()} style={style}>
-      <div className="entity-profile-hero-copy">
+    <section className={`entity-profile-hero ui-page-hero ui-design-app-hero ${className}`.trim()} style={style}>
+      <div className="entity-profile-hero-copy ui-page-hero__copy">
         {leading ? (
           <div className={`entity-profile-hero-identity ${identityClassName}`.trim()}>
             {leading}

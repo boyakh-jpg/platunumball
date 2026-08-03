@@ -93,20 +93,9 @@ html[data-theme="light"] .arena-filter-bar .arena-start-date-filter {
     min-width: 0;
   }
 }
-.arena-compose-drawer {
-  padding: var(--card-padding);
-}
-.arena-drawer-head {
-  gap: var(--page-column-gap);
-  margin-bottom: var(--page-section-gap-mobile);
-}
-.arena-compose-form {
-  gap: 10px;
-}
 .arena-field-grid,
 .arena-team-choice-grid,
-.arena-party-picker-grid,
-.arena-submit-row {
+.arena-party-picker-grid {
   gap: var(--ui-control-group-gap);
 }
 .arena-lobby-modal-scroll {
@@ -388,7 +377,7 @@ html[data-theme="light"] .arena-lobby-modal .arena-reserve-panel {
   min-width: 0;
   min-height: 52px;
   place-items: center;
-  border: var(--ui-stroke-width) solid var(--ui-control-border);
+  border: var(--ui-card-border-width) solid var(--ui-control-border);
   border-radius: var(--ui-control-radius);
   background: var(--ui-control-bg);
   color: var(--text);

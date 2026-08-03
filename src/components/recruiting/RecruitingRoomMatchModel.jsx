@@ -5,7 +5,7 @@ export function buildRecruitingRoomMatchModel(context) {
     getMatchRecordWindow, getMatchReservePlayerIds, getMatchResultEntryPermission, getMatchRoomPhase, getMatchSideLeaderId, getMatchSidePlayerIds,
     getMissingStartAttendanceIds, getOpenMatchDisputes, getPickupRerollState, getPostgameRecordVerification, getRecruitingBenchCapacity, getRecruitingPostTerminalState,
     getRecruitingRoomStatus, getRecruitingSideCapacity, getRecruitingSideLeaderId, getTeamCaptainId, getTournamentRosterTeam, individualOnlyRoom,
-    isEligibleReferee, isMatchPregameSlotManagementOpen, isMatchRecordMatch, isMatchRecordParticipantSetupOpen, isMatchRecordParticipantSetupRequired, isMatchReferee, isPersonalRecordMatch,
+    isMatchPregameSlotManagementOpen, isMatchRecordMatch, isMatchRecordParticipantSetupOpen, isMatchRecordParticipantSetupRequired, isMatchReferee, isPersonalRecordMatch,
     isTournamentGovernanceEnabled, isTournamentMatchLineupEditable, lobby, matchRoom, mine, myEntry,
     pickupAssignmentPolicy, roomChatLocked, roomOwnerId, roomPhaseViewModel, roomState, ruleAcknowledgementPending,
     scheduleChangePending, selectedMatchRules, selectedPost, sourceMatch, sourceMatchSideName, sourceMatchStatus,
@@ -35,6 +35,10 @@ const roomQueueStatus = getRecruitingRoomStatus(lobby, { post: selectedPost, myE
           isMatchRecordParticipantSetupRequired(sourceMatch)
           && sourceMatch?.createdBy === app.currentUser.id,
         );
+        const currentUserIsSourceReferee = Boolean(
+          sourceMatch
+          && isMatchReferee(sourceMatch, app.currentUser.id)
+        );
         const sourceRoomReadOnly = Boolean(
           recruitingRoomTerminalStatus ||
           (matchRoom && (
@@ -46,12 +50,14 @@ const roomQueueStatus = getRecruitingRoomStatus(lobby, { post: selectedPost, myE
         const sourceMatchStarted = Boolean(sourceMatch?.startedAt);
         const sourceMatchSlotManagementOpen = Boolean(
           !sourceRoomReadOnly
-          && (!matchRoom || isMatchPregameSlotManagementOpen(sourceMatch)),
+          && (!matchRoom || isMatchPregameSlotManagementOpen(sourceMatch))
+          && (!sourceMatch || (sourceMatchPhase?.phase === "checkin" && sourceMatch.refereeId
+            ? currentUserIsSourceReferee
+            : mine)),
         );
         const activeInviteDraft = sourceRoomReadOnly ? null : activeInviteDraftRaw;
         const activeSelfSlotDraft = sourceMatchSlotManagementOpen ? activeSelfSlotDraftRaw : null;
         const canUseChat = canChat && !sourceRoomReadOnly && !roomChatLocked;
-        const currentUserIsSourceReferee = Boolean(sourceMatch && isMatchReferee(sourceMatch, app.currentUser.id) && isEligibleReferee(app.currentUser, sourceMatch.refereeTrustMin, app.state.settings?.refereeAppointments));
         const currentUserCanOperateStartedSourceMatch = Boolean(sourceMatch && (sourceMatch.refereeId ? currentUserIsSourceReferee : mine));
         const currentUserCanStartSourceMatch = Boolean(sourceMatch && (sourceMatch.refereeId ? currentUserIsSourceReferee : mine));
         const canResolveSourceMatchDispute = Boolean(
@@ -147,6 +153,7 @@ const roomQueueStatus = getRecruitingRoomStatus(lobby, { post: selectedPost, myE
           && currentUserCanStartSourceMatch
           && !sourceMatch?.result
           && !sourceMatch?.endedAt
+          && !sourceMatchStarted
           && (sourceMatchUsesQrAttendance || sourceMatchPhase?.phase === "checkin"),
         );
         const sourceMatchMissingStartAttendanceIds = canShowStartSourceMatch
@@ -213,8 +220,8 @@ const roomQueueStatus = getRecruitingRoomStatus(lobby, { post: selectedPost, myE
             : sourceMatchUsesQrAttendance && sourceMatchServerStartStatus?.blockReason === "server_time_unavailable"
               ? "서버시간을 확인하지 못했습니다. 새로고침 후 다시 시도해 주세요."
             : "A/B 팀 배정과 교대 기준을 확정해야 경기 시작이 가능합니다.";
-        const canRequestRefereeAbsence = Boolean(!sourceMatchRequiresTournamentReferee && matchRoom && mine && sourceMatch?.refereeId && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.refereeAbsenceRequest?.confirmedAt && !sourceMatch?.startedAt && !sourceMatch?.endedAt && !sourceMatch?.result);
-        const canConfirmRefereeAbsence = Boolean(!sourceMatchRequiresTournamentReferee && matchRoom && sourceMatchOpponentLeaderId === app.currentUser.id && sourceMatch?.refereeId && sourceMatch?.refereeAbsenceRequest && !sourceMatch.refereeAbsenceRequest.confirmedAt && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.startedAt && !sourceMatch?.endedAt && !sourceMatch?.result && sourceMatchSideName);
+        const canRequestRefereeAbsence = Boolean(!sourceMatchRequiresTournamentReferee && matchRoom && mine && sourceMatch?.refereeId && sourceMatchPhase?.phase === "checkin" && sourceMatch?.refereeAbsenceRequest?.status !== "pending" && !sourceMatch?.refereeAbsenceRequest?.confirmedAt && !sourceMatch?.startedAt && !sourceMatch?.endedAt && !sourceMatch?.result);
+        const canConfirmRefereeAbsence = Boolean(!sourceMatchRequiresTournamentReferee && matchRoom && sourceMatchOpponentLeaderId === app.currentUser.id && sourceMatch?.refereeId && sourceMatch?.refereeAbsenceRequest?.status === "pending" && !sourceMatch.refereeAbsenceRequest.confirmedAt && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.startedAt && !sourceMatch?.endedAt && !sourceMatch?.result && sourceMatchSideName);
         const canEndSourceMatch = Boolean(matchRoom && currentUserCanOperateStartedSourceMatch && sourceMatchPhase?.phase === "live" && !sourceMatch?.endedAt && sourceMatchStarted);
         const sourceManualFinalizationStatus = getMatchManualFinalizationStatus(sourceMatch);
         const canFinalizeSourceMatch = Boolean(

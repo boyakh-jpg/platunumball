@@ -165,9 +165,7 @@ export function buildMatchResultSubmission(
       ?? match[sideName]?.score
       ?? 0;
     if (!editableScoreSides.has(sideName)) {
-      return options.editableScoreSides
-        ? Number(currentScore)
-        : getMergedResultScore(match, sourcePlayerStats, sideName, currentScore);
+      return getMergedResultScore(match, sourcePlayerStats, sideName, currentScore);
     }
     const nextScore = Number(draft[resultKey]);
     return Number.isFinite(nextScore)

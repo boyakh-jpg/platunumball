@@ -17,6 +17,7 @@ import {
   configureServerRatingAuthority,
   generatePickupSideAssignment,
   inviteRecruitingPlayers,
+  runAutomaticStateMaintenance,
   startMatch,
   swapPickupMatchPlayers,
 } from "../src/data/repository.js";
@@ -53,9 +54,63 @@ import {
   updateMatchListScope,
 } from "../src/lib/matchUtils.js";
 import { getMatchConfigurationChangePatch, getMatchCreationPolicyPayload } from "../src/lib/matchCreationPolicies.js";
-import { getRecruitingInvitationSenderName, getRecruitingLobby } from "../src/lib/recruiting.js";
+import { getRecruitingEntryPlacementIds, getRecruitingInvitationSenderName, getRecruitingLobby } from "../src/lib/recruiting.js";
 
 configureServerRatingAuthority(SERVER_RATING_AUTHORITY);
+
+test("로컬 자동 유지보수는 만료 모집방을 닫고 24시간 미응답 계약을 자동 동의한다", () => {
+  const now = new Date("2026-08-03T12:00:00.000Z");
+  const old = new Date(now.getTime() - 25 * 60 * 60 * 1000).toISOString();
+  const state = {
+    currentUserId: "host",
+    users: [
+      { id: "host", name: "방장", trustScore: 80 },
+      { id: "opponent", name: "상대", trustScore: 80 },
+    ],
+    teams: [],
+    notifications: [],
+    settings: {},
+    recruitingPosts: [{
+      id: "expired-room",
+      title: "만료 즉시방",
+      status: "open",
+      visibility: "public",
+      timingType: "instant",
+      createdAt: old,
+      playerId: "host",
+      hostReady: true,
+      hostJoinMode: "player",
+      hostSide: "teamA",
+      mode: "1v1",
+      sideCapacity: 1,
+      benchCapacity: 0,
+      applicants: [],
+      roomState: { ownerId: "host", invitations: [] },
+    }],
+    matches: [{
+      id: "stale-contract",
+      title: "미응답 계약",
+      status: "contract",
+      endedAt: old,
+      teamA: { players: ["host"] },
+      teamB: { players: ["opponent"] },
+      agreements: { teamA: [], teamB: [] },
+    }],
+  };
+
+  const next = runAutomaticStateMaintenance(state, now);
+  const room = next.recruitingPosts[0];
+  const match = next.matches[0];
+
+  assert.equal(room.status, "cancelled");
+  assert.ok(room.cancelledAt);
+  assert.equal(match.status, "agreed");
+  assert.deepEqual(match.agreements, { teamA: ["host"], teamB: ["opponent"] });
+  assert.ok(match.autoAgreedAt);
+  assert.equal(next.users.find((user) => user.id === "host").trustScore, 80);
+  assert.equal(next.notifications.some((item) => item.title === "매칭방 자동 취소"), true);
+  assert.equal(next.notifications.some((item) => item.title === "동의 자동 처리"), true);
+});
 
 test("match list scopes replace server result IDs without leaking other feeds", () => {
   const matches = [
@@ -711,8 +766,8 @@ test("확정 픽업 방모달은 실제 A/B 출전·후보 명단을 그대로 �
         matchIntent: "pickup",
         sideCapacity: 3,
         benchCapacity: 1,
-        sideAssignmentStatus: "confirmed",
-        sideAssignmentRevision: 1,
+        sideAssignmentStatus: "pending",
+        sideAssignmentRevision: 0,
       },
       createdAt: "2026-07-25T00:00:00.000Z",
     };
@@ -748,6 +803,39 @@ test("확정 픽업 방모달은 실제 A/B 출전·후보 명단을 그대로 �
       reserveLobby.sides.teamB.reserveCandidates.some((candidate) => candidate.playerId === "host"),
       true,
     );
+
+    const stalePartyMatch = {
+      ...match,
+      teamB: { players: ["host", "b2", "b3"], teamId: null },
+      reservePlayers: { teamA: ["ra"], teamB: ["b1"] },
+      parties: [...match.parties, { side: "teamB", players: ["b1"], reserves: [] }],
+    };
+    const stalePartyLobby = getRecruitingLobby(getMatchRoomPost(stalePartyMatch, { ...state, matches: [stalePartyMatch] }), state);
+    assert.equal(stalePartyLobby.entries.flatMap((entry) => {
+      const placement = getRecruitingEntryPlacementIds(entry);
+      return [...placement.activeIds, ...placement.reserveIds];
+    }).filter((playerId) => playerId === "b1").length, 1);
+
+    const emptySideMatch = {
+      ...match,
+      teamB: { players: [], teamId: null },
+      reservePlayers: { teamA: ["ra"], teamB: ["b1"] },
+      parties: [],
+    };
+    const stalePost = {
+      ...sourcePost,
+      applicants: [{ kind: "player", playerId: "b1", side: "teamB", status: "ready", reserve: false }],
+    };
+    const emptySideLobby = getRecruitingLobby(
+      getMatchRoomPost(emptySideMatch, { ...state, matches: [emptySideMatch], recruitingPosts: [stalePost] }),
+      state,
+    );
+    assert.equal(emptySideLobby.entries.flatMap((entry) => {
+      const placement = getRecruitingEntryPlacementIds(entry);
+      return [...placement.activeIds, ...placement.reserveIds];
+    }).filter((playerId) => playerId === "b1").length, 1);
+    assert.equal(emptySideLobby.sides.teamB.filled, 0);
+    assert.deepEqual(emptySideLobby.sides.teamB.reserves, ["b1"]);
 
     const teamHostMatch = {
       ...match,

@@ -211,6 +211,9 @@ test("admin page and menu authority use server context, not cached appointments"
   assert.match(appSource, /path="\/app\/admin" element=\{<RequireAdmin/);
   assert.match(appSource, /path="\/app\/admin\/court-map" element=\{<RequireAdmin/);
   assert.match(guardSource, /loadAdminContext\?\.\(true\)/);
+  assert.match(guardSource, /context\?\.loadError \? "error"/);
+  assert.match(guardSource, /관리자 권한을 확인하지 못했습니다/);
+  assert.match(guardSource, /setRetrySequence\(\(current\) => current \+ 1\)/);
   assert.doesNotMatch(guardSource, /location|searchParams|localStorage|adminAppointments|user_metadata/);
   assert.doesNotMatch(adminSource, /hasAdminAccess/);
   assert.doesNotMatch(settingsSource, /hasAdminAccess/);

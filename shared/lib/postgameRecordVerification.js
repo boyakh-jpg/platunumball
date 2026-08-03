@@ -90,6 +90,7 @@ export function getPostgameRecordVerification(match = {}, options = {}) {
     ...collectIds(match.approvals),
     ...collectIds(match.recordApprovedIds),
     ...collectIds(match.rules?.recordApprovedIds),
+    ...collectIds(match.rules?.matchRecordConfirmedParticipantIds),
   ]).filter((playerId) => requiredIdSet.has(playerId));
   const rejectedIds = uniqueIds([
     ...collectIds(match.participantRejectedIds),

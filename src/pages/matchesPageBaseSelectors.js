@@ -63,7 +63,7 @@ export const VIEWS = [
     id: "cancelled",
     code: "REMATCH",
     title: "취소된 방",
-    desc: "취소 후 7일 보관",
+    desc: "7일 보관",
     icon: RotateCcw,
   },
 ];

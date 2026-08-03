@@ -24,7 +24,7 @@ export default function TeamHoverCard({ team, children, className = "", as = "li
   } = useHoverCardInteraction({ cardKey, longPress: true });
 
   if (!team) {
-    return <span className={className}>{children}</span>;
+    return to ? <Link className={className} to={to}>{children}</Link> : <span className={className}>{children}</span>;
   }
 
   const teamPath = to ?? `/app/teams/${team.id}`;
@@ -40,7 +40,7 @@ export default function TeamHoverCard({ team, children, className = "", as = "li
       event.stopPropagation();
       if (consumeLongPressOpen()) return;
       closePinned();
-      navigate(teamPath);
+      navigate(teamPath, { state: { teamPreview: team } });
       return;
     }
     if (as === "span" && !isTouchPreviewEvent(event)) return;
@@ -62,7 +62,7 @@ export default function TeamHoverCard({ team, children, className = "", as = "li
       onActivate={() => {
         if (directNavigation) {
           closePinned();
-          navigate(teamPath);
+          navigate(teamPath, { state: { teamPreview: team } });
         } else {
           openPinned();
         }
@@ -105,7 +105,7 @@ export default function TeamHoverCard({ team, children, className = "", as = "li
           <span><b>{winRate}%</b><em>승률</em></span>
           <span><b>{rosterCountLabel}</b><em>로스터</em></span>
         </span>
-        <Link className="hover-card-action" to={teamPath} onClick={(event) => {
+        <Link className="ui-compact-action hover-card-action" to={teamPath} state={{ teamPreview: team }} onClick={(event) => {
           event.stopPropagation();
           closePinned();
         }}>팀 보기</Link>

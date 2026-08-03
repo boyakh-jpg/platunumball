@@ -1,4 +1,5 @@
 import { getAgreementStatus } from "../../../lib/matchUtils.js";
+import { canOperateAssignedMatchReferee } from "../../../lib/matchUtils.js";
 import { getMatchRecordPlayerIds } from "../../../lib/matchUtils.js";
 import { getMatchRecordWindow } from "../../../lib/matchUtils.js";
 import { getMatchResultEntryPermission } from "../../../lib/matchUtils.js";
@@ -7,7 +8,6 @@ import { getMatchStartDate } from "../../../lib/matchUtils.js";
 import { getPostgameRecordRequiredParticipantIds } from "../../../lib/postgameRecordVerification.js";
 import { getSubmittedStatPatch } from "../../../lib/matchUtils.js";
 import { getTeamCaptainId } from "../../../lib/matchUtils.js";
-import { isEligibleReferee } from "../../../lib/matchUtils.js";
 import { isMatchRecordMatch } from "../../../lib/matchUtils.js";
 import { isMatchReferee } from "../../../lib/matchUtils.js";
 import { makeId } from "../../rowUtils.js";
@@ -98,7 +98,11 @@ export function submitMatchResult(state, matchId, result) {
   const hasReferee = Boolean(match.refereeId);
   const currentUser = state.users.find((user) => user.id === currentUserId);
   const currentUserIsReferee = isMatchReferee(match, currentUserId);
-  const currentUserIsEligibleReferee = currentUserIsReferee && isEligibleReferee(currentUser, match.refereeTrustMin, state.settings?.refereeAppointments);
+  const currentUserIsEligibleReferee = currentUserIsReferee && canOperateAssignedMatchReferee(
+    currentUser,
+    match,
+    state.settings?.refereeAppointments,
+  );
   const currentUserCanOperatePostStart = currentUserCanOperateStartedMatch(state, match);
   const resultEntryPermission = getMatchResultEntryPermission(match, currentUserId, {
     canOperatePostStart: currentUserCanOperatePostStart,
@@ -246,8 +250,11 @@ export function submitMatchResult(state, matchId, result) {
     })),
   };
   const currentResult = draftEntry ? match.disputeDraftResult ?? match.result : match.result;
-  const nextScoreA = Number(matchRecordRoom ? result.scoreA : currentResult?.scoreA ?? match.teamA?.score ?? 0);
-  const nextScoreB = Number(matchRecordRoom ? result.scoreB : currentResult?.scoreB ?? match.teamB?.score ?? 0);
+  const refereeCanSubmitScores = currentUserIsEligibleReferee
+    && resultEntryPermission.editableScoreSides.includes("teamA")
+    && resultEntryPermission.editableScoreSides.includes("teamB");
+  const nextScoreA = Number(matchRecordRoom || refereeCanSubmitScores ? result.scoreA : currentResult?.scoreA ?? match.teamA?.score ?? 0);
+  const nextScoreB = Number(matchRecordRoom || refereeCanSubmitScores ? result.scoreB : currentResult?.scoreB ?? match.teamB?.score ?? 0);
   if (
     !Number.isInteger(nextScoreA) || nextScoreA < 0 || nextScoreA > 999
     || !Number.isInteger(nextScoreB) || nextScoreB < 0 || nextScoreB > 999

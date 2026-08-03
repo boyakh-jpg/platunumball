@@ -21,7 +21,7 @@ import { REMOTE_CLIENT_RECORD_MONTHS } from "../../../shared/lib/constants.js";
 
 export { PROFILE_ME_COLUMNS };
 const PROFILE_TEAM_MEMBER_COLUMNS = "id,name,handle,hashtag,position,trust_score,avatar_color,avatar_key,avatar_source,avatar_icon_key,avatar_updated_at,avatar_background_enabled,avatar_border_enabled,avatar_border_color,discord_avatar_url,ratings,age_group,age_group_checked_season,onboarding_complete,updated_at";
-const PROFILE_MATCH_SUMMARY_COLUMNS = "profile_id,match_count,stat_match_count,win_count,loss_count,draw_count,points,rebounds,assists,steals,blocks,fouls,last_match_id,last_match_at,updated_at";
+const PROFILE_MATCH_SUMMARY_COLUMNS = "profile_id,match_count,stat_match_count,win_count,loss_count,draw_count,points,rebounds,assists,steals,blocks,turnovers,fouls,last_match_id,last_match_at,updated_at";
 const PROFILE_RECENT_RECORD_LIMIT = 6;
 
 function fromProfileMatchSummary(row = {}) {
@@ -41,6 +41,7 @@ function fromProfileMatchSummary(row = {}) {
       assists: Number(row.assists ?? 0),
       steals: Number(row.steals ?? 0),
       blocks: Number(row.blocks ?? 0),
+      turnovers: Number(row.turnovers ?? 0),
       fouls,
     },
     lastMatchId: row.last_match_id ?? "",

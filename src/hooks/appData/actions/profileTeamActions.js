@@ -1,3 +1,7 @@
+import { normalizeProfileName } from "../../../lib/profileSetup.js";
+import { DEFAULT_UNLOCKED_PROFILE_ICON_KEYS, getProfileIcon } from "../../../lib/profileIcons.js";
+import { isEmblemHexColor } from "../../../../shared/lib/emblemPolicy.js";
+
 export function buildProfileTeamActions(context) {
   const {
     authUserId,
@@ -32,6 +36,10 @@ export function buildProfileTeamActions(context) {
     syncTeamServer,
     updateProfile,
   } = context;
+  const saveLocalProfileIconPatch = (patch) => {
+    setState((prev) => updateProfile(prev, { ...patch, avatarUpdatedAt: new Date().toISOString() }, currentUserId));
+    return { ok: true, profileId: currentUserId, ...patch };
+  };
 
   return ({
 setProfileAffiliation: async ({ affiliationId = "", name = "" } = {}) => {
@@ -95,17 +103,47 @@ setProfileAffiliation: async ({ affiliationId = "", name = "" } = {}) => {
   },
   submitRefereeRequest: (draft) => {
     let createdRequest = null;
+    let rollbackState = null;
     let syncedNotifications = [];
     setState((prev) => {
+      rollbackState = prev;
       const existingIds = new Set((prev.settings?.refereeRequests ?? []).map((request) => request.id));
       const next = submitRefereeRequest({ ...prev, currentUserId }, draft);
       createdRequest = (next.settings?.refereeRequests ?? []).find((request) => !existingIds.has(request.id)) ?? null;
       syncedNotifications = createdRequest ? getNewRefereeNotifications(prev, next) : [];
       return next;
     });
-    if (createdRequest) syncRefereeServer("submitRequest", { request: createdRequest, notifications: syncedNotifications });
+    if (!createdRequest) return Promise.resolve({ ok: false, error: "referee_request_unavailable" });
+    if (!isSupabaseConfigured) return Promise.resolve({ ok: true, requestId: createdRequest.id });
+    return rollbackIfServerFailed(
+      syncRefereeServer("submitRequest", { request: createdRequest, notifications: syncedNotifications }),
+      rollbackState,
+      "심판 등록요청",
+      { requestId: createdRequest.id },
+    ).then(async (result) => {
+      if (result?.duplicate !== true) return result;
+      const optimisticNotificationIds = new Set(syncedNotifications.map((notification) => notification.id));
+      setState((prev) => {
+        if (prev.currentUserId !== currentUserId) return prev;
+        return {
+          ...prev,
+          settings: {
+            ...(prev.settings ?? {}),
+            refereeRequests: rollbackState.settings?.refereeRequests ?? [],
+          },
+          notifications: (prev.notifications ?? []).filter((notification) => !optimisticNotificationIds.has(notification.id)),
+        };
+      });
+      if (stateRef.current.currentUserId === currentUserId && typeof refreshCurrentProfile === "function") {
+        await refreshCurrentProfile();
+      }
+      return result;
+    });
   },
   updateProfile: (patch, targetUserId = currentUserId) => {
+    if (Object.prototype.hasOwnProperty.call(patch ?? {}, "name") && !normalizeProfileName(patch.name)) {
+      return Promise.resolve({ ok: false, error: "invalid_profile_name" });
+    }
     const safeTargetUserId = serverProfileBound ? currentUserId : targetUserId;
     const safePatch = profileLocked ? { ...patch, authUserId } : patch;
     const rollbackState = stateRef.current;
@@ -115,6 +153,15 @@ setProfileAffiliation: async ({ affiliationId = "", name = "" } = {}) => {
     if (!serverProfileBound) return Promise.resolve({ ok: true });
     if (!nextProfile) return Promise.resolve({ ok: false, error: "profile_not_ready" });
     return persistProfileServer(nextProfile).then(async (result) => {
+      if (!result || result.ok === false) {
+        rollbackServerMutation(rollbackState, "프로필 저장", {
+          profileId: safeTargetUserId,
+          error: result?.error ?? "profile_save_failed",
+          statusCode: result?.statusCode ?? null,
+          details: result?.details ?? null,
+        });
+        return result ?? { ok: false, error: "profile_save_failed" };
+      }
       if (result?.state) {
         const remoteState = normalizeServerState(result.state);
         setState((prev) => {
@@ -169,12 +216,26 @@ setProfileAffiliation: async ({ affiliationId = "", name = "" } = {}) => {
     return result?.ok === false ? result : createdTeam.id;
   },
   loadProfileIconAchievements: async () => {
+    if (!isSupabaseConfigured) {
+      const currentUser = (stateRef.current.users ?? []).find((user) => user.id === currentUserId);
+      return { ok: true, metrics: {}, unlockedIconKeys: [...new Set([...DEFAULT_UNLOCKED_PROFILE_ICON_KEYS, currentUser?.avatarIconKey].filter(Boolean))] };
+    }
     const serverReady = await ensureServerActionAvailable("/api/profile/achievements", "프로필 아이콘 업적 불러오기");
     if (serverReady !== true) return serverReady;
     if (!ensureRemoteReady("프로필 아이콘 업적 불러오기")) return { ok: false, error: "remote_not_ready" };
     return runServerAction("/api/profile/achievements", {});
   },
   saveProfileIconSettings: async (settings) => {
+    if (!isSupabaseConfigured) {
+      const avatarSource = String(settings.avatarSource || "initial").trim();
+      const avatarIconKey = String(settings.avatarIconKey || "").trim();
+      const currentUser = (stateRef.current.users ?? []).find((user) => user.id === currentUserId);
+      const unlocked = new Set([...DEFAULT_UNLOCKED_PROFILE_ICON_KEYS, currentUser?.avatarIconKey].filter(Boolean));
+      if (!new Set(["initial", "discord", "icon"]).has(avatarSource) || (avatarSource === "icon" && (!getProfileIcon(avatarIconKey) || !unlocked.has(avatarIconKey)))) return { ok: false, error: "profile_icon_unavailable" };
+      if (avatarSource === "discord" && !currentUser?.discordAvatarUrl && !currentUser?.discordConnection?.avatarUrl) return { ok: false, error: "discord_avatar_unavailable" };
+      if (!isEmblemHexColor(settings.avatarColor) || !isEmblemHexColor(settings.avatarBorderColor)) return { ok: false, error: "invalid_emblem_color" };
+      return saveLocalProfileIconPatch({ avatarSource, avatarIconKey, avatarColor: settings.avatarColor, avatarBackgroundEnabled: settings.avatarBackgroundEnabled !== false, avatarBorderEnabled: settings.avatarBorderEnabled === true, avatarBorderColor: settings.avatarBorderColor });
+    }
     const serverReady = await ensureServerActionAvailable("/api/profile/emblem", "프로필 아이콘 설정 저장");
     if (serverReady !== true) return serverReady;
     if (!ensureRemoteReady("프로필 아이콘 설정 저장")) return { ok: false, error: "remote_not_ready" };
@@ -197,6 +258,10 @@ setProfileAffiliation: async ({ affiliationId = "", name = "" } = {}) => {
     return result;
   },
   updateProfileEmblemStyle: async (style) => {
+    if (!isSupabaseConfigured) {
+      if (!isEmblemHexColor(style.avatarColor) || !isEmblemHexColor(style.avatarBorderColor)) return { ok: false, error: "invalid_emblem_color" };
+      return saveLocalProfileIconPatch({ avatarColor: style.avatarColor, avatarBorderEnabled: style.avatarBorderEnabled === true, avatarBorderColor: style.avatarBorderColor });
+    }
     const serverReady = await ensureServerActionAvailable("/api/profile/emblem", "프로필 아이콘 설정 저장");
     if (serverReady !== true) return serverReady;
     if (!ensureRemoteReady("프로필 아이콘 설정 저장")) return { ok: false, error: "remote_not_ready" };
@@ -215,6 +280,12 @@ setProfileAffiliation: async ({ affiliationId = "", name = "" } = {}) => {
     return result;
   },
   setProfileEmblemSource: async (avatarSource) => {
+    if (!isSupabaseConfigured) {
+      const currentUser = (stateRef.current.users ?? []).find((user) => user.id === currentUserId);
+      if (!new Set(["initial", "discord"]).has(avatarSource)) return { ok: false, error: "invalid_profile_emblem_source" };
+      if (avatarSource === "discord" && !currentUser?.discordAvatarUrl && !currentUser?.discordConnection?.avatarUrl) return { ok: false, error: "discord_avatar_unavailable" };
+      return saveLocalProfileIconPatch({ avatarSource });
+    }
     const serverReady = await ensureServerActionAvailable("/api/profile/emblem", "프로필 아이콘 변경");
     if (serverReady !== true) return serverReady;
     if (!ensureRemoteReady("프로필 아이콘 변경")) return { ok: false, error: "remote_not_ready" };
@@ -232,6 +303,12 @@ setProfileAffiliation: async ({ affiliationId = "", name = "" } = {}) => {
     return result;
   },
   selectProfileIcon: async (avatarIconKey) => {
+    if (!isSupabaseConfigured) {
+      const currentUser = (stateRef.current.users ?? []).find((user) => user.id === currentUserId);
+      const unlocked = new Set([...DEFAULT_UNLOCKED_PROFILE_ICON_KEYS, currentUser?.avatarIconKey].filter(Boolean));
+      if (!getProfileIcon(avatarIconKey) || !unlocked.has(avatarIconKey)) return { ok: false, error: "profile_icon_unavailable" };
+      return saveLocalProfileIconPatch({ avatarSource: "icon", avatarIconKey });
+    }
     const serverReady = await ensureServerActionAvailable("/api/profile/emblem", "프로필 아이콘 변경");
     if (serverReady !== true) return serverReady;
     if (!ensureRemoteReady("프로필 아이콘 변경")) return { ok: false, error: "remote_not_ready" };
@@ -274,6 +351,7 @@ setProfileAffiliation: async ({ affiliationId = "", name = "" } = {}) => {
       teamId,
       imageBase64: prepared.imageBase64,
     });
+    if (!result || result.ok === false) return result;
     if (result?.ok !== false && result?.teamId === teamId) {
       setState((prev) => ({
         ...prev,
@@ -382,19 +460,25 @@ setProfileAffiliation: async ({ affiliationId = "", name = "" } = {}) => {
     }
     return result;
   },
-  deleteTeam: (teamId) => {
-    let rollbackState = null;
-    let deleted = false;
-    let syncedNotifications = [];
-    setState((prev) => {
-      rollbackState = prev;
-      const hadTeam = (prev.teams ?? []).some((team) => team.id === teamId);
-      const next = deleteTeam({ ...prev, currentUserId }, teamId);
-      deleted = hadTeam && !(next.teams ?? []).some((team) => team.id === teamId);
-      syncedNotifications = deleted ? getNewTeamNotifications(prev, next) : [];
-      return next;
-    });
-    if (deleted) rollbackIfServerFailed(deleteTeamServer(teamId, syncedNotifications), rollbackState, "팀 삭제", { teamId });
+  deleteTeam: async (teamId) => {
+    const serverReady = await ensureServerActionAvailable("/api/teams/sync-team", "팀 삭제");
+    if (serverReady !== true) return serverReady;
+    if (!ensureRemoteReady("팀 삭제")) return { ok: false, error: "remote_not_ready" };
+    const currentState = stateRef.current;
+    const hadTeam = (currentState.teams ?? []).some((team) => team.id === teamId);
+    const nextState = deleteTeam({ ...currentState, currentUserId }, teamId);
+    const deleted = hadTeam && !(nextState.teams ?? []).some((team) => team.id === teamId);
+    if (!deleted) return { ok: false, error: "team_delete_rejected" };
+    if (!isSupabaseConfigured) {
+      setState((prev) => deleteTeam({ ...prev, currentUserId }, teamId));
+      return { ok: true, teamId };
+    }
+    const syncedNotifications = getNewTeamNotifications(currentState, nextState);
+    const result = await deleteTeamServer(teamId, syncedNotifications);
+    if (result && result.ok !== false) {
+      setState((prev) => deleteTeam({ ...prev, currentUserId }, teamId));
+    }
+    return result;
   }
   });
 }

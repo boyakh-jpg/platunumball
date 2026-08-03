@@ -105,8 +105,8 @@ export default function RefereeRulebook({ theme = "dark" }) {
 
   return (
     <div className="page-stack referee-rulebook-page">
-      <header className="page-header">
-        <div>
+      <header className="page-header ui-page-hero ui-design-app-hero">
+        <div className="ui-page-hero__copy">
           <p className="eyebrow">Study guide</p>
           <h1>농구 룰북</h1>
         </div>
@@ -121,16 +121,11 @@ export default function RefereeRulebook({ theme = "dark" }) {
             {isEasyRulebook ? "처음 보는 사람용" : "FIBA 2024 · BOXTIER 운영 기준"}
           </Badge>
           <h2>{isEasyRulebook ? "경기에서 바로 쓰는 쉬운 규칙" : "판정과 기록 상세 기준"}</h2>
-          <p>
-            {isEasyRulebook
-              ? "처음 한 경기를 운영할 때 꼭 필요한 내용만 6단계로 줄였습니다."
-              : "경기 전 확인, 코트 판정, 출석·교체, 개인활약, 결과 확인·이의·확정과 MMR 기준입니다."}
-          </p>
         </div>
         <RulebookIllustration scene="standard" theme={theme} />
       </Card>
 
-      <div className="segmented-control compact-segments rulebook-level-switch" aria-label="룰북 난이도">
+      <div className="ui-segmented-control segmented-control compact-segments rulebook-level-switch" aria-label="룰북 난이도">
         <button
           type="button"
           className={isEasyRulebook ? "active" : ""}

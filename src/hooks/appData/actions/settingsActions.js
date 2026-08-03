@@ -64,6 +64,18 @@ export function buildSettingsActions(context) {
     return result;
   };
 
+  const restoreNotificationsAfterReadFailure = async (previousNotifications) => {
+    let reloaded = false;
+    try {
+      reloaded = await loadNotifications();
+    } catch {
+      reloaded = false;
+    }
+    if (!Array.isArray(reloaded)) {
+      setState((current) => ({ ...current, notifications: previousNotifications }));
+    }
+  };
+
   return ({
 updateSettings: (patch) => {
     if (!isSupabaseConfigured) {
@@ -120,7 +132,7 @@ updateSettings: (patch) => {
       return false;
     });
   },
-  blockUser: (userId) => applyBlockedUserMutation(userId, true),
+  blockUser: (user) => applyBlockedUserMutation(user, true),
   unblockUser: (userId) => applyBlockedUserMutation(userId, false),
   reportMatch: async (matchId, reason, reportedUserIds) => {
     const previousState = stateRef.current;
@@ -256,24 +268,26 @@ updateSettings: (patch) => {
     return result;
   },
   markNotificationRead: async (notificationId) => {
+    const previousNotifications = stateRef.current.notifications ?? [];
     setState((prev) => markNotificationRead(prev, notificationId));
     try {
       const result = await markNotificationReadServer({ notificationId });
-      if (!result || result.ok === false) await loadNotifications();
+      if (!result || result.ok === false) await restoreNotificationsAfterReadFailure(previousNotifications);
       return result;
     } catch (error) {
-      await loadNotifications();
+      await restoreNotificationsAfterReadFailure(previousNotifications);
       return { ok: false, error: error?.message ?? "notification_read_failed" };
     }
   },
   markAllNotificationsRead: async () => {
+    const previousNotifications = stateRef.current.notifications ?? [];
     setState((prev) => markAllNotificationsRead(prev));
     try {
       const result = await markNotificationReadServer({ all: true });
-      if (!result || result.ok === false) await loadNotifications();
+      if (!result || result.ok === false) await restoreNotificationsAfterReadFailure(previousNotifications);
       return result;
     } catch (error) {
-      await loadNotifications();
+      await restoreNotificationsAfterReadFailure(previousNotifications);
       return { ok: false, error: error?.message ?? "notification_read_failed" };
     }
   },
@@ -291,10 +305,10 @@ updateSettings: (patch) => {
     setState((prev) => deleteNotification(prev, safeNotificationId));
     return true;
   },
-  toggleFavoritePlayer: (userId) => applyFavoriteToggle("player", userId, "favoritePlayerIds", toggleFavoritePlayer),
-  toggleFavoriteTeam: (teamId) => applyFavoriteToggle("team", teamId, "favoriteTeamIds", toggleFavoriteTeam),
-  toggleFavoriteCourt: (courtId) => applyFavoriteToggle("court", courtId, "favoriteCourtIds", toggleFavoriteCourt),
-  toggleFavoriteReferee: (userId) => applyFavoriteToggle("referee", userId, "favoriteRefereeIds", toggleFavoriteReferee),
+  toggleFavoritePlayer: (userId, targetSnapshot) => applyFavoriteToggle("player", userId, "favoritePlayerIds", toggleFavoritePlayer, targetSnapshot),
+  toggleFavoriteTeam: (teamId, targetSnapshot) => applyFavoriteToggle("team", teamId, "favoriteTeamIds", toggleFavoriteTeam, targetSnapshot),
+  toggleFavoriteCourt: (courtId, targetSnapshot) => applyFavoriteToggle("court", courtId, "favoriteCourtIds", toggleFavoriteCourt, targetSnapshot),
+  toggleFavoriteReferee: (userId, targetSnapshot) => applyFavoriteToggle("referee", userId, "favoriteRefereeIds", toggleFavoriteReferee, targetSnapshot),
   submitCourtRequest: (draft) => {
     if (!ensureRemoteReady("구장 등록요청")) return Promise.resolve(null);
     let createdRequest = null;

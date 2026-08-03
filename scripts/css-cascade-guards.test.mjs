@@ -599,6 +599,35 @@ test("shared empty-state surfaces have one primitive owner", () => {
   assert.deepEqual(duplicateOwners, []);
 });
 
+test("native text controls keep one primitive visual owner", () => {
+  const visualProperties = new Set([
+    "background",
+    "background-color",
+    "border",
+    "border-color",
+    "border-radius",
+    "box-shadow",
+    "color",
+    "outline",
+  ]);
+  const nativeControlBranch = /^(?:html\[data-theme="(?:light|dark)"\]\s+)?(?:input|select|textarea)(?::(?:focus|focus-visible))?$/;
+  const duplicateOwners = [];
+
+  for (const file of styleDirectoryCssFiles.filter((file) => !file.replaceAll("\\", "/").includes("/primitives/"))) {
+    parseCss(file).walkRules((rule) => {
+      const ownsNativeControl = (rule.selectors ?? [rule.selector])
+        .some((selector) => nativeControlBranch.test(normalizeSelector(selector)));
+      if (!ownsNativeControl) return;
+      rule.walkDecls((declaration) => {
+        if (!visualProperties.has(declaration.prop)) return;
+        duplicateOwners.push(`${file}:${declaration.source.start.line} ${rule.selector} ${declaration.prop}`);
+      });
+    });
+  }
+
+  assert.deepEqual(duplicateOwners, []);
+});
+
 test("critical interactive branches keep a visible focus indicator", () => {
   const checks = [
     {
@@ -820,6 +849,61 @@ test("global modules use spacing tokens for canonical gaps", () => {
   }
 
   assert.deepEqual(rawGaps, []);
+});
+
+test("editorial feature cards and buttons inherit border width owners", () => {
+  const auditedSelector = /(?:card|row|panel|item|list|summary|button)/i;
+  const allowedBoundary = /(?:input|select|textarea|badge|emblem|focus|shot|clock|divider|separator|rule|result|recent-match|avatar|checkbox|radio|range|map|modal|popover|tooltip|dialog|calendar|table|grid|bracket|crown|chip|step|nav)/i;
+  const violations = [];
+
+  for (const file of styleDirectoryCssFiles) {
+    parseCss(file).walkRules((rule) => {
+      const selector = normalizeSelector(rule.selector);
+      if (
+        !auditedSelector.test(selector)
+        || allowedBoundary.test(selector)
+        || file.endsWith("/layout/app-shell-auth.css")
+      ) return;
+      rule.walkDecls("border", (declaration) => {
+        if (!declaration.value.includes("var(--ui-stroke-width)")) return;
+        violations.push(`${file}:${declaration.source.start.line} ${rule.selector}`);
+      });
+    });
+  }
+
+  assert.deepEqual(violations, []);
+  const authCardViolations = [];
+  const borderlessAuthCards = new Set([
+    ".auth-card",
+    ".auth-message",
+    ".auth-browser-warning",
+    ".auth-session-line",
+    ".auth-test-login",
+  ]);
+  parseCss("src/styles/layout/app-shell-auth.css").walkRules((rule) => {
+    if (!borderlessAuthCards.has(normalizeSelector(rule.selector))) return;
+    rule.walkDecls("border", (declaration) => {
+      if (declaration.value !== "0") authCardViolations.push(rule.selector);
+    });
+  });
+  assert.deepEqual(authCardViolations, []);
+  const authStyles = fs.readFileSync("src/styles/primitives/hover-disclosure.css", "utf8");
+  assert.match(
+    authStyles,
+    /\.provider-button,\s*\.auth-browser-actions button,\s*\.auth-browser-actions a,\s*\.auth-session-line button,\s*\.auth-form > \.button-secondary\s*\{[^}]*border:\s*0;/,
+  );
+  assert.match(
+    fs.readFileSync("src/styles/themes/sports-shell-theme.css", "utf8"),
+    /\.auth-card\s*\{[^}]*box-shadow:\s*none;/,
+  );
+  assert.match(
+    fs.readFileSync("src/styles/features/match-approval-sharing.css", "utf8"),
+    /\.oauth-static-card\s*\{[^}]*border:\s*0;/,
+  );
+  assert.doesNotMatch(
+    fs.readFileSync("src/lib/naverAddress.js", "utf8"),
+    /border:\s*["']1px solid var\(--line\)["']/,
+  );
 });
 
 test("default and functional panel typography use shared body tokens", () => {

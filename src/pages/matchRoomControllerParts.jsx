@@ -92,7 +92,7 @@ export function createMatchRoomHeroRenderers(context) {
           {Array.from({ length: openSlots }).map((_item, index) => (
             <div key={`${sideName}-reserve-empty-${index}`} className="gm-player-slot reserve empty">
               <UsersRound size={18} />
-              <strong>후보 슬롯</strong>
+              <strong>후보</strong>
               <em>SUB</em>
             </div>
           ))}
@@ -104,7 +104,7 @@ export function createMatchRoomHeroRenderers(context) {
 }
 
 export function createMatchRoomActions(context) {
-  const { activeEvidenceCount, activeEvidenceIds, app, attendanceQrToken, benchCapacity, canCancel, canDeleteSoloRecord, canDispute, canEditDisputeDraft, canFinalizeMatch, canReport, canRequestMatchDispute, canRequestOwnPointDispute, canRequestScoreDispute, canRequestVoidRestore, canSubmitLiveResult, canSubmitResult, canVoid, cancelActionLabel, cancelCopy, cancellationPolicy, courtReviewDraft, courtReviewSaveFeedback, courtReviewSaving, currentUserAgreementDone, currentUserCanEndMatch, currentUserCanFileDispute, currentUserCanOperateStartedMatch, currentUserCanRefreshReview, currentUserCanResolveDispute, currentUserCanSubmit, currentUserCanSubmitMissingPostgameResult, currentUserEditablePlayerIds, currentUserIsAdmin, currentUserIsEligibleReferee, currentUserIsReferee, currentUserSideName, currentUserSubmitted, disputeCustomReason, disputeReason, disputeRequestedScoreA, disputeRequestedScoreB, disputeRequestedStats, draftScoreA, draftScoreB, existingCourtReview, finalAuthorityLabel, finalizeActionPending, finalizeDialogOpen, hasOwnOpenDispute, hasReferee, isContractStage, isMatchHost, isSharedRecord, isSoloRecord, linkedProfileIds, manualFinalizationStatus, match, matchApprovalOpen, matchDetailMissing, matchDetailRefreshing, matchDetailRequestSequenceRef, matchHostPlayerId, matchId, matchKind, matchPhase, matchPlayerKey, openDisputes, operationSummary, profileById, recordLockReason, recordWindow, referee, renderHeroReserves, renderHeroRoster, reportReason, reportTime, requestCancelMatch, requestFinalizeMatch, requestedMatchIdRef, resultEntryPermission, resultSaveFeedback, reviewControlsOpen, score, scoreA, scoreB, searchParams, setCourtReviewDraft, setCourtReviewSaveFeedback, setCourtReviewSaving, setDisputeCustomReason, setDisputeReason, setDisputeRequestedScoreA, setDisputeRequestedScoreB, setDisputeRequestedStats, setFinalizeActionPending, setFinalizeDialogOpen, setMatchDetailMissing, setMatchDetailRefreshing, setReportReason, setResultSaveFeedback, setReviewControlsOpen, setScore, setSoloRecordDeleteOpen, setStatEditorPlayerId, setVoidActionPending, setVoidDialogOpen, setVoidRestoreDetail, setVoidRestoreStatus, shouldShowResultEntry, shouldShowWaitingPanel, soloRecordDeleteOpen, sourceRecruitingPost, startedAuthorityPhase, statEditorPlayer, statEditorPlayerId, statSubmissionStatus, status, submitFinalizeMatch, teamA, teamAAgreement, teamAMmr, teamASide, teamB, teamBAgreement, teamBMmr, teamBSide, userMap, voidActionPending, voidDialogOpen, voidRestoreDetail, voidRestoreStatus, winnerName } = context;
+  const { activeEvidenceCount, activeEvidenceIds, app, attendanceQrToken, benchCapacity, canCancel, canDeleteSoloRecord, canDispute, canEditDisputeDraft, canFinalizeMatch, canReport, canRequestMatchDispute, canRequestOwnPointDispute, canRequestScoreDispute, canRequestVoidRestore, canSubmitLiveResult, canSubmitResult, canVoid, cancelActionLabel, cancelCopy, cancellationPolicy, courtReviewDraft, courtReviewSaveFeedback, courtReviewSaving, currentUserAgreementDone, currentUserCanEndMatch, currentUserCanFileDispute, currentUserCanOperateStartedMatch, currentUserCanRefreshReview, currentUserCanResolveDispute, currentUserCanSubmit, currentUserCanSubmitMissingPostgameResult, currentUserEditablePlayerIds, currentUserIsAdmin, currentUserIsEligibleReferee, currentUserIsReferee, currentUserSideName, currentUserSubmitted, disputeCustomReason, disputeReason, disputeRequestedScoreA, disputeRequestedScoreB, disputeRequestedStats, draftScoreA, draftScoreB, existingCourtReview, finalAuthorityLabel, finalizeActionPending, finalizeDialogOpen, hasOwnOpenDispute, hasReferee, isContractStage, isMatchHost, isSharedRecord, isSoloRecord, linkedProfileIds, manualFinalizationStatus, match, matchApprovalOpen, matchDetailMissing, matchDetailRefreshing, matchDetailRequestSequenceRef, matchHostPlayerId, matchId, matchKind, matchPhase, matchPlayerKey, openDisputes, operationSummary, profileById, recordLockReason, recordWindow, referee, renderHeroReserves, renderHeroRoster, reportReason, reportTime, requestCancelMatch, requestFinalizeMatch, requestedMatchIdRef, resultEntryPermission, resultSaveFeedback, resultSavePendingRef, reviewControlsOpen, score, scoreA, scoreB, searchParams, setCourtReviewDraft, setCourtReviewSaveFeedback, setCourtReviewSaving, setDisputeCustomReason, setDisputeReason, setDisputeRequestedScoreA, setDisputeRequestedScoreB, setDisputeRequestedStats, setFinalizeActionPending, setFinalizeDialogOpen, setMatchDetailMissing, setMatchDetailRefreshing, setReportReason, setResultSaveFeedback, setResultSavePending, setReviewControlsOpen, setScore, setSoloRecordDeleteOpen, setStatEditorPlayerId, setVoidActionPending, setVoidDialogOpen, setVoidRestoreDetail, setVoidRestoreStatus, shouldShowResultEntry, shouldShowWaitingPanel, soloRecordDeleteOpen, sourceRecruitingPost, startedAuthorityPhase, statEditorPlayer, statEditorPlayerId, statSubmissionStatus, status, submitFinalizeMatch, teamA, teamAAgreement, teamAMmr, teamASide, teamB, teamBAgreement, teamBMmr, teamBSide, userMap, voidActionPending, voidDialogOpen, voidRestoreDetail, voidRestoreStatus, winnerName } = context;
   const updatePlayerStat = (playerId, fieldId, value) => {
     const nextValue = Math.max(0, Number(value ?? 0));
     setScore((current) => ({
@@ -118,31 +118,37 @@ export function createMatchRoomActions(context) {
       },
     }));
   };
-  const submitResult = (event) => {
+  const submitResult = async (event) => {
     event.preventDefault();
-    if (!canSubmitResult) return;
+    if (!canSubmitResult || resultSavePendingRef.current) return;
+    resultSavePendingRef.current = true;
+    setResultSavePending(true);
     setResultSaveFeedback(canEditDisputeDraft ? "수정 중" : "저장 중");
-    const result = app.actions.submitMatchResult(
-      match.id,
-      buildMatchResultSubmission(match, score, resultEntryPermission.getEditableStatFields, { editableScoreSides: resultEntryPermission.editableScoreSides }),
-    );
-    Promise.resolve(result).then((response) => {
-      setResultSaveFeedback(response?.ok === false ? "경기 결과를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요." : canEditDisputeDraft ? "수정되었습니다." : "저장되었습니다.");
-    }).catch(() => setResultSaveFeedback("경기 결과를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요."));
+    try {
+      const response = await app.actions.submitMatchResult(
+        match.id,
+        buildMatchResultSubmission(match, score, resultEntryPermission.getEditableStatFields, { editableScoreSides: resultEntryPermission.editableScoreSides }),
+      );
+      setResultSaveFeedback(!response || response?.ok === false ? "경기 결과를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요." : canEditDisputeDraft ? "수정되었습니다." : "저장되었습니다.");
+    } catch {
+      setResultSaveFeedback("경기 결과를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+    } finally {
+      resultSavePendingRef.current = false;
+      setResultSavePending(false);
+    }
   };
-  const submitDispute = () => {
+  const submitDispute = async () => {
     if (canRequestScoreDispute) {
-      app.actions.disputeMatch(match.id, {
+      return app.actions.disputeMatch(match.id, {
         kind: "team_scores",
         requestedScoreA: Number(disputeRequestedScoreA),
         requestedScoreB: Number(disputeRequestedScoreB),
         baseRevision: getMatchResultRevision(match),
         reason: disputeCustomReason.trim() || disputeReason,
       });
-      return;
     }
-    if (!canRequestOwnPointDispute) return;
-    app.actions.disputeMatch(match.id, buildMatchDisputeRequest({
+    if (!canRequestOwnPointDispute) return false;
+    return app.actions.disputeMatch(match.id, buildMatchDisputeRequest({
       match,
       playerId: app.currentUser.id,
       requestedStats: Object.fromEntries(PLAYER_STAT_FIELDS.map(({ id }) => [
@@ -158,7 +164,7 @@ export function createMatchRoomActions(context) {
     setVoidActionPending(true);
     try {
       const result = await app.actions.voidMatch(match.id, reason);
-      if (result?.ok === false) return;
+      if (!result || result?.ok === false) return;
       setVoidDialogOpen(false);
     } finally {
       setVoidActionPending(false);
@@ -169,15 +175,19 @@ export function createMatchRoomActions(context) {
     if (!canRequestVoidRestore || detail.length < 10) return;
     setVoidRestoreStatus("접수 중");
     const targetUserId = getVoidMatchRestoreTargetUserId(match);
-    const result = await app.actions.reportMatch(
-      match.id,
-      `${VOID_MATCH_RESTORE_REPORT_REASON}: ${detail}`,
-      [targetUserId],
-    );
-    if (result && result.ok !== false) {
+    try {
+      const result = await app.actions.reportMatch(
+        match.id,
+        `${VOID_MATCH_RESTORE_REPORT_REASON}: ${detail}`,
+        [targetUserId],
+      );
+      if (!result || result.ok === false) {
+        setVoidRestoreStatus("복구 심사 요청을 접수하지 못했습니다.");
+        return;
+      }
       setVoidRestoreStatus(result.duplicate ? "이미 접수된 요청이 있습니다." : "복구 심사 요청이 접수됐습니다.");
       if (!result.duplicate) setVoidRestoreDetail("");
-    } else {
+    } catch {
       setVoidRestoreStatus("복구 심사 요청을 접수하지 못했습니다.");
     }
   };

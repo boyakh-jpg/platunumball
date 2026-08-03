@@ -35,21 +35,6 @@
   filter: none;
 }
 
-.arena-filter-select select,
-.arena-compose-drawer input:not([type="checkbox"]):not([type="radio"]),
-.arena-compose-drawer select,
-.arena-compose-drawer textarea,
-.arena-slot-command-popover input:not([type="checkbox"]):not([type="radio"]),
-.arena-slot-command-popover select,
-.arena-slot-command-popover textarea {
-  min-height: var(--ui-button-height);
-  border: var(--ui-stroke-width) solid var(--ui-control-border);
-  border-radius: var(--ui-control-radius);
-  background: var(--ui-control-bg);
-  color: var(--rb-text);
-  box-shadow: none;
-}
-
 .arena-slot-command-popover {
   border-color: var(--rb-line-strong);
   background:
@@ -116,28 +101,7 @@ html[data-theme="light"] .arena-slot-command-popover {
   }
 }
 
-/* 2026-07-02 canonical recruiting hero image rule: no wash, grid, or pseudo overlay. */
-
-.arena-recruit-hero .eyebrow,
-.arena-recruit-hero h1,
-.arena-recruit-hero p,
-html[data-theme="light"] .arena-recruit-hero .eyebrow,
-html[data-theme="light"] .arena-recruit-hero h1,
-html[data-theme="light"] .arena-recruit-hero p {
-  color: var(--rb-orange);
-  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.26);
-}
-
-.arena-recruit-hero p,
-html[data-theme="light"] .arena-recruit-hero p {
-  color: var(--rb-orange-2);
-}
-
-html[data-theme="light"] .arena-recruit-hero h1 {
-  color: var(--rb-cream);
-}
-
-/* 2026-07-02 final recruiting hero guard: no wash/blur and shared title font. */
+/* 2026-07-02 final recruiting hero guard: no wash or blur. */
 
 .arena-recruit-hero,
 html[data-theme="light"] .arena-recruit-hero {
@@ -153,21 +117,4 @@ html[data-theme="light"] .arena-recruit-hero::after {
   display: none;
   background: none;
   opacity: 0;
-}
-
-.arena-hero-copy h1,
-html[data-theme="light"] .arena-hero-copy h1 {
-  font-family: var(--hero-title-font);
-  font-size: var(--hero-title-size);
-  font-weight: 950;
-  line-height: var(--hero-title-line-height);
-  letter-spacing: var(--hero-title-letter-spacing);
-  text-transform: uppercase;
-}
-
-@media (max-width: 720px) {
-  .arena-hero-copy h1,
-  html[data-theme="light"] .arena-hero-copy h1 {
-    font-size: var(--hero-title-size-mobile);
-  }
 }

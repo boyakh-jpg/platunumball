@@ -15,6 +15,7 @@ import {
 } from "../lib/matchListProjection.js";
 import {
   cleanRoomTitle,
+  canOperateAssignedMatchReferee,
   getMatchHostPlayerId,
   getMatchListScope,
   getMatchPlayerIds,
@@ -27,7 +28,6 @@ import {
   getRoomScheduleLabel,
   getRoomVisibilityLabel,
   getSafeMatchSide,
-  isEligibleReferee,
   isMatchInPlayMenu,
   isMatchReferee,
   isMatchListInitialLoading,
@@ -54,7 +54,11 @@ function canAccessActiveMatch(match, user, state) {
     ? state.recruitingPosts?.find((post) => post.id === match.recruitingPostId)
     : null;
   const isHost = getMatchHostPlayerId(match, sourcePost) === user.id;
-  const isReferee = isMatchReferee(match, user.id) && isEligibleReferee(user, match.refereeTrustMin, state.settings?.refereeAppointments);
+  const isReferee = isMatchReferee(match, user.id) && canOperateAssignedMatchReferee(
+    user,
+    match,
+    state.settings?.refereeAppointments,
+  );
   const isPlayer = getMatchPlayerIds(match).includes(user.id);
   const isReserve = MATCH_SIDES.some((sideName) => getMatchReservePlayerIds(match, sideName).includes(user.id));
   return isHost || isReferee || isPlayer || isReserve;
@@ -201,11 +205,10 @@ export default function Recorder({ app }) {
   return (
     <>
       <div className="page-stack recorder-page">
-        <header className="page-header recorder-header ui-design-app-hero">
-          <div>
+        <header className="page-header recorder-header ui-page-hero ui-design-app-hero">
+          <div className="ui-page-hero__copy">
             <span className="eyebrow">PLAY</span>
             <h1>플레이</h1>
-            <p>경기 시작부터 기록 확정 전까지 필요한 작업을 표시합니다.</p>
           </div>
         </header>
 
@@ -218,7 +221,7 @@ export default function Recorder({ app }) {
             description="서버 연결을 확인한 뒤 다시 시도합니다."
             action={(
               <>
-                <button type="button" className="button button-secondary button-md" onClick={retryRecorderLoad}>다시 시도</button>
+                <button type="button" className="button ui-button button-secondary ui-button-secondary button-md ui-button-md" onClick={retryRecorderLoad}>다시 시도</button>
                 <Button as={Link} to="/app/matches" variant="secondary">일정 보기</Button>
               </>
             )}
@@ -231,9 +234,9 @@ export default function Recorder({ app }) {
           />
         ) : (
           <section className="om-match-list recorder-card-list" aria-label="플레이 목록">
-            <div className="om-list-head">
+            <div className="section-title-row om-list-head">
               <div>
-                <span className="om-kicker">ACTIVE</span>
+                <span className="eyebrow">ACTIVE</span>
                 <h2>내 플레이</h2>
               </div>
               <span>{matches.length}개</span>

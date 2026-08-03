@@ -33,7 +33,7 @@ function RecruitingRoomVersusSide({ context, sideName, meta }) {
   return (
     <div className={`arena-lobby-team-panel ${sideName === "teamA" ? "team-a" : "team-b"}`}>
       <div className="arena-lobby-team-head">
-        <div className="arena-lobby-team-kicker">
+        <div className="arena-lobby-team-meta">
           <span>{meta.label}</span>
           {selectedPost.tournamentId && selectedPost.hostSide === sideName ? (
             <small className="arena-lobby-host-team">
@@ -73,7 +73,7 @@ export function RecruitingRoomPrimarySection({ context }) {
     app, attendanceScanState, benchCapacity, canInspectMatchAttendance, canInvitePlayerByRoom, canInviteSideFromRoom,
     canManageEntry, canManageMatchCheckin, canMoveMatchSides, closeModal, contextPanel, copyRoomShareUrl,
     courtByName, disabledInvitePlayerIds, entryPoint, favoritePlayerIds, favoriteTeamIds, getInviteAllowedTeamId,
-    getLobbyPrimaryTeamId, getMatchRuleSummary, getPickupParticipantIds, getRecruitingSideCapacity, getRoomRefereeLabel, getRoomScheduleLabel,
+    getLobbyPrimaryTeamId, getMatchPeriodLabel, getPickupParticipantIds, getRecruitingSideCapacity, getRoomRefereeLabel, getRoomScheduleLabel,
     getRoomTeamSelectionEligibility, getTeamCaptainId, getTeamHashtag, individualOnlyRoom, invitations, inviteError,
     lobby, matchRoom, mine, moveCandidate, openInviteSlot, openSelfSlotAction,
     pickupAssignmentPolicy, pickupPoolMode, referee, remoteDirectoryEnabled, removeCandidate, renderMatchRecordSetupPanels,
@@ -233,9 +233,9 @@ export function RecruitingRoomPrimarySection({ context }) {
                   <RecruitingRoomVersusSide context={context} sideName="teamA" meta={teamAMeta} />
 
                   <div className="arena-lobby-score-core">
-                    <strong>{lobby.sides.teamA.projectedFilled}/{lobby.sides.teamA.capacity}</strong>
+                    <strong>{lobby.sides.teamA.filled}/{lobby.sides.teamA.capacity}</strong>
                     <i>VS</i>
-                    <strong>{lobby.sides.teamB.projectedFilled}/{lobby.sides.teamB.capacity}</strong>
+                    <strong>{lobby.sides.teamB.filled}/{lobby.sides.teamB.capacity}</strong>
                     <span>{roomReadyLabel}</span>
                   </div>
 
@@ -263,7 +263,7 @@ export function RecruitingRoomPrimarySection({ context }) {
                     ? `참가 ${getPickupParticipantIds(lobby).length}/${(getRecruitingSideCapacity(selectedPost) + benchCapacity) * 2}`
                     : `${getRecruitingSideCapacity(selectedPost)} vs ${getRecruitingSideCapacity(selectedPost)}`}</span></div>
                   <div><ShieldCheck size={17} /><span>{selectedPost.ranked === false ? "티어 자유" : "MMR 서버 검증"}</span></div>
-                  {!sourceMatchIsRecordRoom ? <div><Swords size={17} /><span>{getMatchRuleSummary(selectedMatchRules, selectedPost.mode)}</span></div> : null}
+                  {!sourceMatchIsRecordRoom ? <div><Swords size={17} /><span>{getMatchPeriodLabel(selectedMatchRules, selectedPost.mode)}</span></div> : null}
                 </div>
               </div>
               {renderSlotCommand()}
@@ -274,7 +274,7 @@ export function RecruitingRoomPrimarySection({ context }) {
                   sideName={activeInviteDraft.sideName}
                   reserve={Boolean(activeInviteDraft.reserve)}
                   query={activeInviteDraft.query}
-                  onQueryChange={(query) => updateInviteDraft({ query })}
+                  onQueryChange={(query, patch = {}) => updateInviteDraft({ query, ...patch })}
                   users={app.state.users}
                   teams={app.state.teams}
                   userById={userById}
@@ -282,13 +282,14 @@ export function RecruitingRoomPrimarySection({ context }) {
                   selectedPlayerIds={activeInviteDraft.selectedPlayerIds ?? []}
                   favoritePlayerIds={favoritePlayerIds}
                   favoriteTeamIds={favoriteTeamIds}
+                  selectedTeam={activeInviteDraft.selectedTeam ?? null}
                   allowedTeamId={getInviteAllowedTeamId(activeInviteDraft.sideName)}
                   playerOnly={individualOnlyRoom}
                   poolMode={roomPhaseViewModel.mode === ROOM_BODY_MODES.pickupPool}
                   canInvitePlayer={canInvitePlayerByRoom}
                   error={inviteError}
                   onTogglePlayer={toggleInvitePlayer}
-                  onInvitePlayers={(playerIds, teamId, joinMode) => { void sendInvites(selectedPost, playerIds, teamId, joinMode); }}
+                  onInvitePlayers={(playerIds, teamId, joinMode) => sendInvites(selectedPost, playerIds, teamId, joinMode)}
                   onClose={() => setInviteDraft(null)}
                   remoteSearchEnabled={remoteDirectoryEnabled}
                 />
@@ -302,6 +303,7 @@ export function RecruitingRoomPrimarySection({ context }) {
                   currentUserId={app.currentUser.id}
                   alreadyApplied={alreadyApplied}
                   poolMode={pickupPoolMode}
+                  error={inviteError}
                   onAccept={(invitation) => acceptRoomInvitation(selectedPost, invitation)}
                   onDecline={(invitationId) => app.actions.declineRecruitingInvitation(selectedPost.id, invitationId)}
                 />

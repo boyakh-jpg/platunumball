@@ -31,11 +31,15 @@ export function updateSettings(state, patch) {
   };
 }
 
-export function blockUser(state, userId) {
-  if (!state.users.some((user) => user.id === userId) || userId === state.currentUserId) return state;
+export function blockUser(state, userId, userProfile = null) {
+  if (!userId || userId === state.currentUserId) return state;
   const blockedUserIds = Array.from(new Set([...(state.settings?.blockedUserIds ?? []), userId]));
   const blockedUserIdSet = new Set(blockedUserIds);
-  const blockedUser = state.users.find((user) => user.id === userId);
+  const blockedUser = userProfile?.id === userId ? userProfile : state.users.find((user) => user.id === userId);
+  const blockedUserProfiles = blockedUser ? {
+    ...(state.settings?.blockedUserProfiles ?? {}),
+    [userId]: { name: blockedUser.name ?? "플레이어", hashtag: blockedUser.hashtag ?? blockedUser.handle ?? "" },
+  } : state.settings?.blockedUserProfiles ?? {};
   const isBlockedIncomingInvitation = (invitation = {}) => (
     invitation.targetUserId === state.currentUserId && blockedUserIdSet.has(invitation.fromUserId)
   );
@@ -49,7 +53,7 @@ export function blockUser(state, userId) {
 
   return {
     ...state,
-    settings: normalizeSettings({ ...(state.settings ?? {}), blockedUserIds }),
+    settings: normalizeSettings({ ...(state.settings ?? {}), blockedUserIds, blockedUserProfiles }),
     teamInvitations: (state.teamInvitations ?? []).filter((invitation) => !isBlockedIncomingInvitation(invitation)),
     recruitingPosts: visibleRecruitingPosts,
     notifications: [
@@ -67,17 +71,22 @@ export function blockUser(state, userId) {
 }
 
 export function unblockUser(state, userId) {
+  const blockedUserProfiles = Object.fromEntries(
+    Object.entries(state.settings?.blockedUserProfiles ?? {}).filter(([id]) => id !== userId),
+  );
   return {
     ...state,
     settings: normalizeSettings({
       ...(state.settings ?? {}),
       blockedUserIds: (state.settings?.blockedUserIds ?? []).filter((id) => id !== userId),
+      blockedUserProfiles,
     }),
   };
 }
 
 export function toggleFavoritePlayer(state, userId) {
-  if (!state.users.some((user) => user.id === userId)) return state;
+  const active = !(state.settings?.favoritePlayerIds ?? []).includes(userId);
+  if (active && !state.users.some((user) => user.id === userId)) return state;
   return {
     ...state,
     settings: normalizeSettings({
@@ -88,7 +97,8 @@ export function toggleFavoritePlayer(state, userId) {
 }
 
 export function toggleFavoriteTeam(state, teamId) {
-  if (!state.teams.some((team) => team.id === teamId)) return state;
+  const active = !(state.settings?.favoriteTeamIds ?? []).includes(teamId);
+  if (active && !state.teams.some((team) => team.id === teamId)) return state;
   return {
     ...state,
     settings: normalizeSettings({
@@ -99,7 +109,8 @@ export function toggleFavoriteTeam(state, teamId) {
 }
 
 export function toggleFavoriteCourt(state, courtId) {
-  if (!getRegisteredCourts(state).some((court) => court.id === courtId)) return state;
+  const active = !(state.settings?.favoriteCourtIds ?? []).includes(courtId);
+  if (active && !getRegisteredCourts(state).some((court) => court.id === courtId)) return state;
   return {
     ...state,
     settings: normalizeSettings({
@@ -110,8 +121,9 @@ export function toggleFavoriteCourt(state, courtId) {
 }
 
 export function toggleFavoriteReferee(state, userId) {
+  const active = !(state.settings?.favoriteRefereeIds ?? []).includes(userId);
   const referee = state.users.find((user) => user.id === userId);
-  if (!referee || !isEligibleReferee(referee, REFEREE_TRUST_MIN, state.settings?.refereeAppointments)) return state;
+  if (active && (!referee || !isEligibleReferee(referee, REFEREE_TRUST_MIN, state.settings?.refereeAppointments))) return state;
   return {
     ...state,
     settings: normalizeSettings({

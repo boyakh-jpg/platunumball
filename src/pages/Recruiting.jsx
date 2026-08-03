@@ -14,8 +14,6 @@ import BasketballLoader from "../components/common/BasketballLoader.jsx";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import {
   REMOTE_LIST_REFRESH_MIN_INTERVAL_MS,
-  getCanonicalRegion,
-  isSameRegion,
 } from "../lib/constants.js";
 import {
   getProfileRegionSelection,
@@ -25,23 +23,14 @@ import {
   getRegisteredCourts,
 } from "../lib/courts.js";
 import {
-  MMR_RANGE_POLICIES,
-  getRecruitingSideCapacity,
-  getRecruitingTierRange,
   isSyntheticMatchRoomId,
   isNationalRecruitingPost,
 } from "../lib/recruiting.js";
 import {
-  getRecruitingTeamRepresentativePlayerIds as getTeamRepresentativePlayerIds,
-} from "../lib/teamPartyRoster.js";
-import {
   getLocalDateInputValue,
-  getPublicRoomTimingStatus,
   isInstantRoom,
 } from "../lib/matchUtils.js";
 import {
-  getDefaultRecruitingTitle as getDefaultTitle,
-  getRecruitingMaxDateInput as getMaxInputValue,
   getStartDateFilterOptions,
 } from "../lib/recruitingPage.js";
 import "../styles/recruiting-arena.css";
@@ -51,6 +40,8 @@ import "../styles/match-list-card.css";
 import {
   RECRUITING_FILTER_DEBOUNCE_MS,
   RECRUITING_FILTER_PAGE_LIMIT,
+  RecruitingRoomLoadFailedView,
+  RecruitingRoomLoadingView,
   RecruitingRoomModal,
   canShowRecruitingQueuePost,
   getRecruitingRoomListStatus,
@@ -62,7 +53,7 @@ import {
 } from "../components/recruiting/RecruitingRoomModal.jsx";
 import RecruitingPageView from "./RecruitingPageView.jsx";
 
-export { RecruitingRoomModal, getRecruitingRoomListStatus };
+export { RecruitingRoomLoadFailedView, RecruitingRoomLoadingView, RecruitingRoomModal, getRecruitingRoomListStatus };
 
 function RecruitingReady({ app }) {
   const location = useLocation();
@@ -79,7 +70,6 @@ function RecruitingReady({ app }) {
   const myTeamIds = useMemo(() => myTeams.map((team) => team.id), [myTeams]);
   const userById = useMemo(() => Object.fromEntries(app.state.users.map((user) => [user.id, user])), [app.state.users]);
   const teamById = useMemo(() => Object.fromEntries(app.state.teams.map((team) => [team.id, team])), [app.state.teams]);
-  const currentRegion = getCanonicalRegion(app.currentUser.regionDistrict || app.currentUser.region);
   const defaultRegionSelection = useMemo(
     () => getProfileRegionSelection(app.currentUser),
     [app.currentUser.region, app.currentUser.regionDistrict, app.currentUser.regionSido],
@@ -90,7 +80,6 @@ function RecruitingReady({ app }) {
   const [modeFilter, setModeFilter] = useState("all");
   const [startFilter, setStartFilter] = useState("instant");
   const [queueControlsOpen, setQueueControlsOpen] = useState(true);
-  const [composeOpen, setComposeOpen] = useState(false);
   const [selectedPostId, setSelectedPostId] = useState(null);
   const [selectedPostDetailLoadingId, setSelectedPostDetailLoadingId] = useState(null);
   const [selectedPostDetailFailedId, setSelectedPostDetailFailedId] = useState(null);
@@ -98,41 +87,6 @@ function RecruitingReady({ app }) {
   const selectedPostRefreshRef = useRef("");
   const regionLoadRef = useRef("");
   const lastRecruitingRefreshAtRef = useRef(0);
-  const defaultDraftCourt = registeredCourts.find((court) => isSameRegion(court.region, currentRegion)) ?? registeredCourts[0] ?? null;
-  const [draft, setDraft] = useState(() => ({
-    hostJoinMode: myTeams[0]?.id ? "team" : "player",
-    title: "",
-    region: currentRegion,
-    courtId: defaultDraftCourt?.id ?? "",
-    court: defaultDraftCourt?.name ?? "미정",
-    timingType: "scheduled",
-    scheduledDate: getLocalDateInputValue(),
-    scheduledTime: "20:00",
-    mode: "5v5",
-    ranked: true,
-    mmrRangeMode: "narrow",
-    teamId: myTeams[0]?.id ?? "",
-    playerIds: getTeamRepresentativePlayerIds(myTeams[0], app.currentUser.id),
-    position: app.currentUser.position,
-    memo: "빈자리는 개인 또는 팀 파티로 들어올 수 있습니다.",
-  }));
-
-  const selectedTeam = myTeams.find((team) => team.id === draft.teamId) ?? myTeams[0] ?? null;
-  const draftCapacity = getRecruitingSideCapacity(draft);
-  const selectedHostPlayerIds = draft.hostJoinMode === "team" ? getTeamRepresentativePlayerIds(selectedTeam, app.currentUser.id) : [];
-  const draftTargetMmr = draft.hostJoinMode === "team"
-    ? selectedTeam?.mmr ?? app.currentUser.ratings.integrated
-    : app.currentUser.ratings.integrated;
-  const draftRange = getRecruitingTierRange(draftTargetMmr, draft.ranked, draft.mmrRangeMode);
-  const draftRangePolicy = MMR_RANGE_POLICIES[draft.mmrRangeMode] ?? MMR_RANGE_POLICIES.narrow;
-  const hostNeedsTeam = draft.hostJoinMode === "team";
-  const draftInstant = draft.timingType === "instant";
-  const hasSchedule = Boolean((draftInstant || (draft.scheduledDate && draft.scheduledTime)) && draft.court);
-  const minScheduleDate = getLocalDateInputValue();
-  const maxScheduleDate = getMaxInputValue();
-  const draftTimingStatus = getPublicRoomTimingStatus(draft);
-  const scheduleAllowed = draftInstant || (draft.scheduledDate >= minScheduleDate && draft.scheduledDate <= maxScheduleDate && draftTimingStatus.canCreate);
-  const canPostRecruiting = hasSchedule && scheduleAllowed && (!hostNeedsTeam || (Boolean(selectedTeam) && selectedHostPlayerIds.length > 0));
   const selectedRegionGroup = REGION_TREE.find((region) => region.sido === regionFilterSido) ?? REGION_TREE[0] ?? { districts: [] };
   const regionDistrictOptions = selectedRegionGroup.districts ?? [];
   const selectedRegionDistrict = regionDistrictOptions.includes(regionFilterDistrict) ? regionFilterDistrict : regionDistrictOptions[0] ?? defaultRegionSelection.district;
@@ -214,22 +168,6 @@ function RecruitingReady({ app }) {
     };
   }, [app.currentUser.id, app.remoteReady, refreshRecruitingFromServer, targetPostId]);
 
-  useEffect(() => {
-    if (!hostNeedsTeam) return;
-    const nextTeam = selectedTeam ?? myTeams[0] ?? null;
-    if (!nextTeam) return;
-    const nextPlayerIds = getTeamRepresentativePlayerIds(nextTeam, app.currentUser.id);
-    const playerIdsNeedSync = !Array.isArray(draft.playerIds)
-      || draft.playerIds.length !== nextPlayerIds.length
-      || draft.playerIds.some((playerId, index) => playerId !== nextPlayerIds[index]);
-    if (draft.teamId === nextTeam.id && !playerIdsNeedSync) return;
-    setDraft((current) => ({
-      ...current,
-      teamId: nextTeam.id,
-      playerIds: nextPlayerIds,
-    }));
-  }, [app.currentUser.id, draft.teamId, draft.playerIds, hostNeedsTeam, myTeams, selectedTeam]);
-
   const scopedPosts = useMemo(() => {
     return [...(app.state.recruitingPosts ?? [])]
       .filter((post) => post.status === "open")
@@ -304,7 +242,7 @@ function RecruitingReady({ app }) {
       setSearchParams(next, { replace: true });
     }
   };
-  useBodyScrollLock(Boolean(selectedPost) || selectedPostPending || selectedPostDetailLoading || composeOpen);
+  useBodyScrollLock(Boolean(selectedPost) || selectedPostPending || selectedPostDetailLoading);
 
   useEffect(() => {
     if (!targetPostId || !app.remoteReady) return;
@@ -366,26 +304,6 @@ function RecruitingReady({ app }) {
   const rankedCount = scopedPosts.filter((post) => post.ranked !== false).length;
   const friendlyCount = scopedPosts.length - rankedCount;
 
-  const update = (patch) => setDraft((current) => ({ ...current, ...patch }));
-  const submit = (event) => {
-    event.preventDefault();
-    const selectedDraftCourt = courtByName[draft.court] ?? null;
-    const hostPlayerIds = draft.hostJoinMode === "team" ? getTeamRepresentativePlayerIds(selectedTeam, app.currentUser.id) : [];
-    const nextDraft = {
-      ...draft,
-      courtId: selectedDraftCourt?.id ?? draft.courtId ?? "",
-      region: selectedDraftCourt?.region ?? draft.region,
-      teamOnly: draft.hostJoinMode === "team",
-      title: draft.title.trim() || getDefaultTitle(draft),
-      scheduledDate: draftInstant ? "" : draft.scheduledDate,
-      scheduledTime: draftInstant ? "" : draft.scheduledTime,
-      playerIds: hostPlayerIds,
-    };
-    app.actions.createRecruitingPost(nextDraft);
-    setDraft((current) => ({ ...current, title: "", memo: "빈자리는 개인 또는 팀 파티로 들어올 수 있습니다." }));
-    setComposeOpen(false);
-  };
-
   const selectStartFilter = (nextFilter) => {
     setStartFilter((current) => (current === nextFilter ? "all" : nextFilter));
   };
@@ -398,11 +316,7 @@ function RecruitingReady({ app }) {
     userById, teamById, myTeamIds, courtById, courtByName,
     targetPostId, openSelectedPost, queueListLoading, selectedPostDetailFailed, closeSelectedPost,
     selectedPostRefreshRef, requestSelectedPostDetail, selectedPostId, selectedPost, selectedPostDetailLoading,
-    navigate, location, setSelectedPostId, selectedPostPending, composeOpen,
-    setComposeOpen, submit, draft, myTeams, update,
-    draftRange, draftRangePolicy, draftInstant, minScheduleDate, maxScheduleDate,
-    registeredCourts, draftCapacity, selectedHostPlayerIds, canPostRecruiting, hasSchedule,
-    scheduleAllowed, draftTimingStatus,
+    navigate, location, setSelectedPostId, selectedPostPending,
   }} />;
 }
 

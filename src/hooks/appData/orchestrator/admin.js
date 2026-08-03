@@ -77,11 +77,15 @@ const trackedPostServerAction = useCallback((path, payload = {}, options = {}) =
       setState((prev) => withServerAdminContext(prev, context));
       return context;
       } catch (error) {
-        console.warn("Admin context failed.", error.message);
+        const expectedNonAdmin = error?.code === "admin_required" || error?.message === "admin_required";
+        if (!expectedNonAdmin) console.warn("Admin context failed.", error.message);
+        if (expectedNonAdmin) adminContextLoadedAuthRef.current = authUserId;
         adminContextRef.current = EMPTY_ADMIN_CONTEXT;
         setAdminContext(EMPTY_ADMIN_CONTEXT);
         setState((prev) => withServerAdminContext(prev, EMPTY_ADMIN_CONTEXT));
-        return EMPTY_ADMIN_CONTEXT;
+        return expectedNonAdmin
+          ? EMPTY_ADMIN_CONTEXT
+          : { ...EMPTY_ADMIN_CONTEXT, loadError: error?.message ?? "admin_context_load_failed" };
       }
     })().finally(() => {
       if (adminContextPromiseRef.current === promise) adminContextPromiseRef.current = null;

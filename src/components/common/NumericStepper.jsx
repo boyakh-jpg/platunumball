@@ -10,6 +10,7 @@ export default function NumericStepper({
   label,
   className = "",
   clearZeroOnFocus = false,
+  clearOnFocus = false,
   integer = true,
 }) {
   const numericValue = clampNumericStepperValue(value, min, max, integer);
@@ -38,7 +39,7 @@ export default function NumericStepper({
         disabled={disabled}
         value={inputValue}
         onFocus={() => {
-          if (clearZeroOnFocus && numericValue === 0) onChange?.("");
+          if (clearOnFocus || (clearZeroOnFocus && numericValue === 0)) onChange?.("");
         }}
         onBlur={(event) => {
           if (event.currentTarget.value === "") setNextValue(numericValue);

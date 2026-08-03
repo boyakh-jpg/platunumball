@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { PlusCircle, Search } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import BasketballLoader from "../components/common/BasketballLoader.jsx";
@@ -41,20 +41,16 @@ export default function Teams({ app }) {
   const loadDirectory = app.actions.loadDirectory;
   const directoryCourts = useMemo(() => getRegisteredCourts(app.state), [app.state]);
   const [discoveredCourts, setDiscoveredCourts] = useState([]);
-  const registeredCourts = useMemo(
-    () => mergeCourtSearchCourts(directoryCourts, discoveredCourts),
-    [directoryCourts, discoveredCourts],
-  );
-  const defaultHomeCourt = registeredCourts[0]?.name ?? "미정";
-  const defaultRegionSelection = useMemo(
-    () => getProfileRegionSelection(app.currentUser),
-    [app.currentUser.region, app.currentUser.regionDistrict, app.currentUser.regionSido],
-  );
+  const registeredCourts = useMemo(() => mergeCourtSearchCourts(directoryCourts, discoveredCourts), [directoryCourts, discoveredCourts]);
+  const defaultRegionSelection = useMemo(() => getProfileRegionSelection(app.currentUser), [app.currentUser.region, app.currentUser.regionDistrict, app.currentUser.regionSido]);
   const defaultTeamRegion = `${defaultRegionSelection.sido} ${defaultRegionSelection.district}`;
-  const [draft, setDraft] = useState({ name: "", region: defaultTeamRegion, homeCourt: defaultHomeCourt, captainId: app.currentUser.id, accent: "#58d2c0" });
+  const [draft, setDraft] = useState({ name: "", region: defaultTeamRegion, homeCourt: "", homeCourtId: "", captainId: app.currentUser.id, accent: "#58d2c0" });
   const [teamCreatePending, setTeamCreatePending] = useState(false);
+  const teamCreatePendingRef = useRef(false);
   const [teamCreateError, setTeamCreateError] = useState("");
-  const [query, setQuery] = useState("");
+  const [representativeSavePendingId, setRepresentativeSavePendingId] = useState(""); const representativeSavePendingRef = useRef("");
+  const [representativeSaveError, setRepresentativeSaveError] = useState(""); const [query, setQuery] = useState("");
+  const [selectedSearchTeam, setSelectedSearchTeam] = useState(null);
   const [regionSido, setRegionSido] = useState(TEAM_DISCOVERY_VIEW);
   const [regionDistrict, setRegionDistrict] = useState(defaultRegionSelection.district);
   const [courtQuery, setCourtQuery] = useState("");
@@ -83,6 +79,7 @@ export default function Teams({ app }) {
   const favoriteCourtIds = app.state.settings?.favoriteCourtIds ?? [];
   const teamName = draft.name.trim().replace(/\s+/g, " ");
   const teamNameInvalid = !teamName || teamName.length > MAX_TEAM_NAME_LENGTH;
+  const homeCourtInvalid = !registeredCourts.some((court) => court.id === draft.homeCourtId && court.name === draft.homeCourt);
   const isFavoriteTeam = (team) => favoriteTeamIds.includes(team.id);
   const isFavoriteCourt = (court) => favoriteCourtIds.includes(court.id);
   const update = (patch) => setDraft((current) => ({ ...current, ...patch }));
@@ -107,10 +104,7 @@ export default function Teams({ app }) {
       .map((team) => ({ ...team, myRole: team.members.find((member) => member.userId === app.currentUser.id)?.role ?? "regular" }))
       .sort((a, b) => Number(b.myRole === "captain") - Number(a.myRole === "captain") || a.rank - b.rank);
   }, [app.currentUser.id, rankingTeams]);
-  const representativeTeam = useMemo(
-    () => getRepresentativeTeam(app.currentUser.id, myTeams, representativeTeamId),
-    [app.currentUser.id, myTeams, representativeTeamId],
-  );
+  const representativeTeam = useMemo(() => getRepresentativeTeam(app.currentUser.id, myTeams, representativeTeamId), [app.currentUser.id, myTeams, representativeTeamId]);
   const teamDiscoveryGroups = useMemo(() => getTeamDiscoveryGroups({
     teams: rankingTeams,
     users: app.state.users,
@@ -142,10 +136,13 @@ export default function Teams({ app }) {
   }, [app.currentUser.region, favoriteCourtIds, registeredCourts]);
   const visibleTeams = useMemo(() => {
     const hashtagSearch = isHashtagQuery(query);
-    return rankingTeams
+    const candidates = selectedSearchTeam && !rankingTeams.some((team) => team.id === selectedSearchTeam.id)
+      ? [...rankingTeams, { ...selectedSearchTeam, ...getStoredTeamRecord(selectedSearchTeam) }]
+      : rankingTeams;
+    return candidates
       .filter((team) => hashtagSearch || !selectedRegion || isSameRegion(team.region, selectedRegion))
       .filter((team) => `${team.name} ${getTeamHashtag(team)} ${team.region} ${team.homeCourt}`.toLowerCase().includes(query.trim().toLowerCase()));
-  }, [query, rankingTeams, selectedRegion]);
+  }, [query, rankingTeams, selectedRegion, selectedSearchTeam]);
   const searchViewActive = Boolean(query.trim()) || regionSido !== TEAM_DISCOVERY_VIEW;
   const searchResultTeams = visibleTeams.slice(0, TEAM_SEARCH_RESULT_LIMIT);
   const currentRegionLabel = defaultTeamRegion || "내 지역";
@@ -161,6 +158,7 @@ export default function Teams({ app }) {
       className="search-picker-result-row"
       onMouseDown={(event) => event.preventDefault()}
       onClick={() => {
+        setSelectedSearchTeam(team);
         const nextRegion = inferRegionSelection(team.region);
         setRegionSido(nextRegion.sido);
         setRegionDistrict(nextRegion.district);
@@ -176,7 +174,7 @@ export default function Teams({ app }) {
     if (court?.id && !registeredCourts.some((item) => item.id === court.id)) {
       setDiscoveredCourts((current) => [...current.filter((item) => item.id !== court.id), court]);
     }
-    update({ homeCourt: court.name });
+    update({ homeCourt: court.name, homeCourtId: court.id });
     setCourtQuery("");
     setCourtRegion(court.region);
   };
@@ -197,7 +195,8 @@ export default function Teams({ app }) {
 
   const submit = async (event) => {
     event.preventDefault();
-    if (teamNameInvalid) return;
+    if (teamCreatePendingRef.current || teamCreatePending || teamNameInvalid || homeCourtInvalid) return;
+    teamCreatePendingRef.current = true;
     setTeamCreatePending(true);
     setTeamCreateError("");
     try {
@@ -206,21 +205,34 @@ export default function Teams({ app }) {
         setTeamCreateError("팀을 만들지 못했습니다. 입력 내용을 확인한 뒤 다시 시도해 주세요.");
         return;
       }
-      setDraft({ name: "", region: defaultTeamRegion, homeCourt: defaultHomeCourt, captainId: app.currentUser.id, accent: "#58d2c0" });
+      setDraft({ name: "", region: defaultTeamRegion, homeCourt: "", homeCourtId: "", captainId: app.currentUser.id, accent: "#58d2c0" });
       setCourtQuery("");
       setCourtRegion(defaultTeamRegion);
     } catch (error) {
       setTeamCreateError("팀을 만들지 못했습니다. 입력 내용을 확인한 뒤 다시 시도해 주세요.");
     } finally {
+      teamCreatePendingRef.current = false;
       setTeamCreatePending(false);
     }
+  };
+
+  const setRepresentativeTeam = async (event, teamId) => {
+    event.preventDefault(); event.stopPropagation();
+    if (!teamId || representativeSavePendingRef.current || representativeTeamId === teamId) return;
+    representativeSavePendingRef.current = teamId;
+    setRepresentativeSavePendingId(teamId); setRepresentativeSaveError("");
+    try {
+      const result = await app.actions.updateSettings({ representativeTeamId: teamId });
+      if (!result || result.ok === false) setRepresentativeSaveError("대표팀을 설정하지 못했습니다. 다시 시도해 주세요.");
+    } catch { setRepresentativeSaveError("대표팀을 설정하지 못했습니다. 다시 시도해 주세요.");
+    } finally { representativeSavePendingRef.current = ""; setRepresentativeSavePendingId(""); }
   };
 
   return (
     <div className="page-stack teams-page">
       {teamDirectoryPending ? <BasketballLoader overlay label="팀 맞추는 중" /> : null}
-      <section className="team-hub-hero ui-design-app-hero">
-        <div>
+      <section className="team-hub-hero ui-page-hero ui-design-app-hero">
+        <div className="ui-page-hero__copy">
           <p className="eyebrow">Team Hub</p>
           <h1>팀</h1>
         </div>
@@ -246,6 +258,7 @@ export default function Teams({ app }) {
           </div>
         ) : null}
       </section>
+      {teamDirectoryError ? <Card className="section-card"><div className="section-title-row"><span className="form-warning">팀 목록을 불러오지 못했습니다.</span><Button type="button" variant="secondary" onClick={() => void loadDirectory?.({ force: true, kind: "teams", filter: directoryFilter, region: directoryRegion, limit: DIRECTORY_TEAM_PAGE_LIMIT, offset: 0, includeTeamMemberProfiles: true })}>다시 시도</Button></div></Card> : null}
 
       <section className="team-overview-grid">
         <Card className="section-card my-team-management-card">
@@ -270,23 +283,19 @@ export default function Teams({ app }) {
                     <strong>{team.name}</strong>
                     <em>{getTeamRoleLabel(team.myRole)} · {team.mmr} MMR · {winRate}%</em>
                   </span>
-                  <span className="my-team-actions">
+                  <span className="ui-action-row my-team-actions">
                     <span className="my-team-tier ui-tier-label">
                       <img src={getTierEmblemSrc(team.mmr)} alt={`${getTierDivision(team.mmr)} emblem`} loading="lazy" />
                       <span>{getTierDivision(team.mmr)}</span>
                     </span>
                     <Button
                       className="my-team-representative-button"
-                      disabled={isExplicitRepresentative}
+                      disabled={isExplicitRepresentative || Boolean(representativeSavePendingId)}
                       size="sm"
                       variant={isRepresentative ? "primary" : "secondary"}
-                      onClick={(event) => {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        if (!isExplicitRepresentative) app.actions.updateSettings({ representativeTeamId: team.id });
-                      }}
+                      onClick={(event) => { void setRepresentativeTeam(event, team.id); }}
                     >
-                      {isRepresentative ? "대표팀" : "대표 설정"}
+                      {representativeSavePendingId === team.id ? "저장 중" : isRepresentative ? "대표팀" : "대표 설정"}
                     </Button>
                     <b>{isCaptain ? "관리" : "상세"}</b>
                   </span>
@@ -300,6 +309,7 @@ export default function Teams({ app }) {
               <div className="ui-empty-state-compact">소속 팀이 없습니다. 새 팀을 만들거나 팀 모집에 지원해 주세요.</div>
             )}
           </div>
+          {representativeSaveError ? <small role="status" className="form-warning">{representativeSaveError}</small> : null}
         </Card>
 
         <Card className="section-card team-search-card">
@@ -466,7 +476,7 @@ export default function Teams({ app }) {
                 closeOnResultClick
                 renderItem={renderCourtSearchItem}
               />
-              <span className="form-chip">{draft.homeCourt}</span>
+              <span className={homeCourtInvalid ? "form-warning" : "form-chip"}>{homeCourtInvalid ? "승인 구장을 선택해 주세요." : draft.homeCourt}</span>
             </label>
             <label>
               팀장
@@ -480,7 +490,7 @@ export default function Teams({ app }) {
               <input type="color" value={draft.accent} onChange={(event) => update({ accent: event.target.value })} />
             </label>
             {teamCreateError ? <span className="form-warning">{teamCreateError}</span> : null}
-            <Button type="submit" disabled={captainLimitReached || teamNameInvalid || teamCreatePending}><PlusCircle size={18} /> {teamCreatePending ? "저장 중" : "팀 만들기"}</Button>
+            <Button type="submit" disabled={captainLimitReached || teamNameInvalid || homeCourtInvalid || teamCreatePending}><PlusCircle size={18} /> {teamCreatePending ? "저장 중" : "팀 만들기"}</Button>
           </form>
         </Card>
       </div>

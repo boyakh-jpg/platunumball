@@ -1,22 +1,14 @@
-.button,
 .provider-button,
 .auth-browser-actions button,
 .auth-browser-actions a,
 .auth-session-line button,
-.segmented-control button,
-.favorite-type-grid button,
-.create-mode-grid button,
-.notification-actions button,
+.ui-segmented-control button,
+button.ui-choice-tile,
+.ui-compact-action,
 .team-picker,
 .court-search-popover button,
-.court-address-results button,
 .report-player-picker button,
-.referee-exam-choice-grid button,
 .favorite-toggle-button,
-.hover-card-close,
-.hover-card-action,
-.search-picker-more,
-.home-search-more,
 .settings-page .section-card button:not(.button):not(.favorite-toggle-button),
 .arena-start-date-filter button {
   border: var(--ui-button-border-width) solid var(--ui-button-border);
@@ -28,8 +20,12 @@
   font-weight: var(--ui-button-font-weight);
   letter-spacing: 0;
 }
-.button-sm {
-  min-height: var(--ui-button-height-sm);
+.provider-button,
+.auth-browser-actions button,
+.auth-browser-actions a,
+.auth-session-line button,
+.auth-form > .button-secondary {
+  border: 0;
 }
 .button-icon,
 .hover-card-close,
@@ -119,24 +115,20 @@
   background: var(--ui-button-bg);
   color: var(--ui-button-color);
 }
-.button-primary,
 .rank-home .home-rank-board-head .button,
 .provider-test,
 .create-submit-row .button:not(.button-secondary),
-.segmented-control button.active,
-.favorite-type-grid button.active,
-.create-mode-grid button.active,
+.ui-segmented-control button.active,
+button.ui-choice-tile:is(.active, .selected),
 .team-picker.selected,
 .court-search-popover button.selected,
 .report-player-picker button.selected,
-.referee-exam-choice-grid button.selected,
 .settings-page .section-card button.active:not(.favorite-toggle-button) {
   border-color: transparent;
   background: var(--ui-button-bg-active);
   color: var(--ui-button-color-active);
   box-shadow: none;
 }
-.button-primary:hover,
 .rank-home .home-rank-board-head .button:hover,
 .provider-test:hover,
 .create-submit-row .button:not(.button-secondary):hover {
@@ -144,55 +136,37 @@
   color: var(--ui-button-color-active);
   filter: none;
 }
-.button-primary:active,
 .rank-home .home-rank-board-head .button:active,
 .provider-test:active {
   background: var(--ui-button-bg-pressed);
 }
-.button-secondary,
 .button-icon {
   border-color: var(--ui-button-border);
   background: var(--ui-button-bg);
   color: var(--ui-button-color);
 }
-input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
-select,
-.auth-card select,
-.home-search-box input {
-  min-height: var(--ui-button-height);
-  border: var(--ui-stroke-width) solid var(--ui-control-border);
-  border-radius: var(--ui-control-radius);
-  background: var(--ui-control-bg);
-  color: var(--rb-text);
-  box-shadow: none;
-  font-size: max(0.9rem, 16px);
+input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):focus,
+select:focus,
+textarea:focus {
+  border-color: var(--rb-orange);
+  box-shadow: var(--focus-ring);
 }
-textarea {
-  min-height: 112px;
-  border: var(--ui-stroke-width) solid var(--ui-control-border);
-  border-radius: var(--ui-control-radius);
-  background: var(--ui-control-bg);
-  color: var(--rb-text);
-  box-shadow: none;
-  font-size: max(0.9rem, 16px);
-}
-.button:focus-visible,
 .provider-button:focus-visible,
 .auth-browser-actions button:focus-visible,
 .auth-browser-actions a:focus-visible,
 .auth-session-line button:focus-visible,
-.segmented-control button:focus-visible,
-.favorite-type-grid button:focus-visible,
-.create-mode-grid button:focus-visible,
+.ui-segmented-control button:focus-visible,
+button.ui-choice-tile:focus-visible,
+.ui-compact-action:focus-visible,
 .team-picker:focus-visible,
 .court-search-popover button:focus-visible,
-.court-address-results button:focus-visible,
 .report-player-picker button:focus-visible,
-.referee-exam-choice-grid button:focus-visible,
 .arena-filter-bar button:focus-visible,
 .arena-start-date-filter button:focus-visible,
 .om-calendar-toolbar button:focus-visible,
 input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):focus-visible,
+input[type="radio"]:focus-visible,
+input[type="color"]:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
   outline: 2px solid color-mix(in srgb, var(--rb-orange-2) 72%, transparent);
@@ -238,8 +212,7 @@ textarea:focus-visible {
   box-shadow: var(--focus-ring);
 }
 button:disabled,
-.button:disabled,
-.button[aria-disabled="true"] {
+button[aria-disabled="true"] {
   opacity: 0.58;
   cursor: not-allowed;
 }

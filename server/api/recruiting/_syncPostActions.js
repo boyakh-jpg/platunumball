@@ -291,6 +291,7 @@ export async function applySqlRecruitingAction(context, operation = {}) {
       if (isMissingSqlReducer(error)) return null;
       throw error;
     }
+    if (data?.fallback) return applyRecruitingManagementAction(context, operation);
     rejectSqlRecruitingFallback(data);
     return {
       ok: true,

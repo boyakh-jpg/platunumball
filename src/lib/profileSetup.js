@@ -1,6 +1,7 @@
 import { normalizeRegionText } from "./regionText.js";
 import {
   AGE_GROUPS,
+  PROFILE_NAME_MAX_LENGTH,
   formatProfileDate,
   getAgeGroupByBirthYear,
   getAgeGroupForUser,
@@ -8,10 +9,12 @@ import {
   getAgeGroupSeasonForDate,
   getAgeGroupSeasonLabel,
   shouldRecheckAgeGroup,
+  normalizeProfileName,
 } from "../../shared/lib/profileSetup.js";
 
 export {
   AGE_GROUPS,
+  PROFILE_NAME_MAX_LENGTH,
   formatProfileDate,
   getAgeGroupByBirthYear,
   getAgeGroupForUser,
@@ -19,6 +22,7 @@ export {
   getAgeGroupSeasonForDate,
   getAgeGroupSeasonLabel,
   shouldRecheckAgeGroup,
+  normalizeProfileName,
 };
 
 export const REGION_TREE = [
@@ -50,8 +54,14 @@ const REGION_SIDO_ALIASES = new Map([
 ]);
 
 export function shouldSetupProfile(user = {}) {
-  const hasLockedBirthYear = Boolean(user?.birthYearLockedAt && user?.birthYear);
-  return Boolean(!user?.onboardingComplete || !user?.handleLockedAt || !hasLockedBirthYear);
+  return user?.onboardingComplete !== true;
+}
+
+export function isProfileGateReady({ authUserId = "", profileAuthUserId = "", remoteReady = false, serverProfileBound = false } = {}) {
+  if (!authUserId) return true;
+  if (!remoteReady) return false;
+  if (profileAuthUserId) return profileAuthUserId === authUserId;
+  return !serverProfileBound;
 }
 
 export function getNextNameChangeDate(user = {}) {

@@ -1,3 +1,9 @@
+import {
+  getRecruitingChatLastSeq,
+  mergeRecruitingChatMessageBatch,
+} from "../remoteMerge.js";
+import { isSyntheticMatchRoomId } from "../../../lib/recruiting.js";
+
 export function buildRecruitingActions(context) {
   const {
     ROOM_CHAT_HISTORY_LIMIT,
@@ -19,16 +25,12 @@ export function buildRecruitingActions(context) {
     ensureServerActionAvailable,
     getActionActorDebug,
     getNewItems,
-    getNewRecruitingNotifications,
-    getRecruitingChatLastSeq,
     interestRecruitingPost,
     inviteRecruitingPlayers,
     inviteRecruitingReferee,
     isSupabaseConfigured,
-    isSyntheticMatchRoomId,
     joinRecruitingSideParty,
     kickRecruitingApplicant,
-    mergeRecruitingChatMessageBatch,
     removeMatchRoomPlayer,
     removeRecruitingPartyPlayer,
     respondMatchScheduleProposal,
@@ -65,46 +67,22 @@ createRecruitingPost: async (draft) => {
         return result?.post?.id ?? result?.postId ?? null;
       });
     }
-    let rollbackState = null;
-    let createdPost = null;
-    let syncedNotifications = [];
-    let localBlockNotification = null;
-    let localBlockDebug = {};
-    setState((prev) => {
-      rollbackState = prev;
-      const existingIds = new Set((prev.recruitingPosts ?? []).map((post) => post.id));
-      const next = createRecruitingPost({ ...prev, currentUserId }, draft);
-      createdPost = (next.recruitingPosts ?? []).find((post) => !existingIds.has(post.id)) ?? null;
-      syncedNotifications = createdPost ? getNewRecruitingNotifications(prev, next, createdPost.id) : [];
-      localBlockNotification = createdPost ? null : getNewItems(prev.notifications ?? [], next.notifications ?? [])[0] ?? null;
-      localBlockDebug = createdPost ? {} : getActionActorDebug(prev, currentUserId);
-      return !createdPost && isSupabaseConfigured ? prev : next;
-    });
+    const previousState = stateRef.current;
+    const existingIds = new Set((previousState.recruitingPosts ?? []).map((post) => post.id));
+    const next = createRecruitingPost({ ...previousState, currentUserId }, draft);
+    const createdPost = (next.recruitingPosts ?? []).find((post) => !existingIds.has(post.id)) ?? null;
+    stateRef.current = next;
+    setState(next);
     if (!createdPost) {
-      if (isSupabaseConfigured) {
-        return rollbackIfServerFailed(
-          syncRecruitingPostServer(null, [], { action: "createRecruitingPost", draft }),
-          rollbackState,
-          "방 생성",
-          { action: "createRecruitingPost", details: localBlockDebug },
-        ).then((result) => (result?.ok === false ? result : result?.postId ?? result?.post?.id ?? null));
-      }
+      const localBlockNotification = getNewItems(previousState.notifications ?? [], next.notifications ?? [])[0] ?? null;
       return Promise.resolve({
         ok: false,
         error: "local_reducer_blocked",
-        details: localBlockDebug,
+        details: getActionActorDebug(previousState, currentUserId),
         message: localBlockNotification ? `${localBlockNotification.title}: ${localBlockNotification.body}` : "방 생성 조건을 통과하지 못했습니다.",
       });
     }
-    return rollbackIfServerFailed(
-      syncRecruitingPostServer(createdPost, syncedNotifications, { action: "createRecruitingPost", draft, preferredPostId: createdPost.id }),
-      rollbackState,
-      "방 생성",
-      { action: "createRecruitingPost", postId: createdPost.id },
-    ).then((result) => {
-      if (!result || result?.ok === false) return result;
-      return result?.post?.id ?? result?.postId ?? createdPost.id;
-    });
+    return createdPost.id;
   },
   setRecruitingRoomTeam: (postId, side, teamId, contextMessage = "") => applyRecruitingPostMutation(
     postId,
@@ -186,33 +164,17 @@ createRecruitingPost: async (draft) => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   },
-  setRecruitingApplicantReserve: (postId, playerId, reserve) => {
-    applyRecruitingPostMutation(postId, (prev) => setRecruitingApplicantReserve({ ...prev, currentUserId }, postId, playerId, reserve), { action: "setRecruitingApplicantReserve", playerId, reserve });
-  },
-  setRecruitingApplicantPlacement: (postId, playerId, placement) => {
-    applyRecruitingPostMutation(postId, (prev) => setRecruitingApplicantPlacement({ ...prev, currentUserId }, postId, playerId, placement), { action: "setRecruitingApplicantPlacement", playerId, placement });
-  },
+  setRecruitingApplicantReserve: (postId, playerId, reserve) => applyRecruitingPostMutation(postId, (prev) => setRecruitingApplicantReserve({ ...prev, currentUserId }, postId, playerId, reserve), { action: "setRecruitingApplicantReserve", playerId, reserve }),
+  setRecruitingApplicantPlacement: (postId, playerId, placement) => applyRecruitingPostMutation(postId, (prev) => setRecruitingApplicantPlacement({ ...prev, currentUserId }, postId, playerId, placement), { action: "setRecruitingApplicantPlacement", playerId, placement }),
   joinRecruitingSideParty: (postId, teamId, sideName, entryId) => {
     return applyRecruitingPostMutation(postId, (prev) => joinRecruitingSideParty({ ...prev, currentUserId }, postId, teamId, sideName, entryId), { action: "joinRecruitingSideParty", teamId, sideName, entryId });
   },
-  setRecruitingSlotPosition: (postId, playerId, position) => {
-    applyRecruitingPostMutation(postId, (prev) => setRecruitingSlotPosition({ ...prev, currentUserId }, postId, playerId, position), { action: "setRecruitingSlotPosition", playerId, position });
-  },
-  setRecruitingPartyPlayerReserve: (postId, entryId, playerId, reserve) => {
-    applyRecruitingPostMutation(postId, (prev) => setRecruitingPartyPlayerReserve({ ...prev, currentUserId }, postId, entryId, playerId, reserve), { action: "setRecruitingPartyPlayerReserve", entryId, playerId, reserve });
-  },
-  setRecruitingPartyPlayerPlacement: (postId, entryId, playerId, placement) => {
-    applyRecruitingPostMutation(postId, (prev) => setRecruitingPartyPlayerPlacement({ ...prev, currentUserId }, postId, entryId, playerId, placement), { action: "setRecruitingPartyPlayerPlacement", entryId, playerId, placement });
-  },
-  setRecruitingTeamPartyRoster: (postId, entryId, roster) => {
-    applyRecruitingPostMutation(postId, (prev) => setRecruitingTeamPartyRoster({ ...prev, currentUserId }, postId, entryId, roster), { action: "setRecruitingTeamPartyRoster", entryId, roster });
-  },
-  detachRecruitingPartyPlayer: (postId, entryId, playerId, placement) => {
-    applyRecruitingPostMutation(postId, (prev) => detachRecruitingPartyPlayer({ ...prev, currentUserId }, postId, entryId, playerId, placement), { action: "detachRecruitingPartyPlayer", entryId, playerId, placement });
-  },
-  removeRecruitingPartyPlayer: (postId, entryId, playerId) => {
-    applyRecruitingPostMutation(postId, (prev) => removeRecruitingPartyPlayer({ ...prev, currentUserId }, postId, entryId, playerId), { action: "removeRecruitingPartyPlayer", entryId, playerId });
-  },
+  setRecruitingSlotPosition: (postId, playerId, position) => applyRecruitingPostMutation(postId, (prev) => setRecruitingSlotPosition({ ...prev, currentUserId }, postId, playerId, position), { action: "setRecruitingSlotPosition", playerId, position }),
+  setRecruitingPartyPlayerReserve: (postId, entryId, playerId, reserve) => applyRecruitingPostMutation(postId, (prev) => setRecruitingPartyPlayerReserve({ ...prev, currentUserId }, postId, entryId, playerId, reserve), { action: "setRecruitingPartyPlayerReserve", entryId, playerId, reserve }),
+  setRecruitingPartyPlayerPlacement: (postId, entryId, playerId, placement) => applyRecruitingPostMutation(postId, (prev) => setRecruitingPartyPlayerPlacement({ ...prev, currentUserId }, postId, entryId, playerId, placement), { action: "setRecruitingPartyPlayerPlacement", entryId, playerId, placement }),
+  setRecruitingTeamPartyRoster: (postId, entryId, roster) => applyRecruitingPostMutation(postId, (prev) => setRecruitingTeamPartyRoster({ ...prev, currentUserId }, postId, entryId, roster), { action: "setRecruitingTeamPartyRoster", entryId, roster }),
+  detachRecruitingPartyPlayer: (postId, entryId, playerId, placement) => applyRecruitingPostMutation(postId, (prev) => detachRecruitingPartyPlayer({ ...prev, currentUserId }, postId, entryId, playerId, placement), { action: "detachRecruitingPartyPlayer", entryId, playerId, placement }),
+  removeRecruitingPartyPlayer: (postId, entryId, playerId) => applyRecruitingPostMutation(postId, (prev) => removeRecruitingPartyPlayer({ ...prev, currentUserId }, postId, entryId, playerId), { action: "removeRecruitingPartyPlayer", entryId, playerId }),
   kickRecruitingApplicant: (postId, playerId) => applyRecruitingPostMutation(postId, (prev) => kickRecruitingApplicant({ ...prev, currentUserId }, postId, playerId), { action: "kickRecruitingApplicant", playerId }),
   confirmRecruitingMatch: async (postId) => {
     const serverReady = await ensureServerActionAvailable("/api/recruiting/sync-post", "방 확정");

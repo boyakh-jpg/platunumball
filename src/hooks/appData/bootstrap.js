@@ -61,6 +61,9 @@ function getInitialStateLoadOptions(location = null) {
   if (pathname === "/app/settings/favorites") {
     return { profileOnly: true, includeFavorites: true, matchLimit: 0, recruitingLimit: 0, tournamentLimit: 0 };
   }
+  if (pathname === "/app/notifications") {
+    return { profileOnly: true, includeTeamInvitations: true, matchLimit: 0, recruitingLimit: 0, tournamentLimit: 0 };
+  }
   if (pathname === "/app" || pathname === "/login") {
     return { endpoint: "homeLoad", matchLimit: REMOTE_CLIENT_MATCH_LIMIT, recruitingLimit: REMOTE_CLIENT_RECRUITING_LIMIT, tournamentLimit: 0 };
   }
@@ -111,14 +114,15 @@ function cacheCurrentProfileState(authUserId, state = {}) {
 
 function getThinProfilePayload(authUserId, authEmail, options = {}) {
   const includeFavorites = options.includeFavorites === true;
-  const includeTeams = includeFavorites || options.includeTeams === true;
+  const includeTeamInvitations = options.includeTeamInvitations === true;
+  const includeTeams = includeFavorites || includeTeamInvitations || options.includeTeams === true;
   return {
     authUserId,
     authEmail,
     includeFavorites,
-    includeTeamInvitations: false,
+    includeTeamInvitations,
     includeTeams,
-    includeExtraProfiles: includeFavorites,
+    includeExtraProfiles: includeFavorites || includeTeamInvitations,
     includeTeamMemberProfiles: false,
     includeMatchSummary: options.includeMatchSummary !== false && !includeFavorites,
   };

@@ -33,7 +33,41 @@ test("대회 목록과 상세는 공용 팀 projection을 사용한다", async (
   ]);
 
   assert.match(matchesSource, /getTournamentTeamIds, getTournamentTeamStatus/);
-  assert.match(detailSource, /getTournamentTeamStatus/);
+  assert.match(detailSource, /getTournamentTeamIds, getTournamentTeamStatus/);
+  assert.match(detailSource, /const tournamentTeamIds = getTournamentTeamIds\(tournament\)/);
   assert.doesNotMatch(matchesSource, /function getTournamentTeamStatus\s*\(/);
   assert.doesNotMatch(detailSource, /function getTournamentTeamStatus\s*\(/);
+});
+
+test("대회 상세 심판 검색은 중복 초대를 숨기고 실패 시 검색어를 유지한다", async () => {
+  const detailSource = await readSourceGroup(
+    (file) => readFile(new URL(`../${file}`, import.meta.url), "utf8"),
+    TOURNAMENT_DETAIL_SOURCE_PATHS,
+  );
+
+  assert.match(detailSource, /mapRemoteItem=\{\(referee\) => \(tournament\.refereeIds \?\? \[\]\)\.includes\(referee\.id\) \? null : referee\}/);
+  assert.match(detailSource, /const invited = await runGovernanceAction\(/);
+  assert.match(detailSource, /if \(invited\) setRefereeQuery\(""\)/);
+  assert.doesNotMatch(detailSource, /\)\.then\(\(\) => setRefereeQuery\(""\)\)/);
+});
+
+test("대회 팀 승인은 공용 governance 처리와 중복 실행 잠금을 사용한다", async () => {
+  const detailSource = await readSourceGroup(
+    (file) => readFile(new URL(`../${file}`, import.meta.url), "utf8"),
+    TOURNAMENT_DETAIL_SOURCE_PATHS,
+  );
+
+  assert.match(detailSource, /`approve-team:\$\{row\.teamId\}`/);
+  assert.match(detailSource, /\(\) => app\.actions\.approveTournamentTeam\(tournament\.id, row\.teamId\)/);
+  assert.match(detailSource, /disabled=\{Boolean\(governanceAction\)\}/);
+});
+
+test("대회 governance 성공은 후속 재조회 실패와 분리한다", async () => {
+  const detailSource = await readSourceGroup(
+    (file) => readFile(new URL(`../${file}`, import.meta.url), "utf8"),
+    TOURNAMENT_DETAIL_SOURCE_PATHS,
+  );
+
+  assert.match(detailSource, /setGovernanceFeedback\(successMessage\);\s*Promise\.resolve\(\)\s*\.then\(\(\) => app\.actions\.loadTournament\?\.\(tournament\.id\)\)\s*\.catch\(\(\) => false\);\s*return true;/);
+  assert.doesNotMatch(detailSource, /await app\.actions\.loadTournament\?\.\(tournament\.id\)/);
 });

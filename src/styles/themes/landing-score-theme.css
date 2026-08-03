@@ -266,7 +266,7 @@
   .court-reservation-row,
   .search-controls,
   .two-column,
-  .approval-grid,
+  .approval-panel .approval-grid,
   .score-form {
     grid-template-columns: 1fr;
   }
@@ -456,7 +456,7 @@
 
 .broadcast-list span {
   justify-content: space-between;
-  border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.1);
+  border: var(--ui-card-border-width) solid rgba(255, 255, 255, 0.1);
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.045);
   color: var(--muted);
@@ -481,8 +481,4 @@
     text-overflow: clip;
     white-space: normal;
   }
-}
-
-.card {
-  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.28);
 }

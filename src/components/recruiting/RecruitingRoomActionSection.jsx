@@ -1,5 +1,4 @@
 import RecruitingRoomActionFeedback from "./RecruitingRoomActionFeedback.jsx";
-
 export function RecruitingRoomActionSection({ context }) {
   const {
     ApprovalPanel, Button, MATCH_DISPUTE_REASON_OPTIONS, MatchRecommendationPanel, OTHER_MATCH_DISPUTE_REASON, PLAYER_POSITIONS,
@@ -17,17 +16,16 @@ export function RecruitingRoomActionSection({ context }) {
     requestRecruitingCancellation, requestSourceMatchCancellation, requestSourceMatchFinalization, roomCancellationPolicy, roomQueueStatus, roomTimingStatus,
     ruleAcknowledgementPending, scheduleChangePending, selectedJoinPlayerIds, selectedJoinReserveIds, selectedJoinTeam, selectedJoinTeamEligibility,
     selectedMatchRules, selectedPost, setPaidCourtJoinPrompt, setSourceDisputeDraft, showSourceMatchRecordSummary, sidePartyJoinOptions,
-    sourceDisputeDraft, sourceFinalAuthorityLabel, sourceHasOwnOpenDispute, sourceMatch, sourceMatchAction, sourceMatchApprovalOpen,
+    setSourceMatchDraftScore, sourceDisputeDraft, sourceDisputePending, sourceDisputeStatus, sourceFinalAuthorityLabel, sourceHasOwnOpenDispute, sourceMatch, sourceMatchAction, sourceMatchActionPending, sourceMatchApprovalOpen,
     sourceMatchCancelActionLabel, sourceMatchIsRecordRoom, sourceMatchRecordBoardFirst, sourceMatchResultSubmitLabel, sourceMatchReviewRefreshing, sourceMatchSideName,
-    sourceMatchStartButtonLabel, sourceMatchStartButtonTitle, sourceOpenDisputes, sourceRoomReadOnly, submitJoin, submitSourceDispute,
-    teamOnlyRoom, teamRoomHasJoinableSide, updateJoinDraft, userById,
+    sourceMatchResultEntryPermission, sourceMatchStartButtonLabel, sourceMatchStartButtonTitle, sourceOpenDisputes, sourceRoomReadOnly, submitJoin, submitSourceDispute,
+    teamOnlyRoom, teamRoomHasJoinableSide, updateJoinDraft, userById, runSourceMatchAction,
   } = context;
   return (
     <>
 <div className="arena-join-panel">
                 {matchRoom ? (
-                  sourceMatchIsRecordRoom && sourceMatch?.status === "confirmed" ? null : (
-                    <div className="arena-owner-panel">
+                  <div className="arena-owner-panel">
                     <strong>{sourceMatchAction.label}</strong>
                     <span>{sourceMatchAction.detail}</span>
                     {cancellationReasonText ? (
@@ -104,13 +102,13 @@ export function RecruitingRoomActionSection({ context }) {
                           </label>
                         ) : null}
                         <div className="match-action-row">
-                          <Button type="submit" variant="secondary" disabled={!canRequestSourceMatchPointDispute}>{sourceHasOwnOpenDispute ? "처리 대기 중" : "이의제기"}</Button>
+                          <Button type="submit" variant="secondary" disabled={!canRequestSourceMatchPointDispute || sourceDisputePending}>{sourceDisputePending ? "접수 중" : sourceHasOwnOpenDispute ? "처리 대기 중" : "이의제기"}</Button>
                         </div>
+                        {sourceDisputeStatus ? <span className="form-warning" role="status">{sourceDisputeStatus}</span> : null}
                       </form>
                     ) : null}
                     {sourceMatchApprovalOpen && !sourceMatch.refereeId ? (
                       <form className="arena-dispute-editor" onSubmit={submitSourceDispute}>
-
                         <div className="arena-dispute-score-row arena-dispute-team-score-grid">
                           <label>
                             {sourceMatch.teamA?.name ?? "A"} · 현재 {sourceMatch.result?.scoreA ?? sourceMatch.teamA?.score ?? 0}
@@ -126,8 +124,9 @@ export function RecruitingRoomActionSection({ context }) {
                           <textarea disabled={!canRequestSourceMatchPointDispute} value={sourceDisputeDraft.customReason} onChange={(event) => setSourceDisputeDraft((current) => ({ ...current, customReason: event.target.value }))} />
                         </label>
                         <div className="match-action-row">
-                          <Button type="submit" variant="secondary" disabled={!canRequestSourceMatchPointDispute || !sourceDisputeDraft.customReason.trim()}>이의제기</Button>
+                          <Button type="submit" variant="secondary" disabled={sourceDisputePending || !canRequestSourceMatchPointDispute || !sourceDisputeDraft.customReason.trim()}>{sourceDisputePending ? "접수 중" : "이의제기"}</Button>
                         </div>
+                        {sourceDisputeStatus ? <span className="form-warning" role="status">{sourceDisputeStatus}</span> : null}
                       </form>
                     ) : null}
                     {!sourceMatchRecordBoardFirst && !sourceMatchIsRecordRoom && sourceMatchAction.disputed ? (
@@ -146,7 +145,8 @@ export function RecruitingRoomActionSection({ context }) {
                         userById={userById}
                         canReview={false}
                         getEditableStatFields={getEditableSourceMatchStatFields}
-                        submitLabel={sourceMatchResultSubmitLabel}
+                        editableScoreSides={sourceMatchResultEntryPermission?.editableScoreSides ?? []}
+                        submitLabel={sourceMatchResultSubmitLabel} onDraftScoreChange={setSourceMatchDraftScore}
                         onSave={(draft) => app.actions.submitMatchResult(sourceMatch.id, draft)}
                       />
                     ) : null}
@@ -159,32 +159,32 @@ export function RecruitingRoomActionSection({ context }) {
                           sourceFinalAuthorityLabel,
                         )}
                       >
-                        최종 승인
+                        기록완료
                       </Button>
                     ) : null}
                     {!sourceRoomReadOnly && sourceMatchAction.action === "agree" && sourceMatchSideName ? (
-                      <Button type="button" onClick={() => app.actions.agreeMatch(sourceMatch.id, sourceMatchSideName, app.currentUser.id)}>
-                        {sourceMatchAction.button}
+                      <Button type="button" disabled={Boolean(sourceMatchActionPending)} onClick={() => { void runSourceMatchAction("agree", () => app.actions.agreeMatch(sourceMatch.id, sourceMatchSideName, app.currentUser.id)); }}>
+                        {sourceMatchActionPending === "agree" ? "처리 중" : sourceMatchAction.button}
                       </Button>
                     ) : null}
                     {!sourceRoomReadOnly && canRequestRefereeAbsence ? (
-                      <Button type="button" variant="secondary" onClick={() => app.actions.requestMatchRefereeAbsence(sourceMatch.id)}>
-                        심판 미출석
+                      <Button type="button" variant="secondary" disabled={Boolean(sourceMatchActionPending)} onClick={() => { void runSourceMatchAction("absence-request", () => app.actions.requestMatchRefereeAbsence(sourceMatch.id)); }}>
+                        {sourceMatchActionPending === "absence-request" ? "처리 중" : "심판 미출석"}
                       </Button>
                     ) : null}
                     {!sourceRoomReadOnly && canConfirmRefereeAbsence ? (
-                      <Button type="button" variant="secondary" onClick={() => app.actions.confirmMatchRefereeAbsence(sourceMatch.id)}>
-                        심판 미출석 인정
+                      <Button type="button" variant="secondary" disabled={Boolean(sourceMatchActionPending)} onClick={() => { void runSourceMatchAction("absence-confirm", () => app.actions.confirmMatchRefereeAbsence(sourceMatch.id)); }}>
+                        {sourceMatchActionPending === "absence-confirm" ? "처리 중" : "심판 미출석 인정"}
                       </Button>
                     ) : null}
                     {!sourceRoomReadOnly && canShowStartSourceMatch ? (
-                      <Button type="button" disabled={!canStartSourceMatch} title={sourceMatchStartButtonTitle} onClick={() => app.actions.startMatch(sourceMatch.id)}>
-                        {sourceMatchStartButtonLabel}
+                      <Button type="button" disabled={!canStartSourceMatch || Boolean(sourceMatchActionPending)} title={sourceMatchStartButtonTitle} onClick={() => { void runSourceMatchAction("start", () => app.actions.startMatch(sourceMatch.id)); }}>
+                        {sourceMatchActionPending === "start" ? "처리 중" : sourceMatchStartButtonLabel}
                       </Button>
                     ) : null}
                     {!sourceRoomReadOnly && canEndSourceMatch && !selectedMatchRules.gameClockEnabled ? (
-                      <Button type="button" variant="secondary" onClick={() => app.actions.endMatch(sourceMatch.id)}>
-                        경기 종료
+                      <Button type="button" variant="secondary" disabled={Boolean(sourceMatchActionPending)} onClick={() => { void runSourceMatchAction("end", () => app.actions.endMatch(sourceMatch.id)); }}>
+                        {sourceMatchActionPending === "end" ? "처리 중" : "경기 종료"}
                       </Button>
                     ) : null}
                     {!sourceRoomReadOnly && canCancelSourceMatch ? (
@@ -204,8 +204,7 @@ export function RecruitingRoomActionSection({ context }) {
                         개인 기록 삭제
                       </Button>
                     ) : null}
-                    </div>
-                  )
+                  </div>
                 ) : recruitingRoomTerminalStatus ? (
                   <div className="arena-owner-panel">
                     <strong>{recruitingRoomTerminalStatus.label}</strong>
@@ -275,7 +274,7 @@ export function RecruitingRoomActionSection({ context }) {
                       </div>
                     ) : (
                     <>
-                    <div className="segmented-control compact-segments">
+                    <div className="ui-segmented-control segmented-control compact-segments">
                       {joinModeEntries.map(([mode, meta]) => (
                         <button
                           key={mode}
@@ -475,9 +474,10 @@ export function RecruitingRoomActionSection({ context }) {
                     type="button"
                     variant="secondary"
                     className="danger-button"
-                    onClick={() => app.actions.cancelRecruitingParticipation(selectedPost.id)}
+                    disabled={Boolean(sourceMatchActionPending)}
+                    onClick={() => { void runSourceMatchAction("cancel-participation", () => app.actions.cancelRecruitingParticipation(selectedPost.id)); }}
                   >
-                    <XCircle size={18} /> 참여 취소
+                    <XCircle size={18} /> {sourceMatchActionPending === "cancel-participation" ? "취소 중" : "참여 취소"}
                   </Button>
                 ) : null}
                 {!sourceRoomReadOnly && !matchRoom && mine ? (

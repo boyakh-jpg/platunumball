@@ -46,11 +46,10 @@ export default function MatchesPageView({ controller }) {
   const { app, location, viewId, panelMode, branchFilter, relationFilter, dateFilter, calendarMonth, selectedRecruitingPostId, setSelectedRecruitingPostId, setSelectedRecruitingPostDetailLoadingId, setSelectedRecruitingPostDetailFailedId, attendanceScanState, attendanceQrFlow, activeSelectedMatchId, todayValue, selectedView, teamById, userById, matchesById, courtById, courtByName, activeTournaments, selectedRecruitingPost, selectedRecruitingLobby, selectedRecruitingPostDetailFailed, selectedRecruitingPostDetailLoading, selectedMatch, selectedMatchRoomPost, selectedMatchRoomError, selectedMatchDetailLoading, selectedMatchDetailFailed, applyFilterState, closeSelectedMatch, requestMatchDetail, openSelectedRecruitingPost, openSelectedMatch, matchPagination, teamMatchList, calendarCounts, calendarDays, calendarMonthCount, scheduleLoading, scheduleError, displayScheduleItems, scheduleCountLabel, displayActiveCount, displayTodoCount, displayScheduledCount, getDisplayViewButtonCount, teamScheduleCount } = controller;
 return (
     <div className="page-stack om-match-page">
-      <section className="om-match-hero ui-design-app-hero">
-        <div className="om-match-copy">
-          <span className="om-kicker">MATCH QUEUE</span>
+      <section className="om-match-hero ui-page-hero ui-design-app-hero">
+        <div className="om-match-copy ui-page-hero__copy">
+          <span className="eyebrow">MATCH QUEUE</span>
           <h1>일정</h1>
-          <p>내가 참가한 시작 전 경기만 날짜별로 표시합니다.</p>
         </div>
         <div className="om-match-panel ui-liquid-glass">
           <div className="om-match-stats ui-liquid-glass-segments">
@@ -60,7 +59,7 @@ return (
           </div>
           <div className="om-match-actions">
             <Button as={Link} to="/app/create" className="ui-button-block"><PlusCircle size={18} /> 매칭 만들기</Button>
-            <Button as={Link} to="/app/create?intent=record" className="ui-button-block"><ClipboardCheck size={18} /> 경기 기록하기</Button>
+            <Button as={Link} to="/app/create?intent=record" variant="secondary" className="ui-button-block"><ClipboardCheck size={18} /> 경기 기록하기</Button>
           </div>
         </div>
       </section>
@@ -110,7 +109,7 @@ return (
           <span>
             <small>TEAM</small>
             <strong>내 팀 경기</strong>
-            <em>소속 팀 진행·예정</em>
+            <em>진행·예정</em>
           </span>
           <b>{teamMatchList.status === MATCH_LIST_STATUSES.LOADING ? "..." : teamScheduleCount}</b>
         </button>
@@ -123,7 +122,7 @@ return (
           <span>
             <small>EVENT</small>
             <strong>비공개 대회</strong>
-            <em>내 대회·팀 초대 대회</em>
+            <em>내 대회·초대</em>
           </span>
           <b>{activeTournaments.length}</b>
         </button>
@@ -135,7 +134,7 @@ return (
           <div className="om-calendar-heading">
             <span className="om-view-icon"><CalendarDays size={22} /></span>
             <div>
-              <span className="om-kicker">SCHEDULE</span>
+              <span className="eyebrow">SCHEDULE</span>
               <h2>{panelMode === "team" ? "내 팀 일정" : "내 경기 일정"}</h2>
               <p>
                 {dateFilter
@@ -149,7 +148,7 @@ return (
           <section className="om-calendar-filter-bar" aria-label="경기 필터">
             {panelMode !== "team" ? <div className="om-calendar-filter-row">
               <span className="om-calendar-filter-label">관계</span>
-              <div className="segmented-control compact-segments om-relation-filter-grid" role="group" aria-label="관계 필터">
+              <div className="ui-segmented-control segmented-control compact-segments om-relation-filter-grid" role="group" aria-label="관계 필터">
                 <button type="button" className={relationFilter === "all" ? "active" : ""} onClick={() => applyFilterState({ relationFilter: "all" })}>전체</button>
                 <button type="button" className={relationFilter === "created" ? "active" : ""} onClick={() => applyFilterState({ relationFilter: "created" })}>내가 만든 방</button>
                 <button type="button" className={relationFilter === "joined" ? "active" : ""} onClick={() => applyFilterState({ relationFilter: "joined" })}>내 참여방</button>
@@ -158,7 +157,7 @@ return (
             </div> : null}
             {panelMode !== "team" ? <div className="om-calendar-filter-row">
               <span className="om-calendar-filter-label">유형</span>
-              <div className="segmented-control compact-segments om-branch-filter-grid" role="group" aria-label="유형 필터">
+              <div className="ui-segmented-control segmented-control compact-segments om-branch-filter-grid" role="group" aria-label="유형 필터">
                 {SCHEDULE_BRANCH_FILTERS.map((option) => (
                   <button
                     key={option.id}
@@ -218,9 +217,9 @@ return (
       ) : null}
 
       {panelMode === "tournament" ? <section className="om-tournament-panel" aria-label="비공개 대회">
-        <div className="om-list-head">
+        <div className="section-title-row om-list-head">
           <div>
-            <span className="om-kicker">PRIVATE EVENT</span>
+            <span className="eyebrow">PRIVATE EVENT</span>
             <h2>비공개 대회</h2>
           </div>
           <div className="om-tournament-head-actions">
@@ -237,7 +236,7 @@ return (
             return (
               <article key={tournament.id} className="om-tournament-card">
                 <div className="om-tournament-copy">
-                  <span className="om-kicker">{tournamentFormatLabels[tournament.format] ?? "대회"}</span>
+                  <span className="eyebrow">{tournamentFormatLabels[tournament.format] ?? "대회"}</span>
                   <h3>{tournament.title}</h3>
                   <p>
                     <span>
@@ -359,9 +358,9 @@ return (
       {scheduleLoading ? <BasketballLoader overlay label="서버 데이터 불러오는 중" /> : null}
 
       {panelMode !== "tournament" ? <section className="om-match-list" aria-label="경기 목록">
-        <div className="om-list-head">
+        <div className="section-title-row om-list-head">
           <div>
-            <span className="om-kicker">{selectedView.code}</span>
+            <span className="eyebrow">{selectedView.code}</span>
             <h2>{panelMode === "team" ? "내 팀 경기" : dateFilter ? `${selectedView.title} · ${formatDateLabel(dateFilter)}` : selectedView.title}</h2>
           </div>
           <span>{scheduleCountLabel}</span>

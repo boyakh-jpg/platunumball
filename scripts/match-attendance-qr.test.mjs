@@ -17,6 +17,7 @@ import {
   getStartStatus,
   getRecommendedSideSize,
   isAttendanceCheckinOpen,
+  isQrMatchEligible,
 } from "../server/api/matches/attendance-qr.js";
 import {
   getMatchPregameNotificationPlan,
@@ -33,7 +34,9 @@ import {
 } from "../server/api/discord/dm-worker.js";
 import {
   checkInMatchPlayer,
+  confirmMatchRefereeAbsence,
   endMatch,
+  requestMatchRefereeAbsence,
   substituteMatchPlayer,
 } from "../src/data/repository.js";
 import { mergeMatchesById } from "../src/hooks/useAppData.js";
@@ -58,7 +61,92 @@ const {
 const root = new URL("../", import.meta.url);
 const readSource = (path) => readFile(new URL(path, root), "utf8");
 
-test("QR 출석 기본값은 공개·비공개 경쟁전과 대회에서 켜진다", () => {
+function makeRefereeAbsenceState(currentUserId = "host") {
+  return {
+    currentUserId,
+    users: [
+      { id: "host", trustScore: 80 },
+      { id: "opponent", trustScore: 80 },
+      { id: "referee", trustScore: 80, officialReferee: true },
+    ],
+    teams: [],
+    tournaments: [],
+    notifications: [],
+    settings: {},
+    matches: [{
+      id: "referee-absence",
+      title: "심판 미출석 회귀 검증",
+      mode: "1v1",
+      status: "agreed",
+      createdBy: "host",
+      refereeId: "referee",
+      timingType: "instant",
+      teamA: { players: ["host"] },
+      teamB: { players: ["opponent"] },
+      reservePlayers: { teamA: [], teamB: [] },
+      attendance: { teamA: [], teamB: [] },
+      rules: { timingType: "instant", qrAttendanceEnabled: false },
+    }],
+  };
+}
+
+test("심판 미출석은 상대 사이드장 확인 뒤 한 번만 차감한다", () => {
+  const initial = makeRefereeAbsenceState();
+  const requested = requestMatchRefereeAbsence(initial, "referee-absence");
+  const repeated = requestMatchRefereeAbsence(requested, "referee-absence");
+
+  assert.equal(requested.matches[0].refereeAbsenceRequest.status, "pending");
+  assert.equal(requested.users.find((user) => user.id === "referee").trustScore, 80);
+  assert.strictEqual(repeated, requested);
+
+  const confirmed = confirmMatchRefereeAbsence(
+    { ...repeated, currentUserId: "opponent" },
+    "referee-absence",
+  );
+  const repeatedConfirmation = confirmMatchRefereeAbsence(confirmed, "referee-absence");
+  assert.equal(confirmed.matches[0].refereeAbsenceRequest.status, "confirmed");
+  assert.equal(confirmed.matches[0].formerRefereeId, "referee");
+  assert.equal(confirmed.users.find((user) => user.id === "referee").trustScore, 76);
+  assert.strictEqual(repeatedConfirmation, confirmed);
+});
+
+test("시작하지 않은 경기는 로컬 종료 reducer가 종료하지 않는다", () => {
+  const initial = makeRefereeAbsenceState();
+  const noReferee = {
+    ...initial,
+    matches: [{ ...initial.matches[0], refereeId: "" }],
+  };
+  assert.strictEqual(endMatch(noReferee, "referee-absence"), noReferee);
+
+  const startedAt = new Date(Date.now() - 60_000).toISOString();
+  const started = {
+    ...noReferee,
+    matches: [{ ...noReferee.matches[0], startedAt }],
+  };
+  const ended = endMatch(started, "referee-absence");
+  assert.equal(ended.matches[0].startedAt, startedAt);
+  assert.ok(ended.matches[0].endedAt);
+});
+
+test("심판 미출석과 경기 종료의 서버·DB 계약이 로컬 경계와 일치한다", async () => {
+  const migration = (await readSource("supabase/migrations/20260801006000_fix_match_dispute_and_referee_absence_edges.sql")).replaceAll("\r\n", "\n");
+  const serverAction = await readSource("server/lib/matchSqlCoreActions.js");
+  const matchModel = await readSource("src/components/recruiting/RecruitingRoomMatchModel.jsx");
+  const endMigration = await readSource("supabase/migrations/20260728145000_unified_match_dispute_overlap_policy.sql");
+  const requestBranchStart = migration.indexOf("if p_action = 'requestMatchRefereeAbsence' then");
+  const confirmBranchStart = migration.indexOf("\n  else\n    if current_match.referee_absence_request->>'status' <> 'pending'");
+  const trustUpdate = migration.indexOf("update public.profiles");
+
+  assert.match(serverAction, /rankball_match_referee_absence_action/);
+  assert.match(migration, /match_referee_absence_already_requested/);
+  assert.ok(requestBranchStart >= 0 && confirmBranchStart > requestBranchStart);
+  assert.doesNotMatch(migration.slice(requestBranchStart, confirmBranchStart), /update public\.profiles/);
+  assert.ok(trustUpdate > confirmBranchStart);
+  assert.match(matchModel, /refereeAbsenceRequest\?\.status !== "pending"/);
+  assert.match(endMigration, /current_match\.started_at is null/);
+});
+
+test("QR 출석 기본값은 사후 경기기록을 제외한 경기시계 방에서 켜진다", () => {
   assert.equal(normalizeMatchRules({
     visibility: "public",
     matchPurpose: "competitive",
@@ -95,6 +183,11 @@ test("QR 출석 기본값은 공개·비공개 경쟁전과 대회에서 켜진�
     qrAttendanceEnabled: true,
   }).qrAttendanceEnabled, false);
   assert.equal(normalizeMatchRules({
+    visibility: "private",
+    recordType: "solo",
+    qrAttendanceEnabled: true,
+  }).qrAttendanceEnabled, true);
+  assert.equal(normalizeMatchRules({
     visibility: "public",
     matchPurpose: "friendly",
     qrAttendanceEnabled: true,
@@ -105,6 +198,18 @@ test("QR 출석 기본값은 공개·비공개 경쟁전과 대회에서 켜진�
     gameClockEnabled: false,
     qrAttendanceEnabled: true,
   }).qrAttendanceEnabled, false);
+  assert.equal(isQrMatchEligible({
+    visibility: "private",
+    rules: { qrAttendanceEnabled: true },
+  }), true);
+  assert.equal(isQrMatchEligible({
+    visibility: "public",
+    rules: { qrAttendanceEnabled: true, recordType: "solo" },
+  }), true);
+  assert.equal(isQrMatchEligible({
+    visibility: "private",
+    rules: { qrAttendanceEnabled: true, recordType: "match_record" },
+  }), false);
 });
 
 test("출석 QR은 5분 단위로 교체되고 경기와 서명에 묶인다", () => {
@@ -537,6 +642,20 @@ test("출석 운영자는 자기 출석도 같은 중앙 action으로 저장한�
   assert.deepEqual(checkedIn.matches[0].attendance.teamA, ["host"]);
 });
 
+test("선수 방장의 자기 출석은 UI에서 막지 않고 QR 시작 상태를 즉시 갱신한다", async () => {
+  const [roomManagementSource, attendancePanelSource] = await Promise.all([
+    readSource("src/components/recruiting/RoomManagementPanels.jsx"),
+    readSource("src/components/match/MatchAttendanceQrPanel.jsx"),
+  ]);
+  assert.doesNotMatch(roomManagementSource, /operatorAttendanceOptional|방장 확인 생략|확인 생략/u);
+  assert.match(roomManagementSource, /disabled=\{checkedIn \|\| Boolean\(pendingAction\)\}[\s\S]*?runAction\(`checkin:\$\{playerId\}`,[\s\S]*?onCheckInPlayer\(side, playerId\)/u);
+  assert.match(attendancePanelSource, /const attendanceRevision = \["teamA", "teamB"\]/u);
+  assert.match(attendancePanelSource, /const loadRequestIdRef = useRef\(0\)/u);
+  assert.match(attendancePanelSource, /loadRequestIdRef\.current !== requestId/u);
+  assert.match(attendancePanelSource, /loadRequestIdRef\.current \+= 1/u);
+  assert.match(attendancePanelSource, /\}, \[attendanceRevision, load\]\);/u);
+});
+
 test("QR 경기방은 20분 전, 비QR 경기방은 기존 10분 전부터 체크인 단계로 전환한다", () => {
   const qrMatch = {
     status: "agreed",
@@ -576,12 +695,13 @@ test("경기시계는 샷클락과 점수를 화면에서 자동 갱신한다", 
   assert.equal(afterExpiry.shotRemainingMs, 0);
 
   const panelSource = await readSourceGroup(readSource, MATCH_CLOCK_PANEL_SOURCE_PATHS);
+  const requestSource = await readSource("src/components/match/useMatchClockRequests.js");
   const clockApiSource = await readSource("server/api/matches/clock.js");
   const authoritativeStateSource = await readSource("server/api/_authoritativeState.js");
   const recruitingSource = await readSourceGroup(readSource, RECRUITING_PAGE_SOURCE_PATHS);
   const matchRoomSource = await readSourceGroup(readSource, MATCH_ROOM_SOURCE_PATHS);
   const disputeQueueSource = await readSource("src/components/match/MatchDisputeQueue.jsx");
-  assert.match(panelSource, /window\.setInterval\(load, 3000\)/u);
+  assert.match(requestSource, /window\.setInterval\(readLatest, 3000\)/u);
   assert.match(panelSource, /점수 3초 자동 갱신/u);
   assert.match(panelSource, /눌러서 \$\{liveClock\.shotClockSeconds\}초로 초기화/u);
   assert.match(clockApiSource, /\.from\("match_results"\)[\s\S]*\.select\("score_a,score_b,score_revision_a,score_revision_b,submitted_at"\)/u);
@@ -647,6 +767,9 @@ test("경기시계 담당·출석·QR·교체 UI는 단순화 정책을 따른�
   assert.match(recruitingSource, /window\.setInterval\(refreshAttendance, 3000\)/u);
   assert.match(roomManagementSource, /setPendingKick\(\{[\s\S]*?playerId,[\s\S]*?playerName/u);
   assert.doesNotMatch(roomManagementSource, /playerId:\s*partyEntry \? playerId : entry\.playerId/u);
+  assert.doesNotMatch(roomManagementSource, /operatorAttendanceOptional|방장 확인 생략|확인 생략/u);
+  assert.match(roomManagementSource, /disabled=\{checkedIn \|\| Boolean\(pendingAction\)\}[\s\S]*?runAction\(`checkin:\$\{playerId\}`,[\s\S]*?onCheckInPlayer\(side, playerId\)/u);
+  assert.match(recruitingSource, /<MatchAttendanceQrPanel[\s\S]*?match=\{sourceMatch\}/u);
   assert.doesNotMatch(recruitingSource, /자동 기록자|기록 후보/u);
   assert.doesNotMatch(recruitingSource, /<Badge[^>]*>본인 교체<\/Badge>/u);
   assert.match(matchesSource, /function AttendanceScanResultView/u);
@@ -721,13 +844,17 @@ test("DB 마이그레이션은 지각 후보, 무수정 정리, 최소 출전, �
   const unifiedRosterSql = await readSource("supabase/migrations/20260727110000_unified_match_roster_transition.sql");
   const simplifiedLiveMatchSql = await readSource("supabase/migrations/20260728124000_simplify_live_match_operations.sql");
   const tournamentQrSql = await readSource("supabase/migrations/20260729121000_enable_tournament_qr_attendance.sql");
+  const tournamentQrDefaultsSql = await readSource("supabase/migrations/20260803010000_force_tournament_qr_defaults.sql");
   const unifiedQrStartSql = await readSource("supabase/migrations/20260729150000_unify_match_qr_start_policy.sql");
+  const privateQrSql = await readSource("supabase/migrations/20260730204500_align_match_qr_attendance_eligibility.sql");
   const hostFinalizationSql = await readSource("supabase/migrations/20260728130000_general_match_host_finalization.sql");
   const liveAuthoritySql = await readSource("supabase/migrations/20260728143000_referee_live_match_authority.sql");
+  const substituteTeamProvenanceSql = await readSource("supabase/migrations/20260801005000_preserve_substitute_team_provenance.sql");
   const scoreOnlyPostgameRosterSql = await readSource("supabase/migrations/20260727144000_allow_score_only_postgame_roster.sql");
   const enforcedScoreOnlyPostgameRosterSql = await readSource("supabase/migrations/20260727145000_enforce_score_only_postgame_roster.sql");
   const syncMatchSource = await readSourceGroup(readSource, MATCH_SYNC_SOURCE_PATHS);
   const attendanceApiSource = await readSource("server/api/matches/attendance-qr.js");
+  const clockApiSource = await readSource("server/api/matches/clock.js");
   const recruitingSource = await readSourceGroup(readSource, RECRUITING_PAGE_SOURCE_PATHS);
   assert.match(unifiedQrStartSql, /interval '20 minutes'/u);
   assert.match(unifiedQrStartSql, /now_at < scheduled_at_kst[\s\S]*missing_count > 0/u);
@@ -745,10 +872,25 @@ test("DB 마이그레이션은 지각 후보, 무수정 정리, 최소 출전, �
   assert.match(sql, /grant execute on function public\.rankball_match_attendance_qr_action/u);
   assert.match(tournamentQrSql, /current_match\.tournament_id is null/u);
   assert.doesNotMatch(tournamentQrSql, /delete\s+from|drop\s+table|truncate\s+table/iu);
-  assert.match(attendanceApiSource, /const qrEligible = match\.visibility === "public" \|\| isTournamentMatch\(match\)/u);
+  assert.match(tournamentQrDefaultsSql, /rankball_enforce_tournament_qr_defaults/u);
+  assert.match(tournamentQrDefaultsSql, /before insert or update of tournament_id, rules on public\.matches/u);
+  assert.match(tournamentQrDefaultsSql, /'gameClockEnabled', true,[\s\S]*'qrAttendanceEnabled', true/u);
+  assert.doesNotMatch(tournamentQrDefaultsSql, /delete\s+from|drop\s+table|truncate\s+table/iu);
+  assert.match(attendanceApiSource, /export function isQrMatchEligible/u);
+  assert.match(attendanceApiSource, /\["public", "private"\]\.includes\(match\.visibility\) \|\| isTournamentMatch\(match\)/u);
+  assert.match(attendanceApiSource, /String\(match\.rules\?\.recordType \|\| ""\) !== "match_record"/u);
   assert.match(attendanceApiSource, /isTournamentMatch\(match\)[\s\S]*?\[match\.referee_id\]/u);
   assert.match(attendanceApiSource, /canResize: !match\.started_at[\s\S]*?!isTournamentMatch\(match\)/u);
   assert.match(attendanceApiSource, /queueMatchDiscordDeliveries\([\s\S]*?notificationMatch,[\s\S]*?"attendanceRefresh"/u);
+  assert.match(clockApiSource, /\["public", "private"\]\.includes\(matchRow\?\.visibility\)/u);
+  assert.match(clockApiSource, /String\(matchRow\?\.rules\?\.recordType \|\| ""\) !== "match_record"/u);
+  assert.match(privateQrSql, /rankball_match_attendance_qr_action\(text,text\)/u);
+  assert.match(privateQrSql, /rankball_match_attendance_resize_action\(text,text\)/u);
+  assert.match(privateQrSql, /visibility not in \(''public'', ''private''\)/u);
+  assert.match(privateQrSql, /old_resize_fragment[\s\S]*visibility <> ''public''/u);
+  assert.match(privateQrSql, /function_signature = 'public\.rankball_match_attendance_qr_action\(text,text\)'/u);
+  assert.match(privateQrSql, /recordType'', ''''\), ''match''\) = ''match_record''/u);
+  assert.doesNotMatch(privateQrSql, /delete\s+from|drop\s+table|truncate\s+table/iu);
   assert.match(recruitingSource, /selectedMatchRules\.qrAttendanceEnabled/u);
   assert.match(clockAccuracySql, /rankball_match_clock_effective_elapsed_ms/u);
   assert.match(clockAccuracySql, /started_active_elapsed_ms/u);
@@ -790,6 +932,17 @@ test("DB 마이그레이션은 지각 후보, 무수정 정리, 최소 출전, �
   assert.match(simplifiedLiveMatchSql, /match_row\.reserve_players->'teamA'/u);
   assert.match(simplifiedLiveMatchSql, /authority_a := 'clock_controller'/u);
   assert.match(simplifiedLiveMatchSql, /not game_clock_enabled[\s\S]*current_match\.created_by/u);
+  assert.match(substituteTeamProvenanceSql, /rankball_match_roster_move_action_pre_substitution_permission/u);
+  assert.match(substituteTeamProvenanceSql, /from public\.recruiting_applications application/u);
+  assert.match(substituteTeamProvenanceSql, /application\.kind = 'team'/u);
+  assert.match(substituteTeamProvenanceSql, /application\.side = safe_side/u);
+  assert.match(substituteTeamProvenanceSql, /application\.player_id = active_in_id[\s\S]*application\.player_ids \? active_in_id/u);
+  assert.match(substituteTeamProvenanceSql, /from public\.recruiting_posts post/u);
+  assert.match(substituteTeamProvenanceSql, /post\.host_join_mode = 'team'/u);
+  assert.match(substituteTeamProvenanceSql, /post\.host_side = safe_side/u);
+  assert.match(substituteTeamProvenanceSql, /partyReserves,host[\s\S]*pinnedReservePlayers/u);
+  assert.match(substituteTeamProvenanceSql, /current_match\.team_a_id[\s\S]*current_match\.team_b_id/u);
+  assert.doesNotMatch(substituteTeamProvenanceSql, /rules->'parties'|delete\s+from|drop\s+table|truncate\s+table/iu);
   assert.match(hostFinalizationSql, /match_finalize_host_required/u);
   assert.match(hostFinalizationSql, /match_dispute_host_required/u);
   assert.match(hostFinalizationSql, /check \(reason in \('self', 'late', 'ejection', 'operator'\)\) not valid/u);
@@ -835,4 +988,16 @@ test("local/demo 경기 방장 권한은 방장 식별자가 비어 있으면 �
   const hostGuardSource = repositorySource.slice(guardStart, guardEnd);
   assert.match(hostGuardSource, /return Boolean\(hostPlayerId && hostPlayerId === state\.currentUserId\)/u);
   assert.doesNotMatch(hostGuardSource, /return !hostPlayerId \|\|/u);
+});
+
+test("방 참가자 관리 명령은 ref mutex와 실패 상태를 공유한다", async () => {
+  const panelSource = await readSource("src/components/recruiting/RoomManagementPanels.jsx");
+  assert.match(panelSource, /const pendingRef = useRef\(false\)/u);
+  assert.match(panelSource, /if \(pendingRef\.current\) return false/u);
+  assert.match(panelSource, /result === false \|\| result\?\.ok === false/u);
+  assert.match(panelSource, /runAction\(`checkin:/u);
+  assert.match(panelSource, /runAction\(`placement:/u);
+  assert.match(panelSource, /runAction\(`swap:/u);
+  assert.match(panelSource, /runAction\(`substitute:/u);
+  assert.match(panelSource, /role="alert"/u);
 });

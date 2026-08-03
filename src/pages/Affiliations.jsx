@@ -1,35 +1,68 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Card from "../components/common/Card.jsx";
 import Badge from "../components/common/Badge.jsx";
+import BasketballLoader from "../components/common/BasketballLoader.jsx";
 import Button from "../components/common/Button.jsx";
 import NameReportForm from "../components/common/NameReportForm.jsx";
 import { AFFILIATION_TYPES } from "../lib/constants.js";
 import { AFFILIATION_TYPE, getAffiliationMemberCount } from "../lib/affiliations.js";
+import { isSupabaseConfigured } from "../lib/supabase.js";
 
 export default function Affiliations({ app }) {
   const [reportTargetId, setReportTargetId] = useState("");
-  const loadRef = useRef(false);
+  const [directoryLoadState, setDirectoryLoadState] = useState("idle");
+  const directoryLoadPendingRef = useRef(false);
+  const loadDirectory = app.actions.loadDirectory;
   const visibleAffiliations = app.rankings.affiliations.filter((affiliation) => (
     ["region", AFFILIATION_TYPE].includes(affiliation.type)
     && (affiliation.status ?? "active") === "active"
   ));
+  const typeRankById = new Map();
+  ["region", AFFILIATION_TYPE].forEach((type) => {
+    visibleAffiliations
+      .filter((affiliation) => affiliation.type === type)
+      .sort((a, b) => b.score - a.score)
+      .forEach((affiliation, index) => typeRankById.set(affiliation.id, index + 1));
+  });
+  const rankedAffiliations = visibleAffiliations.map((affiliation) => ({
+    ...affiliation,
+    rank: typeRankById.get(affiliation.id) ?? 0,
+  }));
   const userAffiliationIds = new Set([app.currentUser.affiliationId].filter(Boolean));
   const userAffiliationNames = new Set([app.currentUser.region].filter(Boolean));
-  const myAffiliations = visibleAffiliations
-    .map((affiliation, index) => ({ ...affiliation, rank: index + 1 }))
+  const myAffiliations = rankedAffiliations
     .filter((affiliation) => userAffiliationIds.has(affiliation.id) || userAffiliationNames.has(affiliation.name));
+  const directoryLoading = directoryLoadState === "idle" || directoryLoadState === "loading";
+
+  const refreshAffiliations = useCallback(async (force = false) => {
+    if (!isSupabaseConfigured) {
+      setDirectoryLoadState("loaded");
+      return true;
+    }
+    if (directoryLoadPendingRef.current) return false;
+    directoryLoadPendingRef.current = true;
+    setDirectoryLoadState("loading");
+    try {
+      const result = await loadDirectory?.({ force, kind: "affiliations", limit: 100, offset: 0 });
+      setDirectoryLoadState(result === true ? "loaded" : "error");
+      return result === true;
+    } catch {
+      setDirectoryLoadState("error");
+      return false;
+    } finally {
+      directoryLoadPendingRef.current = false;
+    }
+  }, [loadDirectory]);
 
   useEffect(() => {
-    if (!app.remoteReady || loadRef.current) return;
-    loadRef.current = true;
-    app.actions.loadDirectory?.({ kind: "affiliations", limit: 100, offset: 0 });
-  }, [app.actions, app.remoteReady]);
+    if (!app.remoteReady || directoryLoadState !== "idle") return;
+    void refreshAffiliations();
+  }, [app.remoteReady, directoryLoadState, refreshAffiliations]);
   const challengeRows = myAffiliations.map((affiliation) => {
-    const sameType = visibleAffiliations
-      .map((item, index) => ({ ...item, rank: index + 1 }))
+    const sameType = rankedAffiliations
       .filter((item) => item.type === affiliation.type)
       .sort((a, b) => b.score - a.score);
-    const typeRank = sameType.findIndex((item) => item.id === affiliation.id) + 1;
+    const typeRank = affiliation.rank;
     const target = typeRank > 1 ? sameType[typeRank - 2] : sameType[1];
     return {
       ...affiliation,
@@ -42,14 +75,22 @@ export default function Affiliations({ app }) {
 
   return (
     <div className="page-stack">
-      <header className="page-header">
-        <div>
+      <header className="page-header ui-page-hero ui-design-app-hero">
+        <div className="ui-page-hero__copy">
           <p className="eyebrow">Affiliations</p>
           <h1>소속별 랭킹</h1>
         </div>
       </header>
 
-      <section className="affiliation-challenge-grid">
+      {directoryLoadState === "error" ? (
+        <Card className="section-card">
+          <p>소속 랭킹을 불러오지 못했습니다.</p>
+          <Button type="button" variant="secondary" onClick={() => void refreshAffiliations(true)}>다시 시도</Button>
+        </Card>
+      ) : null}
+      {directoryLoading ? <BasketballLoader label="소속 순위 불러오는 중" /> : null}
+
+      {rankedAffiliations.length ? <><section className="affiliation-challenge-grid">
         <Card className="section-card affiliation-focus-card">
           <div className="section-title-row">
             <div>
@@ -84,7 +125,7 @@ export default function Affiliations({ app }) {
           </div>
           <div className="compact-list">
             {challengeRows.map((affiliation) => (
-              <div key={`${affiliation.id}-target`}>
+              <div key={`${affiliation.id}-target`} className="ui-control-surface">
                 <span>
                   {affiliation.target
                     ? affiliation.challengeType === "chase"
@@ -100,11 +141,11 @@ export default function Affiliations({ app }) {
       </section>
 
       <section className="card-grid">
-        {visibleAffiliations.map((affiliation, index) => (
+        {rankedAffiliations.map((affiliation) => (
           <Card key={affiliation.id} className="affiliation-card">
             <div className="section-title-row">
               <div>
-                <p className="eyebrow">#{index + 1} {AFFILIATION_TYPES[affiliation.type]}</p>
+                <p className="eyebrow">#{affiliation.rank} {AFFILIATION_TYPES[affiliation.type]}</p>
                 <h2>{affiliation.name}</h2>
               </div>
               <Badge tone="blue">{Math.round(affiliation.score)}</Badge>
@@ -130,7 +171,8 @@ export default function Affiliations({ app }) {
             ) : null}
           </Card>
         ))}
-      </section>
+      </section></> : null}
+      {directoryLoadState === "loaded" && !rankedAffiliations.length ? <div className="ui-empty-state-compact">표시할 소속 순위가 없습니다.</div> : null}
     </div>
   );
 }

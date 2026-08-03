@@ -1,13 +1,16 @@
 import * as repository from "../data/repository.js";
 import { createProfileShell } from "../data/profileMappers.js";
 import { DEFAULT_SETTINGS, EMPTY_STATE } from "../data/repositoryDefaults.js";
+import { getPracticeMatchAttendanceQrResponse } from "./matchAttendance.js";
 import {
   applyOperatorAttendance,
   getMatchReservePlayerIds,
 } from "./matchUtils.js";
 import { PRACTICE_ID_PREFIX } from "./practiceMode.js";
+import { makePracticeTeams } from "./practiceMatchTeams.js";
 
 export const PRACTICE_SELF_ID = `${PRACTICE_ID_PREFIX}player-self`;
+export { PRACTICE_TEAM_A_ID, PRACTICE_TEAM_B_ID } from "./practiceMatchTeams.js";
 
 const PRACTICE_DUMMY_PROFILES = Object.freeze([
   ["guard-1", "김서준", "PG", 1210],
@@ -67,6 +70,7 @@ export const PRACTICE_REDUCER_ACTIONS = new Set([
   "setRecruitingPartyPlayerPlacement",
   "setRecruitingPartyPlayerReserve",
   "setRecruitingSlotPosition",
+  "setRecruitingRoomTeam",
   "setRecruitingTeamPartyRoster",
   "startMatch",
   "submitMatchResult",
@@ -138,14 +142,15 @@ export function createPracticeState(realState = {}, realUser = {}) {
   const approvedCourts = activeApprovedCourts.length
     ? activeApprovedCourts
     : [getPracticeCourt(region)];
+  const users = [
+    self,
+    ...PRACTICE_DUMMY_PROFILES.map((profile) => makePracticeProfile(profile, region)),
+  ];
   return {
     ...EMPTY_STATE,
     currentUserId: PRACTICE_SELF_ID,
-    users: [
-      self,
-      ...PRACTICE_DUMMY_PROFILES.map((profile) => makePracticeProfile(profile, region)),
-    ],
-    teams: [],
+    users,
+    teams: makePracticeTeams(users),
     matches: [],
     recruitingPosts: [],
     notifications: [],
@@ -201,6 +206,12 @@ export function runPracticeReducer(state, actionName, args = [], actorId = PRACT
   if (typeof reducer !== "function") {
     return { state, applied: false, error: "practice_action_unavailable" };
   }
+  if (actionName === "startMatch") {
+    const match = state.matches.find((item) => item.id === args[0]);
+    if (match?.rules?.qrAttendanceEnabled && !getPracticeMatchAttendanceQrResponse(match).startStatus.canStart) {
+      return { state, applied: false, error: "attendance_pending" };
+    }
+  }
   const baseline = markPracticeState({ ...state, currentUserId: PRACTICE_SELF_ID });
   const next = withPracticeActor(state, actorId, reducer, ...args);
   const applied = JSON.stringify(next) !== JSON.stringify(baseline);
@@ -220,10 +231,10 @@ export function createPracticeRecruitingRoom(state, draft = {}, { inviteTutorial
     timingType: "instant",
     scheduledDate: "",
     scheduledTime: "",
-    hostJoinMode: "player",
-    teamOnly: false,
-    teamId: "",
-    opponentTeamId: "",
+    hostJoinMode: draft.hostJoinMode === "team" ? "team" : "player",
+    teamOnly: draft.hostJoinMode === "team",
+    teamId: draft.teamId || "",
+    opponentTeamId: draft.opponentTeamId || "",
     playerIds: [],
     reservePlayerIds: [],
     opponentPlayerIds: [],
@@ -239,6 +250,7 @@ export function createPracticeRecruitingRoom(state, draft = {}, { inviteTutorial
     rules: {
       ...(draft.rules ?? {}),
       practiceMode: true,
+      qrAttendanceEnabled: true,
       ranked: false,
       official: false,
       ratingScale: 0,
@@ -247,6 +259,7 @@ export function createPracticeRecruitingRoom(state, draft = {}, { inviteTutorial
   let next = withPracticeActor(state, PRACTICE_SELF_ID, repository.createRecruitingPost, safeDraft);
   const post = next.recruitingPosts.find((item) => item.id === roomId);
   if (!post) return { state, postId: "", error: "practice_room_create_failed" };
+  if (post.teamOnly) return { state: next, postId: roomId, error: "" };
 
   const reservedRefereeId = safeDraft.refereeId || (
     safeDraft.refereeWanted
@@ -312,6 +325,34 @@ export function createPracticeRecruitingRoom(state, draft = {}, { inviteTutorial
     };
   }
   return { state: next, postId: roomId, error: "" };
+}
+
+export function createPracticeMatchRecord(state, draft = {}) {
+  const matchId = `${PRACTICE_ID_PREFIX}record-${Date.now().toString(36)}`;
+  const safeDraft = {
+    ...draft,
+    id: matchId,
+    recordType: "match_record",
+    recordComposition: draft.recordComposition === "team" ? "team" : "individual",
+    visibility: "private",
+    ranked: false,
+    official: false,
+    preRegistered: false,
+    ratingScale: 0,
+    rules: {
+      ...(draft.rules ?? {}),
+      practiceMode: true,
+      ranked: false,
+      official: false,
+      ratingScale: 0,
+    },
+  };
+  const next = withPracticeActor(state, PRACTICE_SELF_ID, repository.createMatch, safeDraft);
+  return {
+    state: next,
+    matchId: next.matches.some((match) => match.id === matchId) ? matchId : "",
+    error: next.matches.some((match) => match.id === matchId) ? "" : "practice_record_create_failed",
+  };
 }
 
 export function acceptPracticeInvitations(state, postId) {
@@ -448,7 +489,7 @@ export function approvePracticeDummyPlayers(state, matchId) {
     operatorId,
     repository.finalizeMatchByAuthority,
     matchId,
-    { disputesAcknowledged: true },
+    { disputesAcknowledged: true, now: Date.now() + 4 * 60 * 1000 },
   );
 }
 

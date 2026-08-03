@@ -21,7 +21,6 @@ import {
   getCourtSurfaceLabel,
 } from "../lib/courts.js";
 import { getCourtHashtag } from "../lib/handles.js";
-
 import { formatDate, getMatchDate, getLoadError, getLocalDetail } from "./courtDetailModel.js";
 
 export default function CourtDetail({ app, courtId: courtIdProp = "", embedded = false, onClose }) {
@@ -35,7 +34,7 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
   const [selectedMatchId, setSelectedMatchId] = useState("");
   const [rating, setRating] = useState(0);
   const [memo, setMemo] = useState("");
-  const [saving, setSaving] = useState(false);
+  const [saving, setSaving] = useState(false); const savingRef = useRef(false);
   const [saveMessage, setSaveMessage] = useState("");
   const [correctionOpen, setCorrectionOpen] = useState(false);
   const [correctionField, setCorrectionField] = useState("name");
@@ -43,7 +42,7 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
   const [correctionValue, setCorrectionValue] = useState("");
   const [correctionNote, setCorrectionNote] = useState("");
   const [correctionUrl, setCorrectionUrl] = useState("");
-  const [correctionSaving, setCorrectionSaving] = useState(false);
+  const [correctionSaving, setCorrectionSaving] = useState(false); const correctionSavingRef = useRef(false);
   const [correctionMessage, setCorrectionMessage] = useState("");
   const detailRequestRef = useRef(0);
   const loadCourtDetail = app.actions?.loadCourtDetail;
@@ -58,7 +57,6 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
   const correctionCanSubmit = correctionIsStructured
     ? Boolean(selectedCorrectionAttribute.options.some((option) => option.id === correctionValue))
     : correctionValue.trim().length >= 4;
-
   const changeCorrectionField = (field) => {
     const nextAttribute = getCourtCorrectionAttributeOptions(field)[0] ?? null;
     setCorrectionField(field);
@@ -67,14 +65,12 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
     setCorrectionNote("");
     setCorrectionMessage("");
   };
-
   const changeCorrectionAttribute = (attribute) => {
     const nextAttribute = correctionAttributes.find((option) => option.id === attribute) ?? correctionAttributes[0];
     setCorrectionAttribute(nextAttribute?.id ?? "");
     setCorrectionValue(nextAttribute?.options[0]?.id ?? "");
     setCorrectionMessage("");
   };
-
   const refreshDetail = useCallback(async ({ silent = false } = {}) => {
     const requestId = detailRequestRef.current + 1;
     detailRequestRef.current = requestId;
@@ -115,7 +111,6 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
       detailRequestRef.current += 1;
     };
   }, [refreshDetail]);
-
   useEffect(() => {
     setCorrectionOpen(false);
     setCorrectionField("name");
@@ -125,7 +120,6 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
     setCorrectionUrl("");
     setCorrectionMessage("");
   }, [courtId]);
-
   const reviewableMatches = detail?.reviewableMatches ?? [];
   useEffect(() => {
     setSelectedMatchId((current) => (
@@ -146,22 +140,25 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
 
   const submitReview = async (event) => {
     event.preventDefault();
-    if (!selectedMatchId || rating < 1 || saving) return;
+    if (!selectedMatchId || rating < 1 || savingRef.current) return;
+    savingRef.current = true;
     setSaving(true);
     setSaveMessage("");
-    const result = await app.actions?.submitCourtDetailReview?.(selectedMatchId, {
-      ...(selectedMatch?.existingReview ?? {}),
-      rating,
-      memo,
-    });
-    if (result?.ok === false || !result) {
+    try {
+      const result = await app.actions?.submitCourtDetailReview?.(selectedMatchId, {
+        ...(selectedMatch?.existingReview ?? {}),
+        rating,
+        memo,
+      });
+      if (result?.ok === false || !result) {
+        setSaveMessage("리뷰를 저장하지 못했습니다.");
+        return;
+      }
+      await refreshDetail({ silent: true });
+      setSaveMessage(selectedMatch?.existingReview ? "리뷰를 수정했습니다." : "리뷰를 등록했습니다.");
+    } catch {
       setSaveMessage("리뷰를 저장하지 못했습니다.");
-      setSaving(false);
-      return;
-    }
-    await refreshDetail({ silent: true });
-    setSaveMessage(selectedMatch?.existingReview ? "리뷰를 수정했습니다." : "리뷰를 등록했습니다.");
-    setSaving(false);
+    } finally { savingRef.current = false; setSaving(false); }
   };
 
   const submitCorrection = async (event) => {
@@ -169,39 +166,43 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
     const proposedValue = correctionValue.trim();
     const note = correctionNote.trim();
     const evidenceUrl = correctionUrl.trim();
-    if (!correctionCanSubmit || correctionSaving) return;
+    if (!correctionCanSubmit || correctionSavingRef.current) return;
     if (evidenceUrl && !/^https?:\/\//i.test(evidenceUrl)) {
       setCorrectionMessage("근거 URL은 http:// 또는 https://로 입력해 주세요.");
       return;
     }
+    correctionSavingRef.current = true;
     setCorrectionSaving(true);
     setCorrectionMessage("");
     const fieldLabel = getCourtCorrectionFieldLabel(correctionField);
-    const result = await app.actions?.reportCourt?.(
-      courtId,
-      `${fieldLabel} 수정 요청: ${proposedValue}`,
-      {
-        field: correctionField,
-        attribute: selectedCorrectionAttribute?.id ?? "",
-        proposedValue,
-        note,
-        evidenceUrl,
-      },
-      detail?.court ?? null,
-    );
-    if (result?.duplicate) {
-      setCorrectionMessage("이미 검토 중인 정보 수정 신고가 있습니다.");
-    } else if (!result || result.ok === false) {
-      setCorrectionMessage(result?.error === "court_report_unavailable"
-        ? "이미 검토 중인 신고가 있거나 신고할 수 없는 구장입니다."
-        : "정보 수정 신고를 접수하지 못했습니다.");
-    } else {
-      if (!correctionIsStructured) setCorrectionValue("");
-      setCorrectionNote("");
-      setCorrectionUrl("");
-      setCorrectionMessage("접수했습니다. 관리자 확인 전까지 현재 정보는 유지됩니다.");
-    }
-    setCorrectionSaving(false);
+    try {
+      const result = await app.actions?.reportCourt?.(
+        courtId,
+        `${fieldLabel} 수정 요청: ${proposedValue}`,
+        {
+          field: correctionField,
+          attribute: selectedCorrectionAttribute?.id ?? "",
+          proposedValue,
+          note,
+          evidenceUrl,
+        },
+        detail?.court ?? null,
+      );
+      if (result?.duplicate) {
+        setCorrectionMessage("이미 검토 중인 정보 수정 신고가 있습니다.");
+      } else if (!result || result.ok === false) {
+        setCorrectionMessage(result?.error === "court_report_unavailable"
+          ? "이미 검토 중인 신고가 있거나 신고할 수 없는 구장입니다."
+          : "정보 수정 신고를 접수하지 못했습니다.");
+      } else {
+        if (!correctionIsStructured) setCorrectionValue("");
+        setCorrectionNote("");
+        setCorrectionUrl("");
+        setCorrectionMessage("접수했습니다. 관리자 확인 전까지 현재 정보는 유지됩니다.");
+      }
+    } catch {
+      setCorrectionMessage("정보 수정 신고를 접수하지 못했습니다.");
+    } finally { correctionSavingRef.current = false; setCorrectionSaving(false); }
   };
 
   if (loading && !detail) {
@@ -212,7 +213,7 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
     return (
       <div className="court-detail-state" role="alert">
         <strong>{loadError?.message || "구장 정보를 찾을 수 없습니다."}</strong>
-        <div className="court-detail-state-actions">
+        <div className="ui-action-row court-detail-state-actions">
           {loadError?.retryable ? <Button type="button" variant="secondary" size="sm" onClick={() => refreshDetail()}>다시 시도</Button> : null}
           {embedded ? (
             <Button type="button" variant="secondary" size="sm" onClick={onClose}>닫기</Button>
@@ -255,8 +256,8 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
           <Button type="button" variant="secondary" size="sm" onClick={() => refreshDetail()}>다시 시도</Button>
         </div>
       ) : null}
-      <Card className="court-detail-hero ui-design-app-hero">
-        <div className="court-detail-heading">
+      <Card className="court-detail-hero ui-page-hero ui-design-app-hero">
+        <div className="court-detail-heading ui-page-hero__copy">
           <p className="eyebrow">Court Profile</p>
           <h1>{court.name}</h1>
           <p><MapPin size={16} /> {getCourtAddress(court)}</p>
@@ -269,11 +270,11 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
             {typeof court.paid === "boolean" ? <Badge>이용료 · {court.paid ? "유료" : "무료"}</Badge> : null}
           </div>
         </div>
-        <div className="court-detail-actions">
+        <div className="ui-action-row court-detail-actions">
           <Button as="a" variant="secondary" size="sm" className="court-map-link ui-liquid-glass" href={mapUrl} target="_blank" rel="noreferrer">
             지도 보기 <ExternalLink size={15} />
           </Button>
-          <Button type="button" variant="secondary" size="sm" className="ui-liquid-glass" onClick={() => setCorrectionOpen((open) => !open)} aria-expanded={correctionOpen}>
+          <Button type="button" variant="secondary" size="sm" className="ui-liquid-glass" disabled={correctionSaving} onClick={() => setCorrectionOpen((open) => !open)} aria-expanded={correctionOpen}>
             <Flag size={15} /> 정보 수정 신고
           </Button>
         </div>
@@ -327,9 +328,9 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
               <span>근거 URL (선택)</span>
               <input type="url" value={correctionUrl} onChange={(event) => setCorrectionUrl(event.target.value)} maxLength={1000} placeholder="https://" />
             </label>
-            <div className="court-correction-actions">
+            <div className="ui-action-row court-correction-actions">
               <Button type="submit" size="sm" disabled={!correctionCanSubmit || correctionSaving}>{correctionSaving ? "접수 중" : "수정 신고 접수"}</Button>
-              <Button type="button" variant="secondary" size="sm" onClick={() => setCorrectionOpen(false)}>닫기</Button>
+              <Button type="button" variant="secondary" size="sm" disabled={correctionSaving} onClick={() => setCorrectionOpen(false)}>닫기</Button>
             </div>
           </form>
           {correctionMessage ? <p className="court-correction-message" role="status">{correctionMessage}</p> : null}
@@ -362,7 +363,7 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
           </div>
         </div>
         <div className="court-profile-information-grid ui-design-borderless-list">
-          <section>
+          <section className="ui-control-surface">
             <h3><Building2 size={17} /> 시설</h3>
             <dl>
               {facilityDetails.map(([label, value]) => (
@@ -370,7 +371,7 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
               ))}
             </dl>
           </section>
-          <section>
+          <section className="ui-control-surface">
             <h3><Clock3 size={17} /> 이용</h3>
             <dl>
               {accessDetails.map(([label, value]) => (
@@ -378,7 +379,7 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
               ))}
             </dl>
           </section>
-          <section>
+          <section className="ui-control-surface">
             <h3><MapPin size={17} /> 위치·안내</h3>
             <dl>
               <div><dt>도로명</dt><dd>{court.roadAddress || court.addressText || "확인 필요"}</dd></div>
@@ -388,7 +389,7 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
               <div><dt>이용 안내</dt><dd>{court.accessNote || "등록된 안내 없음"}</dd></div>
             </dl>
           </section>
-          <section>
+          <section className="ui-control-surface">
             <h3><Phone size={17} /> 연락·예약</h3>
             <dl>
               <div><dt>연락처</dt><dd>{court.contactPhone || "확인 필요"}</dd></div>
@@ -419,7 +420,7 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
           {reviews.length ? (
             <div className="court-review-list">
               {reviews.map((review) => (
-                <article className="court-review-row" key={review.id}>
+                <article className="court-review-row ui-control-surface" key={review.id}>
                   <div className="court-review-author">
                     <ProfileEmblem user={review.reviewer} className="small" initial={(review.reviewer?.name || "참").slice(0, 1)} />
                     <div>

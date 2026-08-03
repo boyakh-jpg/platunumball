@@ -8,6 +8,7 @@ import {
   Trophy,
   Users,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
@@ -25,17 +26,26 @@ function getSideName(match = {}, sideName) {
   return match?.[sideName]?.name || MATCH_SIDE_FALLBACK_NAMES[sideName];
 }
 
+function normalizeLandingStats(value = {}) {
+  const stats = Object.fromEntries(
+    ["openRecruiting", "completedMatches", "activeTeams", "players"]
+      .map((key) => [key, Number(value?.[key])]),
+  );
+  return Object.values(stats).every((count) => Number.isSafeInteger(count) && count >= 0)
+    ? stats
+    : null;
+}
+
 export default function Landing({ state }) {
+  const [publicStats, setPublicStats] = useState(null);
   const users = state?.users ?? [];
   const matches = state?.matches ?? [];
   const teams = state?.teams ?? [];
-  const openRecruiting = (state?.recruitingPosts ?? [])
-    .filter((post) => post.status !== "closed")
-    .slice(0, 3);
-  const completedMatches = matches
-    .filter((match) => match.status === "confirmed")
-    .slice(-3)
-    .reverse();
+  const openRecruitingPosts = (state?.recruitingPosts ?? [])
+    .filter((post) => post.status !== "closed");
+  const openRecruiting = openRecruitingPosts.slice(0, 3);
+  const confirmedMatches = matches.filter((match) => match.status === "confirmed");
+  const completedMatches = confirmedMatches.slice(-3).reverse();
   const topUser = users
     .filter((user) => isPlacementComplete(user.ratings))
     .sort((a, b) => (b.ratings?.integrated ?? 0) - (a.ratings?.integrated ?? 0))[0];
@@ -43,23 +53,45 @@ export default function Landing({ state }) {
   const topMmr = Number(topUser?.ratings?.integrated ?? 0);
   const topTier = topUser ? getTierDivision(topMmr) : "시즌 랭킹 준비 중";
 
+  const landingStats = publicStats ?? {
+    openRecruiting: openRecruitingPosts.length,
+    completedMatches: confirmedMatches.length,
+    activeTeams: teams.length,
+    players: users.length,
+  };
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch("/api/landing/stats", {
+      method: "GET",
+      headers: { Accept: "application/json" },
+      signal: controller.signal,
+    })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((payload) => {
+        const nextStats = normalizeLandingStats(payload?.stats);
+        if (nextStats) setPublicStats(nextStats);
+      })
+      .catch(() => {});
+    return () => controller.abort();
+  }, []);
+
   return (
     <main className="ui-design-host ui-design-public-main" data-design="editorial">
       <div className="ui-design-page ui-design-main-page">
         <div className="ui-design-flow ui-design-main-flow">
           <section
-            className="ui-design-hero ui-design-main-hero"
+            className="ui-design-hero ui-design-main-hero ui-page-hero"
             style={{
               "--ui-design-media": "var(--bg-action)",
               "--ui-design-media-position": "center 36%",
               "--ui-design-media-position-mobile": "62% center",
             }}
           >
-            <div className="ui-design-hero__copy">
+            <div className="ui-design-hero__copy ui-page-hero__copy">
               <Badge tone="green">Season Zero</Badge>
               <h1>오늘,<br />농구할 사람?</h1>
-              <p>가까운 경기를 찾고, 팀과 기록을 한곳에서 관리하세요.</p>
-              <div className="ui-design-actions">
+              <div className="ui-action-row ui-design-actions">
                 <Button as={Link} to="/app/recruiting">
                   경기 찾기 <ArrowRight size={18} />
                 </Button>
@@ -72,14 +104,14 @@ export default function Landing({ state }) {
               </div>
             </div>
             <div className="ui-design-stat-strip ui-design-hero__stats" aria-label={`${BRAND_NAME} 활동 요약`}>
-              <span><b>{openRecruiting.length}</b>열린 매칭</span>
-              <span><b>{matches.length}</b>경기 기록</span>
-              <span><b>{teams.length}</b>활동 팀</span>
+              <span><b>{landingStats.openRecruiting}</b>열린 매칭</span>
+              <span><b>{landingStats.completedMatches}</b>경기 기록</span>
+              <span><b>{landingStats.activeTeams}</b>활동 팀</span>
             </div>
           </section>
 
           <section className="ui-design-section">
-            <div className="ui-design-section-heading">
+            <div className="section-title-row ui-design-section-heading">
               <div>
                 <p className="eyebrow">Play next</p>
                 <h2>지금 열려 있는 경기</h2>
@@ -91,7 +123,7 @@ export default function Landing({ state }) {
             <div className="ui-design-list ui-design-schedule">
               {openRecruiting.length ? openRecruiting.map((post) => (
                 <Link
-                  to="/app/recruiting"
+                  to={`/app/recruiting?post=${encodeURIComponent(post.id)}`}
                   key={post.id}
                   className="ui-design-row ui-design-schedule-row"
                 >
@@ -141,7 +173,7 @@ export default function Landing({ state }) {
                 <span><Trophy size={17} /> {featuredTeam?.wins ?? 0}승 {featuredTeam?.losses ?? 0}패</span>
                 <span>{featuredTeam?.mmr ?? 1200} MMR</span>
               </div>
-              <Link to="/app/teams" className="ui-design-text-action ui-design-text-action--inverse">
+              <Link to={featuredTeam ? `/app/teams/${encodeURIComponent(featuredTeam.id)}` : "/app/teams"} className="ui-design-text-action ui-design-text-action--inverse">
                 팀 둘러보기 <ArrowRight size={18} />
               </Link>
             </div>
@@ -160,14 +192,14 @@ export default function Landing({ state }) {
               </div>
             </div>
             <dl className="ui-design-stat-strip ui-design-spotlight__stats">
-              <div><dt>경기</dt><dd>{matches.length}</dd></div>
-              <div><dt>팀</dt><dd>{teams.length}</dd></div>
-              <div><dt>선수</dt><dd>{users.length}</dd></div>
+              <div><dt>경기</dt><dd>{landingStats.completedMatches}</dd></div>
+              <div><dt>팀</dt><dd>{landingStats.activeTeams}</dd></div>
+              <div><dt>선수</dt><dd>{landingStats.players}</dd></div>
             </dl>
           </section>
 
           <section className="ui-design-section">
-            <div className="ui-design-section-heading">
+            <div className="section-title-row ui-design-section-heading">
               <div>
                 <p className="eyebrow">Recent games</p>
                 <h2>최근 경기</h2>
@@ -178,10 +210,10 @@ export default function Landing({ state }) {
             </div>
             <div className="ui-design-list ui-design-result-list">
               {completedMatches.length ? completedMatches.map((match) => (
-                <Link to="/app/matches" className="ui-design-result-row" key={match.id}>
+                <Link to={`/app/matches?match=${encodeURIComponent(match.id)}`} className="ui-design-result-row" key={match.id}>
                   <span className="is-win">완료</span>
                   <strong>{getSideName(match, "teamA")} vs {getSideName(match, "teamB")}</strong>
-                  <b>{match.teamA?.score ?? 0} : {match.teamB?.score ?? 0}</b>
+                  <b>{match.result?.scoreA ?? match.teamA?.score ?? 0} : {match.result?.scoreB ?? match.teamB?.score ?? 0}</b>
                 </Link>
               )) : (
                 <div className="ui-empty-state-compact">아직 공개된 경기 기록이 없습니다.</div>

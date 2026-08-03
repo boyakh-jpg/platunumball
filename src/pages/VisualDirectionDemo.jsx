@@ -48,7 +48,7 @@ const RECENT = [
 function ClassicLandingPreview() {
   return (
     <main className="landing">
-      <section className="landing-hero">
+      <section className="landing-hero ui-page-hero">
         <div className="landing-backdrop" aria-hidden="true" />
         <div className="landing-copy">
           <div className="landing-brand-lockup" aria-label="BOXTIER">
@@ -58,7 +58,7 @@ function ClassicLandingPreview() {
           <div className="landing-actions">
             <div className="landing-primary-actions">
               <Button type="button" className="landing-create-action">매칭 만들기</Button>
-              <Button type="button" className="landing-create-action">경기 기록하기</Button>
+              <Button type="button" variant="secondary" className="landing-create-action">경기 기록하기</Button>
             </div>
           </div>
           <div className="landing-stat-grid">
@@ -123,18 +123,18 @@ export default function VisualDirectionDemo() {
 
         {designMode === "classic" ? <ClassicLandingPreview /> : <main className="ui-design-flow">
         <section
-          className="ui-design-hero"
+          className="ui-design-hero ui-page-hero"
           style={{
             "--ui-design-media": "var(--bg-action)",
             "--ui-design-media-position": "center 36%",
             "--ui-design-media-position-mobile": "62% center",
           }}
         >
-          <div className="ui-design-hero__copy">
+          <div className="ui-design-hero__copy ui-page-hero__copy">
             <Badge tone="green">지금 12명이 경기 찾는 중</Badge>
             <h1>오늘,<br />농구할 사람?</h1>
             <p>장소와 시간을 고르면 같이 뛸 사람을 찾을 수 있어요.</p>
-            <div className="ui-design-actions">
+            <div className="ui-action-row ui-design-actions">
               <Button type="button">
                 경기 찾기 <ArrowRight size={18} />
               </Button>
@@ -151,7 +151,7 @@ export default function VisualDirectionDemo() {
         </section>
 
         <section className="ui-design-section">
-          <div className="ui-design-section-heading">
+          <div className="section-title-row ui-design-section-heading">
             <div>
               <p className="eyebrow">Play next</p>
               <h2>가까운 경기</h2>
@@ -221,7 +221,7 @@ export default function VisualDirectionDemo() {
         </section>
 
         <section className="ui-design-section">
-          <div className="ui-design-section-heading">
+          <div className="section-title-row ui-design-section-heading">
             <div>
               <p className="eyebrow">Recent games</p>
               <h2>최근 경기</h2>
@@ -239,7 +239,7 @@ export default function VisualDirectionDemo() {
         </section>
 
         <section className="ui-design-section">
-          <div className="ui-design-section-heading">
+          <div className="section-title-row ui-design-section-heading">
             <div>
               <p className="eyebrow">Preferences</p>
               <h2>화면 설정</h2>

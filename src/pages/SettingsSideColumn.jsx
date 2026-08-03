@@ -17,6 +17,7 @@ export default function SettingsSideColumn({ controller }) {
     blockUserQuery,
     setBlockUserQuery,
     blockSavePending,
+    blockSaveStatus,
     setReportMatchId,
     reportReason,
     setReportReason,
@@ -39,6 +40,9 @@ export default function SettingsSideColumn({ controller }) {
     naverAddressResults,
     setNaverAddressResults,
     courtLookupStatus,
+    courtAddressSearchPending,
+    courtPinPending,
+    courtSubmitPending,
     courtPinConfirmed,
     courtNearbyConfirmed,
     setCourtNearbyConfirmed,
@@ -120,12 +124,13 @@ export default function SettingsSideColumn({ controller }) {
                 renderItem={renderBlockUserSearchItem}
               />
               <Button type="submit" variant="secondary" disabled={!selectedBlockUserId || blockSavePending}>{blockSavePending ? "저장 중" : "차단"}</Button>
+              {blockSaveStatus ? <small role="status">{blockSaveStatus}</small> : null}
             </form>
             <div className="compact-list ui-support-list">
               {blockedUserIds.length ? blockedUserIds.map((userId) => (
                 <div key={userId}>
-                  <span>{userMap[userId]?.name ?? "플레이어"}</span>
-                  <button type="button" disabled={blockSavePending} onClick={() => releaseBlock(userId)}>해제</button>
+                  <span>{userMap[userId]?.name ?? app.state.settings?.blockedUserProfiles?.[userId]?.name ?? "플레이어"}</span>
+                  <button type="button" className="ui-compact-action" disabled={blockSavePending} onClick={() => releaseBlock(userId)}>해제</button>
                 </div>
               )) : <div><span>차단한 플레이어가 없습니다.</span><strong>0</strong></div>}
             </div>
@@ -167,16 +172,18 @@ export default function SettingsSideColumn({ controller }) {
                       placeholder="구장 근처 도로명, 건물명 검색"
                     />
                   </label>
-                  <div className="settings-address-actions">
-                    <Button type="button" variant="secondary" onClick={searchCourtAddress}>근처 주소 찾기</Button>
-                    <Button type="button" variant="secondary" onClick={pickCourtMapPin} disabled={!courtAddressSelected || !naverMapKeyReady}>
-                      실제 위치 확정
+                  <div className="ui-action-row settings-address-actions">
+                    <Button type="button" variant="secondary" onClick={searchCourtAddress} disabled={courtAddressSearchPending || !courtAddressQuery.trim()}>
+                      {courtAddressSearchPending ? "주소 찾는 중" : "근처 주소 찾기"}
+                    </Button>
+                    <Button type="button" variant="secondary" onClick={pickCourtMapPin} disabled={courtPinPending || courtSubmitPending || !courtAddressSelected || !naverMapKeyReady}>
+                      {courtPinPending ? "위치 확인 중" : "실제 위치 확정"}
                     </Button>
                   </div>
                   {naverAddressResults.length ? (
                     <div className="settings-address-results">
                       {naverAddressResults.map((result) => (
-                        <button key={result.id} type="button" onClick={() => selectNaverAddress(result)}>
+                        <button key={result.id} type="button" className="ui-choice-tile" onClick={() => selectNaverAddress(result)}>
                           <strong>{result.roadAddress || result.addressText}</strong>
                           <span>{result.jibunAddress || result.addressText}</span>
                           <em>지도 이동 기준</em>
@@ -201,7 +208,7 @@ export default function SettingsSideColumn({ controller }) {
                     <input value={courtDraft.courtUnit} placeholder="예: 1코트, B코트, 실내" onChange={(event) => updateCourtDraft({ courtUnit: event.target.value })} />
                   </label>
                 </div>
-                <div className="settings-place-name-actions">
+                <div className="ui-action-row settings-place-name-actions">
                   <small>핀 주소의 시군구와 시설명을 합쳐 `시군구 + 시설명 + 농구장`으로 저장합니다.</small>
                   {courtDraft.buildingName ? <small>주소 건물명 `{courtDraft.buildingName}` 자동 반영 · 직접 수정하면 수동 시설명을 사용</small> : null}
                 </div>
@@ -217,7 +224,7 @@ export default function SettingsSideColumn({ controller }) {
                 ) : null}
                 {courtPinConfirmed && courtNearbyCandidates.length ? (
                   <div className="arena-mini-note arena-mini-note-warning settings-nearby-courts">
-                    <div className="settings-nearby-courts-head">
+                    <div className="section-title-row settings-nearby-courts-head">
                       <div>
                         <span>근처 등록·검토 중 구장</span>
                         <strong>{courtNearbyCandidates.length}개 확인</strong>
@@ -364,8 +371,8 @@ export default function SettingsSideColumn({ controller }) {
                   찾아가는 메모
                   <textarea value={courtDraft.locationNote} placeholder="예: 나들목 지나 오른쪽 두 번째 골대" onChange={(event) => updateCourtDraft({ locationNote: event.target.value })} />
                 </label>
-                <Button type="submit" variant="secondary" disabled={!canSubmitCourtRequest || !courtDisplayName || !courtAddressSelected || !courtHasMapPin || !courtPinConfirmed}>
-                  <Send size={16} /> 등록요청
+                <Button type="submit" variant="secondary" disabled={courtSubmitPending || courtPinPending || !canSubmitCourtRequest || !courtDisplayName || !courtAddressSelected || !courtHasMapPin || !courtPinConfirmed}>
+                  <Send size={16} /> {courtSubmitPending ? "저장 중" : "등록요청"}
                 </Button>
               </form>
             ) : null}
@@ -385,7 +392,7 @@ export default function SettingsSideColumn({ controller }) {
                   <div key={request.id}>
                     <span>{request.name} · {request.addressText} · 공개 여부 {getCourtPublicAccessLabel(request)} · {requester?.name ?? "요청자"} 신뢰도 {request.requestedByTrustScore ?? requester?.trustScore ?? "-"}</span>
                     <strong>{getAdminStatusLabel(request.status)}</strong>
-                    <button type="button" disabled={!canReportRequest} onClick={() => reportCourtRequest(request)}>
+                    <button type="button" className="ui-compact-action" disabled={!canReportRequest} onClick={() => reportCourtRequest(request)}>
                       {alreadyReported ? "신고됨" : "신고 선택"}
                     </button>
                   </div>

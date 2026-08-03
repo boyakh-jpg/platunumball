@@ -184,7 +184,7 @@
   padding: 12px;
   color: black;
   background: white;
-  border: var(--ui-stroke-width-strong) solid var(--rb-line-strong);
+  border: 0;
   border-radius: var(--ui-panel-radius);
   overflow: hidden;
 }
@@ -244,7 +244,7 @@
 
 .ui-match-clock-score-control-side {
   display: grid;
-  grid-template-columns: max-content minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--control-group-gap);
   align-items: center;
   min-width: 0;
@@ -258,19 +258,14 @@
   grid-column: 1 / -1;
 }
 
-.ui-match-clock-score-control-side > strong {
-  font-family: var(--sports-display-font);
-  font-size: 0.82rem;
-  line-height: 1;
-  white-space: nowrap;
+.ui-match-clock-score-control-side-a .ui-button {
+  color: var(--scoreboard);
+  background: var(--team-home);
 }
 
-.ui-match-clock-score-control-side-a > strong {
-  color: var(--team-home);
-}
-
-.ui-match-clock-score-control-side-b > strong {
-  color: var(--team-away);
+.ui-match-clock-score-control-side-b .ui-button {
+  color: var(--scoreboard);
+  background: var(--team-away);
 }
 
 .ui-match-clock-score-actions {

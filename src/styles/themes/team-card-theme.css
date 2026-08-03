@@ -247,7 +247,7 @@
   display: grid;
   align-items: center;
   gap: var(--space-5);
-  border: var(--ui-stroke-width) solid var(--ui-control-border);
+  border: var(--ui-card-border-width) solid var(--ui-control-border);
   border-radius: var(--ui-control-radius);
   background: var(--ui-control-bg);
   padding: 11px;

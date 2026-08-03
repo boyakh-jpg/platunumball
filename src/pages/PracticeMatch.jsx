@@ -46,7 +46,9 @@ function getPracticeInstruction(progress, match = null) {
   }
   if (progress.phase === "live") {
     return match?.rules?.gameClockEnabled
-      ? "경기시계를 시작해 일시정지·샷클락을 시험하고, 예시 점수 또는 점수판을 기록한 뒤 경기를 종료하세요."
+      ? match?.refereeId
+        ? "심판의 경기 시작과 함께 시계가 시작됐습니다. 일시정지·쿼터·연장을 시험하고 기록을 제출한 뒤 경기를 종료하세요."
+        : "경기시계를 시작해 일시정지·샷클락을 시험하고, 예시 점수 또는 점수판을 기록한 뒤 경기를 종료하세요."
       : "공용 방에서 경기 진행 상태를 확인한 뒤 경기 종료를 눌러 기록 단계로 이동하세요.";
   }
   if (progress.phase === "postgame") {
@@ -186,6 +188,35 @@ export default function PracticeMatch({ app }) {
   const instruction = getPracticeInstruction(progress, match);
   const pendingInvitationCount = progress.phase === "recruiting" ? Number(progress.pendingCount || 0) : 0;
   const practiceActorOptions = useMemo(() => {
+    const post = postId
+      ? practiceState.recruitingPosts.find((item) => item.id === postId)
+      : null;
+    if (post) {
+      const invitationTargetIds = (post.roomState?.invitations ?? [])
+        .map((invitation) => invitation.targetUserId);
+      const applicantPlayerIds = (post.applicants ?? [])
+        .flatMap((applicant) => [applicant.playerId, ...(applicant.playerIds ?? [])]);
+      const actorIds = [...new Set([
+        post.ownerId,
+        post.playerId,
+        post.refereeId,
+        ...(post.playerIds ?? []),
+        ...invitationTargetIds,
+        ...applicantPlayerIds,
+      ].filter(Boolean))];
+      return actorIds.map((actorId) => {
+        const user = practiceState.users.find((candidate) => candidate.id === actorId);
+        const invitation = (post.roomState?.invitations ?? [])
+          .find((item) => item.targetUserId === actorId && item.status === "pending");
+        const roles = [
+          actorId === post.ownerId ? "방장" : "",
+          invitation?.role === "referee" ? "초대 심판" : "",
+          invitation?.joinMode === "team" ? "초대 팀장" : "",
+          invitation?.joinMode === "player" ? "초대 선수" : "",
+        ].filter(Boolean);
+        return { id: actorId, label: `${user?.name || "연습 선수"} · ${roles.join("·")}` };
+      });
+    }
     if (!match) return [];
     const activePlayerIds = [...(match.teamA?.players ?? []), ...(match.teamB?.players ?? [])];
     const reservePlayerIds = [
@@ -209,7 +240,7 @@ export default function PracticeMatch({ app }) {
       ].filter(Boolean);
       return { id: actorId, label: `${user?.name || "연습 선수"} · ${roles.join("·")}` };
     });
-  }, [clockControllerId, match, practiceState.users]);
+  }, [clockControllerId, match, postId, practiceState.recruitingPosts, practiceState.users]);
 
   const runHelper = () => {
     if (progress.phase === "recruiting" && pendingInvitationCount > 0) {
@@ -331,10 +362,8 @@ export default function PracticeMatch({ app }) {
         <div>
           <span className="badge-row">
             <Badge tone="orange"><FlaskConical size={14} aria-hidden="true" /> 비저장 연습</Badge>
-            <Badge tone="neutral">현재 서비스 화면</Badge>
           </span>
           <h1>처음부터 끝까지 한 번 해보기</h1>
-          <p>방 설정은 실제 경기 만들기, 이후 단계는 실제 공용 방 모달과 경기시계를 사용합니다. 다른 연습 선수의 응답만 보조 버튼으로 처리합니다.</p>
         </div>
         <div className="practice-match-banner__actions ui-action-row">
           <Button as={Link} variant="secondary" size="sm" to="/app/guide?chapter=practice">

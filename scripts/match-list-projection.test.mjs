@@ -11,6 +11,7 @@ import {
   isMatchupTitleDuplicate,
   normalizeMatchupText,
 } from "../src/lib/matchListProjection.js";
+import { attachMatchPlayerCountsToCards } from "../server/api/matches/_listEnrichment.js";
 
 test("대진 제목 비교는 대소문자와 공백만 정규화한다", () => {
   assert.equal(normalizeMatchupText("  Team A   VS   Team B  "), "team a vs team b");
@@ -59,7 +60,7 @@ test("목록 방 유형은 경기 사이드·팀 파티·모집 로비를 같은
   }), "팀 파티 포함");
 });
 
-test("일정 목록 인원은 선언 count를 우선하고 후보를 포함하지 않는다", () => {
+test("일정 목록 인원은 선언된 출전 수와 후보를 함께 센다", () => {
   assert.deepEqual(getScheduleMatchRosterProjection({
     teamA: {
       count: 3,
@@ -74,9 +75,9 @@ test("일정 목록 인원은 선언 count를 우선하고 후보를 포함하�
       teamB: ["br1"],
     },
   }), {
-    participantCount: 3,
-    teamACount: 3,
-    teamBCount: 0,
+    participantCount: 5,
+    teamACount: 4,
+    teamBCount: 1,
   });
 
   assert.deepEqual(getScheduleMatchRosterProjection({
@@ -86,6 +87,37 @@ test("일정 목록 인원은 선언 count를 우선하고 후보를 포함하�
   }), {
     participantCount: 3,
     teamACount: 2,
+    teamBCount: 1,
+  });
+});
+
+test("일정 목록 카드 count는 match_players에서 빠진 후보도 reserve_players로 복원한다", async () => {
+  const rows = {
+    match_players: [{ match_id: "match-1", side: "teamA", user_id: "host" }],
+    matches: [{ id: "match-1", reserve_players: { teamA: [], teamB: ["taeo", "taeo"] } }],
+  };
+  const client = {
+    from(table) {
+      return {
+        select() { return this; },
+        in(column, ids) {
+          return Promise.resolve({
+            data: rows[table].filter((row) => ids.includes(row[column])),
+            error: null,
+          });
+        },
+      };
+    },
+  };
+  const [counted] = await attachMatchPlayerCountsToCards(client, [{
+    id: "match-1",
+    teamA: { players: [], count: 0 },
+    teamB: { players: [], count: 0 },
+  }]);
+
+  assert.deepEqual(getScheduleMatchRosterProjection(counted), {
+    participantCount: 2,
+    teamACount: 1,
     teamBCount: 1,
   });
 });

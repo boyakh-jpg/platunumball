@@ -48,17 +48,29 @@
   text-align: center;
 }
 
-.trust-star-card .muted {
-  font-size: var(--font-size-body-sm);
-  font-weight: var(--font-weight-body);
-  line-height: 1.45;
+@media (min-width: 721px) {
+  .stat-editor-modal .stat-stepper-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-3);
+  }
+
+  .stat-editor-modal .stat-stepper-row {
+    grid-template-columns: minmax(0, 1fr) 120px;
+    gap: var(--space-3);
+    padding: 8px;
+  }
+
+  .stat-editor-modal .stat-numeric-stepper {
+    grid-template-columns: 36px 42px 36px;
+    width: 120px;
+    gap: 3px;
+  }
 }
 
-.trust-star-summary {
-  color: var(--muted);
-  font-size: var(--font-size-meta);
-  font-weight: var(--font-weight-control);
-  white-space: nowrap;
+.trust-star-card .muted {
+  font-size: 0.84rem;
+  font-weight: 800;
+  line-height: 1.45;
 }
 
 .trust-star-grid {
@@ -71,7 +83,7 @@
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--space-5);
-  border: var(--ui-stroke-width) solid var(--line);
+  border: var(--ui-button-border-width) solid var(--line);
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.045);
   color: var(--text);
@@ -113,9 +125,9 @@
 
 .trust-star-button em {
   color: var(--muted);
-  font-size: var(--font-size-caption);
+  font-size: 0.74rem;
   font-style: normal;
-  font-weight: var(--font-weight-body);
+  font-weight: 850;
 }
 
 .court-review-card .muted {
@@ -148,7 +160,7 @@
   width: 30px;
   height: 30px;
   place-items: center;
-  border: var(--ui-stroke-width) solid var(--line);
+  border: var(--ui-button-border-width) solid var(--line);
   border-radius: var(--radius-xs);
   background: rgba(255, 255, 255, 0.045);
   color: var(--muted);
@@ -281,19 +293,11 @@ html[data-theme="light"] .theme-choice-card,
 html[data-theme="light"] .selector-panel,
 html[data-theme="light"] .team-search-selected,
 html[data-theme="light"] .team-search-popover,
-html[data-theme="light"] .tier-range-note,
-html[data-theme="light"] .mmr-range-mode-control {
+html[data-theme="light"] .tier-range-note {
   border-color: rgba(32, 56, 68, 0.15);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(247, 251, 248, 0.72)),
     rgba(255, 255, 255, 0.86);
-  color: var(--text);
-}
-
-html[data-theme="light"] input,
-html[data-theme="light"] select,
-html[data-theme="light"] textarea {
-  border-color: rgba(32, 56, 68, 0.17);
   color: var(--text);
 }
 
@@ -356,7 +360,7 @@ html[data-theme="light"] .team-search-popover button.selected {
     margin-inline: auto;
   }
 
-  .approval-side-header,
+  .approval-panel .approval-side-header,
   .member-control-row,
   .team-danger-zone,
   .match-action-row,
@@ -382,8 +386,13 @@ html[data-theme="light"] .team-search-popover button.selected {
   }
 
   .stat-editor-modal {
+    gap: var(--space-4);
     max-height: calc(100vh - 20px);
     overflow: auto;
+  }
+
+  .stat-editor-modal .stat-stepper-list {
+    gap: var(--space-2);
   }
 
   .recorder-page {
@@ -402,16 +411,16 @@ html[data-theme="light"] .team-search-popover button.selected {
 
   .stat-stepper-row .stat-numeric-stepper {
     grid-template-columns: 36px 42px 36px;
-    grid-template-rows: 42px;
+    grid-template-rows: 44px;
     gap: 3px;
     width: 120px;
   }
 
   .stat-stepper-row .stat-numeric-stepper button {
-    min-height: 42px;
+    min-height: 44px;
   }
 
   .stat-stepper-row .stat-numeric-stepper input {
-    min-height: 42px;
+    min-height: 44px;
   }
 }

@@ -34,6 +34,7 @@ export function RecruitingRoomLayout({ context }) {
                 type="button"
                 className="arena-lobby-drag-handle"
                 aria-label="아래로 당겨 방 닫기"
+                onClick={closeFromBackdrop}
               />
               <div className="arena-lobby-modal-scroll">
               <RecruitingRoomPrimarySection context={context} />

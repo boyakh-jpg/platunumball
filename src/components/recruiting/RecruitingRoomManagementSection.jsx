@@ -13,7 +13,7 @@ export function RecruitingRoomManagementSection({ context }) {
     roomEditRulesValid, roomEditScheduleValid, roomEditStatus, roomPhaseViewModel, ruleAcknowledgedIds, ruleAcknowledgementPending,
     ruleAcknowledgementRequiredIds, saveRoomEdit, scheduleChangePending, scheduleProposalProgress, selectedMatchRuleRows, selectedMatchRules,
     selectedPost, selectedRange, selectedRoomOperationRows, selectedRoomPolicyRows, selectedRoomPolicySource, showRefereeInviteSlot,
-    sourceMatch, sourceMatchIsRecordRoom, sourceMatchPhase, sourceMatchResultEntryPermission, sourceRoomReadOnly, submitChat,
+    sourceMatch, sourceMatchDraftScore, sourceMatchIsRecordRoom, sourceMatchPhase, sourceMatchResultEntryPermission, sourceRoomReadOnly, submitChat,
     updateChatDraft, updateRefereeInviteQuery, updateRoomEditDraft, userById,
   } = context;
 
@@ -129,7 +129,7 @@ export function RecruitingRoomManagementSection({ context }) {
                   <Badge tone="neutral" className="arena-room-rule-badge">공격권: {selectedMatchRules.attackRule}</Badge>
                   <Badge tone="neutral" className="arena-room-rule-badge">파울: {selectedMatchRules.foulRule}</Badge>
                 </div>
-                <div className="arena-room-referee-line">
+                <div className="arena-room-referee-line ui-control-surface">
                   <strong>심판</strong>
                   {referee ? (
                     <RefereeHoverCard user={referee} matches={app.state.matches} minTrust={selectedPost.refereeTrustMin} className="arena-room-referee-card">
@@ -362,7 +362,9 @@ export function RecruitingRoomManagementSection({ context }) {
                   onEndMatch={() => app.actions.endMatch(sourceMatch.id)}
                   clockClient={clockClient}
                   onRosterChanged={() => void app.actions.loadMatchDetail(sourceMatch.id)}
-                  editableScoreSides={sourceMatchResultEntryPermission?.editableScoreSides ?? []}
+                  editableScoreSides={sourceMatch.refereeId ? [] : sourceMatchResultEntryPermission?.editableScoreSides ?? []}
+                  displayScoreA={sourceMatch.refereeId ? sourceMatchDraftScore?.scoreA : null}
+                  displayScoreB={sourceMatch.refereeId ? sourceMatchDraftScore?.scoreB : null}
                   onIncrementScore={(sideName, delta, revisions) => app.actions.incrementMatchScore?.(
                     sourceMatch.id,
                     sideName === "teamA" ? delta : 0,
@@ -376,11 +378,12 @@ export function RecruitingRoomManagementSection({ context }) {
                   sourceMatchPhase?.phase === "live"
                   && !sourceMatchIsRecordRoom
                   && !selectedMatchRules.gameClockEnabled
+                  && !sourceMatch.refereeId
                 )
                 || (
                   sourceMatch.endedAt
                   && sourceMatch.status !== "disputed"
-                  && (Boolean(sourceMatch.refereeId) || sourceMatchIsRecordRoom)
+                  && sourceMatchIsRecordRoom
                 )
               ) ? (
                 <MatchScoreControls

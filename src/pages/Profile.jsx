@@ -15,7 +15,7 @@ import ShareCard from "../components/share/ShareCard.jsx";
 import { BASKETBALL_POSITIONS, PLAYER_STAT_FIELDS } from "../lib/constants.js";
 import { getUserHashtag } from "../lib/handles.js";
 import { getMatchSideScore as getSideScore, getPlayerMatchResult, getPlayerRecentRecordMatches, getPlayerSideName, hasVerifiedPlayerStats, isPersonalRecordMatch } from "../lib/matchUtils.js";
-import { canChangeProfileName, formatProfileDate, getNextNameChangeDate, getRegionDistrictOptions, inferRegionSelection } from "../lib/profileSetup.js";
+import { canChangeProfileName, formatProfileDate, getNextNameChangeDate, getRegionDistrictOptions, inferRegionSelection, normalizeProfileName, PROFILE_NAME_MAX_LENGTH } from "../lib/profileSetup.js";
 import { isPlacementComplete } from "../lib/rating.js";
 import { MatchRoomModal } from "./Matches.jsx";
 
@@ -44,7 +44,7 @@ function getProfileAverageFouls(user = {}, matches = []) {
   return getAverageFouls(matches, user.id);
 }
 
-function RecentRecordCard({ records, userId, teams, onOpenRecord, loading = false }) {
+function RecentRecordCard({ records, userId, teams, onOpenRecord, loading = false, loadError = "", onRetry }) {
   return (
     <Card className="section-card profile-record-card">
       <div className="section-title-row">
@@ -56,6 +56,11 @@ function RecentRecordCard({ records, userId, teams, onOpenRecord, loading = fals
       </div>
       {loading ? (
         <div className="ui-empty-state-compact">기록 정리 중</div>
+      ) : loadError ? (
+        <div className="ui-empty-state-compact">
+          <span>경기 기록을 불러오지 못했습니다.</span>
+          <Button type="button" variant="secondary" size="sm" onClick={onRetry}>다시 시도</Button>
+        </div>
       ) : records.length ? (
         <div className="recent-match-list">
           {records.map((match) => {
@@ -94,6 +99,9 @@ export default function Profile({ app }) {
     regionDistrict: inferredRegion.district,
   });
   const [profileError, setProfileError] = useState("");
+  const [profileSavePending, setProfileSavePending] = useState(false);
+  const [profileSaveStatus, setProfileSaveStatus] = useState("");
+  const profileSavePendingRef = useRef(false);
   const [selectedRecordMatchId, setSelectedRecordMatchId] = useState("");
   const [recordsLoading, setRecordsLoading] = useState(false);
   const [emblemFeedback, setEmblemFeedback] = useState("");
@@ -104,22 +112,42 @@ export default function Profile({ app }) {
 
   const submit = async (event) => {
     event.preventDefault();
-    if (draft.name !== user.name && !canChangeProfileName(user)) {
+    if (profileSavePendingRef.current) return;
+    const name = normalizeProfileName(draft.name);
+    if (!name) {
+      setProfileError("닉네임을 입력해 주세요.");
+      setProfileSaveStatus("");
+      return;
+    }
+    if (name !== user.name && !canChangeProfileName(user)) {
       setProfileError(`닉네임은 월 1회만 변경할 수 있습니다. 다음 변경 가능일: ${formatProfileDate(getNextNameChangeDate(user))}`);
       return;
     }
+    profileSavePendingRef.current = true;
+    setProfileSavePending(true);
     setProfileError("");
+    setProfileSaveStatus("저장 중");
     const district = districtOptions.includes(draft.regionDistrict) ? draft.regionDistrict : districtOptions[0];
     try {
-      await app.actions.updateProfile({
-        name: draft.name,
+      const result = await app.actions.updateProfile({
+        name,
         position: draft.position,
         region: `${draft.regionSido} ${district}`,
         regionSido: draft.regionSido,
         regionDistrict: district,
       });
+      if (!result || result.ok === false) {
+        setProfileError("프로필을 저장하지 못했습니다. 입력 내용을 확인한 뒤 다시 시도해 주세요.");
+        setProfileSaveStatus("");
+        return;
+      }
+      setProfileSaveStatus("저장되었습니다.");
     } catch (error) {
       setProfileError("프로필을 저장하지 못했습니다. 입력 내용을 확인한 뒤 다시 시도해 주세요.");
+      setProfileSaveStatus("");
+    } finally {
+      profileSavePendingRef.current = false;
+      setProfileSavePending(false);
     }
   };
   const myRecords = getPlayerRecentRecordMatches(app.state.matches, user.id, { limit: 6 });
@@ -159,11 +187,22 @@ export default function Profile({ app }) {
   const matchDraws = Number(matchSummary?.draws ?? fallbackMatches.filter((match) => getPlayerMatchResult(match, user.id) === "D").length);
   const matchWinRate = matchCount ? Math.round((matchWins / matchCount) * 100) : 0;
   const matchTotals = matchSummary?.totals ?? fallbackTotals;
-  const recordsPending = (!app.actions.profileRecordsLoaded || recordsLoading) && !myRecords.length;
+  const recordsLoadError = !myRecords.length ? app.recordArchives?.profile?.error ?? "" : "";
+  const recordsPending = !recordsLoadError && (!app.actions.profileRecordsLoaded || recordsLoading) && !myRecords.length;
+  const retryRecords = async () => {
+    if (recordsLoading || !app.actions.loadProfileRecords) return;
+    recordsLoadKeyRef.current = "";
+    setRecordsLoading(true);
+    try {
+      await app.actions.loadProfileRecords({ force: true });
+    } finally {
+      setRecordsLoading(false);
+    }
+  };
   return (
     <div className="page-stack profile-page">
-      <header className="page-header ui-design-app-hero">
-        <div>
+      <header className="page-header ui-page-hero ui-design-app-hero">
+        <div className="ui-page-hero__copy">
           <p className="eyebrow">Profile</p>
           <h1>프로필</h1>
         </div>
@@ -179,7 +218,7 @@ export default function Profile({ app }) {
               </div>
               <div className="profile-icon-card-tools">
                 <ProfileEmblem user={user} className="hero-avatar" />
-                <div className="profile-icon-card-actions">
+                <div className="ui-action-row profile-icon-card-actions">
                   <Button type="button" size="sm" onClick={() => setIconDialogOpen(true)}>아이콘 변경</Button>
                   <Button as={Link} variant="secondary" size="sm" to="/app/profile/achievements">업적 보기</Button>
                 </div>
@@ -197,7 +236,7 @@ export default function Profile({ app }) {
             <form className="form-grid profile-form-grid" onSubmit={submit}>
               <label>
                 닉네임
-                <input value={draft.name} onChange={(event) => update({ name: event.target.value })} />
+                <input required maxLength={PROFILE_NAME_MAX_LENGTH} value={draft.name} onChange={(event) => update({ name: event.target.value })} />
               </label>
               <ProfileBasicsFields
                 position={draft.position}
@@ -207,7 +246,8 @@ export default function Profile({ app }) {
                 onRegionChange={(regionSido, regionDistrict) => update({ regionSido, regionDistrict })}
               />
               {profileError ? <p className="form-warning">{profileError}</p> : null}
-              <Button type="submit">저장</Button>
+              {profileSaveStatus ? <small role="status">{profileSaveStatus}</small> : null}
+              <Button type="submit" disabled={profileSavePending}>{profileSavePending ? "저장 중" : "저장"}</Button>
             </form>
           </Card>
           <AffiliationEditor user={user} affiliations={app.state.affiliations} actions={app.actions} />
@@ -244,7 +284,7 @@ export default function Profile({ app }) {
               <div className="ui-empty-state-compact">심판이 확정한 개인 기록이 없습니다.</div>
             )}
           </Card>
-          <RecentRecordCard records={myRecords} userId={user.id} teams={app.state.teams} onOpenRecord={setSelectedRecordMatchId} loading={recordsPending} />
+          <RecentRecordCard records={myRecords} userId={user.id} teams={app.state.teams} onOpenRecord={setSelectedRecordMatchId} loading={recordsPending} loadError={recordsLoadError} onRetry={retryRecords} />
         </div>
         <aside className="page-stack profile-side-grid">
           <ProgressionChecklist user={user} matches={app.state.matches} />

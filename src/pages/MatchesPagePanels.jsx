@@ -47,10 +47,15 @@ export class RoomModalErrorBoundary extends Component {
     console.error("boxtier room render failed.", error, info);
   }
 
+  handleRetry = () => {
+    this.setState({ error: null });
+    this.props.onRetry?.();
+  };
+
   render() {
     if (!this.state.error) return this.props.children;
 
-    return <RoomModalErrorView error={this.state.error} onClose={this.props.onClose} />;
+    return <RoomModalErrorView error={this.state.error} onClose={this.props.onClose} onRetry={this.handleRetry} />;
   }
 }
 
@@ -151,7 +156,7 @@ export function MatchRoomModal({
     );
   }
   return (
-    <RoomModalErrorBoundary key={selectedMatch.id} onClose={onClose}>
+    <RoomModalErrorBoundary key={`${selectedMatch.id}:${detailRequestVersion}`} onClose={onClose} onRetry={retryMatchDetail}>
       <RecruitingRoomModal
         app={app}
         post={selectedMatchRoom.post}

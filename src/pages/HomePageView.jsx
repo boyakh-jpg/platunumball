@@ -17,7 +17,7 @@ export default function HomePageView({
   mySeasonIndex, app, registeredCourts, myCompletedMatches, getUserResult,
   latestMyMatches, getUserMatchLine, acceptHomeRecruitingInvitation, actionItems, declineHomeRecruitingInvitation,
   homeNoticeItems, localRivals, mySeasonRow, myTeamCount, myTeams,
-  openActionRoom, placementComplete, priorityItems, priorityNoticeItems, processingInviteId,
+  openActionRoom, placementComplete, priorityItems, priorityNoticeItems, processingInviteId, inviteActionError,
   rankSpotlightLabel, seasonProgress, topRankers, homeRoomOverlays,
 }) {
   return (
@@ -44,14 +44,14 @@ export default function HomePageView({
         />
         <div className="home-search-actions">
           <Button as={Link} to="/app/create" className="home-search-create ui-button-block"><PlusCircle size={18} /> 매칭 만들기</Button>
-          <Button as={Link} to="/app/create?intent=record" className="home-search-create ui-button-block"><ClipboardCheck size={18} /> 경기 기록하기</Button>
+          <Button as={Link} to="/app/create?intent=record" variant="secondary" className="home-search-create ui-button-block"><ClipboardCheck size={18} /> 경기 기록하기</Button>
         </div>
       </Card>
 
       <div className="page-stack home-left-rail">
-        <section className="rank-summary-grid ui-design-app-hero">
+        <section className="rank-summary-grid ui-page-hero ui-design-app-hero">
           <div className="home-rank-board-head">
-            <div className="rank-hero-top">
+            <div className="rank-hero-top ui-page-hero__copy">
               <div>
                 <p className="eyebrow">내 랭크 보드</p>
                 <h1>{user.name}님의 오늘 코트 현황</h1>
@@ -182,7 +182,7 @@ export default function HomePageView({
                     })}
                   </div>
                 </>
-              ) : <div className="home-panel-empty">최근 확정 경기 없음</div>}
+              ) : <div className="ui-empty-state-compact home-panel-empty">최근 확정 경기 없음</div>}
             </Card>
           </div>
         </div>
@@ -204,6 +204,7 @@ export default function HomePageView({
         priorityItems={priorityItems}
         priorityNoticeItems={priorityNoticeItems}
         processingInviteId={processingInviteId}
+        inviteActionError={inviteActionError}
         rankSpotlightLabel={rankSpotlightLabel}
         recentFiveWins={recentFiveWins}
         seasonProgress={seasonProgress}

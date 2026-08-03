@@ -1,4 +1,4 @@
-import { REFEREE_TRUST_MIN } from "./constants.js";
+import { REFEREE_ACTIVE_TRUST_MIN, REFEREE_TRUST_MIN } from "./constants.js";
 import { isEligibleReferee } from "./matchUtils.js";
 
 export const TOURNAMENT_SANCTION_STATUS = Object.freeze({
@@ -39,24 +39,6 @@ export function getActiveTournamentTeamIds(tournament = {}) {
 export function getAcceptedTournamentRefereeIds(tournament = {}) {
   return (tournament.refereeIds ?? []).filter(
     (refereeId) => getTournamentRefereeStatus(tournament, refereeId) === TOURNAMENT_REFEREE_STATUS.accepted,
-  );
-}
-
-export function isTournamentRefereeEligible(
-  tournament = {},
-  refereeId = "",
-  users = [],
-  refereeAppointments = [],
-) {
-  if (!refereeId) return false;
-  if (Array.isArray(tournament.eligibleRefereeIds)) {
-    return tournament.eligibleRefereeIds.includes(refereeId);
-  }
-  return isEligibleReferee(
-    (users ?? []).find((user) => user.id === refereeId),
-    REFEREE_TRUST_MIN,
-    refereeAppointments,
-    tournament.endDate,
   );
 }
 
@@ -105,6 +87,44 @@ export function getTournamentUncoveredTeamPairs(tournament = {}, teams = [], ref
   return uncovered;
 }
 
+export function isTournamentRefereeAuthorized(
+  tournament = {},
+  user = {},
+  refereeAppointments = [],
+) {
+  if (!user?.id) return false;
+  if (isEligibleReferee(
+    user,
+    REFEREE_TRUST_MIN,
+    refereeAppointments,
+    tournament.endDate,
+  )) return true;
+  const hasTrustAutoRevocation = refereeAppointments.some((appointment) => {
+    const payload = appointment.payload && typeof appointment.payload === "object"
+      ? appointment.payload
+      : {};
+    const startedMs = new Date(tournament.startedAt).getTime();
+    const revokedMs = new Date(appointment.revokedAt ?? payload.revokedAt ?? "").getTime();
+    return (
+      (appointment.userId ?? appointment.user_id) === user.id
+      && (appointment.role ?? "referee") === "referee"
+      && appointment.status === "revoked"
+      && (appointment.autoRevoked ?? payload.autoRevoked) === true
+      && (appointment.revokeReason ?? payload.revokeReason) === "referee_trust_below_70"
+      && Number.isFinite(startedMs)
+      && Number.isFinite(revokedMs)
+      && startedMs <= revokedMs
+    );
+  });
+  return (
+    Number(user?.trustScore ?? 0) < REFEREE_ACTIVE_TRUST_MIN
+    && hasTrustAutoRevocation
+    && tournament.status === "active"
+    && (tournament.refereeIds ?? []).includes(user.id)
+    && getTournamentRefereeStatus(tournament, user.id) === "accepted"
+  );
+}
+
 export function getTournamentRefereePoolValidation({
   tournament = {},
   teams = [],
@@ -116,22 +136,16 @@ export function getTournamentRefereePoolValidation({
     ? getAcceptedTournamentRefereeIds(tournament)
     : [...new Set(tournament.refereeIds ?? [])].filter(Boolean);
   const requiredCount = getRequiredTournamentRefereeCount(getActiveTournamentTeamIds(tournament).length);
-  const eligibleRefereeIds = refereeIds.filter((refereeId) => (
-    isTournamentRefereeEligible(
-      tournament,
-      refereeId,
-      users,
-      refereeAppointments,
-    )
+  const userById = new Map((users ?? []).map((user) => [user.id, user]));
+  const ineligibleRefereeId = refereeIds.find((refereeId) => !isTournamentRefereeAuthorized(
+    tournament,
+    userById.get(refereeId),
+    refereeAppointments,
   ));
-  const ineligibleRefereeId = refereeIds.find((refereeId) => !eligibleRefereeIds.includes(refereeId));
-  const uncoveredPairs = getTournamentUncoveredTeamPairs(tournament, teams, eligibleRefereeIds);
+  const uncoveredPairs = getTournamentUncoveredTeamPairs(tournament, teams, refereeIds);
   return {
-    allowed: eligibleRefereeIds.length >= requiredCount
-      && (requireAccepted || !ineligibleRefereeId)
-      && uncoveredPairs.length === 0,
+    allowed: refereeIds.length >= requiredCount && !ineligibleRefereeId && uncoveredPairs.length === 0,
     refereeIds,
-    eligibleRefereeIds,
     requiredCount,
     ineligibleRefereeId: ineligibleRefereeId ?? "",
     uncoveredPairs,

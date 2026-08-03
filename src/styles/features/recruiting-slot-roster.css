@@ -242,12 +242,6 @@
   font-weight: 950;
 }
 
-.arena-drawer-head p {
-  margin-top: 6px;
-  color: var(--muted);
-  font-weight: 850;
-}
-
 .arena-side-roster {
   display: grid;
   min-width: 0;
@@ -349,9 +343,6 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
-  border: var(--ui-card-border-width) solid var(--ui-control-border);
-  border-radius: var(--ui-control-radius);
-  background: var(--ui-control-bg);
   padding: 8px 9px;
 }
 

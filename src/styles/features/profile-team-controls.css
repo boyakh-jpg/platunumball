@@ -70,9 +70,6 @@
 .admin-name-moderation-detail {
   display: grid;
   gap: var(--space-2);
-  border: var(--ui-stroke-width) solid var(--ui-control-border);
-  border-radius: var(--ui-control-radius);
-  background: var(--ui-control-bg);
   padding: 12px;
 }
 
@@ -292,11 +289,8 @@
 }
 
 .my-team-actions {
-  display: flex;
   min-width: 0;
-  align-items: center;
   justify-content: flex-end;
-  gap: var(--space-3);
 }
 
 .my-team-row .my-team-tier {
@@ -357,7 +351,7 @@
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: var(--space-5);
-  border: var(--ui-stroke-width) solid var(--ui-control-border);
+  border: var(--ui-card-border-width) solid var(--ui-control-border);
   border-radius: var(--ui-control-radius);
   background: var(--ui-control-bg);
   padding: 9px 10px;

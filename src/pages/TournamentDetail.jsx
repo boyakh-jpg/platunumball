@@ -5,13 +5,13 @@ import BasketballLoader from "../components/common/BasketballLoader.jsx";
 import Button from "../components/common/Button.jsx";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import { getTeamCaptainMemberId as getTeamCaptainId } from "../data/teamMappers.js";
-import { getTournamentTeamStatus } from "../data/tournamentMappers.js";
+import { getTournamentTeamIds, getTournamentTeamStatus } from "../data/tournamentMappers.js";
 import { getRegisteredCourts } from "../lib/courts.js";
 import { getUserHashtag } from "../lib/handles.js";
 import { addDateDays, getLocalDateInputValue, isEligibleReferee } from "../lib/matchUtils.js";
 import { getTournamentMatches } from "../lib/tournamentMatches.js";
 import { REFEREE_TRUST_MIN } from "../lib/constants.js";
-import { TOURNAMENT_SANCTION_STATUS, getActiveTournamentTeamIds, getAcceptedTournamentRefereeIds, getRequiredTournamentRefereeCount, getTournamentRefereeStatus, isTournamentGovernanceEnabled, isTournamentRefereeEligible } from "../lib/tournamentGovernance.js";
+import { TOURNAMENT_SANCTION_STATUS, getActiveTournamentTeamIds, getAcceptedTournamentRefereeIds, getRequiredTournamentRefereeCount, getTournamentRefereeStatus, isTournamentGovernanceEnabled } from "../lib/tournamentGovernance.js";
 import "../styles/matches-arena.css";
 import {
   isTournamentScheduleEditable,
@@ -33,13 +33,15 @@ const location = useLocation();
   const [tournamentMissing, setTournamentMissing] = useState(false);
   const [scheduleDialog, setScheduleDialog] = useState(null);
   const [savingScheduleId, setSavingScheduleId] = useState("");
+  const savingScheduleRef = useRef("");
   const [forfeitDialog, setForfeitDialog] = useState(null);
   const [savingForfeitId, setSavingForfeitId] = useState("");
+  const savingForfeitRef = useRef("");
   const [selectedMatchId, setSelectedMatchId] = useState("");
   const [editingScheduleId, setEditingScheduleId] = useState("");
   const [refereeQuery, setRefereeQuery] = useState("");
-  const [matchRefereeSelections, setMatchRefereeSelections] = useState({});
   const [governanceAction, setGovernanceAction] = useState("");
+  const governanceActionRef = useRef("");
   const [governanceFeedback, setGovernanceFeedback] = useState("");
   useBodyScrollLock(Boolean(scheduleDialog || forfeitDialog));
   const teamById = Object.fromEntries(app.state.teams.map((team) => [team.id, team]));
@@ -78,9 +80,10 @@ const location = useLocation();
   }
 
   const tournamentMatches = getTournamentMatches(tournament, matchesById, app.state.matches);
+  const tournamentTeamIds = getTournamentTeamIds(tournament);
   const representativeTeamId = app.state.settings?.representativeTeamId ?? app.currentUser.representativeTeamId ?? "";
   const representativeTeam = teamById[representativeTeamId] ?? null;
-  const teamRows = (tournament.teamIds ?? [])
+  const teamRows = tournamentTeamIds
     .map((teamId) => {
       const team = teamById[teamId];
       const captainId = getTeamCaptainId(team);
@@ -102,23 +105,15 @@ const location = useLocation();
     })
     .filter((row) => row.team);
   const acceptedCount = teamRows.filter((row) => row.status === "accepted").length;
-  const hasPendingTeamApprovals = (tournament.teamIds ?? [])
+  const hasPendingTeamApprovals = tournamentTeamIds
     .some((teamId) => getTournamentTeamStatus(tournament, teamId) !== "accepted");
   const governanceEnabled = isTournamentGovernanceEnabled(tournament);
   const requiredRefereeCount = getRequiredTournamentRefereeCount(getActiveTournamentTeamIds(tournament).length);
   const acceptedRefereeIds = getAcceptedTournamentRefereeIds(tournament);
-  const isAcceptedTournamentRefereeEligible = (refereeId) => isTournamentRefereeEligible(
-    tournament,
-    refereeId,
-    app.state.users,
-    app.state.settings?.refereeAppointments,
-  );
-  const eligibleAcceptedRefereeIds = acceptedRefereeIds.filter(isAcceptedTournamentRefereeEligible);
   const refereeRows = (tournament.refereeIds ?? []).map((refereeId) => ({
     refereeId,
     referee: userById[refereeId] ?? (refereeId === app.currentUser.id ? app.currentUser : null),
     status: getTournamentRefereeStatus(tournament, refereeId),
-    eligible: isAcceptedTournamentRefereeEligible(refereeId),
     canApprove: governanceEnabled
       && ["draft", "active"].includes(tournament.status)
       && refereeId === app.currentUser.id
@@ -202,8 +197,9 @@ const location = useLocation();
     return "일정을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.";
   };
   const confirmSchedule = async () => {
-    if (scheduleDialog?.mode !== "confirm" || savingScheduleId) return;
+    if (scheduleDialog?.mode !== "confirm" || savingScheduleRef.current) return;
     const { matchId, scheduledDate, scheduledTime, courtId, courtName } = scheduleDialog;
+    savingScheduleRef.current = matchId;
     setSavingScheduleId(matchId);
     try {
       const result = await app.actions.updateTournamentMatchSchedule(tournament.id, matchId, { scheduledDate, scheduledTime, courtId, courtName });
@@ -213,6 +209,7 @@ const location = useLocation();
     } catch (error) {
       setScheduleDialog({ mode: "error", message: formatScheduleError(error.message) });
     } finally {
+      savingScheduleRef.current = "";
       setSavingScheduleId("");
     }
   };
@@ -224,8 +221,9 @@ const location = useLocation();
     return "불참 처리를 완료하지 못했습니다. 잠시 후 다시 시도해 주세요.";
   };
   const confirmForfeit = async () => {
-    if (forfeitDialog?.mode !== "confirm" || savingForfeitId) return;
+    if (forfeitDialog?.mode !== "confirm" || savingForfeitRef.current) return;
     const { matchId, losingSide } = forfeitDialog;
+    savingForfeitRef.current = matchId;
     setSavingForfeitId(matchId);
     try {
       const result = await app.actions.forfeitTournamentMatch(tournament.id, matchId, losingSide, "팀 불참");
@@ -234,6 +232,7 @@ const location = useLocation();
     } catch (error) {
       setForfeitDialog({ mode: "error", matchId, message: formatForfeitError(error.message) });
     } finally {
+      savingForfeitRef.current = "";
       setSavingForfeitId("");
     }
   };
@@ -245,29 +244,37 @@ const location = useLocation();
     if (message.includes("tournament_region_manager_required")) return "해당 지역관리자 이상만 처리할 수 있습니다.";
     if (message.includes("tournament_referee_not_neutral")) return "양 팀 어느 쪽에도 속하지 않은 중립 심판만 배정할 수 있습니다.";
     if (message.includes("tournament_referee_schedule_conflict")) return "같은 심판이 겹치는 시간대의 다른 경기에 배정되어 있습니다.";
-    if (message.includes("tournament_match_referee_locked")) return "이미 시작했거나 종료된 경기의 심판은 변경할 수 없습니다.";
     return "대회 승인·심판 작업을 완료하지 못했습니다.";
   };
   const runGovernanceAction = async (key, action, successMessage) => {
-    if (governanceAction) return;
+    if (governanceActionRef.current) return false;
+    governanceActionRef.current = key;
     setGovernanceAction(key);
     setGovernanceFeedback("");
     try {
       const result = await action();
       if (!result || result?.ok === false) throw new Error(result?.error ?? "tournament_governance_failed");
-      await app.actions.loadTournament?.(tournament.id);
       setGovernanceFeedback(successMessage);
+      Promise.resolve()
+        .then(() => app.actions.loadTournament?.(tournament.id))
+        .catch(() => false);
+      return true;
     } catch (error) {
       setGovernanceFeedback(formatGovernanceError(error.message));
+      return false;
     } finally {
+      governanceActionRef.current = "";
       setGovernanceAction("");
     }
   };
-  const inviteTournamentReferee = (referee) => runGovernanceAction(
-    `invite:${referee.id}`,
-    () => app.actions.inviteTournamentReferee(tournament.id, referee.id),
-    `${referee.name} 심판에게 초대했습니다.`,
-  ).then(() => setRefereeQuery(""));
+  const inviteTournamentReferee = async (referee) => {
+    const invited = await runGovernanceAction(
+      `invite:${referee.id}`,
+      () => app.actions.inviteTournamentReferee(tournament.id, referee.id),
+      `${referee.name} 심판에게 초대했습니다.`,
+    );
+    if (invited) setRefereeQuery("");
+  };
   const saveMatchReferee = (event, match) => {
     event.preventDefault();
     const refereeId = String(new FormData(event.currentTarget).get("refereeId") ?? "");
@@ -300,6 +307,6 @@ const location = useLocation();
   const matchesReturnTo = typeof location.state?.from === "string" && location.state.from.startsWith("/app/matches")
     ? location.state.from
     : "/app/matches?panel=tournament";
-  const controller = { app, tournament, scheduleDialog, setScheduleDialog, savingScheduleId, forfeitDialog, setForfeitDialog, savingForfeitId, selectedMatchId, setSelectedMatchId, editingScheduleId, setEditingScheduleId, refereeQuery, setRefereeQuery, matchRefereeSelections, setMatchRefereeSelections, governanceAction, governanceFeedback, teamById, userById, matchesById, tournamentMatches, teamRows, acceptedCount, hasPendingTeamApprovals, governanceEnabled, requiredRefereeCount, acceptedRefereeIds, eligibleAcceptedRefereeIds, isAcceptedTournamentRefereeEligible, refereeRows, eligibleRefereeCandidates, canInviteReferee, canReviewRegion, canStartCommunity, verticalBracket, championTeam, canManageSchedule, todayValue, maxScheduleDate, leagueFixtures, leagueMatchesByFixture, leagueStandings, tournamentCourts, saveSchedule, confirmSchedule, confirmForfeit, runGovernanceAction, saveMatchReferee, renderRefereeInviteItem, organizer, dialogMatch, forfeitMatch, matchesReturnTo };
+  const controller = { app, tournament, scheduleDialog, setScheduleDialog, savingScheduleId, forfeitDialog, setForfeitDialog, savingForfeitId, selectedMatchId, setSelectedMatchId, editingScheduleId, setEditingScheduleId, refereeQuery, setRefereeQuery, governanceAction, governanceFeedback, teamById, userById, matchesById, tournamentMatches, teamRows, acceptedCount, hasPendingTeamApprovals, governanceEnabled, requiredRefereeCount, acceptedRefereeIds, refereeRows, eligibleRefereeCandidates, canInviteReferee, canReviewRegion, canStartCommunity, verticalBracket, championTeam, canManageSchedule, todayValue, maxScheduleDate, leagueFixtures, leagueMatchesByFixture, leagueStandings, tournamentCourts, saveSchedule, confirmSchedule, confirmForfeit, runGovernanceAction, saveMatchReferee, renderRefereeInviteItem, organizer, dialogMatch, forfeitMatch, matchesReturnTo };
   return <TournamentDetailView controller={controller} />;
 }

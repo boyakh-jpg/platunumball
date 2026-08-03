@@ -121,9 +121,11 @@ const authUserId = typeof authUser === "string" ? authUser : authUser?.id ?? nul
   const syncedDiscordDeliveryIdsRef = useRef(new Set());
   const authIdentityRef = useRef(authUserId);
   const authGenerationRef = useRef(0);
-  if (authIdentityRef.current !== authUserId) {
+  const authIdentityChanged = authIdentityRef.current !== authUserId;
+  if (authIdentityChanged) {
     authIdentityRef.current = authUserId;
     authGenerationRef.current += 1;
+    remoteReadyRef.current = !isSupabaseConfigured;
   }
   const profileKey = authUserId ?? "local-demo";
   const profileLocked = isPersistentAuthUserId(authUserId);
@@ -346,7 +348,7 @@ const authUserId = typeof authUser === "string" ? authUser : authUser?.id ?? nul
     recruitingPagination,
     recruitingPostPromiseRef,
     recruitingRegionPromiseRef,
-    remoteReady,
+    remoteReady: remoteReady && !authIdentityChanged,
     remoteReadyRef,
     reportableMatchesPromiseRef,
     serverActionPendingCount,

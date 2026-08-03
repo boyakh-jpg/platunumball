@@ -4,22 +4,22 @@
   }
 
   .arena-dispute-player > div {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .arena-stat-stepper {
     width: 100%;
     min-width: 0;
     grid-template-columns: minmax(30px, 0.8fr) minmax(28px, 1fr) minmax(30px, 0.8fr);
-    grid-template-rows: 42px;
+    grid-template-rows: 44px;
   }
 
   .arena-stat-stepper button {
-    min-height: 42px;
+    min-height: 44px;
   }
 
   .arena-stat-stepper input {
-    min-height: 42px;
+    min-height: 44px;
   }
 }
 
@@ -118,7 +118,7 @@
 .stat-entry-side {
   display: grid;
   gap: 9px;
-  border: var(--ui-stroke-width) solid var(--line);
+  border: var(--ui-card-border-width) solid var(--line);
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.045);
   padding: 12px;
@@ -126,6 +126,22 @@
 
 .compact-stat-entry .stat-entry-side {
   align-content: start;
+  gap: var(--space-2);
+  padding: var(--space-4);
+}
+
+.match-room .compact-stat-entry {
+  gap: var(--space-4);
+}
+
+.match-room .compact-stat-entry .stat-player-button {
+  gap: var(--space-3);
+  min-height: 48px;
+  padding: 6px 8px;
+}
+
+.match-room .compact-stat-entry .stat-player-button > strong {
+  white-space: nowrap;
 }
 
 .stat-player-button {
@@ -134,7 +150,7 @@
   align-items: center;
   gap: var(--space-5);
   min-height: 56px;
-  border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.1);
+  border: var(--ui-button-border-width) solid rgba(255, 255, 255, 0.1);
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.045);
   color: var(--text);
@@ -196,7 +212,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-5);
-  border: var(--ui-stroke-width) solid rgba(255, 211, 108, 0.2);
+  border: var(--ui-card-border-width) solid rgba(255, 211, 108, 0.2);
   border-radius: var(--radius);
   background: rgba(255, 211, 108, 0.075);
   color: var(--gold);
@@ -211,6 +227,8 @@
 }
 
 .stat-referee-panel {
+  --ui-card-padding: 0;
+
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-4);
@@ -220,7 +238,7 @@
   display: grid;
   min-width: 0;
   gap: var(--space-2);
-  border: var(--ui-stroke-width) solid rgba(70, 224, 182, 0.18);
+  border: var(--ui-card-border-width) solid rgba(70, 224, 182, 0.18);
   border-radius: var(--radius);
   background: rgba(70, 224, 182, 0.055);
   padding: 10px;
@@ -241,12 +259,13 @@
 }
 
 .stat-trust-panel {
+  --ui-card-padding: 12px;
+  --ui-card-border: rgba(116, 169, 255, 0.18);
+  --ui-card-bg: rgba(116, 169, 255, 0.055);
+  --ui-card-radius: var(--radius);
+
   display: grid;
   gap: var(--space-5);
-  border: var(--ui-stroke-width) solid rgba(116, 169, 255, 0.18);
-  border-radius: var(--radius);
-  background: rgba(116, 169, 255, 0.055);
-  padding: 12px;
 }
 
 .stat-trust-head {
@@ -280,7 +299,7 @@
 .stat-trust-grid > div {
   display: grid;
   gap: var(--space-2);
-  border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.1);
+  border: var(--ui-card-border-width) solid rgba(255, 255, 255, 0.1);
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.045);
   padding: 9px;
@@ -351,20 +370,22 @@
   }
 
   .match-room .stat-player-button {
-    grid-template-columns: minmax(0, 1fr);
-    gap: var(--space-3);
-    min-height: 0;
-    padding: 8px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--space-2);
+    min-height: 44px;
+    padding: 6px 8px;
   }
 
   .match-room .stat-player-button > strong {
-    justify-self: start;
+    justify-self: end;
+    white-space: nowrap;
   }
 
   .match-room .stat-player-button em {
-    overflow: visible;
+    overflow: hidden;
     line-height: 1.25;
-    white-space: normal;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .match-room .compact-list > div {
@@ -391,83 +412,63 @@
   white-space: normal;
 }
 
-.approval-side-header {
+.approval-panel .approval-side-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-5);
 }
 
-.approval-voter-list {
+.approval-panel .approval-voter-list {
   display: grid;
   gap: var(--space-4);
 }
 
-.approval-voter-row {
+.approval-panel .approval-voter-list button {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
-  width: 100%;
   align-items: center;
-  gap: var(--ui-profile-identity-gap);
-  border: 0;
-  background: transparent;
+  gap: 9px;
+  border: var(--ui-button-border-width) solid var(--ui-button-border);
+  border-radius: var(--ui-button-radius);
+  background: var(--ui-button-bg);
   color: var(--text);
-  min-height: var(--ui-button-height);
-  padding: var(--space-4);
+  cursor: pointer;
+  min-height: 44px;
+  padding: 8px;
   text-align: left;
 }
 
-.approval-voter-row + .approval-voter-row {
-  border-block-start: var(--ui-stroke-width) solid var(--ui-liquid-glass-divider);
+.approval-panel .approval-voter-list button:disabled {
+  cursor: default;
+  opacity: 0.72;
 }
 
-.approval-voter-row.is-actionable {
-  border-radius: var(--ui-button-radius);
-  cursor: pointer;
-}
-
-.approval-voter-row.is-actionable:hover {
-  background: var(--ui-button-bg);
-}
-
-.approval-voter-row.approved em {
-  color: var(--green);
-}
-
-.approval-voter-row > strong {
-  font-family: var(--font-body);
-  font-size: var(--font-size-body);
-  font-weight: var(--font-weight-body);
-  line-height: 1.35;
-}
-
-.approval-voter-row em {
+.approval-panel .approval-voter-list em {
   color: var(--gold);
-  font-size: var(--font-size-caption);
+  font-size: 0.72rem;
   font-style: normal;
-  font-weight: var(--font-weight-control);
+  font-weight: 950;
 }
 
-.approval-guard-note {
+.approval-panel .approval-guard-note {
   display: grid;
-  gap: var(--space-2);
-  margin-top: var(--space-6);
-  background: var(--ui-badge-gold-bg);
-  padding: var(--space-5);
+  gap: var(--ui-control-group-gap);
+  margin-top: 12px;
+  border: var(--ui-control-group-border-width) solid var(--ui-control-group-border);
+  border-radius: var(--ui-control-group-radius);
+  background: var(--ui-control-group-bg);
+  padding: var(--ui-control-group-padding);
 }
 
-.approval-guard-note.ready {
-  background: var(--ui-badge-green-bg);
-}
-
-.approval-guard-note strong {
+.approval-panel .approval-guard-note strong {
   color: var(--text);
 }
 
-.approval-guard-note span {
+.approval-panel .approval-guard-note span {
   color: var(--muted);
-  font-size: var(--font-size-meta);
-  font-weight: var(--font-weight-body);
+  font-size: 0.8rem;
+  font-weight: 850;
   line-height: 1.45;
 }
 

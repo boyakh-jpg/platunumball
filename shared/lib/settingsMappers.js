@@ -56,6 +56,9 @@ export function normalizeSettings(settings = {}, options = {}) {
       },
     },
     blockedUserIds: settings.blockedUserIds ?? [],
+    blockedUserProfiles: settings.blockedUserProfiles && typeof settings.blockedUserProfiles === "object" && !Array.isArray(settings.blockedUserProfiles)
+      ? settings.blockedUserProfiles
+      : {},
     favoritePlayerIds: settings.favoritePlayerIds ?? fallbackSettings.favoritePlayerIds ?? [],
     favoriteTeamIds: settings.favoriteTeamIds ?? fallbackSettings.favoriteTeamIds ?? [],
     representativeTeamId: settings.representativeTeamId ?? fallbackSettings.representativeTeamId ?? "",

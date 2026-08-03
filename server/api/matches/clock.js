@@ -167,10 +167,10 @@ export default async function handler(request, response) {
       })),
       attendanceQr: (
         clock?.canControl
-        && matchRow?.visibility === "public"
+        && ["public", "private"].includes(matchRow?.visibility)
         && !matchRow?.ended_at
         && !matchRow?.tournament_id
-        && ["", "match"].includes(String(matchRow?.rules?.recordType || ""))
+        && String(matchRow?.rules?.recordType || "") !== "match_record"
         && (
           matchRow?.rules?.qrAttendanceEnabled === true
           || matchRow?.rules?.qrAttendanceEnabled === "true"

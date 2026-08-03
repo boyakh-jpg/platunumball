@@ -1,7 +1,7 @@
 .tournament-summary-grid > div {
   display: grid;
   gap: 5px;
-  border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.1);
+  border: var(--ui-card-border-width) solid rgba(255, 255, 255, 0.1);
   border-radius: var(--radius);
   background: rgba(8, 11, 16, 0.66);
   padding: 12px;
@@ -24,7 +24,7 @@
 .tournament-team-list article {
   display: grid;
   align-items: center;
-  border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.1);
+  border: var(--ui-card-border-width) solid rgba(255, 255, 255, 0.1);
   border-radius: var(--radius);
   background: rgba(8, 11, 16, 0.66);
   padding: 10px;
@@ -105,12 +105,13 @@
 .tournament-referee-list,
 .tournament-match-referee-list {
   display: grid;
-  gap: var(--space-4);
+  gap: 8px;
 }
 
 .tournament-referee-list article,
+.tournament-match-referee-list form,
 .tournament-sanction-panel {
-  border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.1);
+  border: var(--ui-card-border-width) solid rgba(255, 255, 255, 0.1);
   border-radius: var(--radius);
   background: rgba(8, 11, 16, 0.66);
 }
@@ -129,11 +130,6 @@
   background: rgba(70, 224, 182, 0.07);
 }
 
-.tournament-referee-list article.needs-replacement {
-  border-color: color-mix(in srgb, var(--rb-danger) 38%, var(--ui-card-border));
-  background: color-mix(in srgb, var(--rb-danger) 8%, var(--ui-card-bg));
-}
-
 .tournament-referee-list article > div:first-child {
   display: grid;
   min-width: 0;
@@ -150,12 +146,32 @@
   font-weight: 850;
 }
 
-.tournament-referee-actions,
-.tournament-sanction-actions {
-  display: flex;
+.tournament-referee-actions button,
+.tournament-match-referee-list button {
+  display: inline-flex;
+  min-height: 36px;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
+  justify-content: center;
+  gap: 6px;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: var(--gold);
+  color: #17130a;
+  font-size: 0.76rem;
+  font-weight: 950;
+  padding: 0 12px;
+  cursor: pointer;
+}
+
+.tournament-referee-actions button.secondary {
+  background: rgba(255, 255, 255, 0.09);
+  color: var(--text);
+}
+
+.tournament-referee-actions button:disabled,
+.tournament-match-referee-list button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 .tournament-referee-invite {
@@ -188,56 +204,22 @@
   font-size: 0.82rem;
 }
 
-.tournament-match-referee-list {
-  gap: 0;
-}
-
-.tournament-match-referee-row {
+.tournament-match-referee-list form {
   display: grid;
   grid-template-columns: minmax(180px, 1fr) minmax(160px, 240px) auto;
   align-items: center;
-  gap: var(--space-5);
-  border-block-start: var(--ui-stroke-width) solid var(--ui-liquid-glass-divider);
-  background: transparent;
-  padding: var(--space-6) 0;
-}
-
-.tournament-match-referee-row:first-child {
-  border-block-start: 0;
-}
-
-.tournament-match-referee-row > strong {
-  min-width: 0;
-  font-size: var(--font-size-body-sm);
-  font-weight: var(--font-weight-title);
-}
-
-.tournament-match-referee-row > span,
-.tournament-match-referee-row > em {
-  color: var(--muted);
-  font-size: var(--font-size-meta);
-  font-style: normal;
-  font-weight: var(--font-weight-body);
+  gap: 10px;
+  padding: 10px 12px;
 }
 
 .tournament-match-referee-list select {
-  box-sizing: border-box;
-  width: 100%;
   min-width: 0;
-  height: var(--ui-button-height-sm);
-  border: var(--ui-stroke-width) solid var(--ui-control-border);
-  border-radius: var(--ui-control-radius);
-  background: var(--ui-control-bg);
+  min-height: 38px;
+  border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-xs);
+  background: rgba(255, 255, 255, 0.06);
   color: var(--text);
-  font: inherit;
-  font-size: var(--font-size-control);
-  font-weight: var(--font-weight-control);
-  padding: 0 var(--ui-button-padding-x-sm);
-}
-
-.tournament-match-referee-row > .tournament-match-referee-note {
-  grid-column: 2 / -1;
-  color: var(--rb-danger);
+  padding: 0 10px;
 }
 
 .tournament-schedule-list .tournament-match-open {
@@ -256,7 +238,7 @@
 .tournament-round {
   display: grid;
   gap: 9px;
-  border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.1);
+  border: var(--ui-card-border-width) solid rgba(255, 255, 255, 0.1);
   border-radius: var(--radius);
   background: rgba(8, 11, 16, 0.68);
   padding: 12px;
@@ -271,7 +253,7 @@
 .league-fixture-grid article {
   display: grid;
   gap: 6px;
-  border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.08);
+  border: var(--ui-card-border-width) solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius-xs);
   background: rgba(255, 255, 255, 0.05);
   padding: 10px;
@@ -332,7 +314,7 @@
   align-items: stretch;
   gap: 18px;
   overflow-x: auto;
-  border: var(--ui-stroke-width) solid rgba(255, 211, 108, 0.18);
+  border: var(--ui-card-border-width) solid rgba(255, 211, 108, 0.18);
   border-radius: var(--radius-lg);
   background:
     radial-gradient(circle at 50% 42%, rgba(255, 211, 108, 0.16), transparent 14rem),
@@ -347,7 +329,7 @@
   grid-template-columns: 1fr;
   gap: 14px;
   overflow-x: auto;
-  border: var(--ui-stroke-width) solid rgba(255, 211, 108, 0.18);
+  border: var(--ui-card-border-width) solid rgba(255, 211, 108, 0.18);
   border-radius: var(--radius-lg);
   background:
     radial-gradient(circle at 50% 12%, rgba(255, 211, 108, 0.14), transparent 13rem),
@@ -464,7 +446,7 @@
   display: grid;
   width: min(100%, 270px);
   gap: 7px;
-  border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.08);
+  border: var(--ui-card-border-width) solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius-xs);
   background: rgba(255, 255, 255, 0.05);
   padding: 10px;

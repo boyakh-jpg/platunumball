@@ -55,6 +55,7 @@ loadMatchDetail,
         profileId: current.page?.profileId ?? "",
         includeTeamMemberProfiles: current.page?.includeTeamMemberProfiles === true,
         placementCompleteOnly: current.page?.placementCompleteOnly === true,
+        rankingSort: current.page?.rankingSort ?? "",
       });
     },
     loadAdminContext,

@@ -36,7 +36,7 @@ export default function RuleSelector({ draft, onChange }) {
     <div className="match-rule-selector">
       <div className="match-clock-preset-row">
         <span>BOXTIER 경기시계</span>
-        <div className="segmented-control compact-segments" role="radiogroup" aria-label="BOXTIER 경기시계 사용 여부">
+        <div className="ui-segmented-control segmented-control compact-segments" role="radiogroup" aria-label="BOXTIER 경기시계 사용 여부">
           <button
             type="button"
             role="radio"
@@ -73,7 +73,7 @@ export default function RuleSelector({ draft, onChange }) {
       ) : null}
       {rules.gameClockEnabled && clockPresetOptions.length > 1 ? <div className="match-clock-preset-row">
         <span>경기시간 프리셋</span>
-        <div className="segmented-control compact-segments">
+        <div className="ui-segmented-control segmented-control compact-segments">
           {clockPresetOptions.map((option) => (
             <button key={option.id} type="button" onClick={() => updateRules(option.patch)}>{option.label}</button>
           ))}
@@ -90,6 +90,7 @@ export default function RuleSelector({ draft, onChange }) {
       <label>
         목표 점수
         <InlineValidatedInput
+          clearOnDirectEntry
           type="number"
           min="7"
           max="99"
@@ -109,6 +110,7 @@ export default function RuleSelector({ draft, onChange }) {
       <label>
         {periodUnitLabel}
         <InlineValidatedInput
+          clearOnDirectEntry
           type="number"
           min="1"
           max={getMatchPeriodMinutesMax(rules.periodCount)}
@@ -130,6 +132,7 @@ export default function RuleSelector({ draft, onChange }) {
         <label>
           마지막 구간 스톱 (분)
           <InlineValidatedInput
+            clearOnDirectEntry
             type="number"
             min="0"
             max={rules.periodMinutes}
@@ -144,6 +147,7 @@ export default function RuleSelector({ draft, onChange }) {
         <label>
           쿼터 사이 휴식 (분)
           <InlineValidatedInput
+            clearOnDirectEntry
             type="number"
             min="0"
             max="30"
@@ -158,6 +162,7 @@ export default function RuleSelector({ draft, onChange }) {
         <label>
           하프타임 (분)
           <InlineValidatedInput
+            clearOnDirectEntry
             type="number"
             min="0"
             max="30"
@@ -171,6 +176,7 @@ export default function RuleSelector({ draft, onChange }) {
       <label>
         연장 1회 (분)
         <InlineValidatedInput
+          clearOnDirectEntry
           type="number"
           min="1"
           max="20"

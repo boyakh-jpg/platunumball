@@ -11081,6 +11081,15 @@ begin
     raise exception 'profile_not_found' using errcode = 'P0002';
   end if;
 
+  if safe_role = 'referee' and not exists (
+    select 1
+    from public.profiles
+    where id = safe_target_user_id
+      and coalesce(trust_score, 0) >= 90
+  ) then
+    raise exception 'referee_entry_trust_too_low' using errcode = '23514';
+  end if;
+
   if safe_role = 'admin' then
     safe_grade := case
       when p_admin_grade in ('senior', 'regionManager', 'matchManager', 'support') then p_admin_grade
@@ -13542,7 +13551,15 @@ begin
     where candidate->>'id' <> safe_invitation_id;
 
     update public.recruiting_posts
-    set room_state = jsonb_set(current_room_state, '{invitations}', next_invitations, true), updated_at = now()
+    set target_team_id = case
+          when coalesce(invitation->>'joinMode', 'player') = 'team'
+            and invitation->>'side' = 'teamB'
+            and nullif(invitation->>'teamId', '') = current_post.target_team_id
+          then null
+          else current_post.target_team_id
+        end,
+        room_state = jsonb_set(current_room_state, '{invitations}', next_invitations, true),
+        updated_at = now()
     where id = safe_post_id;
 
     return jsonb_build_object('ok', true, 'action', safe_action, 'postId', safe_post_id, 'actorProfileId', safe_actor_id, 'sqlReducer', true);
@@ -15133,6 +15150,246 @@ begin
 end;
 $migration$;
 
+create or replace function public.rankball_recruiting_set_room_team_action(
+  p_actor_profile_id text,
+  p_post_id text,
+  p_side text,
+  p_team_id text
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  safe_actor_id text := nullif(btrim(p_actor_profile_id), '');
+  safe_post_id text := nullif(btrim(p_post_id), '');
+  safe_side text := nullif(btrim(p_side), '');
+  safe_team_id text := nullif(btrim(p_team_id), '');
+  post_row public.recruiting_posts%rowtype;
+  team_row public.teams%rowtype;
+  host_team public.teams%rowtype;
+  eligibility jsonb;
+  captain_id text;
+  mmr_range_mode text;
+  mmr_limit_mode text;
+  safe_room_state jsonb;
+  invitations jsonb;
+  invitation jsonb;
+  invitation_id text;
+  now_at timestamptz := clock_timestamp();
+begin
+  if safe_actor_id is null then
+    raise exception 'auth_required' using errcode = '42501';
+  end if;
+  if safe_post_id is null then
+    raise exception 'missing_recruiting_post' using errcode = '22023';
+  end if;
+  if safe_team_id is null then
+    raise exception 'recruiting_team_required' using errcode = '22023';
+  end if;
+  if safe_side is null or safe_side not in ('teamA', 'teamB') then
+    raise exception 'invalid_recruiting_team_side' using errcode = '22023';
+  end if;
+
+  perform pg_advisory_xact_lock(hashtext('rankball:recruiting'), hashtext(safe_post_id));
+  select post.* into post_row
+  from public.recruiting_posts post
+  where post.id = safe_post_id
+  for update;
+  if post_row.id is null then
+    raise exception 'recruiting_post_not_found' using errcode = 'P0002';
+  end if;
+  if post_row.status <> 'open' or post_row.confirmed_at is not null then
+    raise exception 'recruiting_room_not_open' using errcode = '23514';
+  end if;
+  if post_row.host_join_mode <> 'team'
+     or not coalesce((post_row.room_state->>'teamOnly')::boolean, false) then
+    raise exception 'recruiting_team_room_required' using errcode = '23514';
+  end if;
+  if coalesce(nullif(post_row.room_state->>'ownerId', ''), post_row.player_id) is distinct from safe_actor_id then
+    raise exception 'recruiting_owner_required' using errcode = '42501';
+  end if;
+
+  select team.* into team_row
+  from public.teams team
+  where team.id = safe_team_id and team.deleted_at is null;
+  if team_row.id is null then
+    raise exception 'recruiting_team_not_found' using errcode = 'P0002';
+  end if;
+
+  safe_room_state := coalesce(post_row.room_state, '{}'::jsonb);
+  mmr_range_mode := case
+    when coalesce(nullif(safe_room_state->>'mmrRangeMode', ''), nullif(post_row.rules->>'mmrRangeMode', '')) = 'standard' then 'normal'
+    when coalesce(nullif(safe_room_state->>'mmrRangeMode', ''), nullif(post_row.rules->>'mmrRangeMode', '')) in ('narrow', 'normal', 'wide')
+      then coalesce(nullif(safe_room_state->>'mmrRangeMode', ''), nullif(post_row.rules->>'mmrRangeMode', ''))
+    else 'normal'
+  end;
+  mmr_limit_mode := case when post_row.ranked then 'block' else 'off' end;
+
+  if safe_side = 'teamA' then
+    if post_row.team_id is not null then
+      raise exception 'recruiting_room_team_already_selected' using errcode = '23514';
+    end if;
+    if post_row.target_team_id = safe_team_id then
+      raise exception 'recruiting_team_duplicate' using errcode = '23514';
+    end if;
+    eligibility := public.rankball_assert_team_event_eligible(
+      safe_team_id,
+      post_row.side_capacity,
+      post_row.ranked,
+      mmr_limit_mode,
+      coalesce(team_row.mmr, 1200),
+      mmr_range_mode,
+      post_row.allowed_age_groups,
+      false
+    );
+    captain_id := eligibility->>'captainId';
+    if not exists (
+      select 1
+      from public.team_members member
+      where member.team_id = safe_team_id
+        and member.user_id = safe_actor_id
+    ) then
+      raise exception 'recruiting_team_member_required' using errcode = '42501';
+    end if;
+    if not (coalesce(eligibility->'eligiblePlayerIds', '[]'::jsonb) ? safe_actor_id) then
+      raise exception 'recruiting_team_representative_ineligible' using errcode = '42501';
+    end if;
+
+    update public.recruiting_posts
+    set team_id = safe_team_id,
+        player_ids = jsonb_build_array(safe_actor_id),
+        host_ready = false,
+        spots = greatest(0, side_capacity * 2 - 1),
+        rating_scale = case when ranked then
+          case when mmr_range_mode = 'narrow' then 1.1 when mmr_range_mode = 'wide' then 0.8 else 1 end
+          else 1 end,
+        room_state = safe_room_state || jsonb_build_object(
+          'mmrRangeMode', mmr_range_mode,
+          'mmrLimitMode', mmr_limit_mode,
+          'partyLeaders', coalesce(safe_room_state->'partyLeaders', '{}'::jsonb) || jsonb_build_object('host', safe_actor_id),
+          'partySides', coalesce(safe_room_state->'partySides', '{}'::jsonb) || jsonb_build_object('host', 'teamA')
+        ),
+        rules = coalesce(rules, '{}'::jsonb) || jsonb_build_object(
+          'mmrRangeMode', mmr_range_mode,
+          'mmrLimitMode', mmr_limit_mode
+        ),
+        updated_at = now_at
+    where id = safe_post_id;
+  else
+    if post_row.visibility <> 'private' then
+      raise exception 'public_team_room_side_b_direct_selection_not_allowed' using errcode = '23514';
+    end if;
+    if post_row.team_id is null then
+      raise exception 'recruiting_host_team_selection_required' using errcode = '23514';
+    end if;
+    if post_row.target_team_id is not null then
+      raise exception 'recruiting_room_team_already_selected' using errcode = '23514';
+    end if;
+    if post_row.team_id = safe_team_id then
+      raise exception 'recruiting_team_duplicate' using errcode = '23514';
+    end if;
+    select team.* into host_team
+    from public.teams team
+    where team.id = post_row.team_id and team.deleted_at is null;
+    if host_team.id is null then
+      raise exception 'recruiting_host_team_not_found' using errcode = 'P0002';
+    end if;
+    eligibility := public.rankball_assert_team_event_eligible(
+      safe_team_id,
+      post_row.side_capacity,
+      post_row.ranked,
+      mmr_limit_mode,
+      coalesce(host_team.mmr, 1200),
+      mmr_range_mode,
+      post_row.allowed_age_groups,
+      true
+    );
+    captain_id := eligibility->>'captainId';
+    if captain_id is null then
+      raise exception 'team_captain_required' using errcode = '42501';
+    end if;
+
+    invitation_id := 'inv_' || substr(md5(safe_post_id || ':teamB:' || safe_team_id || ':' || captain_id), 1, 24);
+    invitation := jsonb_build_object(
+      'id', invitation_id,
+      'role', 'player',
+      'targetUserId', captain_id,
+      'fromUserId', safe_actor_id,
+      'teamId', safe_team_id,
+      'joinMode', 'team',
+      'side', 'teamB',
+      'reserve', false,
+      'status', 'pending',
+      'createdAt', now_at,
+      'updatedAt', now_at
+    );
+    invitations := case when jsonb_typeof(safe_room_state->'invitations') = 'array'
+      then safe_room_state->'invitations' else '[]'::jsonb end;
+
+    update public.recruiting_posts
+    set target_team_id = safe_team_id,
+        room_state = safe_room_state || jsonb_build_object(
+          'mmrRangeMode', mmr_range_mode,
+          'mmrLimitMode', mmr_limit_mode,
+          'invitations', invitations || invitation
+        ),
+        rules = coalesce(rules, '{}'::jsonb) || jsonb_build_object(
+          'mmrRangeMode', mmr_range_mode,
+          'mmrLimitMode', mmr_limit_mode
+        ),
+        updated_at = now_at
+    where id = safe_post_id;
+
+    insert into public.notifications (
+      id, user_id, target_user_id, title, body, tone, type,
+      recruiting_post_id, invitation_id, payload, created_at, updated_at
+    ) values (
+      'notice-recruiting-team-selection-' || safe_post_id || '-' || substr(md5(safe_team_id), 1, 16),
+      captain_id,
+      captain_id,
+      U&'\B9E4\CE58\BC29 \CD08\B300',
+      post_row.title || U&' B\C0AC\C774\B4DC \D300 \CD08\B300\AC00 \B3C4\CC29\D588\C2B5\B2C8\B2E4.',
+      'match',
+      'recruiting_invitation',
+      safe_post_id,
+      invitation_id,
+      invitation || jsonb_build_object(
+        'targetUserId', captain_id,
+        'recruitingPostId', safe_post_id,
+        'invitationId', invitation_id,
+        'actionRequired', true
+      ),
+      now_at,
+      now_at
+    ) on conflict (id) do update set
+      target_user_id = excluded.target_user_id,
+      title = excluded.title,
+      body = excluded.body,
+      payload = excluded.payload,
+      updated_at = excluded.updated_at;
+  end if;
+
+  perform public.rankball_refresh_recruiting_feed_for_post(safe_post_id);
+  return jsonb_build_object(
+    'ok', true,
+    'action', 'setRecruitingRoomTeam',
+    'postId', safe_post_id,
+    'side', safe_side,
+    'teamId', safe_team_id,
+    'captainId', captain_id,
+    'sqlReducer', true,
+    'advisoryLocked', true
+  );
+end;
+$$;
+
+revoke all on function public.rankball_recruiting_set_room_team_action(text, text, text, text)
+from public, anon, authenticated;
+grant execute on function public.rankball_recruiting_set_room_team_action(text, text, text, text)
+to service_role;
+
 -- Grant health is registry-backed so new RPC migrations add one contract row
 -- instead of copying and replacing the complete health function.
 create table if not exists public.rankball_rpc_contract_registry (
@@ -15657,6 +15914,935 @@ grant execute on function public.rankball_match_score_operation_policy_health()
 
 select pg_notify('pgrst', 'reload schema');
 
+
+commit;
+
+begin;
+
+create or replace function public.rankball_match_clock_create_session()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  initial_controller_id text;
+  initial_period_ms bigint;
+  initial_shot_seconds integer := 0;
+  auto_start boolean := false;
+  inserted_count integer := 0;
+begin
+  if new.started_at is null then
+    return new;
+  end if;
+  if tg_op = 'UPDATE' and old.started_at is not null then
+    return new;
+  end if;
+  if nullif(btrim(new.rules->>'recordType'), '') in ('personal_record', 'match_record') then
+    return new;
+  end if;
+  if lower(coalesce(new.rules->>'gameClockEnabled', 'true')) = 'false' then
+    return new;
+  end if;
+
+  auto_start := nullif(btrim(new.referee_id), '') is not null
+    and public.rankball_is_match_referee_eligible(new.referee_id, new.id);
+  if auto_start then
+    initial_controller_id := nullif(btrim(new.referee_id), '');
+  else
+    select player.user_id into initial_controller_id
+    from public.match_players player
+    where player.match_id = new.id
+    order by
+      case when player.user_id = new.created_by then 0 else 1 end,
+      case when player.side = 'teamA' then 0 else 1 end,
+      player.slot_order,
+      player.user_id
+    limit 1;
+  end if;
+
+  if coalesce(new.rules->>'shotClockSeconds', '') ~ '^[0-9]+$' then
+    initial_shot_seconds := (new.rules->>'shotClockSeconds')::integer;
+  end if;
+  if initial_shot_seconds not in (0, 24, 30, 60) then
+    initial_shot_seconds := 0;
+  end if;
+  initial_period_ms := public.rankball_match_clock_period_seconds(new.id)::bigint * 1000;
+
+  insert into public.match_clock_sessions (
+    match_id, controller_id, status, current_period, overtime_count,
+    period_remaining_ms, shot_clock_seconds, shot_remaining_ms,
+    active_elapsed_ms, start_deadline_at, last_resumed_at,
+    clock_started_at, started_within_window, created_at, updated_at
+  )
+  values (
+    new.id,
+    initial_controller_id,
+    case when auto_start then 'running' else 'pending' end,
+    1,
+    0,
+    initial_period_ms,
+    initial_shot_seconds,
+    initial_shot_seconds::bigint * 1000,
+    0,
+    new.started_at + interval '5 minutes',
+    case when auto_start then new.started_at end,
+    case when auto_start then new.started_at end,
+    auto_start,
+    clock_timestamp(),
+    clock_timestamp()
+  )
+  on conflict (match_id) do nothing;
+  get diagnostics inserted_count = row_count;
+
+  if auto_start and inserted_count = 1 then
+    insert into public.match_clock_events (match_id, actor_id, action, payload, created_at)
+    values (
+      new.id,
+      initial_controller_id,
+      'start',
+      jsonb_build_object(
+        'source', 'referee_match_start',
+        'status', 'running',
+        'currentPeriod', 1,
+        'overtimeCount', 0,
+        'activeElapsedMs', 0
+      ),
+      new.started_at
+    );
+  end if;
+
+  return new;
+end;
+$$;
+
+create or replace function public.rankball_match_clock_close_on_match_end()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  session_row public.match_clock_sessions%rowtype;
+  effective_end_at timestamptz;
+  elapsed_ms bigint := 0;
+  applied_ms bigint := 0;
+  lifecycle_actor_id text;
+begin
+  if new.ended_at is null or old.ended_at is not null then
+    return new;
+  end if;
+
+  select * into session_row
+  from public.match_clock_sessions
+  where match_id = new.id
+  for update;
+  if session_row.match_id is null or session_row.clock_ended_at is not null then
+    return new;
+  end if;
+
+  effective_end_at := least(new.ended_at, clock_timestamp());
+  if session_row.status = 'running' and session_row.last_resumed_at is not null then
+    elapsed_ms := greatest(
+      0,
+      floor(extract(epoch from (effective_end_at - session_row.last_resumed_at)) * 1000)::bigint
+    );
+    applied_ms := least(elapsed_ms, session_row.period_remaining_ms);
+  end if;
+
+  update public.match_clock_sessions
+  set status = 'ended',
+      period_remaining_ms = greatest(0, session_row.period_remaining_ms - applied_ms),
+      shot_remaining_ms = greatest(0, session_row.shot_remaining_ms - applied_ms),
+      active_elapsed_ms = session_row.active_elapsed_ms + applied_ms,
+      last_resumed_at = null,
+      clock_ended_at = effective_end_at,
+      updated_at = clock_timestamp()
+  where match_id = new.id;
+
+  lifecycle_actor_id := coalesce(
+    nullif(btrim(new.referee_id), ''),
+    nullif(btrim(new.created_by), '')
+  );
+  insert into public.match_clock_events (match_id, actor_id, action, payload, created_at)
+  values (
+    new.id,
+    lifecycle_actor_id,
+    case when nullif(btrim(new.referee_id), '') is not null then 'endClock' else 'matchEnd' end,
+    jsonb_build_object(
+      'source', 'match_lifecycle',
+      'status', 'ended',
+      'activeElapsedMs', session_row.active_elapsed_ms + applied_ms
+    ),
+    effective_end_at
+  );
+
+  return new;
+end;
+$$;
+
+do $migration$
+begin
+  if to_regprocedure('public.rankball_match_result_action_pre_referee_score_sync(text,text,jsonb)') is null then
+    if to_regprocedure('public.rankball_match_result_action(text,text,jsonb)') is null then
+      raise exception 'rankball_match_result_action_missing' using errcode = '42883';
+    end if;
+    alter function public.rankball_match_result_action(text, text, jsonb)
+      rename to rankball_match_result_action_pre_referee_score_sync;
+  end if;
+end;
+$migration$;
+
+create or replace function public.rankball_match_result_action(
+  p_actor_profile_id text,
+  p_match_id text,
+  p_result jsonb default '{}'::jsonb
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  safe_actor_id text := nullif(btrim(p_actor_profile_id), '');
+  safe_match_id text := nullif(btrim(p_match_id), '');
+  safe_result jsonb := coalesce(p_result, '{}'::jsonb);
+  current_match public.matches%rowtype;
+  current_result public.match_results%rowtype;
+  core_result jsonb;
+  requested_score_a integer;
+  requested_score_b integer;
+  before_score_a integer;
+  before_score_b integer;
+  next_revision_a integer;
+  next_revision_b integer;
+  now_at timestamptz := clock_timestamp();
+begin
+  if safe_match_id is null or jsonb_typeof(safe_result) <> 'object' then
+    raise exception 'invalid_match_result' using errcode = '22023';
+  end if;
+
+  perform pg_advisory_xact_lock(hashtext('rankball:match'), hashtext(safe_match_id));
+  select * into current_match
+  from public.matches
+  where id = safe_match_id
+  for update;
+  if current_match.id is null then
+    raise exception 'match_not_found' using errcode = 'P0002';
+  end if;
+
+  core_result := public.rankball_match_result_action_pre_referee_score_sync(
+    safe_actor_id,
+    safe_match_id,
+    safe_result
+  );
+
+  if coalesce(current_match.rules->>'recordType', '') in ('match_record', 'personal_record')
+     or safe_actor_id <> nullif(btrim(current_match.referee_id), '')
+     or not public.rankball_is_match_referee_eligible(safe_actor_id, safe_match_id) then
+    return core_result;
+  end if;
+  if coalesce(safe_result->>'scoreA', '') !~ '^[0-9]{1,3}$'
+     or coalesce(safe_result->>'scoreB', '') !~ '^[0-9]{1,3}$' then
+    raise exception 'invalid_match_result_score' using errcode = '22023';
+  end if;
+
+  requested_score_a := (safe_result->>'scoreA')::integer;
+  requested_score_b := (safe_result->>'scoreB')::integer;
+  select * into current_result
+  from public.match_results
+  where match_id = safe_match_id
+  for update;
+  if current_result.match_id is null then
+    raise exception 'match_result_not_found' using errcode = 'P0002';
+  end if;
+
+  before_score_a := greatest(0, coalesce(current_result.score_a, 0));
+  before_score_b := greatest(0, coalesce(current_result.score_b, 0));
+  next_revision_a := coalesce(current_result.score_revision_a, 0)
+    + case when requested_score_a <> before_score_a then 1 else 0 end;
+  next_revision_b := coalesce(current_result.score_revision_b, 0)
+    + case when requested_score_b <> before_score_b then 1 else 0 end;
+
+  update public.match_results
+  set submitted_by = safe_actor_id,
+      score_a = requested_score_a,
+      score_b = requested_score_b,
+      score_revision_a = next_revision_a,
+      score_revision_b = next_revision_b,
+      score_submissions = coalesce(score_submissions, '{}'::jsonb)
+        || case when requested_score_a <> before_score_a then jsonb_build_object(
+          'teamA', jsonb_build_object(
+            'by', safe_actor_id, 'score', requested_score_a,
+            'revision', next_revision_a, 'scope', 'referee',
+            'submittedAt', now_at
+          )
+        ) else '{}'::jsonb end
+        || case when requested_score_b <> before_score_b then jsonb_build_object(
+          'teamB', jsonb_build_object(
+            'by', safe_actor_id, 'score', requested_score_b,
+            'revision', next_revision_b, 'scope', 'referee',
+            'submittedAt', now_at
+          )
+        ) else '{}'::jsonb end,
+      submitted_at = now_at
+  where match_id = safe_match_id;
+
+  update public.matches
+  set score_a = requested_score_a,
+      score_b = requested_score_b,
+      updated_at = now_at
+  where id = safe_match_id;
+
+  if requested_score_a <> before_score_a then
+    insert into public.match_score_events (
+      match_id, side, actor_profile_id, event_type, requested_delta,
+      score_before, score_after, score_revision, authority_scope, created_at
+    ) values (
+      safe_match_id, 'teamA', safe_actor_id, 'increment',
+      requested_score_a - before_score_a, before_score_a, requested_score_a,
+      next_revision_a, 'referee', now_at
+    );
+  end if;
+  if requested_score_b <> before_score_b then
+    insert into public.match_score_events (
+      match_id, side, actor_profile_id, event_type, requested_delta,
+      score_before, score_after, score_revision, authority_scope, created_at
+    ) values (
+      safe_match_id, 'teamB', safe_actor_id, 'increment',
+      requested_score_b - before_score_b, before_score_b, requested_score_b,
+      next_revision_b, 'referee', now_at
+    );
+  end if;
+
+  return coalesce(core_result, '{}'::jsonb) || jsonb_build_object(
+    'scoreA', requested_score_a,
+    'scoreB', requested_score_b,
+    'scoreRevisionA', next_revision_a,
+    'scoreRevisionB', next_revision_b,
+    'scoreSynced', true
+  );
+end;
+$$;
+
+revoke all on function public.rankball_match_clock_create_session()
+from public, anon, authenticated;
+revoke all on function public.rankball_match_clock_close_on_match_end()
+from public, anon, authenticated;
+revoke all on function public.rankball_match_result_action(text, text, jsonb)
+from public, anon, authenticated;
+revoke all on function public.rankball_match_result_action_pre_referee_score_sync(text, text, jsonb)
+from public, anon, authenticated, service_role;
+grant execute on function public.rankball_match_result_action(text, text, jsonb)
+to service_role;
+
+select pg_notify('pgrst', 'reload schema');
+
+commit;
+
+begin;
+
+do $patch$
+declare
+  function_signature text;
+  function_def text;
+  old_fragment constant text :=
+    'if (current_match.visibility <> ''public'' and current_match.tournament_id is null)';
+  new_fragment constant text :=
+    'if (current_match.visibility not in (''public'', ''private'') and current_match.tournament_id is null)';
+  old_resize_fragment constant text :=
+    'if current_match.visibility <> ''public''';
+  new_resize_fragment constant text :=
+    'if current_match.visibility not in (''public'', ''private'')';
+  old_record_fragment constant text :=
+    'or coalesce(nullif(current_match.rules->>''recordType'', ''''), ''match'') <> ''match''';
+  new_record_fragment constant text :=
+    'or coalesce(nullif(current_match.rules->>''recordType'', ''''), ''match'') = ''match_record''';
+  record_pattern constant text :=
+    $pattern$coalesce\([[:space:]]*nullif\([[:space:]]*current_match\.rules[[:space:]]*->[>][[:space:]]*'recordType'(?:::[a-z]+)?[[:space:]]*,[[:space:]]*''(?:::[a-z]+)?[[:space:]]*\)[[:space:]]*,[[:space:]]*'match'(?:::[a-z]+)?[[:space:]]*\)[[:space:]]*<>[[:space:]]*'match'(?:::[a-z]+)?$pattern$;
+  patched_def text;
+begin
+  foreach function_signature in array array[
+    'public.rankball_match_attendance_qr_action(text,text)',
+    'public.rankball_match_attendance_resize_action(text,text)'
+  ]
+  loop
+    if to_regprocedure(function_signature) is null then
+      raise exception 'match_attendance_qr_function_missing: %', function_signature
+        using errcode = '42883';
+    end if;
+    function_def := pg_get_functiondef(to_regprocedure(function_signature));
+    if function_signature = 'public.rankball_match_attendance_qr_action(text,text)' then
+      if strpos(function_def, new_fragment) = 0 and strpos(function_def, old_fragment) = 0 then
+        raise exception 'match_attendance_qr_eligibility_shape_changed: %', function_signature
+          using errcode = '23514';
+      end if;
+      function_def := replace(function_def, old_fragment, new_fragment);
+    else
+      if strpos(function_def, new_resize_fragment) = 0 and strpos(function_def, old_resize_fragment) = 0 then
+        raise exception 'match_attendance_qr_eligibility_shape_changed: %', function_signature
+          using errcode = '23514';
+      end if;
+      function_def := replace(function_def, old_resize_fragment, new_resize_fragment);
+    end if;
+    if strpos(function_def, 'match_record') = 0 then
+      patched_def := regexp_replace(function_def, record_pattern, new_record_fragment);
+      if patched_def = function_def then
+        raise exception 'match_attendance_qr_record_type_shape_changed: %', function_signature
+          using errcode = '23514';
+      end if;
+      function_def := patched_def;
+    end if;
+    execute function_def;
+  end loop;
+end;
+$patch$;
+
+select pg_notify('pgrst', 'reload schema');
+
+commit;
+
+-- Referee qualification entry remains 90; active service continues from 70.
+begin;
+
+create or replace function public.rankball_is_match_referee_eligible(
+  p_profile_id text,
+  p_match_id text
+)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.matches match_row
+    where match_row.id = nullif(btrim(p_match_id), '')
+      and nullif(btrim(match_row.referee_id), '') = nullif(btrim(p_profile_id), '')
+      and (
+        (
+          match_row.started_at is not null
+          and match_row.confirmed_at is null
+          and match_row.status not in ('cancelled', 'void', 'voided', 'closed', 'confirmed')
+          and exists (
+            select 1
+            from public.profiles revoked_profile
+            where revoked_profile.id = nullif(btrim(p_profile_id), '')
+              and coalesce(revoked_profile.trust_score, 0) < 70
+          )
+          and exists (
+            select 1
+            from public.referee_appointments revoked_appointment
+            where revoked_appointment.user_id = nullif(btrim(p_profile_id), '')
+              and revoked_appointment.role = 'referee'
+              and revoked_appointment.status = 'revoked'
+              and revoked_appointment.payload->>'autoRevoked' = 'true'
+              and revoked_appointment.payload->>'revokeReason' = 'referee_trust_below_70'
+              and match_row.started_at <= (revoked_appointment.payload->>'revokedAt')::timestamptz
+          )
+        )
+        or exists (
+          select 1
+          from public.profiles profile
+          join public.referee_appointments appointment on appointment.user_id = profile.id
+          where profile.id = nullif(btrim(p_profile_id), '')
+            and (
+              coalesce(profile.trust_score, 0) >= 70
+              or lower(coalesce(profile.test_login_id, '')) in ('rankball-001', 'rankball-011')
+            )
+            and appointment.role = 'referee'
+            and appointment.grade in ('candidate', 'silver', 'gold', 'platinum', 'official')
+            and appointment.status = 'active'
+            and (appointment.starts_at is null or appointment.starts_at <= now())
+            and (appointment.ends_at is null or appointment.ends_at > now())
+        )
+      )
+  );
+$$;
+
+create or replace function public.rankball_tournament_referee_eligible(
+  p_profile_id text,
+  p_through_date date default null
+)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select
+    nullif(btrim(p_profile_id), '') is not null
+    and exists (
+      select 1
+      from public.profiles profile_row
+      where profile_row.id = nullif(btrim(p_profile_id), '')
+        and (
+          coalesce(profile_row.trust_score, 0) >= 70
+          or lower(coalesce(profile_row.test_login_id, '')) in ('rankball-001', 'rankball-011')
+        )
+    )
+    and exists (
+      select 1
+      from public.referee_appointments appointment
+      where appointment.user_id = nullif(btrim(p_profile_id), '')
+        and appointment.role = 'referee'
+        and appointment.grade in ('candidate', 'silver', 'gold', 'platinum', 'official')
+        and coalesce(appointment.status, 'active') not in (
+          'pending', 'rejected', 'revoked', 'expired', 'suspended', 'blocked'
+        )
+        and (appointment.starts_at is null or appointment.starts_at <= now())
+        and (
+          appointment.ends_at is null
+          or appointment.ends_at >= case
+            when p_through_date is null then now()
+            else ((p_through_date + 1)::timestamp at time zone 'Asia/Seoul')
+          end
+        )
+    );
+$$;
+
+create or replace function public.rankball_tournament_referee_authorized(
+  p_profile_id text,
+  p_tournament_id text
+)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.tournaments tournament_row
+    where tournament_row.id = nullif(btrim(p_tournament_id), '')
+      and (
+        public.rankball_tournament_referee_eligible(p_profile_id, tournament_row.end_date)
+        or (
+          tournament_row.status = 'active'
+          and tournament_row.started_at is not null
+          and coalesce(tournament_row.referee_ids, '[]'::jsonb) ? nullif(btrim(p_profile_id), '')
+          and coalesce(
+            tournament_row.referee_statuses->>nullif(btrim(p_profile_id), ''),
+            'invited'
+          ) = 'accepted'
+          and exists (
+            select 1
+            from public.profiles revoked_profile
+            where revoked_profile.id = nullif(btrim(p_profile_id), '')
+              and coalesce(revoked_profile.trust_score, 0) < 70
+          )
+          and exists (
+            select 1
+            from public.referee_appointments revoked_appointment
+            where revoked_appointment.user_id = nullif(btrim(p_profile_id), '')
+              and revoked_appointment.role = 'referee'
+              and revoked_appointment.status = 'revoked'
+              and revoked_appointment.payload->>'autoRevoked' = 'true'
+              and revoked_appointment.payload->>'revokeReason' = 'referee_trust_below_70'
+              and tournament_row.started_at <= (revoked_appointment.payload->>'revokedAt')::timestamptz
+          )
+        )
+      )
+  );
+$$;
+
+create or replace function public.rankball_revoke_referee_below_active_trust()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if coalesce(old.trust_score, 0) >= 70
+    and coalesce(new.trust_score, 0) < 70
+    and lower(coalesce(new.test_login_id, '')) not in ('rankball-001', 'rankball-011')
+  then
+    insert into public.admin_audit_log (
+      id, type, status, appointment_id, target_user_id, created_by, payload, created_at
+    )
+    select
+      'aa_' || md5('referee-trust-auto-revoke:' || appointment.id || ':' || now()::text),
+      'appointment_action',
+      'committed',
+      appointment.id,
+      new.id,
+      null,
+      jsonb_build_object(
+        'actionType', 'revokeAppointment',
+        'appointmentId', appointment.id,
+        'targetUserId', new.id,
+        'role', 'referee',
+        'reason', 'referee_trust_below_70',
+        'autoRevoked', true
+      ),
+      now()
+    from public.referee_appointments appointment
+    where appointment.user_id = new.id
+      and appointment.role = 'referee'
+      and appointment.status = 'active'
+    on conflict (id) do nothing;
+
+    insert into public.notifications (
+      id, user_id, target_user_id, title, body, tone, type, payload, created_at, updated_at
+    )
+    select
+      'n_' || md5('referee-trust-auto-revoke:' || appointment.id || ':' || now()::text),
+      new.id,
+      new.id,
+      '심판 자격 활동 정지',
+      '신뢰도 70 미만으로 심판 임명이 자동 회수되었습니다.',
+      'orange',
+      'appointment',
+      jsonb_build_object(
+        'appointmentId', appointment.id,
+        'role', 'referee',
+        'reason', 'referee_trust_below_70',
+        'autoRevoked', true
+      ),
+      now(),
+      now()
+    from public.referee_appointments appointment
+    where appointment.user_id = new.id
+      and appointment.role = 'referee'
+      and appointment.status = 'active'
+    on conflict (id) do nothing;
+
+    update public.referee_appointments
+    set status = 'revoked',
+        payload = coalesce(payload, '{}'::jsonb) || jsonb_build_object(
+          'status', 'revoked',
+          'revokedAt', now(),
+          'revokeReason', 'referee_trust_below_70',
+          'autoRevoked', true
+        ),
+        updated_at = now()
+    where user_id = new.id
+      and role = 'referee'
+      and status = 'active';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists rankball_referee_active_trust_guard on public.profiles;
+create trigger rankball_referee_active_trust_guard
+after update of trust_score on public.profiles
+for each row execute function public.rankball_revoke_referee_below_active_trust();
+
+insert into public.admin_audit_log (
+  id, type, status, appointment_id, target_user_id, created_by, payload, created_at
+)
+select
+  'aa_' || md5('referee-trust-backfill-revoke:' || appointment.id),
+  'appointment_action',
+  'committed',
+  appointment.id,
+  profile.id,
+  null,
+  jsonb_build_object(
+    'actionType', 'revokeAppointment',
+    'appointmentId', appointment.id,
+    'targetUserId', profile.id,
+    'role', 'referee',
+    'reason', 'referee_trust_below_70',
+    'autoRevoked', true
+  ),
+  now()
+from public.referee_appointments appointment
+join public.profiles profile on profile.id = appointment.user_id
+where coalesce(profile.trust_score, 0) < 70
+  and lower(coalesce(profile.test_login_id, '')) not in ('rankball-001', 'rankball-011')
+  and appointment.role = 'referee'
+  and appointment.status = 'active'
+on conflict (id) do nothing;
+
+insert into public.notifications (
+  id, user_id, target_user_id, title, body, tone, type, payload, created_at, updated_at
+)
+select
+  'n_' || md5('referee-trust-backfill-revoke:' || appointment.id),
+  profile.id,
+  profile.id,
+  '심판 자격 활동 정지',
+  '신뢰도 70 미만으로 심판 임명이 자동 회수되었습니다.',
+  'orange',
+  'appointment',
+  jsonb_build_object(
+    'appointmentId', appointment.id,
+    'role', 'referee',
+    'reason', 'referee_trust_below_70',
+    'autoRevoked', true
+  ),
+  now(),
+  now()
+from public.referee_appointments appointment
+join public.profiles profile on profile.id = appointment.user_id
+where coalesce(profile.trust_score, 0) < 70
+  and lower(coalesce(profile.test_login_id, '')) not in ('rankball-001', 'rankball-011')
+  and appointment.role = 'referee'
+  and appointment.status = 'active'
+on conflict (id) do nothing;
+
+update public.referee_appointments appointment
+set status = 'revoked',
+    payload = coalesce(appointment.payload, '{}'::jsonb) || jsonb_build_object(
+      'status', 'revoked',
+      'revokedAt', now(),
+      'revokeReason', 'referee_trust_below_70',
+      'autoRevoked', true
+    ),
+    updated_at = now()
+from public.profiles profile
+where profile.id = appointment.user_id
+  and coalesce(profile.trust_score, 0) < 70
+  and lower(coalesce(profile.test_login_id, '')) not in ('rankball-001', 'rankball-011')
+  and appointment.role = 'referee'
+  and appointment.status = 'active';
+
+do $patch$
+declare
+  function_definition text;
+  patched_definition text;
+  fixed_threshold text := 'coalesce(profile.trust_score, 80) >= 90';
+  stored_threshold text := 'coalesce(profile.trust_score, 80) >= current_post.referee_trust_min';
+begin
+  function_definition := pg_get_functiondef(
+    'public.rankball_recruiting_management_action_unguarded(text,jsonb)'::regprocedure
+  );
+  if strpos(function_definition, fixed_threshold) = 0 then
+    raise exception 'recruiting_referee_fixed_trust_shape_changed';
+  end if;
+  if strpos(function_definition, stored_threshold) = 0 then
+    raise exception 'recruiting_referee_stored_trust_shape_changed';
+  end if;
+  patched_definition := replace(
+    function_definition,
+    fixed_threshold,
+    '(coalesce(profile.trust_score, 80) >= 70 or lower(coalesce(profile.test_login_id, '''')) in (''rankball-001'', ''rankball-011''))'
+  );
+  patched_definition := replace(
+    patched_definition,
+    stored_threshold,
+    '(coalesce(profile.trust_score, 80) >= 70 or lower(coalesce(profile.test_login_id, '''')) in (''rankball-001'', ''rankball-011''))'
+  );
+  execute patched_definition;
+end;
+$patch$;
+
+do $patch$
+declare
+  function_signature text;
+  function_definition text;
+  patched_definition text;
+begin
+  foreach function_signature in array array[
+    'public.rankball_tournament_referee_coverage_ready(text,boolean)',
+    'public.rankball_tournament_approval_ready(text)',
+    'public.rankball_tournament_match_schedule_action(text,text,text,jsonb)',
+    'public.rankball_match_start_action_guarded(text,text,text,text,jsonb)'
+  ]
+  loop
+    if to_regprocedure(function_signature) is null then
+      raise exception 'tournament_referee_authority_function_missing: %', function_signature;
+    end if;
+    function_definition := pg_get_functiondef(function_signature::regprocedure);
+    patched_definition := replace(
+      function_definition,
+      'public.rankball_tournament_referee_eligible(referee.referee_id, tournament_row.end_date)',
+      'public.rankball_tournament_referee_authorized(referee.referee_id, tournament_row.id)'
+    );
+    patched_definition := replace(
+      patched_definition,
+      'public.rankball_tournament_referee_eligible(match_row.referee_id, tournament_row.end_date)',
+      'public.rankball_tournament_referee_authorized(match_row.referee_id, tournament_row.id)'
+    );
+    if patched_definition = function_definition then
+      raise exception 'tournament_referee_authority_shape_changed: %', function_signature;
+    end if;
+    execute patched_definition;
+  end loop;
+end;
+$patch$;
+
+revoke all on function public.rankball_is_match_referee_eligible(text, text)
+from public, anon, authenticated;
+revoke all on function public.rankball_tournament_referee_eligible(text, date)
+from public, anon, authenticated;
+revoke all on function public.rankball_tournament_referee_authorized(text, text)
+from public, anon, authenticated;
+revoke all on function public.rankball_revoke_referee_below_active_trust()
+from public, anon, authenticated;
+
+grant execute on function public.rankball_is_match_referee_eligible(text, text) to service_role;
+grant execute on function public.rankball_tournament_referee_eligible(text, date) to service_role;
+grant execute on function public.rankball_tournament_referee_authorized(text, text) to service_role;
+
+select pg_notify('pgrst', 'reload schema');
+
+commit;
+
+-- Alpha referee discovery and assignment use one canonical eligibility rule.
+begin;
+
+create or replace function public.rankball_referee_assignment_eligible(
+  p_profile_id text,
+  p_through_at timestamptz default now()
+)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.profiles profile
+    where profile.id = nullif(btrim(p_profile_id), '')
+      and (
+        lower(coalesce(profile.test_login_id, '')) in ('rankball-001', 'rankball-011')
+        or exists (
+          select 1
+          from public.referee_appointments appointment
+          where appointment.user_id = profile.id
+            and appointment.role = 'referee'
+            and appointment.grade in ('candidate', 'silver', 'gold', 'platinum', 'official')
+            and appointment.status = 'active'
+            and (appointment.starts_at is null or appointment.starts_at <= now())
+            and (
+              appointment.ends_at is null
+              or appointment.ends_at >= greatest(now(), coalesce(p_through_at, now()))
+            )
+        )
+      )
+  );
+$$;
+
+create or replace function public.rankball_is_match_referee_eligible(
+  p_profile_id text,
+  p_match_id text
+)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.matches match_row
+    where match_row.id = nullif(btrim(p_match_id), '')
+      and nullif(btrim(match_row.referee_id), '') = nullif(btrim(p_profile_id), '')
+      and (
+        public.rankball_referee_assignment_eligible(p_profile_id, now())
+        or (
+          match_row.started_at is not null
+          and match_row.confirmed_at is null
+          and match_row.status not in ('cancelled', 'void', 'voided', 'closed', 'confirmed')
+          and exists (
+            select 1
+            from public.profiles revoked_profile
+            where revoked_profile.id = nullif(btrim(p_profile_id), '')
+              and coalesce(revoked_profile.trust_score, 0) < 70
+          )
+          and exists (
+            select 1
+            from public.referee_appointments revoked_appointment
+            where revoked_appointment.user_id = nullif(btrim(p_profile_id), '')
+              and revoked_appointment.role = 'referee'
+              and revoked_appointment.status = 'revoked'
+              and revoked_appointment.payload->>'autoRevoked' = 'true'
+              and revoked_appointment.payload->>'revokeReason' = 'referee_trust_below_70'
+              and match_row.started_at <= (revoked_appointment.payload->>'revokedAt')::timestamptz
+          )
+        )
+      )
+  );
+$$;
+
+create or replace function public.rankball_tournament_referee_eligible(
+  p_profile_id text,
+  p_through_date date default null
+)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select public.rankball_referee_assignment_eligible(
+    p_profile_id,
+    case
+      when p_through_date is null then now()
+      else (p_through_date + 1)::timestamptz - interval '1 microsecond'
+    end
+  );
+$$;
+
+do $patch$
+declare
+  function_definition text;
+  patched_definition text;
+  trust_fragment text;
+begin
+  function_definition := pg_get_functiondef(
+    'public.rankball_recruiting_management_action_unguarded(text,jsonb)'::regprocedure
+  );
+  patched_definition := function_definition;
+  foreach trust_fragment in array array[
+    '(coalesce(profile.trust_score, 80) >= 70 or lower(coalesce(profile.test_login_id, '''')) in (''rankball-001'', ''rankball-011''))',
+    'coalesce(profile.trust_score, 80) >= current_post.referee_trust_min',
+    'coalesce(profile.trust_score, 80) >= 90'
+  ]
+  loop
+    patched_definition := replace(patched_definition, trust_fragment, 'true');
+  end loop;
+  if patched_definition = function_definition then
+    raise exception 'recruiting_referee_trust_shape_changed' using errcode = '55000';
+  end if;
+  execute patched_definition;
+end;
+$patch$;
+
+insert into public.referee_appointments (
+  id, user_id, role, grade, status, starts_at, ends_at, payload, created_at, updated_at
+)
+select
+  'referee-alpha-' || profile.id,
+  profile.id,
+  'referee',
+  'candidate',
+  'active',
+  now(),
+  null,
+  jsonb_build_object('alphaTestException', true),
+  now(),
+  now()
+from public.profiles profile
+where lower(coalesce(profile.test_login_id, '')) in ('rankball-001', 'rankball-011')
+  and not exists (
+    select 1
+    from public.referee_appointments appointment
+    where appointment.user_id = profile.id
+      and appointment.role = 'referee'
+      and appointment.status = 'active'
+      and (appointment.starts_at is null or appointment.starts_at <= now())
+      and (appointment.ends_at is null or appointment.ends_at > now())
+  )
+on conflict (id) do nothing;
+
+revoke all on function public.rankball_referee_assignment_eligible(text, timestamptz)
+from public, anon, authenticated;
+revoke all on function public.rankball_is_match_referee_eligible(text, text)
+from public, anon, authenticated;
+revoke all on function public.rankball_tournament_referee_eligible(text, date)
+from public, anon, authenticated;
+
+grant execute on function public.rankball_referee_assignment_eligible(text, timestamptz) to service_role;
+grant execute on function public.rankball_is_match_referee_eligible(text, text) to service_role;
+grant execute on function public.rankball_tournament_referee_eligible(text, date) to service_role;
+
+select pg_notify('pgrst', 'reload schema');
 
 commit;
 
@@ -17112,6 +18298,54 @@ commit;
 
 select pg_notify('pgrst', 'reload schema');
 
+-- 2026-07-30: align the live match clock with the 24-second UI option.
+begin;
+
+alter table public.match_clock_sessions
+  drop constraint if exists match_clock_sessions_shot_clock_check;
+
+update public.match_clock_sessions
+set shot_clock_seconds = 24,
+    shot_remaining_ms = least(shot_remaining_ms, 24000),
+    updated_at = clock_timestamp()
+where shot_clock_seconds = 35;
+
+alter table public.match_clock_sessions
+  add constraint match_clock_sessions_shot_clock_check
+  check (shot_clock_seconds in (0, 24, 30, 60))
+  not valid;
+
+alter table public.match_clock_sessions
+  validate constraint match_clock_sessions_shot_clock_check;
+
+do $migration$
+declare
+  function_definition text;
+  old_text text := $old$    if next_shot_seconds not in (0, 30, 35, 60) then$old$;
+  new_text text := $new$    if next_shot_seconds not in (0, 24, 30, 60) then$new$;
+begin
+  if to_regprocedure(
+    'public.rankball_match_clock_action_pre_optional_clock(text,text,text,jsonb)'
+  ) is null then
+    raise exception 'match_clock_action_core_missing' using errcode = '55000';
+  end if;
+
+  function_definition := pg_get_functiondef(
+    'public.rankball_match_clock_action_pre_optional_clock(text,text,text,jsonb)'::regprocedure
+  );
+  if position(new_text in function_definition) = 0 then
+    if position(old_text in function_definition) = 0 then
+      raise exception 'match_clock_shot_option_policy_shape_changed' using errcode = '55000';
+    end if;
+    execute replace(function_definition, old_text, new_text);
+  end if;
+end;
+$migration$;
+
+select pg_notify('pgrst', 'reload schema');
+
+commit;
+
 -- Final internal legacy RPC wrapper removal.
 begin;
 
@@ -17847,8 +19081,8 @@ declare
   team_a_player_ids jsonb := '[]'::jsonb;
   team_b_player_ids jsonb := '[]'::jsonb;
   target_ids jsonb := '[]'::jsonb;
-  team_a_id text;
-  team_b_id text;
+  selected_team_a_id text;
+  selected_team_b_id text;
   team_a_captain_id text;
   team_b_captain_id text;
   setup_ready boolean := false;
@@ -17996,21 +19230,21 @@ begin
     from jsonb_array_elements_text(team_b_player_ids)
       with ordinality player(player_id, ordinality);
   else
-    team_a_id := nullif(btrim(p_payload->>'teamAId'), '');
-    team_b_id := nullif(btrim(p_payload->>'teamBId'), '');
-    if team_a_id is null
-       or team_b_id is null
-       or team_a_id = team_b_id
+    selected_team_a_id := nullif(btrim(p_payload->>'teamAId'), '');
+    selected_team_b_id := nullif(btrim(p_payload->>'teamBId'), '');
+    if selected_team_a_id is null
+       or selected_team_b_id is null
+       or selected_team_a_id = selected_team_b_id
        or not exists (
          select 1
          from public.teams team
-         where team.id = team_a_id
+         where team.id = selected_team_a_id
            and team.deleted_at is null
        )
        or not exists (
          select 1
          from public.teams team
-         where team.id = team_b_id
+         where team.id = selected_team_b_id
            and team.deleted_at is null
        ) then
       raise exception 'match_record_team_invalid' using errcode = '23514';
@@ -18018,7 +19252,7 @@ begin
     if not exists (
       select 1
       from public.team_members member
-      where member.team_id = team_a_id
+      where member.team_id = selected_team_a_id
         and member.user_id = safe_actor_id
     ) then
       raise exception 'match_record_team_member_required' using errcode = '42501';
@@ -18027,14 +19261,14 @@ begin
     select member.user_id
     into team_a_captain_id
     from public.team_members member
-    where member.team_id = team_a_id
+    where member.team_id = selected_team_a_id
       and member.role = 'captain'
     order by member.user_id
     limit 1;
     select member.user_id
     into team_b_captain_id
     from public.team_members member
-    where member.team_id = team_b_id
+    where member.team_id = selected_team_b_id
       and member.role = 'captain'
     order by member.user_id
     limit 1;
@@ -18058,8 +19292,8 @@ begin
       slot_order
     )
     values
-      (safe_match_id, team_a_id, team_a_captain_id, 'teamA', 0),
-      (safe_match_id, team_b_id, team_b_captain_id, 'teamB', 0);
+      (safe_match_id, selected_team_a_id, team_a_captain_id, 'teamA', 0),
+      (safe_match_id, selected_team_b_id, team_b_captain_id, 'teamB', 0);
   end if;
 
   delete from public.match_agreements
@@ -18076,11 +19310,11 @@ begin
 
   update public.matches match_row
   set team_a_id = case
-        when current_composition = 'team' then team_a_id
+        when current_composition = 'team' then selected_team_a_id
         else null
       end,
       team_b_id = case
-        when current_composition = 'team' then team_b_id
+        when current_composition = 'team' then selected_team_b_id
         else null
       end,
       played_player_ids = case

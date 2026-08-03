@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CalendarDays, ClipboardCheck, Handshake, ShieldAlert, Swords, Trophy, UserPlus } from "lucide-react";
 import { DEFAULT_RATING, HOME_RIVAL_TEAM_LIMIT } from "../lib/constants.js";
 import { getRegisteredCourts } from "../lib/courts.js";
@@ -11,7 +11,7 @@ import { getTierDivision } from "../lib/tier.js";
 import { compareNotificationsNewestFirst, dedupeNotifications, getNotificationHref, isHomeActionNotification, isNotificationDisplayable, isNotificationTargetUnavailable, isNotificationVisibleToUser } from "../lib/notifications.js";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import { MatchRoomModal } from "./Matches.jsx";
-import { RecruitingRoomModal } from "./Recruiting.jsx";
+import { RecruitingRoomLoadFailedView, RecruitingRoomLoadingView, RecruitingRoomModal } from "./Recruiting.jsx";
 import { useHomeSearchModel } from "./useHomeSearchModel.jsx";
 import HomePageView from "./HomePageView.jsx";
 
@@ -116,6 +116,12 @@ export default function Home({ app }) {
   const user = app.currentUser;
   const [query, setQuery] = useState("");
   const [processingInviteId, setProcessingInviteId] = useState("");
+  const [inviteActionError, setInviteActionError] = useState(null);
+  const processingInviteIdRef = useRef("");
+  useEffect(() => {
+    if (!app.remoteReady || app.actions.profileRecordsLoaded || !app.actions.loadProfileRecords) return;
+    app.actions.loadProfileRecords();
+  }, [app.actions.loadProfileRecords, app.actions.profileRecordsLoaded, app.remoteReady]);
   const {
     selectedMatchId,
     setSelectedMatchId,
@@ -123,6 +129,8 @@ export default function Home({ app }) {
     setSelectedRecruitingPostId,
     openMatchRoom,
     openRecruitingRoom,
+    recruitingRoomLoadState,
+    retryRecruitingRoom,
   } = useRoomModalNavigation({
     loadRecruitingPost: app.actions.loadRecruitingPost,
   });
@@ -152,7 +160,7 @@ export default function Home({ app }) {
   }, [app.state.matches, maxScheduleDate, todayValue, user.id]);
   const blockedUserIds = app.state.settings?.blockedUserIds ?? [];
   const selectedRecruitingPost = (app.state.recruitingPosts ?? []).find((post) => post.id === selectedRecruitingPostId) ?? null;
-  useBodyScrollLock(Boolean(selectedRecruitingPost));
+  useBodyScrollLock(Boolean(selectedRecruitingPostId));
   const pendingInvitations = useMemo(() => getPendingRecruitingInvitations(app.state, user.id)
     .filter(({ invitation }) => !blockedUserIds.includes(invitation.fromUserId)), [app.state, blockedUserIds, user.id]);
   const pendingTeamInvitations = useMemo(() => (app.state.teamInvitations ?? []).filter((invitation) => (
@@ -174,9 +182,11 @@ export default function Home({ app }) {
     ? regionalPlayerIds
       .map((playerId) => app.state.users.find((item) => item.id === playerId))
       .filter(Boolean)
+      .filter((item) => !blockedUserIds.includes(item.id))
       .filter((item) => isPlacementComplete(item.ratings))
       .map((item) => ({ ...item, seasonScore: item.ratings.integrated }))
     : getPlayerSeasonRows(app.state.users, app.state.matches, season, user.region)
+      .filter((item) => !blockedUserIds.includes(item.id))
       .filter((item) => isPlacementComplete(item.ratings));
   const snapshotRegionalRank = Number(app.state.homeSummary?.regionalRank);
   const mySeasonIndex = isPlacementComplete(user.ratings) && Number.isInteger(snapshotRegionalRank) && snapshotRegionalRank > 0
@@ -196,17 +206,36 @@ export default function Home({ app }) {
     return regionTeams
       .map((team) => ({ ...team, gap: team.mmr - referenceMmr }));
   }, [app.state.homeSummary?.rivalTeamIds, app.state.teams, myTeamIds, myTeams, teamById, user.ratings.integrated, user.region]);
-  const acceptHomeRecruitingInvitation = async (postId, invitationId) => {
+  const runHomeInviteAction = async (postId, invitationId, action) => {
     const key = `${postId}:${invitationId}`;
+    if (processingInviteIdRef.current) return false;
+    processingInviteIdRef.current = key;
     setProcessingInviteId(key);
+    setInviteActionError(null);
     try {
-      const result = await app.actions.acceptRecruitingInvitation(postId, invitationId);
-      if (result && result.ok !== false) {
-        setSelectedMatchId("");
-        setSelectedRecruitingPostId(postId);
+      const result = await action();
+      if (!result || result.ok === false) {
+        setInviteActionError({ key, message: "초대를 처리하지 못했습니다. 다시 시도해 주세요." });
+        return false;
       }
+      return result;
+    } catch {
+      setInviteActionError({ key, message: "초대를 처리하지 못했습니다. 다시 시도해 주세요." });
+      return false;
     } finally {
+      processingInviteIdRef.current = "";
       setProcessingInviteId("");
+    }
+  };
+  const acceptHomeRecruitingInvitation = async (postId, invitationId) => {
+    const result = await runHomeInviteAction(
+      postId,
+      invitationId,
+      () => app.actions.acceptRecruitingInvitation(postId, invitationId),
+    );
+    if (result && result.ok !== false) {
+      setSelectedMatchId("");
+      setSelectedRecruitingPostId(postId);
     }
   };
   const openActionRoom = (event, item = {}) => {
@@ -219,15 +248,11 @@ export default function Home({ app }) {
       openRecruitingRoom(item.recruitingPostId);
     }
   };
-  const declineHomeRecruitingInvitation = async (postId, invitationId) => {
-    const key = `${postId}:${invitationId}`;
-    setProcessingInviteId(key);
-    try {
-      await app.actions.declineRecruitingInvitation(postId, invitationId);
-    } finally {
-      setProcessingInviteId("");
-    }
-  };
+  const declineHomeRecruitingInvitation = (postId, invitationId) => runHomeInviteAction(
+    postId,
+    invitationId,
+    () => app.actions.declineRecruitingInvitation(postId, invitationId),
+  );
   const myCompletedMatches = getPlayerRecentRecordMatches(completedMatches, user.id)
     .filter((match) => !isPersonalRecordMatch(match));
   const actionItems = useMemo(() => {
@@ -419,6 +444,10 @@ export default function Home({ app }) {
             openMatchRoom(matchId);
           }}
         />
+      ) : selectedRecruitingPostId && recruitingRoomLoadState === "error" ? (
+        <RecruitingRoomLoadFailedView onClose={() => setSelectedRecruitingPostId("")} onRetry={() => void retryRecruitingRoom()} />
+      ) : selectedRecruitingPostId ? (
+        <RecruitingRoomLoadingView onClose={() => setSelectedRecruitingPostId("")} />
       ) : null}
     </>
   );
@@ -430,7 +459,7 @@ export default function Home({ app }) {
     mySeasonIndex, app, registeredCourts, myCompletedMatches, getUserResult,
     latestMyMatches, getUserMatchLine, acceptHomeRecruitingInvitation, actionItems, declineHomeRecruitingInvitation,
     homeNoticeItems, localRivals, mySeasonRow, myTeamCount, myTeams,
-    openActionRoom, placementComplete, priorityItems, priorityNoticeItems, processingInviteId,
+    openActionRoom, placementComplete, priorityItems, priorityNoticeItems, processingInviteId, inviteActionError,
     rankSpotlightLabel, seasonProgress, topRankers, homeRoomOverlays,
   }} />;
 }

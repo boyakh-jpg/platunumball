@@ -13,9 +13,6 @@ html[data-theme="light"] .arena-recruit-hero {
     var(--bg-recruiting) var(--hero-bg-position-ball) / var(--hero-bg-size) no-repeat,
     var(--rb-bg-2);
 }
-/* 2026-07-02 room compose drawer uses a neutral panel, not the hero image. */
-.arena-compose-drawer,
-html[data-theme="light"] .arena-compose-drawer,
 .arena-lobby-arena,
 html[data-theme="light"] .arena-lobby-arena {
   background: var(--ui-card-bg);
@@ -91,16 +88,16 @@ html[data-theme="light"] .arena-lobby-arena {
   }
 
   .arena-lobby-modal .arena-dispute-player > div {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 @media (max-width: 340px) {
   .arena-lobby-modal .arena-dispute-player > div {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .arena-lobby-modal .arena-stat-stepper {
-    grid-template-columns: 44px minmax(0, 1fr) 44px;
+    grid-template-columns: 24px minmax(26px, 1fr) 24px;
   }
 }
 .arena-room-chat,
@@ -117,10 +114,6 @@ html[data-theme="light"] .arena-lobby-arena {
   display: grid;
   min-width: 0;
   gap: 10px;
-  border: var(--ui-room-panel-border-width) solid var(--ui-room-panel-border);
-  border-radius: var(--ui-card-radius);
-  background: var(--ui-room-panel-bg);
-  padding: 12px;
 }
 .arena-record-setup-panel > header,
 .arena-record-setup-actions,
@@ -298,12 +291,14 @@ html[data-theme="light"] .arena-lobby-arena {
   }
 
   .arena-record-roster-row {
-    grid-template-columns: 1fr;
-    align-items: stretch;
+    grid-template-columns: minmax(0, 1fr) auto auto auto;
+    align-items: center;
+    gap: 5px;
+    padding: 6px;
   }
 
   .arena-record-roster-row .button {
-    width: 100%;
+    width: auto;
   }
 }
 .arena-chat-form input {

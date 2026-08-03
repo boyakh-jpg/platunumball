@@ -194,11 +194,13 @@ export function createAppActions({
     }
     return result;
   };
-  const applyBlockedUserMutation = (userId, shouldBlock) => {
+  const applyBlockedUserMutation = (userOrId, shouldBlock) => {
+    const targetProfile = userOrId && typeof userOrId === "object" ? userOrId : null;
+    const userId = targetProfile?.id ?? userOrId;
     if (!userId) return Promise.resolve(false);
     if (!isSupabaseConfigured) {
       setState((prev) => (shouldBlock
-        ? blockUser({ ...prev, currentUserId }, userId)
+        ? blockUser({ ...prev, currentUserId }, userId, targetProfile)
         : unblockUser({ ...prev, currentUserId }, userId)));
       return Promise.resolve(true);
     }
@@ -207,11 +209,17 @@ export function createAppActions({
       const nextBlockedUserIds = shouldBlock
         ? Array.from(new Set([...blockedUserIds, userId]))
         : blockedUserIds.filter((blockedUserId) => blockedUserId !== userId);
-      const result = await syncSettingsServer({ blockedUserIds: nextBlockedUserIds });
+      const currentProfiles = stateRef.current.settings?.blockedUserProfiles ?? {};
+      const targetUser = targetProfile ?? stateRef.current.users.find((user) => user.id === userId);
+      const nextBlockedUserProfiles = Object.fromEntries([
+        ...Object.entries(currentProfiles).filter(([profileId]) => profileId !== userId),
+        ...(shouldBlock && targetUser ? [[userId, { name: targetUser.name ?? "플레이어", hashtag: targetUser.hashtag ?? targetUser.handle ?? "" }]] : []),
+      ]);
+      const result = await syncSettingsServer({ blockedUserIds: nextBlockedUserIds, blockedUserProfiles: nextBlockedUserProfiles });
       if (!result || result.ok === false) return result || false;
       blockedSettingsCommittedIdsRef.current = nextBlockedUserIds;
       setState((prev) => (shouldBlock
-        ? blockUser({ ...prev, currentUserId }, userId)
+        ? blockUser({ ...prev, currentUserId }, userId, targetProfile)
         : unblockUser({ ...prev, currentUserId }, userId)));
       return result;
     };
@@ -226,6 +234,12 @@ export function createAppActions({
     return queuedMutation;
   };
   const applyRecruitingPostMutation = async (postId, reducer, meta = {}) => {
+    if (!isSupabaseConfigured) {
+      const next = reducer(stateRef.current);
+      stateRef.current = next;
+      setState(next);
+      return true;
+    }
     const operation = getServerOperation({ ...meta, postId });
     const optimisticBeforeServerCheck = meta.optimisticBeforeServerCheck === true;
     let rollbackState = null;
@@ -249,7 +263,7 @@ export function createAppActions({
     }
     if (!ensureRemoteReady("방 변경")) {
       if (optimisticBeforeServerCheck) rollbackServerMutation(rollbackState, "방 변경", { action: meta.action, postId, error: "remote_not_ready" });
-      return;
+      return false;
     }
     if (directServerOperation) {
       return syncRecruitingPostServer(null, [], { ...meta, postId });
@@ -261,9 +275,15 @@ export function createAppActions({
     return true;
   };
   const applyMatchMutation = async (matchId, reducer, meta = {}) => {
+    if (!isSupabaseConfigured) {
+      const next = reducer(stateRef.current);
+      stateRef.current = next;
+      setState(next);
+      return true;
+    }
     const serverReady = await ensureServerActionAvailable("/api/matches/sync-match", "경기 변경");
     if (serverReady !== true) return serverReady;
-    if (!ensureRemoteReady("경기 변경")) return;
+    if (!ensureRemoteReady("경기 변경")) return false;
     const operation = getServerOperation({ ...meta, matchId });
     if (isSupabaseConfigured && operation && MATCH_OPERATION_ONLY_ACTIONS.has(operation.action)) {
       const currentMatch = (stateRef.current.matches ?? []).find((match) => match.id === matchId) ?? null;
@@ -298,7 +318,7 @@ export function createAppActions({
   const applyTeamMutation = async (teamId, reducer) => {
     const serverReady = await ensureServerActionAvailable("/api/teams/sync-team", "팀 변경");
     if (serverReady !== true) return serverReady;
-    if (!ensureRemoteReady("팀 변경")) return;
+    if (!ensureRemoteReady("팀 변경")) return false;
     let rollbackState = null;
     let syncedTeam = null;
     let syncedNotifications = [];
@@ -311,12 +331,13 @@ export function createAppActions({
       syncedNotifications = syncedTeam ? getNewTeamNotifications(prev, next) : [];
       return next;
     });
-    if (syncedTeam) rollbackIfServerFailed(syncTeamServer(syncedTeam, syncedNotifications), rollbackState, "팀 변경", { teamId });
+    if (syncedTeam) return rollbackIfServerFailed(syncTeamServer(syncedTeam, syncedNotifications), rollbackState, "팀 변경", { teamId });
+    return true;
   };
   const applyTeamInvitationMutation = async (label, reducer, action, payloadFactory) => {
     const serverReady = await ensureServerActionAvailable("/api/teams/sync-team", label);
     if (serverReady !== true) return serverReady;
-    if (!ensureRemoteReady(label)) return;
+    if (!ensureRemoteReady(label)) return false;
     let rollbackState = null;
     let nextStateSnapshot = null;
     setState((prev) => {

@@ -189,6 +189,7 @@ export function useAppDataRuntimeHydration(context, runtime) {
       ? loadProfileState(authUserId, authEmail, {
         thin: true,
         includeFavorites: initialLoadOptions.includeFavorites === true,
+        includeTeamInvitations: initialLoadOptions.includeTeamInvitations === true,
         includeMatchSummary: initialLoadOptions.includeMatchSummary !== false,
       })
       : loadBackendStateWithHomeRetry(authUserId, authEmail, initialLoadOptions);

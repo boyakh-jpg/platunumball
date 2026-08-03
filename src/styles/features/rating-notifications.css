@@ -13,10 +13,10 @@
     padding: 14px;
   }
 
-  .hover-card-close {
+.hover-card-close {
     display: inline-grid;
     justify-self: end;
-    border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.12);
+  border: var(--ui-button-border-width) solid rgba(255, 255, 255, 0.12);
     border-radius: 999px;
     background: rgba(255, 255, 255, 0.08);
     color: var(--muted);
@@ -442,10 +442,7 @@
 }
 
 .notification-actions {
-  display: flex;
   flex: 0 0 auto;
-  align-items: center;
-  gap: var(--space-4);
 }
 
 .notification-actions button,

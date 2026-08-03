@@ -23,6 +23,7 @@ import discordRoomChat from "../server/api/discord/room-chat.js";
 import discordSyncDeliveries from "../server/api/discord/sync-deliveries.js";
 import favoriteSync from "../server/api/favorites/sync.js";
 import homeLoad from "../server/api/home/load.js";
+import landingStats from "../server/api/landing/stats.js";
 import matchAttendanceQr from "../server/api/matches/attendance-qr.js";
 import matchDetail from "../server/api/matches/detail.js";
 import matchClock from "../server/api/matches/clock.js";
@@ -40,6 +41,7 @@ import recordList from "../server/api/records/list.js";
 import refereeSync from "../server/api/referee/sync.js";
 import recruitingList from "../server/api/recruiting/list.js";
 import recruitingSyncPost from "../server/api/recruiting/sync-post.js";
+import seasonRankings from "../server/api/season/rankings.js";
 import reportSubmit from "../server/api/reports/submit.js";
 import settingsSync from "../server/api/settings/sync.js";
 import search from "../server/api/search.js";
@@ -70,6 +72,7 @@ export const API_ROUTES = new Map([
   ["/auth/discord/callback", route(discordCallback, ["GET"], "oauthCallback")],
   ["/auth/discord/complete", route(discordComplete, ["POST"], "user")],
   ["/auth/discord/start", route(discordStart, ["POST"], "user")],
+  ["/discord/callback", route(discordCallback, ["GET"], "oauthCallback")],
   ["/court-requests/approve", route(courtRequestApprove, ["POST"], "admin")],
   ["/court-requests/report", route(courtRequestReport, ["POST"], "user")],
   ["/court-requests/submit", route(courtRequestSubmit, ["POST"], "user")],
@@ -84,6 +87,7 @@ export const API_ROUTES = new Map([
   ["/discord/sync-deliveries", route(discordSyncDeliveries, ["POST"], "user")],
   ["/favorites/sync", route(favoriteSync, ["POST"], "user")],
   ["/home/load", route(homeLoad, ["POST"], "user")],
+  ["/landing/stats", route(landingStats, ["GET"], "publicRead")],
   ["/matches/attendance-qr", route(matchAttendanceQr, ["POST"], "user")],
   ["/matches/detail", route(matchDetail, ["POST"], "user")],
   ["/matches/clock", route(matchClock, ["POST"], "user")],
@@ -101,6 +105,7 @@ export const API_ROUTES = new Map([
   ["/referee/sync", route(refereeSync, ["POST"], "user")],
   ["/recruiting/list", route(recruitingList, ["POST"], "user")],
   ["/recruiting/sync-post", route(recruitingSyncPost, ["POST"], "user")],
+  ["/season/rankings", route(seasonRankings, ["POST"], "user")],
   ["/reports/submit", route(reportSubmit, ["POST"], "user")],
   ["/settings/sync", route(settingsSync, ["POST"], "user")],
   ["/search", route(search, ["POST"], "user")],

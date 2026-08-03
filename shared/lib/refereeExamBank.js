@@ -65,6 +65,17 @@ export function createRefereeExamSet(seed = Date.now(), count = REFEREE_EXAM_SIZ
   };
 }
 
+export function hasCompleteRefereeExamAnswers(questionIds = [], answers = {}, count = REFEREE_EXAM_SIZE) {
+  if (!Array.isArray(questionIds) || questionIds.length !== count || new Set(questionIds).size !== count) return false;
+  if (!answers || typeof answers !== "object" || Array.isArray(answers) || Object.keys(answers).length !== count) return false;
+  return questionIds.every((questionId) => (
+    Object.hasOwn(answers, questionId) &&
+    Number.isInteger(answers[questionId]) &&
+    answers[questionId] >= 0 &&
+    answers[questionId] <= 3
+  ));
+}
+
 export function gradeRefereeExam(seed = Date.now(), answers = {}, count = REFEREE_EXAM_SIZE) {
   const questions = Array.isArray(seed) ? seed : buildRefereeExamSet(seed, count);
   const reviewed = questions.map((question) => {

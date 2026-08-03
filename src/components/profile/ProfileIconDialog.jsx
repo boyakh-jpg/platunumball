@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { assetUrl } from "../../lib/assets.js";
 import {
   DEFAULT_PROFILE_ICON_ID,
+  DEFAULT_UNLOCKED_PROFILE_ICON_KEYS,
   PROFILE_ICON_CATALOG,
   PROFILE_ICON_GROUPS,
 } from "../../lib/profileIcons.js";
@@ -11,9 +12,7 @@ import { getTeamEmblemErrorMessage } from "../../lib/teamEmblem.js";
 import Button from "../common/Button.jsx";
 import ProfileEmblem from "./ProfileEmblem.jsx";
 
-const DEFAULT_UNLOCKED_KEYS = PROFILE_ICON_CATALOG
-  .filter((icon) => icon.achievement?.retired !== true && (icon.achievement?.requirements ?? []).length === 0)
-  .map((icon) => icon.id);
+const DEFAULT_UNLOCKED_KEYS = DEFAULT_UNLOCKED_PROFILE_ICON_KEYS;
 
 function getInitialDraft(user) {
   return {
@@ -57,6 +56,8 @@ export default function ProfileIconDialog({ user, actions, onClose, onSaved }) {
   ));
   const [unlockedIconKeys, setUnlockedIconKeys] = useState(() => [...new Set([...DEFAULT_UNLOCKED_KEYS, user.avatarIconKey].filter(Boolean))]);
   const [loading, setLoading] = useState(true);
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  const [loadError, setLoadError] = useState("");
   const [pending, setPending] = useState(false);
   const [feedback, setFeedback] = useState("");
   const [previewIcon, setPreviewIcon] = useState(null);
@@ -69,11 +70,13 @@ export default function ProfileIconDialog({ user, actions, onClose, onSaved }) {
 
   useEffect(() => {
     let active = true;
+    setLoading(true);
+    setLoadError("");
     Promise.resolve(actions.loadProfileIconAchievements?.())
       .then((result) => {
         if (!active) return;
-        if (result?.ok === false) {
-          setFeedback(getTeamEmblemErrorMessage(result.error));
+        if (!result || result?.ok === false) {
+          setLoadError("프로필 아이콘을 불러오지 못했습니다.");
           return;
         }
         if (Array.isArray(result?.unlockedIconKeys)) {
@@ -84,8 +87,8 @@ export default function ProfileIconDialog({ user, actions, onClose, onSaved }) {
           ].filter(Boolean))]);
         }
       })
-      .catch((error) => {
-        if (active) setFeedback(getTeamEmblemErrorMessage(error?.code || error?.message));
+      .catch(() => {
+        if (active) setLoadError("프로필 아이콘을 불러오지 못했습니다.");
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -94,7 +97,7 @@ export default function ProfileIconDialog({ user, actions, onClose, onSaved }) {
     return () => {
       active = false;
     };
-  }, [actions.loadProfileIconAchievements]);
+  }, [actions.loadProfileIconAchievements, loadAttempt]);
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
@@ -146,8 +149,8 @@ export default function ProfileIconDialog({ user, actions, onClose, onSaved }) {
     setFeedback("");
     try {
       const result = await actions.saveProfileIconSettings(draft);
-      if (result?.ok === false) {
-        setFeedback(getTeamEmblemErrorMessage(result.error));
+      if (!result || result?.ok === false) {
+        setFeedback(getTeamEmblemErrorMessage(result?.error));
         return;
       }
       onSaved?.(result);
@@ -253,8 +256,13 @@ export default function ProfileIconDialog({ user, actions, onClose, onSaved }) {
           </div>
         ) : null}
 
+        {loadError ? (
+          <p className="form-warning profile-icon-dialog-feedback">
+            {loadError} <button type="button" className="button ui-button button-secondary ui-button-secondary button-sm ui-button-sm" onClick={() => setLoadAttempt((attempt) => attempt + 1)}>다시 시도</button>
+          </p>
+        ) : null}
         {feedback ? <p className="form-warning profile-icon-dialog-feedback">{feedback}</p> : null}
-        <footer className="profile-icon-dialog-actions">
+        <footer className="ui-action-row profile-icon-dialog-actions">
           <Button as={Link} variant="secondary" size="sm" to="/app/profile/achievements" onClick={onClose}>업적 보기</Button>
           <Button type="submit" size="sm" disabled={pending || loading}>{pending ? "저장 중" : "저장"}</Button>
         </footer>

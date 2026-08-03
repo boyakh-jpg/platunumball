@@ -404,7 +404,7 @@
 
 .match-creation-validation-list,
 .match-creation-ready {
-  border: var(--ui-stroke-width) solid var(--ui-control-border);
+  border: var(--ui-card-border-width) solid var(--ui-control-border);
   border-radius: var(--ui-control-radius);
   padding: 10px 12px;
 }

@@ -2,7 +2,7 @@ import { flattenIdValues, toDateTime, uniqueValues as unique } from "../_supabas
 import { projectMatchTimestamps } from "../../../shared/lib/matchReadProjection.js";
 import { projectTeamRow } from "../../../shared/lib/teamRowProjection.js";
 import { collectUniqueRoomFeedCards, readRoomFeedCard } from "../../lib/roomFeedCards.js";
-import { getReadableMatchStatRows, getReadableMatchStatSubmissions, getRemoteMatchActivePlayerIds } from "../../../shared/lib/matchMappers.js";
+import { getReadableMatchStatRows, getReadableMatchStatSubmissions, getRemoteMatchActivePlayerIds, getRemoteMatchPlayerTeams, normalizeMatchParties } from "../../../shared/lib/matchMappers.js";
 import { MATCH_SIDE_FALLBACK_NAMES, normalizeDisputeWindowMinutes } from "../../../shared/lib/constants.js";
 import { getMatchRoomPhase, isMatchClosedNotice, isMatchInScheduleMenu, isMatchRecordMatch, isPersonalRecordMatch, isSeedSampleMatch } from "../../../shared/lib/matchUtils.js";
 
@@ -205,13 +205,15 @@ export function toClientTeam(row = {}) {
 function toClientMatchSide(row = {}, sideName = "teamA", playersByMatch = new Map(), teamById = {}) {
   const teamId = sideName === "teamA" ? row.team_a_id : row.team_b_id;
   const score = sideName === "teamA" ? row.score_a : row.score_b;
+  const playerRows = playersByMatch.get(row.id) ?? [];
   const recordName = String(
     (sideName === "teamA" ? row.rules?.recordSummary?.teamAName : row.rules?.recordSummary?.teamBName) ?? "",
   ).trim();
   return {
     teamId,
     name: teamById[teamId]?.name ?? (recordName || MATCH_SIDE_FALLBACK_NAMES[sideName] || MATCH_SIDE_FALLBACK_NAMES.teamA),
-    players: getRemoteMatchActivePlayerIds(row, sideName, playersByMatch.get(row.id) ?? []),
+    players: getRemoteMatchActivePlayerIds(row, sideName, playerRows),
+    playerTeams: getRemoteMatchPlayerTeams(sideName, teamId, playerRows),
     score: score ?? 0,
   };
 }
@@ -300,7 +302,7 @@ export function toClientMatch(row = {}, playersByMatch = new Map(), teamById = {
     reservePlayers,
     mmrExcludedPlayerIds,
     anonymousPlayers,
-    parties: row.rules?.parties ?? {},
+    parties: normalizeMatchParties(row.rules?.parties),
     result,
     rules: {
       ...(row.rules ?? {}),

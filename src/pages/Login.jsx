@@ -1,4 +1,4 @@
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { ArrowRight, Copy, ExternalLink, LogOut, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import Badge from "../components/common/Badge.jsx";
@@ -30,6 +30,8 @@ export default function Login({ auth, app }) {
   const embeddedOAuthBrowser = auth.configured && isEmbeddedOAuthBrowser();
   const browserOpenUrl = typeof window === "undefined" ? "" : `${window.location.origin}${from}`;
 
+  if (auth.session) return <Navigate to={from} replace />;
+
   const enterApp = () => navigate(from, { replace: true });
   const signIn = async (providerId) => {
     if (providerId === "google" && embeddedOAuthBrowser) {
@@ -49,8 +51,12 @@ export default function Login({ auth, app }) {
       setCopyMessage("주소창의 URL을 복사해 Chrome 또는 Safari에서 열어 주세요.");
       return;
     }
-    await navigator.clipboard.writeText(browserOpenUrl);
-    setCopyMessage("링크를 복사했습니다. Chrome 또는 Safari 주소창에 붙여 넣어 주세요.");
+    try {
+      await navigator.clipboard.writeText(browserOpenUrl);
+      setCopyMessage("링크를 복사했습니다. Chrome 또는 Safari 주소창에 붙여 넣어 주세요.");
+    } catch {
+      setCopyMessage("링크를 복사하지 못했습니다. 주소창의 URL을 직접 복사해 주세요.");
+    }
   };
 
   return (
@@ -73,7 +79,7 @@ export default function Login({ auth, app }) {
             <div className="auth-session-line">
               <ShieldCheck size={18} />
               <span>{getTestAccountDisplayLabel(auth.user.user_metadata?.providerName ?? auth.user.email)} 로그인됨</span>
-              <button type="button" onClick={auth.signOut}><LogOut size={16} /> 로그아웃</button>
+              <button type="button" onClick={auth.signOut} disabled={auth.authActionPending}><LogOut size={16} /> 로그아웃</button>
             </div>
           ) : null}
 
@@ -95,7 +101,7 @@ export default function Login({ auth, app }) {
 
           <div className="social-login-grid">
             {activeProviders.map((provider) => (
-              <button key={provider.id} type="button" className={`provider-button provider-${provider.id}`} onClick={() => signIn(provider.id)}>
+              <button key={provider.id} type="button" className={`provider-button provider-${provider.id}`} disabled={auth.authActionPending || auth.testLoginPending} onClick={() => signIn(provider.id)}>
                 <span>{provider.mark}</span>
                 {auth.configured ? `${provider.label}로 로그인` : `${provider.label} 체험 로그인`}
               </button>
@@ -114,14 +120,14 @@ export default function Login({ auth, app }) {
             <form className="auth-test-login" onSubmit={signInWithTestAccount}>
               <label>
                 둘러볼 계정
-                <select value={selectedTestLoginId} onChange={(event) => setSelectedTestLoginId(event.target.value)} disabled={auth.testLoginPending}>
+                <select value={selectedTestLoginId} onChange={(event) => setSelectedTestLoginId(event.target.value)} disabled={auth.authActionPending || auth.testLoginPending}>
                   {auth.testAccounts.map((account) => (
                     <option key={account.id} value={account.id}>{account.label}</option>
                   ))}
                 </select>
               </label>
               <small>알파 테스트 기간에만 제공되며 베타 전환 시 종료됩니다.</small>
-              <button type="submit" className="provider-button provider-test" disabled={auth.testLoginPending}>
+              <button type="submit" className="provider-button provider-test" disabled={auth.authActionPending || auth.testLoginPending}>
                 <span>T</span>
                 {auth.testLoginPending ? "로그인 중..." : "테스트 계정으로 입장"}
               </button>

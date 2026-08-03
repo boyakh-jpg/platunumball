@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, CheckCircle2 } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
@@ -19,6 +19,8 @@ import {
   getNextNameChangeDate,
   inferRegionSelection,
   getRegionDistrictOptions,
+  normalizeProfileName,
+  PROFILE_NAME_MAX_LENGTH,
   shouldRecheckAgeGroup,
   shouldSetupProfile,
 } from "../lib/profileSetup.js";
@@ -45,6 +47,8 @@ export default function Signup({ app, auth }) {
     district: user.regionDistrict ?? inferredRegion.district,
   }));
   const [formError, setFormError] = useState("");
+  const [profileSavePending, setProfileSavePending] = useState(false);
+  const profileSavePendingRef = useRef(false);
   const [redirectAfterSave, setRedirectAfterSave] = useState(false);
   const ageGroup = getAgeGroupByBirthYear(draft.birthYear) ?? user.ageGroup ?? "open";
   const ageGroupLabel = getAgeGroupLabel(ageGroup);
@@ -58,6 +62,7 @@ export default function Signup({ app, auth }) {
   const handleBody = handleLocked ? stripHandle(getUserHashtag(user)) : stripHandle(draft.handle);
   const normalizedHandle = handleBody ? toHashtag(handleBody) : "";
   const handleDuplicate = !handleLocked && Boolean(normalizedHandle) && app.state.users.some((item) => item.id !== user.id && sameHashtag(normalizedHandle, getUserHashtag(item)));
+  const setupRequired = shouldSetupProfile(user) || shouldRecheckAgeGroup(user);
 
   const districtOptions = getRegionDistrictOptions(draft.sido);
   const update = (patch) => setDraft((current) => ({ ...current, ...patch }));
@@ -76,7 +81,12 @@ export default function Signup({ app, auth }) {
 
   const submit = async (event) => {
     event.preventDefault();
-    const name = draft.name.trim() || user.name;
+    if (profileSavePendingRef.current) return;
+    const name = normalizeProfileName(draft.name);
+    if (!name) {
+      setFormError("닉네임을 입력해 주세요.");
+      return;
+    }
     if (user.onboardingComplete && name !== user.name && !nameChangeAllowed) {
       setFormError(`닉네임은 월 1회만 변경할 수 있습니다. 다음 변경 가능일: ${formatProfileDate(nextNameChangeDate)}`);
       return;
@@ -96,8 +106,11 @@ export default function Signup({ app, auth }) {
     }
     const district = districtOptions.includes(draft.district) ? draft.district : districtOptions[0];
     const now = new Date().toISOString();
+    profileSavePendingRef.current = true;
+    setProfileSavePending(true);
+    setFormError("");
     try {
-      await app.actions.updateProfile({
+      const result = await app.actions.updateProfile({
         name,
         ...(handleLocked ? {} : { handle: normalizedHandle, hashtag: normalizedHandle, handleLockedAt: now }),
         ...(birthYearLocked ? {} : { birthYear, birthYearLockedAt: now }),
@@ -111,20 +124,27 @@ export default function Signup({ app, auth }) {
         profileVersion: 1,
         ...(name !== user.name ? { nameUpdatedAt: now } : {}),
       });
+      if (!result || result.ok === false) {
+        setFormError("프로필을 저장하지 못했습니다. 입력 내용을 확인한 뒤 다시 시도해 주세요.");
+        return;
+      }
       setRedirectAfterSave(true);
     } catch (error) {
       setFormError("프로필을 저장하지 못했습니다. 입력 내용을 확인한 뒤 다시 시도해 주세요.");
+    } finally {
+      profileSavePendingRef.current = false;
+      setProfileSavePending(false);
     }
   };
 
   return (
     <div className="page-stack signup-setup-page">
-      <header className="page-header">
-        <div>
+      <header className="page-header ui-page-hero ui-design-app-hero">
+        <div className="ui-page-hero__copy">
           <p className="eyebrow">Signup</p>
           <h1>가입 정보 설정</h1>
         </div>
-        <Button as={Link} variant="secondary" to={redirectTo}><ArrowLeft size={17} /> 프로필로</Button>
+        {!setupRequired ? <Button as={Link} variant="secondary" to={redirectTo}><ArrowLeft size={17} /> 프로필로</Button> : null}
       </header>
 
       <div className="content-grid signup-setup-grid">
@@ -140,7 +160,7 @@ export default function Signup({ app, auth }) {
           <form className="form-grid profile-form-grid" onSubmit={submit}>
             <label>
               닉네임
-              <input required value={draft.name} maxLength={20} onChange={(event) => update({ name: event.target.value })} />
+              <input required value={draft.name} maxLength={PROFILE_NAME_MAX_LENGTH} onChange={(event) => update({ name: event.target.value })} />
               {user.onboardingComplete && !nameChangeAllowed ? <span className="form-warning">다음 변경 가능일: {formatProfileDate(nextNameChangeDate)}</span> : null}
             </label>
             <label>
@@ -170,7 +190,7 @@ export default function Signup({ app, auth }) {
             {formError ? <p className="form-warning">{formError}</p> : null}
             <div className="create-submit-row signup-submit-row">
               <span className="create-submit-warning">소속은 가입 후 나 메뉴에서 선택할 수 있습니다. 가입 단계에서는 지역과 연령부만 설정합니다.</span>
-              <Button type="submit"><CheckCircle2 size={18} /> 저장</Button>
+              <Button type="submit" disabled={profileSavePending}><CheckCircle2 size={18} /> {profileSavePending ? "저장 중" : "저장"}</Button>
             </div>
           </form>
         </Card>

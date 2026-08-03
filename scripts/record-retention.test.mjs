@@ -16,7 +16,7 @@ import {
   REMOTE_CLIENT_RECORD_MONTHS,
 } from "../src/lib/constants.js";
 import { getReadableMatchStatRows } from "../src/data/matchMappers.js";
-import { getMatchPlayedDate, getPlayerRecentRecordMatches, getProfileRecordCategory, hasVerifiedPlayerStats } from "../src/lib/matchUtils.js";
+import { getMatchPlayedDate, getPlayerRecentRecordMatches, getProfileRecordCategory, getProfileRecordFolder, groupProfileRecordsByCourt, hasVerifiedPlayerStats, summarizeProfileRecords } from "../src/lib/matchUtils.js";
 import { getRecordWindowDates, isRecordDetailDate } from "../src/lib/recordRetention.js";
 
 const root = new URL("../", import.meta.url);
@@ -47,6 +47,34 @@ test("verified tournament player stats remain readable from thin profile rows", 
   assert.equal(hasVerifiedPlayerStats({ refereeId: "referee", result: { playerStats } }, "player"), true);
   assert.equal(hasVerifiedPlayerStats({ tournamentId: "tournament-1", result: { playerStats } }, "player"), true);
   assert.equal(hasVerifiedPlayerStats({ result: { playerStats } }, "player"), false);
+});
+
+test("profile record folders separate sources and only average verified player stats", () => {
+  const official = {
+    id: "official", refereeId: "referee", courtId: "court-1", court: "한강 코트",
+    teamA: { players: ["player"] }, teamB: { players: ["opponent"] },
+    result: { scoreA: 20, scoreB: 10, playerStats: { player: { points: 8, fouls: 2, turnovers: 1 } } },
+  };
+  const noReferee = {
+    id: "no-referee", courtId: "court-1", court: "한강 코트",
+    teamA: { players: ["player"] }, teamB: { players: ["opponent"] },
+    result: { scoreA: 5, scoreB: 7, playerStats: { player: { points: 99 } } },
+  };
+  assert.equal(getProfileRecordFolder(official, "player"), "official");
+  assert.equal(getProfileRecordFolder(noReferee, "player"), "no_referee");
+  assert.equal(getProfileRecordFolder({ rules: { recordType: "match_record" } }, "player"), "postgame");
+  assert.equal(getProfileRecordFolder({ rules: { recordType: "personal_record" } }, "player"), "personal");
+  assert.equal(getProfileRecordFolder({ matchId: "old", stats: { record_source: "referee", points: 3 } }, "player"), "official");
+
+  const summary = summarizeProfileRecords([official, noReferee], "player");
+  assert.deepEqual(
+    { games: summary.games, wins: summary.wins, losses: summary.losses, scoreFor: summary.scoreFor, scoreAgainst: summary.scoreAgainst, statGames: summary.statGames },
+    { games: 2, wins: 1, losses: 1, scoreFor: 25, scoreAgainst: 17, statGames: 1 },
+  );
+  assert.equal(summary.averageScore, 12.5);
+  assert.equal(summary.totals.points, 8);
+  assert.equal(summary.averages.fouls, 2);
+  assert.deepEqual(groupProfileRecordsByCourt([official], "player").map(({ name, summary: item }) => [name, item.games]), [["한강 코트", 1]]);
 });
 
 test("profile preview is the first six rows of the recent record detail list", () => {
@@ -157,7 +185,7 @@ test("public profile stat setting is enforced by the record API", () => {
   assert.deepEqual(privateState.matches[0].result.statSubmissions, {});
   assert.deepEqual(
     limitPublicPersonalSummary({ recordCount: 2, statCount: 2, points: 15, fouls: 3 }, false),
-    { recordCount: 2, statCount: 0, points: 0, fouls: 0, rebounds: 0, assists: 0, steals: 0, blocks: 0 },
+    { recordCount: 2, statCount: 0, points: 0, fouls: 0, rebounds: 0, assists: 0, steals: 0, blocks: 0, turnovers: 0 },
   );
 });
 
@@ -251,9 +279,11 @@ test("profile and team records use the dedicated archive-backed API", async () =
   assert.match(hookSource, /includeArchive: !loadMoreDetail/);
   assert.match(hookSource, /if \(!isRequestCurrent\(\) \|\| error\?\.code === "stale_auth_request"\) return false/);
   assert.match(profileSource, /6개월 초과 · 최근 5년/);
-  assert.match(profileSource, /\{ id: "competitive", label: "경쟁전" \}/);
-  assert.match(profileSource, /\{ id: "friendly", label: "친선전" \}/);
-  assert.match(profileSource, /\{ id: "tournament", label: "대회 경기" \}/);
+  assert.match(profileSource, /\{ id: "official", label: "공식기록" \}/);
+  assert.match(profileSource, /\{ id: "no_referee", label: "무심판" \}/);
+  assert.match(profileSource, /\{ id: "postgame", label: "사후기록" \}/);
+  assert.match(profileSource, /role="tablist"/);
+  assert.match(profileSource, /OFFICIAL_SECTIONS/);
   assert.match(profileSource, /PERSONAL_VISIBILITY_FILTERS/);
   assert.match(profileSource, /MODE_FILTERS/);
   assert.match(profileSource, /matchesModeFilter/);
@@ -287,4 +317,15 @@ test("profile and team records use the dedicated archive-backed API", async () =
   assert.match(simulationGuardSource, /after delete on public\.matches/);
   assert.match(simulationGuardSource, /delete from public\.match_record_archives/);
   assert.doesNotMatch(profileSource, /records\.filter\(\(match\) => !isMatchWithinRecordDetailWindow/);
+});
+
+test("substituted actual players remain in the confirmed record index", async () => {
+  const migrationSource = await readSource("supabase/migrations/20260731234000_fix_substituted_match_record_participants.sql");
+  assert.match(migrationSource, /create or replace function public\.rankball_match_record_player_rows/u);
+  assert.match(migrationSource, /jsonb_array_elements_text\([\s\S]*played_player_ids->'teamA'/u);
+  assert.match(migrationSource, /jsonb_array_elements_text\([\s\S]*played_player_ids->'teamB'/u);
+  assert.match(migrationSource, /rankball_refresh_match_record_archive\(candidate\.id\)/u);
+  assert.match(migrationSource, /rankball_match_record_archive_is_complete\(candidate\.id\)/u);
+  assert.doesNotMatch(migrationSource, /m_ms90pywo_48e3l/u);
+  assert.doesNotMatch(migrationSource, /\b(?:drop table|truncate)\b/iu);
 });

@@ -108,7 +108,11 @@ export function getApprovalStatus(match = {}, teams = [], sideName) {
       ? match.rules.recordApproverIds[sideName]
       : projectMatchSideParticipationIds(match, sideName),
   ).filter((playerId) => !match.anonymousPlayers?.[playerId]);
-  const approvals = uniquePlayerIds(match.approvals?.[sideName] ?? [])
+  const approvals = uniquePlayerIds([
+    ...(match.approvals?.[sideName] ?? []),
+    ...(match.rules?.participantAcceptedIds ?? []),
+    ...(match.rules?.matchRecordConfirmedParticipantIds ?? []),
+  ])
     .filter((playerId) => requiredIds.includes(playerId));
   const approved = requiredIds.length > 0
     && requiredIds.every((playerId) => approvals.includes(playerId));

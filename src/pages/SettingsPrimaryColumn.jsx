@@ -24,6 +24,7 @@ export default function SettingsPrimaryColumn({ controller }) {
     homeGuideCardDraft,
     setHomeGuideCardDraft,
     homeGuideCardSavePending,
+    generalSettingsSavePending,
     setHomeGuideCardSaveStatus,
     favoriteQuery,
     setFavoriteQuery,
@@ -35,6 +36,7 @@ export default function SettingsPrimaryColumn({ controller }) {
     discordDisplayName,
     queuedDiscordDeliveries,
     discordLinkError,
+    discordLinkPending,
     discordSaveStatus,
     discordDraft,
     setDiscordDraft,
@@ -44,6 +46,10 @@ export default function SettingsPrimaryColumn({ controller }) {
     favoriteReferees,
     favoriteListConfig,
     favoriteSearchIdleItems,
+    favoriteActionPendingKey,
+    favoriteActionError,
+    favoriteSearchResetKey,
+    toggleFavoriteItem,
     renderFavoriteSearchItem,
     canOpenAdminMenu,
     themeDirty,
@@ -78,10 +84,11 @@ export default function SettingsPrimaryColumn({ controller }) {
               </div>
               {themeDraft === "light" ? <Sun size={22} /> : <Moon size={22} />}
             </div>
-            <div className="segmented-control">
+            <div className="ui-segmented-control segmented-control">
               <button
                 type="button"
                 className={themeDraft === "light" ? "active" : ""}
+                onPointerUp={(event) => event.currentTarget.blur()}
                 onClick={() => selectTheme("light")}
               >
                 라이트
@@ -89,6 +96,7 @@ export default function SettingsPrimaryColumn({ controller }) {
               <button
                 type="button"
                 className={themeDraft === "dark" ? "active" : ""}
+                onPointerUp={(event) => event.currentTarget.blur()}
                 onClick={() => selectTheme("dark")}
               >
                 다크
@@ -108,6 +116,7 @@ export default function SettingsPrimaryColumn({ controller }) {
               <Star size={20} />
             </div>
             <SearchPicker
+              key={favoriteSearchResetKey}
               value={favoriteQuery}
               onChange={setFavoriteQuery}
               placeholder="이름 또는 해시태그 검색"
@@ -119,16 +128,16 @@ export default function SettingsPrimaryColumn({ controller }) {
               emptyText="검색 결과 없음"
               showIdleOnFocus
               floating
-              closeOnResultClick
               fieldClassName="favorite-search-row"
               renderItem={renderFavoriteSearchItem}
             />
-            <div className="favorite-type-grid ui-design-borderless-list ui-design-borderless-surface">
+            {favoriteActionError ? <small role="status" className="form-warning">{favoriteActionError}</small> : null}
+            <div className="ui-choice-group favorite-type-grid ui-design-borderless-list ui-design-borderless-surface">
               {Object.entries(favoriteListConfig).map(([type, config]) => (
                 <button
                   key={type}
                   type="button"
-                  className={favoriteListType === type ? "active" : ""}
+                  className={favoriteListType === type ? "ui-choice-tile active" : "ui-choice-tile"}
                   aria-pressed={favoriteListType === type}
                   onClick={() => setFavoriteListType((current) => (current === type ? "" : type))}
                 >
@@ -145,7 +154,7 @@ export default function SettingsPrimaryColumn({ controller }) {
                       <ProfileEmblem user={player} className="small" />
                       <span>{getUserHashtag(player)}</span>
                     </PlayerHoverCard>
-                    <Button type="button" size="sm" variant="secondary" onClick={() => app.actions.toggleFavoritePlayer(player.id)}>해제</Button>
+                    <Button type="button" size="sm" variant="secondary" disabled={Boolean(favoriteActionPendingKey)} onClick={() => { void toggleFavoriteItem("player", app.actions.toggleFavoritePlayer, player); }}>{favoriteActionPendingKey === `player:${player.id}` ? "저장 중" : "해제"}</Button>
                   </div>
                 )) : null}
                 {favoriteListType === "team" ? favoriteTeams.map((team) => (
@@ -154,7 +163,7 @@ export default function SettingsPrimaryColumn({ controller }) {
                       <TeamEmblem team={team} size="xs" />
                       <span>{getTeamHashtag(team)}</span>
                     </TeamHoverCard>
-                    <Button type="button" size="sm" variant="secondary" onClick={() => app.actions.toggleFavoriteTeam(team.id)}>해제</Button>
+                    <Button type="button" size="sm" variant="secondary" disabled={Boolean(favoriteActionPendingKey)} onClick={() => { void toggleFavoriteItem("team", app.actions.toggleFavoriteTeam, team); }}>{favoriteActionPendingKey === `team:${team.id}` ? "저장 중" : "해제"}</Button>
                   </div>
                 )) : null}
                 {favoriteListType === "court" ? favoriteCourts.map((court) => (
@@ -163,7 +172,7 @@ export default function SettingsPrimaryColumn({ controller }) {
                       <span className="team-dot" />
                       <span>{getCourtHashtag(court)}</span>
                     </CourtHoverCard>
-                    <Button type="button" size="sm" variant="secondary" onClick={() => app.actions.toggleFavoriteCourt(court.id)}>해제</Button>
+                    <Button type="button" size="sm" variant="secondary" disabled={Boolean(favoriteActionPendingKey)} onClick={() => { void toggleFavoriteItem("court", app.actions.toggleFavoriteCourt, court); }}>{favoriteActionPendingKey === `court:${court.id}` ? "저장 중" : "해제"}</Button>
                   </div>
                 )) : null}
                 {favoriteListType === "referee" ? favoriteReferees.map((referee) => (
@@ -172,7 +181,7 @@ export default function SettingsPrimaryColumn({ controller }) {
                       <ShieldCheck size={14} />
                       <span>{getUserHashtag(referee)}</span>
                     </RefereeHoverCard>
-                    <Button type="button" size="sm" variant="secondary" onClick={() => app.actions.toggleFavoriteReferee(referee.id)}>해제</Button>
+                    <Button type="button" size="sm" variant="secondary" disabled={Boolean(favoriteActionPendingKey)} onClick={() => { void toggleFavoriteItem("referee", app.actions.toggleFavoriteReferee, referee); }}>{favoriteActionPendingKey === `referee:${referee.id}` ? "저장 중" : "해제"}</Button>
                   </div>
                 )) : null}
                 {favoriteListConfig[favoriteListType]?.count ? null : <em>{favoriteListConfig[favoriteListType]?.label} 즐겨찾기 없음</em>}
@@ -224,7 +233,7 @@ export default function SettingsPrimaryColumn({ controller }) {
                 <input
                   type="checkbox"
                   checked={Boolean(discordLinked && !discordDraft.unlink && discordDraft.enabled)}
-                  disabled={!discordLinked || discordDraft.unlink}
+                  disabled={generalSettingsSavePending || !discordLinked || discordDraft.unlink}
                   onChange={(event) => setDiscordDraft((current) => ({ ...current, enabled: event.target.checked }))}
                 />
                 Discord DM
@@ -234,7 +243,7 @@ export default function SettingsPrimaryColumn({ controller }) {
                   <input
                     type="checkbox"
                     checked={Boolean(discordDraft.events?.[option.id])}
-                    disabled={!discordLinked || discordDraft.unlink || !discordDraft.enabled}
+                    disabled={generalSettingsSavePending || !discordLinked || discordDraft.unlink || !discordDraft.enabled}
                     onChange={() => setDiscordDraft((current) => ({
                       ...current,
                       events: {
@@ -247,12 +256,13 @@ export default function SettingsPrimaryColumn({ controller }) {
                 </label>
               ))}
             </div>
-            <div className="settings-address-actions">
+            <div className="ui-action-row settings-address-actions">
               {discordLinked ? (
                 <Button
                   type="button"
                   variant="secondary"
                   size="sm"
+                  disabled={generalSettingsSavePending}
                   onClick={() => setDiscordDraft((current) => ({
                     ...current,
                     unlink: !current.unlink,
@@ -262,8 +272,8 @@ export default function SettingsPrimaryColumn({ controller }) {
                   <Unlink2 size={15} /> {discordDraft.unlink ? "해제 취소" : "연동 해제"}
                 </Button>
               ) : (
-                <Button type="button" variant="secondary" size="sm" onClick={connectDiscord}>
-                  Discord 연동
+                <Button type="button" variant="secondary" size="sm" disabled={generalSettingsSavePending || discordLinkPending} onClick={connectDiscord}>
+                  {discordLinkPending ? "연동 준비 중" : "Discord 연동"}
                 </Button>
               )}
               <Badge tone={discordLinked && !discordDraft.unlink && discordDraft.enabled ? "green" : "neutral"}>
@@ -292,7 +302,7 @@ export default function SettingsPrimaryColumn({ controller }) {
                   <input
                     type="checkbox"
                     checked={homeGuideCardDraft}
-                    disabled={homeGuideCardSavePending}
+                    disabled={generalSettingsSavePending || homeGuideCardSavePending}
                     onChange={(event) => {
                       setHomeGuideCardDraft(event.target.checked);
                       setHomeGuideCardSaveStatus("");
@@ -313,6 +323,7 @@ export default function SettingsPrimaryColumn({ controller }) {
                   <input
                     type="checkbox"
                     checked={privacyDraft.regionRanking !== false}
+                    disabled={generalSettingsSavePending}
                     onChange={(event) => setPrivacyDraft((current) => ({ ...current, regionRanking: event.target.checked }))}
                   />
                   지역 랭킹에 표시
@@ -321,6 +332,7 @@ export default function SettingsPrimaryColumn({ controller }) {
                   <input
                     type="checkbox"
                     checked={privacyDraft.teamHistory !== false}
+                    disabled={generalSettingsSavePending}
                     onChange={(event) => setPrivacyDraft((current) => ({ ...current, teamHistory: event.target.checked }))}
                   />
                   소속팀 히스토리 표시
@@ -329,6 +341,7 @@ export default function SettingsPrimaryColumn({ controller }) {
                   <input
                     type="checkbox"
                     checked={privacyDraft.statSummary !== false}
+                    disabled={generalSettingsSavePending}
                     onChange={(event) => setPrivacyDraft((current) => ({ ...current, statSummary: event.target.checked }))}
                   />
                   개인 통계 공개
@@ -338,7 +351,9 @@ export default function SettingsPrimaryColumn({ controller }) {
 
             <div className="settings-save-row">
               <small>{generalSettingsStatus}</small>
-              <Button type="button" variant="primary" onClick={saveGeneralSettings} disabled={!generalSettingsDirty || homeGuideCardSavePending}>저장</Button>
+              <Button type="button" variant="primary" onClick={saveGeneralSettings} disabled={!generalSettingsDirty || generalSettingsSavePending || homeGuideCardSavePending}>
+                {generalSettingsSavePending ? "저장 중" : "저장"}
+              </Button>
             </div>
           </Card>
 

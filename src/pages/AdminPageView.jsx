@@ -4,7 +4,7 @@ import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import UserOperationsPanel from "../components/admin/UserOperationsPanel.jsx";
 import CourtDatabasePanel from "../components/admin/CourtDatabasePanel.jsx";
-import { ADMIN_PERMISSION_NOTICE, getAdminReportTypeLabel } from "../lib/admin.js";
+import { getAdminReportTypeLabel } from "../lib/admin.js";
 import { ADMIN_DEFAULT_PAGE_LIMIT } from "../lib/queryPolicy.js";
 import {
   REVIEW_QUEUE_FILTER_PLACEHOLDERS,
@@ -42,6 +42,7 @@ export default function AdminPageView({ controller }) {
     courtApprovalStatus,
     reviewActionStatus,
     reviewActionPending,
+    appointmentActionPending,
     reviewActionConfirming,
     setReviewActionConfirming,
     canAdmin,
@@ -122,8 +123,6 @@ if (!canAdmin && (!app.adminStatus?.loaded || app.adminStatus?.loading)) {
             </div>
             <ShieldCheck size={22} />
           </div>
-          <p>관리자 메뉴는 권한자에게만 표시됩니다.</p>
-          <small>{ADMIN_PERMISSION_NOTICE}</small>
         </Card>
       </div>
     );
@@ -131,12 +130,12 @@ if (!canAdmin && (!app.adminStatus?.loaded || app.adminStatus?.loading)) {
 
   return (
     <div className="page-stack admin-page">
-      <header className="page-header">
-        <div>
+      <header className="page-header ui-page-hero ui-design-app-hero">
+        <div className="ui-page-hero__copy">
           <p className="eyebrow">Admin Console</p>
           <h1>관리자 메뉴</h1>
         </div>
-        <Badge tone="team">서버 권한</Badge>
+        <Badge tone="team">관리자</Badge>
       </header>
 
       <nav className="admin-section-tabs" aria-label="관리자 업무">
@@ -148,6 +147,7 @@ if (!canAdmin && (!app.adminStatus?.loaded || app.adminStatus?.loading)) {
               type="button"
               className={section === option.id ? "active" : ""}
               aria-current={section === option.id ? "page" : undefined}
+              disabled={reviewActionPending || appointmentActionPending}
               onClick={() => changeSection(option.id)}
             >
               <span className="admin-section-tab-icon"><Icon size={19} /></span>
@@ -185,6 +185,7 @@ if (!canAdmin && (!app.adminStatus?.loaded || app.adminStatus?.loading)) {
               <input
                 value={queueFilter}
                 placeholder={REVIEW_QUEUE_FILTER_PLACEHOLDERS[view] ?? "신고 사유"}
+                disabled={reviewActionPending}
                 onChange={(event) => updateQueueFilter(event.target.value)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter") {
@@ -194,19 +195,19 @@ if (!canAdmin && (!app.adminStatus?.loaded || app.adminStatus?.loading)) {
                 }}
               />
             </label>
-            <div className="admin-row-actions">
-              <Button type="button" variant="secondary" onClick={applyQueueFilter}>적용</Button>
-              {appliedQueueFilter ? <Button type="button" variant="secondary" onClick={clearQueueFilter}>초기화</Button> : null}
-              <Button type="button" variant="secondary" disabled={app.adminStatus?.loading} onClick={refreshQueue}>
+            <div className="ui-action-row admin-row-actions">
+              <Button type="button" variant="secondary" disabled={reviewActionPending} onClick={applyQueueFilter}>적용</Button>
+              {appliedQueueFilter ? <Button type="button" variant="secondary" disabled={reviewActionPending} onClick={clearQueueFilter}>초기화</Button> : null}
+              <Button type="button" variant="secondary" disabled={reviewActionPending || app.adminStatus?.loading} onClick={refreshQueue}>
                 {app.adminStatus?.loading ? "갱신 중" : "새로고침"}
               </Button>
             </div>
           </div>
-          <div className="segmented-control compact-segments admin-queue-filter">
-            <button type="button" className={queueMode === "pending" ? "active" : ""} onClick={() => setQueueMode("pending")}>
+          <div className="ui-segmented-control segmented-control compact-segments admin-queue-filter">
+            <button type="button" className={queueMode === "pending" ? "active" : ""} disabled={reviewActionPending} onClick={() => setQueueMode("pending")}>
               처리 대기{queueMode === "pending" ? ` ${activeQueueTotal}` : ""}
             </button>
-            <button type="button" className={queueMode === "history" ? "active" : ""} onClick={() => setQueueMode("history")}>
+            <button type="button" className={queueMode === "history" ? "active" : ""} disabled={reviewActionPending} onClick={() => setQueueMode("history")}>
               전체 이력{queueMode === "history" ? ` ${activeQueueTotal}` : ""}
             </button>
           </div>
@@ -224,6 +225,7 @@ if (!canAdmin && (!app.adminStatus?.loaded || app.adminStatus?.loading)) {
                 key={row.id}
                 type="button"
                 className={selectedRow?.id === row.id ? "admin-sort-row active" : "admin-sort-row"}
+                disabled={reviewActionPending}
                 onClick={() => setSelectedIdByView((current) => ({ ...current, [view]: row.id }))}
               >
                 <span>
@@ -242,7 +244,7 @@ if (!canAdmin && (!app.adminStatus?.loaded || app.adminStatus?.loading)) {
             {!app.adminStatus?.loading && !app.adminStatus?.error && !activeRows.length ? <div className="ui-empty-state-compact">{queueMode === "pending" ? "처리할 항목이 없습니다." : "처리 이력이 없습니다."}</div> : null}
           </div>
           {activeAdminPage?.hasMore ? (
-            <Button type="button" variant="secondary" disabled={app.adminStatus?.loading} onClick={() => app.actions.loadMoreAdminSection?.()}>
+            <Button type="button" variant="secondary" disabled={reviewActionPending || app.adminStatus?.loading} onClick={() => app.actions.loadMoreAdminSection?.()}>
               {app.adminStatus?.loading ? "불러오는 중" : `더 보기 (${activeRows.length}/${activeAdminPage.total})`}
             </Button>
           ) : null}

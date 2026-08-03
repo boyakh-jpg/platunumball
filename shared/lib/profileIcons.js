@@ -376,6 +376,9 @@ export const PROFILE_ICON_GROUPS = Object.freeze([
 
 export const PROFILE_ICON_CATALOG = Object.freeze(PROFILE_ICON_GROUPS.flatMap((item) => item.icons));
 export const DEFAULT_PROFILE_ICON_ID = PROFILE_ICON_GROUPS[0].icons[0].id;
+export const DEFAULT_UNLOCKED_PROFILE_ICON_KEYS = Object.freeze(PROFILE_ICON_CATALOG
+  .filter((icon) => icon.achievement?.retired !== true && (icon.achievement?.requirements ?? []).length === 0)
+  .map((icon) => icon.id));
 
 const PROFILE_ICON_BY_ID = new Map(PROFILE_ICON_CATALOG.map((item) => [item.id, item]));
 
