@@ -53,10 +53,32 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
   }));
 
   const naverMapKeyReady = Boolean(getNaverMapClientId());
-  const setCourtAddressQuery = (value) => {
+  const setCourtAddressQuery = (value, resetSelection = false) => {
     courtAddressSearchRef.current += 1;
     setCourtAddressSearchPending(false);
     setCourtAddressQueryState(value);
+    if (resetSelection) setCourtLookupStatus("");
+    if (resetSelection && courtAddressSelected) {
+      courtNearbySearchRef.current += 1;
+      setCourtPinConfirmed(false);
+      setCourtFieldLocation(null);
+      setCourtPhotos([]);
+      setCourtNearbyConfirmed(false);
+      setCourtServerNearbyCandidates([]);
+      setCourtNearbyLookupFailed(false);
+      setCourtDraft((current) => ({
+        ...current,
+        name: current.buildingName && current.name === current.buildingName ? "" : current.name,
+        buildingName: "",
+        addressText: "",
+        roadAddress: "",
+        jibunAddress: "",
+        searchAddressText: "",
+        zonecode: "",
+        lat: "",
+        lng: "",
+      }));
+    }
   };
   const courtAddressSelected = Boolean(String(courtDraft.addressText ?? "").trim());
   const courtDisplayName = getCourtCanonicalName(courtDraft, app.state);
@@ -200,7 +222,7 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
     }
     courtPinPendingRef.current = true;
     setCourtPinPending(true);
-    setCourtLookupStatus("실제 구장 위치 선택 중");
+    setCourtLookupStatus("지도에서 실제 구장 위치를 조정해 주세요.");
     try {
       const pin = await openNaverMapPinPicker(courtDraft);
       const addressDong = getCourtAddressDong(pin);
@@ -300,7 +322,7 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
       { enableHighAccuracy: true, maximumAge: 0, timeout: 15_000 },
     );
   });
-  const selectCourtPhotos = async (event) => {
+  const selectCourtPhotos = async (event, replaceIndex = null) => {
     const files = event.target.files;
     event.target.value = "";
     if (!files?.length) return;
@@ -308,20 +330,28 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
       setCourtLookupStatus(courtQuotaMessage);
       return;
     }
-    if (courtPhotos.length >= COURT_REQUEST_PHOTO_MAX) {
+    if (replaceIndex === null && courtPhotos.length >= COURT_REQUEST_PHOTO_MAX) {
       setCourtLookupStatus("현장 사진은 최대 4장까지 촬영할 수 있습니다.");
+      return;
+    }
+    if (!courtFieldLocation) {
+      setCourtLookupStatus("현장 위치를 먼저 확인한 뒤 사진을 촬영해 주세요.");
       return;
     }
     setCourtPhotoPending(true);
     try {
-      if (!courtFieldLocation || Date.now() - Date.parse(courtFieldLocation.capturedAt) > COURT_REQUEST_FIELD_CAPTURE_MAX_AGE_MS) {
+      if (Date.now() - Date.parse(courtFieldLocation.capturedAt) > COURT_REQUEST_FIELD_CAPTURE_MAX_AGE_MS) {
         setCourtFieldLocation(null);
-        setCourtPhotos([]);
-        await readCourtFieldLocation();
+        setCourtLookupStatus("현장 위치 확인 시간이 지났습니다. 위치를 다시 확인해 주세요.");
+        return;
       }
       const prepared = await prepareCourtRequestPhotos(files);
-      setCourtPhotos((current) => [...current, ...prepared].slice(0, COURT_REQUEST_PHOTO_MAX));
-      setCourtLookupStatus("현장 사진을 촬영하고 자동 최적화했습니다.");
+      setCourtPhotos((current) => replaceIndex === null
+        ? [...current, ...prepared].slice(0, COURT_REQUEST_PHOTO_MAX)
+        : current.map((photo, index) => (index === replaceIndex ? prepared[0] : photo)));
+      setCourtLookupStatus(replaceIndex === null
+        ? `현장 사진 ${Math.min(courtPhotos.length + prepared.length, COURT_REQUEST_PHOTO_MAX)}장을 촬영하고 자동 최적화했습니다.`
+        : `현장 사진 ${replaceIndex + 1}장을 다시 촬영했습니다.`);
     } catch (error) {
       setCourtLookupStatus(String(error?.code || "").startsWith("court_field_location_")
         ? "현장 위치를 확인하지 못했습니다. GPS와 위치 권한을 켠 뒤 다시 촬영해 주세요."

@@ -148,10 +148,16 @@ test("court photos use browser resizing and private R2", async () => {
   assert.match(evidence, /requireAdminContext/);
   assert.match(evidence, /\^cr_sim_/);
   assert.match(form, /capture="environment"/);
-  assert.match(form, /disabled=\{!courtPinConfirmed \|\| courtFieldLocationPending \|\| courtPhotoPending/);
-  assert.doesNotMatch(form, /disabled=\{!courtFieldLocation \|\| courtPhotoPending/);
-  assert.match(controller, /await readCourtFieldLocation\(\)/);
-  assert.ok(form.indexOf("settings-court-evidence") < form.indexOf("시설\/장소명"));
+  assert.match(form, /disabled=\{!courtFieldLocation \|\| courtPhotoPending/);
+  assert.match(form, /selectCourtPhotos\(event, index\)/);
+  assert.match(form, /실제 현장에서 위치를 확인하고 2장 이상 촬영하면 자동승인될 수 있습니다/);
+  assert.match(form, /setCourtAddressQuery\(event\.target\.value, true\)/);
+  const photoHandler = controller.slice(controller.indexOf("const selectCourtPhotos"), controller.indexOf("const removeCourtPhoto"));
+  assert.match(photoHandler, /replaceIndex === null/);
+  assert.doesNotMatch(photoHandler, /readCourtFieldLocation/);
+  const evidenceStepIndex = form.indexOf('aria-labelledby="court-step-photo-title"');
+  assert.ok(evidenceStepIndex > -1 && evidenceStepIndex < form.indexOf('<div className="form-grid two">', evidenceStepIndex));
+  assert.match(styles, /settings-court-step/);
   assert.match(styles, /inset:\s*0;[\s\S]{0,80}width:\s*100%;[\s\S]{0,80}height:\s*100%/);
 });
 

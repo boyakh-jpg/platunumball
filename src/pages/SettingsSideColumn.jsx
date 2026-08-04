@@ -1,4 +1,4 @@
-import { Camera, Crosshair, MapPin, Send, X } from "lucide-react";
+import { Camera, Check, Crosshair, MapPin, RefreshCw, Send, X } from "lucide-react";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import Badge from "../components/common/Badge.jsx";
@@ -107,6 +107,30 @@ export default function SettingsSideColumn({ controller }) {
     reportCourtRequest,
     toggleReportedUser,
   } = controller;
+  const courtStatusTitle = courtQuotaBlocked ? courtQuotaTitle
+    : currentTrustScore < COURT_REQUEST_TRUST_MIN ? "등록 제한"
+      : !courtAddressSelected ? "주소 선택 필요"
+        : !courtPinConfirmed ? "지도 핀 조정 필요"
+          : courtDuplicate ? "중복 확인 필요"
+            : courtNearbyReviewRequired && !courtNearbyConfirmed ? "근처 구장 확인 필요"
+              : !courtFieldLocation ? "현장 위치 필요"
+                : !courtPhotos.length ? "현장 사진 필요"
+                  : !courtDisplayName ? "시설명 필요"
+                    : courtRequiresUnit && !courtDraft.courtUnit.trim() ? "코트 구분 필요"
+                      : courtSourceUrlInvalid ? "링크 확인 필요"
+                        : "등록 가능";
+  const courtStatusMessage = courtQuotaBlocked ? courtQuotaMessage
+    : currentTrustScore < COURT_REQUEST_TRUST_MIN ? `구장 등록요청은 신뢰도 ${COURT_REQUEST_TRUST_MIN}점 이상부터 가능합니다.`
+      : !courtAddressSelected ? "주소를 검색하고 결과에서 하나를 선택해 주세요."
+        : !courtPinConfirmed ? "지도에서 핀을 실제 코트 위치에 맞춰 주세요."
+          : courtDuplicate ? courtDuplicateMessage
+            : courtNearbyReviewRequired && !courtNearbyConfirmed ? "근처 등록·검토 중 구장을 확인하고 체크해 주세요."
+              : !courtFieldLocation ? "GPS를 켜고 현장 위치를 확인해 주세요."
+                : !courtPhotos.length ? "현장에서 사진을 1장 이상 촬영해 주세요."
+                  : !courtDisplayName ? "시설/장소명을 입력해 주세요."
+                    : courtRequiresUnit && !courtDraft.courtUnit.trim() ? "같은 장소의 다른 코트라면 코트 구분을 입력해 주세요."
+                      : courtSourceUrlInvalid ? "공식 안내 링크는 https:// 주소만 사용할 수 있습니다."
+                        : `신뢰도 ${COURT_REQUEST_TRUST_MIN}점 이상 필요 · 허위 등록은 운영 정책에 따라 신뢰도 차감 및 신청 제한`;
   return (
 <aside className="page-stack settings-side-column">
           <Card className="section-card settings-block-card">
@@ -157,21 +181,31 @@ export default function SettingsSideColumn({ controller }) {
             </div>
             <div className={canSubmitCourtRequest ? "tier-range-note" : "tier-range-note tier-range-note-warning"}>
               <div>
-                <span>등록 권한</span>
-                <strong>{courtQuotaBlocked ? courtQuotaTitle : currentTrustScore < COURT_REQUEST_TRUST_MIN ? "등록 제한" : courtDuplicate ? "중복 확인 필요" : courtNearbyReviewRequired && !courtNearbyConfirmed ? "근처 구장 확인 필요" : courtSourceUrlInvalid ? "링크 확인 필요" : !courtFieldLocation ? "현장 위치 필요" : !courtPhotos.length ? "현장 사진 필요" : "등록 가능"}</strong>
-                <em>{courtQuotaBlocked ? courtQuotaMessage : courtDuplicateMessage || (courtNearbyReviewRequired && !courtNearbyConfirmed ? "근처 등록·검토 중 구장을 확인하고 체크해 주세요." : courtSourceUrlInvalid ? "공식 안내 링크는 https:// 주소만 사용할 수 있습니다." : !courtFieldLocation ? "GPS를 켜고 현장 위치를 확인해 주세요." : !courtPhotos.length ? "현장에서 사진을 1장 이상 촬영해 주세요." : `신뢰도 ${COURT_REQUEST_TRUST_MIN}점 이상 필요 · 허위 등록은 운영 정책에 따라 신뢰도 차감 및 신청 제한`)}</em>
+                <span>신청 상태</span>
+                <strong>{courtStatusTitle}</strong>
+                <em>{courtStatusMessage}</em>
               </div>
               <MapPin size={22} />
             </div>
+            {courtLookupStatus ? <div className="ui-status-strip settings-court-process-status" role="status" aria-live="polite">{courtLookupStatus}</div> : null}
             {canOpenCourtRequestForm ? (
-              <form className="form-stack" onSubmit={submitCourtRequest}>
-                <div className="settings-address-search">
+              <form className="form-stack settings-court-form" onSubmit={submitCourtRequest}>
+                <section className={`settings-court-step ${courtAddressSelected ? "is-complete" : "is-current"}`} aria-labelledby="court-step-address-title">
+                  <div className="settings-court-step-head">
+                    <span className="settings-court-step-number" aria-hidden="true">{courtAddressSelected ? <Check size={15} /> : "1"}</span>
+                    <div>
+                      <h3 id="court-step-address-title">주소 검색</h3>
+                      <small>구장 근처 주소나 건물명을 찾으세요.</small>
+                    </div>
+                    <em>{courtAddressSelected ? "완료" : "현재 단계"}</em>
+                  </div>
+                  <div className="settings-address-search">
                   <label>
-                    근처 주소 검색
+                    주소 또는 건물명
                     <input
                       value={courtAddressQuery}
                       onChange={(event) => {
-                        setCourtAddressQuery(event.target.value);
+                        setCourtAddressQuery(event.target.value, true);
                         setNaverAddressResults([]);
                       }}
                       onKeyDown={(event) => {
@@ -185,10 +219,7 @@ export default function SettingsSideColumn({ controller }) {
                   </label>
                   <div className="ui-action-row settings-address-actions">
                     <Button type="button" variant="secondary" onClick={searchCourtAddress} disabled={courtAddressSearchPending || !courtAddressQuery.trim()}>
-                      {courtAddressSearchPending ? "주소 찾는 중" : "근처 주소 찾기"}
-                    </Button>
-                    <Button type="button" variant="secondary" onClick={pickCourtMapPin} disabled={courtPinPending || courtSubmitPending || !courtAddressSelected || !naverMapKeyReady}>
-                      {courtPinPending ? "위치 확인 중" : "실제 위치 확정"}
+                      {courtAddressSearchPending ? "주소 찾는 중" : "주소 검색"}
                     </Button>
                   </div>
                   {naverAddressResults.length ? (
@@ -202,30 +233,73 @@ export default function SettingsSideColumn({ controller }) {
                       ))}
                     </div>
                   ) : null}
-                  {courtLookupStatus ? <small>{courtLookupStatus}</small> : null}
-                </div>
-                <div className="settings-court-evidence">
-                  <div className="ui-action-row">
-                    <Button type="button" variant="secondary" onClick={confirmCourtFieldLocation} disabled={courtFieldLocationPending || !courtPinConfirmed}>
-                      <Crosshair size={16} /> {courtFieldLocationPending ? "위치 확인 중" : "현장 위치 확인"}
-                    </Button>
-                    <Button as="label" variant="secondary" className="settings-court-photo-button" aria-disabled={!courtPinConfirmed || courtFieldLocationPending || courtPhotoPending || courtPhotos.length >= 4}>
-                      <Camera size={16} /> {courtPhotoPending || courtFieldLocationPending ? "위치·사진 확인 중" : !courtPinConfirmed ? "핀 확정 후 촬영" : courtPhotos.length >= 4 ? "촬영 완료" : "현장 사진 촬영"}
-                      <input type="file" accept="image/*" capture="environment" disabled={!courtPinConfirmed || courtFieldLocationPending || courtPhotoPending || courtPhotos.length >= 4} onChange={selectCourtPhotos} />
+                  </div>
+                </section>
+                <section className={`settings-court-step ${courtPinConfirmed ? "is-complete" : courtAddressSelected ? "is-current" : "is-locked"}`} aria-labelledby="court-step-pin-title">
+                  <div className="settings-court-step-head">
+                    <span className="settings-court-step-number" aria-hidden="true">{courtPinConfirmed ? <Check size={15} /> : "2"}</span>
+                    <div>
+                      <h3 id="court-step-pin-title">지도 핀 조정</h3>
+                      <small>핀을 실제 코트 위치에 정확히 맞추세요.</small>
+                    </div>
+                    <em>{courtPinConfirmed ? "완료" : courtAddressSelected ? "현재 단계" : "대기"}</em>
+                  </div>
+                  <div className="ui-action-row settings-court-step-actions">
+                    <Button type="button" variant="secondary" onClick={pickCourtMapPin} disabled={courtPinPending || courtSubmitPending || !courtAddressSelected || !naverMapKeyReady}>
+                      <MapPin size={16} /> {courtPinPending ? "핀 조정 중" : courtPinConfirmed ? "핀 다시 조정" : "지도에서 핀 조정"}
                     </Button>
                   </div>
-                  <small>{courtFieldLocation ? `GPS 오차 ${Math.round(courtFieldLocation.accuracy)}m · 핀과 ${Math.round(courtFieldLocation.distanceMeters)}m` : "사진 촬영 뒤 현장 GPS를 바로 확인합니다."} · 현장에서 바로 촬영하고 위치·사진 기준을 충족하면 자동승인될 수 있습니다.</small>
+                  <small>{courtPinConfirmed ? `확정 위치 · ${courtDraft.addressText}` : courtAddressSelected ? "지도를 열어 핀을 옮긴 뒤 위치를 확정해 주세요." : "먼저 검색 결과에서 주소를 선택해 주세요."}</small>
+                </section>
+                <section className={`settings-court-step ${courtFieldLocation ? "is-complete" : courtPinConfirmed ? "is-current" : "is-locked"}`} aria-labelledby="court-step-location-title">
+                  <div className="settings-court-step-head">
+                    <span className="settings-court-step-number" aria-hidden="true">{courtFieldLocation ? <Check size={15} /> : "3"}</span>
+                    <div>
+                      <h3 id="court-step-location-title">현장 위치 확인</h3>
+                      <small>GPS를 켜고 구장 현장에서 확인하세요.</small>
+                    </div>
+                    <em>{courtFieldLocation ? "완료" : courtPinConfirmed ? "현재 단계" : "대기"}</em>
+                  </div>
+                  <div className="ui-action-row settings-court-step-actions">
+                    <Button type="button" variant="secondary" onClick={confirmCourtFieldLocation} disabled={courtFieldLocationPending || !courtPinConfirmed}>
+                      <Crosshair size={16} /> {courtFieldLocationPending ? "위치 확인 중" : courtFieldLocation ? "위치 다시 확인" : "현장 위치 확인"}
+                    </Button>
+                  </div>
+                  <small>{courtFieldLocation ? `GPS 오차 ${Math.round(courtFieldLocation.accuracy)}m · 핀과 ${Math.round(courtFieldLocation.distanceMeters)}m` : courtPinConfirmed ? "위치 권한을 허용하면 핀과 현재 위치의 거리를 확인합니다." : "지도 핀을 먼저 확정해 주세요."}</small>
+                </section>
+                <section className={`settings-court-step settings-court-evidence ${courtPhotos.length ? "is-complete" : courtFieldLocation ? "is-current" : "is-locked"}`} aria-labelledby="court-step-photo-title">
+                  <div className="settings-court-step-head">
+                    <span className="settings-court-step-number" aria-hidden="true">{courtPhotos.length ? <Check size={15} /> : "4"}</span>
+                    <div>
+                      <h3 id="court-step-photo-title">현장 사진 촬영</h3>
+                      <small>1장 이상 촬영하세요. 최대 4장까지 추가할 수 있습니다.</small>
+                    </div>
+                    <em>{courtPhotos.length ? `${courtPhotos.length}/4장` : courtFieldLocation ? "현재 단계" : "대기"}</em>
+                  </div>
+                  <div className="ui-action-row">
+                    <Button as="label" variant="secondary" className="settings-court-photo-button" aria-disabled={!courtFieldLocation || courtPhotoPending || courtPhotos.length >= 4}>
+                      <Camera size={16} /> {courtPhotoPending ? "사진 처리 중" : !courtFieldLocation ? "위치 확인 후 촬영" : courtPhotos.length >= 4 ? "최대 4장 촬영됨" : courtPhotos.length ? "사진 추가 촬영" : "첫 사진 촬영"}
+                      <input type="file" accept="image/*" capture="environment" disabled={!courtFieldLocation || courtPhotoPending || courtPhotos.length >= 4} onChange={selectCourtPhotos} />
+                    </Button>
+                  </div>
+                  <small>1장부터 신청 가능 · 실제 현장에서 위치를 확인하고 2장 이상 촬영하면 자동승인될 수 있습니다.</small>
                   {courtPhotos.length ? (
                     <div className="settings-court-photo-grid">
                       {courtPhotos.map((photo, index) => (
                         <div key={`${photo.byteSize}-${index}`}>
                           <img src={photo.previewUrl} alt={`구장 현장 사진 ${index + 1}`} />
-                          <Button type="button" variant="ghost" size="sm" className="settings-court-photo-remove" onClick={() => removeCourtPhoto(index)} aria-label={`구장 현장 사진 ${index + 1} 삭제`} title="사진 삭제"><X size={15} /></Button>
+                          <div className="settings-court-photo-actions">
+                            <Button as="label" variant="secondary" size="sm" className="settings-court-photo-retake" aria-disabled={courtPhotoPending} aria-label={`구장 현장 사진 ${index + 1} 다시 촬영`} title="다시 촬영">
+                              <RefreshCw size={15} />
+                              <input type="file" accept="image/*" capture="environment" disabled={courtPhotoPending} onChange={(event) => selectCourtPhotos(event, index)} />
+                            </Button>
+                            <Button type="button" variant="secondary" size="sm" className="settings-court-photo-remove" disabled={courtPhotoPending} onClick={() => removeCourtPhoto(index)} aria-label={`구장 현장 사진 ${index + 1} 삭제`} title="사진 삭제"><X size={15} /></Button>
+                          </div>
                         </div>
                       ))}
                     </div>
                   ) : null}
-                </div>
+                </section>
                 <div className="form-grid two">
                   <label>
                     시설/장소명

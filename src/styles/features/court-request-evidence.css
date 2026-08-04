@@ -4,6 +4,85 @@
   gap: var(--space-4);
 }
 
+.settings-court-process-status {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.settings-court-step {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-4);
+  padding-top: var(--space-6);
+  border-top: var(--ui-stroke-width) solid var(--line);
+}
+
+.settings-court-step:first-of-type {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.settings-court-step-head {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.settings-court-step-head > div {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-1);
+}
+
+.settings-court-step-head h3 {
+  margin: 0;
+  font-size: 0.98rem;
+  line-height: 1.25;
+}
+
+.settings-court-step-head em {
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-style: normal;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.settings-court-step-number {
+  display: inline-grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: var(--ui-stroke-width) solid var(--ui-control-border);
+  border-radius: 50%;
+  background: var(--ui-control-bg);
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.settings-court-step.is-current .settings-court-step-number,
+.settings-court-step.is-current .settings-court-step-head em {
+  border-color: var(--rb-orange);
+  color: var(--rb-orange-2);
+}
+
+.settings-court-step.is-complete .settings-court-step-number {
+  border-color: var(--green);
+  background: var(--green);
+  color: #07130e;
+}
+
+.settings-court-step.is-complete .settings-court-step-head em {
+  color: var(--green);
+}
+
+.settings-court-step > small,
+.settings-court-step-head small,
 .settings-court-evidence small,
 .admin-court-evidence > small {
   color: var(--muted);
@@ -11,12 +90,37 @@
   font-weight: 800;
 }
 
+.settings-court-step > small {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.settings-address-actions,
+.settings-court-step-actions,
+.settings-court-evidence > .ui-action-row {
+  width: 100%;
+}
+
+.settings-address-actions > .button,
+.settings-court-step-actions > .button,
+.settings-court-evidence > .ui-action-row > .button {
+  flex: 1 1 180px;
+  min-width: 0;
+}
+
 .settings-court-photo-button {
   position: relative;
   cursor: pointer;
 }
 
-.settings-court-photo-button input {
+.settings-court-photo-button[aria-disabled="true"],
+.settings-court-photo-retake[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.settings-court-photo-button input,
+.settings-court-photo-retake input {
   position: absolute;
   inset: 0;
   z-index: 1;
@@ -48,12 +152,20 @@
   object-fit: cover;
 }
 
-.settings-court-photo-remove {
+.settings-court-photo-actions {
   position: absolute;
   top: 4px;
   right: 4px;
+  display: flex;
+  gap: var(--space-2);
+}
+
+.settings-court-photo-retake,
+.settings-court-photo-remove {
+  position: relative;
   width: 28px;
   height: 28px;
+  padding: 0;
 }
 
 .admin-court-evidence {

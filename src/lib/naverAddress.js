@@ -360,7 +360,7 @@ export async function openNaverMapPinPicker(court = {}, clientId = getNaverMapCl
     const title = document.createElement("strong");
     title.id = "naver-pin-picker-title";
     title.className = "naver-pin-picker-title";
-    title.textContent = "실제 구장 위치 선택";
+    title.textContent = "지도에서 구장 위치 조정";
     const closeButton = document.createElement("button");
     closeButton.type = "button";
     closeButton.className = "button ui-button button-secondary ui-button-secondary button-sm ui-button-sm button-icon naver-pin-picker-close";
@@ -387,7 +387,7 @@ export async function openNaverMapPinPicker(court = {}, clientId = getNaverMapCl
       fontSize: "12px",
     });
     pinStatus.className = "naver-pin-picker-status";
-    pinStatus.textContent = "핀 좌표의 실제 주소를 확인해 저장합니다.";
+    pinStatus.textContent = "지도를 누르거나 핀을 끌어 실제 코트 위치에 맞춰 주세요.";
     const footerActions = document.createElement("div");
     footerActions.className = "naver-pin-picker-actions";
     const cancelButton = document.createElement("button");
@@ -397,7 +397,7 @@ export async function openNaverMapPinPicker(court = {}, clientId = getNaverMapCl
     const submitButton = document.createElement("button");
     submitButton.type = "button";
     submitButton.className = "button ui-button button-primary ui-button-primary button-md ui-button-md";
-    submitButton.textContent = "이 위치로 주소 확정";
+    submitButton.textContent = "이 위치로 핀 확정";
 
     header.append(title, closeButton);
     footerActions.append(cancelButton, submitButton);
@@ -463,7 +463,7 @@ export async function openNaverMapPinPicker(court = {}, clientId = getNaverMapCl
         if (settled) return;
         resolving = false;
         submitButton.disabled = false;
-        submitButton.textContent = "이 위치로 주소 확정";
+        submitButton.textContent = "이 위치로 핀 확정";
         pinStatus.textContent = "핀 위치의 주소를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.";
         pinStatus.style.color = "var(--danger, #d94b3d)";
       }
