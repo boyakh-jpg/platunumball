@@ -107,7 +107,14 @@ async function inspectPhoto(config, photo, expectedLayout) {
     },
   );
   const payload = await response.json().catch(() => null);
-  if (!response.ok || payload?.success === false) throw new Error("court_ai_request_failed");
+  if (!response.ok || payload?.success === false) {
+    const message = [401, 403].includes(response.status)
+      ? "court_ai_access_denied"
+      : response.status === 404
+        ? "court_ai_model_not_found"
+        : response.status === 429 ? "court_ai_rate_limited" : "court_ai_request_failed";
+    throw new Error(message);
+  }
   return normalizeCourtPhotoAiAnswer(payload?.result?.answer ?? payload?.result?.response ?? payload?.result ?? "");
 }
 
@@ -116,13 +123,24 @@ export async function inspectCourtRequestPhotos(photos = [], expectedLayout = "u
     throw new Error("court_photo_count_invalid");
   }
   const config = getAiConfig();
-  if (!config) return { status: "unavailable", assessments: [], model: COURT_REQUEST_AI_MODEL, promptVersion: COURT_REQUEST_AI_PROMPT_VERSION };
+  if (!config) return { status: "unavailable", assessments: [], failureReason: "court_ai_not_configured", model: COURT_REQUEST_AI_MODEL, promptVersion: COURT_REQUEST_AI_PROMPT_VERSION };
   const assessments = [];
   try {
-    for (const photo of photos) assessments.push(await inspectPhoto(config, photo, expectedLayout));
-    return { status: "complete", assessments, model: COURT_REQUEST_AI_MODEL, promptVersion: COURT_REQUEST_AI_PROMPT_VERSION };
+    for (const photo of photos) {
+      let assessment;
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        try {
+          assessment = await inspectPhoto(config, photo, expectedLayout);
+          break;
+        } catch (error) {
+          if (attempt === 1) throw error;
+        }
+      }
+      assessments.push(assessment);
+    }
+    return { status: "complete", assessments, failureReason: null, model: COURT_REQUEST_AI_MODEL, promptVersion: COURT_REQUEST_AI_PROMPT_VERSION };
   } catch (error) {
     console.error("Court request AI verification failed.", error.message);
-    return { status: "failed", assessments: [], model: COURT_REQUEST_AI_MODEL, promptVersion: COURT_REQUEST_AI_PROMPT_VERSION };
+    return { status: "failed", assessments: [], failureReason: error.message, model: COURT_REQUEST_AI_MODEL, promptVersion: COURT_REQUEST_AI_PROMPT_VERSION };
   }
 }

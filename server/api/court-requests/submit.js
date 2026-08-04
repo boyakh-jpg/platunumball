@@ -160,6 +160,7 @@ export default async function handler(request, response) {
       photoCount: photos.length,
       model: ai.model,
       promptVersion: ai.promptVersion,
+      failureReason: ai.failureReason ?? null,
       analyzedAt: new Date().toISOString(),
     };
     const { data, error } = await context.supabase.rpc("rankball_submit_court_request_with_evidence", {
@@ -177,7 +178,7 @@ export default async function handler(request, response) {
         promptVersion: ai.promptVersion,
         aiStatus: ai.status,
         aiConfidence: policy.confidence,
-        aiResult: { assessments: ai.assessments, checks: policy.checks },
+        aiResult: { assessments: ai.assessments, checks: policy.checks, failureReason: ai.failureReason ?? null },
         decision: policy.decision,
       },
     });

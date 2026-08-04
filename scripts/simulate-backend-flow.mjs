@@ -4580,7 +4580,7 @@ async function runCourtRegistrationScenario({
 
   const { data: pendingEvidence, error: pendingEvidenceError } = await step(`${ids.label}:verifyPendingCourtEvidence`, () => supabase
     .from("court_request_evidence")
-    .select("request_id,photo_keys,field_accuracy_meters,field_distance_meters,ai_status,decision")
+    .select("request_id,photo_keys,field_accuracy_meters,field_distance_meters,ai_status,ai_result,decision")
     .eq("request_id", requestId)
     .maybeSingle());
   if (pendingEvidenceError) throw pendingEvidenceError;
@@ -4590,6 +4590,7 @@ async function runCourtRegistrationScenario({
       && Number(pendingEvidence?.field_accuracy_meters) === 5
       && Number(pendingEvidence?.field_distance_meters) <= 30
       && ["complete", "failed", "unavailable"].includes(pendingEvidence?.ai_status)
+      && (simulationSafety.environment !== "production" || pendingEvidence?.ai_status === "complete")
       && pendingEvidence?.decision === "manual_review",
     "pending court evidence mismatch",
     pendingEvidence,
@@ -4671,6 +4672,7 @@ async function runCourtRegistrationScenario({
     adminId,
     requestStatus: "approved",
     aiStatus: pendingEvidence.ai_status,
+    aiFailureReason: pendingEvidence.ai_result?.failureReason ?? null,
     notificationVerified: true,
     approvedReportBlocked: true,
   };

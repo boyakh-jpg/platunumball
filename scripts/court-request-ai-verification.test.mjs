@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { getCoordinateDistanceMeters } from "../shared/lib/courtRequestImagePolicy.js";
 import { uploadPrivateR2Webp } from "../server/api/_r2ImageStorage.js";
-import { getCourtVerificationDecision, normalizeCourtPhotoAiAnswer } from "../server/lib/courtRequestVerification.js";
+import { getCourtVerificationDecision, inspectCourtRequestPhotos, normalizeCourtPhotoAiAnswer } from "../server/lib/courtRequestVerification.js";
 
 const eligibleAssessment = {
   basketballCourt: true,
@@ -39,11 +39,16 @@ test("court AI response and coordinate distance are normalized", () => {
 });
 
 test("court evidence migration keeps data private and RPC guarded", async () => {
-  const sql = await readFile(new URL("../supabase/migrations/20260803222000_court_request_ai_verification.sql", import.meta.url), "utf8");
+  const [sql, serviceRoleSql] = await Promise.all([
+    readFile(new URL("../supabase/migrations/20260803222000_court_request_ai_verification.sql", import.meta.url), "utf8"),
+    readFile(new URL("../supabase/migrations/20260804091749_court_request_evidence_service_role.sql", import.meta.url), "utf8"),
+  ]);
   assert.match(sql, /enable row level security/i);
   assert.match(sql, /revoke all on table public\.court_request_evidence from public, anon, authenticated/i);
   assert.match(sql, /grant execute on function public\.rankball_auto_approve_court_request\(text\) to service_role/i);
   assert.doesNotMatch(sql, /drop table|truncate|delete from/i);
+  assert.match(serviceRoleSql, /grant select, update on table public\.court_request_evidence to service_role/i);
+  assert.doesNotMatch(serviceRoleSql, /grant .* to (anon|authenticated)|drop table|truncate|delete from/i);
 });
 
 test("court photos use browser resizing and private R2", async () => {
@@ -58,6 +63,33 @@ test("court photos use browser resizing and private R2", async () => {
   assert.match(server, /rankball_auto_approve_court_request/);
   assert.match(evidence, /requireAdminContext/);
   assert.match(evidence, /\^cr_sim_/);
+});
+
+test("court AI retries one malformed response", async (context) => {
+  const originalFetch = globalThis.fetch;
+  const originalAccountId = process.env.CLOUDFLARE_ACCOUNT_ID;
+  const originalAiToken = process.env.CLOUDFLARE_AI_API_TOKEN;
+  let calls = 0;
+  context.after(() => {
+    globalThis.fetch = originalFetch;
+    if (originalAccountId === undefined) delete process.env.CLOUDFLARE_ACCOUNT_ID;
+    else process.env.CLOUDFLARE_ACCOUNT_ID = originalAccountId;
+    if (originalAiToken === undefined) delete process.env.CLOUDFLARE_AI_API_TOKEN;
+    else process.env.CLOUDFLARE_AI_API_TOKEN = originalAiToken;
+  });
+  process.env.CLOUDFLARE_ACCOUNT_ID = "account";
+  process.env.CLOUDFLARE_AI_API_TOKEN = "token";
+  globalThis.fetch = async () => {
+    calls += 1;
+    return new Response(JSON.stringify({
+      success: true,
+      result: { answer: calls === 1 ? "invalid" : JSON.stringify(eligibleAssessment) },
+    }), { status: 200 });
+  };
+
+  const result = await inspectCourtRequestPhotos([{ imageBase64: "image" }], "full");
+  assert.equal(result.status, "complete");
+  assert.equal(calls, 2);
 });
 
 test("private R2 upload creates a missing bucket once", async (context) => {
