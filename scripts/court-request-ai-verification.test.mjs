@@ -179,6 +179,9 @@ test("court photos use browser resizing and private R2", async () => {
   assert.match(client, /getCourtPhotoPixelQualityError/);
   assert.match(client, /image\.onload = resolve/);
   assert.doesNotMatch(client, /await image\.decode\(\)/);
+  assert.match(client, /blob\.type !== "image\/webp"/);
+  assert.match(client, /blob\.size <= COURT_REQUEST_PHOTO_MAX_BYTES/);
+  assert.ok(client.indexOf("if (fallback)") < client.indexOf('throw imageError("court_photo_too_large_after_resize")'));
   assert.doesNotMatch(client, /file\.size\s*[><=]/);
   assert.match(server, /getPrivateR2Config/);
   assert.match(server, /safeContainer:\s*true/);
@@ -225,10 +228,13 @@ test("court photos use browser resizing and private R2", async () => {
   assert.match(form, /const courtPhotoStepComplete = courtPinConfirmed && !courtPhotoPending && !courtPhotoError/);
   assert.match(form, /id="court-step-details-title">구장 정보/);
   assert.match(form, /settings-court-photo-state/);
+  assert.doesNotMatch(form, /className="settings-court-photo-remove" disabled=/);
   assert.match(styles, /settings-court-step/);
   assert.match(styles, /inset:\s*0;[\s\S]{0,80}width:\s*100%;[\s\S]{0,80}height:\s*100%/);
   assert.match(styles, /settings-court-photo-add\[aria-disabled="true"\][\s\S]{0,180}pointer-events:\s*none/);
   assert.match(styles, /\.settings-court-photo-state/);
+  assert.match(styles, /settings-court-photo-remove[\s\S]{0,120}width:\s*40px;[\s\S]{0,40}height:\s*40px/);
+  assert.match(styles, /@media \(max-width:\s*560px\)[\s\S]*settings-court-photo-remove \{ width:\s*44px; height:\s*44px;/);
 });
 
 test("court AI retries one malformed response", async (context) => {

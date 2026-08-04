@@ -200,8 +200,8 @@
 .settings-court-photo-retake,
 .settings-court-photo-remove {
   position: relative;
-  width: 28px;
-  height: 28px;
+  width: 40px;
+  height: 40px;
   padding: 0;
 }
 
@@ -231,4 +231,6 @@
 
 @media (max-width: 560px) {
   .settings-court-photo-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .settings-court-photo-retake,
+  .settings-court-photo-remove { width: 44px; height: 44px; }
 }

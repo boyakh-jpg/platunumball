@@ -295,10 +295,10 @@ export default function SettingsSideColumn({ controller }) {
                         {photo.pending || photo.error ? <span className="settings-court-photo-state">{photo.pending ? "처리 중" : "다시 촬영"}</span> : null}
                         <div className="settings-court-photo-actions">
                           <Button as="label" variant="secondary" size="sm" className="settings-court-photo-retake" aria-disabled={courtPhotoPending} aria-label={`구장 현장 사진 ${index + 1} 다시 촬영`} title="다시 촬영">
-                            <RefreshCw size={15} />
+                            <RefreshCw size={18} />
                             <input type="file" accept="image/*" capture={onsiteCourtEntry ? "environment" : undefined} onInput={(event) => selectCourtPhotos(event, index)} onChange={(event) => selectCourtPhotos(event, index)} />
                           </Button>
-                          <Button type="button" variant="secondary" size="sm" className="settings-court-photo-remove" disabled={courtPhotoPending} onClick={() => removeCourtPhoto(index)} aria-label={`구장 현장 사진 ${index + 1} 삭제`} title="사진 삭제"><X size={15} /></Button>
+                          <Button type="button" variant="secondary" size="sm" className="settings-court-photo-remove" onClick={() => removeCourtPhoto(index)} aria-label={`구장 현장 사진 ${index + 1} 삭제`} title="사진 삭제"><X size={18} /></Button>
                         </div>
                       </div>
                     ))}

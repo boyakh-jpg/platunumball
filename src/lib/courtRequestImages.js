@@ -121,6 +121,7 @@ export async function prepareCourtRequestPhoto(file) {
     const dimensions = [...new Set([1280, 1152, 1024, 896, 768, 640]
       .map((value) => Math.min(sourceLongEdge, value))
       .map((value) => Math.max(1, Math.round(value))))];
+    let fallback = null;
     for (const longEdge of dimensions) {
       const scale = longEdge / sourceLongEdge;
       const width = Math.max(1, Math.round(decoded.width * scale));
@@ -135,7 +136,10 @@ export async function prepareCourtRequestPhoto(file) {
       context.drawImage(decoded.source, 0, 0, width, height);
       for (const quality of [0.82, 0.74, 0.66, 0.58, 0.5, 0.42, 0.36]) {
         const blob = await canvasToWebp(canvas, quality);
-        if (!blob) throw imageError("court_photo_webp_unavailable");
+        if (!blob || blob.type !== "image/webp") throw imageError("court_photo_webp_unavailable");
+        if (blob.size <= COURT_REQUEST_PHOTO_MAX_BYTES && (!fallback || blob.size < fallback.blob.size)) {
+          fallback = { blob, width, height };
+        }
         if (blob.size <= COURT_REQUEST_PHOTO_TARGET_BYTES) {
           const imageBase64 = await blobToBase64(blob);
           return {
@@ -148,6 +152,17 @@ export async function prepareCourtRequestPhoto(file) {
           };
         }
       }
+    }
+    if (fallback) {
+      const imageBase64 = await blobToBase64(fallback.blob);
+      return {
+        imageBase64,
+        previewUrl: `data:image/webp;base64,${imageBase64}`,
+        byteSize: fallback.blob.size,
+        width: fallback.width,
+        height: fallback.height,
+        metadata: await metadataPromise,
+      };
     }
   } finally {
     decoded.dispose();
