@@ -133,6 +133,7 @@ const tournamentByeOnly = process.argv.includes("--tournament-bye-only");
 const tournamentLeagueOnly = process.argv.includes("--tournament-league-only");
 const operationalGuardsOnly = process.argv.includes("--operational-guards-only");
 const teamEmblemOnly = process.argv.includes("--team-emblem-only");
+const courtRequestOnly = process.argv.includes("--court-request-only");
 const tailOnly = process.argv.includes("--tail-only");
 const remoteSmokeOnly = usesRemoteApi && !fullSimulation;
 const safetyCheckOnly = process.argv.includes("--safety-check-only");
@@ -142,12 +143,13 @@ function getSimulationMode() {
     : tournamentLeagueOnly ? "tournament_league"
       : operationalGuardsOnly ? "operational_guards"
         : teamEmblemOnly ? "team_emblem"
-          : mmrOnly ? "mmr"
-            : tailOnly ? "tail"
-              : recordPermissionsOnly ? "record_permissions"
-                : fullSimulation ? "full"
-                  : usesRemoteApi ? "remote_smoke"
-                    : "local_smoke";
+          : courtRequestOnly ? "court_request"
+            : mmrOnly ? "mmr"
+              : tailOnly ? "tail"
+                : recordPermissionsOnly ? "record_permissions"
+                  : fullSimulation ? "full"
+                    : usesRemoteApi ? "remote_smoke"
+                      : "local_smoke";
 }
 
 function resolveSimulationSafety() {
@@ -4506,15 +4508,16 @@ async function runCourtRegistrationScenario({
     .eq("id", requesterId)
     .maybeSingle());
   if (requesterProfileError) throw requesterProfileError;
-  assertFlow(Number(requesterProfile?.trust_score ?? 0) >= 70, "court requester trust score too low", {
+  assertFlow(Number(requesterProfile?.trust_score ?? 0) >= 90, "court requester trust score too low", {
     requesterId,
     trustScore: requesterProfile?.trust_score,
   });
 
   const addressText = `Backend simulation address ${suffix}`;
-  const photoBytes = readFileSync(new URL("../public/assets/NY-court-day.webp", import.meta.url));
-  const photoHash = createHash("sha256").update(photoBytes).digest("hex");
-  const photos = [{ imageBase64: photoBytes.toString("base64") }];
+  const photoBytes = ["main-day.webp", "main.webp"]
+    .map((name) => readFileSync(new URL(`../public/assets/${name}`, import.meta.url)));
+  const photoHashes = photoBytes.map((bytes) => createHash("sha256").update(bytes).digest("hex"));
+  const photos = photoBytes.map((bytes) => ({ imageBase64: bytes.toString("base64") }));
   const missingPinRequestId = `${requestId}_missing_pin`;
   courtRequestSimulationIds.add(missingPinRequestId);
   await expectRejected(`${ids.label}:rejectCourtWithoutPin`, () => submitCourtRequestAs(requesterLogin, {
@@ -4526,11 +4529,12 @@ async function runCourtRegistrationScenario({
     sido: "서울특별시",
     sigungu: "마포구",
     facilityName: "Backend Simulation Missing Pin",
-    type: "outdoor",
+    type: "야외",
+    publicAccess: "public",
   }, photos), ["court_pin_invalid", "court_pin_required", "court_requests_pending_pin_required"]);
 
-  const evidenceObjectKey = `court-requests/${requestId}/${photoHash}.webp`;
-  courtEvidenceSimulationKeys.add(evidenceObjectKey);
+  const evidenceObjectKeys = photoHashes.map((hash) => `court-requests/${requestId}/${hash}.webp`);
+  evidenceObjectKeys.forEach((key) => courtEvidenceSimulationKeys.add(key));
   courtEvidenceSimulationAdmins.set(requestId, adminLogin);
 
   const submitResult = await step(`${ids.label}:submitCourtRequest`, () => submitCourtRequestAs(requesterLogin, {
@@ -4547,7 +4551,8 @@ async function runCourtRegistrationScenario({
     sido: "서울특별시",
     sigungu: "마포구",
     facilityName: "Backend Simulation Regression Court",
-    type: "outdoor",
+    type: "야외",
+    publicAccess: "public",
     baseName: "Backend Simulation Regression Court",
     courtUnit: `Simulation ${suffix}`,
     courtKind: "street_hoop",
@@ -4586,7 +4591,8 @@ async function runCourtRegistrationScenario({
   if (pendingEvidenceError) throw pendingEvidenceError;
   assertFlow(
     pendingEvidence?.request_id === requestId
-      && pendingEvidence?.photo_keys?.[0] === evidenceObjectKey
+      && pendingEvidence?.photo_keys?.length === evidenceObjectKeys.length
+      && evidenceObjectKeys.every((key) => pendingEvidence.photo_keys.includes(key))
       && Number(pendingEvidence?.field_accuracy_meters) === 5
       && Number(pendingEvidence?.field_distance_meters) <= 30
       && ["complete", "failed", "unavailable"].includes(pendingEvidence?.ai_status)
@@ -8164,13 +8170,19 @@ async function main() {
   const discordUniqueLinkedLogin = process.env.RANKBALL_SIM_DISCORD_UNIQUE_LINKED || "rankball-041";
   const discordUniqueDuplicateLogin = process.env.RANKBALL_SIM_DISCORD_UNIQUE_DUPLICATE || "rankball-042";
   const reportOutsiderLogin = process.env.RANKBALL_SIM_REPORT_OUTSIDER || "rankball-049";
-  const courtRequesterLogin = process.env.RANKBALL_SIM_COURT_REQUESTER || "rankball-049";
+  const courtRequesterLogin = process.env.RANKBALL_SIM_COURT_REQUESTER || "rankball-004";
   const courtAdminLogin = process.env.RANKBALL_SIM_COURT_ADMIN || "rankball-001";
   const expiryRoomHostLogin = process.env.RANKBALL_SIM_EXPIRY_HOST || "rankball-048";
   const expiryRoomInviteeLogin = process.env.RANKBALL_SIM_EXPIRY_INVITEE || "rankball-050";
 
   const scenarios = [];
-  if (matchRecordOnly) {
+  if (courtRequestOnly) {
+    scenarios.push(await runCourtRegistrationScenario({
+      label: "court_request_approval",
+      requesterLogin: courtRequesterLogin,
+      adminLogin: courtAdminLogin,
+    }));
+  } else if (matchRecordOnly) {
     scenarios.push(await runMatchRecordRosterScenario({
       label: "match_record_roster_operation",
     }));

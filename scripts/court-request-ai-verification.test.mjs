@@ -126,14 +126,14 @@ test("court photo EXIF location is a request evidence signal", () => {
   assert.equal(getCourtVerificationDecision({ ...eligibleEvidence, photoLocation: {} }).decision, "auto_approve");
 });
 
-test("court AI token metrics map to neurons and block at 70 percent", () => {
+test("court AI token metrics map to neurons and block at 80 percent", () => {
   const usage = getCourtAiUsage({ input_tokens: 817, output_tokens: 59 });
   const compatibleUsage = getCourtAiUsage({ prompt_tokens: 817, completion_tokens: 59 });
   assert.equal(usage.calls, 1);
-  assert.ok(Math.abs(usage.neurons - 27.646) < 0.01);
+  assert.ok(Math.abs(usage.neurons - 7.231057) < 0.000001);
   assert.equal(compatibleUsage.neurons, usage.neurons);
-  assert.equal(getCourtAiQuotaState(6_999).blocked, false);
-  assert.equal(getCourtAiQuotaState(7_000).blocked, true);
+  assert.equal(getCourtAiQuotaState(7_999).blocked, false);
+  assert.equal(getCourtAiQuotaState(8_000).blocked, true);
 });
 
 test("court request limit state is normalized for the server", async () => {
@@ -235,6 +235,7 @@ test("court photos use browser resizing and private R2", async () => {
   assert.doesNotMatch(client, /file\.size\s*[><=]/);
   assert.match(server, /getPrivateR2Config/);
   assert.match(server, /normalizeWebpUpload/);
+  assert.match(server, /\.resize\(\{ width: 448, height: 448/);
   assert.match(storage, /safeContainer:\s*true/);
   assert.match(server, /getCourtPhotoLocationEvidence/);
   assert.match(server, /photoMetadata/);
@@ -324,7 +325,7 @@ test("court AI retries one malformed response", async (context) => {
     return new Response(JSON.stringify({
       success: true,
       result: {
-        answer: calls === 1 ? "invalid" : JSON.stringify(eligibleAssessment),
+        response: calls === 1 ? "invalid" : eligibleAssessment,
         metrics: calls === 1 ? { input_tokens: 10, output_tokens: 5 } : { input_tokens: 817, output_tokens: 59 },
       },
     }), { status: 200 });
@@ -337,6 +338,7 @@ test("court AI retries one malformed response", async (context) => {
   assert.equal(result.usage.inputTokens, 827);
   assert.ok(requests.every((request) => request.url === "https://court-ai.test"));
   assert.ok(requests.every((request) => request.options.headers.Authorization === "Bearer proxy-secret"));
+  assert.match(JSON.parse(requests[0].options.body).prompt, /Output exactly one JSON object/);
 });
 
 test("court AI spends no quota when deterministic approval checks already fail", async () => {
@@ -351,9 +353,8 @@ test("court AI spends no quota when deterministic approval checks already fail",
 
 test("court AI worker accepts only authenticated bounded evidence", async () => {
   const input = {
-    task: "query",
     image: "data:image/webp;base64,image",
-    question: "Inspect court evidence",
+    prompt: "Inspect court evidence",
   };
   const unauthorized = await courtAiWorker.fetch(new Request("https://court-ai.test", {
     method: "POST",
@@ -372,7 +373,7 @@ test("court AI worker accepts only authenticated bounded evidence", async () => 
       run: async (...args) => {
         calls.push(args);
         return {
-          result: { answer: JSON.stringify(eligibleAssessment) },
+          result: { response: JSON.stringify(eligibleAssessment) },
           usage: { prompt_tokens: 817, completion_tokens: 59 },
         };
       },
@@ -380,11 +381,12 @@ test("court AI worker accepts only authenticated bounded evidence", async () => 
   });
   assert.equal(authorized.status, 200);
   const authorizedPayload = await authorized.json();
-  assert.equal(authorizedPayload.result.answer, JSON.stringify(eligibleAssessment));
+  assert.equal(authorizedPayload.result.response, JSON.stringify(eligibleAssessment));
   assert.equal(authorizedPayload.usage.prompt_tokens, 817);
-  assert.equal(calls[0][0], "@cf/moondream/moondream3.1-9B-A2B");
+  assert.equal(calls[0][0], "@cf/meta/llama-3.2-11b-vision-instruct");
   assert.equal(calls[0][1].image, input.image);
-  assert.equal(calls[0][1].max_tokens, 64);
+  assert.equal(calls[0][1].prompt, input.prompt);
+  assert.equal(calls[0][1].max_tokens, 48);
 });
 
 test("private R2 upload creates a missing bucket once", async (context) => {

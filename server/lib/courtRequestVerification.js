@@ -6,17 +6,17 @@ import {
   COURT_REQUEST_PHOTO_MIN,
 } from "../../shared/lib/courtRequestImagePolicy.js";
 
-export const COURT_REQUEST_AI_MODEL = "@cf/moondream/moondream3.1-9B-A2B";
-export const COURT_REQUEST_AI_PROMPT_VERSION = "court-photo-v3";
+export const COURT_REQUEST_AI_MODEL = "@cf/meta/llama-3.2-11b-vision-instruct";
+export const COURT_REQUEST_AI_PROMPT_VERSION = "court-photo-v4";
 export const COURT_REQUEST_AI_PROXY_URL = "https://boxtier-court-ai.rankball.workers.dev";
 export const COURT_REQUEST_AI_DAILY_NEURONS = 10_000;
-export const COURT_REQUEST_AI_BLOCK_RATIO = 0.7;
+export const COURT_REQUEST_AI_BLOCK_RATIO = 0.8;
 export const COURT_REQUEST_DAILY_LIMIT = 3;
 
 const COURT_REQUEST_AI_BLOCK_NEURONS = COURT_REQUEST_AI_DAILY_NEURONS * COURT_REQUEST_AI_BLOCK_RATIO;
-const COURT_REQUEST_AI_INPUT_NEURONS_PER_MILLION = 27_273;
-const COURT_REQUEST_AI_OUTPUT_NEURONS_PER_MILLION = 90_909;
-const COURT_REQUEST_AI_FALLBACK_NEURONS_PER_CALL = 40;
+const COURT_REQUEST_AI_INPUT_NEURONS_PER_MILLION = 4_410;
+const COURT_REQUEST_AI_OUTPUT_NEURONS_PER_MILLION = 61_493;
+const COURT_REQUEST_AI_FALLBACK_NEURONS_PER_CALL = 12;
 
 function parseJsonAnswer(value = "") {
   const text = String(value || "").trim();
@@ -75,7 +75,7 @@ export function getCourtAiQuotaState(usedNeurons = 0, now = new Date()) {
 
 export async function getCourtAiDailyQuota(supabase, now = new Date()) {
   const emptyQuota = getCourtAiQuotaState(0, now);
-  // ponytail: the 30% reserve absorbs in-flight requests; add atomic reservations only if court traffic grows materially.
+  // ponytail: the 20% reserve absorbs in-flight requests; add atomic reservations only if court traffic grows materially.
   const { data, error } = await supabase
     .from("court_ai_usage_events")
     .select("neurons")
@@ -195,13 +195,11 @@ async function inspectPhoto(config, photo) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        task: "query",
         image: `data:image/webp;base64,${photo.imageBase64}`,
-        question: "Return JSON only. court=true if a basketball playing area, hoop, backboard, or court lines are visible. venue=true if a gym or sports-center exterior, entrance, or sign is visible. synthetic=true only for a screenshot, illustration, CGI, or generated image. {\"court\":boolean,\"hoop\":boolean,\"lines\":boolean,\"venue\":boolean,\"synthetic\":boolean}",
-        reasoning: false,
+        prompt: "Output exactly one JSON object and no prose: {\"court\":boolean,\"hoop\":boolean,\"lines\":boolean,\"venue\":boolean,\"synthetic\":boolean}. venue requires an identifiable gym/sports-center exterior, entrance, or sign, not merely a court or building. synthetic means the entire submitted image is a phone/browser/app screenshot, illustration, CGI, or generated image; normal old, blurry, or low-resolution photos are not synthetic.",
         stream: false,
         temperature: 0,
-        max_tokens: 64,
+        max_tokens: 48,
       }),
     },
   );

@@ -1,4 +1,4 @@
-const MODEL = "@cf/moondream/moondream3.1-9B-A2B";
+const MODEL = "@cf/meta/llama-3.2-11b-vision-instruct";
 const IMAGE_PREFIX = "data:image/webp;base64,";
 
 function json(status, body) {
@@ -17,25 +17,22 @@ export default {
 
     const input = await request.json().catch(() => null);
     if (
-      input?.task !== "query"
-      || typeof input.image !== "string"
+      typeof input?.image !== "string"
       || !input.image.startsWith(IMAGE_PREFIX)
       || input.image.length > 500_000
-      || typeof input.question !== "string"
-      || input.question.length > 1_000
+      || typeof input.prompt !== "string"
+      || input.prompt.length > 1_000
     ) {
       return json(400, { success: false });
     }
 
     try {
       const output = await env.AI.run(MODEL, {
-        task: "query",
         image: input.image,
-        question: input.question,
-        reasoning: false,
+        prompt: input.prompt,
         stream: false,
         temperature: 0,
-        max_tokens: 64,
+        max_tokens: 48,
       });
       return json(200, {
         success: true,

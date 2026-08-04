@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import sharp from "sharp";
 import {
   COURT_REQUEST_PHOTO_MAX_BYTES,
   COURT_REQUEST_PHOTO_MAX_DIMENSION,
@@ -186,7 +187,11 @@ export default async function handler(request, response) {
         || dimensions.width * dimensions.height < COURT_REQUEST_PHOTO_MIN_PIXELS
       ) throw requestError(400, "court_photo_quality_too_low");
       const hash = createHash("sha256").update(bytes).digest("hex");
-      return { bytes, hash, imageBase64: bytes.toString("base64"), metadata: photo?.metadata };
+      const aiBytes = await sharp(bytes, { failOn: "warning", limitInputPixels: COURT_REQUEST_PHOTO_MAX_DIMENSION ** 2 })
+        .resize({ width: 448, height: 448, fit: "inside", withoutEnlargement: true })
+        .webp({ quality: 72, effort: 3 })
+        .toBuffer();
+      return { bytes, hash, imageBase64: aiBytes.toString("base64"), metadata: photo?.metadata };
     }));
     if (new Set(photos.map((photo) => photo.hash)).size !== photos.length) {
       throw requestError(400, "court_photo_duplicate");
