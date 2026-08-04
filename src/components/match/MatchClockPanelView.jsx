@@ -69,7 +69,7 @@ export default function MatchClockPanelView({ context }) {
             <Badge tone={isEnded && recognition.recognized ? "green" : "neutral"}>
               {isEnded
                 ? recognition.recognized ? "정상 사용" : "미사용 처리"
-                : `인정 기준 진행 ${Math.round(recognition.ratio * 100)}%`}
+                : `인정 기준 진행 ${Math.floor(recognition.ratio * 100)}%`}
             </Badge>
           </div>
           {focusMode ? (

@@ -223,9 +223,7 @@ export default function MatchClockPanel({
     && !match.endedAt
     && hasRemainingPeriodTime,
   );
-  const requiresForcedMatchEnd = Boolean(
-    !recognition.startedInWindow || recognition.ratio < 1,
-  );
+  const requiresForcedMatchEnd = recognition.ratio < 1;
   const mediaControlEligible = Boolean(
     shotClockEnabled
     && liveClock?.canControl
@@ -240,7 +238,9 @@ export default function MatchClockPanel({
     if (!canEndMatch || !onEndMatch || pendingAction) return;
     const message = requiresForcedMatchEnd
       ? "인정시간이 부족해 경기시계는 미사용 처리됩니다. 경기를 강제 종료하고 사후 기록 단계로 이동할까요?"
-      : "경기와 경기시계를 함께 종료하고 사후 기록 단계로 이동할까요?";
+      : !recognition.startedInWindow
+        ? "시작 인정시간을 지나 시계를 시작해 경기시계는 미사용 처리됩니다. 경기는 정상 종료하고 사후 기록 단계로 이동할까요?"
+        : "경기와 경기시계를 함께 종료하고 사후 기록 단계로 이동할까요?";
     if (!window.confirm(message)) return;
     const requestMatchId = match.id;
     const requestId = clockRequests.startMutation();
