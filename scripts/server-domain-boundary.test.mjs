@@ -10,7 +10,7 @@ import * as sharedConstants from "../shared/lib/constants.js";
 import * as sharedCourtPolicy from "../shared/lib/courtPolicy.js";
 import { isWithinOneEdit, preferExactSearchMatches } from "../shared/lib/fuzzyText.js";
 import * as sharedMatchUtils from "../shared/lib/matchUtils.js";
-import { normalizeNaverAddress } from "../shared/lib/naverAddress.js";
+import { normalizeNaverAddress, normalizeNaverLocalPlace } from "../shared/lib/naverAddress.js";
 import { sortPlainObject } from "../shared/lib/plainObject.js";
 import * as sharedPostgameRecordVerification from "../shared/lib/postgameRecordVerification.js";
 import * as sharedRecordRetention from "../shared/lib/recordRetention.js";
@@ -146,6 +146,26 @@ test("small cross-runtime utilities keep one shared implementation", async () =>
     zonecode: "",
     lat: 37.2,
     lng: 127.1,
+  });
+  assert.deepEqual(normalizeNaverLocalPlace({
+    title: "<b>서울시청</b>",
+    address: "서울특별시 중구 태평로1가 31",
+    roadAddress: "서울특별시 중구 세종대로 110",
+    mapx: "1269779692",
+    mapy: "375665352",
+  }, 1), {
+    id: "naver-place:1269779692:375665352:1",
+    addressText: "서울특별시 중구 세종대로 110",
+    roadAddress: "서울특별시 중구 세종대로 110",
+    jibunAddress: "서울특별시 중구 태평로1가 31",
+    buildingName: "서울시청",
+    bname: "",
+    hname: "",
+    sido: "",
+    sigungu: "",
+    zonecode: "",
+    lat: 37.5665352,
+    lng: 126.9779692,
   });
 
   const consumers = [

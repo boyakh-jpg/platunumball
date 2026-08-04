@@ -540,6 +540,10 @@ test("authenticated court lookups use POST JSON instead of URL query", async () 
   assert.match(requestGuardSource, /allowRequestMethod\(request, response, allowedMethods = \["POST"\]\)/);
   assert.match(placeServerSource, /from\("approved_courts"\)/);
   assert.match(placeServerSource, /from\("court_requests"\)/);
+  assert.match(addressServerSource, /openapi\.naver\.com\/v1\/search\/local\.json/);
+  assert.match(addressServerSource, /NAVER_SEARCH_CLIENT_ID/);
+  assert.match(addressServerSource, /addresses\.length \? addresses : searchNaverLocal\(query\)/);
+  assert.match(clientSource, /if \(clientResults\.length\) return clientResults/);
   assert.doesNotMatch(placeServerSource, /openapi\.naver\.com\/v1\/search\/local|NAVER_SEARCH_CLIENT_ID|NAVER_SEARCH_CLIENT_SECRET/);
 });
 

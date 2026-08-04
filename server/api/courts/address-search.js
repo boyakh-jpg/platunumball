@@ -1,10 +1,11 @@
 import { allowRequestMethod, getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
 import { MINUTE_MS } from "../../../shared/lib/matchConstants.js";
-import { normalizeNaverAddress } from "../../../shared/lib/naverAddress.js";
+import { normalizeNaverAddress, normalizeNaverLocalPlace } from "../../../shared/lib/naverAddress.js";
 import { assertCourtRequestAccess } from "../../lib/courtRequestAccess.js";
 import { createFixedWindowRateLimiter } from "../../lib/fixedWindowRateLimit.js";
 
 const NAVER_GEOCODE_URL = "https://maps.apigw.ntruss.com/map-geocode/v2/geocode";
+const NAVER_LOCAL_SEARCH_URL = "https://openapi.naver.com/v1/search/local.json";
 const MAX_RESULTS = 10;
 const assertRateLimit = createFixedWindowRateLimiter({
   windowMs: MINUTE_MS,
@@ -29,6 +30,33 @@ function getNaverClientSecret() {
     process.env.NAVER_MAP_NCP_CLIENT_SECRET ||
     ""
   );
+}
+
+async function searchNaverLocal(query) {
+  const clientId = process.env.NAVER_SEARCH_CLIENT_ID || "";
+  const clientSecret = process.env.NAVER_SEARCH_CLIENT_SECRET || "";
+  if (!clientId || !clientSecret) return [];
+
+  const url = new URL(NAVER_LOCAL_SEARCH_URL);
+  url.searchParams.set("query", query);
+  url.searchParams.set("display", "5");
+  const localResponse = await fetch(url, {
+    headers: {
+      "X-Naver-Client-Id": clientId,
+      "X-Naver-Client-Secret": clientSecret,
+      Accept: "application/json",
+    },
+  });
+  const payload = await localResponse.json().catch(() => ({}));
+  if (!localResponse.ok) {
+    const error = new Error(payload.errorMessage || payload.message || `naver_local_search_failed:${localResponse.status}`);
+    error.statusCode = 502;
+    throw error;
+  }
+  return (payload.items ?? [])
+    .map(normalizeNaverLocalPlace)
+    .filter((place) => place.addressText && place.lat !== "" && place.lng !== "")
+    .slice(0, 5);
 }
 
 function getQuery(body = {}) {
@@ -65,10 +93,11 @@ async function searchNaver(query) {
     throw error;
   }
 
-  return (payload.addresses ?? [])
+  const addresses = (payload.addresses ?? [])
     .map(normalizeNaverAddress)
     .filter((address) => address.addressText)
     .slice(0, MAX_RESULTS);
+  return addresses.length ? addresses : searchNaverLocal(query);
 }
 
 export default async function handler(request, response) {

@@ -159,9 +159,10 @@ export async function searchNaverAddresses(query, clientId = getNaverMapClientId
   const searchQuery = String(query ?? "").trim();
   if (!searchQuery) throw new Error("주소 검색어를 입력해 주세요.");
 
+  let clientError = null;
   try {
     await loadNaverMapsSdk(clientId);
-    return await new Promise((resolve, reject) => {
+    const clientResults = await new Promise((resolve, reject) => {
       window.naver.maps.Service.geocode({ query: searchQuery }, (status, response) => {
         if (status !== window.naver.maps.Service.Status.OK) {
           reject(new Error("주소를 검색하지 못했습니다. 검색어를 확인한 뒤 다시 시도해 주세요."));
@@ -173,17 +174,21 @@ export async function searchNaverAddresses(query, clientId = getNaverMapClientId
         resolve(results);
       });
     });
-  } catch (clientError) {
-    try {
-      const serverResults = await searchNaverAddressesOnServer(searchQuery);
-      if (serverResults) return serverResults;
-    } catch (serverError) {
-      if (!["profile_not_found", "court_request_trust_required"].includes(serverError.code)) {
-        throw serverError;
-      }
-    }
-    throw clientError;
+    if (clientResults.length) return clientResults;
+  } catch (error) {
+    clientError = error;
   }
+
+  try {
+    const serverResults = await searchNaverAddressesOnServer(searchQuery);
+    if (serverResults) return serverResults;
+  } catch (serverError) {
+    if (!["profile_not_found", "court_request_trust_required"].includes(serverError.code)) {
+      throw serverError;
+    }
+  }
+  if (clientError) throw clientError;
+  return [];
 }
 
 export async function searchNearbyCourtCandidates(pin = {}) {
