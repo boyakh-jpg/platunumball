@@ -295,13 +295,13 @@
 
 .arena-room-rule-panel .arena-room-rule-badge {
   min-height: calc(var(--ui-badge-font-size) + 12px);
+  border-radius: var(--ui-control-radius);
   font-size: var(--ui-badge-font-size);
   font-weight: var(--ui-badge-font-weight);
   line-height: 1;
 }
 
 .arena-room-rule-summary.detail .arena-room-rule-badge {
-  border-radius: var(--ui-control-radius);
   line-height: 1.35;
   white-space: normal;
   overflow-wrap: anywhere;

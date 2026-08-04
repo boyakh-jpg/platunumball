@@ -1364,7 +1364,11 @@ test("방모달 뱃지와 메모 및 팀명은 공용 타이포그래피를 사�
   assert.equal(count(pageSources.recruiting, 'className="arena-room-rule-badge"'), 6);
   assert.match(
     recruitingStyles,
-    /\.arena-room-rule-panel \.arena-room-rule-badge\s*\{[^}]*font-size:\s*var\(--ui-badge-font-size\);[^}]*font-weight:\s*var\(--ui-badge-font-weight\);[^}]*line-height:\s*1;/,
+    /\.arena-room-rule-panel \.arena-room-rule-badge\s*\{[^}]*border-radius:\s*var\(--ui-control-radius\);[^}]*font-size:\s*var\(--ui-badge-font-size\);[^}]*font-weight:\s*var\(--ui-badge-font-weight\);[^}]*line-height:\s*1;/,
+  );
+  assert.doesNotMatch(
+    pageSources.recruiting,
+    /팀 MMR은 실제 참가 명단|후보는 경기 중 본인 교체|참여 확정 후 불참/,
   );
   assert.match(
     recruitingStyles,

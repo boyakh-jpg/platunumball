@@ -328,13 +328,7 @@ export function RecruitingRoomManagementSection({ context }) {
                       : "경쟁 경기로 확정 배치 결과를 서버에서 검증해 MMR 반영 여부를 결정합니다."}</span>
                     <span>{pickupAssignmentPolicy.description} 최종 배치는 방장 또는 배정 심판이 확정합니다.</span>
                   </>
-                ) : (
-                  <>
-                    <span>팀 MMR은 실제 참가 명단을 서버에서 검증한 뒤 반영합니다.</span>
-                    <span>후보는 경기 중 본인 교체를 요청할 수 있습니다.</span>
-                  </>
-                )}
-                <span>참여 확정 후 불참하면 신뢰점수 차감 대상이 됩니다.</span>
+                ) : null}
               </div> : null}
 
               <RoomChat
