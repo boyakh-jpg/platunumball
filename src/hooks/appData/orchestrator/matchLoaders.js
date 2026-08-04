@@ -26,6 +26,7 @@ export function useMatchLoaders(context) {
     recentMatchMutationTimesRef,
     recentRecruitingMutationTimesRef,
     reportableMatchesPromiseRef,
+    roomMutationVersionRef,
     setMatchLists,
     setMatchPagination,
     setState,
@@ -95,6 +96,8 @@ export function useMatchLoaders(context) {
     if (!isSupabaseConfigured || !authUserId) return false;
     if (matchRecruitingSchedulePromiseRef.current) return matchRecruitingSchedulePromiseRef.current;
     const promise = (async () => {
+      const roomMutationVersion = roomMutationVersionRef.current;
+      const roomMutationPending = pendingMatchIdsRef.current.size > 0 || pendingRecruitingPostIdsRef.current.size > 0;
       setMatchLists((prev) => updateMatchListScope(prev, MATCH_LIST_SCOPES.PERSONAL, {
         status: MATCH_LIST_STATUSES.LOADING,
         error: "",
@@ -117,11 +120,20 @@ export function useMatchLoaders(context) {
           },
           { allowWhenDisabled: true },
         );
-        const remoteState = normalizeServerState(filterPendingRecruitingPosts(result?.state ?? {}, pendingRecruitingPostIdsRef.current, recentRecruitingMutationTimesRef.current));
-        setState((prev) => mergeRemoteMatchPage(prev, remoteState, { forceRecruitingPostIds: new Set(getStateRecruitingPostIds(remoteState)) }));
+        const preserveCurrentRoomLists = roomMutationPending || roomMutationVersion !== roomMutationVersionRef.current;
+        const remoteState = normalizeServerState(filterPendingMatches(
+          filterPendingRecruitingPosts(result?.state ?? {}, pendingRecruitingPostIdsRef.current, recentRecruitingMutationTimesRef.current),
+          pendingMatchIdsRef.current,
+          recentMatchMutationTimesRef.current,
+        ));
+        setState((prev) => mergeRemoteMatchPage(prev, remoteState, {
+          forceRecruitingPostIds: preserveCurrentRoomLists ? new Set() : new Set(getStateRecruitingPostIds(remoteState)),
+        }));
         setMatchLists((prev) => updateMatchListScope(prev, MATCH_LIST_SCOPES.PERSONAL, {
           ids: getStateMatchIds(remoteState),
           recruitingPostIds: getStateRecruitingPostIds(remoteState),
+          preserveCurrentIds: preserveCurrentRoomLists,
+          preserveCurrentRecruitingPostIds: preserveCurrentRoomLists,
           status: MATCH_LIST_STATUSES.READY,
           error: "",
         }));
@@ -150,6 +162,8 @@ export function useMatchLoaders(context) {
     if (!isSupabaseConfigured || !authUserId) return false;
     if (matchTeamSchedulePromiseRef.current) return matchTeamSchedulePromiseRef.current;
     const promise = (async () => {
+      const roomMutationVersion = roomMutationVersionRef.current;
+      const roomMutationPending = pendingMatchIdsRef.current.size > 0 || pendingRecruitingPostIdsRef.current.size > 0;
       setMatchLists((prev) => updateMatchListScope(prev, MATCH_LIST_SCOPES.TEAM, {
         status: MATCH_LIST_STATUSES.LOADING,
         error: "",
@@ -172,13 +186,15 @@ export function useMatchLoaders(context) {
           },
           { allowWhenDisabled: true },
         );
-        const remoteState = normalizeServerState(result?.state ?? {});
+        const preserveCurrentRoomLists = roomMutationPending || roomMutationVersion !== roomMutationVersionRef.current;
+        const remoteState = normalizeServerState(filterPendingMatches(result?.state ?? {}, pendingMatchIdsRef.current, recentMatchMutationTimesRef.current));
         setState((prev) => mergeRemoteMatchPage(prev, remoteState));
         const teamMatchIds = (remoteState.matches ?? [])
           .filter((match) => match.__feedRelations?.includes("team"))
           .map((match) => match.id);
         setMatchLists((prev) => updateMatchListScope(prev, MATCH_LIST_SCOPES.TEAM, {
           ids: teamMatchIds,
+          preserveCurrentIds: preserveCurrentRoomLists,
           status: MATCH_LIST_STATUSES.READY,
           error: "",
         }));
@@ -209,15 +225,20 @@ export function useMatchLoaders(context) {
     const currentPromise = matchDetailPromiseRef.current.get(safeMatchId);
     if (currentPromise) return currentPromise;
     const promise = (async () => {
+      const roomMutationVersion = roomMutationVersionRef.current;
+      const roomMutationPending = pendingMatchIdsRef.current.size > 0 || pendingRecruitingPostIdsRef.current.size > 0;
       try {
         const result = await trackedPostServerAction(
           "/api/matches/detail",
           { authUserId, authEmail, matchId: safeMatchId },
           { allowWhenDisabled: true },
         );
-        const remoteState = normalizeServerState(result?.state ?? {});
+        const preserveCurrentRoomState = roomMutationPending || roomMutationVersion !== roomMutationVersionRef.current;
+        const remoteState = normalizeServerState(filterPendingMatches(result?.state ?? {}, pendingMatchIdsRef.current, recentMatchMutationTimesRef.current));
         const nextMatches = remoteState.matches ?? [];
-        setState((prev) => mergeRemoteMatchPage(prev, remoteState, { forceMatchIds: new Set([safeMatchId]) }));
+        setState((prev) => mergeRemoteMatchPage(prev, remoteState, {
+          forceMatchIds: preserveCurrentRoomState ? new Set() : new Set([safeMatchId]),
+        }));
         return nextMatches.length;
       } catch (error) {
         console.warn("Match detail load failed.", error.message);
@@ -234,6 +255,8 @@ export function useMatchLoaders(context) {
     if (!isSupabaseConfigured || !authUserId) return false;
     if (playMatchesPromiseRef.current) return playMatchesPromiseRef.current;
     const promise = (async () => {
+      const roomMutationVersion = roomMutationVersionRef.current;
+      const roomMutationPending = pendingMatchIdsRef.current.size > 0 || pendingRecruitingPostIdsRef.current.size > 0;
       setMatchLists((prev) => updateMatchListScope(prev, MATCH_LIST_SCOPES.PLAY, {
         status: MATCH_LIST_STATUSES.LOADING,
         error: "",
@@ -244,15 +267,13 @@ export function useMatchLoaders(context) {
           { authUserId, authEmail, limit: REMOTE_CLIENT_MATCH_LIMIT, listOnly: false, playOnly: true, adminContext: false },
           { allowWhenDisabled: true },
         );
+        const preserveCurrentRoomLists = roomMutationPending || roomMutationVersion !== roomMutationVersionRef.current;
         const remoteState = normalizeServerState(filterPendingMatches(result?.state ?? {}, pendingMatchIdsRef.current, recentMatchMutationTimesRef.current));
         const nextMatches = remoteState.matches ?? [];
-        const mutationMatchIds = [
-          ...pendingMatchIdsRef.current,
-          ...recentMatchMutationTimesRef.current.keys(),
-        ];
         setState((prev) => mergeRemoteMatchPage(prev, remoteState));
         setMatchLists((prev) => updateMatchListScope(prev, MATCH_LIST_SCOPES.PLAY, {
-          ids: [...getStateMatchIds(remoteState), ...mutationMatchIds],
+          ids: getStateMatchIds(remoteState),
+          preserveCurrentIds: preserveCurrentRoomLists,
           status: MATCH_LIST_STATUSES.READY,
           error: "",
         }));

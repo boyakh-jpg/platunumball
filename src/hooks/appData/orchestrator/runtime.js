@@ -118,6 +118,7 @@ const authUserId = typeof authUser === "string" ? authUser : authUser?.id ?? nul
   const pendingMatchIdsRef = useRef(new Set());
   const pendingMatchMutationCountsRef = useRef(new Map());
   const recentMatchMutationTimesRef = useRef(new Map());
+  const roomMutationVersionRef = useRef(0);
   const syncedDiscordDeliveryIdsRef = useRef(new Set());
   const authIdentityRef = useRef(authUserId);
   const authGenerationRef = useRef(0);
@@ -239,9 +240,12 @@ const authUserId = typeof authUser === "string" ? authUser : authUser?.id ?? nul
       recruitingLimit: REMOTE_CLIENT_RECRUITING_LIMIT,
       tournamentLimit: 0,
     };
+    const roomMutationVersion = roomMutationVersionRef.current;
+    const roomMutationPending = pendingMatchIdsRef.current.size > 0 || pendingRecruitingPostIdsRef.current.size > 0;
     loadBackendStateWithHomeRetry(authUserId, authEmail, homeLoadOptions)
       .then((remoteState) => {
         if (!mounted) return;
+        const preserveCurrentRoomLists = roomMutationPending || roomMutationVersion !== roomMutationVersionRef.current;
         const remoteMeta = getRemoteMeta(remoteState);
         const maintainedState = isSupabaseConfigured ? remoteState : runAutomaticStateMaintenance(remoteState);
         if (maintainedState) {
@@ -259,6 +263,8 @@ const authUserId = typeof authUser === "string" ? authUser : authUser?.id ?? nul
           setMatchLists((prev) => updateMatchListScope(prev, MATCH_LIST_SCOPES.PERSONAL, {
             ids: getStateMatchIds(maintainedState),
             recruitingPostIds: getStateRecruitingPostIds(maintainedState),
+            preserveCurrentIds: preserveCurrentRoomLists,
+            preserveCurrentRecruitingPostIds: preserveCurrentRoomLists,
             status: MATCH_LIST_STATUSES.READY,
             error: "",
           }));
@@ -351,6 +357,7 @@ const authUserId = typeof authUser === "string" ? authUser : authUser?.id ?? nul
     remoteReady: remoteReady && !authIdentityChanged,
     remoteReadyRef,
     reportableMatchesPromiseRef,
+    roomMutationVersionRef,
     serverActionPendingCount,
     serverProfileBound,
     setAdminContext,

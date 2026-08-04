@@ -50,15 +50,19 @@ export function getMatchListScope(store = {}, scope = "") {
 export function updateMatchListScope(store = {}, scope = "", patch = {}) {
   if (!Object.values(MATCH_LIST_SCOPES).includes(scope)) return store;
   const current = getMatchListScope(store, scope);
+  const nextIds = Object.prototype.hasOwnProperty.call(patch, "ids") ? patch.ids : current.ids;
+  const nextRecruitingPostIds = Object.prototype.hasOwnProperty.call(patch, "recruitingPostIds")
+    ? patch.recruitingPostIds
+    : current.recruitingPostIds;
   return {
     ...store,
     [scope]: createMatchListScope({
       ...current,
       ...patch,
-      ids: Object.prototype.hasOwnProperty.call(patch, "ids") ? patch.ids : current.ids,
-      recruitingPostIds: Object.prototype.hasOwnProperty.call(patch, "recruitingPostIds")
-        ? patch.recruitingPostIds
-        : current.recruitingPostIds,
+      ids: patch.preserveCurrentIds ? [...(Array.isArray(nextIds) ? nextIds : []), ...current.ids] : nextIds,
+      recruitingPostIds: patch.preserveCurrentRecruitingPostIds
+        ? [...(Array.isArray(nextRecruitingPostIds) ? nextRecruitingPostIds : []), ...current.recruitingPostIds]
+        : nextRecruitingPostIds,
     }),
   };
 }

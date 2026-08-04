@@ -22,12 +22,14 @@ export function useDirectoryLoaders(context) {
     mergeRemoteRecruitingPage,
     normalizeDirectoryRankingSort,
     normalizeServerState,
+    pendingMatchIdsRef,
     pendingRecruitingPostIdsRef,
     recentRecruitingMutationTimesRef,
     recruitingPagePromiseRef,
     recruitingPagination,
     recruitingPostPromiseRef,
     recruitingRegionPromiseRef,
+    roomMutationVersionRef,
     runServerAction,
     setDirectoryStatus,
     setRecruitingPagination,
@@ -46,6 +48,8 @@ export function useDirectoryLoaders(context) {
     latestRecruitingLoadMoreRequestRef.current = requestKey;
     setRecruitingPagination((prev) => ({ ...prev, loading: true, error: "", loadMoreError: "" }));
     const promise = (async () => {
+      const roomMutationVersion = roomMutationVersionRef.current;
+      const roomMutationPending = pendingMatchIdsRef.current.size > 0 || pendingRecruitingPostIdsRef.current.size > 0;
       try {
         const result = await trackedPostServerAction(
           "/api/recruiting/list",
@@ -66,10 +70,13 @@ export function useDirectoryLoaders(context) {
         );
         const rawRemoteState = result?.state ?? {};
         const rawPostCount = rawRemoteState.recruitingPosts?.length ?? 0;
+        const preserveCurrentRoomState = roomMutationPending || roomMutationVersion !== roomMutationVersionRef.current;
         const remoteState = normalizeServerState(filterPendingRecruitingPosts(rawRemoteState, pendingRecruitingPostIdsRef.current, recentRecruitingMutationTimesRef.current));
         const nextPosts = remoteState.recruitingPosts ?? [];
         if (latestRecruitingLoadMoreRequestRef.current !== requestKey) return false;
-        setState((prev) => mergeRemoteRecruitingPage(prev, remoteState, { forceRecruitingPostIds: new Set(getStateRecruitingPostIds(remoteState)) }));
+        setState((prev) => mergeRemoteRecruitingPage(prev, remoteState, {
+          forceRecruitingPostIds: preserveCurrentRoomState ? new Set() : new Set(getStateRecruitingPostIds(remoteState)),
+        }));
         const pageHasExhausted = typeof result?.page?.exhausted === "boolean";
         setRecruitingPagination({
           loading: false,
@@ -112,6 +119,8 @@ export function useDirectoryLoaders(context) {
     }
     setRecruitingPagination((prev) => ({ ...prev, ...regionRequest, ...startFilterRequest, loading: true, exhausted: false, error: "", loadMoreError: "", cursor: "", offset: 0 }));
     const promise = (async () => {
+      const roomMutationVersion = roomMutationVersionRef.current;
+      const roomMutationPending = pendingMatchIdsRef.current.size > 0 || pendingRecruitingPostIdsRef.current.size > 0;
       try {
         const result = await trackedPostServerAction(
           "/api/recruiting/list",
@@ -132,10 +141,13 @@ export function useDirectoryLoaders(context) {
         );
         const rawRemoteState = result?.state ?? {};
         const rawPostCount = rawRemoteState.recruitingPosts?.length ?? 0;
+        const preserveCurrentRoomState = roomMutationPending || roomMutationVersion !== roomMutationVersionRef.current;
         const remoteState = normalizeServerState(filterPendingRecruitingPosts(rawRemoteState, pendingRecruitingPostIdsRef.current, recentRecruitingMutationTimesRef.current));
         const nextPosts = remoteState.recruitingPosts ?? [];
         if (latestRecruitingRegionRequestRef.current !== promiseKey) return false;
-        setState((prev) => mergeRemoteRecruitingPage(prev, remoteState, { forceRecruitingPostIds: new Set(getStateRecruitingPostIds(remoteState)) }));
+        setState((prev) => mergeRemoteRecruitingPage(prev, remoteState, {
+          forceRecruitingPostIds: preserveCurrentRoomState ? new Set() : new Set(getStateRecruitingPostIds(remoteState)),
+        }));
         const pageHasExhausted = typeof result?.page?.exhausted === "boolean";
         setRecruitingPagination({
           loading: false,
@@ -169,15 +181,20 @@ export function useDirectoryLoaders(context) {
     const currentPromise = recruitingPostPromiseRef.current.get(safePostId);
     if (currentPromise) return currentPromise;
     const promise = (async () => {
+      const roomMutationVersion = roomMutationVersionRef.current;
+      const roomMutationPending = pendingMatchIdsRef.current.size > 0 || pendingRecruitingPostIdsRef.current.size > 0;
       try {
         const result = await trackedPostServerAction(
           "/api/recruiting/list",
           { authUserId, authEmail, postId: safePostId, limit: 1, adminContext: false, includeFeedCounts: false },
           { allowWhenDisabled: true },
         );
+        const preserveCurrentRoomState = roomMutationPending || roomMutationVersion !== roomMutationVersionRef.current;
         const remoteState = normalizeServerState(filterPendingRecruitingPosts(result?.state ?? {}, pendingRecruitingPostIdsRef.current, recentRecruitingMutationTimesRef.current));
         const nextPosts = remoteState.recruitingPosts ?? [];
-        setState((prev) => mergeRemoteRecruitingPage(prev, remoteState, { forceRecruitingPostIds: new Set([safePostId]) }));
+        setState((prev) => mergeRemoteRecruitingPage(prev, remoteState, {
+          forceRecruitingPostIds: preserveCurrentRoomState ? new Set() : new Set([safePostId]),
+        }));
         setRecruitingPagination((prev) => ({
           ...prev,
           feedCounts: result?.page?.feedCounts ?? prev.feedCounts ?? null,

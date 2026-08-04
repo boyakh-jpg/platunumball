@@ -29,6 +29,7 @@ export function useAppDataServerActions(context) {
     recentMatchMutationTimesRef,
     recentRecruitingMutationTimesRef,
     remoteReadyRef,
+    roomMutationVersionRef,
     setMatchLists,
     setState,
     settingsAuthUserIdRef,
@@ -127,6 +128,7 @@ const currentUser = useMemo(() => {
     const mutationStartedAt = Date.now();
     const requestGeneration = authGenerationRef.current;
     if (pendingPostId) {
+      roomMutationVersionRef.current += 1;
       pendingRecruitingPostIdsRef.current.add(pendingPostId);
       recentRecruitingMutationTimesRef.current.set(pendingPostId, mutationStartedAt);
     }
@@ -191,6 +193,7 @@ const currentUser = useMemo(() => {
     const mutationStartedAt = Date.now();
     const requestGeneration = authGenerationRef.current;
     if (pendingMatchId) {
+      roomMutationVersionRef.current += 1;
       pendingMatchMutationCountsRef.current.set(
         pendingMatchId,
         (pendingMatchMutationCountsRef.current.get(pendingMatchId) ?? 0) + 1,

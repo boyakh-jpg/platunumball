@@ -112,7 +112,7 @@ test("로컬 자동 유지보수는 만료 모집방을 닫고 24시간 미응�
   assert.equal(next.notifications.some((item) => item.title === "동의 자동 처리"), true);
 });
 
-test("match list scopes replace server result IDs without leaking other feeds", () => {
+test("match list scopes replace server IDs but preserve the current scope during a room mutation", () => {
   const matches = [
     { id: "current-team-match" },
     { id: "stale-match-from-another-screen" },
@@ -138,6 +138,23 @@ test("match list scopes replace server result IDs without leaking other feeds", 
     status: MATCH_LIST_STATUSES.READY,
     error: "",
   });
+  const mutationStore = createMatchListStore({
+    [MATCH_LIST_SCOPES.PERSONAL]: {
+      ids: ["current-team-match"],
+      recruitingPostIds: ["current-room"],
+      status: MATCH_LIST_STATUSES.READY,
+    },
+  });
+  const preservedStore = updateMatchListScope(mutationStore, MATCH_LIST_SCOPES.PERSONAL, {
+    ids: ["new-server-match"],
+    recruitingPostIds: [],
+    preserveCurrentIds: true,
+    preserveCurrentRecruitingPostIds: true,
+  });
+  const settledStore = updateMatchListScope(preservedStore, MATCH_LIST_SCOPES.PERSONAL, {
+    ids: ["new-server-match"],
+    recruitingPostIds: [],
+  });
 
   assert.deepEqual(
     selectMatchListMatches(entities, readyStore, MATCH_LIST_SCOPES.TEAM).map((match) => match.id),
@@ -150,6 +167,10 @@ test("match list scopes replace server result IDs without leaking other feeds", 
   assert.deepEqual(selectMatchListMatches(entities, emptyStore, MATCH_LIST_SCOPES.TEAM), []);
   assert.deepEqual(selectMatchListMatches(entities, initialStore, MATCH_LIST_SCOPES.TEAM), []);
   assert.deepEqual(selectMatchListMatches({}, readyStore, MATCH_LIST_SCOPES.TEAM), []);
+  assert.deepEqual(getMatchListScope(preservedStore, MATCH_LIST_SCOPES.PERSONAL).ids, ["new-server-match", "current-team-match"]);
+  assert.deepEqual(getMatchListScope(preservedStore, MATCH_LIST_SCOPES.PERSONAL).recruitingPostIds, ["current-room"]);
+  assert.deepEqual(getMatchListScope(settledStore, MATCH_LIST_SCOPES.PERSONAL).ids, ["new-server-match"]);
+  assert.deepEqual(getMatchListScope(settledStore, MATCH_LIST_SCOPES.PERSONAL).recruitingPostIds, []);
 });
 
 test("cancelled instant rooms stay visible for their calendar date", async () => {
@@ -210,7 +231,9 @@ test("schedule, recruiting, and play lists refresh server data on entry and brow
   assert.match(appDataSource, /updateMatchListScope\(prev,\s*MATCH_LIST_SCOPES\.PERSONAL/);
   assert.match(appDataSource, /updateMatchListScope\(prev,\s*MATCH_LIST_SCOPES\.TEAM/);
   assert.match(appDataSource, /updateMatchListScope\(prev,\s*MATCH_LIST_SCOPES\.PLAY/);
-  assert.match(appDataSource, /mutationMatchIds = \[[\s\S]*pendingMatchIdsRef\.current[\s\S]*recentMatchMutationTimesRef\.current\.keys\(\)[\s\S]*ids: \[\.\.\.getStateMatchIds\(remoteState\), \.\.\.mutationMatchIds\]/);
+  assert.match(appDataSource, /roomMutationVersionRef\.current \+= 1/);
+  assert.match(appDataSource, /preserveCurrentIds:\s*preserveCurrentRoomLists/);
+  assert.match(appDataSource, /preserveCurrentRecruitingPostIds:\s*preserveCurrentRoomLists/);
   assert.match(matchesSource, /selectMatchListMatches\(matchesById,\s*app\.matchLists,\s*MATCH_LIST_SCOPES\.PERSONAL\)/);
   assert.match(matchesSource, /selectMatchListMatches\(matchesById,\s*app\.matchLists,\s*MATCH_LIST_SCOPES\.TEAM\)/);
   assert.match(recorderSource, /selectMatchListMatches\(app\.matchEntities,\s*app\.matchLists,\s*MATCH_LIST_SCOPES\.PLAY\)/);
