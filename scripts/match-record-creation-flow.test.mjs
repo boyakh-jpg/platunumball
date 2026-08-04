@@ -513,8 +513,9 @@ test("personal quick record ignores stale names and creates no approval room", (
 test("play list keeps match_record participants without reviving recorder authority", () => {
   assert.match(
     matchListSource,
-    /fetchPlayMatchPage[\s\S]*fetchCurrentUserMatchCandidateIds\([\s\S]*true[\s\S]*\["agreed", "approval", "disputed"\]/u,
+    /fetchPlayMatchPage[\s\S]*from\("user_room_feed"\)[\s\S]*\.in\("status", \["agreed", "approval", "disputed"\]\)[\s\S]*\.range\(0, rowLimit - 1\)/u,
   );
+  assert.match(matchListSource, /if \(!isMissingUserRoomFeed\(error\)\) throw error;[\s\S]*fetchCurrentUserMatchCandidateIds/u);
   assert.doesNotMatch(matchListSource, /rankball_recorder_match_list/u);
 });
 

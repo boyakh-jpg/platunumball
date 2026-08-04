@@ -8,6 +8,8 @@ import {
   userRoomFeedAvailable,
   disableUserRoomFeed,
   MATCH_LIST_MAX_LIMIT,
+  MATCH_FEED_ROW_MAX_LIMIT,
+  MATCH_FEED_ROW_FACTOR,
   ACTIVE_MATCH_EXCLUDED_STATUS_VALUES,
   MATCH_TERMINAL_STATUS_FILTER,
   getMineOffsetCursor,
@@ -297,6 +299,33 @@ export async function fetchPlayMatchPage(client, profileId = "", limit = REMOTE_
   if (!profileId) return { rows: [], cursor: "", exhausted: true };
   const cappedLimit = Math.max(1, Math.min(MATCH_LIST_MAX_LIMIT, Number(limit) || REMOTE_CLIENT_MATCH_LIMIT));
   const offset = getMineOffsetCursor(cursor);
+  if (userRoomFeedAvailable) {
+    const rowLimit = Math.min(MATCH_FEED_ROW_MAX_LIMIT, (offset + cappedLimit) * MATCH_FEED_ROW_FACTOR);
+    const { data, error } = await client
+      .from("user_room_feed")
+      .select("entity_id,sort_at")
+      .eq("entity_type", "match")
+      .eq("profile_id", profileId)
+      .eq("is_active", true)
+      .in("status", ["agreed", "approval", "disputed"])
+      .in("relation", ["owner", "participant", "referee"])
+      .order("sort_at", { ascending: false, nullsFirst: false })
+      .order("entity_id", { ascending: false })
+      .range(0, rowLimit - 1);
+    if (!error) {
+      const candidateIds = unique((data ?? []).map((row) => row?.entity_id));
+      const pageIds = candidateIds.slice(offset, offset + cappedLimit);
+      const rows = await fetchMatchRowsByIds(client, pageIds);
+      const hasMore = offset + pageIds.length < candidateIds.length || (data ?? []).length === rowLimit;
+      return {
+        rows,
+        cursor: pageIds.length && hasMore ? `mine:${offset + pageIds.length}` : "",
+        exhausted: !hasMore,
+      };
+    }
+    if (!isMissingUserRoomFeed(error)) throw error;
+    disableUserRoomFeed();
+  }
   const candidateIds = await fetchCurrentUserMatchCandidateIds(
     client,
     profileId,
