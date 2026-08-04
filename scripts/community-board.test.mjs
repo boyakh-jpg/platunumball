@@ -68,3 +68,15 @@ test("커뮤니티 입력 버튼은 서버와 같은 최대 길이에서 막힌�
   assert.match(editor, /bodyLength <= COMMUNITY_POST_BODY_MAX/);
   assert.match(dialog, /commentLength > COMMUNITY_COMMENT_BODY_MAX/);
 });
+
+test("게시글 목록은 제목 중심 열과 모바일 두 줄 구조를 사용한다", async () => {
+  const [page, styles] = await Promise.all([
+    readFile(new URL("../src/pages/Community.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/styles/features/community-board.css", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(page, /community-post-list-head/);
+  assert.match(page, /<span>작성자<\/span>[\s\S]*<span>날짜<\/span>[\s\S]*<span>추천<\/span>[\s\S]*<span>댓글<\/span>/);
+  assert.doesNotMatch(page, /community-post-open|ChevronRight/);
+  assert.match(styles, /"labels title title title"\s*"author date likes comments"/);
+});

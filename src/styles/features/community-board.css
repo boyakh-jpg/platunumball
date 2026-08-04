@@ -84,18 +84,32 @@
   display: grid;
 }
 
+.community-post-list-head,
 .community-post-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto 40px;
+  grid-template-columns: 72px minmax(0, 1fr) minmax(96px, 152px) 68px 48px 48px;
   align-items: center;
-  gap: var(--space-6);
-  min-height: 78px;
-  border-bottom: var(--ui-stroke-width) solid var(--card-border);
-  padding: 10px 0;
+  gap: var(--space-5);
 }
 
-.community-post-main,
-.community-post-meta,
+.community-post-list-head {
+  min-height: 34px;
+  border-bottom: var(--ui-stroke-width) solid var(--card-border);
+  color: var(--muted);
+  font-size: var(--font-size-meta);
+  font-weight: 850;
+}
+
+.community-post-list-head > span:nth-child(n + 4) {
+  text-align: center;
+}
+
+.community-post-row {
+  min-height: 62px;
+  border-bottom: var(--ui-stroke-width) solid var(--card-border);
+  padding: 8px 0;
+}
+
 .community-post-labels,
 .community-post-metrics,
 .community-author,
@@ -104,10 +118,6 @@
   align-items: center;
   min-width: 0;
   gap: var(--space-3);
-}
-
-.community-post-main {
-  flex-wrap: wrap;
 }
 
 .community-post-labels {
@@ -119,28 +129,43 @@
 }
 
 .community-post-title {
-  flex: 1 1 260px;
+  min-height: 40px;
   border: 0;
   background: transparent;
-  padding: 6px 0;
+  padding: 4px 0;
   color: var(--text);
   text-align: left;
   cursor: pointer;
 }
 
-.community-post-meta {
-  flex: 1 0 100%;
-  color: var(--muted);
-  font-size: var(--font-size-meta);
+.community-post-author-cell {
+  min-width: 0;
 }
 
-.community-post-meta time,
+.community-post-date,
 .community-post-byline time,
 .community-comment-head time {
   flex: 0 0 auto;
   color: var(--muted);
   font-size: var(--font-size-meta);
   font-weight: 750;
+}
+
+.community-post-date {
+  text-align: center;
+  white-space: nowrap;
+}
+
+.community-post-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  color: var(--muted);
+  font-size: var(--font-size-meta);
+  font-variant-numeric: tabular-nums;
+  font-weight: 850;
+  white-space: nowrap;
 }
 
 .community-post-metrics {
@@ -154,11 +179,6 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-}
-
-.community-post-open {
-  width: 40px;
-  padding-inline: 0;
 }
 
 .community-author {
@@ -345,27 +365,42 @@
     display: none;
   }
 
+  .community-post-list-head {
+    display: none;
+  }
+
   .community-post-row {
-    grid-template-columns: minmax(0, 1fr) 36px;
-    gap: var(--space-4);
+    grid-template-columns: minmax(0, 1fr) auto auto auto;
+    grid-template-areas:
+      "labels title title title"
+      "author date likes comments";
+    gap: var(--space-2) var(--space-4);
+    min-height: 76px;
+    padding: 8px 0;
   }
 
-  .community-post-row > .community-post-metrics {
-    grid-column: 1;
-  }
-
-  .community-post-open {
-    grid-column: 2;
-    grid-row: 1 / span 2;
-    width: 36px;
+  .community-post-labels {
+    grid-area: labels;
   }
 
   .community-post-title {
-    flex-basis: 180px;
+    grid-area: title;
   }
 
-  .community-post-meta {
-    justify-content: space-between;
+  .community-post-author-cell {
+    grid-area: author;
+  }
+
+  .community-post-date {
+    grid-area: date;
+  }
+
+  .community-post-likes {
+    grid-area: likes;
+  }
+
+  .community-post-comments {
+    grid-area: comments;
   }
 
   .community-board-toolbar {
@@ -389,7 +424,7 @@
 }
 
 @media (max-width: 390px) {
-  .community-post-meta time {
+  .community-post-author-cell small {
     display: none;
   }
 

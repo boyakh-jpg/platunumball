@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronRight, Flame, MessageCircle, PenLine, Pin, ThumbsUp } from "lucide-react";
+import { Flame, MessageCircle, PenLine, Pin, ThumbsUp } from "lucide-react";
 import Button from "../components/common/Button.jsx";
 import Badge from "../components/common/Badge.jsx";
 import Card from "../components/common/Card.jsx";
@@ -79,21 +79,29 @@ export default function Community({ app }) {
         {controller.error && !controller.selectedPost ? <small className="form-warning" role="status">{controller.error}</small> : null}
 
         <div className="community-post-list">
+          {controller.posts.length ? (
+            <div className="community-post-list-head" aria-hidden="true">
+              <span>분류</span>
+              <span>제목</span>
+              <span>작성자</span>
+              <span>날짜</span>
+              <span>추천</span>
+              <span>댓글</span>
+            </div>
+          ) : null}
           {controller.posts.map((post) => (
             <article key={post.id} className="community-post-row">
-              <div className="community-post-main">
-                <span className="community-post-labels">
-                  <Badge tone={post.category === "notice" ? "orange" : "neutral"}>{post.category === "notice" ? "공지" : "자유"}</Badge>
-                  {post.pinned ? <Pin size={14} aria-label="상단 고정" /> : null}
-                </span>
-                <button type="button" className="community-post-title" onClick={() => controller.openPost(post)}>{post.title}</button>
-                <div className="community-post-meta">
-                  <CommunityAuthorLink author={post.author} teams={app.state.teams} />
-                  <time>{formatKoreanDateTime(post.createdAt)}</time>
-                </div>
-              </div>
-              <PostMetrics post={post} />
-              <Button type="button" variant="secondary" size="sm" className="community-post-open" aria-label={`${post.title} 보기`} onClick={() => controller.openPost(post)}><ChevronRight size={17} /></Button>
+              <span className="community-post-labels">
+                <Badge tone={post.category === "notice" ? "orange" : "neutral"}>{post.category === "notice" ? "공지" : "자유"}</Badge>
+                {post.pinned ? <Pin size={14} aria-label="상단 고정" /> : null}
+              </span>
+              <button type="button" className="community-post-title" onClick={() => controller.openPost(post)}>{post.title}</button>
+              <div className="community-post-author-cell"><CommunityAuthorLink author={post.author} teams={app.state.teams} /></div>
+              <time className="community-post-date" dateTime={post.createdAt} title={formatKoreanDateTime(post.createdAt)}>
+                {formatKoreanDateTime(post.createdAt, { month: "2-digit", day: "2-digit" })}
+              </time>
+              <span className="community-post-count community-post-likes" aria-label={`추천 ${post.likeCount}개`}><ThumbsUp size={14} /> {post.likeCount}</span>
+              <span className="community-post-count community-post-comments" aria-label={`댓글 ${post.commentCount}개`}><MessageCircle size={14} /> {post.commentCount}</span>
             </article>
           ))}
           {controller.loading && !controller.posts.length ? <div className="ui-empty-state">게시글 불러오는 중</div> : null}
