@@ -22,6 +22,7 @@ import {
 } from "./settingsPageModel.js";
 import { COURT_REQUEST_FIELD_CAPTURE_MAX_AGE_MS, COURT_REQUEST_PHOTO_MAX, getCoordinateDistanceMeters } from "../../shared/lib/courtRequestImagePolicy.js";
 import { getCourtRequestPhotoErrorMessage, prepareCourtRequestPhotos } from "../lib/courtRequestImages.js";
+import { postServerAction } from "../lib/serverActions.js";
 
 export default function useSettingsCourtRequestController({ app, currentTrustScore }) {
   const [courtAddressQuery, setCourtAddressQueryState] = useState("");
@@ -38,6 +39,7 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
   const [courtPhotoPending, setCourtPhotoPending] = useState(false);
   const [courtFieldLocation, setCourtFieldLocation] = useState(null);
   const [courtFieldLocationPending, setCourtFieldLocationPending] = useState(false);
+  const [courtAiQuota, setCourtAiQuota] = useState(null);
   const courtAddressSearchRef = useRef(0);
   const courtPinPendingRef = useRef(false);
   const courtSubmitPendingRef = useRef(false);
@@ -92,7 +94,8 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
   const courtSourceUrlInput = String(courtDraft.sourceUrl ?? "").trim();
   const courtSourceUrl = normalizeCourtSourceUrl(courtSourceUrlInput);
   const courtSourceUrlInvalid = Boolean(courtSourceUrlInput && !courtSourceUrl);
-  const canOpenCourtRequestForm = currentTrustScore >= COURT_REQUEST_TRUST_MIN;
+  const courtQuotaBlocked = courtAiQuota?.blocked === true;
+  const canOpenCourtRequestForm = currentTrustScore >= COURT_REQUEST_TRUST_MIN && !courtQuotaBlocked;
   const canSubmitCourtRequest = canOpenCourtRequestForm
     && Boolean(courtDisplayName)
     && courtAddressSelected
@@ -109,6 +112,16 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
   useEffect(() => {
     setCourtNearbyConfirmed(false);
   }, [courtNearbyCandidateSignature]);
+
+  useEffect(() => {
+    let active = true;
+    postServerAction("/api/court-requests/quota", {}, { allowWhenDisabled: true })
+      .then((result) => {
+        if (active && result?.quota) setCourtAiQuota(result.quota);
+      })
+      .catch(() => null);
+    return () => { active = false; };
+  }, [app.currentUserId]);
 
   const updateCourtDraft = (patch) => {
     if (Object.keys(patch).some((key) => COURT_NEARBY_REVIEW_FIELDS.has(key))) setCourtNearbyConfirmed(false);
@@ -244,6 +257,10 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
     const files = event.target.files;
     event.target.value = "";
     if (!files?.length) return;
+    if (courtQuotaBlocked) {
+      setCourtLookupStatus("금일 구장 신청 가능량을 넘었습니다. 오전 9시 이후 다시 신청해 주세요.");
+      return;
+    }
     if (!courtFieldLocation || Date.now() - Date.parse(courtFieldLocation.capturedAt) > COURT_REQUEST_FIELD_CAPTURE_MAX_AGE_MS) {
       setCourtFieldLocation(null);
       setCourtPhotos([]);
@@ -295,6 +312,10 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
   const submitCourtRequest = async (event) => {
     event.preventDefault();
     if (courtSubmitPendingRef.current) return;
+    if (courtQuotaBlocked) {
+      setCourtLookupStatus("금일 구장 신청 가능량을 넘었습니다. 오전 9시 이후 다시 신청해 주세요.");
+      return;
+    }
     if (!courtDisplayName) {
       setCourtLookupStatus("시설/장소명을 입력해 주세요.");
       return;
@@ -344,6 +365,11 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
         { ...courtDraft, fieldLocation: courtFieldLocation },
         courtPhotos.map(({ imageBase64, byteSize, width, height }) => ({ imageBase64, byteSize, width, height })),
       );
+      if (result?.error === "court_ai_daily_quota_reached") {
+        setCourtAiQuota((current) => ({ ...(current ?? {}), blocked: true }));
+        setCourtLookupStatus("금일 구장 신청 가능량을 넘었습니다. 오전 9시 이후 다시 신청해 주세요.");
+        return;
+      }
       if (!result?.requestId) {
         setCourtLookupStatus("구장 등록 요청을 저장하지 못했습니다. 입력 내용을 확인한 뒤 다시 시도해 주세요.");
         return;
@@ -355,6 +381,7 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
       setCourtNearbyConfirmed(false);
       setCourtPhotos([]);
       setCourtFieldLocation(null);
+      if (result.quota) setCourtAiQuota(result.quota);
       setCourtDraft({
         ...DEFAULT_COURT_REQUEST,
         region: app.currentUser?.region ?? DEFAULT_COURT_REQUEST.region,
@@ -385,6 +412,7 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
     courtPhotoPending,
     courtFieldLocation,
     courtFieldLocationPending,
+    courtQuotaBlocked,
     naverMapKeyReady,
     courtAddressSelected,
     courtDisplayName,

@@ -35,9 +35,13 @@ export default {
         reasoning: false,
         stream: false,
         temperature: 0,
-        max_tokens: 220,
+        max_tokens: 128,
       });
-      return json(200, { success: true, result: output?.result ?? output });
+      return json(200, {
+        success: true,
+        result: output?.result ?? output,
+        usage: output?.usage ?? output?.metrics ?? null,
+      });
     } catch {
       return json(502, { success: false });
     }

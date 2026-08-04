@@ -6,7 +6,6 @@ export const COURT_REQUEST_PHOTO_MAX_DIMENSION = 1280;
 export const COURT_REQUEST_FIELD_ACCURACY_MAX_METERS = 20;
 export const COURT_REQUEST_FIELD_DISTANCE_MAX_METERS = 30;
 export const COURT_REQUEST_FIELD_CAPTURE_MAX_AGE_MS = 10 * 60 * 1000;
-export const COURT_REQUEST_AI_CONFIDENCE_MIN = 0.97;
 
 export function getCoordinateDistanceMeters(latA, lngA, latB, lngB) {
   const input = [latA, lngA, latB, lngB];

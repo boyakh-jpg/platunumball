@@ -44,7 +44,7 @@ function CourtRequestEvidence({ app, requestId, verification }) {
           {loading ? "불러오는 중" : evidence?.autoApproved ? "AI 자동승인" : "관리자 검토"}
         </Badge>
       </div>
-      {evidence ? <small>AI {evidence.aiStatus} · 신뢰도 {Number.isFinite(confidence) ? `${Math.round(confidence * 100)}%` : "-"} · GPS 오차 {formatMeters(evidence.fieldAccuracyMeters)} · 핀과 {formatMeters(evidence.fieldDistanceMeters)}</small> : null}
+      {evidence ? <small>AI {evidence.aiStatus} · 증거 충족도 {Number.isFinite(confidence) ? `${Math.round(confidence * 100)}%` : "-"} · GPS 오차 {formatMeters(evidence.fieldAccuracyMeters)} · 핀과 {formatMeters(evidence.fieldDistanceMeters)}</small> : null}
       {result?.photos?.length ? (
         <div className="admin-court-evidence-photos">
           {result.photos.map((photo, index) => <img key={index} src={photo} alt={`구장 검증 사진 ${index + 1}`} />)}

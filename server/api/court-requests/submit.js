@@ -7,7 +7,13 @@ import {
   COURT_REQUEST_FIELD_CAPTURE_MAX_AGE_MS,
   getCoordinateDistanceMeters,
 } from "../../../shared/lib/courtRequestImagePolicy.js";
-import { getCourtVerificationDecision, inspectCourtRequestPhotos } from "../../lib/courtRequestVerification.js";
+import {
+  getCourtAiDailyQuota,
+  getCourtAiQuotaState,
+  getCourtVerificationDecision,
+  inspectCourtRequestPhotos,
+  recordCourtAiUsage,
+} from "../../lib/courtRequestVerification.js";
 import {
   decodeBase64Image,
   deleteR2Object,
@@ -111,6 +117,8 @@ export default async function handler(request, response) {
     if (Buffer.byteLength(JSON.stringify(body), "utf8") > COURT_REQUEST_BODY_MAX_BYTES) throw requestError(413, "request_body_too_large");
 
     const context = await getAuthenticatedContext(request, { profileSelect: "id, auth_user_id, trust_score" });
+    const quota = await getCourtAiDailyQuota(context.supabase);
+    if (quota.blocked) throw requestError(429, "court_ai_daily_quota_reached");
     const fieldLocation = requestPayload.fieldLocation && typeof requestPayload.fieldLocation === "object"
       ? requestPayload.fieldLocation
       : {};
@@ -131,6 +139,8 @@ export default async function handler(request, response) {
     storageConfig = getPrivateR2Config();
     const mechanical = await getMechanicalEvidence(context, requestPayload, fieldLocation);
     const ai = await inspectCourtRequestPhotos(photos, requestPayload.courtLayout);
+    await recordCourtAiUsage(context.supabase, requestId, ai.usage);
+    const quotaAfter = getCourtAiQuotaState(quota.usedNeurons + ai.usage.neurons);
     const policy = getCourtVerificationDecision({
       assessments: ai.assessments,
       photoCount: photos.length,
@@ -178,7 +188,7 @@ export default async function handler(request, response) {
         promptVersion: ai.promptVersion,
         aiStatus: ai.status,
         aiConfidence: policy.confidence,
-        aiResult: { assessments: ai.assessments, checks: policy.checks, failureReason: ai.failureReason ?? null },
+        aiResult: { assessments: ai.assessments, checks: policy.checks, usage: ai.usage, failureReason: ai.failureReason ?? null },
         decision: policy.decision,
       },
     });
@@ -201,6 +211,7 @@ export default async function handler(request, response) {
       autoApproved: approval?.ok === true,
       approvedCourtId: approval?.approvedCourtId ?? null,
       verification,
+      quota: quotaAfter,
     });
   } catch (error) {
     if (storageConfig && uploadedKeys.length) {

@@ -51,6 +51,7 @@ export default function SettingsSideColumn({ controller }) {
     courtPhotoPending,
     courtFieldLocation,
     courtFieldLocationPending,
+    courtQuotaBlocked,
     userMap,
     matchMap,
     courtRequests,
@@ -149,13 +150,13 @@ export default function SettingsSideColumn({ controller }) {
                 <p className="eyebrow">Court</p>
                 <h2>구장 등록요청</h2>
               </div>
-              <Badge tone={canSubmitCourtRequest ? "green" : "orange"}>신뢰도 {currentTrustScore}</Badge>
+              <Badge tone={canSubmitCourtRequest ? "green" : "orange"}>{courtQuotaBlocked ? "오늘 마감" : `신뢰도 ${currentTrustScore}`}</Badge>
             </div>
             <div className={canSubmitCourtRequest ? "tier-range-note" : "tier-range-note tier-range-note-warning"}>
               <div>
                 <span>등록 권한</span>
-                <strong>{currentTrustScore < COURT_REQUEST_TRUST_MIN ? "등록 제한" : courtDuplicate ? "중복 확인 필요" : courtNearbyReviewRequired && !courtNearbyConfirmed ? "근처 구장 확인 필요" : courtSourceUrlInvalid ? "링크 확인 필요" : !courtFieldLocation ? "현장 위치 필요" : !courtPhotos.length ? "현장 사진 필요" : "등록 가능"}</strong>
-                <em>{courtDuplicateMessage || (courtNearbyReviewRequired && !courtNearbyConfirmed ? "근처 등록·검토 중 구장을 확인하고 체크해 주세요." : courtSourceUrlInvalid ? "공식 안내 링크는 https:// 주소만 사용할 수 있습니다." : !courtFieldLocation ? "GPS를 켜고 현장 위치를 확인해 주세요." : !courtPhotos.length ? "현장에서 사진을 1장 이상 촬영해 주세요." : `신뢰도 ${COURT_REQUEST_TRUST_MIN}점 이상 필요 · 허위 등록은 운영 정책에 따라 신뢰도 차감`)}</em>
+                <strong>{courtQuotaBlocked ? "오늘 접수 마감" : currentTrustScore < COURT_REQUEST_TRUST_MIN ? "등록 제한" : courtDuplicate ? "중복 확인 필요" : courtNearbyReviewRequired && !courtNearbyConfirmed ? "근처 구장 확인 필요" : courtSourceUrlInvalid ? "링크 확인 필요" : !courtFieldLocation ? "현장 위치 필요" : !courtPhotos.length ? "현장 사진 필요" : "등록 가능"}</strong>
+                <em>{courtQuotaBlocked ? "금일 구장 신청 가능량을 넘었습니다. 오전 9시 이후 다시 신청해 주세요." : courtDuplicateMessage || (courtNearbyReviewRequired && !courtNearbyConfirmed ? "근처 등록·검토 중 구장을 확인하고 체크해 주세요." : courtSourceUrlInvalid ? "공식 안내 링크는 https:// 주소만 사용할 수 있습니다." : !courtFieldLocation ? "GPS를 켜고 현장 위치를 확인해 주세요." : !courtPhotos.length ? "현장에서 사진을 1장 이상 촬영해 주세요." : `신뢰도 ${COURT_REQUEST_TRUST_MIN}점 이상 필요 · 허위 등록은 운영 정책에 따라 신뢰도 차감`)}</em>
               </div>
               <MapPin size={22} />
             </div>
@@ -199,6 +200,28 @@ export default function SettingsSideColumn({ controller }) {
                     </div>
                   ) : null}
                   {courtLookupStatus ? <small>{courtLookupStatus}</small> : null}
+                </div>
+                <div className="settings-court-evidence">
+                  <div className="ui-action-row">
+                    <Button type="button" variant="secondary" onClick={confirmCourtFieldLocation} disabled={courtFieldLocationPending || !courtPinConfirmed}>
+                      <Crosshair size={16} /> {courtFieldLocationPending ? "위치 확인 중" : "현장 위치 확인"}
+                    </Button>
+                    <Button as="label" variant="secondary" className="settings-court-photo-button" aria-disabled={!courtFieldLocation || courtPhotoPending || courtPhotos.length >= 4}>
+                      <Camera size={16} /> {courtPhotoPending ? "사진 처리 중" : !courtFieldLocation ? "위치 확인 후 촬영" : courtPhotos.length >= 4 ? "촬영 완료" : "현장 사진 촬영"}
+                      <input type="file" accept="image/*" capture="environment" disabled={!courtFieldLocation || courtPhotoPending || courtPhotos.length >= 4} onChange={selectCourtPhotos} />
+                    </Button>
+                  </div>
+                  <small>{courtFieldLocation ? `GPS 오차 ${Math.round(courtFieldLocation.accuracy)}m · 핀과 ${Math.round(courtFieldLocation.distanceMeters)}m` : "GPS를 켜고 현장 위치부터 확인해 주세요."} · 현장에서 바로 촬영하고 위치·사진 기준을 충족하면 자동승인될 수 있습니다.</small>
+                  {courtPhotos.length ? (
+                    <div className="settings-court-photo-grid">
+                      {courtPhotos.map((photo, index) => (
+                        <div key={`${photo.byteSize}-${index}`}>
+                          <img src={photo.previewUrl} alt={`구장 현장 사진 ${index + 1}`} />
+                          <Button type="button" variant="ghost" size="sm" className="settings-court-photo-remove" onClick={() => removeCourtPhoto(index)} aria-label={`구장 현장 사진 ${index + 1} 삭제`} title="사진 삭제"><X size={15} /></Button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
                 <div className="form-grid two">
                   <label>
@@ -378,28 +401,6 @@ export default function SettingsSideColumn({ controller }) {
                   찾아가는 메모
                   <textarea value={courtDraft.locationNote} placeholder="예: 나들목 지나 오른쪽 두 번째 골대" onChange={(event) => updateCourtDraft({ locationNote: event.target.value })} />
                 </label>
-                <div className="settings-court-evidence">
-                  <div className="ui-action-row">
-                    <Button type="button" variant="secondary" onClick={confirmCourtFieldLocation} disabled={courtFieldLocationPending || !courtPinConfirmed}>
-                      <Crosshair size={16} /> {courtFieldLocationPending ? "위치 확인 중" : "현장 위치 확인"}
-                    </Button>
-                    <Button as="label" variant="secondary" className="settings-court-photo-button" aria-disabled={!courtFieldLocation || courtPhotoPending || courtPhotos.length >= 4}>
-                      <Camera size={16} /> {courtPhotoPending ? "사진 처리 중" : !courtFieldLocation ? "위치 확인 후 촬영" : courtPhotos.length >= 4 ? "촬영 완료" : "현장 사진 촬영"}
-                      <input type="file" accept="image/*" capture="environment" disabled={!courtFieldLocation || courtPhotoPending || courtPhotos.length >= 4} onChange={selectCourtPhotos} />
-                    </Button>
-                  </div>
-                  <small>{courtFieldLocation ? `GPS 오차 ${Math.round(courtFieldLocation.accuracy)}m · 핀과 ${Math.round(courtFieldLocation.distanceMeters)}m` : "GPS를 켜고 현장 위치부터 확인해 주세요."} · 현장에서 바로 촬영하고 위치·사진 기준을 충족하면 자동승인될 수 있습니다.</small>
-                  {courtPhotos.length ? (
-                    <div className="settings-court-photo-grid">
-                      {courtPhotos.map((photo, index) => (
-                        <div key={`${photo.byteSize}-${index}`}>
-                          <img src={photo.previewUrl} alt={`구장 현장 사진 ${index + 1}`} />
-                          <Button type="button" variant="ghost" size="sm" className="settings-court-photo-remove" onClick={() => removeCourtPhoto(index)} aria-label={`구장 현장 사진 ${index + 1} 삭제`} title="사진 삭제"><X size={15} /></Button>
-                        </div>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
                 <Button type="submit" variant="secondary" disabled={!canSubmitCourtRequest || courtSubmitPending || courtPinPending || courtPhotoPending}>
                   <Send size={16} /> {courtSubmitPending ? "저장 중" : "등록요청"}
                 </Button>

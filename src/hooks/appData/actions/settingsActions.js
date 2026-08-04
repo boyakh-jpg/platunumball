@@ -328,7 +328,7 @@ updateSettings: (patch) => {
       "구장 등록요청",
       { requestId: createdRequest.id },
     ).then((result) => {
-      if (!result || result.ok === false) return null;
+      if (!result || result.ok === false) return result;
       if (result.autoApproved) setState((prev) => mergeCourtApprovalResult(prev, createdRequest.id, result, "system:court-ai"));
       return { ...result, requestId: result.requestId ?? createdRequest.id };
     });
