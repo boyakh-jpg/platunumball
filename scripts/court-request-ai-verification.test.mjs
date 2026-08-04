@@ -186,6 +186,7 @@ test("court photos use browser resizing and private R2", async () => {
   assert.match(server, /rankball_auto_approve_court_request/);
   assert.match(evidence, /requireAdminContext/);
   assert.match(evidence, /\^cr_sim_/);
+  assert.match(form, /accept=\{onsiteCourtEntry \? "image\/jpeg" : "image\/\*"\}/);
   assert.match(form, /capture=\{onsiteCourtEntry \? "environment" : undefined\}/);
   assert.match(form, /disabled=\{!courtPinConfirmed \|\| courtPhotoPending\}/);
   assert.match(form, /settings-court-photo-add/);
@@ -201,12 +202,14 @@ test("court photos use browser resizing and private R2", async () => {
   assert.match(server, /rankball_submit_court_request"/);
   assert.match(server, /if \(!photoInputs\.length\)/);
   const photoHandler = controller.slice(controller.indexOf("const selectCourtPhotos"), controller.indexOf("const removeCourtPhoto"));
-  assert.match(photoHandler, /Array\.from\(event\.currentTarget\.files \?\? \[\]\)/);
-  assert.ok(photoHandler.indexOf("Array.from") < photoHandler.indexOf('event.currentTarget.value = ""'));
+  assert.match(photoHandler, /Array\.from\(input\.files \?\? \[\]\)/);
+  assert.ok(photoHandler.indexOf("prepareCourtRequestPhotos") < photoHandler.indexOf('input.value = ""'));
   assert.match(photoHandler, /replaceIndex === null/);
   assert.doesNotMatch(photoHandler, /readCourtFieldLocation/);
   const evidenceStepIndex = form.indexOf('aria-labelledby="court-step-photo-title"');
   assert.ok(evidenceStepIndex > -1 && evidenceStepIndex < form.indexOf('<div className="form-grid two">', evidenceStepIndex));
+  assert.match(form, /const courtPhotoStepComplete = courtPinConfirmed && \(!onsiteCourtEntry \|\| courtPhotos\.length > 0\)/);
+  assert.match(form, /id="court-step-details-title">구장 정보/);
   assert.match(styles, /settings-court-step/);
   assert.match(styles, /inset:\s*0;[\s\S]{0,80}width:\s*100%;[\s\S]{0,80}height:\s*100%/);
 });

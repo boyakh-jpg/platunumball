@@ -351,27 +351,27 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
     );
   });
   const selectCourtPhotos = async (event, replaceIndex = null) => {
-    const files = Array.from(event.currentTarget.files ?? []);
-    event.currentTarget.value = "";
+    const input = event.currentTarget;
+    const files = Array.from(input.files ?? []);
     if (!files.length) return;
-    if (courtQuotaBlocked) {
-      setCourtLookupStatus(courtQuotaMessage);
-      return;
-    }
-    if (replaceIndex === null && courtPhotos.length >= COURT_REQUEST_PHOTO_MAX) {
-      setCourtLookupStatus("현장 사진은 최대 4장까지 촬영할 수 있습니다.");
-      return;
-    }
-    if (!courtPinConfirmed) {
-      setCourtLookupStatus("구장 위치를 먼저 지정한 뒤 사진을 추가해 주세요.");
-      return;
-    }
-    if (onsiteCourtEntry && !courtFieldLocation) {
-      setCourtLookupStatus("현장 위치를 먼저 확인한 뒤 사진을 촬영해 주세요.");
-      return;
-    }
-    setCourtPhotoPending(true);
     try {
+      if (courtQuotaBlocked) {
+        setCourtLookupStatus(courtQuotaMessage);
+        return;
+      }
+      if (replaceIndex === null && courtPhotos.length >= COURT_REQUEST_PHOTO_MAX) {
+        setCourtLookupStatus("현장 사진은 최대 4장까지 촬영할 수 있습니다.");
+        return;
+      }
+      if (!courtPinConfirmed) {
+        setCourtLookupStatus("구장 위치를 먼저 지정한 뒤 사진을 추가해 주세요.");
+        return;
+      }
+      if (onsiteCourtEntry && !courtFieldLocation) {
+        setCourtLookupStatus("현장 위치를 먼저 확인한 뒤 사진을 촬영해 주세요.");
+        return;
+      }
+      setCourtPhotoPending(true);
       if (onsiteCourtEntry && Date.now() - Date.parse(courtFieldLocation.capturedAt) > COURT_REQUEST_FIELD_CAPTURE_MAX_AGE_MS) {
         setCourtFieldLocation(null);
         setCourtLookupStatus("현장 위치 확인 시간이 지났습니다. 위치를 다시 확인해 주세요.");
@@ -389,6 +389,7 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
         ? "현장 위치를 확인하지 못했습니다. GPS와 위치 권한을 켠 뒤 다시 촬영해 주세요."
         : getCourtRequestPhotoErrorMessage(error?.code));
     } finally {
+      input.value = "";
       setCourtPhotoPending(false);
     }
   };

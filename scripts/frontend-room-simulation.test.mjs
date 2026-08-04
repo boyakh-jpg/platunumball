@@ -1288,7 +1288,7 @@ test("비공개 팀방은 수락 전 B사이드장을 빈 슬롯 대신 초대 �
   assert.match(rosterSource, /side\.capacity - side\.filled - Number\(pendingLeaderVisible\)/);
 });
 
-test("구장 등록요청 버튼은 필수 현장 증거가 갖춰진 뒤에만 활성화된다", async () => {
+test("구장 등록요청은 주소 경로에서 사진 없이 활성화될 수 있다", async () => {
   const [viewSource, controllerSource] = await Promise.all([
     readFile(new URL("../src/pages/SettingsSideColumn.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/pages/useSettingsCourtRequestController.js", import.meta.url), "utf8"),
@@ -1296,6 +1296,8 @@ test("구장 등록요청 버튼은 필수 현장 증거가 갖춰진 뒤에만 
   assert.match(viewSource, /disabled=\{!canSubmitCourtRequest \|\| courtSubmitPending \|\| courtPinPending \|\| courtPhotoPending\}/);
   assert.match(controllerSource, /if \(!courtDisplayName\)[\s\S]*시설\/장소명을 입력해 주세요\./);
   assert.match(controllerSource, /if \(!courtAddressSelected \|\| !courtHasMapPin\)[\s\S]*실제 구장 위치를 확정해 주세요\./);
+  assert.match(controllerSource, /\(!onsiteCourtEntry \|\| courtPhotos\.length > 0\)/);
+  assert.match(controllerSource, /if \(onsiteCourtEntry && !courtPhotos\.length\)/);
 });
 
 test("공용 경기방은 모든 진입점에서 렌더 실패와 삭제 실패를 방 안에서 복구한다", async () => {

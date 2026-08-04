@@ -116,12 +116,14 @@ export default function SettingsSideColumn({ controller }) {
     && photo.metadata?.longitude !== undefined
     && Number.isFinite(Number(photo.metadata.latitude))
     && Number.isFinite(Number(photo.metadata.longitude))).length;
+  const courtPhotoStepComplete = courtPinConfirmed && (!onsiteCourtEntry || courtPhotos.length > 0);
   const courtStatusTitle = courtQuotaBlocked ? courtQuotaTitle
     : currentTrustScore < COURT_REQUEST_TRUST_MIN ? "등록 제한"
       : onsiteCourtEntry && !courtFieldLocation ? "현장 위치 필요"
         : !courtAddressSelected ? "주소 선택 필요"
           : !courtPinConfirmed ? "지도 핀 확인 필요"
-          : courtDuplicate ? "중복 확인 필요"
+          : courtNearbyLookupFailed ? "근처 구장 조회 필요"
+            : courtDuplicate ? "중복 확인 필요"
             : courtNearbyReviewRequired && !courtNearbyConfirmed ? "근처 구장 확인 필요"
               : onsiteCourtEntry && !courtPhotos.length ? "현장 사진 필요"
                   : !courtDisplayName ? "시설명 필요"
@@ -133,7 +135,8 @@ export default function SettingsSideColumn({ controller }) {
       : onsiteCourtEntry && !courtFieldLocation ? "현장에서 현재 위치로 구장을 지정해 주세요."
         : !courtAddressSelected ? "주소를 검색하거나 현재 위치로 구장을 지정해 주세요."
           : !courtPinConfirmed ? "주소를 선택한 뒤 지도 핀을 확인해 주세요."
-          : courtDuplicate ? courtDuplicateMessage
+          : courtNearbyLookupFailed ? "지도 핀을 다시 확정해 근처 구장을 불러와 주세요."
+            : courtDuplicate ? courtDuplicateMessage
             : courtNearbyReviewRequired && !courtNearbyConfirmed ? "근처 등록·검토 중 구장을 확인하고 체크해 주세요."
               : onsiteCourtEntry && !courtPhotos.length ? "현장에서 사진을 1장 이상 촬영해 주세요."
                   : !courtDisplayName ? "시설/장소명을 입력해 주세요."
@@ -262,14 +265,14 @@ export default function SettingsSideColumn({ controller }) {
                     </div>
                   )}
                 </section>
-                <section className={`settings-court-step settings-court-evidence ${courtPhotos.length ? "is-complete" : courtPinConfirmed ? "is-current" : "is-locked"}`} aria-labelledby="court-step-photo-title">
+                <section className={`settings-court-step settings-court-evidence ${courtPhotoStepComplete ? "is-complete" : courtPinConfirmed ? "is-current" : "is-locked"}`} aria-labelledby="court-step-photo-title">
                   <div className="settings-court-step-head">
-                    <span className="settings-court-step-number" aria-hidden="true">{courtPhotos.length ? <Check size={15} /> : "2"}</span>
+                    <span className="settings-court-step-number" aria-hidden="true">{courtPhotoStepComplete ? <Check size={15} /> : "2"}</span>
                     <div>
                       <h3 id="court-step-photo-title">{onsiteCourtEntry ? "현장 사진 촬영" : "현장 사진"}</h3>
                       <small>{onsiteCourtEntry ? "1장 이상 촬영하세요. 최대 4장까지 추가할 수 있습니다." : "사진이 있으면 최대 4장까지 선택할 수 있습니다."}</small>
                     </div>
-                    <em>{courtPhotos.length ? `${courtPhotos.length}/4장` : courtPinConfirmed ? onsiteCourtEntry ? "현재 단계" : "선택" : "대기"}</em>
+                    <em>{courtPhotos.length ? `${courtPhotos.length}/4장` : courtPhotoStepComplete ? "선택사항" : courtPinConfirmed ? "현재 단계" : "대기"}</em>
                   </div>
                   <small>{courtPhotos.length
                     ? `사진 GPS ${courtPhotoGpsCount}/${courtPhotos.length} · ${courtPhotos.length >= 2 && courtPhotoGpsCount === courtPhotos.length ? "다른 조건도 충족하면 AI 자동승인 후보" : "관리자 검토 가능"}`
@@ -281,7 +284,7 @@ export default function SettingsSideColumn({ controller }) {
                         <div className="settings-court-photo-actions">
                           <Button as="label" variant="secondary" size="sm" className="settings-court-photo-retake" aria-disabled={courtPhotoPending} aria-label={`구장 현장 사진 ${index + 1} 다시 촬영`} title="다시 촬영">
                             <RefreshCw size={15} />
-                            <input type="file" accept="image/*" capture={onsiteCourtEntry ? "environment" : undefined} disabled={courtPhotoPending} onChange={(event) => selectCourtPhotos(event, index)} />
+                            <input type="file" accept={onsiteCourtEntry ? "image/jpeg" : "image/*"} capture={onsiteCourtEntry ? "environment" : undefined} disabled={courtPhotoPending} onChange={(event) => selectCourtPhotos(event, index)} />
                           </Button>
                           <Button type="button" variant="secondary" size="sm" className="settings-court-photo-remove" disabled={courtPhotoPending} onClick={() => removeCourtPhoto(index)} aria-label={`구장 현장 사진 ${index + 1} 삭제`} title="사진 삭제"><X size={15} /></Button>
                         </div>
@@ -291,11 +294,20 @@ export default function SettingsSideColumn({ controller }) {
                       <Button as="label" variant="secondary" className="settings-court-photo-add" aria-disabled={!courtPinConfirmed || courtPhotoPending}>
                         <Plus size={24} />
                         <span>{courtPhotoPending ? "처리 중" : courtPinConfirmed ? onsiteCourtEntry ? "사진 촬영" : "사진 선택" : "위치 지정 후"}</span>
-                        <input type="file" accept="image/*" capture={onsiteCourtEntry ? "environment" : undefined} disabled={!courtPinConfirmed || courtPhotoPending} onChange={selectCourtPhotos} />
+                        <input type="file" accept={onsiteCourtEntry ? "image/jpeg" : "image/*"} capture={onsiteCourtEntry ? "environment" : undefined} disabled={!courtPinConfirmed || courtPhotoPending} onChange={selectCourtPhotos} />
                       </Button>
                     ) : null}
                   </div>
                 </section>
+                <section className={`settings-court-step ${canSubmitCourtRequest ? "is-complete" : courtPhotoStepComplete ? "is-current" : "is-locked"}`} aria-labelledby="court-step-details-title">
+                  <div className="settings-court-step-head">
+                    <span className="settings-court-step-number" aria-hidden="true">{canSubmitCourtRequest ? <Check size={15} /> : "3"}</span>
+                    <div>
+                      <h3 id="court-step-details-title">구장 정보</h3>
+                      <small>시설명과 구장 속성을 확인합니다.</small>
+                    </div>
+                    <em>{canSubmitCourtRequest ? "완료" : courtPhotoStepComplete ? "현재 단계" : "대기"}</em>
+                  </div>
                 <div className="form-grid two">
                   <label>
                     시설/장소명
@@ -477,6 +489,7 @@ export default function SettingsSideColumn({ controller }) {
                 <Button type="submit" variant="secondary" disabled={!canSubmitCourtRequest || courtSubmitPending || courtPinPending || courtPhotoPending}>
                   <Send size={16} /> {courtSubmitPending ? "저장 중" : "등록요청"}
                 </Button>
+                </section>
               </form>
             ) : null}
             <div className="compact-list ui-support-list">
