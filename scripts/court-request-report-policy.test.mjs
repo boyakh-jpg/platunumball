@@ -4,10 +4,13 @@ import test from "node:test";
 import {
   approveCourtRequest,
   commitAdminReviewAction,
+  rejectCourtRequest,
   reportCourt,
   reportCourtRequest,
   submitCourtRequest,
 } from "../src/data/repository.js";
+import { normalizeCourtRejectionInput } from "../server/api/court-requests/reject.js";
+import { API_ROUTES } from "../api/index.js";
 
 function makeState() {
   return {
@@ -218,4 +221,35 @@ test("신고 검토 중이거나 신고가 인정된 요청은 승인하지 않�
 
   assert.equal(rejectedApproval.settings.approvedCourts.length, 0);
   assert.equal(getCourtRequest(rejectedApproval).status, "rejected");
+});
+
+test("관리자 일반 반려는 사유와 감사 기록을 남기되 신뢰도를 차감하지 않는다", () => {
+  const rejected = rejectCourtRequest(
+    { ...makeState(), currentUserId: "admin" },
+    "court-request-1",
+    "현장에서 농구장을 확인할 수 없습니다.",
+  );
+
+  assert.equal(getCourtRequest(rejected).status, "rejected");
+  assert.equal(getRequester(rejected).trustScore, 80);
+  assert.equal(rejected.settings.adminAuditLog[0].type, "court_rejection");
+  assert.match(rejected.notifications[0].body, /현장에서 농구장을 확인할 수 없습니다/);
+
+  const reported = submitReport(makeState(), "reporter-1", "report-1");
+  const blocked = rejectCourtRequest(
+    { ...reported, currentUserId: "admin" },
+    "court-request-1",
+    "신고 검토 전에는 반려할 수 없습니다.",
+  );
+  assert.equal(getCourtRequest(blocked).status, "reported");
+});
+
+test("구장 반려 API는 요청 ID와 4자 이상 사유를 검증한다", () => {
+  assert.equal(API_ROUTES.get("/court-requests/reject")?.auth, "admin");
+  assert.deepEqual(
+    normalizeCourtRejectionInput({ requestId: " court-request-1 ", reason: " 위치 확인 불가 " }),
+    { requestId: "court-request-1", reason: "위치 확인 불가" },
+  );
+  assert.throws(() => normalizeCourtRejectionInput({ requestId: "court-request-1", reason: "짧음" }), /court_rejection_reason_invalid/);
+  assert.throws(() => normalizeCourtRejectionInput({ reason: "위치 확인 불가" }), /missing_request_id/);
 });

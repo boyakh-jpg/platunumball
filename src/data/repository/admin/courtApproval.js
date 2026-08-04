@@ -160,3 +160,39 @@ export function approveCourtRequest(state, requestId, approval = {}) {
     ],
   };
 }
+
+export function rejectCourtRequest(state, requestId, reason = "") {
+  if (!hasAdminAccess(state.users.find((user) => user.id === state.currentUserId), state.settings)) return state;
+  const request = (state.settings?.courtRequests ?? []).find((item) => item.id === requestId);
+  const safeReason = String(reason).trim();
+  if (!request || request.status !== "pending" || safeReason.length < 4) return state;
+  const now = new Date().toISOString();
+  return {
+    ...state,
+    settings: normalizeSettings({
+      ...(state.settings ?? {}),
+      courtRequests: (state.settings?.courtRequests ?? []).map((item) => (
+        item.id === requestId
+          ? { ...item, status: "rejected", rejectedAt: now, rejectedBy: state.currentUserId, rejectionReason: safeReason }
+          : item
+      )),
+      adminAuditLog: [{
+        id: makeId("aa"),
+        type: "court_rejection",
+        status: "committed",
+        requestId,
+        targetUserId: request.requestedBy,
+        createdAt: now,
+        createdBy: state.currentUserId,
+        reason: safeReason,
+      }, ...(state.settings?.adminAuditLog ?? [])],
+    }),
+    notifications: [{
+      id: makeId("n"),
+      targetUserId: request.requestedBy,
+      title: "구장 등록 반려",
+      body: `${request.name} 구장 등록요청이 반려되었습니다. 사유: ${safeReason}`,
+      tone: "orange",
+    }, ...state.notifications],
+  };
+}

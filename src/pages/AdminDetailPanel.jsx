@@ -101,6 +101,8 @@ export function AdminDetailPanel({ controller }) {
     appointmentUserSnapshot,
     courtApprovalDraft,
     courtApprovalStatus,
+    courtRejectionReason,
+    setCourtRejectionReason,
     reviewActionStatus,
     reviewActionPending,
     reviewActionConfirming,
@@ -153,6 +155,7 @@ export function AdminDetailPanel({ controller }) {
     selectAppointmentUser,
     updateCourtApprovalDraft,
     approveSelectedCourt,
+    rejectSelectedCourt,
     commitSelectedAction,
     commitAppointmentAction,
   } = controller;
@@ -271,20 +274,40 @@ export function AdminDetailPanel({ controller }) {
                           같은 장소지만 물리적으로 다른 코트임을 확인함
                         </label>
                       ) : null}
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        disabled={
-                          !courtApprovalDraft.approvedName.trim()
-                          || !courtApprovalDraft.addressVerified
-                          || (approvedLocationMatches.length > 0 && !courtApprovalDraft.multipleCourtsVerified)
-                          || courtApprovalStatus === "승인 중"
-                        }
-                        onClick={approveSelectedCourt}
-                      >
-                        {courtApprovalStatus === "승인 중" ? "승인 중" : "확인 후 구장 승인"}
-                      </Button>
-                      {courtApprovalStatus ? <small>{courtApprovalStatus}</small> : null}
+                      <label>
+                        반려 사유
+                        <textarea
+                          value={courtRejectionReason}
+                          maxLength={500}
+                          placeholder="반려할 때만 4자 이상 입력"
+                          disabled={["승인 중", "반려 중"].includes(courtApprovalStatus)}
+                          onChange={(event) => setCourtRejectionReason(event.target.value)}
+                        />
+                      </label>
+                      <div className="admin-court-decision-actions">
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          disabled={
+                            !courtApprovalDraft.approvedName.trim()
+                            || !courtApprovalDraft.addressVerified
+                            || (approvedLocationMatches.length > 0 && !courtApprovalDraft.multipleCourtsVerified)
+                            || ["승인 중", "반려 중"].includes(courtApprovalStatus)
+                          }
+                          onClick={approveSelectedCourt}
+                        >
+                          {courtApprovalStatus === "승인 중" ? "승인 중" : "구장 승인"}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="danger"
+                          disabled={courtRejectionReason.trim().length < 4 || ["승인 중", "반려 중"].includes(courtApprovalStatus)}
+                          onClick={rejectSelectedCourt}
+                        >
+                          {courtApprovalStatus === "반려 중" ? "반려 중" : "구장 반려"}
+                        </Button>
+                      </div>
+                      {courtApprovalStatus ? <small role="status">{courtApprovalStatus}</small> : null}
                     </div>
                   ) : selectedCourtRequest.status === "reported" ? (
                     <p className="admin-court-note">신고 검토 중인 요청입니다. 신고를 처리한 뒤 승인 여부를 결정해 주세요.</p>
@@ -330,12 +353,23 @@ export function AdminDetailPanel({ controller }) {
                       ))}
                     </select>
                   </label>
-                  <label>
-                    처리 유형
-                    <select value={actionDraft.actionType} disabled={reviewActionPending || !visibleActionOptions.length || selectedReport.status !== "open"} onChange={(event) => changeReviewActionType(event.target.value)}>
-                      {visibleActionOptions.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
-                    </select>
-                  </label>
+                  <div className="admin-review-action-choice">
+                    <strong>처리 유형</strong>
+                    <div className="ui-segmented-control segmented-control compact-segments" role="group" aria-label="신고 처리 유형">
+                      {visibleActionOptions.map((option) => (
+                        <button
+                          key={option.id}
+                          type="button"
+                          className={actionDraft.actionType === option.id ? "active" : ""}
+                          aria-pressed={actionDraft.actionType === option.id}
+                          disabled={reviewActionPending || selectedReport.status !== "open"}
+                          onClick={() => changeReviewActionType(option.id)}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                   {selectedReportIsVoidRestore ? (
                     <label>
                       별도 제재
@@ -422,7 +456,7 @@ export function AdminDetailPanel({ controller }) {
                   <div className="admin-review-confirm" role="alert">
                     <span><strong>{ADMIN_REVIEW_ACTIONS[actionDraft.actionType]?.label}</strong><small>{actionDraft.actionType === "markCourtDuplicate" ? "대상 구장을 중복으로 확정하고 서비스 노출에서 제외합니다." : actionDraft.actionType === "applyCourtCorrection" ? "구조화된 제안값을 구장 DB에 반영하고 변경·신고 처리 기록을 남깁니다." : "대상과 기간, 처리 사유를 다시 확인해 주세요. 실행 후 처리 기록이 남습니다."}</small></span>
                     <Button type="button" variant="secondary" disabled={reviewActionPending} onClick={() => setReviewActionConfirming(false)}>취소</Button>
-                    <Button type="button" variant="secondary" disabled={reviewActionPending || reviewActionInvalid} onClick={commitSelectedAction}>{reviewActionPending ? "처리 중" : "확정 실행"}</Button>
+                    <Button type="button" variant="secondary" disabled={reviewActionPending || reviewActionInvalid} onClick={commitSelectedAction}>{reviewActionPending ? "처리 중" : `${ADMIN_REVIEW_ACTIONS[actionDraft.actionType]?.label ?? "운영 조치"} 확정`}</Button>
                   </div>
                 ) : (
                   <Button
@@ -431,7 +465,7 @@ export function AdminDetailPanel({ controller }) {
                     disabled={reviewActionPending || !selectedReport || selectedReport.status !== "open" || !visibleActionOptions.length || reviewActionInvalid}
                     onClick={() => reviewActionHighImpact ? setReviewActionConfirming(true) : commitSelectedAction()}
                   >
-                    {reviewActionPending ? "처리 중" : reviewActionHighImpact ? "처리 확인" : "처리 실행"}
+                    {reviewActionPending ? "처리 중" : `${ADMIN_REVIEW_ACTIONS[actionDraft.actionType]?.label ?? "운영 조치"}${reviewActionHighImpact ? " 확인" : ""}`}
                   </Button>
                 )}
                 {selectedReportIsVoidRestore ? <small>복구는 무효 처리 전 원본 기록을 사용합니다. 50%는 기존 경기 MMR 배율의 절반을 반영합니다.</small> : null}

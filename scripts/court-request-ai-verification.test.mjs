@@ -257,8 +257,8 @@ test("court photos use browser resizing and private R2", async () => {
   assert.ok(server.lastIndexOf("COURT_REQUEST_PHOTO_MIN_BYTES") < server.lastIndexOf("inspectCourtRequestPhotos("));
   assert.match(server, /rankball_auto_approve_court_request/);
   const policyInputIndex = server.indexOf("const policyInput");
-  assert.ok(policyInputIndex > -1 && policyInputIndex < server.indexOf("inspectCourtRequestPhotos(", policyInputIndex));
-  assert.match(server, /automaticReviewCandidate/);
+  assert.ok(policyInputIndex > -1 && policyInputIndex < server.indexOf("inspectCourtRequestPhotos(photos)", policyInputIndex));
+  assert.doesNotMatch(server, /automaticReviewCandidate/);
   assert.match(evidence, /requireAdminContext/);
   assert.match(evidence, /\^cr_sim_/);
   const fileInputs = form.match(/<input type="file"[\s\S]*?\/>/g) ?? [];
@@ -354,16 +354,6 @@ test("court AI retries one malformed response", async (context) => {
   assert.ok(requests.every((request) => request.url === "https://court-ai.test"));
   assert.ok(requests.every((request) => request.options.headers.Authorization === "Bearer proxy-secret"));
   assert.match(JSON.parse(requests[0].options.body).prompt, /Output exactly one JSON object/);
-});
-
-test("court AI spends no quota when deterministic approval checks already fail", async () => {
-  const result = await inspectCourtRequestPhotos([
-    { imageBase64: "image-a" },
-    { imageBase64: "image-b" },
-  ], false);
-  assert.equal(result.status, "unavailable");
-  assert.equal(result.failureReason, "court_ai_not_required");
-  assert.deepEqual(result.usage, { calls: 0, inputTokens: 0, outputTokens: 0, neurons: 0, estimated: false });
 });
 
 test("court AI worker accepts only authenticated bounded evidence", async () => {

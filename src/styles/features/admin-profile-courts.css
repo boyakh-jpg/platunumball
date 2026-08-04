@@ -109,6 +109,20 @@
   font-weight: 800;
 }
 
+.admin-court-verification textarea {
+  min-height: 72px;
+}
+
+.admin-court-decision-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.admin-court-decision-actions .button {
+  justify-content: center;
+}
+
 .admin-court-map-link {
   display: inline-flex;
   flex: 0 0 auto;

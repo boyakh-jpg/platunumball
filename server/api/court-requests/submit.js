@@ -220,16 +220,7 @@ export default async function handler(request, response) {
       publicAccess: requestPayload.publicAccess,
       photoLocation,
     };
-    const policyBeforeAi = getCourtVerificationDecision(policyInput);
-    const automaticReviewCandidate = [
-      "trustedRequester",
-      "locationVerified",
-      "photoLocationConsistent",
-      "noNearbyDuplicate",
-      "publicCourt",
-      "photoCount",
-    ].every((check) => policyBeforeAi.checks[check]);
-    const ai = await inspectCourtRequestPhotos(photos, automaticReviewCandidate);
+    const ai = await inspectCourtRequestPhotos(photos);
     await recordCourtAiUsage(context.supabase, requestId, ai.usage);
     const quotaAfter = getCourtAiQuotaState(quota.usedNeurons + ai.usage.neurons);
     const policy = getCourtVerificationDecision({

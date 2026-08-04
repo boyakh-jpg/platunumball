@@ -198,4 +198,8 @@
   .admin-selected-report > span {
     flex-direction: column;
   }
+
+  .admin-court-decision-actions {
+    grid-template-columns: 1fr;
+  }
 }

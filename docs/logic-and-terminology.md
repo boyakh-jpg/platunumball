@@ -2175,8 +2175,8 @@ flowchart TD
 4-1. `reports`, `court_requests`, `approved_courts`, `court_reviews`, `matches`, 경기 하위 테이블, `recruiting_posts`, `recruiting_applications`는 browser role write grant와 browser write policy를 만들지 않는다. 브라우저는 scoped RLS read만 하고 write는 server action/RPC로만 커밋한다.
 5. 최고관리자 bootstrap은 서버 env 또는 DB appointment로 한다.
 6. 서버 관리자 권한 계산은 DB 함수 `rankball_admin_level_for_profile()`를 우선 쓰되, RPC가 관리자 level 30 미만을 반환하면 `admin_appointments` 직접 조회값과 비교해 더 높은 값을 쓴다.
-7. Supabase 설정 환경에서는 구장 등록요청 제출, 구장 신고, 구장 승인이 전용 server action을 같이 호출한다. 끄려면 `VITE_ENABLE_SERVER_ACTIONS=false`를 명시한다.
-8. 구장 승인은 `rankball_approve_court_request()`에서 승인 구장 생성, 요청 상태 변경, audit log, 알림을 한 transaction으로 처리한다.
+7. Supabase 설정 환경에서는 구장 등록요청 제출, 구장 신고, 구장 승인·반려가 전용 server action을 같이 호출한다. 끄려면 `VITE_ENABLE_SERVER_ACTIONS=false`를 명시한다.
+8. 구장 승인은 `rankball_approve_court_request()`에서 승인 구장 생성, 요청 상태 변경, audit log, 알림을 한 transaction으로 처리한다. 일반 반려는 `rankball_reject_court_request()`에서 요청 상태, 반려 사유, audit log, 요청자 알림을 한 transaction으로 처리하며 신고 인정이 아니므로 신뢰도를 차감하지 않는다.
 9. 프론트는 구장 승인 성공 전 로컬 승인 구장을 만들지 않고, 서버가 반환한 `approvedCourtId`만 승인 구장 ID로 쓴다.
 10. `POST /api/system/schema-health`의 `ensureCourtAdmins`는 `CRON_SECRET` 인증이 있을 때만 `boyakh` owner와 `rankball-001` regionManager appointment를 idempotent upsert한다.
 11. `rankball_report_court_request()`는 신고 생성, 요청의 `reported` 전환, 판정 전 무차감 알림만 한 transaction으로 처리한다. 관리자 판정 transaction의 신고 상태 전환 trigger는 인정 시 요청을 `rejected`로 바꾸고 정책 신뢰도 차감을 요청별 1회 적용하며, 기각 시 남은 미처리 신고가 없으면 `pending`으로 복원한다.
@@ -3942,7 +3942,7 @@ flowchart TD
 11. 운영 릴리스 시뮬레이션은 Cloudflare AI 상태가 `complete`여야 통과하며 수동검토 폴백을 AI 연동 성공으로 간주하지 않는다.
 12. 운영 사진 판정은 `boxtier-court-ai` Worker의 `@cf/meta/llama-3.2-11b-vision-instruct` Workers AI binding을 사용한다. Vercel과 Worker가 이미 공유하는 `CRON_SECRET`으로 서버 간 요청만 허용하고 모델·입력 형식·크기는 Worker가 고정한다. 직접 Workers AI API 토큰은 로컬·비상 fallback으로만 사용한다.
 13. 모델이 반환한 자기 신뢰도는 확률로 보정되지 않으므로 승인에 사용하지 않는다. 서버는 `courtEvidence`, `evidenceCoverage`, `authenticImages` 충족률을 증거 점수로 계산하며 하나라도 빠지면 자동승인하지 않는다. 필수 JSON 필드가 없거나 타입이 다르면 비정형 응답으로 처리하고 한 번만 재시도한다.
-14. Workers AI 일일 무료 할당량은 응답의 실제 input/output token을 모델별 neuron 단가로 환산해 비공개 `court_ai_usage_events`에 기록한다. 10,000 neuron의 80%인 8,000 neuron부터 그날 구장 신청을 서버에서 차단하고, Cloudflare UTC 자정인 한국시간 오전 9시에 다시 연다. metrics가 없으면 호출당 12 neuron으로 보수적으로 기록한다. 448px 실측 기준 사진 2장 요청은 약 18.56 neuron으로 하루 약 430건이 예상되지만 실제 출력 token에 따라 달라진다.
+14. Workers AI 일일 무료 할당량은 응답의 실제 input/output token을 모델별 neuron 단가로 환산해 비공개 `court_ai_usage_events`에 기록한다. 10,000 neuron의 80%인 8,000 neuron부터 그날 구장 신청을 서버에서 차단하고, Cloudflare UTC 자정인 한국시간 오전 9시에 다시 연다. metrics가 없으면 호출당 12 neuron으로 보수적으로 기록한다. 448px 실측 기준 사진 1장은 약 9.28 neuron, 2장은 약 18.56 neuron으로 하루 각각 약 860건, 430건이 예상되지만 실제 출력 token에 따라 달라진다.
 15. 80% 차단 확인과 사용량 기록 사이의 소수 동시 요청은 20% 안전 여유로 흡수한다. 실제 구장 신청 트래픽이 동시 다발적으로 커질 때만 DB 원자 예약 방식으로 전환한다.
 16. AI 호출 전 브라우저는 원본 사진의 짧은 변 640px 이상과 96px 축소 샘플의 노출·대비·경계 선명도를 검사한다. 서버는 JPEG 호환본을 제한된 픽셀 수로 디코딩해 WebP로 정규화한 뒤 최종 WebP가 12KB 이상, 짧은 변 360px 이상, 300,000px 이상인지 다시 검사한다. RIFF 전체 길이·청크 경계·허용 이미지 청크도 확인해 메타데이터·애니메이션·미지 청크·뒤에 붙은 데이터를 거절한다. 통과한 증거본은 기존 화질로 R2에 저장하고 AI에는 긴 변 최대 448px의 별도 WebP 판독본만 보낸다. 미달 사진은 R2 저장·AI 호출·신청 생성을 시작하지 않고 재촬영을 요구한다.
 17. 계정별 구장 신청은 한국시간 하루 3건까지다. DB가 클라이언트 `createdAt`과 별개인 접수 이벤트 시각을 기록하고 한국시간 자정에 횟수를 초기화한다. 같은 요청 ID의 저장 재시도는 새 신청으로 세지 않으며 승인·반려 뒤에도 해당 날짜의 접수 횟수는 되돌리지 않는다.
@@ -3950,8 +3950,8 @@ flowchart TD
 19. 제출 API는 사진 검사와 AI 호출 전에 개인 제한을 확인하고, DB `court_requests` 삽입 트리거가 계정별 advisory lock으로 같은 제한을 다시 강제한다. 클라이언트 표시나 동시 요청으로 일일 제한과 허위 신청 차단을 우회할 수 없어야 한다.
 20. 브라우저는 리사이징 전에 원본에서 EXIF GPS와 `DateTimeOriginal`만 읽는다. 현장 촬영 파일에서 브라우저가 EXIF GPS를 제거했으면 10분 이내에 확인한 현장 GPS를 사진 위치로 함께 보낸다. WebP에는 EXIF를 다시 넣지 않으며 기기명·카메라 설정 등 다른 메타데이터와 원본은 저장하지 않는다. 서버는 좌표와 `exif/live_gps` 출처를 검증하고 현장 GPS·지도 핀과의 거리를 다시 계산해 비공개 `court_request_evidence.ai_result`에 보관한다.
 21. 사진 위치는 모든 사진이 제공된 현장 GPS와 지도 핀에서 각각 50m 이내면 `matched`, 일부 사진만 위치가 있으면 `partial`, 최대 차이가 50m 초과 150m 이하면 `uncertain`, 150m 초과면 `mismatch`, 위치가 없으면 `unavailable`이다. 증거 신뢰도는 각각 1.0, 0.85, 0.6, 0.25, 0.75로 계산한다. 현장 GPS가 없으면 사진과 핀 거리만으로 같은 상태를 계산한다. 이 값은 해당 신청의 증거 신뢰도일 뿐 사용자 신뢰점수를 자동 차감하지 않는다.
-22. 사진이 없는 주소·핀 신청은 AI와 R2를 사용하지 않고 `manual_review`로 저장한다. 사진이 있으면 입력 경로와 무관하게 기계 검사·EXIF 위치 검사를 수행하고 자동승인 후보만 AI 판정을 수행한다. 자동승인 분류는 사용자가 고른 입력 방법을 신뢰하지 않고 서버 증거만 사용한다.
-23. 사진이 있어도 신뢰도·위치·중복·공개 구장 여부·사진 수 중 하나가 자동승인 기준을 이미 충족하지 못하면 AI를 호출하지 않고 `court_ai_not_required` 수동검토로 저장한다. AI는 기계 판정을 모두 통과해 자동승인 가능성이 있는 요청에만 사용하며, 이 경로의 AI 사용량은 0으로 기록한다.
+22. 사진이 없는 주소·핀 신청은 AI와 R2를 사용하지 않고 `manual_review`로 저장한다. 사진이 1장 또는 2장이면 입력 경로와 자동승인 가능 여부에 관계없이 기계 검사·사진 위치 검사 후 AI 판정을 수행한다. 자동승인 분류는 사용자가 고른 입력 방법을 신뢰하지 않고 서버 증거만 사용한다.
+23. AI 사진 판정은 관리자 검토 자료에도 사용한다. 신뢰도·위치·중복·공개 구장 여부·사진 2장 조건은 AI 호출 조건이 아니라 자동승인 조건이며, 하나라도 충족하지 못하면 AI 결과를 저장한 뒤 `manual_review`로 보낸다.
 24. 운영 `Permissions-Policy`는 같은 출처의 카메라와 위치만 허용하고 마이크는 차단한다. 현장 위치 확인과 native 촬영 흐름을 전역 보안 헤더가 막지 않아야 한다.
 
 ## 2026-08-04 경기시계 미디어와 플레이 목록

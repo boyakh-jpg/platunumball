@@ -65,6 +65,7 @@ const [searchParams, setSearchParams] = useSearchParams();
     multipleCourtsVerified: false,
   });
   const [courtApprovalStatus, setCourtApprovalStatus] = useState("");
+  const [courtRejectionReason, setCourtRejectionReason] = useState("");
   const courtApprovalPendingRef = useRef(false);
   const selectedCourtRequestIdRef = useRef("");
   const [reviewActionStatus, setReviewActionStatus] = useState("");
@@ -298,6 +299,7 @@ const [searchParams, setSearchParams] = useSearchParams();
       multipleCourtsVerified: false,
     });
     setCourtApprovalStatus("");
+    setCourtRejectionReason("");
   }, [selectedCourtRequest?.id, selectedCourtRequest?.name]);
 
   const updateActionDraft = (patch) => setActionDraft((current) => ({ ...current, ...patch }));
@@ -343,6 +345,25 @@ const [searchParams, setSearchParams] = useSearchParams();
     } catch {
       if (selectedCourtRequestIdRef.current === requestCourtId) {
         setCourtApprovalStatus("승인하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+      }
+    } finally {
+      courtApprovalPendingRef.current = false;
+    }
+  };
+  const rejectSelectedCourt = async () => {
+    const safeReason = courtRejectionReason.trim();
+    if (!selectedCourtRequest || courtApprovalPendingRef.current || safeReason.length < 4) return;
+    const requestCourtId = selectedCourtRequest.id;
+    courtApprovalPendingRef.current = true;
+    setCourtApprovalStatus("반려 중");
+    try {
+      const result = await app.actions.rejectCourtRequest(requestCourtId, safeReason);
+      if (selectedCourtRequestIdRef.current === requestCourtId) {
+        setCourtApprovalStatus(result && result.ok !== false ? "반려되었습니다." : "반려하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+      }
+    } catch {
+      if (selectedCourtRequestIdRef.current === requestCourtId) {
+        setCourtApprovalStatus("반려하지 못했습니다. 잠시 후 다시 시도해 주세요.");
       }
     } finally {
       courtApprovalPendingRef.current = false;
@@ -431,6 +452,8 @@ const [searchParams, setSearchParams] = useSearchParams();
     appointmentUserSnapshot,
     courtApprovalDraft,
     courtApprovalStatus,
+    courtRejectionReason,
+    setCourtRejectionReason,
     reviewActionStatus,
     reviewActionPending,
     reviewActionConfirming,
@@ -486,6 +509,7 @@ const [searchParams, setSearchParams] = useSearchParams();
     selectAppointmentUser,
     updateCourtApprovalDraft,
     approveSelectedCourt,
+    rejectSelectedCourt,
     commitSelectedAction,
     commitAppointmentAction,
   };

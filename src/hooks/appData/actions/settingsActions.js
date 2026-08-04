@@ -19,6 +19,7 @@ export function buildSettingsActions(context) {
     markNotificationReadServer,
     mergeCourtApprovalResult,
     refreshAdminState,
+    rejectCourtRequest,
     reportCourt,
     reportCourtRequest,
     reportCourtReview,
@@ -264,6 +265,19 @@ updateSettings: (patch) => {
     if (!result || result.ok === false) return result;
     setState((prev) => mergeCourtApprovalResult(prev, requestId, result, currentUserId));
     setAdminState((prev) => (prev ? mergeCourtApprovalResult(prev, requestId, result, currentUserId) : prev));
+    await refreshAdminState();
+    return result;
+  },
+  rejectCourtRequest: async (requestId, reason) => {
+    if (!isSupabaseConfigured) {
+      setState((prev) => rejectCourtRequest({ ...prev, currentUserId }, requestId, reason));
+      return { ok: true };
+    }
+    if (!ensureRemoteReady("구장 반려")) return { ok: false, error: "remote_not_ready" };
+    const serverReady = await ensureServerActionAvailable("/api/court-requests/reject", "구장 반려");
+    if (serverReady !== true) return serverReady;
+    const result = await runServerAction("/api/court-requests/reject", { requestId, reason });
+    if (!result || result.ok === false) return result;
     await refreshAdminState();
     return result;
   },

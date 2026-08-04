@@ -41,6 +41,7 @@ export {
 
 export {
   approveCourtRequest,
+  rejectCourtRequest,
   commitAdminAppointmentAction,
   commitAdminReviewAction,
 } from "./repository/admin.js";
