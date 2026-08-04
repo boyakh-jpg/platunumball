@@ -140,9 +140,49 @@ export function readWebpDimensions(bytes, errorPrefix = "image") {
   throw httpError(400, `${errorPrefix}_webp_required`);
 }
 
+export function validateSafeWebpContainer(bytes, errorPrefix = "image") {
+  if (
+    bytes.length < 30
+    || bytes.toString("ascii", 0, 4) !== "RIFF"
+    || bytes.toString("ascii", 8, 12) !== "WEBP"
+    || bytes.readUInt32LE(4) + 8 !== bytes.length
+  ) throw httpError(400, `${errorPrefix}_invalid_container`);
+
+  const chunks = [];
+  let offset = 12;
+  while (offset < bytes.length) {
+    if (offset + 8 > bytes.length) throw httpError(400, `${errorPrefix}_invalid_container`);
+    const type = bytes.toString("ascii", offset, offset + 4);
+    const size = bytes.readUInt32LE(offset + 4);
+    const end = offset + 8 + size;
+    const paddedEnd = end + (size % 2);
+    if (end > bytes.length || paddedEnd > bytes.length || (size % 2 && bytes[end] !== 0)) {
+      throw httpError(400, `${errorPrefix}_invalid_container`);
+    }
+    if (!["VP8X", "ALPH", "VP8 ", "VP8L"].includes(type)) {
+      throw httpError(400, `${errorPrefix}_unsafe_chunk`);
+    }
+    chunks.push({ type, size });
+    offset = paddedEnd;
+  }
+
+  const types = chunks.map((chunk) => chunk.type);
+  const imageChunks = types.filter((type) => type === "VP8 " || type === "VP8L");
+  const validSimple = chunks.length === 1 && imageChunks.length === 1;
+  const validExtended = types[0] === "VP8X"
+    && chunks[0].size === 10
+    && imageChunks.length === 1
+    && types.filter((type) => type === "VP8X").length === 1
+    && types.filter((type) => type === "ALPH").length <= 1
+    && (!types.includes("ALPH") || (types.includes("VP8 ") && types.indexOf("ALPH") < types.indexOf("VP8 ")));
+  if (!validSimple && !validExtended) throw httpError(400, `${errorPrefix}_invalid_container`);
+  return chunks;
+}
+
 export function validateWebpImage(bytes, options = {}) {
   const maxDimension = Number(options.maxDimension);
   const errorPrefix = String(options.errorPrefix || "image");
+  if (options.safeContainer === true) validateSafeWebpContainer(bytes, errorPrefix);
   const dimensions = readWebpDimensions(bytes, errorPrefix);
   if (
     !Number.isFinite(maxDimension)

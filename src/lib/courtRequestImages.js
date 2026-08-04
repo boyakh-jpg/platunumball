@@ -2,7 +2,9 @@ import {
   COURT_REQUEST_PHOTO_MAX_BYTES,
   COURT_REQUEST_PHOTO_MAX_DIMENSION,
   COURT_REQUEST_PHOTO_MAX,
+  COURT_REQUEST_PHOTO_MIN_SOURCE_DIMENSION,
   COURT_REQUEST_PHOTO_TARGET_BYTES,
+  getCourtPhotoPixelQualityError,
 } from "../../shared/lib/courtRequestImagePolicy.js";
 
 const ACCEPTED_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/avif", "image/heic", "image/heif"]);
@@ -48,6 +50,19 @@ async function decodeImage(file) {
   }
 }
 
+function getSourceQualityError(source, width, height) {
+  const scale = 96 / Math.max(width, height);
+  const sampleWidth = Math.max(2, Math.round(width * scale));
+  const sampleHeight = Math.max(2, Math.round(height * scale));
+  const canvas = document.createElement("canvas");
+  canvas.width = sampleWidth;
+  canvas.height = sampleHeight;
+  const context = canvas.getContext("2d", { alpha: false, willReadFrequently: true });
+  if (!context) return "court_photo_quality_unavailable";
+  context.drawImage(source, 0, 0, sampleWidth, sampleHeight);
+  return getCourtPhotoPixelQualityError(context.getImageData(0, 0, sampleWidth, sampleHeight).data, sampleWidth, sampleHeight);
+}
+
 export async function prepareCourtRequestPhoto(file) {
   if (!(file instanceof Blob)) throw imageError("court_photo_file_required");
   const extension = String(file.name || "").split(".").pop()?.toLowerCase() ?? "";
@@ -64,6 +79,11 @@ export async function prepareCourtRequestPhoto(file) {
 
   try {
     if (!decoded.width || !decoded.height) throw imageError("court_photo_invalid_dimensions");
+    if (Math.min(decoded.width, decoded.height) < COURT_REQUEST_PHOTO_MIN_SOURCE_DIMENSION) {
+      throw imageError("court_photo_resolution_too_low");
+    }
+    const qualityError = getSourceQualityError(decoded.source, decoded.width, decoded.height);
+    if (qualityError) throw imageError(qualityError);
     const sourceLongEdge = Math.max(decoded.width, decoded.height);
     const dimensions = [...new Set([1280, 1152, 1024, 896, 768, 640]
       .map((value) => Math.min(sourceLongEdge, value))
@@ -119,6 +139,14 @@ export function getCourtRequestPhotoErrorMessage(code = "") {
     court_photo_type_not_supported: "JPG, PNG, WebP, AVIF, HEIC 사진만 사용할 수 있습니다.",
     court_photo_decode_failed: "사진을 읽지 못했습니다. 다른 사진을 선택해 주세요.",
     court_photo_invalid_dimensions: "사진 크기를 확인하지 못했습니다.",
+    court_photo_resolution_too_low: "사진 해상도가 낮습니다. 휴대폰 기본 카메라로 다시 촬영해 주세요.",
+    court_photo_too_dark: "사진이 너무 어둡습니다. 구장과 골대가 보이도록 다시 촬영해 주세요.",
+    court_photo_too_bright: "사진이 너무 밝습니다. 빛을 등지고 다시 촬영해 주세요.",
+    court_photo_too_blurry: "사진이 흐리거나 초점이 맞지 않습니다. 휴대폰을 고정하고 다시 촬영해 주세요.",
+    court_photo_quality_unavailable: "사진 화질을 확인하지 못했습니다. 다시 촬영해 주세요.",
+    court_photo_quality_too_low: "사진 품질이 낮아 AI 판정을 시작하지 않았습니다. 다시 촬영해 주세요.",
+    court_photo_invalid_container: "올바른 카메라 사진이 아닙니다. 다시 촬영해 주세요.",
+    court_photo_unsafe_chunk: "안전하게 처리할 수 없는 사진입니다. 다시 촬영해 주세요.",
     court_photo_canvas_unavailable: "이 브라우저에서는 사진 변환을 사용할 수 없습니다.",
     court_photo_webp_unavailable: "이 브라우저에서는 WebP 변환을 사용할 수 없습니다.",
     court_photo_read_failed: "변환된 사진을 읽지 못했습니다.",

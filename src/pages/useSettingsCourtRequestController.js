@@ -370,6 +370,11 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
         setCourtLookupStatus("금일 구장 신청 가능량을 넘었습니다. 오전 9시 이후 다시 신청해 주세요.");
         return;
       }
+      const photoError = String(result?.error || "").replace(/^court_photo_\d+_/, "court_photo_");
+      if (photoError.startsWith("court_photo_")) {
+        setCourtLookupStatus(getCourtRequestPhotoErrorMessage(photoError));
+        return;
+      }
       if (!result?.requestId) {
         setCourtLookupStatus("구장 등록 요청을 저장하지 못했습니다. 입력 내용을 확인한 뒤 다시 시도해 주세요.");
         return;

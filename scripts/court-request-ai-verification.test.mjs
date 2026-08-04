@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { getCoordinateDistanceMeters } from "../shared/lib/courtRequestImagePolicy.js";
+import { getCoordinateDistanceMeters, getCourtPhotoPixelQualityError } from "../shared/lib/courtRequestImagePolicy.js";
 import { uploadPrivateR2Webp } from "../server/api/_r2ImageStorage.js";
 import {
   getCourtAiQuotaState,
@@ -68,6 +68,21 @@ test("court AI token metrics map to neurons and block at 70 percent", () => {
   assert.equal(getCourtAiQuotaState(7_000).blocked, true);
 });
 
+test("court photo quality rejects unusable pixels before AI", () => {
+  const pixels = (valueAt) => {
+    const output = new Uint8ClampedArray(16 * 16 * 4);
+    for (let index = 0; index < 16 * 16; index += 1) {
+      const value = valueAt(index % 16, Math.floor(index / 16));
+      output.set([value, value, value, 255], index * 4);
+    }
+    return output;
+  };
+  assert.equal(getCourtPhotoPixelQualityError(pixels((x, y) => (x + y) % 2 ? 210 : 40), 16, 16), null);
+  assert.equal(getCourtPhotoPixelQualityError(pixels(() => 5), 16, 16), "court_photo_too_dark");
+  assert.equal(getCourtPhotoPixelQualityError(pixels(() => 250), 16, 16), "court_photo_too_bright");
+  assert.equal(getCourtPhotoPixelQualityError(pixels(() => 128), 16, 16), "court_photo_too_blurry");
+});
+
 test("court evidence and AI usage migrations keep data private", async () => {
   const [sql, serviceRoleSql, usageSql] = await Promise.all([
     readFile(new URL("../supabase/migrations/20260803222000_court_request_ai_verification.sql", import.meta.url), "utf8"),
@@ -94,8 +109,11 @@ test("court photos use browser resizing and private R2", async () => {
     readFile(new URL("../src/styles/features/court-request-evidence.css", import.meta.url), "utf8"),
   ]);
   assert.match(client, /canvasToWebp/);
+  assert.match(client, /getCourtPhotoPixelQualityError/);
   assert.doesNotMatch(client, /file\.size\s*[><=]/);
   assert.match(server, /getPrivateR2Config/);
+  assert.match(server, /safeContainer:\s*true/);
+  assert.ok(server.lastIndexOf("COURT_REQUEST_PHOTO_MIN_BYTES") < server.lastIndexOf("inspectCourtRequestPhotos("));
   assert.match(server, /rankball_auto_approve_court_request/);
   assert.match(evidence, /requireAdminContext/);
   assert.match(evidence, /\^cr_sim_/);

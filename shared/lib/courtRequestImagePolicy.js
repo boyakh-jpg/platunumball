@@ -3,9 +3,58 @@ export const COURT_REQUEST_PHOTO_MAX = 4;
 export const COURT_REQUEST_PHOTO_TARGET_BYTES = 220 * 1024;
 export const COURT_REQUEST_PHOTO_MAX_BYTES = 300 * 1024;
 export const COURT_REQUEST_PHOTO_MAX_DIMENSION = 1280;
+export const COURT_REQUEST_PHOTO_MIN_BYTES = 12 * 1024;
+export const COURT_REQUEST_PHOTO_MIN_DIMENSION = 360;
+export const COURT_REQUEST_PHOTO_MIN_PIXELS = 300_000;
+export const COURT_REQUEST_PHOTO_MIN_SOURCE_DIMENSION = 640;
 export const COURT_REQUEST_FIELD_ACCURACY_MAX_METERS = 20;
 export const COURT_REQUEST_FIELD_DISTANCE_MAX_METERS = 30;
 export const COURT_REQUEST_FIELD_CAPTURE_MAX_AGE_MS = 10 * 60 * 1000;
+
+export function getCourtPhotoPixelQualityError(pixels, width, height) {
+  const safeWidth = Math.trunc(Number(width));
+  const safeHeight = Math.trunc(Number(height));
+  const pixelCount = safeWidth * safeHeight;
+  if (!pixels || safeWidth < 2 || safeHeight < 2 || pixels.length < pixelCount * 4) return "court_photo_quality_unavailable";
+
+  const luminance = new Float32Array(pixelCount);
+  let sum = 0;
+  let squareSum = 0;
+  let darkPixels = 0;
+  let brightPixels = 0;
+  for (let index = 0; index < pixelCount; index += 1) {
+    const offset = index * 4;
+    const value = (77 * pixels[offset] + 150 * pixels[offset + 1] + 29 * pixels[offset + 2]) / 256;
+    luminance[index] = value;
+    sum += value;
+    squareSum += value * value;
+    if (value < 20) darkPixels += 1;
+    if (value > 245) brightPixels += 1;
+  }
+
+  const mean = sum / pixelCount;
+  if (mean < 28 || darkPixels / pixelCount > 0.8) return "court_photo_too_dark";
+  if (mean > 232 || brightPixels / pixelCount > 0.8) return "court_photo_too_bright";
+
+  let edgeSum = 0;
+  let edgeCount = 0;
+  for (let y = 0; y < safeHeight; y += 1) {
+    for (let x = 0; x < safeWidth; x += 1) {
+      const index = y * safeWidth + x;
+      if (x) {
+        edgeSum += Math.abs(luminance[index] - luminance[index - 1]);
+        edgeCount += 1;
+      }
+      if (y) {
+        edgeSum += Math.abs(luminance[index] - luminance[index - safeWidth]);
+        edgeCount += 1;
+      }
+    }
+  }
+  const deviation = Math.sqrt(Math.max(0, squareSum / pixelCount - mean * mean));
+  if (deviation < 12 || edgeSum / edgeCount < 3) return "court_photo_too_blurry";
+  return null;
+}
 
 export function getCoordinateDistanceMeters(latA, lngA, latB, lngB) {
   const input = [latA, lngA, latB, lngB];

@@ -192,6 +192,7 @@ import {
 import {
   decodeBase64Image,
   readWebpDimensions,
+  validateSafeWebpContainer,
   validateWebpImage,
 } from "../server/api/_r2ImageStorage.js";
 import { readJsonBody } from "../server/api/_supabaseAdmin.js";
@@ -2340,6 +2341,32 @@ test("R2 image payload and WebP validation share one implementation", () => {
   );
 });
 
+test("R2 image uploads reject metadata, animation, unknown chunks and trailing payloads", () => {
+  const payload = Buffer.alloc(10);
+  payload.set([0x9d, 0x01, 0x2a], 3);
+  payload.writeUInt16LE(320, 6);
+  payload.writeUInt16LE(200, 8);
+  const chunk = Buffer.alloc(18);
+  chunk.write("VP8 ", 0, "ascii");
+  chunk.writeUInt32LE(payload.length, 4);
+  payload.copy(chunk, 8);
+  const safe = Buffer.alloc(12 + chunk.length);
+  safe.write("RIFF", 0, "ascii");
+  safe.writeUInt32LE(safe.length - 8, 4);
+  safe.write("WEBP", 8, "ascii");
+  chunk.copy(safe, 12);
+  assert.deepEqual(validateSafeWebpContainer(safe).map(({ type }) => type), ["VP8 "]);
+  assert.deepEqual(validateWebpImage(safe, { maxDimension: 320, safeContainer: true }), { width: 320, height: 200 });
+
+  const trailing = Buffer.concat([safe, Buffer.from("<script>")]);
+  assert.throws(() => validateSafeWebpContainer(trailing), /invalid_container/);
+  for (const type of ["EXIF", "XMP ", "ICCP", "ANIM", "JUNK"]) {
+    const unsafeChunk = Buffer.from(safe);
+    unsafeChunk.write(type, 12, "ascii");
+    assert.throws(() => validateSafeWebpContainer(unsafeChunk), /unsafe_chunk/);
+  }
+});
+
 test("match dispute rejection, void reasons, restoration and scoped penalties stay separate", async () => {
   const now = new Date().toISOString();
   const voidedMatch = {
@@ -2463,6 +2490,7 @@ test("core consumers do not restore duplicated policy literals", async () => {
   assert.doesNotMatch(matchConsumers, /\?\?\s*1200/);
   assert.doesNotMatch(`${profileEmblem}\n${teamEmblem}`, /api\.cloudflare\.com\/client\/v4\/accounts/);
   assert.doesNotMatch(`${profileEmblem}\n${teamEmblem}`, /function readWebpDimensions/);
+  assert.equal((`${profileEmblem}\n${teamEmblem}`.match(/safeContainer:\s*true/g) ?? []).length, 2);
   assert.doesNotMatch(discordBridge, /https:\/\/discord\.com\/api\/v10/);
   assert.doesNotMatch(discordBridge, /\^\\d\{17,20\}\$/);
 });

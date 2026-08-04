@@ -216,7 +216,7 @@ export default async function handler(request, response) {
     }
 
     const bytes = decodeBase64Image(body.imageBase64, { maxBytes: TEAM_EMBLEM_UPLOAD_MAX_BYTES, errorPrefix: "team_emblem" });
-    validateWebpImage(bytes, { maxDimension: TEAM_EMBLEM_MAX_DIMENSION, errorPrefix: "team_emblem" });
+    validateWebpImage(bytes, { maxDimension: TEAM_EMBLEM_MAX_DIMENSION, errorPrefix: "team_emblem", safeContainer: true });
     const digest = createHash("sha256").update(bytes).digest("hex").slice(0, 24);
     const emblemKey = `team-emblems/${teamId}/${digest}.webp`;
     await uploadR2Webp(config, emblemKey, bytes, "team emblem");

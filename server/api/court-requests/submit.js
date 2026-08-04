@@ -3,6 +3,9 @@ import {
   COURT_REQUEST_PHOTO_MAX_BYTES,
   COURT_REQUEST_PHOTO_MAX_DIMENSION,
   COURT_REQUEST_PHOTO_MAX,
+  COURT_REQUEST_PHOTO_MIN_BYTES,
+  COURT_REQUEST_PHOTO_MIN_DIMENSION,
+  COURT_REQUEST_PHOTO_MIN_PIXELS,
   COURT_REQUEST_PHOTO_MIN,
   COURT_REQUEST_FIELD_CAPTURE_MAX_AGE_MS,
   getCoordinateDistanceMeters,
@@ -128,7 +131,16 @@ export default async function handler(request, response) {
         maxBytes: COURT_REQUEST_PHOTO_MAX_BYTES,
         errorPrefix: `court_photo_${index + 1}`,
       });
-      validateWebpImage(bytes, { maxDimension: COURT_REQUEST_PHOTO_MAX_DIMENSION, errorPrefix: `court_photo_${index + 1}` });
+      const dimensions = validateWebpImage(bytes, {
+        maxDimension: COURT_REQUEST_PHOTO_MAX_DIMENSION,
+        errorPrefix: `court_photo_${index + 1}`,
+        safeContainer: true,
+      });
+      if (
+        bytes.length < COURT_REQUEST_PHOTO_MIN_BYTES
+        || Math.min(dimensions.width, dimensions.height) < COURT_REQUEST_PHOTO_MIN_DIMENSION
+        || dimensions.width * dimensions.height < COURT_REQUEST_PHOTO_MIN_PIXELS
+      ) throw requestError(400, "court_photo_quality_too_low");
       const hash = createHash("sha256").update(bytes).digest("hex");
       return { bytes, hash, imageBase64: String(photo.imageBase64) };
     });

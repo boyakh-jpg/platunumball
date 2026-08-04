@@ -153,7 +153,7 @@ export default async function handler(request, response) {
     }
 
     const bytes = decodeBase64Image(body.imageBase64, { maxBytes: MAX_UPLOAD_BYTES, errorPrefix: "profile_emblem" });
-    validateWebpImage(bytes, { maxDimension: MAX_IMAGE_DIMENSION, errorPrefix: "profile_emblem" });
+    validateWebpImage(bytes, { maxDimension: MAX_IMAGE_DIMENSION, errorPrefix: "profile_emblem", safeContainer: true });
     const config = getR2Config();
     const digest = createHash("sha256").update(bytes).digest("hex").slice(0, 24);
     const avatarKey = `profile-emblems/${context.profileId}/${digest}.webp`;
