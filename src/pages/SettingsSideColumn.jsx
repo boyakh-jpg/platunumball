@@ -66,6 +66,7 @@ export default function SettingsSideColumn({ controller }) {
     courtDisplayName,
     courtHasMapPin,
     courtNearbyCandidates,
+    courtNearbyLookupFailed,
     courtRequiresUnit,
     courtNearbyReviewRequired,
     courtDuplicate,

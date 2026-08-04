@@ -1294,6 +1294,7 @@ test("구장 등록요청은 주소 경로에서 사진 없이 활성화될 수 
     readFile(new URL("../src/pages/useSettingsCourtRequestController.js", import.meta.url), "utf8"),
   ]);
   assert.match(viewSource, /disabled=\{!canSubmitCourtRequest \|\| courtSubmitPending \|\| courtPinPending \|\| courtPhotoPending\}/);
+  assert.match(viewSource.slice(viewSource.indexOf("const {"), viewSource.indexOf("} = controller;")), /courtNearbyLookupFailed/);
   assert.match(controllerSource, /if \(!courtDisplayName\)[\s\S]*시설\/장소명을 입력해 주세요\./);
   assert.match(controllerSource, /if \(!courtAddressSelected \|\| !courtHasMapPin\)[\s\S]*실제 구장 위치를 확정해 주세요\./);
   assert.match(controllerSource, /\(!onsiteCourtEntry \|\| courtPhotos\.length > 0\)/);
