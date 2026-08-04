@@ -9,6 +9,7 @@ import alphaTestLogin from "../server/api/auth/alpha-test-login.js";
 import discordCallback from "../server/api/auth/discord/callback.js";
 import discordComplete from "../server/api/auth/discord/complete.js";
 import discordStart from "../server/api/auth/discord/start.js";
+import communityPosts from "../server/api/community/posts.js";
 import courtRequestApprove from "../server/api/court-requests/approve.js";
 import courtRequestEvidence from "../server/api/court-requests/evidence.js";
 import courtRequestQuota from "../server/api/court-requests/quota.js";
@@ -77,6 +78,7 @@ export const API_ROUTES = new Map([
   ["/auth/discord/complete", route(discordComplete, ["POST"], "user")],
   ["/auth/discord/start", route(discordStart, ["POST"], "user")],
   ["/discord/callback", route(discordCallback, ["GET"], "oauthCallback")],
+  ["/community/posts", route(communityPosts, ["POST"], "user")],
   ["/court-requests/approve", route(courtRequestApprove, ["POST"], "admin")],
   ["/court-requests/evidence", route(courtRequestEvidence, ["POST"], "admin")],
   ["/court-requests/quota", route(courtRequestQuota, ["POST"], "user")],

@@ -42,13 +42,15 @@ test("공지는 운영자만 작성하고 답글은 같은 글의 원댓글에�
 });
 
 test("커뮤니티 경로와 작성자 프로필카드가 연결되어 있다", async () => {
-  const [app, sidebar, bottomNav, dialog] = await Promise.all([
+  const [api, app, sidebar, bottomNav, dialog] = await Promise.all([
+    readFile(new URL("../api/index.js", import.meta.url), "utf8"),
     readFile(new URL("../src/App.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/components/layout/Sidebar.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/components/layout/BottomNav.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/pages/CommunityPostDialog.jsx", import.meta.url), "utf8"),
   ]);
 
+  assert.match(api, /\["\/community\/posts", route\(communityPosts, \["POST"\], "user"\)\]/);
   assert.match(app, /path="\/app\/community" element=\{<Community app=\{app\} \/>\}/);
   assert.match(sidebar, /to: "\/app\/community"/);
   assert.match(bottomNav, /to: "\/app\/community"/);
