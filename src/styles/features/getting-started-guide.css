@@ -75,13 +75,6 @@
   line-height: 1.2;
 }
 
-.home-guide-card__copy span {
-  color: var(--rb-muted);
-  font-size: 0.8rem;
-  font-weight: 750;
-  line-height: 1.4;
-}
-
 .home-guide-card__path {
   display: flex;
   gap: var(--space-3);

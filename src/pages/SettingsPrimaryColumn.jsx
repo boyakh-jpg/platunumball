@@ -295,7 +295,6 @@ export default function SettingsPrimaryColumn({ controller }) {
             <div className="settings-preference-group settings-home-guide-group">
               <div className="settings-preference-heading">
                 <strong>홈 안내 카드</strong>
-                <span>홈의 ‘처음 사용하시나요?’ 카드만 숨깁니다. 사용 설명과 연습 경기는 계속 이용할 수 있습니다.</span>
               </div>
               <div className="settings-toggle-grid ui-design-choice-list">
                 <label>
@@ -316,7 +315,6 @@ export default function SettingsPrimaryColumn({ controller }) {
             <div className="settings-preference-group">
               <div className="settings-preference-heading">
                 <strong>프로필 표시</strong>
-                <span>다른 사용자에게 보여줄 프로필 정보를 선택합니다.</span>
               </div>
               <div className="settings-toggle-grid ui-design-choice-list">
                 <label>

@@ -382,10 +382,6 @@
 }
 
 @media (max-width: 480px) {
-  .home-guide-card__copy span {
-    font-size: 0.75rem;
-  }
-
   .getting-started-topbar > span {
     font-size: 0.62rem;
     letter-spacing: 0.04em;

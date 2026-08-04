@@ -720,6 +720,16 @@ test("설정 메인은 운영·테스트 카드를 숨기고 표시 설정을 �
   );
 });
 
+test("고정 설명은 제목·상태·조작 문구를 반복하지 않는다", () => {
+  assert.match(pageSources.settings, /현장에서 직접 촬영하면 자동승인 가능성이 높아집니다/);
+  assert.match(pageSources.settings, /!canOpenCourtRequestForm \? \([\s\S]*tier-range-note tier-range-note-warning/);
+  assert.doesNotMatch(pageSources.settings, /신청 상태|시설명과 구장 속성을 확인합니다|핀 주소의 시군구와 시설명을 합쳐|시군구·시설\/장소명·코트 구분으로 자동 생성|<span>구장 속성<\/span>/);
+  assert.doesNotMatch(pageSources.settings, /홈의 ‘처음 사용하시나요\?’ 카드만 숨깁니다|다른 사용자에게 보여줄 프로필 정보를 선택합니다/);
+  assert.doesNotMatch(homePageSource, /QR 출석부터 경기·기록·팀·구장·대회·용어·설정까지 확인하세요|초대, 승인, 기록 입력 같은 작업이 여기에 표시됩니다|경기 안내와 방 변경 알림이 여기에 표시됩니다/);
+  assert.doesNotMatch(courtDetailSource, /확인되지 않은 정보는 추정하지 않고/);
+  assert.doesNotMatch(allStyleSources, /\.court-profile-information-note|\.home-guide-card__copy span/);
+});
+
 test("같은 정책 행은 명시형 선택 필드와 중앙 control 정렬을 사용한다", () => {
   assert.match(matchOperationsFieldsSource, /조끼 준비/);
   assert.match(matchOperationsFieldsSource, /value=\{policy\.vestsProvided \? "provided" : "not_provided"\}/);

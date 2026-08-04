@@ -175,15 +175,6 @@ html[data-theme="light"] .referee-rulebook-page .referee-rulebook-intro h2 {
   color: var(--rb-orange);
 }
 
-.court-profile-information-note {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  color: var(--rb-muted);
-  font-size: 0.74rem;
-  font-weight: 750;
-}
-
 .rulebook-asset img {
   display: block;
   width: 100%;

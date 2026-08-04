@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { Building2, CalendarDays, Clock3, ExternalLink, Flag, Lightbulb, MapPin, Phone, Star, Trophy } from "lucide-react";
+import { Building2, CalendarDays, Clock3, ExternalLink, Flag, MapPin, Phone, Star, Trophy } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
@@ -405,7 +405,6 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
             </dl>
           </section>
         </div>
-        <p className="court-profile-information-note"><Lightbulb size={15} /> 확인되지 않은 정보는 추정하지 않고 ‘확인 필요’로 표시합니다.</p>
       </Card>
 
       <div className="court-detail-layout">

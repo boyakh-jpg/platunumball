@@ -127,7 +127,6 @@ export default function HomeRightRail({
                 <span className="home-action-icon"><ClipboardCheck size={18} /></span>
                 <span className="home-action-main">
                   <strong>처리할 일 없음</strong>
-                  <em>초대, 승인, 기록 입력 같은 작업이 여기에 표시됩니다.</em>
                 </span>
                 <b>OK</b>
               </div>
@@ -191,7 +190,6 @@ export default function HomeRightRail({
                 <span className="home-action-icon"><Bell size={18} /></span>
                 <span className="home-action-main">
                   <strong>새 알림 없음</strong>
-                  <em>경기 안내와 방 변경 알림이 여기에 표시됩니다.</em>
                 </span>
                 <b>OK</b>
               </div>

@@ -94,7 +94,6 @@ export default function HomePageView({
             <span className="home-guide-card__copy">
               <small>FIRST STEP · 13단계 안내</small>
               <strong>처음 사용하시나요?</strong>
-              <span>QR 출석부터 경기·기록·팀·구장·대회·용어·설정까지 확인하세요.</span>
             </span>
             <span className="home-guide-card__path" aria-hidden="true">
               <b>PLAY</b>
