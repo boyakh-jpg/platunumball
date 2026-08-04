@@ -36,6 +36,9 @@ function getBoundAuthProfileId(state, authUserId, profileBindings, profileKey) {
     return getClientProfileShellId(authUserId);
   }
 
+  const testLoginId = String(authUserId).startsWith("test-") ? String(authUserId).slice(5) : "";
+  const testUser = testLoginId ? users.find((user) => user.testLoginId === testLoginId) : null;
+  if (testUser) return testUser.id;
   return profileBindings[profileKey] ?? state.currentUserId ?? users[0]?.id;
 }
 

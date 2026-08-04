@@ -157,8 +157,8 @@ const renderSourceMatchRecordBoard = () => {
           event.preventDefault();
           if (!roomCancellationTarget || roomCancellationPending) return;
           const reason = String(roomCancellationTarget.reason ?? "").trim();
-          if (reason.length < 5) {
-            setRoomCancellationTarget((current) => ({ ...current, error: "취소 사유를 5자 이상 입력해 주세요." }));
+          if (reason.length < 5 || reason.length > 200) {
+            setRoomCancellationTarget((current) => ({ ...current, error: "취소 사유를 5~200자로 입력해 주세요." }));
             return;
           }
           setRoomCancellationPending(true);

@@ -2684,7 +2684,7 @@ test("랭킹·홈·선수 상세·소속 화면은 원격 페이지와 실패 �
     readSource("src/pages/Affiliations.jsx"),
   ]);
   assert.match(rankings, /rankingSort/);
-  assert.match(rankings, /const directoryLoading = !promotionView && !directoryLoadError/);
+  assert.match(rankings, /const directoryLoading = !promotionView && !directoryLoadError && isSupabaseConfigured/);
   assert.match(rankings, /directoryLoading[\s\S]*?<BasketballLoader label="랭킹 불러오는 중"/);
   assert.match(rankings, /useEffect\(\(\) => \{\s*if \(promotionView\) return;/);
   assert.match(rankings, /\{!promotionView && directoryStatusMatches && app\.directoryStatus\?\.page\?\.hasMore/);

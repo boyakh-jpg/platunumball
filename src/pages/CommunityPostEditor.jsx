@@ -20,7 +20,11 @@ export default function CommunityPostEditor({ initialPost = null, canModerate = 
     });
   }, [initialPost]);
 
-  const canSubmit = draft.title.trim().length >= 2 && draft.body.trim().length >= 2 && !pending;
+  const titleLength = draft.title.trim().length;
+  const bodyLength = draft.body.trim().length;
+  const canSubmit = titleLength >= 2 && titleLength <= COMMUNITY_POST_TITLE_MAX
+    && bodyLength >= 2 && bodyLength <= COMMUNITY_POST_BODY_MAX
+    && !pending;
   return (
     <form className="community-post-editor form-stack" onSubmit={async (event) => {
       event.preventDefault();
@@ -38,12 +42,12 @@ export default function CommunityPostEditor({ initialPost = null, canModerate = 
       <label>
         제목
         <input autoFocus maxLength={COMMUNITY_POST_TITLE_MAX} value={draft.title} onChange={(event) => setDraft((current) => ({ ...current, title: event.target.value }))} />
-        <small>{draft.title.trim().length}/{COMMUNITY_POST_TITLE_MAX}</small>
+        <small>{titleLength}/{COMMUNITY_POST_TITLE_MAX}</small>
       </label>
       <label>
         내용
         <textarea maxLength={COMMUNITY_POST_BODY_MAX} value={draft.body} onChange={(event) => setDraft((current) => ({ ...current, body: event.target.value }))} />
-        <small>{draft.body.trim().length}/{COMMUNITY_POST_BODY_MAX}</small>
+        <small>{bodyLength}/{COMMUNITY_POST_BODY_MAX}</small>
       </label>
       {canModerate && draft.category === "notice" ? (
         <label className="community-pin-toggle">

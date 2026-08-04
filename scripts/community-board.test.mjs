@@ -57,3 +57,14 @@ test("커뮤니티 경로와 작성자 프로필카드가 연결되어 있다", 
   assert.match(dialog, /<PlayerHoverCard user=\{author\}/);
   assert.doesNotMatch(dialog, /<PlayerHoverCard as="span" user=\{author\}/);
 });
+
+test("커뮤니티 입력 버튼은 서버와 같은 최대 길이에서 막힌다", async () => {
+  const [editor, dialog] = await Promise.all([
+    readFile(new URL("../src/pages/CommunityPostEditor.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/pages/CommunityPostDialog.jsx", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(editor, /titleLength <= COMMUNITY_POST_TITLE_MAX/);
+  assert.match(editor, /bodyLength <= COMMUNITY_POST_BODY_MAX/);
+  assert.match(dialog, /commentLength > COMMUNITY_COMMENT_BODY_MAX/);
+});

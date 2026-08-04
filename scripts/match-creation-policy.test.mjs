@@ -1372,6 +1372,11 @@ test("심판 미선택 상태는 중복 설명 행을 표시하지 않는다", (
   assert.match(source, /selectedReferee \? \([\s\S]*초대할 심판:[\s\S]*초대 해제/);
 });
 
+test("invalid rule input is not normalized into a valid-looking final summary", () => {
+  const summary = getMatchCreationSummary({ mode: "5v5", periodCount: 4, periodMinutes: "-5" });
+  assert.equal(summary.rows.find((row) => row.label === "경기 규칙")?.value, "입력값 확인 필요");
+});
+
 test("원격 심판 검색에서 선택한 프로필은 일반 경기 후보에 유지한다", () => {
   const source = readPageSourceGroup(CREATE_MATCH_PAGE_SOURCE_PATHS);
   assert.match(

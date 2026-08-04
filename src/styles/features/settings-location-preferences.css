@@ -110,7 +110,8 @@
   order: 30;
 }
 
-.settings-section-courts .settings-side-column > .section-card:not(.settings-court-card) {
+.settings-section-courts .settings-side-column > .section-card:not(.settings-court-card):not(.settings-report-card),
+.settings-section-courts:not(.settings-report-open) .settings-report-card {
   display: none;
 }
 

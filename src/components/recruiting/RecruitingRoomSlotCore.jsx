@@ -289,6 +289,7 @@ export function getLobbyPrimaryTeamId(lobby, sideName) {
 }
 
 export function getRoomSlotTeamName(entry, teams = []) {
+  if (entry?.kind !== "team") return "개인 참여";
   const teamId = getEntryTeamGroupId(entry);
   return entry?.team?.name
     ?? teams.find((team) => team.id === teamId)?.name

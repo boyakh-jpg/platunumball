@@ -15,11 +15,8 @@ import useSettingsFavorites from "./useSettingsFavorites.jsx";
 import useSettingsCourtRequestController from "./useSettingsCourtRequestController.js";
 import useSettingsRefereeController from "./useSettingsRefereeController.js";
 
-export default function useSettingsPageController({
-  app,
-  section = "main"
-}) {
-const loadDirectory = app.actions.loadDirectory;
+export default function useSettingsPageController({ app, section = "main" }) {
+  const loadDirectory = app.actions.loadDirectory;
   const loadAdminContext = app.actions.loadAdminContext;
   useEffect(() => {
     loadDirectory?.({ kind: "self", limit: DIRECTORY_SELF_PAGE_LIMIT, offset: 0 });

@@ -499,6 +499,20 @@ test("remote team invite selection keeps its roster snapshot and one empty state
   assert.match(slotSource, /selectedTeam=\{activeSlotDraft\.selectedTeam \?\? null\}/);
 });
 
+test("team member invite requires an explicit current search selection", async () => {
+  const [controllerSource, viewSource] = await Promise.all([
+    read("src/pages/TeamDetail.jsx"),
+    read("src/pages/TeamDetailView.jsx"),
+  ]);
+
+  assert.match(controllerSource, /useState\(\{ userId: "", role: "regular" \}\)/);
+  assert.match(controllerSource, /\? memberDraft\.userId : ""\)/);
+  assert.match(controllerSource, /setMemberDraft\(\{ userId: "", role: "regular" \}\)/);
+  assert.doesNotMatch(controllerSource, /firstAddableUser/);
+  assert.match(viewSource, /setMemberDraft\(\(current\) => \(\{ \.\.\.current, userId: "" \}\)\)/);
+  assert.match(viewSource, /setSelectedInviteProfile\(null\)/);
+});
+
 test("legacy match paths redirect to the shared match modal query", async () => {
   const source = await read("src/App.jsx");
 

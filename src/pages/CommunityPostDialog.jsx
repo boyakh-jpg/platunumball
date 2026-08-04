@@ -79,9 +79,10 @@ export default function CommunityPostDialog({ app, controller }) {
   if (!post || typeof document === "undefined") return null;
   const ownsPost = post.authorId === app.currentUserId;
   const canDeletePost = ownsPost || canModerate;
+  const commentLength = commentBody.trim().length;
   const submitComment = async (event) => {
     event.preventDefault();
-    if (!commentBody.trim() || pending) return;
+    if (!commentLength || commentLength > COMMUNITY_COMMENT_BODY_MAX || pending) return;
     if (await controller.saveComment(commentBody, replyTo?.id ?? null)) {
       setCommentBody("");
       setReplyTo(null);
@@ -148,8 +149,8 @@ export default function CommunityPostDialog({ app, controller }) {
               {replyTo ? <div className="community-reply-target"><span>{replyTo.author?.name ?? "사용자"}에게 답글</span><button type="button" aria-label="답글 취소" onClick={() => setReplyTo(null)}><X size={15} /></button></div> : null}
               <textarea maxLength={COMMUNITY_COMMENT_BODY_MAX} value={commentBody} placeholder={replyTo ? "답글 작성" : "댓글 작성"} onChange={(event) => setCommentBody(event.target.value)} />
               <div className="ui-action-row community-comment-submit">
-                <small>{commentBody.trim().length}/{COMMUNITY_COMMENT_BODY_MAX}</small>
-                <Button type="submit" size="sm" disabled={!commentBody.trim() || pending}>{pending ? "등록 중" : "등록"}</Button>
+                <small>{commentLength}/{COMMUNITY_COMMENT_BODY_MAX}</small>
+                <Button type="submit" size="sm" disabled={!commentLength || commentLength > COMMUNITY_COMMENT_BODY_MAX || pending}>{pending ? "등록 중" : "등록"}</Button>
               </div>
             </form>
             <div className="community-comment-list">

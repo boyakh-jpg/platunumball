@@ -49,7 +49,7 @@ export function RecruitingRoomDialogSection({ context }) {
                         value={roomCancellationTarget.reason}
                         onChange={(event) => setRoomCancellationTarget((current) => ({
                           ...current,
-                          reason: event.target.value,
+                          reason: event.target.value.slice(0, 200),
                           error: "",
                         }))}
                         placeholder="참가자에게 보여줄 취소 사유를 입력해 주세요."
@@ -64,7 +64,7 @@ export function RecruitingRoomDialogSection({ context }) {
                         type="submit"
                         variant="secondary"
                         className="danger-button"
-                        disabled={roomCancellationPending || roomCancellationTarget.reason.trim().length < 5}
+                        disabled={roomCancellationPending || roomCancellationTarget.reason.trim().length < 5 || roomCancellationTarget.reason.length > 200}
                       >
                         {roomCancellationPending ? "취소 처리 중" : roomCancellationTarget.label}
                       </Button>

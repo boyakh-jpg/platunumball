@@ -440,6 +440,7 @@ export function getMatchOperationsSummaryRows(source = {}) {
 export function getMatchCreationSummary(source = {}) {
   const policySource = getMatchCreationPolicySource(source);
   const policy = getMatchCreationPolicyPayload(policySource);
+  const rulesValid = getMatchRuleInputValidation(policySource, { mode: policySource.mode }).valid;
   const purpose = MATCH_PURPOSE_OPTIONS.find((option) => option.id === policy.matchPurpose) ?? MATCH_PURPOSE_OPTIONS[1];
   const playingTime = PLAYING_TIME_POLICY_OPTIONS.find((option) => option.id === policy.playingTimePolicy)?.label ?? "출전 보장 없음";
   const payment = PAYMENT_POLICY_OPTIONS.find((option) => option.id === policy.paymentPolicy)?.label ?? "확정 인원 전원 균등";
@@ -460,7 +461,7 @@ export function getMatchCreationSummary(source = {}) {
       { label: "명단", value: `${policySource.mode || "5v5"} · ${rosterText}` },
       ...(pickup ? [{ label: "팀 배치", value: "출석 후 현장 결정" }] : []),
       ...(pickup ? [{ label: "운영 정책", value: policy.rotationMode === "period" ? "쿼터·하프 종료마다 균등 교대" : policy.rotationMode === "interval" ? `${policy.rotationIntervalMinutes}분 간격 균등 교대` : "방장·심판 직접 교대" }] : policy.benchCapacity > 0 ? [{ label: "출전 정책", value: playingTime }] : []),
-      { label: "경기 규칙", value: getMatchRuleSummary(policySource, policySource.mode) },
+      { label: "경기 규칙", value: rulesValid ? getMatchRuleSummary(policySource, policySource.mode) : "입력값 확인 필요" },
       ...getMatchOperationsSummaryRows(policySource),
       { label: "비용", value: `${costText} · ${payment}` },
       { label: "구장", value: policySource.court || "구장 미정" },

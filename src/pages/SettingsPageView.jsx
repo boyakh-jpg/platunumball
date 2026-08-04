@@ -8,10 +8,10 @@ import SettingsRefereeSection from "./SettingsRefereeSection.jsx";
 import SettingsActivityDialog from "./SettingsActivityDialog.jsx";
 
 export default function SettingsPageView({ controller, auth }) {
-  const { sectionMeta, settingsSection } = controller;
+  const { sectionMeta, settingsSection, selectedReportCourtRequest } = controller;
   const [activityDetail, setActivityDetail] = useState(null);
   return (
-<div className={`page-stack settings-page settings-section-${settingsSection}`}>
+<div className={`page-stack settings-page settings-section-${settingsSection}${selectedReportCourtRequest ? " settings-report-open" : ""}`}>
       <header className="page-header ui-page-hero ui-design-app-hero">
         <div className="ui-page-hero__copy">
           <p className="eyebrow">{sectionMeta.eyebrow}</p>

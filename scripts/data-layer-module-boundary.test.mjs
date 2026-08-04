@@ -64,7 +64,8 @@ test("repository와 useAppData 호환 배럴은 공개 export만 유지한다", 
   assert.ok(appDataSource.split(/\r?\n/u).length <= 30);
   assert.doesNotMatch(repositorySource, /\b(?:function|class)\s+[A-Za-z_$]/u);
   assert.doesNotMatch(appDataSource, /\b(?:function|class)\s+[A-Za-z_$]/u);
-  assert.equal(Object.keys(repository).length, 127);
+  assert.equal(Object.keys(repository).length, 128);
+  assert.equal(typeof repository.rejectCourtRequest, "function");
   assert.equal("loadNormalizedDirectoryStateFromClient" in repository, false);
   assert.equal("loadNormalizedMatchDetailFromClient" in repository, false);
   assert.equal(Object.keys(appData).length, 3);

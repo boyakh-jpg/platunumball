@@ -272,7 +272,7 @@ export function RecruitingRoomActionSection({ context }) {
                           </div>
                         ))}
                       </div>
-                    ) : (
+                    ) : null}
                     <>
                     <div className="ui-segmented-control segmented-control compact-segments arena-join-mode-control">
                       {joinModeEntries.map(([mode, meta]) => (
@@ -442,7 +442,6 @@ export function RecruitingRoomActionSection({ context }) {
                       {joiningThisRoom ? "참여 중" : "참여하기"}
                     </Button>
                     </>
-                    )}
                   </form>
                 )}
 

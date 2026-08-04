@@ -6,6 +6,7 @@ import handler, {
   isTemporaryAdminTestLoginAllowed,
   normalizeAlphaTestLoginId,
 } from "../server/api/auth/alpha-test-login.js";
+import { getBoundAuthProfileId } from "../src/hooks/appData/metadata.js";
 
 function createResponse() {
   return {
@@ -134,4 +135,16 @@ test("rankball-001 alone temporarily bypasses the active administrator block", a
     "rankball-001",
     "rankball-001@rankball.test",
   ));
+});
+
+test("local test session selects the demo profile with the exact login id", () => {
+  const state = {
+    currentUserId: "u53",
+    users: [
+      { id: "u31", testLoginId: "rankball-031" },
+      { id: "u53", testLoginId: "rankball-053" },
+    ],
+  };
+  assert.equal(getBoundAuthProfileId(state, "test-rankball-031", {}, "test-rankball-031"), "u31");
+  assert.equal(getBoundAuthProfileId(state, "test-unknown", {}, "test-unknown"), "u53");
 });

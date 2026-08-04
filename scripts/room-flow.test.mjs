@@ -245,12 +245,19 @@ test("schedule, recruiting, and play lists refresh server data on entry and brow
 test("team room hides completed selection and labels active and reserve slots once", () => {
   const recruitingSource = readPageSourceGroup(RECRUITING_PAGE_SOURCE_PATHS);
   const recruitingStyles = readStyleSourceGroup(RECRUITING_STYLE_SOURCE_PATHS);
+  const slotCoreSource = readFileSync(new URL("../src/components/recruiting/RecruitingRoomSlotCore.jsx", import.meta.url), "utf8");
+  const dialogSource = readFileSync(new URL("../src/components/recruiting/RecruitingRoomDialogSection.jsx", import.meta.url), "utf8");
+  const rendererSource = readFileSync(new URL("../src/components/recruiting/RecruitingRoomMatchRenderers.jsx", import.meta.url), "utf8");
 
   assert.match(recruitingSource, /&& \(!selectedRoomTeamAId \|\| !selectedRoomTeamBId\)/);
   assert.doesNotMatch(recruitingSource, /ROOM ONLY/);
   assert.doesNotMatch(recruitingSource, /팀 선택과 명단 관리는 이 공용 방 모달에서만 진행합니다/);
   assert.match(recruitingSource, /title=\{entry\.status === "ready" \? "출전" : "대기"\}/);
   assert.match(recruitingSource, /title="후보"\s+detail=\{getRoomSlotTeamName\(entry, teams\)\}/);
+  assert.match(slotCoreSource, /if \(entry\?\.kind !== "team"\) return "개인 참여";/);
+  assert.match(recruitingSource, /sidePartyJoinOptions\.length \? \([\s\S]*?arena-party-quick-join-list[\s\S]*?\) : null\}[\s\S]*?arena-join-mode-control/);
+  assert.match(dialogSource, /reason: event\.target\.value\.slice\(0, 200\)/);
+  assert.match(rendererSource, /reason\.length < 5 \|\| reason\.length > 200/);
   assert.match(recruitingStyles, /\.arena-room-player-slot > span\.arena-room-slot-detail\s*\{[^}]*overflow-wrap:\s*anywhere;[^}]*white-space:\s*normal;/s);
 });
 

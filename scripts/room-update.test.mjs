@@ -619,7 +619,7 @@ test("server routes room edits to dedicated authoritative RPCs", () => {
   assert.match(roomRemakeGrantMigration, /grant select on table public\.room_remake_events[\s\S]*to service_role/);
   assert.match(recruitingPage, /참가자가 있으면 규칙 변경은 각 참가자의 확인이 필요합니다/);
   assert.match(recruitingPage, /같은 설정으로 다시 만들기/);
-  assert.match(recruitingPage, /취소 사유를 5자 이상 입력해 주세요/);
+  assert.match(recruitingPage, /취소 사유를 5~200자로 입력해 주세요/);
   assert.match(recruitingPage, /remakeSourceMatchId/);
   assert.match(createMatchPage, /getRoomRemakeWarningCopy/);
   assert.match(createMatchPage, /remakeSourceId, remakeSourceMatchId/);

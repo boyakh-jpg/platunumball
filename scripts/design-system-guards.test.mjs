@@ -354,6 +354,12 @@ test("signed-in login redirects and settings exposes logout", () => {
   assert.match(settingsStyles, /\.settings-signout-row \.button\s*\{[^}]*width:\s*100%;/);
 });
 
+test("court request report selection reveals the existing report form", () => {
+  assert.match(settingsSource, /selectedReportCourtRequest \? " settings-report-open" : ""/);
+  assert.match(settingsStyles, /\.settings-section-courts:not\(\.settings-report-open\) \.settings-report-card/);
+  assert.match(settingsStyles, /:not\(\.settings-court-card\):not\(\.settings-report-card\)/);
+});
+
 test("regular room referee invitations live only in the room modal", () => {
   const createSections = [
     read("src/components/match/CreateMatchDetailsSection.jsx"),
