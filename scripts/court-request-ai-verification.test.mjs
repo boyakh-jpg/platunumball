@@ -149,6 +149,8 @@ test("court photos use browser resizing and private R2", async () => {
   assert.match(evidence, /\^cr_sim_/);
   assert.match(form, /capture="environment"/);
   assert.match(form, /disabled=\{!courtFieldLocation \|\| courtPhotoPending/);
+  assert.match(form, /settings-court-photo-add/);
+  assert.match(form, /courtPhotos\.length < 4/);
   assert.match(form, /selectCourtPhotos\(event, index\)/);
   assert.match(form, /실제 현장에서 위치를 확인하고 2장 이상 촬영하면 자동승인될 수 있습니다/);
   assert.match(form, /setCourtAddressQuery\(event\.target\.value, true\)/);

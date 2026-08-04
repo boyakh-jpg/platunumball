@@ -96,30 +96,29 @@
 }
 
 .settings-address-actions,
-.settings-court-step-actions,
-.settings-court-evidence > .ui-action-row {
+.settings-court-step-actions {
   width: 100%;
 }
 
 .settings-address-actions > .button,
-.settings-court-step-actions > .button,
-.settings-court-evidence > .ui-action-row > .button {
+.settings-court-step-actions > .button {
   flex: 1 1 180px;
   min-width: 0;
 }
 
-.settings-court-photo-button {
+.settings-court-photo-add,
+.settings-court-photo-retake {
   position: relative;
   cursor: pointer;
 }
 
-.settings-court-photo-button[aria-disabled="true"],
+.settings-court-photo-add[aria-disabled="true"],
 .settings-court-photo-retake[aria-disabled="true"] {
   cursor: not-allowed;
   opacity: 0.58;
 }
 
-.settings-court-photo-button input,
+.settings-court-photo-add input,
 .settings-court-photo-retake input {
   position: absolute;
   inset: 0;
@@ -144,6 +143,22 @@
   overflow: hidden;
   border: var(--ui-stroke-width) solid var(--ui-control-border);
   border-radius: var(--ui-control-radius);
+}
+
+.settings-court-photo-add {
+  display: grid;
+  width: 100%;
+  height: auto;
+  min-width: 0;
+  aspect-ratio: 1;
+  place-content: center;
+  gap: var(--space-2);
+  padding: var(--space-4);
+}
+
+.settings-court-photo-add span {
+  font-size: 0.74rem;
+  font-weight: 900;
 }
 
 .settings-court-photo-grid img {

@@ -1,4 +1,4 @@
-import { Camera, Check, Crosshair, MapPin, RefreshCw, Send, X } from "lucide-react";
+import { Check, Crosshair, MapPin, Plus, RefreshCw, Send, X } from "lucide-react";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import Badge from "../components/common/Badge.jsx";
@@ -276,29 +276,28 @@ export default function SettingsSideColumn({ controller }) {
                     </div>
                     <em>{courtPhotos.length ? `${courtPhotos.length}/4장` : courtFieldLocation ? "현재 단계" : "대기"}</em>
                   </div>
-                  <div className="ui-action-row">
-                    <Button as="label" variant="secondary" className="settings-court-photo-button" aria-disabled={!courtFieldLocation || courtPhotoPending || courtPhotos.length >= 4}>
-                      <Camera size={16} /> {courtPhotoPending ? "사진 처리 중" : !courtFieldLocation ? "위치 확인 후 촬영" : courtPhotos.length >= 4 ? "최대 4장 촬영됨" : courtPhotos.length ? "사진 추가 촬영" : "첫 사진 촬영"}
-                      <input type="file" accept="image/*" capture="environment" disabled={!courtFieldLocation || courtPhotoPending || courtPhotos.length >= 4} onChange={selectCourtPhotos} />
-                    </Button>
-                  </div>
                   <small>1장부터 신청 가능 · 실제 현장에서 위치를 확인하고 2장 이상 촬영하면 자동승인될 수 있습니다.</small>
-                  {courtPhotos.length ? (
-                    <div className="settings-court-photo-grid">
-                      {courtPhotos.map((photo, index) => (
-                        <div key={`${photo.byteSize}-${index}`}>
-                          <img src={photo.previewUrl} alt={`구장 현장 사진 ${index + 1}`} />
-                          <div className="settings-court-photo-actions">
-                            <Button as="label" variant="secondary" size="sm" className="settings-court-photo-retake" aria-disabled={courtPhotoPending} aria-label={`구장 현장 사진 ${index + 1} 다시 촬영`} title="다시 촬영">
-                              <RefreshCw size={15} />
-                              <input type="file" accept="image/*" capture="environment" disabled={courtPhotoPending} onChange={(event) => selectCourtPhotos(event, index)} />
-                            </Button>
-                            <Button type="button" variant="secondary" size="sm" className="settings-court-photo-remove" disabled={courtPhotoPending} onClick={() => removeCourtPhoto(index)} aria-label={`구장 현장 사진 ${index + 1} 삭제`} title="사진 삭제"><X size={15} /></Button>
-                          </div>
+                  <div className="settings-court-photo-grid">
+                    {courtPhotos.map((photo, index) => (
+                      <div key={`${photo.byteSize}-${index}`}>
+                        <img src={photo.previewUrl} alt={`구장 현장 사진 ${index + 1}`} />
+                        <div className="settings-court-photo-actions">
+                          <Button as="label" variant="secondary" size="sm" className="settings-court-photo-retake" aria-disabled={courtPhotoPending} aria-label={`구장 현장 사진 ${index + 1} 다시 촬영`} title="다시 촬영">
+                            <RefreshCw size={15} />
+                            <input type="file" accept="image/*" capture="environment" disabled={courtPhotoPending} onChange={(event) => selectCourtPhotos(event, index)} />
+                          </Button>
+                          <Button type="button" variant="secondary" size="sm" className="settings-court-photo-remove" disabled={courtPhotoPending} onClick={() => removeCourtPhoto(index)} aria-label={`구장 현장 사진 ${index + 1} 삭제`} title="사진 삭제"><X size={15} /></Button>
                         </div>
-                      ))}
-                    </div>
-                  ) : null}
+                      </div>
+                    ))}
+                    {courtPhotos.length < 4 ? (
+                      <Button as="label" variant="secondary" className="settings-court-photo-add" aria-disabled={!courtFieldLocation || courtPhotoPending}>
+                        <Plus size={24} />
+                        <span>{courtPhotoPending ? "처리 중" : courtFieldLocation ? "사진 추가" : "위치 확인 후"}</span>
+                        <input type="file" accept="image/*" capture="environment" disabled={!courtFieldLocation || courtPhotoPending} onChange={selectCourtPhotos} />
+                      </Button>
+                    ) : null}
+                  </div>
                 </section>
                 <div className="form-grid two">
                   <label>
