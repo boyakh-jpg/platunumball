@@ -7,6 +7,7 @@ import { COURT_REQUEST_TRUST_MIN } from "../lib/constants.js";
 import { COURT_ACCESS_OPTIONS, COURT_KIND_OPTIONS, COURT_LAYOUT_OPTIONS, COURT_PUBLIC_ACCESS_OPTIONS, COURT_SOURCE_URL_MAX_LENGTH, COURT_SURFACE_OPTIONS, COURT_TYPE_OPTIONS, getCourtPublicAccessLabel, normalizeCourtFacilityName } from "../lib/courts.js";
 import { getAdminStatusLabel } from "../lib/admin.js";
 import { COURT_COST_OPTIONS, COURT_LIGHTING_OPTIONS, formatCourtDistance } from "./settingsPageModel.js";
+import { COURT_REQUEST_PHOTO_MAX } from "../../shared/lib/courtRequestImagePolicy.js";
 
 import { SettingsReportCard } from "./SettingsReportCard.jsx";
 export default function SettingsSideColumn({ controller }) {
@@ -115,6 +116,8 @@ export default function SettingsSideColumn({ controller }) {
     && photo.metadata?.longitude !== undefined
     && Number.isFinite(Number(photo.metadata.latitude))
     && Number.isFinite(Number(photo.metadata.longitude))).length;
+  const courtAutomaticReviewLocationReady = Boolean(courtFieldLocation)
+    || (courtReadyPhotos.length > 0 && courtPhotoGpsCount === courtReadyPhotos.length);
   const courtPhotoStepComplete = courtPinConfirmed && !courtPhotoPending && !courtPhotoError && (!onsiteCourtEntry || courtReadyPhotos.length > 0);
   return (
 <aside className="page-stack settings-side-column">
@@ -249,16 +252,16 @@ export default function SettingsSideColumn({ controller }) {
                     <span className="settings-court-step-number" aria-hidden="true">{courtPhotoStepComplete ? <Check size={15} /> : "2"}</span>
                     <div>
                       <h3 id="court-step-photo-title">{onsiteCourtEntry ? "현장 사진 촬영" : "현장 사진"}</h3>
-                      <small>{onsiteCourtEntry ? "1장 이상 촬영하세요. 최대 4장까지 추가할 수 있습니다." : "사진이 있으면 최대 4장까지 선택할 수 있습니다."}</small>
+                      <small>{onsiteCourtEntry ? "1장 이상 촬영하세요. 최대 2장까지 추가할 수 있습니다." : "사진이 있으면 최대 2장까지 선택할 수 있습니다."}</small>
                     </div>
-                    <em>{courtPhotos.length ? `${courtPhotos.length}/4장` : courtPhotoStepComplete ? "선택사항" : courtPinConfirmed ? "현재 단계" : "대기"}</em>
+                    <em>{courtPhotos.length ? `${courtPhotos.length}/${COURT_REQUEST_PHOTO_MAX}장` : courtPhotoStepComplete ? "선택사항" : courtPinConfirmed ? "현재 단계" : "대기"}</em>
                   </div>
                   <small role="status" aria-live="polite">{courtPhotoPending
                     ? "촬영한 사진을 자동 최적화하는 중입니다."
                     : courtPhotoError
                       ? courtPhotoError
                       : courtReadyPhotos.length
-                    ? `사진 GPS ${courtPhotoGpsCount}/${courtReadyPhotos.length} · ${courtReadyPhotos.length >= 2 && courtPhotoGpsCount === courtReadyPhotos.length ? "다른 조건도 충족하면 AI 자동승인 후보" : "관리자 검토 가능"}`
+                    ? `사진 GPS ${courtPhotoGpsCount}/${courtReadyPhotos.length} · ${courtReadyPhotos.length === COURT_REQUEST_PHOTO_MAX && courtAutomaticReviewLocationReady ? "다른 조건도 충족하면 AI 자동승인 후보" : "관리자 검토 가능"}`
                     : onsiteCourtEntry ? "현장에서 직접 촬영하면 자동승인 가능성이 높아집니다." : "사진 없이도 신청할 수 있으며, 현장 사진이 있으면 자동승인 가능성이 높아집니다."}</small>
                   <div className="settings-court-photo-grid">
                     {courtPhotos.map((photo, index) => (
@@ -274,7 +277,7 @@ export default function SettingsSideColumn({ controller }) {
                         </div>
                       </div>
                     ))}
-                    {courtPhotos.length < 4 ? (
+                    {courtPhotos.length < COURT_REQUEST_PHOTO_MAX ? (
                       <Button as="label" variant="secondary" className="settings-court-photo-add" aria-disabled={!courtPinConfirmed || courtPhotoPending}>
                         <Plus size={24} />
                         <span>{courtPhotoPending ? "처리 중" : courtPinConfirmed ? onsiteCourtEntry ? "사진 촬영" : "사진 선택" : "위치 지정 후"}</span>

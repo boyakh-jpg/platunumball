@@ -191,7 +191,7 @@ export async function prepareCourtRequestPhotos(files = []) {
 export function getCourtRequestPhotoErrorMessage(code = "") {
   return {
     court_photo_file_required: "사진을 선택해 주세요.",
-    court_photo_count_invalid: "현장 사진은 최대 4장까지 선택할 수 있습니다.",
+    court_photo_count_invalid: "현장 사진은 최대 2장까지 선택할 수 있습니다.",
     court_photo_type_not_supported: "JPG, PNG, WebP, AVIF, HEIC 사진만 사용할 수 있습니다.",
     court_photo_decode_failed: "사진을 읽지 못했습니다. 다른 사진을 선택해 주세요.",
     court_photo_invalid_dimensions: "사진 크기를 확인하지 못했습니다.",

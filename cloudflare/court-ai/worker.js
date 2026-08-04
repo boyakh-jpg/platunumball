@@ -35,7 +35,7 @@ export default {
         reasoning: false,
         stream: false,
         temperature: 0,
-        max_tokens: 128,
+        max_tokens: 64,
       });
       return json(200, {
         success: true,

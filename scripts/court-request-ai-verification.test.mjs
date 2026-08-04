@@ -17,17 +17,23 @@ import { encodeCourtPhotoCanvas } from "../src/lib/courtRequestImages.js";
 import { getCourtRequestQuotaUi } from "../src/pages/settingsPageModel.js";
 
 const eligibleAssessment = {
-  basketballCourt: true,
-  hoopVisible: true,
-  overviewVisible: true,
-  screenshotOrSynthetic: false,
-  courtLayout: "full",
+  court: true,
+  hoop: true,
+  lines: true,
+  venue: false,
+  synthetic: false,
+};
+const venueAssessment = {
+  court: false,
+  hoop: false,
+  lines: false,
+  venue: true,
+  synthetic: false,
 };
 
 const eligibleEvidence = {
-  assessments: [eligibleAssessment, eligibleAssessment],
+  assessments: [eligibleAssessment, venueAssessment],
   photoCount: 2,
-  expectedLayout: "full",
   fieldAccuracyMeters: 12,
   fieldDistanceMeters: 18,
   fieldCapturedAt: new Date().toISOString(),
@@ -72,19 +78,22 @@ test("court AI policy uses server evidence checks instead of model self-confiden
   assert.equal(getCourtVerificationDecision({ ...eligibleEvidence, fieldDistanceMeters: 151, photoLocation: { status: "uncertain", confidence: 0.6 } }).decision, "manual_review");
   assert.equal(getCourtVerificationDecision({ ...eligibleEvidence, photoLocation: { status: "mismatch", confidence: 0.25 } }).decision, "manual_review");
   assert.equal(getCourtVerificationDecision({ ...eligibleEvidence, fieldAccuracyMeters: null, fieldDistanceMeters: null, fieldCapturedAt: null, photoLocation: { status: "unavailable", confidence: 0.75 } }).decision, "manual_review");
+  assert.equal(getCourtVerificationDecision({ ...eligibleEvidence, type: "실내" }).decision, "auto_approve");
+  assert.equal(getCourtVerificationDecision({ ...eligibleEvidence, publicAccess: "private" }).decision, "manual_review");
+  assert.equal(getCourtVerificationDecision({ ...eligibleEvidence, assessments: [venueAssessment, venueAssessment] }).decision, "manual_review");
 });
 
 test("court AI response and coordinate distance are normalized", () => {
   assert.deepEqual(normalizeCourtPhotoAiAnswer(`result: ${JSON.stringify(eligibleAssessment)}`), eligibleAssessment);
   assert.deepEqual(normalizeCourtPhotoAiAnswer({
-    basketballCourt: "yes",
-    hoopVisible: "yes",
-    overviewVisible: "yes",
-    screenshotOrSynthetic: "no",
-    courtLayout: "standard",
+    court: "yes",
+    hoop: "yes",
+    lines: "yes",
+    venue: "no",
+    synthetic: "no",
     confidence: 0,
   }), eligibleAssessment);
-  assert.throws(() => normalizeCourtPhotoAiAnswer({ basketballCourt: true }), /court_ai_invalid_response/);
+  assert.throws(() => normalizeCourtPhotoAiAnswer({ court: true }), /court_ai_invalid_response/);
   assert.ok(getCoordinateDistanceMeters(37.5, 127, 37.5001, 127) > 10);
   assert.equal(getCoordinateDistanceMeters(37.5, 127, null, 127), null);
 });
@@ -163,13 +172,14 @@ test("court photo quality rejects unusable pixels before AI", () => {
 });
 
 test("court evidence and AI usage migrations keep data private", async () => {
-  const [sql, serviceRoleSql, usageSql, limitSql, locationSql, nearbyCaptureSql] = await Promise.all([
+  const [sql, serviceRoleSql, usageSql, limitSql, locationSql, nearbyCaptureSql, photoPairSql] = await Promise.all([
     readFile(new URL("../supabase/migrations/20260803222000_court_request_ai_verification.sql", import.meta.url), "utf8"),
     readFile(new URL("../supabase/migrations/20260804091749_court_request_evidence_service_role.sql", import.meta.url), "utf8"),
     readFile(new URL("../supabase/migrations/20260804120000_court_ai_daily_usage.sql", import.meta.url), "utf8"),
     readFile(new URL("../supabase/migrations/20260804121640_court_request_submission_limits.sql", import.meta.url), "utf8"),
     readFile(new URL("../supabase/migrations/20260804160000_classify_court_request_location_evidence.sql", import.meta.url), "utf8"),
     readFile(new URL("../supabase/migrations/20260804191704_allow_nearby_court_capture.sql", import.meta.url), "utf8"),
+    readFile(new URL("../supabase/migrations/20260804221405_court_ai_photo_pair_policy.sql", import.meta.url), "utf8"),
   ]);
   assert.match(sql, /enable row level security/i);
   assert.match(sql, /revoke all on table public\.court_request_evidence from public, anon, authenticated/i);
@@ -193,6 +203,12 @@ test("court evidence and AI usage migrations keep data private", async () => {
   assert.match(nearbyCaptureSql, /photo_location_status = 'mismatch'/i);
   assert.doesNotMatch(nearbyCaptureSql, /photo_location_status in \('uncertain', 'mismatch'\)/i);
   assert.doesNotMatch(nearbyCaptureSql, /grant .* to (anon|authenticated)|drop table|truncate|delete from/i);
+  assert.match(photoPairSql, /jsonb_array_length\(photo_keys\) between 1 and 2/i);
+  assert.match(photoPairSql, /payload->>'type'[^\n]+\('실내', '야외'\)/i);
+  assert.match(photoPairSql, /courtEvidence/);
+  assert.match(photoPairSql, /evidenceCoverage/);
+  assert.doesNotMatch(photoPairSql, /courtVisible|hoopVisible|overviewVisible|layoutMatches/);
+  assert.doesNotMatch(photoPairSql, /drop table|truncate|delete from/i);
 });
 
 test("court photos use browser resizing and private R2", async () => {
@@ -238,7 +254,7 @@ test("court photos use browser resizing and private R2", async () => {
   assert.match(form, /capture=\{onsiteCourtEntry \? "environment" : undefined\}/);
   assert.match(form, /disabled=\{!courtPinConfirmed\}/);
   assert.match(form, /settings-court-photo-add/);
-  assert.match(form, /courtPhotos\.length < 4/);
+  assert.match(form, /courtPhotos\.length < COURT_REQUEST_PHOTO_MAX/);
   assert.match(form, /selectCourtPhotos\(event, index\)/);
   assert.match(form, /현재 위치로 구장 지정/);
   assert.match(form, /현재 위치 사용/);
@@ -314,7 +330,7 @@ test("court AI retries one malformed response", async (context) => {
     }), { status: 200 });
   };
 
-  const result = await inspectCourtRequestPhotos([{ imageBase64: "image" }], "full");
+  const result = await inspectCourtRequestPhotos([{ imageBase64: "image" }]);
   assert.equal(result.status, "complete");
   assert.equal(calls, 2);
   assert.equal(result.usage.calls, 2);
@@ -327,7 +343,7 @@ test("court AI spends no quota when deterministic approval checks already fail",
   const result = await inspectCourtRequestPhotos([
     { imageBase64: "image-a" },
     { imageBase64: "image-b" },
-  ], "full", false);
+  ], false);
   assert.equal(result.status, "unavailable");
   assert.equal(result.failureReason, "court_ai_not_required");
   assert.deepEqual(result.usage, { calls: 0, inputTokens: 0, outputTokens: 0, neurons: 0, estimated: false });
@@ -368,6 +384,7 @@ test("court AI worker accepts only authenticated bounded evidence", async () => 
   assert.equal(authorizedPayload.usage.prompt_tokens, 817);
   assert.equal(calls[0][0], "@cf/moondream/moondream3.1-9B-A2B");
   assert.equal(calls[0][1].image, input.image);
+  assert.equal(calls[0][1].max_tokens, 64);
 });
 
 test("private R2 upload creates a missing bucket once", async (context) => {

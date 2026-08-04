@@ -400,7 +400,7 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
         return;
       }
       if (replaceIndex === null && courtPhotos.length >= COURT_REQUEST_PHOTO_MAX) {
-        setCourtLookupStatus("현장 사진은 최대 4장까지 촬영할 수 있습니다.");
+        setCourtLookupStatus("현장 사진은 최대 2장까지 촬영할 수 있습니다.");
         return;
       }
       if (!courtPinConfirmed) {

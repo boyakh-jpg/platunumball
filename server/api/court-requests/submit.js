@@ -27,7 +27,7 @@ import {
 } from "../_r2ImageStorage.js";
 import { allowRequestMethod, getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
 
-const COURT_REQUEST_BODY_MAX_BYTES = 1_900_000;
+const COURT_REQUEST_BODY_MAX_BYTES = 1_000_000;
 
 function requestError(statusCode, message, details = null) {
   const error = new Error(message);
@@ -205,7 +205,6 @@ export default async function handler(request, response) {
     );
     const policyInput = {
       photoCount: photos.length,
-      expectedLayout: requestPayload.courtLayout,
       fieldAccuracyMeters: mechanical.fieldAccuracyMeters,
       fieldDistanceMeters: mechanical.fieldDistanceMeters,
       fieldCapturedAt: mechanical.fieldCapturedAt,
@@ -222,10 +221,10 @@ export default async function handler(request, response) {
       "locationVerified",
       "photoLocationConsistent",
       "noNearbyDuplicate",
-      "outdoorPublic",
+      "publicCourt",
       "photoCount",
     ].every((check) => policyBeforeAi.checks[check]);
-    const ai = await inspectCourtRequestPhotos(photos, requestPayload.courtLayout, automaticReviewCandidate);
+    const ai = await inspectCourtRequestPhotos(photos, automaticReviewCandidate);
     await recordCourtAiUsage(context.supabase, requestId, ai.usage);
     const quotaAfter = getCourtAiQuotaState(quota.usedNeurons + ai.usage.neurons);
     const policy = getCourtVerificationDecision({

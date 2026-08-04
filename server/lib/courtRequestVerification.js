@@ -7,7 +7,7 @@ import {
 } from "../../shared/lib/courtRequestImagePolicy.js";
 
 export const COURT_REQUEST_AI_MODEL = "@cf/moondream/moondream3.1-9B-A2B";
-export const COURT_REQUEST_AI_PROMPT_VERSION = "court-photo-v2";
+export const COURT_REQUEST_AI_PROMPT_VERSION = "court-photo-v3";
 export const COURT_REQUEST_AI_PROXY_URL = "https://boxtier-court-ai.rankball.workers.dev";
 export const COURT_REQUEST_AI_DAILY_NEURONS = 10_000;
 export const COURT_REQUEST_AI_BLOCK_RATIO = 0.7;
@@ -37,25 +37,12 @@ export function normalizeCourtPhotoAiAnswer(value = "") {
     if (["false", "no"].includes(text)) return false;
     throw new Error("court_ai_invalid_response");
   };
-  const layoutAliases = {
-    standard: "full",
-    "full court": "full",
-    full_court: "full",
-    "half court": "half",
-    half_court: "half",
-    "single hoop": "single_hoop",
-  };
-  if (!Object.prototype.hasOwnProperty.call(parsed, "courtLayout")) throw new Error("court_ai_invalid_response");
-  const layoutValue = layoutAliases[textValue(parsed?.courtLayout)] ?? textValue(parsed?.courtLayout);
-  const layout = ["full", "half", "single_hoop", "unknown"].includes(layoutValue)
-    ? layoutValue
-    : "unknown";
   return {
-    basketballCourt: booleanValue(parsed?.basketballCourt),
-    hoopVisible: booleanValue(parsed?.hoopVisible),
-    overviewVisible: booleanValue(parsed?.overviewVisible),
-    screenshotOrSynthetic: booleanValue(parsed?.screenshotOrSynthetic),
-    courtLayout: layout,
+    court: booleanValue(parsed?.court),
+    hoop: booleanValue(parsed?.hoop),
+    lines: booleanValue(parsed?.lines),
+    venue: booleanValue(parsed?.venue),
+    synthetic: booleanValue(parsed?.synthetic),
   };
 }
 
@@ -133,7 +120,6 @@ export async function recordCourtAiUsage(supabase, requestId, usage = {}) {
 export function getCourtVerificationDecision({
   assessments = [],
   photoCount = 0,
-  expectedLayout = "unknown",
   fieldAccuracyMeters,
   fieldDistanceMeters,
   fieldCapturedAt,
@@ -148,17 +134,12 @@ export function getCourtVerificationDecision({
     && value !== ""
     && Number.isFinite(Number(value))
     && Number(value) <= maximum;
-  const courtPhotos = assessments.filter((item) => item.basketballCourt);
   const fieldCapturedMs = Date.parse(String(fieldCapturedAt || ""));
   const fieldAgeMs = Date.now() - fieldCapturedMs;
-  const layoutMatches = expectedLayout === "unknown"
-    || courtPhotos.some((item) => item.courtLayout === expectedLayout);
   const visualChecks = {
-    courtVisible: courtPhotos.length >= 2,
-    hoopVisible: courtPhotos.some((item) => item.hoopVisible),
-    overviewVisible: courtPhotos.some((item) => item.overviewVisible),
-    layoutMatches,
-    authenticImages: assessments.length === photoCount && assessments.every((item) => !item.screenshotOrSynthetic),
+    courtEvidence: assessments.some((item) => item.court && (item.hoop || item.lines)),
+    evidenceCoverage: assessments.length === photoCount && assessments.every((item) => item.court || item.venue),
+    authenticImages: assessments.length === photoCount && assessments.every((item) => !item.synthetic),
   };
   const liveLocationVerified = isFiniteAtMost(fieldAccuracyMeters, COURT_REQUEST_FIELD_ACCURACY_MAX_METERS)
     && isFiniteAtMost(fieldDistanceMeters, COURT_REQUEST_FIELD_DISTANCE_MAX_METERS)
@@ -181,8 +162,8 @@ export function getCourtVerificationDecision({
     locationVerified,
     photoLocationConsistent: !photoLocationContradicts,
     noNearbyDuplicate: Number(nearbyDuplicateCount) === 0,
-    outdoorPublic: type === "야외" && publicAccess === "public",
-    photoCount: photoCount >= 2 && photoCount <= COURT_REQUEST_PHOTO_MAX,
+    publicCourt: ["실내", "야외"].includes(type) && publicAccess === "public",
+    photoCount: photoCount === COURT_REQUEST_PHOTO_MAX,
     ...visualChecks,
   };
   return {
@@ -204,7 +185,7 @@ function getAiConfig() {
     : null;
 }
 
-async function inspectPhoto(config, photo, expectedLayout) {
+async function inspectPhoto(config, photo) {
   const response = await fetch(
     config.url,
     {
@@ -216,11 +197,11 @@ async function inspectPhoto(config, photo, expectedLayout) {
       body: JSON.stringify({
         task: "query",
         image: `data:image/webp;base64,${photo.imageBase64}`,
-        question: `Inspect this evidence photo for a basketball court application. Expected layout: ${expectedLayout}. Return only JSON with exactly these fields: {"basketballCourt":boolean,"hoopVisible":boolean,"overviewVisible":boolean,"screenshotOrSynthetic":boolean,"courtLayout":"full|half|single_hoop|unknown"}.`,
+        question: "Return JSON only. court=true if a basketball playing area, hoop, backboard, or court lines are visible. venue=true if a gym or sports-center exterior, entrance, or sign is visible. synthetic=true only for a screenshot, illustration, CGI, or generated image. {\"court\":boolean,\"hoop\":boolean,\"lines\":boolean,\"venue\":boolean,\"synthetic\":boolean}",
         reasoning: false,
         stream: false,
         temperature: 0,
-        max_tokens: 128,
+        max_tokens: 64,
       }),
     },
   );
@@ -248,7 +229,7 @@ async function inspectPhoto(config, photo, expectedLayout) {
   }
 }
 
-export async function inspectCourtRequestPhotos(photos = [], expectedLayout = "unknown", shouldInspect = true) {
+export async function inspectCourtRequestPhotos(photos = [], shouldInspect = true) {
   if (photos.length < COURT_REQUEST_PHOTO_MIN || photos.length > COURT_REQUEST_PHOTO_MAX) {
     throw new Error("court_photo_count_invalid");
   }
@@ -269,7 +250,7 @@ export async function inspectCourtRequestPhotos(photos = [], expectedLayout = "u
       let assessment;
       for (let attempt = 0; attempt < 2; attempt += 1) {
         try {
-          const inspected = await inspectPhoto(config, photo, expectedLayout);
+          const inspected = await inspectPhoto(config, photo);
           assessment = inspected.assessment;
           addUsage(inspected.usage);
           break;
