@@ -1,0 +1,9 @@
+{
+  "name": "boxtier-court-ai",
+  "main": "worker.js",
+  "compatibility_date": "2026-08-04",
+  "workers_dev": true,
+  "ai": {
+    "binding": "AI"
+  }
+}

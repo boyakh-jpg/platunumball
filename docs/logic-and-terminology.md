@@ -3940,3 +3940,5 @@ flowchart TD
 9. 비공개 R2 버킷이 아직 없으면 첫 증거 업로드의 404에서만 버킷을 생성하고 업로드를 한 번 재시도한다. 인증·권한 오류에는 버킷 생성이나 공개 버킷 대체를 하지 않는다.
 10. 운영 시뮬레이션이 만든 `cr_sim_` 증거는 관리자 전용 증거 API에서만 삭제하며 일반 구장 신청의 증거 삭제 권한으로 확장하지 않는다.
 11. 운영 릴리스 시뮬레이션은 Cloudflare AI 상태가 `complete`여야 통과하며 수동검토 폴백을 AI 연동 성공으로 간주하지 않는다.
+12. 운영 사진 판정은 `boxtier-court-ai` Worker의 Workers AI binding을 사용한다. Vercel과 Worker가 이미 공유하는 `CRON_SECRET`으로 서버 간 요청만 허용하고 모델·입력 형식·크기는 Worker가 고정한다. 직접 Workers AI API 토큰은 로컬·비상 fallback으로만 사용한다.
+13. 모델이 JSON 타입 대신 `yes/no`, `high/medium/low`, `standard`를 반환하면 서버가 허용된 값으로만 보수적으로 정규화한다. 정성적 `high`는 자동승인 임계값보다 낮은 `0.9`로 취급하고 알 수 없는 합성 여부는 위험 있음으로 처리한다.

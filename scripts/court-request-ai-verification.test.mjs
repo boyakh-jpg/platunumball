@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 import { getCoordinateDistanceMeters } from "../shared/lib/courtRequestImagePolicy.js";
 import { uploadPrivateR2Webp } from "../server/api/_r2ImageStorage.js";
 import { getCourtVerificationDecision, inspectCourtRequestPhotos, normalizeCourtPhotoAiAnswer } from "../server/lib/courtRequestVerification.js";
+import courtAiWorker from "../cloudflare/court-ai/worker.js";
 
 const eligibleAssessment = {
   basketballCourt: true,
@@ -34,6 +35,14 @@ test("court AI policy auto-approves only complete high-confidence evidence", () 
 
 test("court AI response and coordinate distance are normalized", () => {
   assert.deepEqual(normalizeCourtPhotoAiAnswer(`result: ${JSON.stringify(eligibleAssessment)}`), eligibleAssessment);
+  assert.deepEqual(normalizeCourtPhotoAiAnswer({
+    basketballCourt: "yes",
+    hoopVisible: "yes",
+    overviewVisible: "yes",
+    screenshotOrSynthetic: "no",
+    courtLayout: "standard",
+    confidence: "high",
+  }), { ...eligibleAssessment, confidence: 0.9 });
   assert.ok(getCoordinateDistanceMeters(37.5, 127, 37.5001, 127) > 10);
   assert.equal(getCoordinateDistanceMeters(37.5, 127, null, 127), null);
 });
@@ -69,18 +78,28 @@ test("court AI retries one malformed response", async (context) => {
   const originalFetch = globalThis.fetch;
   const originalAccountId = process.env.CLOUDFLARE_ACCOUNT_ID;
   const originalAiToken = process.env.CLOUDFLARE_AI_API_TOKEN;
+  const originalProxyUrl = process.env.CLOUDFLARE_AI_PROXY_URL;
+  const originalProxySecret = process.env.CLOUDFLARE_AI_PROXY_SECRET;
   let calls = 0;
+  const requests = [];
   context.after(() => {
     globalThis.fetch = originalFetch;
     if (originalAccountId === undefined) delete process.env.CLOUDFLARE_ACCOUNT_ID;
     else process.env.CLOUDFLARE_ACCOUNT_ID = originalAccountId;
     if (originalAiToken === undefined) delete process.env.CLOUDFLARE_AI_API_TOKEN;
     else process.env.CLOUDFLARE_AI_API_TOKEN = originalAiToken;
+    if (originalProxyUrl === undefined) delete process.env.CLOUDFLARE_AI_PROXY_URL;
+    else process.env.CLOUDFLARE_AI_PROXY_URL = originalProxyUrl;
+    if (originalProxySecret === undefined) delete process.env.CLOUDFLARE_AI_PROXY_SECRET;
+    else process.env.CLOUDFLARE_AI_PROXY_SECRET = originalProxySecret;
   });
   process.env.CLOUDFLARE_ACCOUNT_ID = "account";
   process.env.CLOUDFLARE_AI_API_TOKEN = "token";
-  globalThis.fetch = async () => {
+  process.env.CLOUDFLARE_AI_PROXY_URL = "https://court-ai.test";
+  process.env.CLOUDFLARE_AI_PROXY_SECRET = "proxy-secret";
+  globalThis.fetch = async (url, options) => {
     calls += 1;
+    requests.push({ url, options });
     return new Response(JSON.stringify({
       success: true,
       result: { answer: calls === 1 ? "invalid" : JSON.stringify(eligibleAssessment) },
@@ -90,6 +109,40 @@ test("court AI retries one malformed response", async (context) => {
   const result = await inspectCourtRequestPhotos([{ imageBase64: "image" }], "full");
   assert.equal(result.status, "complete");
   assert.equal(calls, 2);
+  assert.ok(requests.every((request) => request.url === "https://court-ai.test"));
+  assert.ok(requests.every((request) => request.options.headers.Authorization === "Bearer proxy-secret"));
+});
+
+test("court AI worker accepts only authenticated bounded evidence", async () => {
+  const input = {
+    task: "query",
+    image: "data:image/webp;base64,image",
+    question: "Inspect court evidence",
+  };
+  const unauthorized = await courtAiWorker.fetch(new Request("https://court-ai.test", {
+    method: "POST",
+    body: JSON.stringify(input),
+  }), { CRON_SECRET: "secret", AI: { run: assert.fail } });
+  assert.equal(unauthorized.status, 401);
+
+  const calls = [];
+  const authorized = await courtAiWorker.fetch(new Request("https://court-ai.test", {
+    method: "POST",
+    headers: { Authorization: "Bearer secret" },
+    body: JSON.stringify(input),
+  }), {
+    CRON_SECRET: "secret",
+    AI: {
+      run: async (...args) => {
+        calls.push(args);
+        return { result: { answer: JSON.stringify(eligibleAssessment) }, usage: {} };
+      },
+    },
+  });
+  assert.equal(authorized.status, 200);
+  assert.equal((await authorized.json()).result.answer, JSON.stringify(eligibleAssessment));
+  assert.equal(calls[0][0], "@cf/moondream/moondream3.1-9B-A2B");
+  assert.equal(calls[0][1].image, input.image);
 });
 
 test("private R2 upload creates a missing bucket once", async (context) => {

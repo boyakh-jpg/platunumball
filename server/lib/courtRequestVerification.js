@@ -9,6 +9,7 @@ import {
 
 export const COURT_REQUEST_AI_MODEL = "@cf/moondream/moondream3.1-9B-A2B";
 export const COURT_REQUEST_AI_PROMPT_VERSION = "court-photo-v1";
+export const COURT_REQUEST_AI_PROXY_URL = "https://boxtier-court-ai.rankball.workers.dev";
 
 function parseJsonAnswer(value = "") {
   const text = String(value || "").trim();
@@ -20,16 +21,37 @@ function parseJsonAnswer(value = "") {
 
 export function normalizeCourtPhotoAiAnswer(value = "") {
   const parsed = typeof value === "string" ? parseJsonAnswer(value) : value;
-  const layout = ["full", "half", "single_hoop", "unknown"].includes(parsed?.courtLayout)
-    ? parsed.courtLayout
+  const textValue = (input) => String(input ?? "").trim().toLowerCase();
+  const booleanValue = (input, fallback = false) => {
+    if (typeof input === "boolean") return input;
+    const text = textValue(input);
+    if (["true", "yes"].includes(text)) return true;
+    if (["false", "no"].includes(text)) return false;
+    return fallback;
+  };
+  const layoutAliases = {
+    standard: "full",
+    "full court": "full",
+    full_court: "full",
+    "half court": "half",
+    half_court: "half",
+    "single hoop": "single_hoop",
+  };
+  const layoutValue = layoutAliases[textValue(parsed?.courtLayout)] ?? textValue(parsed?.courtLayout);
+  const layout = ["full", "half", "single_hoop", "unknown"].includes(layoutValue)
+    ? layoutValue
     : "unknown";
-  const confidence = Number(parsed?.confidence);
+  const confidenceText = textValue(parsed?.confidence);
+  const qualitativeConfidence = { high: 0.9, medium: 0.6, low: 0.3 }[confidenceText];
+  const confidence = confidenceText.endsWith("%")
+    ? Number(confidenceText.slice(0, -1)) / 100
+    : qualitativeConfidence ?? Number(parsed?.confidence);
   if (!Number.isFinite(confidence) || confidence < 0 || confidence > 1) throw new Error("court_ai_invalid_confidence");
   return {
-    basketballCourt: parsed?.basketballCourt === true,
-    hoopVisible: parsed?.hoopVisible === true,
-    overviewVisible: parsed?.overviewVisible === true,
-    screenshotOrSynthetic: parsed?.screenshotOrSynthetic === true,
+    basketballCourt: booleanValue(parsed?.basketballCourt),
+    hoopVisible: booleanValue(parsed?.hoopVisible),
+    overviewVisible: booleanValue(parsed?.overviewVisible),
+    screenshotOrSynthetic: booleanValue(parsed?.screenshotOrSynthetic, true),
     courtLayout: layout,
     confidence,
   };
@@ -81,14 +103,19 @@ export function getCourtVerificationDecision({
 }
 
 function getAiConfig() {
+  const proxyUrl = String(process.env.CLOUDFLARE_AI_PROXY_URL || COURT_REQUEST_AI_PROXY_URL).trim();
+  const proxySecret = String(process.env.CLOUDFLARE_AI_PROXY_SECRET || process.env.CRON_SECRET || "").trim();
+  if (proxyUrl && proxySecret) return { url: proxyUrl, apiToken: proxySecret };
   const accountId = String(process.env.CLOUDFLARE_ACCOUNT_ID || "").trim();
   const apiToken = String(process.env.CLOUDFLARE_AI_API_TOKEN || process.env.CLOUDFLARE_API_TOKEN || "").trim();
-  return accountId && apiToken ? { accountId, apiToken } : null;
+  return accountId && apiToken
+    ? { url: `https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(accountId)}/ai/run/${COURT_REQUEST_AI_MODEL}`, apiToken }
+    : null;
 }
 
 async function inspectPhoto(config, photo, expectedLayout) {
   const response = await fetch(
-    `https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(config.accountId)}/ai/run/${COURT_REQUEST_AI_MODEL}`,
+    config.url,
     {
       method: "POST",
       headers: {
