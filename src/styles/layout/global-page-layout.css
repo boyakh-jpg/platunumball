@@ -123,7 +123,7 @@ html[data-theme] .app-main :is(
   .home-rank-board-head
 ) .eyebrow {
   color: var(--rb-orange-2);
-  text-shadow: var(--hero-copy-shadow);
+  text-shadow: none;
 }
 /* Home hero keeps the next-match board below the rank copy on the left. */
 .rank-home .rank-summary-grid .home-rank-board-head {
@@ -254,7 +254,7 @@ html[data-theme] .app-main :is(
   color: var(--hero-title-color);
 }
 html[data-theme] .app-main .team-hub-board strong {
-  color: var(--rb-yellow);
+  color: var(--rb-gold);
 }
 html[data-theme] .app-main :is(
   .home-hero-next > em,

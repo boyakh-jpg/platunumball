@@ -395,23 +395,6 @@ html[data-theme="light"] .rank-home .home-top-rail .rank-tier-rail > .rank-profi
   }
 }
 /* 2026-07-02 remove extra non-home hero overlay layers. */
-/* 2026-07-02 canonical home hero image rule: no wash, grid, or pseudo overlay. */
-.rank-home .rank-summary-grid .home-rank-board-head h1,
-.rank-home .rank-summary-grid .home-rank-board-head p,
-.rank-home .rank-summary-grid .home-rank-board-head .eyebrow,
-html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head h1,
-html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head p,
-html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head .eyebrow {
-  color: var(--rb-orange);
-}
-html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head p,
-html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head .eyebrow {
-  text-shadow: var(--hero-copy-shadow);
-}
-.rank-home .rank-summary-grid .home-rank-board-head p:not(.eyebrow),
-html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head p:not(.eyebrow) {
-  color: var(--rb-orange-2);
-}
 /* 2026-07-02 rank spotlight cleanup: no inherited accent stripe or framed links. */
 .rank-home .rank-spotlight-card::before,
 .rank-home .home-top-rail .rank-spotlight-card::before,

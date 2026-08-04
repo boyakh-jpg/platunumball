@@ -1161,6 +1161,11 @@ test("page heroes keep shared eyebrows without implementation copy", () => {
   });
   assert.match(visualSystemStyles, /\.ui-page-hero__copy h1\s*\{[^}]*text-shadow:\s*var\(--hero-title-shadow\);[^}]*font-family:\s*var\(--hero-title-font\);/);
   assert.match(visualSystemStyles, /\.ui-page-hero__copy p:not\(\.eyebrow\)\s*\{[^}]*color:\s*var\(--hero-copy-color\);[^}]*text-shadow:\s*var\(--hero-copy-shadow\);/);
+  assert.match(visualSystemStyles, /\.home-rank-board-head[\s\S]*?\) \.eyebrow\s*\{[^}]*text-shadow:\s*none;/);
+  assert.doesNotMatch(
+    readCssTree("src/styles/responsive/global-home-responsive.css"),
+    /\.home-rank-board-head h1,[\s\S]{0,700}?\.home-rank-board-head \.eyebrow\s*\{[^}]*color:\s*var\(--rb-orange\);/,
+  );
   assert.doesNotMatch(
     [matchesStyles, recruitingStyles, matchRoomStyles].join("\n"),
     /\.(?:om-match-copy|arena-hero-copy|tournament-hero|gm-room-title)[^{]*\{[^}]*var\(--hero-title-/,
@@ -1173,14 +1178,14 @@ test("page heroes keep shared eyebrows without implementation copy", () => {
   );
 });
 
-test("팀 허브 대표팀 보드는 팀 전용 너비와 고정 노랑 팀명을 사용한다", () => {
+test("팀 허브 대표팀 보드는 팀 전용 너비와 테마 대응 골드 팀명을 사용한다", () => {
   assert.match(
     read("src/styles/tokens.css"),
     /--rb-yellow:\s*#ffd36c;/,
   );
   assert.match(
     visualSystemStyles,
-    /\.team-hub-board strong\s*\{[^}]*color:\s*var\(--rb-yellow\);/,
+    /\.team-hub-board strong\s*\{[^}]*color:\s*var\(--rb-gold\);/,
   );
   assert.match(
     readCssTree("src/styles/global-surfaces.css"),
