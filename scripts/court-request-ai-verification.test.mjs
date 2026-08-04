@@ -1,8 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import sharp from "sharp";
 import { getCoordinateDistanceMeters, getCourtPhotoLocationEvidence, getCourtPhotoPixelQualityError } from "../shared/lib/courtRequestImagePolicy.js";
-import { uploadPrivateR2Webp } from "../server/api/_r2ImageStorage.js";
+import { normalizeWebpUpload, uploadPrivateR2Webp, validateSafeWebpContainer } from "../server/api/_r2ImageStorage.js";
 import {
   getCourtAiQuotaState,
   getCourtAiUsage,
@@ -12,6 +13,7 @@ import {
   normalizeCourtPhotoAiAnswer,
 } from "../server/lib/courtRequestVerification.js";
 import courtAiWorker from "../cloudflare/court-ai/worker.js";
+import { encodeCourtPhotoCanvas } from "../src/lib/courtRequestImages.js";
 import { getCourtRequestQuotaUi } from "../src/pages/settingsPageModel.js";
 
 const eligibleAssessment = {
@@ -35,6 +37,27 @@ const eligibleEvidence = {
   publicAccess: "public",
   photoLocation: { status: "matched", confidence: 1 },
 };
+
+test("court photos fall back to JPEG and are sanitized back to WebP", async () => {
+  const requestedTypes = [];
+  const canvas = {
+    toBlob(callback, type) {
+      requestedTypes.push(type);
+      callback(new Blob([type], { type: type === "image/webp" ? "image/png" : type }));
+    },
+  };
+  assert.equal((await encodeCourtPhotoCanvas(canvas, 0.82)).type, "image/jpeg");
+  assert.deepEqual(requestedTypes, ["image/webp", "image/jpeg"]);
+
+  const jpeg = await sharp({ create: { width: 640, height: 480, channels: 3, background: "#f15a3a" } }).jpeg().toBuffer();
+  const normalized = await normalizeWebpUpload(jpeg, { maxBytes: 300_000, maxDimension: 1280, errorPrefix: "court_photo" });
+  assert.deepEqual(normalized.dimensions, { width: 640, height: 480 });
+  assert.deepEqual(validateSafeWebpContainer(normalized.bytes).map(({ type }) => type), ["VP8 "]);
+  await assert.rejects(
+    normalizeWebpUpload(Buffer.concat([jpeg, Buffer.from("<script>")]), { maxBytes: 300_000, maxDimension: 1280, errorPrefix: "court_photo" }),
+    /court_photo_webp_required/,
+  );
+});
 
 test("court AI policy uses server evidence checks instead of model self-confidence", () => {
   const decision = getCourtVerificationDecision({
@@ -165,26 +188,29 @@ test("court evidence and AI usage migrations keep data private", async () => {
 });
 
 test("court photos use browser resizing and private R2", async () => {
-  const [client, server, evidence, form, controller, styles] = await Promise.all([
+  const [client, server, storage, evidence, form, controller, styles] = await Promise.all([
     readFile(new URL("../src/lib/courtRequestImages.js", import.meta.url), "utf8"),
     readFile(new URL("../server/api/court-requests/submit.js", import.meta.url), "utf8"),
+    readFile(new URL("../server/api/_r2ImageStorage.js", import.meta.url), "utf8"),
     readFile(new URL("../server/api/court-requests/evidence.js", import.meta.url), "utf8"),
     readFile(new URL("../src/pages/SettingsSideColumn.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/pages/useSettingsCourtRequestController.js", import.meta.url), "utf8"),
     readFile(new URL("../src/styles/features/court-request-evidence.css", import.meta.url), "utf8"),
   ]);
-  assert.match(client, /canvasToWebp/);
+  assert.match(client, /encodeCourtPhotoCanvas/);
   assert.match(client, /exifr\/dist\/lite\.esm\.mjs/);
   assert.match(client, /DateTimeOriginal/);
   assert.match(client, /getCourtPhotoPixelQualityError/);
   assert.match(client, /image\.onload = resolve/);
   assert.doesNotMatch(client, /await image\.decode\(\)/);
-  assert.match(client, /blob\.type !== "image\/webp"/);
+  assert.match(client, /canvasToBlob\(canvas, "image\/webp"/);
+  assert.match(client, /canvasToBlob\(canvas, "image\/jpeg"/);
   assert.match(client, /blob\.size <= COURT_REQUEST_PHOTO_MAX_BYTES/);
   assert.ok(client.indexOf("if (fallback)") < client.indexOf('throw imageError("court_photo_too_large_after_resize")'));
   assert.doesNotMatch(client, /file\.size\s*[><=]/);
   assert.match(server, /getPrivateR2Config/);
-  assert.match(server, /safeContainer:\s*true/);
+  assert.match(server, /normalizeWebpUpload/);
+  assert.match(storage, /safeContainer:\s*true/);
   assert.match(server, /getCourtPhotoLocationEvidence/);
   assert.match(server, /photoMetadata/);
   assert.ok(server.lastIndexOf("COURT_REQUEST_PHOTO_MIN_BYTES") < server.lastIndexOf("inspectCourtRequestPhotos("));

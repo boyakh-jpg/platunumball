@@ -196,3 +196,58 @@ export function validateWebpImage(bytes, options = {}) {
   }
   return dimensions;
 }
+
+export async function normalizeWebpUpload(bytes, options = {}) {
+  const maxBytes = Number(options.maxBytes);
+  const maxDimension = Number(options.maxDimension);
+  const errorPrefix = String(options.errorPrefix || "image");
+  if (!Number.isFinite(maxBytes) || maxBytes <= 0) throw new Error("invalid_image_max_bytes");
+  if (!Number.isFinite(maxDimension) || maxDimension <= 0) throw new Error("invalid_image_max_dimension");
+  if (!bytes?.length || bytes.length > maxBytes) throw httpError(400, `${errorPrefix}_too_large`);
+
+  if (bytes.toString("ascii", 0, 4) === "RIFF" && bytes.toString("ascii", 8, 12) === "WEBP") {
+    return {
+      bytes,
+      dimensions: validateWebpImage(bytes, { maxDimension, errorPrefix, safeContainer: true }),
+    };
+  }
+
+  const isJpeg = bytes.length >= 4
+    && bytes[0] === 0xff
+    && bytes[1] === 0xd8
+    && bytes[bytes.length - 2] === 0xff
+    && bytes[bytes.length - 1] === 0xd9;
+  if (!isJpeg) throw httpError(400, `${errorPrefix}_webp_required`);
+
+  let sharp;
+  try {
+    ({ default: sharp } = await import("sharp"));
+  } catch {
+    throw httpError(503, `${errorPrefix}_conversion_unavailable`);
+  }
+
+  try {
+    const image = sharp(bytes, {
+      failOn: "warning",
+      limitInputPixels: maxDimension * maxDimension,
+    });
+    const metadata = await image.metadata();
+    if (
+      metadata.format !== "jpeg"
+      || !metadata.width
+      || !metadata.height
+      || metadata.width > maxDimension
+      || metadata.height > maxDimension
+      || Number(metadata.pages || 1) !== 1
+    ) throw httpError(400, `${errorPrefix}_invalid_dimensions`);
+    const normalized = await image.rotate().webp({ quality: 76, effort: 4 }).toBuffer();
+    if (!normalized.length || normalized.length > maxBytes) throw httpError(400, `${errorPrefix}_too_large`);
+    return {
+      bytes: normalized,
+      dimensions: validateWebpImage(normalized, { maxDimension, errorPrefix, safeContainer: true }),
+    };
+  } catch (error) {
+    if (error?.statusCode) throw error;
+    throw httpError(400, `${errorPrefix}_invalid_payload`);
+  }
+}

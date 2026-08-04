@@ -22,8 +22,8 @@ import {
   decodeBase64Image,
   deleteR2Object,
   getPrivateR2Config,
+  normalizeWebpUpload,
   uploadPrivateR2Webp,
-  validateWebpImage,
 } from "../_r2ImageStorage.js";
 import { allowRequestMethod, getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
 
@@ -170,15 +170,15 @@ export default async function handler(request, response) {
       });
       return;
     }
-    const photos = photoInputs.map((photo, index) => {
-      const bytes = decodeBase64Image(photo?.imageBase64, {
+    const photos = await Promise.all(photoInputs.map(async (photo, index) => {
+      const inputBytes = decodeBase64Image(photo?.imageBase64, {
         maxBytes: COURT_REQUEST_PHOTO_MAX_BYTES,
         errorPrefix: `court_photo_${index + 1}`,
       });
-      const dimensions = validateWebpImage(bytes, {
+      const { bytes, dimensions } = await normalizeWebpUpload(inputBytes, {
+        maxBytes: COURT_REQUEST_PHOTO_MAX_BYTES,
         maxDimension: COURT_REQUEST_PHOTO_MAX_DIMENSION,
         errorPrefix: `court_photo_${index + 1}`,
-        safeContainer: true,
       });
       if (
         bytes.length < COURT_REQUEST_PHOTO_MIN_BYTES
@@ -186,8 +186,8 @@ export default async function handler(request, response) {
         || dimensions.width * dimensions.height < COURT_REQUEST_PHOTO_MIN_PIXELS
       ) throw requestError(400, "court_photo_quality_too_low");
       const hash = createHash("sha256").update(bytes).digest("hex");
-      return { bytes, hash, imageBase64: String(photo.imageBase64), metadata: photo?.metadata };
-    });
+      return { bytes, hash, imageBase64: bytes.toString("base64"), metadata: photo?.metadata };
+    }));
     if (new Set(photos.map((photo) => photo.hash)).size !== photos.length) {
       throw requestError(400, "court_photo_duplicate");
     }

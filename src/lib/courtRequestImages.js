@@ -16,8 +16,16 @@ function imageError(code) {
   return error;
 }
 
-function canvasToWebp(canvas, quality) {
-  return new Promise((resolve) => canvas.toBlob(resolve, "image/webp", quality));
+function canvasToBlob(canvas, type, quality) {
+  return new Promise((resolve) => canvas.toBlob(resolve, type, quality));
+}
+
+export async function encodeCourtPhotoCanvas(canvas, quality) {
+  const webp = await canvasToBlob(canvas, "image/webp", quality).catch(() => null);
+  if (webp?.type === "image/webp") return webp;
+  const jpeg = await canvasToBlob(canvas, "image/jpeg", quality).catch(() => null);
+  if (jpeg?.type === "image/jpeg") return jpeg;
+  throw imageError("court_photo_encode_unavailable");
 }
 
 function blobToBase64(blob) {
@@ -135,8 +143,7 @@ export async function prepareCourtRequestPhoto(file) {
       context.imageSmoothingQuality = "high";
       context.drawImage(decoded.source, 0, 0, width, height);
       for (const quality of [0.82, 0.74, 0.66, 0.58, 0.5, 0.42, 0.36]) {
-        const blob = await canvasToWebp(canvas, quality);
-        if (!blob || blob.type !== "image/webp") throw imageError("court_photo_webp_unavailable");
+        const blob = await encodeCourtPhotoCanvas(canvas, quality);
         if (blob.size <= COURT_REQUEST_PHOTO_MAX_BYTES && (!fallback || blob.size < fallback.blob.size)) {
           fallback = { blob, width, height };
         }
@@ -144,7 +151,7 @@ export async function prepareCourtRequestPhoto(file) {
           const imageBase64 = await blobToBase64(blob);
           return {
             imageBase64,
-            previewUrl: `data:image/webp;base64,${imageBase64}`,
+            previewUrl: `data:${blob.type};base64,${imageBase64}`,
             byteSize: blob.size,
             width,
             height,
@@ -157,7 +164,7 @@ export async function prepareCourtRequestPhoto(file) {
       const imageBase64 = await blobToBase64(fallback.blob);
       return {
         imageBase64,
-        previewUrl: `data:image/webp;base64,${imageBase64}`,
+        previewUrl: `data:${fallback.blob.type};base64,${imageBase64}`,
         byteSize: fallback.blob.size,
         width: fallback.width,
         height: fallback.height,
@@ -197,7 +204,7 @@ export function getCourtRequestPhotoErrorMessage(code = "") {
     court_photo_invalid_container: "올바른 카메라 사진이 아닙니다. 다시 촬영해 주세요.",
     court_photo_unsafe_chunk: "안전하게 처리할 수 없는 사진입니다. 다시 촬영해 주세요.",
     court_photo_canvas_unavailable: "이 브라우저에서는 사진 변환을 사용할 수 없습니다.",
-    court_photo_webp_unavailable: "이 브라우저에서는 WebP 변환을 사용할 수 없습니다.",
+    court_photo_encode_unavailable: "이 브라우저에서는 사진 최적화를 사용할 수 없습니다.",
     court_photo_read_failed: "변환된 사진을 읽지 못했습니다.",
     court_photo_too_large_after_resize: "사진을 자동 최적화하지 못했습니다. 다른 사진을 선택해 주세요.",
     court_photo_invalid_output: "사진 자동 최적화 결과가 올바르지 않습니다.",
