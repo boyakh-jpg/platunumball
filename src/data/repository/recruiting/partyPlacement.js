@@ -4,11 +4,14 @@ import { SIDE_LABEL_TEXT } from "../../../lib/constants.js";
 import { getRecruitingApplicantKey } from "../../../lib/recruiting.js";
 import { getRecruitingHostEditReady } from "../../../lib/recruiting.js";
 import { getRecruitingLobby } from "../../../lib/recruiting.js";
+import { getRecruitingMmrBalance } from "../../../lib/recruiting.js";
 import { getRecruitingSideCapacity } from "../../../lib/recruiting.js";
 import { getRecruitingSlotEditStatus } from "../../../lib/recruiting.js";
 import { getSelectedTeamPlayerIds } from "../../../lib/recruiting.js";
 import { hasRecruitingTeamMemberOnOtherSide } from "../../../lib/recruiting.js";
 import { isIndividualOnlyRecruitingRoom } from "../../../lib/recruiting.js";
+import { isMmrBalanceTransitionAllowed } from "../../../lib/recruiting.js";
+import { isMmrBalancedRecruitingRoom } from "../../../lib/recruiting.js";
 import { isMutableRecruitingRoom } from "../../../lib/recruiting.js";
 import { isRecruitingEntryMember } from "../../../lib/recruiting.js";
 import { isRecruitingReserveLimitExceeded } from "../../../lib/recruiting.js";
@@ -122,7 +125,7 @@ export function setRecruitingApplicantPlacement(state, postId, playerId, placeme
   if (!target) return state;
   const requesterControlsTarget = hostTarget
     ? post.playerId === state.currentUserId
-    : target.playerId === state.currentUserId || (target.playerIds ?? []).includes(state.currentUserId);
+    : post.playerId === state.currentUserId || target.playerId === state.currentUserId || (target.playerIds ?? []).includes(state.currentUserId);
   if (!requesterControlsTarget) return state;
 
   const explicitRequestedSide = MATCH_SIDES.includes(placement.side) ? placement.side : null;
@@ -161,6 +164,24 @@ export function setRecruitingApplicantPlacement(state, postId, playerId, placeme
     const lobby = getRecruitingLobby(nextPost, state);
     const activePlayerCount = new Set(lobby.sides[side].entries.flatMap((entry) => entry.players)).size;
     if (activePlayerCount > lobby.sides[side].capacity) return state;
+  }
+
+  if (isMmrBalancedRecruitingRoom(post)) {
+    const userById = Object.fromEntries((state.users ?? []).map((user) => [user.id, user]));
+    const currentBalance = getRecruitingMmrBalance(post, getRecruitingLobby(post, state), userById);
+    const nextBalance = getRecruitingMmrBalance(nextPost, getRecruitingLobby(nextPost, state), userById);
+    if (!isMmrBalanceTransitionAllowed(currentBalance, nextBalance)) {
+      return {
+        ...state,
+        notifications: [{
+          id: makeId("n"),
+          title: "MMR 균형 이동 불가",
+          body: `평균 차이와 사이드 내부 MMR 폭은 ${nextBalance.limit} 이하여야 합니다.`,
+          tone: "orange",
+          recruitingPostId: postId,
+        }, ...state.notifications],
+      };
+    }
   }
 
   return {

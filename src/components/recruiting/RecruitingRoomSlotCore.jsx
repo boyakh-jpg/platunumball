@@ -29,6 +29,7 @@ import {
 } from "../../lib/assets.js";
 
 import {
+  canMoveRecruitingPlayerWithinMmrBalance,
   getRecruitingBenchCapacity,
   getRecruitingEntryLeaderId,
   getRecruitingRoomOwnerId,
@@ -88,16 +89,14 @@ export function getLobbySideMeta(lobby, sideName, userById, { useSideName = fals
   const side = lobby.sides[sideName];
   const teamEntry = side.entries.find((entry) => isRecruitingTeamEntry(entry) && entry.team);
   const leadEntry = teamEntry ?? side.entries[0] ?? null;
-  const playerMmrs = side.projectedPlayers
-    .map((playerId) => userById[playerId]?.ratings?.integrated)
-    .filter((value) => Number.isFinite(Number(value)));
-  const avgMmr = playerMmrs.length
-    ? Math.round(playerMmrs.reduce((sum, value) => sum + Number(value), 0) / playerMmrs.length)
-    : 0;
+  const playerMmrs = side.projectedPlayers.map((playerId) => Number(userById[playerId]?.ratings?.integrated ?? DEFAULT_RATING));
+  const avgMmr = playerMmrs.length ? Math.round(playerMmrs.reduce((sum, value) => sum + value, 0) / playerMmrs.length) : 0;
+  const spread = playerMmrs.length > 1 ? Math.max(...playerMmrs) - Math.min(...playerMmrs) : 0;
 
   return {
     name: useSideName ? SIDE_LABELS[sideName] : leadEntry?.team?.name ?? leadEntry?.user?.name ?? SIDE_LABELS[sideName],
     mmr: useSideName ? avgMmr : leadEntry?.team?.mmr ?? avgMmr,
+    spread,
     label: sideName === "teamA" ? "HOME TEAM" : "OPPONENT",
   };
 }
@@ -223,11 +222,13 @@ export function getMissingStartAttendanceIds(match = {}, operatorId = "") {
   ));
 }
 
-export function canMovePlayerTo(post, lobby, playerId, sideName, reserve = false) {
+export function canMovePlayerTo(post, lobby, playerId, sideName, reserve = false, userById = {}) {
   const side = lobby.sides[sideName];
   if (!side) return false;
-  if (reserve) return side.reserves.includes(playerId) || side.reserveCandidates.length < getRecruitingBenchCapacity(post);
-  return side.projectedPlayers.includes(playerId) || side.projectedFilled < side.capacity;
+  const hasCapacity = reserve
+    ? side.reserves.includes(playerId) || side.reserveCandidates.length < getRecruitingBenchCapacity(post)
+    : side.projectedPlayers.includes(playerId) || side.projectedFilled < side.capacity;
+  return hasCapacity && canMoveRecruitingPlayerWithinMmrBalance(post, lobby, userById, playerId, sideName, reserve);
 }
 
 export function getEntryPlayerReserveState(entry, playerId) {

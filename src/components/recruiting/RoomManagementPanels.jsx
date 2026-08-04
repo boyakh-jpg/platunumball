@@ -51,6 +51,7 @@ export function RoomKickPanel({
   onSetReserve,
   onSetPlacement,
   onSwapPlacement,
+  canSetPlacement = null,
   allowSideMove = false,
   attendanceBySide = null,
   requireMissingAttendance = false,
@@ -120,6 +121,7 @@ export function RoomKickPanel({
           const selfRow = playerId === currentUserId;
           const hostRow = playerId === hostPlayerId;
           const kickDisabled = selfRow || (requireMissingAttendance && checkedIn);
+          const reserveAllowed = !canSetPlacement || canSetPlacement(playerId, { side, reserve: !reserve }), sideMoveAllowed = !canSetPlacement || canSetPlacement(playerId, { side: side === "teamA" ? "teamB" : "teamA", reserve });
           return (
             <div key={`${entry.id}-${playerId}`} className="arena-host-kick-row">
               <PlayerHoverCard user={user} teams={teams} as="span">
@@ -162,7 +164,7 @@ export function RoomKickPanel({
                     type="button"
                     size="sm"
                     variant="secondary"
-                    disabled={!placementAllowed || Boolean(pendingAction)}
+                    disabled={!placementAllowed || !reserveAllowed || Boolean(pendingAction)}
                     onClick={() => void runAction(`placement:${playerId}`, () => onSetReserve({ ...entry, side }, playerId, !reserve))}
                   >
                     {reserve ? "출전" : "후보"}
@@ -173,7 +175,7 @@ export function RoomKickPanel({
                     type="button"
                     size="sm"
                     variant="secondary"
-                    disabled={!placementAllowed || Boolean(pendingAction)}
+                    disabled={!placementAllowed || !sideMoveAllowed || Boolean(pendingAction)}
                     onClick={() => void runAction(`placement:${playerId}`, () => onSetPlacement(playerId, { side: side === "teamA" ? "teamB" : "teamA", reserve }))}
                   >
                     {side === "teamA" ? "B" : "A"} 이동

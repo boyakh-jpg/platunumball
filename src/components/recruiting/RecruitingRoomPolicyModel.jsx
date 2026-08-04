@@ -4,10 +4,10 @@ export function buildRecruitingRoomPolicyModel(context) {
     getDefaultJoinRoster, getJoinActiveCapacity, getJoinDraft, getJoinableSidePartyOptions, getLobbyPrimaryTeamId, getLobbySideMeta,
     getMatchCreationSummary, getMatchRuleDetailRows, getMatchRuleInputValidation, getPartyPlayerIds, getPartyReserveIds, getPickupOpenSlotPlacements,
     getPickupResizeValidation, getPickupTeamAssignmentPolicy, getPlayerMmrAverage, getPublicRoomTimingStatus, getRecruitingBenchCapacity, getRecruitingFit,
-    getRecruitingLobby, getRecruitingRoomOwnerId, getRecruitingRuleAcknowledgement, getRecruitingSideCapacity, getRecruitingTargetMmr, getRecruitingTierRange,
+    getRecruitingLobby, getRecruitingMmrBalance, getRecruitingMmrBalancedPlacement, getRecruitingRoomOwnerId, getRecruitingRuleAcknowledgement, getRecruitingSideCapacity, getRecruitingTargetMmr, getRecruitingTierRange,
     getRoomEditDraftByPost, getRoomPhaseViewModel, getRoomScheduleProposalProgress, getSameSidePartyOptions, getSourceMatchAction, getSourceMatchDecisionSideName,
     getSourceMatchStatus, getTeamCaptainId, getTeamEventEligibility, getTeamHashtag, inviteDraft, isCurrentUserRoomParticipant,
-    isEligibleReferee, isIndividualOnlyRecruitingRoom, isPartyEntry, isPickupRecruitingRoom, isRoomScheduleChangePending, isSupabaseConfigured,
+    isEligibleReferee, isIndividualOnlyRecruitingRoom, isMmrBalancedRecruitingRoom, isPartyEntry, isPickupRecruitingRoom, isRoomScheduleChangePending, isSupabaseConfigured,
     isTeamOnlyRoom, joiningPostId, myTeams, normalizeMatchRules, registeredCourts, roomEditStatusByPost,
     roomTeamSavingSide, selectedPost, setRoomTeamFeedback, setRoomTeamQuery, setRoomTeamSavingSide, slotActionDraft,
     sourceMatch, teamById, userById,
@@ -19,6 +19,8 @@ const lobby = getRecruitingLobby(selectedPost, app.state);
         const joinDraft = getJoinDraft(selectedPost);
         const individualOnlyRoom = isIndividualOnlyRecruitingRoom(selectedPost);
         const teamOnlyRoom = isTeamOnlyRoom(selectedPost) && !individualOnlyRoom;
+        const autoBalancedIndividualRoom = isMmrBalancedRecruitingRoom(selectedPost) || sourceMatch?.rules?.mmrBalancedSides === true;
+        const sideMmrBalance = getRecruitingMmrBalance(selectedPost, lobby, userById);
         const selectedRoomTeamAId = getLobbyPrimaryTeamId(lobby, "teamA") ?? selectedPost.teamId ?? "";
         const selectedRoomTeamBId = getLobbyPrimaryTeamId(lobby, "teamB") || selectedPost.opponentTeamId || selectedPost.targetTeamId || "";
         const selectedRoomTeamA = teamById[selectedRoomTeamAId] ?? null;
@@ -38,7 +40,9 @@ const lobby = getRecruitingLobby(selectedPost, app.state);
         const selectedJoinSideTeamId = getLobbyPrimaryTeamId(lobby, joinDraft.side);
         const selectedJoinSideAvailable = !teamOnlyRoom || !selectedJoinSideTeamId;
         const teamRoomHasJoinableSide = !teamOnlyRoom || MATCH_SIDES.some((sideName) => !getLobbyPrimaryTeamId(lobby, sideName));
-        const joinCapacity = getJoinActiveCapacity(selectedPost, lobby, joinDraft.side, joinDraft.reserve);
+        const joinCapacity = autoBalancedIndividualRoom
+          ? getRecruitingSideCapacity(selectedPost)
+          : getJoinActiveCapacity(selectedPost, lobby, joinDraft.side, joinDraft.reserve);
         const selectedJoinPlayerIds = teamOnlyRoom
           ? (app.currentUser.id ? [app.currentUser.id] : [])
           : getPartyPlayerIds(selectedJoinTeam, joinDraft.playerIds, joinCapacity, app.currentUser.id);
@@ -56,6 +60,13 @@ const lobby = getRecruitingLobby(selectedPost, app.state);
           ? getPlayerMmrAverage(selectedJoinPlayerIds, userById, selectedJoinTeam?.mmr ?? app.currentUser.ratings.integrated)
           : app.currentUser.ratings.integrated;
         const fit = getRecruitingFit(selectedPost, candidateMmr || app.currentUser.ratings.integrated, app.state);
+        const joinBalancedPlacement = getRecruitingMmrBalancedPlacement(
+          selectedPost,
+          lobby,
+          userById,
+          joinDraft.joinMode === "team" ? selectedJoinPlayerIds : [app.currentUser.id],
+          joinDraft.reserve,
+        );
         const matchRoom = Boolean(sourceMatch);
         const recruitingRoomConfirmed = Boolean(selectedPost.status === "closed" || selectedPost.confirmedAt);
         const storedRoomPost = app.state.recruitingPosts?.find((item) => item.id === selectedPost.id) ?? null;
@@ -99,7 +110,7 @@ const lobby = getRecruitingLobby(selectedPost, app.state);
           && (
           joinDraft.joinMode === "referee"
             ? canJoinReferee
-            : joinTierAllowed && (!pickupPoolMode || pickupOpenSlotPlacements.length > 0) && (joinDraft.joinMode === "player" || teamJoinValid)
+            : joinTierAllowed && joinBalancedPlacement?.allowed !== false && (!pickupPoolMode || pickupOpenSlotPlacements.length > 0) && (joinDraft.joinMode === "player" || teamJoinValid)
         );
         const roomTeamSelectionOpen = teamOnlyRoom
           && !sourceMatch
@@ -371,10 +382,10 @@ const lobby = getRecruitingLobby(selectedPost, app.state);
         const roomTimingStatus = getPublicRoomTimingStatus(selectedPost);
 
   return {
-    lobby, roomPhaseViewModel, pickupPoolMode, joinDraft, individualOnlyRoom, teamOnlyRoom,
+    lobby, roomPhaseViewModel, pickupPoolMode, joinDraft, individualOnlyRoom, teamOnlyRoom, autoBalancedIndividualRoom, sideMmrBalance,
     selectedRoomTeamAId, selectedRoomTeamBId, selectedRoomTeamA, selectedRoomTeamB, roomTargetMmr, getJoinTeamEligibility,
     selectedJoinTeam, selectedJoinTeamEligibility, selectedJoinSideTeamId, selectedJoinSideAvailable, teamRoomHasJoinableSide, joinCapacity,
-    selectedJoinPlayerIds, benchCapacity, pickupOpenSlotPlacements, selectedJoinReserveIds, candidateMmr, fit,
+    selectedJoinPlayerIds, benchCapacity, pickupOpenSlotPlacements, selectedJoinReserveIds, candidateMmr, fit, joinBalancedPlacement,
     matchRoom, recruitingRoomConfirmed, storedRoomPost, slotPositions, roomOwnerId, mine,
     myEntry, alreadyApplied, currentUserIsRoomReferee, changeApprovalSource, scheduleProposalProgress, scheduleChangePending,
     canInviteFromRoom, canChat, selectedRoomState, refereeWanted, getJoinRosterPatch, teamJoinValid,

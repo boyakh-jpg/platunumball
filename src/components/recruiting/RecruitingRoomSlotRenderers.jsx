@@ -33,7 +33,7 @@ const roomPhaseBadge = sourceMatch ? sourceMatchPhase : roomQueueStatus;
           const samePlacement = myEntry.side === sideName && currentUserReserve === reserve;
           if (samePlacement) return false;
           if (teamMatchSideLocked && sideName !== myEntry.side) return false;
-          if (!canMovePlayerTo(selectedPost, lobby, app.currentUser.id, sideName, reserve)) return false;
+          if (!canMovePlayerTo(selectedPost, lobby, app.currentUser.id, sideName, reserve, userById)) return false;
           if (myEntry.kind === "player" && myEntry.playerId === app.currentUser.id) return true;
           if (currentUserInParty && myEntry.side === sideName) return true;
           if (currentUserInParty) return true;
@@ -135,7 +135,7 @@ const roomPhaseBadge = sourceMatch ? sourceMatchPhase : roomQueueStatus;
               {actions.map((action) => {
                 const active = targetEntry.side === action.side && targetReserve === action.reserve;
                 const movable = targetIsParty
-                  ? !active && canMovePlayerTo(selectedPost, lobby, targetPlayerId, action.side, action.reserve)
+                  ? !active && canMovePlayerTo(selectedPost, lobby, targetPlayerId, action.side, action.reserve, userById)
                   : targetIsCurrentUser && canMoveActiveUserToSlot(action.side, action.reserve);
                 return (
                   <Button

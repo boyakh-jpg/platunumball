@@ -79,7 +79,8 @@
     grid-template-columns: 1fr auto 1fr;
   }
 
-  .arena-lobby-score-core span {
+  .arena-lobby-score-core span,
+  .arena-lobby-score-core small {
     grid-column: 1 / -1;
   }
 

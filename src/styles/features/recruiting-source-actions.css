@@ -119,6 +119,22 @@
   gap: 10px;
 }
 
+.arena-join-mode-control {
+  justify-self: start;
+  width: max-content;
+  max-width: 100%;
+}
+
+.arena-join-mode-control button {
+  flex: 0 0 auto;
+}
+
+.arena-participation-fields.is-auto-balanced {
+  grid-template-columns: minmax(0, 280px);
+  width: max-content;
+  max-width: 100%;
+}
+
 .arena-owner-panel {
   display: grid;
   gap: 4px;

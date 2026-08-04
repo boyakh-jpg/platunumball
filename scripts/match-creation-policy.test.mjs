@@ -58,18 +58,76 @@ import {
   interestRecruitingPost,
   inviteRecruitingPlayers,
   joinRecruitingSideParty,
+  setRecruitingApplicantPlacement,
   setRecruitingRoomTeam,
 } from "../src/data/repository.js";
 import { SERVER_RATING_AUTHORITY } from "../server/lib/ratingAuthority.js";
 import {
   MMR_RANGE_POLICIES,
+  getRecruitingMmrBalancedPlacement,
   getRecruitingLobby,
+  getSideMmrBalance,
   isIndividualOnlyRecruitingRoom,
   normalizeRecruitingMmrRangeMode,
 } from "../src/lib/recruiting.js";
 import { getTeamChallengeEligibilityPolicy } from "../src/lib/createMatchPage.js";
 
 configureServerRatingAuthority(SERVER_RATING_AUTHORITY);
+
+test("공개 개인 경쟁전은 평균과 사이드 내부 MMR 폭을 함께 제한한다", () => {
+  const users = Object.fromEntries([
+    ["host", 1200], ["low", 1000], ["high", 1400], ["mid", 1200],
+  ].map(([id, mmr]) => [id, { id, ratings: { integrated: mmr } }]));
+  const hiddenSpread = getSideMmrBalance({ teamA: ["low", "high"], teamB: ["host", "mid"] }, users, "normal");
+  assert.equal(hiddenSpread.averageGap, 0);
+  assert.equal(hiddenSpread.sides.teamA.spread, 400);
+  assert.equal(hiddenSpread.allowed, false);
+
+  const post = { visibility: "public", ranked: true, hostJoinMode: "player", mmrRangeMode: "normal", benchCapacity: 2 };
+  const lobby = { sides: {
+    teamA: { players: ["host"], filled: 1, capacity: 2, reserveCandidates: [] },
+    teamB: { players: ["low"], filled: 1, capacity: 2, reserveCandidates: [] },
+  } };
+  const placement = getRecruitingMmrBalancedPlacement(post, lobby, users, ["high"]);
+  assert.equal(placement.side, "teamA");
+  assert.equal(placement.reserve, true);
+});
+
+test("방장과 참가자의 사이드 이동은 같은 MMR 균형 규칙을 쓴다", () => {
+  const post = {
+    id: "balanced-room",
+    title: "균형 방",
+    status: "open",
+    visibility: "public",
+    ranked: true,
+    hostJoinMode: "player",
+    hostSide: "teamA",
+    playerId: "host",
+    mode: "3v3",
+    sideCapacity: 3,
+    benchCapacity: 1,
+    mmrRangeMode: "normal",
+    roomState: {},
+    applicants: [
+      { kind: "player", playerId: "high", side: "teamA", status: "ready", reserve: false },
+      { kind: "player", playerId: "low", side: "teamB", status: "ready", reserve: false },
+      { kind: "player", playerId: "mid", side: "teamB", status: "ready", reserve: false },
+    ],
+  };
+  const users = [
+    { id: "host", ratings: { integrated: 1200 } },
+    { id: "high", ratings: { integrated: 1400 } },
+    { id: "low", ratings: { integrated: 1100 } },
+    { id: "mid", ratings: { integrated: 1300 } },
+  ];
+  const state = { currentUserId: "host", users, teams: [], recruitingPosts: [post], notifications: [] };
+  const blocked = setRecruitingApplicantPlacement(state, post.id, "high", { side: "teamB", reserve: false });
+  assert.equal(blocked.recruitingPosts[0], post);
+  assert.equal(blocked.notifications[0].title, "MMR 균형 이동 불가");
+
+  const moved = setRecruitingApplicantPlacement({ ...state, currentUserId: "mid" }, post.id, "mid", { side: "teamA", reserve: false });
+  assert.equal(moved.recruitingPosts[0].applicants.find((applicant) => applicant.playerId === "mid").side, "teamA");
+});
 
 test("라이벌 매치는 출전 인원을 채우는 최소 MMR·연령 범위를 고른다", () => {
   const makeTeam = (id, prefix, mmrs) => ({

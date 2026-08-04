@@ -15,6 +15,7 @@ export function getRecruitingBenchPolicyError(error = {}) {
   if (errorText.includes("recruiting_bench_capacity_below_roster")) return { statusCode: 409, message: "recruiting_bench_capacity_below_roster" };
   if (errorText.includes("pickup_participant_capacity_below_pool")) return { statusCode: 409, message: "pickup_participant_capacity_below_pool" };
   if (errorText.includes("recruiting_reserve_full")) return { statusCode: 409, message: "recruiting_reserve_full" };
+  if (errorText.includes("recruiting_side_mmr_imbalance")) return { statusCode: 409, message: "recruiting_side_mmr_imbalance" };
   if (errorText.includes("room_edit_limit_reached")) return { statusCode: 409, message: "room_edit_limit_reached" };
   if (errorText.includes("room_edit_window_closed")) return { statusCode: 409, message: "room_edit_window_closed" };
   if (errorText.includes("room_schedule_target_too_soon")) return { statusCode: 409, message: "room_schedule_target_too_soon" };

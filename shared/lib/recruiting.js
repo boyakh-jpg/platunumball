@@ -57,6 +57,12 @@ export {
   getRecruitingTierRange,
   isMmrInRecruitingRange,
   getRecruitingFit,
+  getRecruitingMmrBalance,
+  getRecruitingMmrBalancedPlacement,
+  getSideMmrBalance,
+  isMmrBalanceTransitionAllowed,
+  isMmrBalancedRecruitingRoom,
+  canMoveRecruitingPlayerWithinMmrBalance,
 } from "./recruitingPolicy.js";
 export {
   isNationalRecruitingPost,

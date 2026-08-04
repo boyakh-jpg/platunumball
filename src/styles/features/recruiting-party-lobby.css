@@ -289,6 +289,17 @@
   font-weight: 950;
 }
 
+.arena-lobby-score-core small {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.arena-lobby-score-core small.is-over {
+  color: var(--danger);
+}
+
 .arena-lobby-actions {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

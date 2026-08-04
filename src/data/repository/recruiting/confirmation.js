@@ -12,11 +12,13 @@ import { getPublicRoomTimingStatus } from "../../../lib/matchUtils.js";
 import { getRecruitingApplicantKey } from "../../../lib/recruiting.js";
 import { getRecruitingBenchCapacity } from "../../../lib/recruiting.js";
 import { getRecruitingLobby } from "../../../lib/recruiting.js";
+import { getRecruitingMmrBalance } from "../../../lib/recruiting.js";
 import { getRecruitingRoomOwnerId } from "../../../lib/recruiting.js";
 import { getRecruitingRuleAcknowledgement } from "../../../lib/roomFlow.js";
 import { getRecruitingSideCapacity } from "../../../lib/recruiting.js";
 import { getRoomCancellationPolicy } from "../../../lib/roomFlow.js";
 import { isRecruitingPartyEntry } from "../../../lib/recruiting.js";
+import { isMmrBalancedRecruitingRoom } from "../../../lib/recruiting.js";
 import { isRecruitingRoomOwner } from "../../../lib/recruiting.js";
 import { isRoomScheduleChangePending } from "../../../lib/roomFlow.js";
 import { isTeamOnlyRecruitingRoom } from "../../../lib/recruiting.js";
@@ -209,6 +211,25 @@ export function confirmRecruitingMatch(state, postId, options = {}) {
       ],
     };
   }
+  const mmrBalancedSides = isMmrBalancedRecruitingRoom(promotedPost);
+  const sideMmrBalance = getRecruitingMmrBalance(
+    promotedPost,
+    lobby,
+    Object.fromEntries((state.users ?? []).map((user) => [user.id, user])),
+    "confirmationProjectedPlayers",
+  );
+  if (mmrBalancedSides && !sideMmrBalance.allowed) {
+    return {
+      ...state,
+      notifications: [{
+        id: makeId("n"),
+        title: "매치 확정 불가",
+        body: `사이드 평균 차이와 내부 MMR 폭은 ${sideMmrBalance.limit} 이하여야 합니다.`,
+        tone: "orange",
+        recruitingPostId: postId,
+      }, ...state.notifications],
+    };
+  }
   const timingStatus = getPublicRoomTimingStatus(promotedPost);
   if (!timingStatus.canConfirm) {
     return {
@@ -277,6 +298,7 @@ export function confirmRecruitingMatch(state, postId, options = {}) {
       visibility: promotedPost.visibility ?? "public",
       region: promotedPost.region,
       mmrRangeMode,
+      mmrBalancedSides,
       ratingScale,
       benchCapacity,
       slotPositions: promotedRoomState.slotPositions ?? {},

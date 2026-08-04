@@ -4,7 +4,7 @@ export function RecruitingRoomActionSection({ context }) {
     ApprovalPanel, Button, MATCH_DISPUTE_REASON_OPTIONS, MatchRecommendationPanel, OTHER_MATCH_DISPUTE_REASON, PLAYER_POSITIONS,
     PLAYER_STAT_FIELDS, RefreshCw, RotateCcw, SIDE_LABELS, ShieldCheck, SourceMatchDisputeReviewPanel,
     SourceMatchDisputeEditor, SourceMatchRecordSummary, Swords, TeamMemberPicker, TierBadge, UserRound,
-    UsersRound, XCircle, alreadyApplied, app, benchCapacity, canCancelSourceMatch,
+    UsersRound, XCircle, alreadyApplied, app, autoBalancedIndividualRoom, benchCapacity, canCancelSourceMatch,
     canConfirmRefereeAbsence, canDeleteSourceSoloRecord, canEndSourceMatch, canFinalizeSourceMatch, canJoin, canRefreshSourceMatchReview,
     canRemakeRoom, canRequestRefereeAbsence, canRequestSourceMatchPointDispute, canResolveSourceMatchDispute, canShowStartSourceMatch, canStartSourceMatch,
     canSubmitSourceMatchLiveResult, canSubmitSourceMatchPostgameResult, cancellationReasonText, candidateMmr, confirmPaidCourtJoin, confirmQueueRoom,
@@ -274,7 +274,7 @@ export function RecruitingRoomActionSection({ context }) {
                       </div>
                     ) : (
                     <>
-                    <div className="ui-segmented-control segmented-control compact-segments">
+                    <div className="ui-segmented-control segmented-control compact-segments arena-join-mode-control">
                       {joinModeEntries.map(([mode, meta]) => (
                         <button
                           key={mode}
@@ -370,8 +370,8 @@ export function RecruitingRoomActionSection({ context }) {
                       </label>
                     )}
                     {joinDraft.joinMode !== "referee" && !pickupPoolMode ? (
-                    <div className="arena-field-grid arena-participation-fields">
-                      <label>
+                    <div className={`arena-field-grid arena-participation-fields${autoBalancedIndividualRoom ? " is-auto-balanced" : ""}`}>
+                      {!autoBalancedIndividualRoom ? <label>
                         진영
                         <select
                           value={joinDraft.side}
@@ -390,7 +390,7 @@ export function RecruitingRoomActionSection({ context }) {
                           <option value="teamA" disabled={teamOnlyRoom && Boolean(getLobbyPrimaryTeamId(lobby, "teamA"))}>A사이드</option>
                           <option value="teamB" disabled={teamOnlyRoom && Boolean(getLobbyPrimaryTeamId(lobby, "teamB"))}>B사이드</option>
                         </select>
-                      </label>
+                      </label> : null}
                       <label className="arena-participation-field">
                         참가 상태
                         <select

@@ -1166,7 +1166,7 @@ test("확정 경기방 슬롯 관리는 경기 액션과 운영 권한을 사용
   assert.match(modelSource, /sourceMatchPhase\?\.phase === "checkin" && sourceMatch\.refereeId[\s\S]*currentUserIsSourceReferee[\s\S]*: mine/);
   assert.match(rendererSource, /if \(sourceMatch\) \{[\s\S]*setMatchRoomPlayerPlacement\(sourceMatch\.id/);
   assert.match(rendererSource, /if \(sourceMatch && !canManageMatchCheckin\) return null/);
-  assert.match(rendererSource, /targetIsParty[\s\S]*!active && canMovePlayerTo\(selectedPost, lobby, targetPlayerId, action\.side, action\.reserve\)/);
+  assert.match(rendererSource, /targetIsParty[\s\S]*!active && canMovePlayerTo\(selectedPost, lobby, targetPlayerId, action\.side, action\.reserve, userById\)/);
   assert.match(rosterPropsSource, /sourceMatchSlotManagementOpen && \(!sourceMatch \|\| canManageMatchCheckin\)/);
   assert.doesNotMatch(rendererSource, /onPositionChange=\{targetIsCurrentUser \? \(position\)/);
 });

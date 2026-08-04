@@ -5,6 +5,7 @@ function RecruitingRoomVersusSide({ context, sideName, meta }) {
     Crown,
     SideRoster,
     app,
+    autoBalancedIndividualRoom,
     benchCapacity,
     canInviteSideFromRoom,
     canManageEntry,
@@ -58,7 +59,7 @@ function RecruitingRoomVersusSide({ context, sideName, meta }) {
           ) : null}
         </div>
         <strong>{meta.name}</strong>
-        <em>{meta.mmr || "-"} MMR</em>
+        <em>{autoBalancedIndividualRoom ? `평균 ${meta.mmr || "-"} MMR · 폭 ${meta.spread}` : `${meta.mmr || "-"} MMR`}</em>
       </div>
       <SideRoster
         sideName={sideName}
@@ -86,7 +87,7 @@ export function RecruitingRoomPrimarySection({ context }) {
     InvitationPanel, InvitePanel, MapPin, MatchAttendanceQrPanel, ROOM_BODY_MODES, RoomKickPanel,
     RoomPhaseRenderer, SearchPicker, Share2, ShieldCheck, SideRoster, Swords,
     TeamEmblem, UsersRound, X, acceptRoomInvitation, activeInviteDraft, alreadyApplied,
-    app, attendanceScanState, benchCapacity, canInspectMatchAttendance, canInvitePlayerByRoom, canInviteSideFromRoom,
+    app, attendanceScanState, autoBalancedIndividualRoom, benchCapacity, canInspectMatchAttendance, canInvitePlayerByRoom, canInviteSideFromRoom,
     canManageEntry, canManageMatchCheckin, canMoveMatchSides, closeModal, contextPanel, copyRoomShareUrl,
     courtByName, disabledInvitePlayerIds, entryPoint, favoritePlayerIds, favoriteTeamIds, getInviteAllowedTeamId,
     getLobbyPrimaryTeamId, getMatchPeriodLabel, getPickupParticipantIds, getRecruitingSideCapacity, getRoomRefereeLabel, getRoomScheduleLabel,
@@ -101,7 +102,7 @@ export function RecruitingRoomPrimarySection({ context }) {
     saveRoomTeam, selectedMatchRules, selectedPost, selectedRoomTeamA, selectedRoomTeamAId, selectedRoomTeamB,
     selectedRoomTeamBId, sendInvites, setAttendanceStartStatus, setInviteDraft, setRoomTeamQuery, setSlotActionDraft,
     shareRoom, showCaptainBadge, slotPositions, sourceMatch, sourceMatchAttendance, sourceMatchCheckedInIds,
-    sourceMatchIsRecordRoom, sourceMatchPlacementByPlayerId, sourceMatchSideLeaderIds, sourceMatchSlotManagementOpen, sourceRoomReadOnly, teamAMeta,
+    sideMmrBalance, sourceMatchIsRecordRoom, sourceMatchPlacementByPlayerId, sourceMatchSideLeaderIds, sourceMatchSlotManagementOpen, sourceRoomReadOnly, teamAMeta,
     teamBMeta, teamOnlyRoom, toggleInvitePlayer, tournamentRoomOwnerName, updateInviteDraft, userById,
   } = context;
 
@@ -253,6 +254,9 @@ export function RecruitingRoomPrimarySection({ context }) {
                     <i>VS</i>
                     <strong>{lobby.sides.teamB.filled}/{lobby.sides.teamB.capacity}</strong>
                     <span>{roomReadyLabel}</span>
+                    {autoBalancedIndividualRoom ? (
+                      <small className={sideMmrBalance.allowed ? "" : "is-over"}>평균 차 {sideMmrBalance.averageGap} · 허용 {sideMmrBalance.limit}</small>
+                    ) : null}
                   </div>
 
                   <RecruitingRoomVersusSide context={context} sideName="teamB" meta={teamBMeta} />
@@ -337,13 +341,17 @@ export function RecruitingRoomPrimarySection({ context }) {
                     matchRoom ? app.actions.removeMatchRoomPlayer(sourceMatch.id, playerId) : app.actions.removeRecruitingPartyPlayer(selectedPost.id, entryId, playerId)
                   )}
                   onCheckInPlayer={matchRoom ? ((sideName, playerId) => app.actions.checkInMatchPlayer(sourceMatch.id, sideName, playerId)) : null}
-                  onSetReserve={matchRoom && (
+                  onSetReserve={!matchRoom && autoBalancedIndividualRoom
+                    ? ((entry, playerId, reserve) => app.actions.setRecruitingApplicantPlacement(selectedPost.id, playerId, { side: entry.side, reserve }))
+                    : matchRoom && (
                     roomPhaseViewModel.mode !== ROOM_BODY_MODES.pickupAssignment
                     || pickupAssignmentPolicy.mode === "manual"
                   )
                     ? ((entry, playerId, reserve) => app.actions.setMatchRoomPlayerPlacement(sourceMatch.id, playerId, { side: entry.side, reserve }))
                     : null}
-                  onSetPlacement={matchRoom && (
+                  onSetPlacement={!matchRoom && autoBalancedIndividualRoom
+                    ? ((playerId, placement) => app.actions.setRecruitingApplicantPlacement(selectedPost.id, playerId, placement))
+                    : matchRoom && (
                     roomPhaseViewModel.mode !== ROOM_BODY_MODES.pickupAssignment
                     || pickupAssignmentPolicy.mode === "manual"
                   )
@@ -354,10 +362,13 @@ export function RecruitingRoomPrimarySection({ context }) {
                     && pickupAssignmentPolicy.automatic
                     ? ((firstPlayerId, secondPlayerId) => app.actions.swapPickupMatchPlayers(sourceMatch.id, firstPlayerId, secondPlayerId))
                     : null}
-                  allowSideMove={canMoveMatchSides && (
+                  allowSideMove={autoBalancedIndividualRoom && !matchRoom || canMoveMatchSides && (
                     roomPhaseViewModel.mode !== ROOM_BODY_MODES.pickupAssignment
                     || pickupAssignmentPolicy.mode === "manual"
                   )}
+                  canSetPlacement={!matchRoom && autoBalancedIndividualRoom
+                    ? ((playerId, placement) => context.canMovePlayerTo(selectedPost, lobby, playerId, placement.side, placement.reserve, userById))
+                    : null}
                   hostPlayerId={roomPhaseViewModel.mode === ROOM_BODY_MODES.pickupAssignment ? "" : roomOwnerId}
                   attendanceBySide={matchRoom ? sourceMatchAttendance : null}
                   requireMissingAttendance={canManageMatchCheckin}

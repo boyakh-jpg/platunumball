@@ -10,6 +10,7 @@ import { getRecruitingBenchCapacity } from "../../../lib/recruiting.js";
 import { getRecruitingBestSide } from "../../../lib/recruiting.js";
 import { getRecruitingFit } from "../../../lib/recruiting.js";
 import { getRecruitingLobby } from "../../../lib/recruiting.js";
+import { getRecruitingMmrBalancedPlacement } from "../../../lib/recruiting.js";
 import { getRecruitingSideCapacity } from "../../../lib/recruiting.js";
 import { getRecruitingTargetMmr } from "../../../lib/recruiting.js";
 import { getSelectedReservePlayerIds } from "../../teamMappers.js";
@@ -17,6 +18,7 @@ import { getSelectedTeamPlayerIds } from "../../../lib/recruiting.js";
 import { getTeamEventEligibility } from "../../../lib/recruiting.js";
 import { hasRecruitingApplicant } from "../../../lib/recruiting.js";
 import { isIndividualOnlyRecruitingRoom } from "../../../lib/recruiting.js";
+import { isMmrBalancedRecruitingRoom } from "../../../lib/recruiting.js";
 import { isRecruitingReserveLimitExceeded } from "../../../lib/recruiting.js";
 import { isRecruitingRoomOwner } from "../../../lib/recruiting.js";
 import { isRoomScheduleChangePending } from "../../../lib/roomFlow.js";
@@ -225,7 +227,8 @@ export function interestRecruitingPost(state, postId, application = {}) {
   const sideCapacity = getRecruitingSideCapacity(post);
   const benchCapacity = getRecruitingBenchCapacity(post);
   const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
-  const side = MATCH_SIDES.includes(application.side) ? application.side : getRecruitingBestSide(post, state);
+  const autoBalancedRoom = isMmrBalancedRecruitingRoom(post);
+  let side = MATCH_SIDES.includes(application.side) ? application.side : getRecruitingBestSide(post, state);
   const lobby = getRecruitingLobby(post, state);
   const occupiedSideTeamId = applicantKind === "team" ? getLobbyPrimaryTeamId(lobby, side) : null;
   const publicTeamJoin = post.visibility === "public" && teamOnly && applicantKind === "team";
@@ -246,11 +249,15 @@ export function interestRecruitingPost(state, postId, application = {}) {
   const teamSelectionCapacity = applicantKind === "team"
     ? teamOnly
       ? sideCapacity
+      : autoBalancedRoom
+        ? sideCapacity
       : reserveRequested
         ? Math.max(0, benchCapacity - (sideState?.reserveCandidates?.length ?? 0))
         : Math.max(0, (sideState?.capacity ?? sideCapacity) - (sideState?.filled ?? 0))
     : sideCapacity;
-  const reserveSelectionCapacity = Math.max(0, benchCapacity - (sideState?.reserveCandidates?.length ?? 0));
+  const reserveSelectionCapacity = autoBalancedRoom
+    ? benchCapacity
+    : Math.max(0, benchCapacity - (sideState?.reserveCandidates?.length ?? 0));
   const teamEligibility = team ? getTeamEventEligibility(team, state.users, {
     capacity: sideCapacity,
     ranked: post.ranked,
@@ -337,7 +344,29 @@ export function interestRecruitingPost(state, postId, application = {}) {
     };
   }
   const partySize = applicantKind === "team" ? selectedPlayerIds.length : 1;
-  const reserve = publicTeamJoin
+  const balancedPlacement = getRecruitingMmrBalancedPlacement(
+    post,
+    lobby,
+    Object.fromEntries((state.users ?? []).map((item) => [item.id, item])),
+    applicantKind === "team" ? selectedPlayerIds : [state.currentUserId],
+    Boolean(application.reserve),
+  );
+  if (balancedPlacement?.allowed === false) {
+    return {
+      ...state,
+      notifications: [{
+        id: makeId("n"),
+        title: "MMR 균형 배치 불가",
+        body: "현재 사이드 평균 차이와 내부 MMR 폭 안에 배치할 자리가 없습니다.",
+        tone: "orange",
+        recruitingPostId: postId,
+      }, ...state.notifications],
+    };
+  }
+  if (balancedPlacement?.side) side = balancedPlacement.side;
+  const reserve = balancedPlacement
+    ? balancedPlacement.reserve
+    : publicTeamJoin
     ? false
     : Boolean(application.reserve) || lobby.sides[side].filled + partySize > lobby.sides[side].capacity;
   const now = new Date().toISOString();

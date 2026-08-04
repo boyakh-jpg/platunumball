@@ -136,13 +136,16 @@ export function createAppActions({
   };
   const rollbackServerMutation = (snapshot, label, payload = {}) => {
     if (!snapshot) return;
+    const mmrImbalance = String(payload.error ?? payload.details?.reason ?? "").includes("side_mmr_imbalance");
     setState({
       ...snapshot,
       notifications: [
         {
           id: makeClientNotificationId("n"),
           title: "저장하지 못했습니다",
-          body: "변경 내용을 저장하지 못해 화면을 이전 상태로 되돌렸습니다. 잠시 후 다시 시도해 주세요.",
+          body: mmrImbalance
+            ? "사이드 평균 차이 또는 내부 MMR 폭이 허용 범위를 넘습니다."
+            : "변경 내용을 저장하지 못해 화면을 이전 상태로 되돌렸습니다. 잠시 후 다시 시도해 주세요.",
           tone: "orange",
           createdAt: new Date().toISOString(),
           payload,

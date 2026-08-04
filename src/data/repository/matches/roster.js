@@ -11,12 +11,14 @@ import { getMatchRoomPhase } from "../../../lib/matchUtils.js";
 import { getMatchSideLeaderId } from "../../../lib/matchUtils.js";
 import { getRecruitingBenchCapacity } from "../../../lib/recruiting.js";
 import { getRecruitingSideCapacity } from "../../../lib/recruiting.js";
+import { getSideMmrBalance } from "../../../lib/recruiting.js";
 import { getTeamCaptainId } from "../../../lib/matchUtils.js";
 import { getTeamEventEligibility } from "../../../lib/recruiting.js";
 import { getTeamMemberIds } from "../../teamMappers.js";
 import { isMatchPartyTeamParty } from "../../../lib/matchUtils.js";
 import { isMatchRecordMatch } from "../../../lib/matchUtils.js";
 import { isMatchSideTeamParty } from "../../../lib/matchUtils.js";
+import { isMmrBalanceTransitionAllowed } from "../../../lib/recruiting.js";
 import { makeId } from "../../rowUtils.js";
 import { uniquePlayerIds } from "../../rowUtils.js";
 import { updateMatchPartiesForPlayer } from "../../../lib/matchUtils.js";
@@ -364,6 +366,27 @@ export function setMatchRoomPlayerPlacement(state, matchId, playerId, placement 
         ...state.notifications,
       ],
     };
+  }
+  if (match.rules?.mmrBalancedSides === true) {
+    const userById = Object.fromEntries((state.users ?? []).map((user) => [user.id, user]));
+    const rangeMode = match.mmrRangeMode ?? match.rules?.mmrRangeMode;
+    const currentBalance = getSideMmrBalance({
+      teamA: match.teamA?.players ?? [],
+      teamB: match.teamB?.players ?? [],
+    }, userById, rangeMode);
+    const nextBalance = getSideMmrBalance({ teamA: nextTeamAPlayers, teamB: nextTeamBPlayers }, userById, rangeMode);
+    if (!isMmrBalanceTransitionAllowed(currentBalance, nextBalance)) {
+      return {
+        ...state,
+        notifications: [{
+          id: makeId("n"),
+          title: "MMR 균형 이동 불가",
+          body: `평균 차이와 사이드 내부 MMR 폭은 ${nextBalance.limit} 이하여야 합니다.`,
+          tone: "orange",
+          matchId,
+        }, ...state.notifications],
+      };
+    }
   }
 
   const movedMatch = {
