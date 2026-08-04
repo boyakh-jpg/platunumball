@@ -248,12 +248,13 @@ async function inspectPhoto(config, photo, expectedLayout) {
   }
 }
 
-export async function inspectCourtRequestPhotos(photos = [], expectedLayout = "unknown") {
+export async function inspectCourtRequestPhotos(photos = [], expectedLayout = "unknown", shouldInspect = true) {
   if (photos.length < COURT_REQUEST_PHOTO_MIN || photos.length > COURT_REQUEST_PHOTO_MAX) {
     throw new Error("court_photo_count_invalid");
   }
-  const config = getAiConfig();
   const usage = { calls: 0, inputTokens: 0, outputTokens: 0, neurons: 0, estimated: false };
+  if (!shouldInspect) return { status: "unavailable", assessments: [], usage, failureReason: "court_ai_not_required", model: COURT_REQUEST_AI_MODEL, promptVersion: COURT_REQUEST_AI_PROMPT_VERSION };
+  const config = getAiConfig();
   const addUsage = (next = {}) => {
     usage.calls += Number(next.calls) || 0;
     usage.inputTokens += Number(next.inputTokens) || 0;

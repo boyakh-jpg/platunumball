@@ -203,11 +203,7 @@ export default async function handler(request, response) {
         pinLng: Number(requestPayload.lng),
       },
     );
-    const ai = await inspectCourtRequestPhotos(photos, requestPayload.courtLayout);
-    await recordCourtAiUsage(context.supabase, requestId, ai.usage);
-    const quotaAfter = getCourtAiQuotaState(quota.usedNeurons + ai.usage.neurons);
-    const policy = getCourtVerificationDecision({
-      assessments: ai.assessments,
+    const policyInput = {
       photoCount: photos.length,
       expectedLayout: requestPayload.courtLayout,
       fieldAccuracyMeters: mechanical.fieldAccuracyMeters,
@@ -219,6 +215,22 @@ export default async function handler(request, response) {
       type: requestPayload.type,
       publicAccess: requestPayload.publicAccess,
       photoLocation,
+    };
+    const policyBeforeAi = getCourtVerificationDecision(policyInput);
+    const automaticReviewCandidate = [
+      "trustedRequester",
+      "locationVerified",
+      "photoLocationConsistent",
+      "noNearbyDuplicate",
+      "outdoorPublic",
+      "photoCount",
+    ].every((check) => policyBeforeAi.checks[check]);
+    const ai = await inspectCourtRequestPhotos(photos, requestPayload.courtLayout, automaticReviewCandidate);
+    await recordCourtAiUsage(context.supabase, requestId, ai.usage);
+    const quotaAfter = getCourtAiQuotaState(quota.usedNeurons + ai.usage.neurons);
+    const policy = getCourtVerificationDecision({
+      ...policyInput,
+      assessments: ai.assessments,
     });
     if (ai.status !== "complete") policy.decision = "manual_review";
 
