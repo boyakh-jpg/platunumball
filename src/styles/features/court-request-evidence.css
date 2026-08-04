@@ -125,6 +125,7 @@
 .settings-court-photo-retake[aria-disabled="true"] {
   cursor: not-allowed;
   opacity: 0.58;
+  pointer-events: none;
 }
 
 .settings-court-photo-add input,

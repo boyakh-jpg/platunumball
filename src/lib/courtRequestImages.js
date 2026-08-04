@@ -69,8 +69,12 @@ async function decodeImage(file) {
   const url = URL.createObjectURL(file);
   try {
     const image = new Image();
+    const loaded = new Promise((resolve, reject) => {
+      image.onload = resolve;
+      image.onerror = reject;
+    });
     image.src = url;
-    await image.decode();
+    await loaded;
     return { source: image, width: image.naturalWidth, height: image.naturalHeight, dispose: () => URL.revokeObjectURL(url) };
   } catch (error) {
     URL.revokeObjectURL(url);

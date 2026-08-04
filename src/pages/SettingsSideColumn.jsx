@@ -285,7 +285,7 @@ export default function SettingsSideColumn({ controller }) {
                         <div className="settings-court-photo-actions">
                           <Button as="label" variant="secondary" size="sm" className="settings-court-photo-retake" aria-disabled={courtPhotoPending} aria-label={`구장 현장 사진 ${index + 1} 다시 촬영`} title="다시 촬영">
                             <RefreshCw size={15} />
-                            <input type="file" accept={onsiteCourtEntry ? "image/jpeg" : "image/*"} capture={onsiteCourtEntry ? "environment" : undefined} disabled={courtPhotoPending} onChange={(event) => selectCourtPhotos(event, index)} />
+                            <input type="file" accept="image/*" capture={onsiteCourtEntry ? "environment" : undefined} onChange={(event) => selectCourtPhotos(event, index)} />
                           </Button>
                           <Button type="button" variant="secondary" size="sm" className="settings-court-photo-remove" disabled={courtPhotoPending} onClick={() => removeCourtPhoto(index)} aria-label={`구장 현장 사진 ${index + 1} 삭제`} title="사진 삭제"><X size={15} /></Button>
                         </div>
@@ -295,7 +295,7 @@ export default function SettingsSideColumn({ controller }) {
                       <Button as="label" variant="secondary" className="settings-court-photo-add" aria-disabled={!courtPinConfirmed || courtPhotoPending}>
                         <Plus size={24} />
                         <span>{courtPhotoPending ? "처리 중" : courtPinConfirmed ? onsiteCourtEntry ? "사진 촬영" : "사진 선택" : "위치 지정 후"}</span>
-                        <input type="file" accept={onsiteCourtEntry ? "image/jpeg" : "image/*"} capture={onsiteCourtEntry ? "environment" : undefined} disabled={!courtPinConfirmed || courtPhotoPending} onChange={selectCourtPhotos} />
+                        <input type="file" accept="image/*" capture={onsiteCourtEntry ? "environment" : undefined} disabled={!courtPinConfirmed} onChange={selectCourtPhotos} />
                       </Button>
                     ) : null}
                   </div>

@@ -177,6 +177,8 @@ test("court photos use browser resizing and private R2", async () => {
   assert.match(client, /exifr\/dist\/lite\.esm\.mjs/);
   assert.match(client, /DateTimeOriginal/);
   assert.match(client, /getCourtPhotoPixelQualityError/);
+  assert.match(client, /image\.onload = resolve/);
+  assert.doesNotMatch(client, /await image\.decode\(\)/);
   assert.doesNotMatch(client, /file\.size\s*[><=]/);
   assert.match(server, /getPrivateR2Config/);
   assert.match(server, /safeContainer:\s*true/);
@@ -186,9 +188,12 @@ test("court photos use browser resizing and private R2", async () => {
   assert.match(server, /rankball_auto_approve_court_request/);
   assert.match(evidence, /requireAdminContext/);
   assert.match(evidence, /\^cr_sim_/);
-  assert.match(form, /accept=\{onsiteCourtEntry \? "image\/jpeg" : "image\/\*"\}/);
+  const fileInputs = form.match(/<input type="file"[^>]+>/g) ?? [];
+  assert.equal(fileInputs.length, 2);
+  assert.ok(fileInputs.every((input) => input.includes('accept="image/*"')));
+  assert.ok(fileInputs.every((input) => !input.includes("courtPhotoPending")));
   assert.match(form, /capture=\{onsiteCourtEntry \? "environment" : undefined\}/);
-  assert.match(form, /disabled=\{!courtPinConfirmed \|\| courtPhotoPending\}/);
+  assert.match(form, /disabled=\{!courtPinConfirmed\}/);
   assert.match(form, /settings-court-photo-add/);
   assert.match(form, /courtPhotos\.length < 4/);
   assert.match(form, /selectCourtPhotos\(event, index\)/);
@@ -212,6 +217,7 @@ test("court photos use browser resizing and private R2", async () => {
   assert.match(form, /id="court-step-details-title">구장 정보/);
   assert.match(styles, /settings-court-step/);
   assert.match(styles, /inset:\s*0;[\s\S]{0,80}width:\s*100%;[\s\S]{0,80}height:\s*100%/);
+  assert.match(styles, /settings-court-photo-add\[aria-disabled="true"\][\s\S]{0,180}pointer-events:\s*none/);
 });
 
 test("court AI retries one malformed response", async (context) => {
