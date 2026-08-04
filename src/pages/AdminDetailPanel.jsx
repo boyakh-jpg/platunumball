@@ -36,6 +36,14 @@ function CourtRequestEvidence({ app, requestId, verification }) {
   if (!loading && !evidence && !verification) return null;
   const confidence = Number(evidence?.aiConfidence ?? verification?.confidence);
   const formatMeters = (value) => value !== null && value !== "" && Number.isFinite(Number(value)) ? `${Math.round(Number(value))}m` : "-";
+  const photoLocation = evidence?.photoLocation ?? verification?.photoLocation;
+  const photoLocationLabel = {
+    matched: "일치",
+    partial: "일부 확인",
+    uncertain: "주의",
+    mismatch: "불일치",
+    unavailable: "없음",
+  }[photoLocation?.status] ?? "없음";
   return (
     <section className="admin-court-evidence">
       <div>
@@ -45,6 +53,7 @@ function CourtRequestEvidence({ app, requestId, verification }) {
         </Badge>
       </div>
       {evidence ? <small>AI {evidence.aiStatus} · 증거 충족도 {Number.isFinite(confidence) ? `${Math.round(confidence * 100)}%` : "-"} · GPS 오차 {formatMeters(evidence.fieldAccuracyMeters)} · 핀과 {formatMeters(evidence.fieldDistanceMeters)}</small> : null}
+      {photoLocation ? <small>사진 GPS {photoLocation.gpsPhotoCount ?? 0}/{photoLocation.photoCount ?? 0} · {photoLocationLabel} · 최대 차이 {formatMeters(photoLocation.maxDistanceMeters)}</small> : null}
       {result?.photos?.length ? (
         <div className="admin-court-evidence-photos">
           {result.photos.map((photo, index) => <img key={index} src={photo} alt={`구장 검증 사진 ${index + 1}`} />)}

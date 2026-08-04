@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { getCoordinateDistanceMeters, getCourtPhotoPixelQualityError } from "../shared/lib/courtRequestImagePolicy.js";
+import { getCoordinateDistanceMeters, getCourtPhotoLocationEvidence, getCourtPhotoPixelQualityError } from "../shared/lib/courtRequestImagePolicy.js";
 import { uploadPrivateR2Webp } from "../server/api/_r2ImageStorage.js";
 import {
   getCourtAiQuotaState,
@@ -33,6 +33,7 @@ const eligibleEvidence = {
   nearbyDuplicateCount: 0,
   type: "야외",
   publicAccess: "public",
+  photoLocation: { status: "matched", confidence: 1 },
 };
 
 test("court AI policy uses server evidence checks instead of model self-confidence", () => {
@@ -58,6 +59,28 @@ test("court AI response and coordinate distance are normalized", () => {
   assert.throws(() => normalizeCourtPhotoAiAnswer({ basketballCourt: true }), /court_ai_invalid_response/);
   assert.ok(getCoordinateDistanceMeters(37.5, 127, 37.5001, 127) > 10);
   assert.equal(getCoordinateDistanceMeters(37.5, 127, null, 127), null);
+});
+
+test("court photo EXIF location is a request evidence signal", () => {
+  const locations = { fieldLat: 37.5, fieldLng: 127, pinLat: 37.50005, pinLng: 127 };
+  const matched = getCourtPhotoLocationEvidence([
+    { latitude: 37.5001, longitude: 127, capturedAt: "2026-08-04T04:00:00.000Z" },
+    { latitude: 37.5002, longitude: 127 },
+  ], locations);
+  const uncertain = getCourtPhotoLocationEvidence([
+    { latitude: 37.501, longitude: 127 },
+    { latitude: 37.5011, longitude: 127 },
+  ], locations);
+  const mismatch = getCourtPhotoLocationEvidence([
+    { latitude: 37.503, longitude: 127 },
+    { latitude: 37.5031, longitude: 127 },
+  ], locations);
+  assert.equal(matched.status, "matched");
+  assert.equal(matched.confidence, 1);
+  assert.equal(uncertain.status, "uncertain");
+  assert.equal(mismatch.status, "mismatch");
+  assert.equal(getCourtVerificationDecision({ ...eligibleEvidence, photoLocation: mismatch }).decision, "manual_review");
+  assert.equal(getCourtVerificationDecision({ ...eligibleEvidence, photoLocation: {} }).decision, "manual_review");
 });
 
 test("court AI token metrics map to neurons and block at 70 percent", () => {
@@ -139,10 +162,14 @@ test("court photos use browser resizing and private R2", async () => {
     readFile(new URL("../src/styles/features/court-request-evidence.css", import.meta.url), "utf8"),
   ]);
   assert.match(client, /canvasToWebp/);
+  assert.match(client, /exifr\/dist\/lite\.esm\.mjs/);
+  assert.match(client, /DateTimeOriginal/);
   assert.match(client, /getCourtPhotoPixelQualityError/);
   assert.doesNotMatch(client, /file\.size\s*[><=]/);
   assert.match(server, /getPrivateR2Config/);
   assert.match(server, /safeContainer:\s*true/);
+  assert.match(server, /getCourtPhotoLocationEvidence/);
+  assert.match(server, /photoMetadata/);
   assert.ok(server.lastIndexOf("COURT_REQUEST_PHOTO_MIN_BYTES") < server.lastIndexOf("inspectCourtRequestPhotos("));
   assert.match(server, /rankball_auto_approve_court_request/);
   assert.match(evidence, /requireAdminContext/);
@@ -152,8 +179,12 @@ test("court photos use browser resizing and private R2", async () => {
   assert.match(form, /settings-court-photo-add/);
   assert.match(form, /courtPhotos\.length < 4/);
   assert.match(form, /selectCourtPhotos\(event, index\)/);
+  assert.match(form, /현재 위치로 구장 지정/);
+  assert.match(form, /settings-court-location-edit/);
+  assert.doesNotMatch(form, /court-step-address-title|court-step-pin-title/);
   assert.match(form, /실제 현장에서 위치를 확인하고 2장 이상 촬영하면 자동승인될 수 있습니다/);
   assert.match(form, /setCourtAddressQuery\(event\.target\.value, true\)/);
+  assert.match(controller, /reverseGeocodeNaverCoordinate/);
   const photoHandler = controller.slice(controller.indexOf("const selectCourtPhotos"), controller.indexOf("const removeCourtPhoto"));
   assert.match(photoHandler, /replaceIndex === null/);
   assert.doesNotMatch(photoHandler, /readCourtFieldLocation/);

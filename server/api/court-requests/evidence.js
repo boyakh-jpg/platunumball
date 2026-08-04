@@ -52,6 +52,8 @@ export default async function handler(request, response) {
         aiStatus: evidence.ai_status,
         aiConfidence: evidence.ai_confidence,
         aiResult: evidence.ai_result,
+        photoLocation: evidence.ai_result?.photoLocation ?? null,
+        photoMetadata: Array.isArray(evidence.ai_result?.photoMetadata) ? evidence.ai_result.photoMetadata : [],
         decision: evidence.decision,
         autoApproved: evidence.auto_approved,
         analyzedAt: evidence.analyzed_at,

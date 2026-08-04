@@ -9,6 +9,7 @@ import {
   COURT_REQUEST_PHOTO_MIN,
   COURT_REQUEST_FIELD_CAPTURE_MAX_AGE_MS,
   getCoordinateDistanceMeters,
+  getCourtPhotoLocationEvidence,
 } from "../../../shared/lib/courtRequestImagePolicy.js";
 import {
   getCourtAiDailyQuota,
@@ -149,7 +150,7 @@ export default async function handler(request, response) {
         || dimensions.width * dimensions.height < COURT_REQUEST_PHOTO_MIN_PIXELS
       ) throw requestError(400, "court_photo_quality_too_low");
       const hash = createHash("sha256").update(bytes).digest("hex");
-      return { bytes, hash, imageBase64: String(photo.imageBase64) };
+      return { bytes, hash, imageBase64: String(photo.imageBase64), metadata: photo?.metadata };
     });
     if (new Set(photos.map((photo) => photo.hash)).size !== photos.length) {
       throw requestError(400, "court_photo_duplicate");
@@ -157,6 +158,15 @@ export default async function handler(request, response) {
 
     storageConfig = getPrivateR2Config();
     const mechanical = await getMechanicalEvidence(context, requestPayload, fieldLocation);
+    const photoLocation = getCourtPhotoLocationEvidence(
+      photos.map((photo) => photo.metadata),
+      {
+        fieldLat: Number(fieldLocation.lat),
+        fieldLng: Number(fieldLocation.lng),
+        pinLat: Number(requestPayload.lat),
+        pinLng: Number(requestPayload.lng),
+      },
+    );
     const ai = await inspectCourtRequestPhotos(photos, requestPayload.courtLayout);
     await recordCourtAiUsage(context.supabase, requestId, ai.usage);
     const quotaAfter = getCourtAiQuotaState(quota.usedNeurons + ai.usage.neurons);
@@ -172,6 +182,7 @@ export default async function handler(request, response) {
       nearbyDuplicateCount: mechanical.nearbyDuplicateCount,
       type: requestPayload.type,
       publicAccess: requestPayload.publicAccess,
+      photoLocation,
     });
     if (ai.status !== "complete") policy.decision = "manual_review";
 
@@ -190,6 +201,13 @@ export default async function handler(request, response) {
       model: ai.model,
       promptVersion: ai.promptVersion,
       failureReason: ai.failureReason ?? null,
+      photoLocation: {
+        status: photoLocation.status,
+        confidence: photoLocation.confidence,
+        gpsPhotoCount: photoLocation.gpsPhotoCount,
+        photoCount: photoLocation.photoCount,
+        maxDistanceMeters: photoLocation.maxDistanceMeters,
+      },
       analyzedAt: new Date().toISOString(),
     };
     const { data, error } = await context.supabase.rpc("rankball_submit_court_request_with_evidence", {
@@ -207,7 +225,14 @@ export default async function handler(request, response) {
         promptVersion: ai.promptVersion,
         aiStatus: ai.status,
         aiConfidence: policy.confidence,
-        aiResult: { assessments: ai.assessments, checks: policy.checks, usage: ai.usage, failureReason: ai.failureReason ?? null },
+        aiResult: {
+          assessments: ai.assessments,
+          checks: policy.checks,
+          usage: ai.usage,
+          failureReason: ai.failureReason ?? null,
+          photoLocation: verification.photoLocation,
+          photoMetadata: photoLocation.photos,
+        },
         decision: policy.decision,
       },
     });

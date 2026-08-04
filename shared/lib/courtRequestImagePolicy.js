@@ -10,6 +10,8 @@ export const COURT_REQUEST_PHOTO_MIN_SOURCE_DIMENSION = 640;
 export const COURT_REQUEST_FIELD_ACCURACY_MAX_METERS = 20;
 export const COURT_REQUEST_FIELD_DISTANCE_MAX_METERS = 30;
 export const COURT_REQUEST_FIELD_CAPTURE_MAX_AGE_MS = 10 * 60 * 1000;
+export const COURT_REQUEST_PHOTO_LOCATION_MATCH_MAX_METERS = 50;
+export const COURT_REQUEST_PHOTO_LOCATION_MISMATCH_MIN_METERS = 150;
 
 export function getCourtPhotoPixelQualityError(pixels, width, height) {
   const safeWidth = Math.trunc(Number(width));
@@ -68,4 +70,59 @@ export function getCoordinateDistanceMeters(latA, lngA, latB, lngB) {
   const a = Math.sin(latDelta / 2) ** 2
     + Math.cos(radians(safeLatA)) * Math.cos(radians(safeLatB)) * Math.sin(lngDelta / 2) ** 2;
   return 6371000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+export function getCourtPhotoLocationEvidence(photoMetadata = [], locations = {}) {
+  const photos = (Array.isArray(photoMetadata) ? photoMetadata : []).map((metadata, index) => {
+    const latitude = Number(metadata?.latitude);
+    const longitude = Number(metadata?.longitude);
+    const hasCoordinates = Number.isFinite(latitude)
+      && Number.isFinite(longitude)
+      && Math.abs(latitude) <= 90
+      && Math.abs(longitude) <= 180;
+    const capturedMs = Date.parse(String(metadata?.capturedAt || ""));
+    return {
+      index,
+      latitude: hasCoordinates ? latitude : null,
+      longitude: hasCoordinates ? longitude : null,
+      capturedAt: Number.isFinite(capturedMs) ? new Date(capturedMs).toISOString() : null,
+      fieldDistanceMeters: hasCoordinates
+        ? getCoordinateDistanceMeters(latitude, longitude, locations.fieldLat, locations.fieldLng)
+        : null,
+      pinDistanceMeters: hasCoordinates
+        ? getCoordinateDistanceMeters(latitude, longitude, locations.pinLat, locations.pinLng)
+        : null,
+    };
+  });
+  const locatedPhotos = photos.filter((photo) => photo.latitude !== null && photo.longitude !== null);
+  const distances = locatedPhotos
+    .flatMap((photo) => [photo.fieldDistanceMeters, photo.pinDistanceMeters])
+    .filter(Number.isFinite);
+  const maxDistanceMeters = distances.length ? Math.max(...distances) : null;
+  const coverage = photos.length ? locatedPhotos.length / photos.length : 0;
+  let status = "unavailable";
+  let confidence = 0.75;
+  if (Number.isFinite(maxDistanceMeters)) {
+    if (maxDistanceMeters <= COURT_REQUEST_PHOTO_LOCATION_MATCH_MAX_METERS && coverage === 1) {
+      status = "matched";
+      confidence = 1;
+    } else if (maxDistanceMeters <= COURT_REQUEST_PHOTO_LOCATION_MATCH_MAX_METERS) {
+      status = "partial";
+      confidence = 0.85;
+    } else if (maxDistanceMeters <= COURT_REQUEST_PHOTO_LOCATION_MISMATCH_MIN_METERS) {
+      status = "uncertain";
+      confidence = 0.6;
+    } else {
+      status = "mismatch";
+      confidence = 0.25;
+    }
+  }
+  return {
+    status,
+    confidence,
+    photoCount: photos.length,
+    gpsPhotoCount: locatedPhotos.length,
+    maxDistanceMeters,
+    photos,
+  };
 }

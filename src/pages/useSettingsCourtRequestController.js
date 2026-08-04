@@ -12,6 +12,7 @@ import {
 import {
   getNaverMapClientId,
   openNaverMapPinPicker,
+  reverseGeocodeNaverCoordinate,
   searchNaverAddresses,
   searchNearbyCourtCandidates,
 } from "../lib/naverAddress.js";
@@ -362,11 +363,42 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
   };
   const removeCourtPhoto = (index) => setCourtPhotos((current) => current.filter((_, photoIndex) => photoIndex !== index));
   const confirmCourtFieldLocation = async () => {
+    let location = null;
     try {
-      const location = await readCourtFieldLocation();
-      setCourtLookupStatus(`현장 위치 확인됨 · 오차 ${Math.round(location.accuracy)}m · 핀과 ${Math.round(location.distanceMeters)}m`);
+      location = await readCourtFieldLocation();
+      if (courtPinConfirmed && courtAddressSelected) {
+        setCourtLookupStatus(`현장 위치 확인됨 · 오차 ${Math.round(location.accuracy)}m · 핀과 ${Math.round(location.distanceMeters)}m`);
+        return;
+      }
+      if (!naverMapKeyReady) throw new Error("court_reverse_geocode_unavailable");
+      const pin = await reverseGeocodeNaverCoordinate(location.lat, location.lng);
+      const addressDong = getCourtAddressDong(pin);
+      const buildingName = normalizeCourtFacilityName(pin.buildingName);
+      updateCourtDraft({
+        buildingName,
+        ...(buildingName ? { name: buildingName } : {}),
+        region: getCourtAddressRegion(pin),
+        sido: pin.sido ?? "",
+        sigungu: pin.sigungu ?? "",
+        addressText: pin.addressText,
+        roadAddress: pin.roadAddress,
+        jibunAddress: pin.jibunAddress,
+        addressDong,
+        zonecode: pin.zonecode,
+        lat: String(location.lat),
+        lng: String(location.lng),
+      });
+      const confirmedLocation = { ...location, distanceMeters: 0 };
+      setCourtFieldLocation(confirmedLocation);
+      setCourtAddressQuery(pin.addressText);
+      setNaverAddressResults([]);
+      setCourtPinConfirmed(true);
+      setCourtLookupStatus(`현재 위치로 구장을 지정했습니다 · GPS 오차 ${Math.round(location.accuracy)}m`);
+      await loadCourtNearbyCandidates({ ...pin, lat: location.lat, lng: location.lng });
     } catch {
-      setCourtLookupStatus("현장 위치를 확인하지 못했습니다. GPS와 위치 권한을 켠 뒤 다시 시도해 주세요.");
+      setCourtLookupStatus(location
+        ? "현재 위치는 확인했지만 주소를 찾지 못했습니다. 아래에서 주소를 직접 검색해 주세요."
+        : "현장 위치를 확인하지 못했습니다. GPS와 위치 권한을 켠 뒤 다시 시도해 주세요.");
     }
   };
   const submitCourtRequest = async (event) => {
@@ -423,7 +455,7 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
     try {
       const result = await app.actions.submitCourtRequest(
         { ...courtDraft, fieldLocation: courtFieldLocation },
-        courtPhotos.map(({ imageBase64, byteSize, width, height }) => ({ imageBase64, byteSize, width, height })),
+        courtPhotos.map(({ imageBase64, byteSize, width, height, metadata }) => ({ imageBase64, byteSize, width, height, metadata })),
       );
       if (result?.error === "court_ai_daily_quota_reached") {
         setCourtAiQuota((current) => ({ ...(current ?? {}), blocked: true }));

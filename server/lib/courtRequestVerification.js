@@ -142,6 +142,7 @@ export function getCourtVerificationDecision({
   nearbyDuplicateCount = 0,
   type = "",
   publicAccess = "unknown",
+  photoLocation = {},
 } = {}) {
   const isFiniteAtMost = (value, maximum) => value !== null
     && value !== ""
@@ -159,7 +160,11 @@ export function getCourtVerificationDecision({
     layoutMatches,
     authenticImages: assessments.length === photoCount && assessments.every((item) => !item.screenshotOrSynthetic),
   };
-  const confidence = Object.values(visualChecks).filter(Boolean).length / Object.keys(visualChecks).length;
+  const visualConfidence = Object.values(visualChecks).filter(Boolean).length / Object.keys(visualChecks).length;
+  const photoLocationConfidence = Number.isFinite(Number(photoLocation?.confidence))
+    ? Math.max(0, Math.min(1, Number(photoLocation.confidence)))
+    : 0.75;
+  const confidence = Math.min(visualConfidence, photoLocationConfidence);
   const checks = {
     trustedRequester: Number(trustScore) >= 90 || Number(priorApprovedCount) >= 2,
     fieldAccuracy: isFiniteAtMost(fieldAccuracyMeters, COURT_REQUEST_FIELD_ACCURACY_MAX_METERS),
@@ -168,6 +173,7 @@ export function getCourtVerificationDecision({
     noNearbyDuplicate: Number(nearbyDuplicateCount) === 0,
     outdoorPublic: type === "야외" && publicAccess === "public",
     photoCount: photoCount >= 2 && photoCount <= COURT_REQUEST_PHOTO_MAX,
+    photoLocationConsistent: photoLocation?.status === "matched",
     ...visualChecks,
   };
   return {

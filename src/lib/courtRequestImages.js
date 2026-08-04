@@ -29,6 +29,34 @@ function blobToBase64(blob) {
   });
 }
 
+async function readCourtPhotoMetadata(file) {
+  let gps;
+  let parse;
+  try {
+    ({ gps, parse } = await import("exifr/dist/lite.esm.mjs"));
+  } catch {
+    return { latitude: null, longitude: null, capturedAt: null };
+  }
+  const [coordinates, exif] = await Promise.all([
+    gps(file).catch(() => null),
+    parse(file, { exif: { pick: ["DateTimeOriginal"] }, ifd0: false, gps: false }).catch(() => null),
+  ]);
+  const latitude = Number(coordinates?.latitude);
+  const longitude = Number(coordinates?.longitude);
+  const hasCoordinates = Number.isFinite(latitude)
+    && Number.isFinite(longitude)
+    && Math.abs(latitude) <= 90
+    && Math.abs(longitude) <= 180;
+  const capturedMs = exif?.DateTimeOriginal instanceof Date
+    ? exif.DateTimeOriginal.getTime()
+    : Date.parse(String(exif?.DateTimeOriginal || ""));
+  return {
+    latitude: hasCoordinates ? latitude : null,
+    longitude: hasCoordinates ? longitude : null,
+    capturedAt: Number.isFinite(capturedMs) ? new Date(capturedMs).toISOString() : null,
+  };
+}
+
 async function decodeImage(file) {
   if (typeof createImageBitmap === "function") {
     try {
@@ -70,6 +98,7 @@ export async function prepareCourtRequestPhoto(file) {
     throw imageError("court_photo_type_not_supported");
   }
 
+  const metadataPromise = readCourtPhotoMetadata(file);
   let decoded;
   try {
     decoded = await decodeImage(file);
@@ -111,6 +140,7 @@ export async function prepareCourtRequestPhoto(file) {
             byteSize: blob.size,
             width,
             height,
+            metadata: await metadataPromise,
           };
         }
       }

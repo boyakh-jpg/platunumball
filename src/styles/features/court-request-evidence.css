@@ -95,6 +95,22 @@
   overflow-wrap: anywhere;
 }
 
+.settings-court-location-edit {
+  padding-top: var(--space-4);
+  border-top: var(--ui-stroke-width) solid var(--line);
+}
+
+.settings-court-location-edit summary {
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.settings-court-location-edit[open] summary {
+  margin-bottom: var(--space-4);
+}
+
 .settings-address-actions,
 .settings-court-step-actions {
   width: 100%;
