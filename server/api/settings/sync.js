@@ -50,9 +50,11 @@ function sanitizeSettingsPatch(value) {
       const id = String(profileId || "").trim().slice(0, 128);
       const value = getPlainObject(profile);
       if (!id || !value) return [];
+      const blockedAtMs = Date.parse(String(value.blockedAt || ""));
       return [[id, {
         name: String(value.name || "플레이어").trim().slice(0, 80) || "플레이어",
         hashtag: String(value.hashtag || "").trim().slice(0, 80),
+        ...(Number.isFinite(blockedAtMs) ? { blockedAt: new Date(blockedAtMs).toISOString() } : {}),
       }]];
     }));
   }

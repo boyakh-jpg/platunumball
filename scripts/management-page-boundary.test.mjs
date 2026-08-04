@@ -299,6 +299,7 @@ const managementModules = [
   "src/pages/useSettingsFavorites.jsx",
   "src/pages/useSettingsRefereeController.js",
   "src/pages/SettingsPageView.jsx",
+  "src/pages/SettingsActivityDialog.jsx",
   "src/pages/SettingsPrimaryColumn.jsx",
   "src/pages/SettingsSideColumn.jsx",
   "src/pages/SettingsRefereeSection.jsx",

@@ -1,4 +1,4 @@
-import { CalendarDays, ClipboardList, Handshake, House, LogOut, Settings, Trophy, UserRound, UsersRound } from "lucide-react";
+import { CalendarDays, ClipboardList, Handshake, House, LogOut, MessageSquareText, Settings, Trophy, UserRound, UsersRound } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import BrandLockup from "../common/BrandLockup.jsx";
 import PlayerHoverCard from "../profile/PlayerHoverCard.jsx";
@@ -14,6 +14,7 @@ const navItems = [
   { to: "/app/recruiting", label: "매칭", icon: Handshake },
   { to: "/app/recorder", label: "플레이", icon: ClipboardList },
   { to: "/app/teams", label: "팀", icon: UsersRound },
+  { to: "/app/community", label: "커뮤니티", icon: MessageSquareText },
   { to: "/app/rankings", label: "랭크보드", icon: Trophy },
   { to: "/app/profile", label: "나", icon: UserRound },
   { to: "/app/settings", label: "설정", icon: Settings },

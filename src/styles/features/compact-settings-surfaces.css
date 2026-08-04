@@ -362,6 +362,53 @@ html[data-theme="light"] .ranking-filter-card {
   padding: 9px 12px;
 }
 
+.settings-page .settings-history-row {
+  flex-wrap: wrap;
+}
+
+.settings-history-row > span:first-child {
+  flex: 1 1 180px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.settings-list-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: var(--space-3);
+  margin-left: auto;
+}
+
+.app-confirm-dialog.settings-activity-dialog {
+  width: min(520px, 100%);
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+}
+
+.settings-activity-detail-list {
+  display: grid;
+}
+
+.settings-activity-detail-list > div {
+  display: grid;
+  grid-template-columns: minmax(92px, 0.32fr) minmax(0, 1fr);
+  gap: var(--space-5);
+  padding: 10px 0;
+  border-bottom: var(--ui-stroke-width) solid var(--card-border);
+}
+
+.settings-activity-detail-list span {
+  color: var(--muted);
+  font-size: var(--font-size-meta);
+  font-weight: 800;
+}
+
+.settings-activity-detail-list strong {
+  overflow-wrap: anywhere;
+  font-size: var(--font-size-body-sm);
+  line-height: 1.5;
+}
+
 .settings-page .report-player-picker > div {
   max-height: 240px;
   overflow: auto;

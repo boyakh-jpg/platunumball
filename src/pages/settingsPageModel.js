@@ -1,6 +1,10 @@
 import { REPORT_TARGET_TYPES } from "../lib/reportReasons.js";
 import { getMatchReservePlayerIds, getMatchSidePlayerIds } from "../lib/matchUtils.js";
 import { REFEREE_EXAM_SIZE } from "../lib/refereeExamBank.js";
+import { ADMIN_REVIEW_ACTIONS, getAdminStatusLabel } from "../lib/admin.js";
+import { getCourtPublicAccessLabel } from "../lib/courts.js";
+import { getMatchHashtag } from "../lib/handles.js";
+import { formatKoreanDateTime } from "../../shared/lib/matchTimeUtils.js";
 
 const COURT_LIMIT_TIME_FORMATTER = new Intl.DateTimeFormat("ko-KR", {
   timeZone: "Asia/Seoul",
@@ -227,4 +231,84 @@ export function formatCourtDistance(distanceMeters) {
   if (!Number.isFinite(distance)) return "거리 미확인";
   if (distance < 1000) return `${Math.max(0, Math.round(distance))}m`;
   return `${(distance / 1000).toFixed(1)}km`;
+}
+
+export function getSettingsReportTargetName(report = {}, context = {}) {
+  const { courtRequests = [], approvedCourts = [], courtReviews = [], teams = [], userMap = {}, matchMap = {} } = context;
+  if (report.type === "court_request") return courtRequests.find((item) => item.id === report.targetId)?.name ?? "구장 등록요청";
+  if (report.type === "court") return approvedCourts.find((item) => item.id === report.targetId)?.name ?? "구장";
+  if (report.type === "court_review") return courtReviews.find((item) => item.id === report.targetId)?.courtName ?? "구장 리뷰";
+  if (report.type === "team_name" || report.type === "team_emblem") return teams.find((item) => item.id === report.targetId)?.name ?? report.teamName ?? "팀";
+  if (report.type === "player") return userMap[report.targetId]?.name ?? "플레이어";
+  const match = matchMap[report.targetId];
+  return match ? `${getMatchHashtag(match)} ${match.title ?? "경기"}` : "경기";
+}
+
+function formatSettingsActivityTime(value) {
+  return formatKoreanDateTime(value, {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }) || "-";
+}
+
+export function getSettingsActivityDetail(detail = {}, context = {}) {
+  const item = detail.item ?? {};
+  if (detail.kind === "block") {
+    const snapshot = context.app?.state?.settings?.blockedUserProfiles?.[item.userId] ?? {};
+    const profile = { ...snapshot, ...(context.userMap?.[item.userId] ?? {}) };
+    return {
+      title: profile.name ?? "차단한 플레이어",
+      status: "차단 중",
+      tone: "orange",
+      rows: [
+        { label: "플레이어", value: profile.name ?? "플레이어" },
+        { label: "해시태그", value: profile.hashtag || profile.handle || "-" },
+        { label: "차단 시각", value: snapshot.blockedAt ? formatSettingsActivityTime(snapshot.blockedAt) : "-" },
+        { label: "적용 상태", value: "검색·추천·초대·알림 숨김" },
+      ],
+    };
+  }
+
+  if (detail.kind === "courtRequest") {
+    const status = item.status ?? "pending";
+    const decidedAt = item.approvedAt ?? item.rejectedAt ?? (["approved", "rejected"].includes(status) ? item.updatedAt : null);
+    const message = item.rejectionReason
+      || (status === "approved"
+        ? item.approvalSource === "ai" ? "사진과 위치 검증을 통과해 자동 승인되었습니다." : "구장 등록요청이 승인되었습니다."
+        : "운영진 검토가 끝나면 결과가 표시됩니다.");
+    return {
+      title: item.name ?? "구장 등록요청",
+      status: getAdminStatusLabel(status),
+      tone: status === "approved" ? "green" : status === "rejected" ? "orange" : "neutral",
+      rows: [
+        { label: "주소", value: item.addressText || item.roadAddress || "-" },
+        { label: "공개 여부", value: getCourtPublicAccessLabel(item) },
+        { label: "신청 시각", value: formatSettingsActivityTime(item.createdAt) },
+        { label: "처리 시각", value: decidedAt ? formatSettingsActivityTime(decidedAt) : "-" },
+        { label: "운영진 메시지", value: message },
+      ],
+    };
+  }
+
+  const report = item;
+  const status = report.status ?? "open";
+  const resolution = report.resolution ?? {};
+  return {
+    title: getSettingsReportTargetName(report, {
+      ...context,
+      teams: context.app?.state?.teams ?? context.teams ?? [],
+    }),
+    status: getAdminStatusLabel(status),
+    tone: status === "resolved" ? "green" : status === "dismissed" ? "orange" : "neutral",
+    rows: [
+      { label: "신고 사유", value: report.reason || "-" },
+      { label: "접수 시각", value: formatSettingsActivityTime(report.createdAt) },
+      { label: "처리 시각", value: report.resolvedAt ? formatSettingsActivityTime(report.resolvedAt) : "-" },
+      { label: "처리 결과", value: resolution.actionLabel || ADMIN_REVIEW_ACTIONS[resolution.actionType]?.label || getAdminStatusLabel(status) },
+      { label: "운영진 메시지", value: resolution.feedback || "아직 전달된 메시지가 없습니다." },
+    ],
+  };
 }

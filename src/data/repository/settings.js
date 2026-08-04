@@ -38,7 +38,11 @@ export function blockUser(state, userId, userProfile = null) {
   const blockedUser = userProfile?.id === userId ? userProfile : state.users.find((user) => user.id === userId);
   const blockedUserProfiles = blockedUser ? {
     ...(state.settings?.blockedUserProfiles ?? {}),
-    [userId]: { name: blockedUser.name ?? "플레이어", hashtag: blockedUser.hashtag ?? blockedUser.handle ?? "" },
+    [userId]: {
+      name: blockedUser.name ?? "플레이어",
+      hashtag: blockedUser.hashtag ?? blockedUser.handle ?? "",
+      blockedAt: state.settings?.blockedUserProfiles?.[userId]?.blockedAt ?? new Date().toISOString(),
+    },
   } : state.settings?.blockedUserProfiles ?? {};
   const isBlockedIncomingInvitation = (invitation = {}) => (
     invitation.targetUserId === state.currentUserId && blockedUserIdSet.has(invitation.fromUserId)

@@ -1824,7 +1824,11 @@ test("search keeps player and referee identities separate and remote blocking up
   };
   const next = blockUser(state, "remote-user", { id: "remote-user", name: "원격 선수", hashtag: "#remote" });
   assert.deepEqual(next.settings.blockedUserIds, ["remote-user"]);
-  assert.deepEqual(next.settings.blockedUserProfiles["remote-user"], { name: "원격 선수", hashtag: "#remote" });
+  assert.deepEqual(
+    Object.fromEntries(Object.entries(next.settings.blockedUserProfiles["remote-user"]).filter(([key]) => key !== "blockedAt")),
+    { name: "원격 선수", hashtag: "#remote" },
+  );
+  assert.ok(Number.isFinite(Date.parse(next.settings.blockedUserProfiles["remote-user"].blockedAt)));
   assert.deepEqual(next.teamInvitations.map(({ id }) => id), ["visible-team"]);
   assert.deepEqual(next.recruitingPosts[0].roomState.invitations.map(({ id }) => id), ["visible-room"]);
   assert.equal(next.notifications.some(({ id }) => id === "blocked-notice"), false);

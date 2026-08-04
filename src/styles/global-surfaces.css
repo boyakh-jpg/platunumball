@@ -1,4 +1,5 @@
 @import "./layout/page-home-surfaces.css";
 @import "./features/rank-team-surfaces.css";
 @import "./features/compact-settings-surfaces.css";
+@import "./features/community-board.css";
 @import "./responsive/surface-layout-responsive.css";

@@ -14,9 +14,10 @@ import {
   getReportTargetLabel,
   getReportTargetPlaceholder,
   getReportTargetEmptyText,
+  getSettingsReportTargetName,
 } from "./settingsPageModel.js";
 
-export function SettingsReportCard({ controller }) {
+export function SettingsReportCard({ controller, onOpenDetail }) {
   const {
     app,
     blockedUserIds,
@@ -259,23 +260,10 @@ export function SettingsReportCard({ controller }) {
             </form>
             <div className="compact-list ui-support-list">
               {app.state.reports?.slice(0, 4).map((report) => (
-                <div key={report.id}>
-                  <span>{
-                    report.type === "court_request"
-                      ? courtRequests.find((request) => request.id === report.targetId)?.name ?? "구장 등록요청"
-                      : report.type === "court"
-                        ? approvedCourts.find((court) => court.id === report.targetId)?.name ?? "구장"
-                      : report.type === "court_review"
-                          ? courtReviews.find((review) => review.id === report.targetId)?.courtName ?? "구장 리뷰"
-                          : report.type === "team_name" || report.type === "team_emblem"
-                            ? app.state.teams.find((team) => team.id === report.targetId)?.name ?? report.teamName ?? "팀"
-                          : report.type === "player"
-                            ? userMap[report.targetId]?.name ?? "플레이어"
-                          : matchMap[report.targetId]
-                            ? `${getMatchHashtag(matchMap[report.targetId])} ${matchMap[report.targetId].title ?? "경기"}`
-                            : "경기"
-                  } · {report.reason}</span>
+                <div key={report.id} className="settings-history-row">
+                  <span>{getSettingsReportTargetName(report, { courtRequests, approvedCourts, courtReviews, teams: app.state.teams, userMap, matchMap })} · {report.reason}</span>
                   <strong>{getAdminStatusLabel(report.status)}</strong>
+                  <button type="button" className="ui-compact-action" onClick={() => onOpenDetail?.({ kind: "report", item: report })}>보기</button>
                 </div>
               ))}
             </div>

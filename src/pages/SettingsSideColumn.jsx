@@ -10,7 +10,7 @@ import { COURT_COST_OPTIONS, COURT_LIGHTING_OPTIONS, formatCourtDistance } from 
 import { COURT_REQUEST_PHOTO_MAX } from "../../shared/lib/courtRequestImagePolicy.js";
 
 import { SettingsReportCard } from "./SettingsReportCard.jsx";
-export default function SettingsSideColumn({ controller }) {
+export default function SettingsSideColumn({ controller, onOpenDetail }) {
   const {
     app,
     blockedUserIds,
@@ -19,23 +19,6 @@ export default function SettingsSideColumn({ controller }) {
     setBlockUserQuery,
     blockSavePending,
     blockSaveStatus,
-    setReportMatchId,
-    reportReason,
-    setReportReason,
-    reportTargetQuery,
-    setReportTargetQuery,
-    setReportCourtRequestId,
-    setReportCourtId,
-    setReportCourtReviewId,
-    setReportTeamId,
-    setReportRemoteTarget,
-    reportMemo,
-    setReportMemo,
-    setReportedUserIds,
-    reportSubmitPending,
-    reportSubmitStatus,
-    reportMatchesLoading,
-    reportMatchesError,
     courtAddressQuery,
     setCourtAddressQuery,
     naverAddressResults,
@@ -59,8 +42,6 @@ export default function SettingsSideColumn({ controller }) {
     userMap,
     matchMap,
     courtRequests,
-    approvedCourts,
-    courtReviews,
     naverMapKeyReady,
     courtAddressSelected,
     courtDisplayName,
@@ -74,27 +55,9 @@ export default function SettingsSideColumn({ controller }) {
     onsiteCourtEntry,
     blockableUsers,
     selectedBlockUserId,
-    reportTargetType,
-    isVoidRestoreReport,
-    reportNeedsMatchData,
-    selectedReportMatch,
-    selectedReportCourtRequest,
-    selectedReportCourt,
-    selectedReportCourtReview,
-    selectedReportTeam,
-    selectedTeamHasUploadedEmblem,
-    reportParticipantRows,
-    selectedReportedUserIds,
-    reportTargetSearchItems,
-    reportRemoteSearchTypes,
-    mapRemoteReportTarget,
-    canSubmitReport,
-    changeReportTargetQuery,
-    renderReportTargetSearchItem,
     submitBlock,
     renderBlockUserSearchItem,
     releaseBlock,
-    submitReport,
     updateCourtDraft,
     searchCourtAddress,
     pickCourtMapPin,
@@ -104,7 +67,6 @@ export default function SettingsSideColumn({ controller }) {
     confirmCourtFieldLocation,
     submitCourtRequest,
     reportCourtRequest,
-    toggleReportedUser,
     setCourtLocationEntryMode,
   } = controller;
   const courtLocationReady = courtAddressSelected && courtPinConfirmed && (!onsiteCourtEntry || courtFieldLocation);
@@ -151,9 +113,12 @@ export default function SettingsSideColumn({ controller }) {
             </form>
             <div className="compact-list ui-support-list">
               {blockedUserIds.length ? blockedUserIds.map((userId) => (
-                <div key={userId}>
+                <div key={userId} className="settings-history-row">
                   <span>{userMap[userId]?.name ?? app.state.settings?.blockedUserProfiles?.[userId]?.name ?? "플레이어"}</span>
-                  <button type="button" className="ui-compact-action" disabled={blockSavePending} onClick={() => releaseBlock(userId)}>해제</button>
+                  <div className="settings-list-actions">
+                    <button type="button" className="ui-compact-action" onClick={() => onOpenDetail?.({ kind: "block", item: { userId } })}>보기</button>
+                    <button type="button" className="ui-compact-action" disabled={blockSavePending} onClick={() => releaseBlock(userId)}>해제</button>
+                  </div>
                 </div>
               )) : <div><span>차단한 플레이어가 없습니다.</span><strong>0</strong></div>}
             </div>
@@ -479,12 +444,15 @@ export default function SettingsSideColumn({ controller }) {
                   && ["pending", "reported"].includes(request.status ?? "pending")
                   && !alreadyReported;
                 return (
-                  <div key={request.id}>
+                  <div key={request.id} className="settings-history-row">
                     <span>{request.name} · {request.addressText} · 공개 여부 {getCourtPublicAccessLabel(request)} · {requester?.name ?? "요청자"} 신뢰도 {request.requestedByTrustScore ?? requester?.trustScore ?? "-"}</span>
                     <strong>{getAdminStatusLabel(request.status)}</strong>
-                    <button type="button" className="ui-compact-action" disabled={!canReportRequest} onClick={() => reportCourtRequest(request)}>
-                      {alreadyReported ? "신고됨" : "신고 선택"}
-                    </button>
+                    <div className="settings-list-actions">
+                      <button type="button" className="ui-compact-action" onClick={() => onOpenDetail?.({ kind: "courtRequest", item: request })}>보기</button>
+                      <button type="button" className="ui-compact-action" disabled={!canReportRequest} onClick={() => reportCourtRequest(request)}>
+                        {alreadyReported ? "신고됨" : "신고 선택"}
+                      </button>
+                    </div>
                   </div>
                 );
               })}
@@ -492,7 +460,7 @@ export default function SettingsSideColumn({ controller }) {
             </div>
           </Card>
 
-<SettingsReportCard controller={controller} />
+<SettingsReportCard controller={controller} onOpenDetail={onOpenDetail} />
 
         </aside>
   );

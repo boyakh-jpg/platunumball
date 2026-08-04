@@ -216,7 +216,11 @@ export function createAppActions({
       const targetUser = targetProfile ?? stateRef.current.users.find((user) => user.id === userId);
       const nextBlockedUserProfiles = Object.fromEntries([
         ...Object.entries(currentProfiles).filter(([profileId]) => profileId !== userId),
-        ...(shouldBlock && targetUser ? [[userId, { name: targetUser.name ?? "플레이어", hashtag: targetUser.hashtag ?? targetUser.handle ?? "" }]] : []),
+        ...(shouldBlock && targetUser ? [[userId, {
+          name: targetUser.name ?? "플레이어",
+          hashtag: targetUser.hashtag ?? targetUser.handle ?? "",
+          blockedAt: currentProfiles[userId]?.blockedAt ?? new Date().toISOString(),
+        }]] : []),
       ]);
       const result = await syncSettingsServer({ blockedUserIds: nextBlockedUserIds, blockedUserProfiles: nextBlockedUserProfiles });
       if (!result || result.ok === false) return result || false;

@@ -14,6 +14,7 @@ import { getSafeAppRedirect, isProfileGateReady, shouldRecheckAgeGroup, shouldSe
 const Admin = lazy(() => import("./pages/Admin.jsx"));
 const AdminCourtMapPopup = lazy(() => import("./pages/AdminCourtMapPopup.jsx"));
 const Affiliations = lazy(() => import("./pages/Affiliations.jsx"));
+const Community = lazy(() => import("./pages/Community.jsx"));
 const CreateMatch = lazy(() => import("./pages/CreateMatch.jsx"));
 const CourtDetail = lazy(() => import("./pages/CourtDetail.jsx"));
 const DataSources = lazy(() => import("./pages/DataSources.jsx"));
@@ -203,6 +204,7 @@ export default function App() {
             <Route path="/app/season" element={<Season app={app} />} />
             <Route path="/app/rankings" element={<Rankings app={app} />} />
             <Route path="/app/recruiting" element={<Recruiting app={app} />} />
+            <Route path="/app/community" element={<Community app={app} />} />
             <Route path="/app/teams" element={<Teams app={app} />} />
             <Route path="/app/teams/:teamId" element={<TeamDetail app={app} />} />
             <Route path="/app/tournaments/:tournamentId" element={<TournamentDetail app={app} />} />
