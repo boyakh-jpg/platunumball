@@ -94,6 +94,9 @@ export function getCourtPhotoLocationEvidence(photoMetadata = [], locations = {}
       latitude: hasCoordinates ? latitude : null,
       longitude: hasCoordinates ? longitude : null,
       capturedAt: Number.isFinite(capturedMs) ? new Date(capturedMs).toISOString() : null,
+      locationSource: hasCoordinates
+        ? (["exif", "live_gps"].includes(metadata?.locationSource) ? metadata.locationSource : "exif")
+        : "unavailable",
       fieldDistanceMeters: hasCoordinates
         ? getCoordinateDistanceMeters(latitude, longitude, locations.fieldLat, locations.fieldLng)
         : null,

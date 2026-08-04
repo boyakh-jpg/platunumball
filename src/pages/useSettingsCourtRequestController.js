@@ -432,7 +432,7 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
         : current.map((photo, index) => (index === replaceIndex ? pendingPhoto : photo)));
       setCourtPhotoPending(true);
       setCourtLookupStatus("촬영한 사진을 자동 최적화하는 중입니다.");
-      const [prepared] = await prepareCourtRequestPhotos([file]);
+      const [prepared] = await prepareCourtRequestPhotos([file], courtFieldLocation);
       revokeCourtPhotoPreview(previewUrl);
       setCourtPhotos((current) => current.map((photo) => (photo.id === pendingPhoto.id
         ? { ...prepared, id: pendingPhoto.id, pending: false, error: "" }

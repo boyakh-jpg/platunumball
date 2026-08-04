@@ -13,7 +13,7 @@ import {
   normalizeCourtPhotoAiAnswer,
 } from "../server/lib/courtRequestVerification.js";
 import courtAiWorker from "../cloudflare/court-ai/worker.js";
-import { encodeCourtPhotoCanvas } from "../src/lib/courtRequestImages.js";
+import { encodeCourtPhotoCanvas, resolveCourtPhotoMetadata } from "../src/lib/courtRequestImages.js";
 import { getCourtRequestQuotaUi } from "../src/pages/settingsPageModel.js";
 
 const eligibleAssessment = {
@@ -124,6 +124,21 @@ test("court photo EXIF location is a request evidence signal", () => {
   assert.equal(unavailable.gpsPhotoCount, 0);
   assert.equal(getCourtVerificationDecision({ ...eligibleEvidence, photoLocation: mismatch }).decision, "manual_review");
   assert.equal(getCourtVerificationDecision({ ...eligibleEvidence, photoLocation: {} }).decision, "auto_approve");
+});
+
+test("court photos use live GPS when the browser strips EXIF", () => {
+  const capturedAt = "2026-08-04T04:00:00.000Z";
+  const metadata = resolveCourtPhotoMetadata(
+    { latitude: null, longitude: null, capturedAt: null, locationSource: "unavailable" },
+    { lat: 37.5, lng: 127, capturedAt },
+  );
+  assert.deepEqual(metadata, {
+    latitude: 37.5,
+    longitude: 127,
+    capturedAt,
+    locationSource: "live_gps",
+  });
+  assert.equal(getCourtPhotoLocationEvidence([metadata], { fieldLat: 37.5, fieldLng: 127, pinLat: 37.5, pinLng: 127 }).photos[0].locationSource, "live_gps");
 });
 
 test("court AI token metrics map to neurons and block at 80 percent", () => {

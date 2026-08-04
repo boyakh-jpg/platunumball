@@ -110,14 +110,14 @@ export default function SettingsSideColumn({ controller }) {
   const courtLocationReady = courtAddressSelected && courtPinConfirmed && (!onsiteCourtEntry || courtFieldLocation);
   const courtReadyPhotos = courtPhotos.filter((photo) => photo.imageBase64 && !photo.pending && !photo.error);
   const courtPhotoError = courtPhotos.find((photo) => photo.error)?.error || "";
-  const courtPhotoGpsCount = courtReadyPhotos.filter((photo) => photo.metadata?.latitude !== null
+  const courtPhotoLocationCount = courtReadyPhotos.filter((photo) => photo.metadata?.latitude !== null
     && photo.metadata?.latitude !== undefined
     && photo.metadata?.longitude !== null
     && photo.metadata?.longitude !== undefined
     && Number.isFinite(Number(photo.metadata.latitude))
     && Number.isFinite(Number(photo.metadata.longitude))).length;
   const courtAutomaticReviewLocationReady = Boolean(courtFieldLocation)
-    || (courtReadyPhotos.length > 0 && courtPhotoGpsCount === courtReadyPhotos.length);
+    || (courtReadyPhotos.length > 0 && courtPhotoLocationCount === courtReadyPhotos.length);
   const courtPhotoStepComplete = courtPinConfirmed && !courtPhotoPending && !courtPhotoError && (!onsiteCourtEntry || courtReadyPhotos.length > 0);
   return (
 <aside className="page-stack settings-side-column">
@@ -261,7 +261,7 @@ export default function SettingsSideColumn({ controller }) {
                     : courtPhotoError
                       ? courtPhotoError
                       : courtReadyPhotos.length
-                    ? `사진 GPS ${courtPhotoGpsCount}/${courtReadyPhotos.length} · ${courtReadyPhotos.length === COURT_REQUEST_PHOTO_MAX && courtAutomaticReviewLocationReady ? "다른 조건도 충족하면 AI 자동승인 후보" : "관리자 검토 가능"}`
+                    ? `${courtPhotoLocationCount ? `사진 위치 ${courtPhotoLocationCount}/${courtReadyPhotos.length}장 확인` : "사진 위치정보 없음"} · ${courtReadyPhotos.length === COURT_REQUEST_PHOTO_MAX && courtAutomaticReviewLocationReady ? "다른 조건도 충족하면 AI 자동승인 후보" : "관리자 검토 가능"}`
                     : onsiteCourtEntry ? "현장에서 직접 촬영하면 자동승인 가능성이 높아집니다." : "사진 없이도 신청할 수 있으며, 현장 사진이 있으면 자동승인 가능성이 높아집니다."}</small>
                   <div className="settings-court-photo-grid">
                     {courtPhotos.map((photo, index) => (

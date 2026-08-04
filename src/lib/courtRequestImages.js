@@ -37,6 +37,14 @@ function blobToBase64(blob) {
   });
 }
 
+function hasValidCoordinates(latitude, longitude) {
+  if ([latitude, longitude].some((value) => value === null || value === undefined || value === "")) return false;
+  return Number.isFinite(Number(latitude))
+    && Number.isFinite(Number(longitude))
+    && Math.abs(Number(latitude)) <= 90
+    && Math.abs(Number(longitude)) <= 180;
+}
+
 async function readCourtPhotoMetadata(file) {
   let gps;
   let parse;
@@ -51,10 +59,7 @@ async function readCourtPhotoMetadata(file) {
   ]);
   const latitude = Number(coordinates?.latitude);
   const longitude = Number(coordinates?.longitude);
-  const hasCoordinates = Number.isFinite(latitude)
-    && Number.isFinite(longitude)
-    && Math.abs(latitude) <= 90
-    && Math.abs(longitude) <= 180;
+  const hasCoordinates = hasValidCoordinates(latitude, longitude);
   const capturedMs = exif?.DateTimeOriginal instanceof Date
     ? exif.DateTimeOriginal.getTime()
     : Date.parse(String(exif?.DateTimeOriginal || ""));
@@ -62,6 +67,24 @@ async function readCourtPhotoMetadata(file) {
     latitude: hasCoordinates ? latitude : null,
     longitude: hasCoordinates ? longitude : null,
     capturedAt: Number.isFinite(capturedMs) ? new Date(capturedMs).toISOString() : null,
+    locationSource: hasCoordinates ? "exif" : "unavailable",
+  };
+}
+
+export function resolveCourtPhotoMetadata(metadata = {}, fallbackLocation = null) {
+  if (metadata.latitude !== null && metadata.longitude !== null
+    && hasValidCoordinates(metadata.latitude, metadata.longitude)) {
+    return { ...metadata, locationSource: "exif" };
+  }
+  const latitude = Number(fallbackLocation?.lat);
+  const longitude = Number(fallbackLocation?.lng);
+  if (!hasValidCoordinates(latitude, longitude)) return metadata;
+  return {
+    ...metadata,
+    latitude,
+    longitude,
+    capturedAt: fallbackLocation?.capturedAt ?? null,
+    locationSource: "live_gps",
   };
 }
 
@@ -103,14 +126,15 @@ function getSourceQualityError(source, width, height) {
   return getCourtPhotoPixelQualityError(context.getImageData(0, 0, sampleWidth, sampleHeight).data, sampleWidth, sampleHeight);
 }
 
-export async function prepareCourtRequestPhoto(file) {
+export async function prepareCourtRequestPhoto(file, fallbackLocation = null) {
   if (!(file instanceof Blob)) throw imageError("court_photo_file_required");
   const extension = String(file.name || "").split(".").pop()?.toLowerCase() ?? "";
   if (!ACCEPTED_TYPES.has(String(file.type || "").toLowerCase()) && !ACCEPTED_EXTENSIONS.has(extension)) {
     throw imageError("court_photo_type_not_supported");
   }
 
-  const metadataPromise = readCourtPhotoMetadata(file);
+  const metadataPromise = readCourtPhotoMetadata(file)
+    .then((metadata) => resolveCourtPhotoMetadata(metadata, fallbackLocation));
   let decoded;
   try {
     decoded = await decodeImage(file);
@@ -177,11 +201,11 @@ export async function prepareCourtRequestPhoto(file) {
   throw imageError("court_photo_too_large_after_resize");
 }
 
-export async function prepareCourtRequestPhotos(files = []) {
+export async function prepareCourtRequestPhotos(files = [], fallbackLocation = null) {
   const selected = Array.from(files);
   if (selected.length > COURT_REQUEST_PHOTO_MAX) throw imageError("court_photo_count_invalid");
   const photos = [];
-  for (const file of selected) photos.push(await prepareCourtRequestPhoto(file));
+  for (const file of selected) photos.push(await prepareCourtRequestPhoto(file, fallbackLocation));
   if (photos.some((photo) => photo.byteSize > COURT_REQUEST_PHOTO_MAX_BYTES || Math.max(photo.width, photo.height) > COURT_REQUEST_PHOTO_MAX_DIMENSION)) {
     throw imageError("court_photo_invalid_output");
   }
