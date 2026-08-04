@@ -218,7 +218,7 @@ export default function SettingsSideColumn({ controller }) {
                     <span className="settings-court-step-number" aria-hidden="true">{courtLocationReady ? <Check size={15} /> : "1"}</span>
                     <div>
                       <h3 id="court-step-location-title">{onsiteCourtEntry ? "현장 위치 지정" : "주소로 위치 지정"}</h3>
-                      <small>{onsiteCourtEntry ? "현재 GPS로 지도 핀과 주소를 자동 설정합니다." : "주소를 찾은 뒤 실제 코트 위치에 핀을 맞춥니다."}</small>
+                      <small>{onsiteCourtEntry ? "현재 GPS를 기준으로 시작한 뒤 실제 코트 위치에 핀을 맞춥니다." : "주소를 찾은 뒤 실제 코트 위치에 핀을 맞춥니다."}</small>
                     </div>
                     <em>{courtLocationReady ? "완료" : "현재 단계"}</em>
                   </div>
@@ -228,8 +228,13 @@ export default function SettingsSideColumn({ controller }) {
                         <Button type="button" variant="secondary" onClick={confirmCourtFieldLocation} disabled={courtFieldLocationPending || courtPinPending || courtSubmitPending}>
                           <Crosshair size={16} /> {courtFieldLocationPending ? "위치 확인 중" : courtFieldLocation ? "현재 위치 다시 확인" : "현재 위치로 구장 지정"}
                         </Button>
+                        {courtFieldLocation && courtAddressSelected ? (
+                          <Button type="button" variant="secondary" onClick={pickCourtMapPin} disabled={courtPinPending || courtSubmitPending || !naverMapKeyReady}>
+                            <MapPin size={16} /> {courtPinPending ? "핀 조정 중" : "지도에서 핀 미세 조정"}
+                          </Button>
+                        ) : null}
                       </div>
-                      <small>{courtFieldLocation && courtAddressSelected ? `${courtDraft.addressText} · GPS 오차 ${Math.round(courtFieldLocation.accuracy)}m` : "구장 현장에서 위치 권한을 허용해 주세요."}</small>
+                      <small>{courtFieldLocation && courtAddressSelected ? `${courtDraft.addressText} · GPS 오차 ${Math.round(courtFieldLocation.accuracy)}m · 핀과 ${Math.round(courtFieldLocation.distanceMeters ?? 0)}m` : "구장 근처에서 위치 권한을 허용해 주세요."}</small>
                     </>
                   ) : (
                     <div className="settings-address-search">

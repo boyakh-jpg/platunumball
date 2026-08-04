@@ -68,6 +68,9 @@ test("court AI policy uses server evidence checks instead of model self-confiden
   assert.equal(decision.confidence, 1);
   assert.equal(getCourtVerificationDecision({ ...eligibleEvidence, fieldAccuracyMeters: null, fieldDistanceMeters: null, fieldCapturedAt: null }).locationSource, "photo_gps");
   assert.equal(getCourtVerificationDecision({ ...eligibleEvidence, photoLocation: { status: "unavailable", confidence: 0.75 } }).locationSource, "live_gps");
+  assert.equal(getCourtVerificationDecision({ ...eligibleEvidence, fieldDistanceMeters: 149, photoLocation: { status: "uncertain", confidence: 0.6 } }).decision, "auto_approve");
+  assert.equal(getCourtVerificationDecision({ ...eligibleEvidence, fieldDistanceMeters: 151, photoLocation: { status: "uncertain", confidence: 0.6 } }).decision, "manual_review");
+  assert.equal(getCourtVerificationDecision({ ...eligibleEvidence, photoLocation: { status: "mismatch", confidence: 0.25 } }).decision, "manual_review");
   assert.equal(getCourtVerificationDecision({ ...eligibleEvidence, fieldAccuracyMeters: null, fieldDistanceMeters: null, fieldCapturedAt: null, photoLocation: { status: "unavailable", confidence: 0.75 } }).decision, "manual_review");
 });
 
@@ -160,12 +163,13 @@ test("court photo quality rejects unusable pixels before AI", () => {
 });
 
 test("court evidence and AI usage migrations keep data private", async () => {
-  const [sql, serviceRoleSql, usageSql, limitSql, locationSql] = await Promise.all([
+  const [sql, serviceRoleSql, usageSql, limitSql, locationSql, nearbyCaptureSql] = await Promise.all([
     readFile(new URL("../supabase/migrations/20260803222000_court_request_ai_verification.sql", import.meta.url), "utf8"),
     readFile(new URL("../supabase/migrations/20260804091749_court_request_evidence_service_role.sql", import.meta.url), "utf8"),
     readFile(new URL("../supabase/migrations/20260804120000_court_ai_daily_usage.sql", import.meta.url), "utf8"),
     readFile(new URL("../supabase/migrations/20260804121640_court_request_submission_limits.sql", import.meta.url), "utf8"),
     readFile(new URL("../supabase/migrations/20260804160000_classify_court_request_location_evidence.sql", import.meta.url), "utf8"),
+    readFile(new URL("../supabase/migrations/20260804191704_allow_nearby_court_capture.sql", import.meta.url), "utf8"),
   ]);
   assert.match(sql, /enable row level security/i);
   assert.match(sql, /revoke all on table public\.court_request_evidence from public, anon, authenticated/i);
@@ -185,10 +189,14 @@ test("court evidence and AI usage migrations keep data private", async () => {
   assert.match(locationSql, /alter column field_lat drop not null/i);
   assert.match(locationSql, /photo_location_status <> 'matched'/i);
   assert.doesNotMatch(locationSql, /grant .* to (anon|authenticated)|drop table|truncate|delete from/i);
+  assert.match(nearbyCaptureSql, /field_distance_meters <= 150/i);
+  assert.match(nearbyCaptureSql, /photo_location_status = 'mismatch'/i);
+  assert.doesNotMatch(nearbyCaptureSql, /photo_location_status in \('uncertain', 'mismatch'\)/i);
+  assert.doesNotMatch(nearbyCaptureSql, /grant .* to (anon|authenticated)|drop table|truncate|delete from/i);
 });
 
 test("court photos use browser resizing and private R2", async () => {
-  const [client, server, storage, evidence, form, controller, styles] = await Promise.all([
+  const [client, server, storage, evidence, form, controller, styles, map] = await Promise.all([
     readFile(new URL("../src/lib/courtRequestImages.js", import.meta.url), "utf8"),
     readFile(new URL("../server/api/court-requests/submit.js", import.meta.url), "utf8"),
     readFile(new URL("../server/api/_r2ImageStorage.js", import.meta.url), "utf8"),
@@ -196,6 +204,7 @@ test("court photos use browser resizing and private R2", async () => {
     readFile(new URL("../src/pages/SettingsSideColumn.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/pages/useSettingsCourtRequestController.js", import.meta.url), "utf8"),
     readFile(new URL("../src/styles/features/court-request-evidence.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/lib/naverAddress.js", import.meta.url), "utf8"),
   ]);
   assert.match(client, /encodeCourtPhotoCanvas/);
   assert.match(client, /exifr\/dist\/lite\.esm\.mjs/);
@@ -234,10 +243,14 @@ test("court photos use browser resizing and private R2", async () => {
   assert.match(form, /현재 위치로 구장 지정/);
   assert.match(form, /현재 위치 사용/);
   assert.match(form, /주소로 찾기/);
+  assert.match(form, /지도에서 핀 미세 조정/);
   assert.doesNotMatch(form, /settings-court-location-edit/);
   assert.match(form, /다른 조건도 충족하면 AI 자동승인 후보/);
   assert.match(form, /setCourtAddressQuery\(event\.target\.value, true\)/);
   assert.match(controller, /reverseGeocodeNaverCoordinate/);
+  assert.match(controller, /onsiteCourtEntry && courtPinConfirmed && courtFieldLocation/);
+  assert.match(controller, /distanceMeters: getCoordinateDistanceMeters\(pinLat, pinLng, current\.lat, current\.lng\)/);
+  assert.match(map, /zoom: 18/);
   assert.match(server, /rankball_submit_court_request"/);
   assert.match(server, /if \(!photoInputs\.length\)/);
   const photoHandler = controller.slice(controller.indexOf("const selectCourtPhotos"), controller.indexOf("const removeCourtPhoto"));

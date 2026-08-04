@@ -166,7 +166,7 @@ export function getCourtVerificationDecision({
     && fieldAgeMs >= -60_000
     && fieldAgeMs <= COURT_REQUEST_FIELD_CAPTURE_MAX_AGE_MS;
   const photoLocationMatched = photoLocation?.status === "matched";
-  const photoLocationContradicts = ["uncertain", "mismatch"].includes(photoLocation?.status);
+  const photoLocationContradicts = photoLocation?.status === "mismatch";
   const locationVerified = (liveLocationVerified || photoLocationMatched) && !photoLocationContradicts;
   const locationSource = liveLocationVerified
     ? (photoLocationMatched || photoLocation?.status === "partial" ? "live_and_photo_gps" : "live_gps")

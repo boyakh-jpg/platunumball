@@ -436,7 +436,7 @@ export async function openNaverMapPinPicker(court = {}, clientId = getNaverMapCl
     };
     try {
       center = new window.naver.maps.LatLng(initial.lat, initial.lng);
-      map = new window.naver.maps.Map(mapElement, { center, zoom: 16 });
+      map = new window.naver.maps.Map(mapElement, { center, zoom: 18 });
       marker = new window.naver.maps.Marker({ position: center, map, draggable: true });
       selectedPosition = center;
       window.naver.maps.Event.addListener(map, "click", (event) => setSelectedPosition(event.coord));

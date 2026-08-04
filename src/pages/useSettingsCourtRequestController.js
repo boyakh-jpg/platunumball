@@ -178,8 +178,17 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
   const updateCourtDraft = (patch) => {
     if (Object.keys(patch).some((key) => COURT_NEARBY_REVIEW_FIELDS.has(key))) setCourtNearbyConfirmed(false);
     if (Object.keys(patch).some((key) => ["addressText", "lat", "lng"].includes(key))) {
-      setCourtFieldLocation(null);
-      clearCourtPhotos();
+      if (onsiteCourtEntry && courtPinConfirmed && courtFieldLocation) {
+        const pinLat = patch.lat ?? courtDraft.lat;
+        const pinLng = patch.lng ?? courtDraft.lng;
+        setCourtFieldLocation((current) => current ? {
+          ...current,
+          distanceMeters: getCoordinateDistanceMeters(pinLat, pinLng, current.lat, current.lng),
+        } : null);
+      } else {
+        setCourtFieldLocation(null);
+        clearCourtPhotos();
+      }
     }
     setCourtDraft((current) => ({ ...current, ...patch }));
   };
@@ -291,9 +300,14 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
       setCourtAddressQuery(pin.addressText);
       setNaverAddressResults([]);
       setCourtPinConfirmed(true);
-      setCourtLookupStatus(buildingName
-        ? `핀 주소의 건물명 '${buildingName}'을 시설명에 자동 반영했습니다.`
-        : "핀 위치의 실제 주소를 저장했습니다. 시설/장소명을 확인해 주세요.");
+      const fieldDistance = courtFieldLocation
+        ? getCoordinateDistanceMeters(pin.lat, pin.lng, courtFieldLocation.lat, courtFieldLocation.lng)
+        : null;
+      setCourtLookupStatus(Number.isFinite(fieldDistance)
+        ? `구장 핀을 조정했습니다 · 현재 위치와 ${Math.round(fieldDistance)}m`
+        : buildingName
+          ? `핀 주소의 건물명 '${buildingName}'을 시설명에 자동 반영했습니다.`
+          : "핀 위치의 실제 주소를 저장했습니다. 시설/장소명을 확인해 주세요.");
       await loadCourtNearbyCandidates(pin);
     } catch (error) {
       if (error?.code === "naver_pin_picker_cancelled") {
