@@ -101,11 +101,12 @@ test("court evidence and AI usage migrations keep data private", async () => {
 });
 
 test("court photos use browser resizing and private R2", async () => {
-  const [client, server, evidence, form, styles] = await Promise.all([
+  const [client, server, evidence, form, controller, styles] = await Promise.all([
     readFile(new URL("../src/lib/courtRequestImages.js", import.meta.url), "utf8"),
     readFile(new URL("../server/api/court-requests/submit.js", import.meta.url), "utf8"),
     readFile(new URL("../server/api/court-requests/evidence.js", import.meta.url), "utf8"),
     readFile(new URL("../src/pages/SettingsSideColumn.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/pages/useSettingsCourtRequestController.js", import.meta.url), "utf8"),
     readFile(new URL("../src/styles/features/court-request-evidence.css", import.meta.url), "utf8"),
   ]);
   assert.match(client, /canvasToWebp/);
@@ -118,6 +119,9 @@ test("court photos use browser resizing and private R2", async () => {
   assert.match(evidence, /requireAdminContext/);
   assert.match(evidence, /\^cr_sim_/);
   assert.match(form, /capture="environment"/);
+  assert.match(form, /disabled=\{!courtPinConfirmed \|\| courtFieldLocationPending \|\| courtPhotoPending/);
+  assert.doesNotMatch(form, /disabled=\{!courtFieldLocation \|\| courtPhotoPending/);
+  assert.match(controller, /await readCourtFieldLocation\(\)/);
   assert.ok(form.indexOf("settings-court-evidence") < form.indexOf("시설\/장소명"));
   assert.match(styles, /inset:\s*0;[\s\S]{0,80}width:\s*100%;[\s\S]{0,80}height:\s*100%/);
 });

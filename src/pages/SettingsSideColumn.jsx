@@ -206,12 +206,12 @@ export default function SettingsSideColumn({ controller }) {
                     <Button type="button" variant="secondary" onClick={confirmCourtFieldLocation} disabled={courtFieldLocationPending || !courtPinConfirmed}>
                       <Crosshair size={16} /> {courtFieldLocationPending ? "위치 확인 중" : "현장 위치 확인"}
                     </Button>
-                    <Button as="label" variant="secondary" className="settings-court-photo-button" aria-disabled={!courtFieldLocation || courtPhotoPending || courtPhotos.length >= 4}>
-                      <Camera size={16} /> {courtPhotoPending ? "사진 처리 중" : !courtFieldLocation ? "위치 확인 후 촬영" : courtPhotos.length >= 4 ? "촬영 완료" : "현장 사진 촬영"}
-                      <input type="file" accept="image/*" capture="environment" disabled={!courtFieldLocation || courtPhotoPending || courtPhotos.length >= 4} onChange={selectCourtPhotos} />
+                    <Button as="label" variant="secondary" className="settings-court-photo-button" aria-disabled={!courtPinConfirmed || courtFieldLocationPending || courtPhotoPending || courtPhotos.length >= 4}>
+                      <Camera size={16} /> {courtPhotoPending || courtFieldLocationPending ? "위치·사진 확인 중" : !courtPinConfirmed ? "핀 확정 후 촬영" : courtPhotos.length >= 4 ? "촬영 완료" : "현장 사진 촬영"}
+                      <input type="file" accept="image/*" capture="environment" disabled={!courtPinConfirmed || courtFieldLocationPending || courtPhotoPending || courtPhotos.length >= 4} onChange={selectCourtPhotos} />
                     </Button>
                   </div>
-                  <small>{courtFieldLocation ? `GPS 오차 ${Math.round(courtFieldLocation.accuracy)}m · 핀과 ${Math.round(courtFieldLocation.distanceMeters)}m` : "GPS를 켜고 현장 위치부터 확인해 주세요."} · 현장에서 바로 촬영하고 위치·사진 기준을 충족하면 자동승인될 수 있습니다.</small>
+                  <small>{courtFieldLocation ? `GPS 오차 ${Math.round(courtFieldLocation.accuracy)}m · 핀과 ${Math.round(courtFieldLocation.distanceMeters)}m` : "사진 촬영 뒤 현장 GPS를 바로 확인합니다."} · 현장에서 바로 촬영하고 위치·사진 기준을 충족하면 자동승인될 수 있습니다.</small>
                   {courtPhotos.length ? (
                     <div className="settings-court-photo-grid">
                       {courtPhotos.map((photo, index) => (
