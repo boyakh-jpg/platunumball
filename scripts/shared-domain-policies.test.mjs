@@ -724,6 +724,9 @@ test("match clock keeps shot settings stable and fullscreen compact", async () =
   assert.match(panelSource, /navigator\.mediaSession\.setActionHandler\("pause", resetFromMediaControl\)/);
   assert.match(panelSource, /resetRequestedAt - lastMediaResetAtRef\.current < 300/);
   assert.match(panelSource, /mediaResetEnabled[\s\S]*void runAction\("resetShot"\)/);
+  assert.match(panelSource, /Number\(shotClockSeconds\) > 0[\s\S]*mediaControlEligible/);
+  assert.match(panelSource, /Number\(nextShotClockSeconds\) > 0[\s\S]*activateMatchClockMediaSession\(\)[\s\S]*setShotClockSeconds/);
+  assert.match(panelSource, /action === "start"[\s\S]*activateMatchClockMediaSession\(\)[\s\S]*window\.confirm/);
   assert.match(panelSource, /onPointerDown=\{enableMediaControl\}/);
   assert.doesNotMatch(panelSource, /setActionHandler\("(?:nexttrack|previoustrack)"/);
   assert.match(recruitingSource, /onMatchEnded=\{\(\) => void app\.actions\.loadMatchDetail\(sourceMatch\.id\)\}/);

@@ -246,9 +246,13 @@ export function useMatchLoaders(context) {
         );
         const remoteState = normalizeServerState(filterPendingMatches(result?.state ?? {}, pendingMatchIdsRef.current, recentMatchMutationTimesRef.current));
         const nextMatches = remoteState.matches ?? [];
+        const mutationMatchIds = [
+          ...pendingMatchIdsRef.current,
+          ...recentMatchMutationTimesRef.current.keys(),
+        ];
         setState((prev) => mergeRemoteMatchPage(prev, remoteState));
         setMatchLists((prev) => updateMatchListScope(prev, MATCH_LIST_SCOPES.PLAY, {
-          ids: getStateMatchIds(remoteState),
+          ids: [...getStateMatchIds(remoteState), ...mutationMatchIds],
           status: MATCH_LIST_STATUSES.READY,
           error: "",
         }));

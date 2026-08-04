@@ -225,7 +225,7 @@ export default function MatchClockPanel({
   );
   const requiresForcedMatchEnd = recognition.ratio < 1;
   const mediaControlEligible = Boolean(
-    shotClockEnabled
+    Number(shotClockSeconds) > 0
     && liveClock?.canControl
     && !isEnded,
   );
@@ -468,11 +468,17 @@ export default function MatchClockPanel({
   };
 
   const selectShotClock = (nextShotClockSeconds) => {
+    if (Number(nextShotClockSeconds) > 0 && liveClock?.canControl && !isEnded) {
+      void activateMatchClockMediaSession();
+    }
     setShotClockSeconds(nextShotClockSeconds);
     void saveConfiguration(selectedControllerId, nextShotClockSeconds);
   };
 
   const confirmAction = (message, action, payload = {}) => {
+    if (action === "start" && Number(shotClockSeconds) > 0) {
+      void activateMatchClockMediaSession();
+    }
     if (!window.confirm(message)) return;
     void runAction(action, payload).then((succeeded) => {
       if (

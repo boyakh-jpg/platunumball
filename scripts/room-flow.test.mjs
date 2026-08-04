@@ -210,6 +210,7 @@ test("schedule, recruiting, and play lists refresh server data on entry and brow
   assert.match(appDataSource, /updateMatchListScope\(prev,\s*MATCH_LIST_SCOPES\.PERSONAL/);
   assert.match(appDataSource, /updateMatchListScope\(prev,\s*MATCH_LIST_SCOPES\.TEAM/);
   assert.match(appDataSource, /updateMatchListScope\(prev,\s*MATCH_LIST_SCOPES\.PLAY/);
+  assert.match(appDataSource, /mutationMatchIds = \[[\s\S]*pendingMatchIdsRef\.current[\s\S]*recentMatchMutationTimesRef\.current\.keys\(\)[\s\S]*ids: \[\.\.\.getStateMatchIds\(remoteState\), \.\.\.mutationMatchIds\]/);
   assert.match(matchesSource, /selectMatchListMatches\(matchesById,\s*app\.matchLists,\s*MATCH_LIST_SCOPES\.PERSONAL\)/);
   assert.match(matchesSource, /selectMatchListMatches\(matchesById,\s*app\.matchLists,\s*MATCH_LIST_SCOPES\.TEAM\)/);
   assert.match(recorderSource, /selectMatchListMatches\(app\.matchEntities,\s*app\.matchLists,\s*MATCH_LIST_SCOPES\.PLAY\)/);
