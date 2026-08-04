@@ -1875,11 +1875,15 @@ test("server and browser keep untrusted text out of executable sinks", async () 
   assert.doesNotMatch(sourceTree, /dangerouslySetInnerHTML|\.innerHTML\s*=|\.outerHTML\s*=|insertAdjacentHTML|document\.write\s*\(|\beval\s*\(|new Function\s*\(/);
   const securityHeaders = JSON.parse(vercelConfig).headers[0].headers;
   const csp = securityHeaders.find((header) => header.key === "Content-Security-Policy")?.value ?? "";
+  const permissionsPolicy = securityHeaders.find((header) => header.key === "Permissions-Policy")?.value ?? "";
   assert.match(csp, /object-src 'none'/);
   assert.match(csp, /frame-ancestors 'none'/);
   assert.match(csp, /script-src[^;]*https:\/\/nrbe\.pstatic\.net/);
   assert.match(csp, /media-src 'self' blob: data:/);
   assert.doesNotMatch(csp, /script-src[^;]*'unsafe-(?:inline|eval)'/);
+  assert.match(permissionsPolicy, /camera=\(self\)/);
+  assert.match(permissionsPolicy, /geolocation=\(self\)/);
+  assert.match(permissionsPolicy, /microphone=\(\)/);
 });
 
 test("notification status and delivery prefix policies stay aligned", () => {
