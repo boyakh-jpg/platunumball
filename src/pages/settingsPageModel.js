@@ -46,6 +46,7 @@ export function getCourtRequestQuotaUi(requestLimit, aiQuota, trustScore) {
 }
 
 export const DEFAULT_COURT_REQUEST = {
+  locationEntryMode: "onsite",
   name: "",
   buildingName: "",
   courtUnit: "",

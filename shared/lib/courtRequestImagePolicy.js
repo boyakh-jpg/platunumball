@@ -74,9 +74,17 @@ export function getCoordinateDistanceMeters(latA, lngA, latB, lngB) {
 
 export function getCourtPhotoLocationEvidence(photoMetadata = [], locations = {}) {
   const photos = (Array.isArray(photoMetadata) ? photoMetadata : []).map((metadata, index) => {
-    const latitude = Number(metadata?.latitude);
-    const longitude = Number(metadata?.longitude);
-    const hasCoordinates = Number.isFinite(latitude)
+    const rawLatitude = metadata?.latitude;
+    const rawLongitude = metadata?.longitude;
+    const latitude = Number(rawLatitude);
+    const longitude = Number(rawLongitude);
+    const hasCoordinates = rawLatitude !== null
+      && rawLatitude !== undefined
+      && rawLatitude !== ""
+      && rawLongitude !== null
+      && rawLongitude !== undefined
+      && rawLongitude !== ""
+      && Number.isFinite(latitude)
       && Number.isFinite(longitude)
       && Math.abs(latitude) <= 90
       && Math.abs(longitude) <= 180;

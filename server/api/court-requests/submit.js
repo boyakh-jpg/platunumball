@@ -6,7 +6,6 @@ import {
   COURT_REQUEST_PHOTO_MIN_BYTES,
   COURT_REQUEST_PHOTO_MIN_DIMENSION,
   COURT_REQUEST_PHOTO_MIN_PIXELS,
-  COURT_REQUEST_PHOTO_MIN,
   COURT_REQUEST_FIELD_CAPTURE_MAX_AGE_MS,
   getCoordinateDistanceMeters,
   getCourtPhotoLocationEvidence,
@@ -48,7 +47,9 @@ async function getMechanicalEvidence(context, requestPayload, fieldLocation) {
   const fieldAccuracyMeters = Number(fieldLocation?.accuracy);
   const fieldCapturedMs = Date.parse(String(fieldLocation?.capturedAt || ""));
   const fieldAgeMs = Date.now() - fieldCapturedMs;
-  if (
+  const hasFieldLocation = [fieldLocation?.lat, fieldLocation?.lng, fieldLocation?.accuracy, fieldLocation?.capturedAt]
+    .some((value) => value !== null && value !== undefined && String(value).trim() !== "");
+  if (hasFieldLocation && (
     [fieldLocation?.lat, fieldLocation?.lng, fieldLocation?.accuracy].some((value) => value === null || value === undefined || String(value).trim() === "")
     || !Number.isFinite(fieldLat)
     || !Number.isFinite(fieldLng)
@@ -59,7 +60,7 @@ async function getMechanicalEvidence(context, requestPayload, fieldLocation) {
     || !Number.isFinite(fieldCapturedMs)
     || fieldAgeMs < -60_000
     || fieldAgeMs > COURT_REQUEST_FIELD_CAPTURE_MAX_AGE_MS
-  ) throw requestError(400, "court_field_location_required");
+  )) throw requestError(400, "court_field_location_required");
   const latDelta = 50 / 111_320;
   const lngDelta = 50 / (111_320 * Math.max(0.1, Math.cos(lat * Math.PI / 180)));
   const [priorResult, approvedResult, pendingResult] = await Promise.all([
@@ -100,9 +101,11 @@ async function getMechanicalEvidence(context, requestPayload, fieldLocation) {
   return {
     priorApprovedCount: Number(priorResult.count ?? 0),
     nearbyDuplicateCount,
-    fieldAccuracyMeters,
-    fieldDistanceMeters: getCoordinateDistanceMeters(lat, lng, fieldLat, fieldLng),
-    fieldCapturedAt: new Date(fieldCapturedMs).toISOString(),
+    fieldLat: hasFieldLocation ? fieldLat : null,
+    fieldLng: hasFieldLocation ? fieldLng : null,
+    fieldAccuracyMeters: hasFieldLocation ? fieldAccuracyMeters : null,
+    fieldDistanceMeters: hasFieldLocation ? getCoordinateDistanceMeters(lat, lng, fieldLat, fieldLng) : null,
+    fieldCapturedAt: hasFieldLocation ? new Date(fieldCapturedMs).toISOString() : null,
   };
 }
 
@@ -115,7 +118,7 @@ export default async function handler(request, response) {
     const body = await readJsonBody(request, { maxBytes: COURT_REQUEST_BODY_MAX_BYTES, maxStringLength: 450_000 });
     const requestPayload = body.request && typeof body.request === "object" ? { ...body.request } : {};
     const photoInputs = Array.isArray(body.photos) ? body.photos : [];
-    if (photoInputs.length < COURT_REQUEST_PHOTO_MIN || photoInputs.length > COURT_REQUEST_PHOTO_MAX) {
+    if (photoInputs.length > COURT_REQUEST_PHOTO_MAX) {
       throw requestError(400, "court_photo_count_invalid");
     }
     const requestId = String(requestPayload.id || "").trim();
@@ -134,6 +137,39 @@ export default async function handler(request, response) {
       ? requestPayload.fieldLocation
       : {};
     delete requestPayload.fieldLocation;
+    const requestLimitAfter = {
+      ...requestLimit,
+      dailyCount: requestLimit.dailyCount + 1,
+      remaining: Math.max(0, requestLimit.dailyLimit - requestLimit.dailyCount - 1),
+      dailyBlocked: requestLimit.dailyCount + 1 >= requestLimit.dailyLimit,
+      blocked: requestLimit.dailyCount + 1 >= requestLimit.dailyLimit,
+      blockedReason: requestLimit.dailyCount + 1 >= requestLimit.dailyLimit ? "daily" : null,
+    };
+    if (!photoInputs.length) {
+      const verification = {
+        status: "not_analyzed",
+        decision: "manual_review",
+        confidence: null,
+        photoCount: 0,
+        locationSource: "address_pin",
+        analyzedAt: null,
+      };
+      const { data, error } = await context.supabase.rpc("rankball_submit_court_request", {
+        actor_profile_id: context.profileId,
+        request_payload: { ...requestPayload, verification },
+      });
+      if (error) throw error;
+      sendJson(response, 200, {
+        ...(data ?? { ok: true, requestId }),
+        status: "pending",
+        autoApproved: false,
+        approvedCourtId: null,
+        verification,
+        quota,
+        requestLimit: requestLimitAfter,
+      });
+      return;
+    }
     const photos = photoInputs.map((photo, index) => {
       const bytes = decodeBase64Image(photo?.imageBase64, {
         maxBytes: COURT_REQUEST_PHOTO_MAX_BYTES,
@@ -161,8 +197,8 @@ export default async function handler(request, response) {
     const photoLocation = getCourtPhotoLocationEvidence(
       photos.map((photo) => photo.metadata),
       {
-        fieldLat: Number(fieldLocation.lat),
-        fieldLng: Number(fieldLocation.lng),
+        fieldLat: mechanical.fieldLat,
+        fieldLng: mechanical.fieldLng,
         pinLat: Number(requestPayload.lat),
         pinLng: Number(requestPayload.lng),
       },
@@ -201,6 +237,7 @@ export default async function handler(request, response) {
       model: ai.model,
       promptVersion: ai.promptVersion,
       failureReason: ai.failureReason ?? null,
+      locationSource: policy.locationSource,
       photoLocation: {
         status: photoLocation.status,
         confidence: photoLocation.confidence,
@@ -216,8 +253,8 @@ export default async function handler(request, response) {
       evidence_payload: {
         photoKeys: uploadedKeys,
         imageHashes: photos.map((photo) => photo.hash),
-        fieldLat: Number(fieldLocation.lat),
-        fieldLng: Number(fieldLocation.lng),
+        fieldLat: mechanical.fieldLat,
+        fieldLng: mechanical.fieldLng,
         fieldAccuracyMeters: mechanical.fieldAccuracyMeters,
         fieldDistanceMeters: mechanical.fieldDistanceMeters,
         fieldCapturedAt: mechanical.fieldCapturedAt,
@@ -230,6 +267,7 @@ export default async function handler(request, response) {
           checks: policy.checks,
           usage: ai.usage,
           failureReason: ai.failureReason ?? null,
+          locationSource: policy.locationSource,
           photoLocation: verification.photoLocation,
           photoMetadata: photoLocation.photos,
         },
@@ -256,14 +294,7 @@ export default async function handler(request, response) {
       approvedCourtId: approval?.approvedCourtId ?? null,
       verification,
       quota: quotaAfter,
-      requestLimit: {
-        ...requestLimit,
-        dailyCount: requestLimit.dailyCount + 1,
-        remaining: Math.max(0, requestLimit.dailyLimit - requestLimit.dailyCount - 1),
-        dailyBlocked: requestLimit.dailyCount + 1 >= requestLimit.dailyLimit,
-        blocked: requestLimit.dailyCount + 1 >= requestLimit.dailyLimit,
-        blockedReason: requestLimit.dailyCount + 1 >= requestLimit.dailyLimit ? "daily" : null,
-      },
+      requestLimit: requestLimitAfter,
     });
   } catch (error) {
     if (storageConfig && uploadedKeys.length) {

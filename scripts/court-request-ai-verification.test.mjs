@@ -43,7 +43,9 @@ test("court AI policy uses server evidence checks instead of model self-confiden
   });
   assert.equal(decision.decision, "auto_approve");
   assert.equal(decision.confidence, 1);
-  assert.equal(getCourtVerificationDecision({ ...eligibleEvidence, fieldDistanceMeters: null }).decision, "manual_review");
+  assert.equal(getCourtVerificationDecision({ ...eligibleEvidence, fieldAccuracyMeters: null, fieldDistanceMeters: null, fieldCapturedAt: null }).locationSource, "photo_gps");
+  assert.equal(getCourtVerificationDecision({ ...eligibleEvidence, photoLocation: { status: "unavailable", confidence: 0.75 } }).locationSource, "live_gps");
+  assert.equal(getCourtVerificationDecision({ ...eligibleEvidence, fieldAccuracyMeters: null, fieldDistanceMeters: null, fieldCapturedAt: null, photoLocation: { status: "unavailable", confidence: 0.75 } }).decision, "manual_review");
 });
 
 test("court AI response and coordinate distance are normalized", () => {
@@ -75,12 +77,18 @@ test("court photo EXIF location is a request evidence signal", () => {
     { latitude: 37.503, longitude: 127 },
     { latitude: 37.5031, longitude: 127 },
   ], locations);
+  const unavailable = getCourtPhotoLocationEvidence([
+    { latitude: null, longitude: null },
+    {},
+  ], { ...locations, fieldLat: null, fieldLng: null });
   assert.equal(matched.status, "matched");
   assert.equal(matched.confidence, 1);
   assert.equal(uncertain.status, "uncertain");
   assert.equal(mismatch.status, "mismatch");
+  assert.equal(unavailable.status, "unavailable");
+  assert.equal(unavailable.gpsPhotoCount, 0);
   assert.equal(getCourtVerificationDecision({ ...eligibleEvidence, photoLocation: mismatch }).decision, "manual_review");
-  assert.equal(getCourtVerificationDecision({ ...eligibleEvidence, photoLocation: {} }).decision, "manual_review");
+  assert.equal(getCourtVerificationDecision({ ...eligibleEvidence, photoLocation: {} }).decision, "auto_approve");
 });
 
 test("court AI token metrics map to neurons and block at 70 percent", () => {
@@ -129,11 +137,12 @@ test("court photo quality rejects unusable pixels before AI", () => {
 });
 
 test("court evidence and AI usage migrations keep data private", async () => {
-  const [sql, serviceRoleSql, usageSql, limitSql] = await Promise.all([
+  const [sql, serviceRoleSql, usageSql, limitSql, locationSql] = await Promise.all([
     readFile(new URL("../supabase/migrations/20260803222000_court_request_ai_verification.sql", import.meta.url), "utf8"),
     readFile(new URL("../supabase/migrations/20260804091749_court_request_evidence_service_role.sql", import.meta.url), "utf8"),
     readFile(new URL("../supabase/migrations/20260804120000_court_ai_daily_usage.sql", import.meta.url), "utf8"),
     readFile(new URL("../supabase/migrations/20260804121640_court_request_submission_limits.sql", import.meta.url), "utf8"),
+    readFile(new URL("../supabase/migrations/20260804160000_classify_court_request_location_evidence.sql", import.meta.url), "utf8"),
   ]);
   assert.match(sql, /enable row level security/i);
   assert.match(sql, /revoke all on table public\.court_request_evidence from public, anon, authenticated/i);
@@ -150,6 +159,9 @@ test("court evidence and AI usage migrations keep data private", async () => {
   assert.match(limitSql, /when offense_number = 1 then interval '3 days'[\s\S]*when offense_number = 2 then interval '7 days'[\s\S]*interval '30 days'/);
   assert.match(limitSql, /before insert on public\.court_requests/);
   assert.doesNotMatch(limitSql, /grant .* to (anon|authenticated)|drop table|truncate|delete from/i);
+  assert.match(locationSql, /alter column field_lat drop not null/i);
+  assert.match(locationSql, /photo_location_status <> 'matched'/i);
+  assert.doesNotMatch(locationSql, /grant .* to (anon|authenticated)|drop table|truncate|delete from/i);
 });
 
 test("court photos use browser resizing and private R2", async () => {
@@ -174,18 +186,23 @@ test("court photos use browser resizing and private R2", async () => {
   assert.match(server, /rankball_auto_approve_court_request/);
   assert.match(evidence, /requireAdminContext/);
   assert.match(evidence, /\^cr_sim_/);
-  assert.match(form, /capture="environment"/);
-  assert.match(form, /disabled=\{!courtFieldLocation \|\| courtPhotoPending/);
+  assert.match(form, /capture=\{onsiteCourtEntry \? "environment" : undefined\}/);
+  assert.match(form, /disabled=\{!courtPinConfirmed \|\| courtPhotoPending\}/);
   assert.match(form, /settings-court-photo-add/);
   assert.match(form, /courtPhotos\.length < 4/);
   assert.match(form, /selectCourtPhotos\(event, index\)/);
   assert.match(form, /현재 위치로 구장 지정/);
-  assert.match(form, /settings-court-location-edit/);
-  assert.doesNotMatch(form, /court-step-address-title|court-step-pin-title/);
-  assert.match(form, /실제 현장에서 위치를 확인하고 2장 이상 촬영하면 자동승인될 수 있습니다/);
+  assert.match(form, /현재 위치 사용/);
+  assert.match(form, /주소로 찾기/);
+  assert.doesNotMatch(form, /settings-court-location-edit/);
+  assert.match(form, /다른 조건도 충족하면 AI 자동승인 후보/);
   assert.match(form, /setCourtAddressQuery\(event\.target\.value, true\)/);
   assert.match(controller, /reverseGeocodeNaverCoordinate/);
+  assert.match(server, /rankball_submit_court_request"/);
+  assert.match(server, /if \(!photoInputs\.length\)/);
   const photoHandler = controller.slice(controller.indexOf("const selectCourtPhotos"), controller.indexOf("const removeCourtPhoto"));
+  assert.match(photoHandler, /Array\.from\(event\.currentTarget\.files \?\? \[\]\)/);
+  assert.ok(photoHandler.indexOf("Array.from") < photoHandler.indexOf('event.currentTarget.value = ""'));
   assert.match(photoHandler, /replaceIndex === null/);
   assert.doesNotMatch(photoHandler, /readCourtFieldLocation/);
   const evidenceStepIndex = form.indexOf('aria-labelledby="court-step-photo-title"');

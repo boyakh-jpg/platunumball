@@ -160,26 +160,36 @@ export function getCourtVerificationDecision({
     layoutMatches,
     authenticImages: assessments.length === photoCount && assessments.every((item) => !item.screenshotOrSynthetic),
   };
+  const liveLocationVerified = isFiniteAtMost(fieldAccuracyMeters, COURT_REQUEST_FIELD_ACCURACY_MAX_METERS)
+    && isFiniteAtMost(fieldDistanceMeters, COURT_REQUEST_FIELD_DISTANCE_MAX_METERS)
+    && Number.isFinite(fieldCapturedMs)
+    && fieldAgeMs >= -60_000
+    && fieldAgeMs <= COURT_REQUEST_FIELD_CAPTURE_MAX_AGE_MS;
+  const photoLocationMatched = photoLocation?.status === "matched";
+  const photoLocationContradicts = ["uncertain", "mismatch"].includes(photoLocation?.status);
+  const locationVerified = (liveLocationVerified || photoLocationMatched) && !photoLocationContradicts;
+  const locationSource = liveLocationVerified
+    ? (photoLocationMatched || photoLocation?.status === "partial" ? "live_and_photo_gps" : "live_gps")
+    : photoLocationMatched ? "photo_gps" : "address_pin";
   const visualConfidence = Object.values(visualChecks).filter(Boolean).length / Object.keys(visualChecks).length;
   const photoLocationConfidence = Number.isFinite(Number(photoLocation?.confidence))
     ? Math.max(0, Math.min(1, Number(photoLocation.confidence)))
     : 0.75;
-  const confidence = Math.min(visualConfidence, photoLocationConfidence);
+  const confidence = Math.min(visualConfidence, liveLocationVerified && !photoLocationContradicts ? 1 : photoLocationConfidence);
   const checks = {
     trustedRequester: Number(trustScore) >= 90 || Number(priorApprovedCount) >= 2,
-    fieldAccuracy: isFiniteAtMost(fieldAccuracyMeters, COURT_REQUEST_FIELD_ACCURACY_MAX_METERS),
-    fieldDistance: isFiniteAtMost(fieldDistanceMeters, COURT_REQUEST_FIELD_DISTANCE_MAX_METERS),
-    fieldFresh: Number.isFinite(fieldCapturedMs) && fieldAgeMs >= -60_000 && fieldAgeMs <= COURT_REQUEST_FIELD_CAPTURE_MAX_AGE_MS,
+    locationVerified,
+    photoLocationConsistent: !photoLocationContradicts,
     noNearbyDuplicate: Number(nearbyDuplicateCount) === 0,
     outdoorPublic: type === "야외" && publicAccess === "public",
     photoCount: photoCount >= 2 && photoCount <= COURT_REQUEST_PHOTO_MAX,
-    photoLocationConsistent: photoLocation?.status === "matched",
     ...visualChecks,
   };
   return {
     decision: Object.values(checks).every(Boolean) ? "auto_approve" : "manual_review",
     confidence,
     checks,
+    locationSource,
   };
 }
 

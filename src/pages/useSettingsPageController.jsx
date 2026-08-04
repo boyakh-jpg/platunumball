@@ -58,7 +58,7 @@ const loadDirectory = app.actions.loadDirectory;
     courtNearbyConfirmed, setCourtNearbyConfirmed, courtDraft, courtPhotos, courtPhotoPending,
     courtFieldLocation, courtFieldLocationPending, courtQuotaBlocked, courtQuotaLabel, courtQuotaMessage, courtQuotaTitle, naverMapKeyReady, courtAddressSelected, courtDisplayName,
     courtHasMapPin, courtNearbyCandidates, courtRequiresUnit, courtNearbyReviewRequired, courtDuplicate,
-    courtDuplicateMessage, courtSourceUrlInvalid, canOpenCourtRequestForm, canSubmitCourtRequest, updateCourtDraft,
+    courtDuplicateMessage, courtSourceUrlInvalid, canOpenCourtRequestForm, canSubmitCourtRequest, onsiteCourtEntry, updateCourtDraft, setCourtLocationEntryMode,
     searchCourtAddress, pickCourtMapPin, selectNaverAddress, selectCourtPhotos, removeCourtPhoto, confirmCourtFieldLocation, submitCourtRequest,
   } = useSettingsCourtRequestController({ app, currentTrustScore });
   const {
@@ -449,6 +449,7 @@ const loadDirectory = app.actions.loadDirectory;
     courtSourceUrlInvalid,
     canOpenCourtRequestForm,
     canSubmitCourtRequest,
+    onsiteCourtEntry,
     canOpenRefereeRequestForm,
     refereeExamNotice,
     refereeActionPending,
@@ -481,6 +482,7 @@ const loadDirectory = app.actions.loadDirectory;
     releaseBlock,
     submitReport,
     updateCourtDraft,
+    setCourtLocationEntryMode,
     searchCourtAddress,
     pickCourtMapPin,
     selectNaverAddress, selectCourtPhotos, removeCourtPhoto, confirmCourtFieldLocation,

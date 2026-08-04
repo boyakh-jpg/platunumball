@@ -95,20 +95,13 @@
   overflow-wrap: anywhere;
 }
 
-.settings-court-location-edit {
-  padding-top: var(--space-4);
-  border-top: var(--ui-stroke-width) solid var(--line);
+.settings-court-location-method {
+  width: 100%;
 }
 
-.settings-court-location-edit summary {
-  color: var(--muted);
-  cursor: pointer;
-  font-size: 0.78rem;
-  font-weight: 900;
-}
-
-.settings-court-location-edit[open] summary {
-  margin-bottom: var(--space-4);
+.settings-court-location-method > button {
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 .settings-address-actions,

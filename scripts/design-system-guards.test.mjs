@@ -1526,8 +1526,10 @@ test("MMR 허용구간과 프로필 기본 입력은 공용 컴포넌트를 사�
   }
 });
 
-test("구장 등록요청은 필수 현장 증거가 갖춰져야 제출할 수 있다", () => {
+test("구장 등록요청은 위치 입력 방법을 구분하고 제출 조건을 중앙 계산한다", () => {
   assert.match(settingsSource, /disabled=\{!canSubmitCourtRequest \|\| courtSubmitPending \|\| courtPinPending \|\| courtPhotoPending\}/);
+  assert.match(settingsSource, /현재 위치 사용/);
+  assert.match(settingsSource, /주소로 찾기/);
   assert.match(courtMapPickerSource, /markersRef\.current\.forEach\(detachMapMarker\)/);
 });
 
