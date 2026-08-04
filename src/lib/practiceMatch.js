@@ -482,7 +482,6 @@ function nextMatchEnded(state, matchId) {
   const operatorId = match.refereeId || match.createdBy || PRACTICE_SELF_ID;
   return withPracticeActor(state, operatorId, repository.endMatch, matchId);
 }
-
 export function approvePracticeDummyPlayers(state, matchId) {
   const match = state.matches.find((item) => item.id === matchId);
   if (!match?.endedAt || (match.refereeId && !match.result)) return state;
@@ -497,5 +496,4 @@ export function approvePracticeDummyPlayers(state, matchId) {
 }
 
 export { createPracticeClockClient } from "./practiceMatchClock.js";
-
 export { getPracticeProgress } from "./practiceMatchProgress.js";

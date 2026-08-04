@@ -14,6 +14,7 @@ import {
 import { attachMatchPlayerCountsToCards } from "../server/api/matches/_listEnrichment.js";
 import { attachMatchCardReferences, collectMissingMatchCardReferences } from "../server/api/matches/_listProjection.js";
 import { attachRecruitingCardReferences } from "../server/api/recruiting/_listProjection.js";
+import { attachRoomFeedCardSource } from "../server/lib/roomFeedCards.js";
 import { formatMatchTime } from "../src/pages/matchesPageBaseSelectors.js";
 
 test("목록 카드는 승인 구장 원본과 실제 일정만 표시한다", () => {
@@ -23,6 +24,26 @@ test("목록 카드는 승인 구장 원본과 실제 일정만 표시한다", (
   assert.deepEqual(collectMissingMatchCardReferences([staleCard]).courtIds, ["court-1"]);
   assert.equal(attachMatchCardReferences(staleCard, {}, courtById).court, "성산 농구장");
   assert.equal(attachRecruitingCardReferences(staleCard, courtById).court, "성산 농구장");
+  assert.deepEqual(attachRoomFeedCardSource({
+    ...staleCard,
+    scheduledDate: "2026-08-03",
+    scheduledTime: "18:00",
+  }, {
+    id: "match-1",
+    court_id: "court-1",
+    court_name: "미정",
+    scheduled_date: "2026-08-04",
+    scheduled_time: "13:00:00",
+    scheduled_at: "2026-08-04 13:00",
+    timing_type: "scheduled",
+  }), {
+    ...staleCard,
+    court: "미정",
+    scheduledDate: "2026-08-04",
+    scheduledTime: "13:00",
+    scheduledAt: "2026-08-04 13:00",
+    timingType: "scheduled",
+  });
   assert.equal(formatMatchTime({ createdAt: "2026-08-03T12:34:00.000Z" }), "일정 미정");
 });
 

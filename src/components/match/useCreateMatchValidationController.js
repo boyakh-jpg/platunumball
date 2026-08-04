@@ -109,7 +109,7 @@ export function useCreateMatchValidationController(context) {
     [app.currentUser.id, app.state.users, currentRegion, soloRecordSelectedIdentitySet],
   );
   const teamTierRange = getRecruitingTierRange(selectedTeamA?.mmr ?? DEFAULT_RATING, draft.ranked, draft.mmrRangeMode);
-  const personalTierRange = getRecruitingTierRange(app.currentUser.ratings?.integrated ?? DEFAULT_RATING, draft.ranked, draft.mmrRangeMode);
+  const personalTierRange = getRecruitingTierRange(app.currentUser.ratings?.modes?.[draft.mode] ?? app.currentUser.ratings?.integrated ?? DEFAULT_RATING, draft.ranked, draft.mmrRangeMode);
   const roomTierRange = isTeamRoom ? teamTierRange : personalTierRange;
   const mmrRangePolicy = MMR_RANGE_POLICIES[draft.mmrRangeMode] ?? MMR_RANGE_POLICIES.narrow;
   const currentUserAgeGroup = getAgeGroupForUser(app.currentUser);

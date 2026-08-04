@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { getCoordinateDistanceMeters } from "../shared/lib/courtRequestImagePolicy.js";
+import { uploadPrivateR2Webp } from "../server/api/_r2ImageStorage.js";
 import { getCourtVerificationDecision, normalizeCourtPhotoAiAnswer } from "../server/lib/courtRequestVerification.js";
 
 const eligibleAssessment = {
@@ -46,12 +47,38 @@ test("court evidence migration keeps data private and RPC guarded", async () => 
 });
 
 test("court photos use browser resizing and private R2", async () => {
-  const [client, server] = await Promise.all([
+  const [client, server, evidence] = await Promise.all([
     readFile(new URL("../src/lib/courtRequestImages.js", import.meta.url), "utf8"),
     readFile(new URL("../server/api/court-requests/submit.js", import.meta.url), "utf8"),
+    readFile(new URL("../server/api/court-requests/evidence.js", import.meta.url), "utf8"),
   ]);
   assert.match(client, /canvasToWebp/);
   assert.doesNotMatch(client, /file\.size\s*[><=]/);
   assert.match(server, /getPrivateR2Config/);
   assert.match(server, /rankball_auto_approve_court_request/);
+  assert.match(evidence, /requireAdminContext/);
+  assert.match(evidence, /\^cr_sim_/);
+});
+
+test("private R2 upload creates a missing bucket once", async (context) => {
+  const originalFetch = globalThis.fetch;
+  const requests = [];
+  context.after(() => {
+    globalThis.fetch = originalFetch;
+  });
+  globalThis.fetch = async (url, options) => {
+    requests.push({ url: String(url), options });
+    return requests.length === 1
+      ? new Response(JSON.stringify({ errors: [{ message: "bucket not found" }] }), { status: 404 })
+      : new Response("{}", { status: 200 });
+  };
+
+  await uploadPrivateR2Webp(
+    { accountId: "account", apiToken: "token", bucket: "rankball-private" },
+    "court-requests/cr_test/photo.webp",
+    Buffer.from("webp"),
+  );
+
+  assert.deepEqual(requests.map(({ options }) => options.method), ["PUT", "POST", "PUT"]);
+  assert.equal(JSON.parse(requests[1].options.body).name, "rankball-private");
 });

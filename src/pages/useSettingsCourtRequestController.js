@@ -94,6 +94,10 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
   const courtSourceUrlInvalid = Boolean(courtSourceUrlInput && !courtSourceUrl);
   const canOpenCourtRequestForm = currentTrustScore >= COURT_REQUEST_TRUST_MIN;
   const canSubmitCourtRequest = canOpenCourtRequestForm
+    && Boolean(courtDisplayName)
+    && courtAddressSelected
+    && courtHasMapPin
+    && courtPinConfirmed
     && !courtDuplicate
     && !courtSourceUrlInvalid
     && !courtNearbyLookupFailed
@@ -282,7 +286,7 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
         setCourtFieldLocationPending(false);
       },
       () => {
-        setCourtLookupStatus("현장 위치 권한을 확인하지 못했습니다. 신청은 관리자 검토로 접수할 수 있습니다.");
+        setCourtLookupStatus("현장 위치 권한을 확인하지 못했습니다. GPS와 위치 권한을 켠 뒤 다시 시도해 주세요.");
         setCourtFieldLocationPending(false);
       },
       { enableHighAccuracy: true, maximumAge: 0, timeout: 15_000 },

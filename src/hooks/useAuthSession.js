@@ -38,6 +38,17 @@ function writeTestSession(session) {
   }
 }
 
+function clearSupabaseSessionStorage() {
+  const storageKey = supabase?.auth?.storageKey;
+  if (typeof window === "undefined" || !storageKey) return;
+  try {
+    window.localStorage.removeItem(storageKey);
+    window.localStorage.removeItem(`${storageKey}-code-verifier`);
+  } catch {
+    // The in-memory session is still cleared when browser storage is unavailable.
+  }
+}
+
 // Local demo session only. Server auth uses Supabase Auth JWT.
 function makeTestSession(provider) {
   const providerName = PROVIDER_LABELS[provider] ?? provider;
@@ -252,21 +263,17 @@ export function useAuthSession() {
       setError("");
       setMessage("");
       try {
+        let localSignOutRequired = false;
         if (isSupabaseConfigured) {
-          const { error: signOutError } = await supabase.auth.signOut();
-          if (signOutError) {
-            setError(formatAuthError(signOutError.message));
-            return false;
-          }
+          const { error: signOutError } = await supabase.auth.signOut().catch(() => ({ error: true }));
+          localSignOutRequired = Boolean(signOutError);
         }
+        if (localSignOutRequired) clearSupabaseSessionStorage();
         writeTestSession(null);
         setClientActionSession(null);
         setSession(null);
         setLoading(false);
         return true;
-      } catch (signOutError) {
-        setError(formatAuthError(signOutError?.message) || "로그아웃하지 못했습니다. 다시 시도해 주세요.");
-        return false;
       } finally {
         authActionPendingRef.current = false;
         setAuthActionPending(false);

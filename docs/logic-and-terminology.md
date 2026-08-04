@@ -58,7 +58,7 @@
 7. `favorites.target_type`은 `player`, `team`, `court`, `referee`를 모두 허용한다. 기존 DB 제약도 같은 네 종류로 교체해 심판 즐겨찾기를 별도 관계로 저장한다.
 8. 설정의 `app_settings` 저장이 성공하면 대기 Discord 알림 정리는 부가 작업으로 취급한다. 정리 실패를 설정 저장 실패로 되돌리지 않으며 발송 worker가 최신 수신 설정과 차단 목록을 다시 확인한다.
 9. 심판 등록요청은 사용자당 열린 `pending` 요청을 하나만 유지한다. 요청 저장 뒤 자기 알림 저장이 실패해도 등록요청 자체는 성공으로 처리한다.
-10. 로그아웃은 Supabase 세션 해제가 성공한 뒤에만 화면 세션과 테스트 세션을 비운다. 원격 로그아웃 실패 시 현재 로그인 화면을 유지한다.
+10. 로그아웃은 Supabase 원격 세션 해제를 먼저 시도하되 만료·손상 토큰이나 네트워크 오류가 로컬 로그아웃을 막지 않는다. 원격 해제가 실패하면 해당 브라우저의 Supabase 저장 세션을 직접 지우고 화면 세션과 테스트 세션을 비운다.
 11. 유효한 로그인 세션으로 `/login`에 진입하면 로그인 선택 화면을 다시 표시하지 않고 안전한 원래 앱 경로 또는 `/app`으로 이동한다. 가입정보 필요 여부는 앱의 프로필 hydration guard가 이어서 판정한다.
 
 ## 2026-07-31 운영 legacy 혼합 모집방 확정 호환
@@ -86,7 +86,7 @@
 3. 프로필, 가입 프로필, 일반 설정, Discord 연결·해제, 구장 검색·핀·등록요청, 알림 초대 응답은 저장 중 중복 실행을 막고 서버 실패를 성공으로 표시하지 않는다.
 4. 비동기 주소 검색은 최신 검색 요청의 결과만 화면에 반영한다. 검색어가 바뀌면 이전 요청 결과는 폐기한다.
 5. 심판 등록요청과 관리자 임명을 한 번에 완료하고 요청 상태까지 닫는 원자 처리 방식은 별도 DB 설계가 필요한 후속 작업이다. 현재 임명 action만으로 등록요청을 승인 완료로 간주하지 않는다.
-6. OAuth 로그인과 로그아웃은 하나의 인증 action만 실행한다. SDK가 오류를 반환하거나 Promise를 reject해도 pending을 해제하고 로그인 화면 또는 현재 화면에 실패를 표시한다.
+6. OAuth 로그인과 로그아웃은 하나의 인증 action만 실행한다. SDK가 오류를 반환하거나 Promise를 reject해도 pending을 해제하며, 로그인 실패는 표시하고 로그아웃은 로컬 세션 정리를 완료한다.
 7. 알림 화면의 최신 알림·팀 정보 조회와 팀 초대 수락 뒤 팀 상세 조회는 명시적인 `false`도 실패로 처리한다. 최신 팀 정보를 못 받으면 팀 상세로 이동하지 않는다.
 
 ## 2026-07-31 팀 상세 원격 권한·삭제
@@ -2567,7 +2567,7 @@ flowchart TD
 15-1. `/app/recruiting` 지역 필터 UI는 `REGION_TREE`의 시도/시군구 2단 선택을 항상 노출한다. 필터 요청은 시군구 선택값에서 만든 `regionKey` 1개로만 보낸다.
 15-2. Public recruiting room region is based on the selected court region. Server fallback must match the same canonical region key exactly; it must not widen one key into district/full-address string variants.
 16. Recruiting room-scope loads may pass `roomScope: "created" | "joined" | "invited"` for 경기 메뉴 관계 필터, 홈 Action Queue, or explicit repair flows. `초대받음` must read the `invited` feed relation directly, not depend on the combined 50-row mine feed.
-17. `/api/recruiting/list` default region pages use `user_room_feed` ids plus `room_feed_cards.card_json` first. When every page row has a usable thin card, the endpoint must not detail-read `recruiting_posts` or `recruiting_applications` for that page. It may read count-only row slices to refresh `listCounts`, and may attach only list-visible references such as host profile, team names, and court name by `courtId`.
+17. `/api/recruiting/list` default region pages use `user_room_feed` ids plus `room_feed_cards.card_json` first. When every page row has a usable thin card, the endpoint may read only the matching `recruiting_posts` court/schedule/timing columns to prevent stale list labels, but must not detail-read full `recruiting_posts` rows or `recruiting_applications` for that page. It may read count-only row slices to refresh `listCounts`, and may attach only list-visible references such as host profile, team names, and court name by `courtId`.
 17-1. If only some recruiting feed rows are missing usable `room_feed_cards.card_json`, `/api/recruiting/list` may row-read only those missing ids. It must not discard usable feed cards and reload the whole page.
 17-2. If a concrete public region plus instant/scheduled-date feed page is empty, `/api/recruiting/list` may refresh bounded public `recruiting_posts` candidate ids and re-query `user_room_feed`. It must not return stale source rows for the selected region when the feed path itself responded successfully.
 18. Recruiting list-card posts may omit full team rows. Central lobby helpers must still calculate team host/applicant slots from stored `playerIds`, and fall back to the entry `playerId` when `playerIds` is empty and the team object is not loaded.
@@ -2605,7 +2605,7 @@ flowchart TD
 23-6. 현재 경기 lifecycle/roster/result/trust mutation은 operation-only로 보낸다. `addMatchLatePlayer`, `removeMatchLatePlayer`, `handoffMatchRecorder`는 이 현재 목록에서 제외된 폐기 action이다. 서버는 현재 action의 SQL reducer 또는 중앙 authoritative replay만 사용하며 client match snapshot을 원본으로 받지 않는다.
 23-7. If `endedAt` already exists, `submitMatchResult` is a postgame result submission even when DB/server clock skew makes `endedAt` a few milliseconds later than the app server's current time.
 23-8. `setMatchRecordTeamRoster` uses server authoritative replay before snapshot persistence. Each side captain can edit only their own team roster in a `match_record` room, and the server validates the changed side with the existing DB roster before committing.
-24. `/api/matches/list` default reads use `rankball_match_list()` / `room_feed_cards.card_json` current-profile match cards first. It must not load `matches`, `match_players`, `public_profiles`, teams, or courts for the default card list when `card_json` is present. Full authoritative match state still belongs to `/api/matches/detail` or `listOnly=false`.
+24. `/api/matches/list` default reads use `rankball_match_list()` / `room_feed_cards.card_json` current-profile match cards first. When `card_json` is present, it may read only the matching `matches` court/schedule/timing columns and referenced approved court names to prevent stale list labels; it must not load full match rows, `match_players`, `public_profiles`, or full team rows. Full authoritative match state still belongs to `/api/matches/detail` or `listOnly=false`.
 25. Screen-specific server state such as `/api/profile/me`, `/api/matches/list`, and `/api/recruiting/list` is normalized on the client before render so direct route entry receives the same base arrays/settings shape as other app routes.
 25-1. 클라이언트 정규화는 목록/방 컴포넌트 렌더 전에 `teams.members`를 배열로, `matches.teamA/teamB.players`를 기본 사이드 객체의 배열로 유지해야 한다.
 26. Match `parties` must be an array in client state. DB/API rows that carry `rules.parties` or `parties` as an object are normalized to an array before room/list helpers read them.
@@ -2615,7 +2615,7 @@ flowchart TD
 28-2. Matches recruiting schedule rows are current-user relation rows, not a preview list. The API and UI must not cap them to 12; they load up to the active match-list cap and render all loaded related rooms without a "more" click.
 28-3. Home `내 확정 경기` shows confirmed real match schedule rows from `matches` only. Current-user open recruiting schedule rooms stay in the Matches menu schedule source and Recruiting relation filters. Home does not render a recruiting teaser list.
 28-3-1. Matches uses the recruiting schedule relation helper: owner/player/referee/applicant/reserve/lobby entry all count as the current user's recruiting schedule relation.
-28-4. Matches recruiting schedule uses the same current-user `user_room_feed` + `room_feed_cards.card_json` loader as recruiting mine lists. When every schedule row has a feed card, it must not detail-read `recruiting_posts`, `recruiting_applications`, profiles, teams, or courts.
+28-4. Matches recruiting schedule uses the same current-user `user_room_feed` + `room_feed_cards.card_json` loader as recruiting mine lists. When every schedule row has a feed card, it may read only the matching `recruiting_posts` court/schedule/timing columns and referenced approved court names; it must not detail-read full recruiting rows, `recruiting_applications`, profiles, or full team rows.
 29. `user_room_feed` match rows are the first-page source for owned/participant/referee matches. `rankball_refresh_match_feed_for_match()` must keep match list `card_json` fresh whenever match or match player rows change. If the feed table/RPC is unavailable, `/api/matches/list` must fall back to current-profile candidate ids from `match_players.user_id`, `matches.created_by`, `matches.referee_id`, and `matches.former_referee_id`; it must not page through broad latest `matches` rows.
 30. `/app/recorder` must load `recorderOnly` match state on direct entry or after thin-route navigation before showing the final empty state. Recorder state includes only active `agreed`/`approval`/`disputed` matches related to the current profile.
 30-1. `recorderOnly` match loads must include fallback candidate ids from `matches.stat_recorders`, `matches.reserve_players`, and `matches.played_player_ids` so candidate/reserve stat recorders can enter `/app/recorder` even when their `user_room_feed` card is stale or missing.
@@ -3936,3 +3936,5 @@ flowchart TD
 6. AI 미설정·실패·정책 미달·DB 승인 실패는 자동거절하지 않는다. 요청과 증거를 `manual_review`로 남긴다.
 7. 모델, 프롬프트 버전, 이미지 해시, GPS 오차·거리, 사진별 판정, 최종 결정과 자동승인 여부를 감사 가능한 증거 row에 보관한다.
 8. 브라우저의 `capture` 속성은 카메라를 우선 여는 UX 힌트이며 사진 출처의 보안 증명이 아니다. 촬영 여부만으로 승인하지 않고 GPS·중복·신뢰도·AI 정책을 모두 다시 검사한다.
+9. 비공개 R2 버킷이 아직 없으면 첫 증거 업로드의 404에서만 버킷을 생성하고 업로드를 한 번 재시도한다. 인증·권한 오류에는 버킷 생성이나 공개 버킷 대체를 하지 않는다.
+10. 운영 시뮬레이션이 만든 `cr_sim_` 증거는 관리자 전용 증거 API에서만 삭제하며 일반 구장 신청의 증거 삭제 권한으로 확장하지 않는다.

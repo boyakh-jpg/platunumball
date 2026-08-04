@@ -1288,13 +1288,12 @@ test("비공개 팀방은 수락 전 B사이드장을 빈 슬롯 대신 초대 �
   assert.match(rosterSource, /side\.capacity - side\.filled - Number\(pendingLeaderVisible\)/);
 });
 
-test("구장 등록요청 버튼은 진행 중에만 잠그고 미충족 조건을 클릭 후 안내한다", async () => {
+test("구장 등록요청 버튼은 필수 현장 증거가 갖춰진 뒤에만 활성화된다", async () => {
   const [viewSource, controllerSource] = await Promise.all([
     readFile(new URL("../src/pages/SettingsSideColumn.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/pages/useSettingsCourtRequestController.js", import.meta.url), "utf8"),
   ]);
-  assert.match(viewSource, /disabled=\{courtSubmitPending \|\| courtPinPending \|\| courtPhotoPending\}/);
-  assert.doesNotMatch(viewSource, /disabled=\{[^}]*!canSubmitCourtRequest[^}]*\}/);
+  assert.match(viewSource, /disabled=\{!canSubmitCourtRequest \|\| courtSubmitPending \|\| courtPinPending \|\| courtPhotoPending\}/);
   assert.match(controllerSource, /if \(!courtDisplayName\)[\s\S]*시설\/장소명을 입력해 주세요\./);
   assert.match(controllerSource, /if \(!courtAddressSelected \|\| !courtHasMapPin\)[\s\S]*실제 구장 위치를 확정해 주세요\./);
 });

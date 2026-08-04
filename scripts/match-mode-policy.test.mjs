@@ -286,11 +286,12 @@ test("개인 스탯과 기록 출처는 로컬 MMR 변화에 영향을 주지 �
 });
 
 test("심판 stats 전용 프로필 표시와 score-only 정책 계약을 고정한다", async () => {
-  const [ratingSource, profileApiSource, playerDetailSource, profileRecordsSource, matchRoomSource, recruitingSource, matchContractSource, logicSource, designSource] = await Promise.all([
+  const [ratingSource, profileApiSource, playerDetailSource, profileRecordsSource, profileSummarySource, matchRoomSource, recruitingSource, matchContractSource, logicSource, designSource] = await Promise.all([
     readFile(new URL("../server/lib/ratingEngine.js", import.meta.url), "utf8"),
     readFile(new URL("../server/api/profile/me.js", import.meta.url), "utf8"),
     readFile(new URL("../src/pages/PlayerDetail.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/pages/ProfileRecords.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/profile/ProfileRecordSummaryCard.jsx", import.meta.url), "utf8"),
     readSourceGroup((file) => readFile(new URL(`../${file}`, import.meta.url), "utf8"), MATCH_ROOM_SOURCE_PATHS),
     readSourceGroup(
       (file) => readFile(new URL(`../${file}`, import.meta.url), "utf8"),
@@ -305,12 +306,11 @@ test("심판 stats 전용 프로필 표시와 score-only 정책 계약을 고정
   assert.match(ratingSource, /const statBoost = 0/);
   assert.match(profileApiSource, /stat_match_count/);
   assert.match(profileApiSource, /averageFouls: statMatchCount \? fouls \/ statMatchCount : 0/);
-  [playerDetailSource, profileRecordsSource].forEach((source) => {
-    assert.match(source, /hasVerifiedPlayerStats/);
-  });
-  assert.match(playerDetailSource, /recordedStatHistory\.length/);
-  assert.match(profileRecordsSource, /recentSummary\.statGames/);
-  assert.match(profileRecordsSource, /summarizeProfileRecords/);
+  assert.match(profileRecordsSource, /hasVerifiedPlayerStats/);
+  assert.match(playerDetailSource, /<ProfileRecordSummaryCard/);
+  assert.match(playerDetailSource, /records=\{recentProfileRecords\}/);
+  assert.match(profileSummarySource, /recentSummary\.statGames/);
+  assert.match(profileSummarySource, /summarizeProfileRecords/);
   assert.match(matchRoomSource, /\{\(hasReferee \|\| isSoloRecord\) && shouldShowResultEntry \? \(/);
   assert.match(matchRoomSource, /\{match\.result && \(hasReferee \|\| isSoloRecord\) \? \(/);
   assert.match(matchRoomSource, /(?:\{|return \()statEditorPlayer && \(hasReferee \|\| isSoloRecord\) \? \(/);

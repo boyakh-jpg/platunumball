@@ -4,6 +4,7 @@ import { fromRemoteRecruitingApplication } from "../../../shared/lib/recruitingM
 import { normalizeBenchCapacity } from "../../../shared/lib/constants.js";
 import { PROFILE_CARD_COLUMNS as PROFILE_PUBLIC_COLUMNS } from "../../../shared/lib/repositoryColumns.js";
 import { getRecruitingLobby, isPickupRecruitingRoom, isPublicTeamRecruitingRoom } from "../../../shared/lib/recruiting.js";
+export { attachRoomFeedCardSource as attachRecruitingCardSource } from "../../lib/roomFeedCards.js";
 export { compactRecruitingListState } from "./_listProjectionCompact.js";
 
 

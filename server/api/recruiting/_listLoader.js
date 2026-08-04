@@ -4,6 +4,7 @@ import { fromRemoteRecruitingPost, toClientRecruitingTeam } from "../../../share
 import { createProfileShell, fromRemoteProfile, getRemoteAppSettings } from "../../../shared/lib/profileMappers.js";
 import { DEFAULT_SETTINGS } from "../../../shared/lib/repositoryDefaults.js";
 import { REMOTE_CLIENT_RECRUITING_LIMIT } from "../../../shared/lib/constants.js";
+import { fetchRoomFeedSourceMap } from "../../lib/roomFeedSources.js";
 
 import {
   fetchCurrentUserRecruitingFallbackPostIds,
@@ -17,6 +18,7 @@ import {
   attachFreshRecruitingListCounts,
   attachPendingInvitationsToFeedCards,
   attachRecruitingCardReferences,
+  attachRecruitingCardSource,
   canUseFeedCardForProfile,
   collectRecruitingCardScope,
   collectRecruitingScope,
@@ -34,6 +36,8 @@ import {
   createRecruitingUserMap,
   buildCompactRecruitingResult,
 } from "./_listLoaderHelpers.js";
+
+const RECRUITING_CARD_SOURCE_COLUMNS = "id,court_id,court_name,scheduled_date,scheduled_time,scheduled_at,timing_type:room_state->>timingType,updated_at";
 
 
 
@@ -129,7 +133,15 @@ export async function loadCompactRecruitingList(context, {
     const freshListCountsByPost = shouldRefreshListCounts
       ? await fetchRecruitingListCountsByPostId(context.supabase, targetPostIds)
       : new Map();
-    const countedTargetCards = attachFreshRecruitingListCounts(targetCards, freshListCountsByPost);
+    let countedTargetCards = attachFreshRecruitingListCounts(targetCards, freshListCountsByPost);
+    const sourceById = await fetchRoomFeedSourceMap(
+      context.supabase,
+      countedTargetCards.map((card) => ({ entity_type: "recruiting", entity_id: card.id })),
+      { columnsByType: { recruiting: RECRUITING_CARD_SOURCE_COLUMNS } },
+    );
+    countedTargetCards = countedTargetCards.map((card) => (
+      attachRecruitingCardSource(card, sourceById.get(`recruiting:${card.id}`))
+    ));
     const cardById = new Map(
       countedTargetCards
         .filter((card) => canUseFeedCardForProfile(card, context.profileId))

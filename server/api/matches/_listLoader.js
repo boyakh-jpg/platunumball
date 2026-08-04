@@ -1,6 +1,8 @@
 import { fetchCourtRowsByIds, firstRowBy as firstBy, groupRowsBy as groupBy, loadCurrentUserTournamentIndex, mergeById, timeStep, uniqueValues as unique } from "../_supabaseAdmin.js";
 import { projectMatchActivePlayerIds } from "../../../shared/lib/playerIds.js";
 import { compactClientUser } from "../../lib/clientProjection.js";
+import { attachRoomFeedCardSource } from "../../lib/roomFeedCards.js";
+import { fetchRoomFeedSourceMap } from "../../lib/roomFeedSources.js";
 import { normalizeState } from "../../../shared/lib/stateNormalizer.js";
 import { createProfileShell, fromRemoteProfile, getRemoteAppSettings } from "../../../shared/lib/profileMappers.js";
 import { DEFAULT_SETTINGS } from "../../../shared/lib/repositoryDefaults.js";
@@ -12,6 +14,8 @@ import { isMatchInPlayMenu } from "../../../shared/lib/matchUtils.js";
 import { MATCH_RELATED_FALLBACK_MAX_LIMIT, RECENT_COMPLETED_MATCH_HOURS, fetchClosedNoticeMatchFeedPage, fetchCurrentUserCompletedMatchIds, fetchCurrentUserMatchPage, fetchMatchFeedPage, fetchMatchRowsByIds, fetchPlayMatchPage, fetchRecentCompletedMatchFeedPage, fetchRefereeMatchPage, fetchRelatedActiveMatchPage, getCompletedSince, getRecentCompletedHours, isLegacyListFallbackAllowed, mergeMatchFeedPages } from "./_listQueries.js";
 import { appendRowFallbackSource, attachMatchCardReferences, canReadMatchRow, collectMissingMatchCardReferences, filterActiveMatchCards, getMatchRowActorIds, isPlayableMatch, mergeMatchCardsWithRows, mergeMatchRowsById, sortByFeedOrder, toClientMatch, toClientTeam } from "./_listProjection.js";
 import { attachMatchPlayerCountsToCards, attachOpenDisputeQueues } from "./_listEnrichment.js";
+
+const MATCH_CARD_SOURCE_COLUMNS = "id,court_id,court_name,scheduled_date,scheduled_time,scheduled_at,timing_type:rules->>timingType,updated_at";
 
 async function loadCurrentRecruitingSchedule(context, adminLevel = 0) {
   if (!context.profileId) return null;
@@ -169,7 +173,15 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
     pageExhausted = refereePage.exhausted;
   } else if (feedPage) {
     pageSource = feedPage.source ?? "feed";
-    const feedCards = feedPage.cards ?? [];
+    let feedCards = feedPage.cards ?? [];
+    if (feedCards.length) {
+      const sourceById = await timeStep(debugTiming, "cardSourceRowsMs", () => fetchRoomFeedSourceMap(
+        context.supabase,
+        feedCards.map((card) => ({ entity_type: "match", entity_id: card.id })),
+        { columnsByType: { match: MATCH_CARD_SOURCE_COLUMNS } },
+      ));
+      feedCards = feedCards.map((card) => attachRoomFeedCardSource(card, sourceById.get(`match:${card.id}`)));
+    }
     if (feedPage.cards?.length) {
       matches = sortByFeedOrder(
         filterMatchItems(feedCards),

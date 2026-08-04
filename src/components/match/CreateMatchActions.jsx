@@ -492,7 +492,6 @@ export function createCreateMatchActions(context) {
       setSubmitting(false);
     }
   };
-
   return {
     selectTeamA, selectTeamB, assignTeam, toggleTournamentTeam, renderCourtSearchItem, renderCreateTeamSearchItem, renderOpponentTeamSearchItem,
     selectReferee, removeTournamentReferee, clearReferee, renderRefereeSearchItem, renderSoloRecordUserSearchItem, submit,

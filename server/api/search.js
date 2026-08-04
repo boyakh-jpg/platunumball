@@ -15,7 +15,7 @@ import {
 } from "../../shared/lib/constants.js";
 import { COURT_MAP_SEARCH_LIMIT, COURT_MAP_SEARCH_PURPOSE } from "../../shared/lib/queryPolicy.js";
 import { fromRemoteApprovedCourt, getRemotePayload } from "../../shared/lib/remotePayloadMappers.js";
-import { isWithinOneEdit } from "../../shared/lib/fuzzyText.js";
+import { isWithinOneEdit, preferExactSearchMatches } from "../../shared/lib/fuzzyText.js";
 
 const REFEREE_APPOINTMENT_COLUMNS = "user_id,role,grade,status,starts_at,ends_at";
 const REFEREE_QUALIFICATION_SEARCH_LIMIT = 500;
@@ -442,12 +442,12 @@ export default async function handler(request, response) {
     };
     const chunks = await Promise.all(types.map((type) => loaders[type]?.() ?? []));
     const seen = new Set();
-    const items = chunks.flat().filter((item) => {
+    const items = preferExactSearchMatches(chunks.flat().filter((item) => {
       const key = `${item.kind}:${item.id}`;
       if (!item.id || seen.has(key)) return false;
       seen.add(key);
       return true;
-    }).slice(0, limit);
+    }), query).slice(0, limit);
     sendJson(response, 200, { ok: true, items });
   } catch (error) {
     console.warn("Search failed.", error.message);

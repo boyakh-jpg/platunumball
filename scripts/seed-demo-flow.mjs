@@ -15,6 +15,7 @@ import {
   finalizeMatchByAuthority,
   interestRecruitingPost,
   inviteRecruitingPlayers,
+  inviteRecruitingReferee,
   joinRecruitingSideParty,
   removeMatchRoomPlayer,
   requestMatchRefereeAbsence,
@@ -774,7 +775,6 @@ room = createRoom(state, "u1", {
   opponentPlayerIds: ["u6", "u7", "u8"],
   opponentLeaderId: "u6",
   opponentReservePlayerIds: ["u9", "u10"],
-  refereeId: "u11",
   court: "한강 노을코트",
   rules: { targetScore: 21, timeLimit: 12, ball: "7호 공" },
   memo: "비공개 팀전 라이프사이클 검증",
@@ -783,6 +783,7 @@ state = room.state;
 const lifecyclePostId = room.postId;
 state = withUser(state, "u1", (scoped) => setRecruitingRoomTeam(scoped, lifecyclePostId, "teamA", "t1"));
 state = withUser(state, "u1", (scoped) => setRecruitingRoomTeam(scoped, lifecyclePostId, "teamB", "t2"));
+state = withUser(state, "u1", (scoped) => inviteRecruitingReferee(scoped, lifecyclePostId, "u11"));
 let lifecyclePost = getPost(state, lifecyclePostId);
 state = withUser(state, "u1", (scoped) => setRecruitingTeamPartyRoster(scoped, lifecyclePostId, "host", {
   teamId: "t1",
@@ -1116,13 +1117,13 @@ room = createRoom(state, "u1", {
   playerIds: ["u1"],
   opponentPlayerIds: ["u6"],
   opponentLeaderId: "u6",
-  refereeId: "u11",
   court: "성수 브릿지파크",
 });
 state = room.state;
 const refereeAbsentPostId = room.postId;
 state = withUser(state, "u1", (scoped) => setRecruitingRoomTeam(scoped, refereeAbsentPostId, "teamA", "t1"));
 state = withUser(state, "u1", (scoped) => setRecruitingRoomTeam(scoped, refereeAbsentPostId, "teamB", "t2"));
+state = withUser(state, "u1", (scoped) => inviteRecruitingReferee(scoped, refereeAbsentPostId, "u11"));
 let refereeAbsentPost = getPost(state, refereeAbsentPostId);
 const refereeAbsentInvite = refereeAbsentPost.roomState.invitations.find((invitation) => invitation.role === "referee" && invitation.targetUserId === "u11");
 const refereeAbsentOpponentInvite = refereeAbsentPost.roomState.invitations.find((invitation) => invitation.targetUserId === "u6");

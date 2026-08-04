@@ -29,6 +29,10 @@ function getObjectApiUrl(config, objectKey) {
   return `https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(config.accountId)}/r2/buckets/${encodeURIComponent(config.bucket)}/objects/${encodedKey}`;
 }
 
+function getBucketApiUrl(config) {
+  return `https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(config.accountId)}/r2/buckets`;
+}
+
 async function readCloudflareError(response) {
   const payload = await response.json().catch(() => null);
   return payload?.errors?.[0]?.message || payload?.messages?.[0] || `status_${response.status}`;
@@ -39,11 +43,23 @@ export async function uploadR2Webp(config, objectKey, bytes, contextLabel = "ima
 }
 
 export async function uploadPrivateR2Webp(config, objectKey, bytes, contextLabel = "private image") {
-  return uploadR2WebpWithCache(config, objectKey, bytes, PRIVATE_IMAGE_CACHE_CONTROL, contextLabel);
+  return uploadR2WebpWithCache(config, objectKey, bytes, PRIVATE_IMAGE_CACHE_CONTROL, contextLabel, true);
 }
 
-async function uploadR2WebpWithCache(config, objectKey, bytes, cacheControl, contextLabel) {
-  const response = await fetch(getObjectApiUrl(config, objectKey), {
+async function createR2Bucket(config, contextLabel) {
+  const response = await fetch(getBucketApiUrl(config), {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${config.apiToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ name: config.bucket }),
+  });
+  if (!response.ok) console.error(`Cloudflare R2 ${contextLabel} bucket creation failed.`, await readCloudflareError(response));
+}
+
+async function uploadR2WebpWithCache(config, objectKey, bytes, cacheControl, contextLabel, createBucketIfMissing = false) {
+  const upload = () => fetch(getObjectApiUrl(config, objectKey), {
     method: "PUT",
     headers: {
       Authorization: `Bearer ${config.apiToken}`,
@@ -52,9 +68,17 @@ async function uploadR2WebpWithCache(config, objectKey, bytes, cacheControl, con
     },
     body: bytes,
   });
+  let response = await upload();
+  if (response.status === 404 && createBucketIfMissing) {
+    await createR2Bucket(config, contextLabel);
+    response = await upload();
+  }
   if (!response.ok) {
     console.error(`Cloudflare R2 ${contextLabel} upload failed.`, await readCloudflareError(response));
-    throw httpError(503, "cloudflare_r2_upload_failed");
+    const message = [401, 403].includes(response.status)
+      ? "cloudflare_r2_access_denied"
+      : response.status === 404 ? "cloudflare_r2_bucket_not_found" : "cloudflare_r2_upload_failed";
+    throw httpError(503, message);
   }
 }
 

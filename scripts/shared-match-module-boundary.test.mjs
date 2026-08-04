@@ -45,7 +45,7 @@ test("matchUtils stays a small compatibility barrel", async () => {
   assert.doesNotMatch(source, /\bfunction\b|=>/);
 
   const exports = Object.keys(await import("../shared/lib/matchUtils.js"));
-  assert.equal(exports.length, 150);
+  assert.equal(exports.length, 151);
   for (const name of [
     "canOperateAssignedMatchReferee",
     "getMatchPlayerIds",

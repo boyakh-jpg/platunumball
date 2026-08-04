@@ -1,3 +1,5 @@
+import { toDateTime } from "../../shared/lib/matchPersistence.js";
+
 function getEntityId(row = {}) {
   return row?.entity_id ?? row?.entityId;
 }
@@ -15,6 +17,21 @@ export function readRoomFeedCard(row = {}, { allowCardAlias = false } = {}) {
 
 export function mergeFeedRelations(current = [], incoming = []) {
   return [...new Set([...(current ?? []), ...(incoming ?? [])])];
+}
+
+export function attachRoomFeedCardSource(card = {}, source = {}) {
+  if (!card?.id || !source?.id) return card;
+  const timingType = source.timing_type === "instant" || source.scheduled_at === "즉시" ? "instant" : "scheduled";
+  return {
+    ...card,
+    courtId: source.court_id ?? null,
+    court: source.court_name ?? "미정",
+    scheduledDate: source.scheduled_date ?? "",
+    scheduledTime: source.scheduled_time ? String(source.scheduled_time).slice(0, 5) : "",
+    scheduledAt: timingType === "instant" ? "즉시" : toDateTime(source.scheduled_date, source.scheduled_time, source.scheduled_at),
+    timingType,
+    ...(source.updated_at || card.updatedAt ? { updatedAt: source.updated_at ?? card.updatedAt } : {}),
+  };
 }
 
 export function collectUniqueRoomFeedCards(rows = [], ids = [], {

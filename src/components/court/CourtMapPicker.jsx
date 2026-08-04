@@ -75,6 +75,23 @@ function makeMarkerElement(group, activeCourtId) {
   return element;
 }
 
+function removeMapListener(maps, listener) {
+  if (!listener) return;
+  try {
+    maps.Event.removeListener(listener);
+  } catch {
+    // Naver Maps can invalidate a listener before React runs effect cleanup.
+  }
+}
+
+function detachMapMarker(marker) {
+  try {
+    marker?.setMap?.(null);
+  } catch {
+    // A failed Naver Maps initialization can leave partially initialized markers.
+  }
+}
+
 export default function CourtMapPicker({
   open,
   courts = [],
@@ -174,8 +191,8 @@ export default function CourtMapPicker({
     const maps = window.naver.maps;
 
     const clearMarkers = () => {
-      markerListenersRef.current.forEach((listener) => maps.Event.removeListener(listener));
-      markersRef.current.forEach((marker) => marker.setMap(null));
+      markerListenersRef.current.forEach((listener) => removeMapListener(maps, listener));
+      markersRef.current.forEach(detachMapMarker);
       markerListenersRef.current = [];
       markersRef.current = [];
     };
@@ -222,7 +239,7 @@ export default function CourtMapPicker({
     const idleListener = maps.Event.addListener(map, "idle", drawMarkers);
 
     return () => {
-      maps.Event.removeListener(idleListener);
+      removeMapListener(maps, idleListener);
       clearMarkers();
     };
   }, [candidateId, mapVersion, mappedCourts, open, status]);

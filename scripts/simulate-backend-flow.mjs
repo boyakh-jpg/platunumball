@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import homeLoadHandler from "../server/api/home/load.js";
 import notificationListHandler from "../server/api/notifications/list.js";
@@ -22,9 +23,11 @@ import submitReportHandler from "../server/api/reports/submit.js";
 import submitCourtRequestHandler from "../server/api/court-requests/submit.js";
 import approveCourtRequestHandler from "../server/api/court-requests/approve.js";
 import reportCourtRequestHandler from "../server/api/court-requests/report.js";
+import courtRequestEvidenceHandler from "../server/api/court-requests/evidence.js";
 import adminAppointmentActionHandler from "../server/api/admin/appointment-action.js";
 import adminDisciplinaryActionHandler from "../server/api/admin/disciplinary-action.js";
 import adminReviewActionHandler from "../server/api/admin/review-action.js";
+import { deleteR2Object as deleteCourtEvidenceObject, getPrivateR2Config as getCourtEvidenceR2Config } from "../server/api/_r2ImageStorage.js";
 import teamEmblemHandler, { deleteObject as deleteTeamEmblemObject, getR2Config as getTeamEmblemR2Config } from "../server/api/teams/emblem.js";
 import schemaHealthHandler from "../server/api/system/schema-health.js";
 import maintenanceHandler from "../server/api/system/maintenance.js";
@@ -289,6 +292,8 @@ const temporaryProfileDiscordSnapshots = new Map();
 const temporaryProfileIdentitySnapshots = new Map();
 const reportSimulationIds = new Set();
 const teamEmblemSimulationKeys = new Set();
+const courtEvidenceSimulationKeys = new Set();
+const courtEvidenceSimulationAdmins = new Map();
 const refereeSimulationAttemptIds = new Set();
 const refereeSimulationRequestIds = new Set();
 const profileRatingSnapshots = new Map();
@@ -1182,6 +1187,42 @@ async function cleanupTeamEmblemSimulationObjects() {
   return { skipped: false, objectCount: objectKeys.length, errors };
 }
 
+async function cleanupCourtEvidenceSimulationObjects() {
+  const objectKeys = [...courtEvidenceSimulationKeys];
+  const requestAdmins = [...courtEvidenceSimulationAdmins.entries()];
+  if (!objectKeys.length && !requestAdmins.length) return { skipped: true };
+  const errors = [];
+  if (usesRemoteApi) {
+    for (const [requestId, adminLogin] of requestAdmins) {
+      try {
+        await callHandler("/api/court-requests/evidence", courtRequestEvidenceHandler, await getAuthToken(adminLogin), {
+          action: "cleanupSimulation",
+          requestId,
+        });
+      } catch (error) {
+        errors.push({ requestId, message: error.message });
+      }
+    }
+  } else {
+    let config = null;
+    try {
+      config = getCourtEvidenceR2Config();
+    } catch (error) {
+      errors.push({ objectKey: "config", message: error.message });
+    }
+    for (const objectKey of objectKeys) {
+      try {
+        if (config) await deleteCourtEvidenceObject(config, objectKey, "court simulation evidence");
+      } catch (error) {
+        errors.push({ objectKey, message: error.message });
+      }
+    }
+  }
+  courtEvidenceSimulationKeys.clear();
+  courtEvidenceSimulationAdmins.clear();
+  return { skipped: false, objectCount: objectKeys.length, errors };
+}
+
 async function cleanupSimulationNotifications() {
   if (!supabase) return { skipped: true };
   const idsToDelete = [...simulationNotificationIds];
@@ -1677,8 +1718,8 @@ async function commitAdminReviewAs(testLoginId, body = {}) {
   return callHandler("/api/admin/review-action", adminReviewActionHandler, await getAuthToken(testLoginId), body);
 }
 
-async function submitCourtRequestAs(testLoginId, request = {}) {
-  return callHandler("/api/court-requests/submit", submitCourtRequestHandler, await getAuthToken(testLoginId), { request });
+async function submitCourtRequestAs(testLoginId, request = {}, photos = []) {
+  return callHandler("/api/court-requests/submit", submitCourtRequestHandler, await getAuthToken(testLoginId), { request, photos });
 }
 
 async function approveCourtRequestAs(testLoginId, requestId = "", approval = {}) {
@@ -2441,15 +2482,17 @@ async function cleanup() {
       refereeSimulationCleanup,
       ratingRestore,
       teamEmblemObjectCleanup: { skipped: true, reason: "keep_requested" },
+      courtEvidenceObjectCleanup: { skipped: true, reason: "keep_requested" },
       notificationCleanup: { skipped: true, reason: "keep_requested" },
       recruitingCleanup: { skipped: true, reason: "keep_requested" },
       regressionCleanup: { skipped: true, reason: "keep_requested" },
     };
   }
   const teamEmblemObjectCleanup = await cleanupTeamEmblemSimulationObjects();
+  const courtEvidenceObjectCleanup = await cleanupCourtEvidenceSimulationObjects();
   const notificationCleanup = await cleanupSimulationNotifications();
   const regressionCleanup = await cleanupRegressionSimulationRows();
-  if (!supabase) return { skipped: true, reason: "service_role_key_missing", profileDiscordRestore, profileIdentityRestore, refereeSimulationCleanup, ratingRestore, teamEmblemObjectCleanup, notificationCleanup, regressionCleanup };
+  if (!supabase) return { skipped: true, reason: "service_role_key_missing", profileDiscordRestore, profileIdentityRestore, refereeSimulationCleanup, ratingRestore, teamEmblemObjectCleanup, courtEvidenceObjectCleanup, notificationCleanup, regressionCleanup };
 
   const artifactCleanup = await cleanupTrackedMatchArtifacts();
   const errors = artifactCleanup.ok === false
@@ -2465,6 +2508,7 @@ async function cleanup() {
     refereeSimulationCleanup,
     ratingRestore,
     teamEmblemObjectCleanup,
+    courtEvidenceObjectCleanup,
     notificationCleanup,
     recruitingCleanup,
     regressionCleanup,
@@ -4451,7 +4495,7 @@ async function runCourtRegistrationScenario({
   const adminId = await step(`${ids.label}:resolveProfile:admin`, () => getProfileIdForLogin(adminLogin));
   assertFlow(requesterId !== adminId, "court requester and admin must be different profiles", { requesterId, adminId });
 
-  const requestId = `sim_cr_${ids.label}_${suffix}`;
+  const requestId = `cr_sim_${ids.label}_${suffix}`;
   const expectedCourtId = `court_${requestId}`;
   courtRequestSimulationIds.add(requestId);
   approvedCourtSimulationIds.add(expectedCourtId);
@@ -4468,6 +4512,9 @@ async function runCourtRegistrationScenario({
   });
 
   const addressText = `Backend simulation address ${suffix}`;
+  const photoBytes = readFileSync(new URL("../public/assets/NY-court-day.webp", import.meta.url));
+  const photoHash = createHash("sha256").update(photoBytes).digest("hex");
+  const photos = [{ imageBase64: photoBytes.toString("base64") }];
   const missingPinRequestId = `${requestId}_missing_pin`;
   courtRequestSimulationIds.add(missingPinRequestId);
   await expectRejected(`${ids.label}:rejectCourtWithoutPin`, () => submitCourtRequestAs(requesterLogin, {
@@ -4480,7 +4527,11 @@ async function runCourtRegistrationScenario({
     sigungu: "마포구",
     facilityName: "Backend Simulation Missing Pin",
     type: "outdoor",
-  }), ["court_pin_required", "court_requests_pending_pin_required"]);
+  }, photos), ["court_pin_invalid", "court_pin_required", "court_requests_pending_pin_required"]);
+
+  const evidenceObjectKey = `court-requests/${requestId}/${photoHash}.webp`;
+  courtEvidenceSimulationKeys.add(evidenceObjectKey);
+  courtEvidenceSimulationAdmins.set(requestId, adminLogin);
 
   const submitResult = await step(`${ids.label}:submitCourtRequest`, () => submitCourtRequestAs(requesterLogin, {
     id: requestId,
@@ -4503,7 +4554,13 @@ async function runCourtRegistrationScenario({
     surfaceType: "urethane",
     courtLayout: "full",
     paid: false,
-  }));
+    fieldLocation: {
+      lat: 37.5563,
+      lng: 126.9236,
+      accuracy: 5,
+      capturedAt: new Date().toISOString(),
+    },
+  }, photos));
   assertFlow(submitResult?.ok && submitResult?.requestId === requestId, "court request submit result mismatch", {
     ok: submitResult?.ok,
     requestId: submitResult?.requestId,
@@ -4520,6 +4577,23 @@ async function runCourtRegistrationScenario({
     requestedBy: pendingRequest?.requested_by,
     status: pendingRequest?.status,
   });
+
+  const { data: pendingEvidence, error: pendingEvidenceError } = await step(`${ids.label}:verifyPendingCourtEvidence`, () => supabase
+    .from("court_request_evidence")
+    .select("request_id,photo_keys,field_accuracy_meters,field_distance_meters,ai_status,decision")
+    .eq("request_id", requestId)
+    .maybeSingle());
+  if (pendingEvidenceError) throw pendingEvidenceError;
+  assertFlow(
+    pendingEvidence?.request_id === requestId
+      && pendingEvidence?.photo_keys?.[0] === evidenceObjectKey
+      && Number(pendingEvidence?.field_accuracy_meters) === 5
+      && Number(pendingEvidence?.field_distance_meters) <= 30
+      && ["complete", "failed", "unavailable"].includes(pendingEvidence?.ai_status)
+      && pendingEvidence?.decision === "manual_review",
+    "pending court evidence mismatch",
+    pendingEvidence,
+  );
 
   const approveResult = await step(`${ids.label}:approveCourtRequest`, () => approveCourtRequestAs(adminLogin, requestId));
   const approvedCourtId = String(approveResult?.approvedCourtId || expectedCourtId);
@@ -4596,6 +4670,7 @@ async function runCourtRegistrationScenario({
     requesterId,
     adminId,
     requestStatus: "approved",
+    aiStatus: pendingEvidence.ai_status,
     notificationVerified: true,
     approvedReportBlocked: true,
   };
@@ -8470,6 +8545,7 @@ async function main() {
     && (cleanupResult?.profileIdentityRestore?.errors ?? []).length === 0
     && (cleanupResult?.ratingRestore?.errors ?? []).length === 0
     && (cleanupResult?.teamEmblemObjectCleanup?.errors ?? []).length === 0
+    && (cleanupResult?.courtEvidenceObjectCleanup?.errors ?? []).length === 0
     && (cleanupResult?.refereeSimulationCleanup?.errors ?? []).length === 0
     && Number(cleanupResult?.notificationCleanup?.remainingNotifications ?? 0) === 0
     && Number(cleanupResult?.artifactCleanup?.remainingNotifications ?? 0) === 0

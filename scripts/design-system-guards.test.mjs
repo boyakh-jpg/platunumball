@@ -76,6 +76,7 @@ const globalSearchStyles = readCssTree("src/styles/global-search-profile.css");
 const searchPickerStyles = read("src/styles/features/search-picker-home.css");
 const visualSystemStyles = readCssTree("src/styles/global-visual-system.css");
 const courtControlStyles = readCssTree("src/styles/global-court-controls.css");
+const courtMapPickerSource = read("src/components/court/CourtMapPicker.jsx");
 const globalAdminStyles = readCssTree("src/styles/global-admin-layout.css");
 const courtDatabaseControlSource = read("src/components/admin/CourtDatabaseControls.jsx");
 const courtDatabasePanelSource = read("src/components/admin/CourtDatabasePanelView.jsx");
@@ -1500,6 +1501,7 @@ test("MMR 허용구간과 프로필 기본 입력은 공용 컴포넌트를 사�
   assert.match(mmrRangeSelectorSource, /Object\.entries\(MMR_RANGE_POLICIES\)\.map/);
   assert.match(mmrRangeSelectorSource, /role="radiogroup"/);
   assert.match(createMatchPageSource, /<MmrRangeSelector value=\{draft\.mmrRangeMode\}/);
+  assert.match(createMatchPageSource, /ratings\?\.modes\?\.\[draft\.mode\] \?\? app\.currentUser\.ratings\?\.integrated/);
   assert.doesNotMatch(
     createMatchPageSource,
     /Object\.entries\(MMR_RANGE_POLICIES\)\.map\(\(\[mode, policy\]\) => \(\s*<button/,
@@ -1513,6 +1515,11 @@ test("MMR 허용구간과 프로필 기본 입력은 공용 컴포넌트를 사�
   for (const source of [pageSources.profile, signupSource]) {
     assert.doesNotMatch(source, /POSITION_OPTIONS\.map|REGION_TREE\.map/);
   }
+});
+
+test("구장 등록요청은 필수 현장 증거가 갖춰져야 제출할 수 있다", () => {
+  assert.match(settingsSource, /disabled=\{!canSubmitCourtRequest \|\| courtSubmitPending \|\| courtPinPending \|\| courtPhotoPending\}/);
+  assert.match(courtMapPickerSource, /markersRef\.current\.forEach\(detachMapMarker\)/);
 });
 
 test("shared visual roles stay on canonical primitives", () => {

@@ -1,4 +1,4 @@
-import { getPrivateR2Config, readR2Object } from "../_r2ImageStorage.js";
+import { deleteR2Object, getPrivateR2Config, readR2Object } from "../_r2ImageStorage.js";
 import { allowRequestMethod, readJsonBody, requireAdminContext, sendJson } from "../_supabaseAdmin.js";
 
 export default async function handler(request, response) {
@@ -22,6 +22,18 @@ export default async function handler(request, response) {
       return;
     }
     const config = getPrivateR2Config();
+    if (body.action === "cleanupSimulation") {
+      if (!/^cr_sim_[A-Za-z0-9_-]{6,80}$/.test(requestId)) {
+        const cleanupError = new Error("court_evidence_cleanup_forbidden");
+        cleanupError.statusCode = 403;
+        throw cleanupError;
+      }
+      for (const objectKey of Array.isArray(evidence.photo_keys) ? evidence.photo_keys : []) {
+        await deleteR2Object(config, objectKey, "court simulation evidence");
+      }
+      sendJson(response, 200, { ok: true, requestId, deleted: evidence.photo_keys?.length ?? 0 });
+      return;
+    }
     const photos = [];
     for (const objectKey of Array.isArray(evidence.photo_keys) ? evidence.photo_keys : []) {
       const bytes = await readR2Object(config, objectKey, "court request evidence");
