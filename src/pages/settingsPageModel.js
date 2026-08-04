@@ -2,6 +2,49 @@ import { REPORT_TARGET_TYPES } from "../lib/reportReasons.js";
 import { getMatchReservePlayerIds, getMatchSidePlayerIds } from "../lib/matchUtils.js";
 import { REFEREE_EXAM_SIZE } from "../lib/refereeExamBank.js";
 
+const COURT_LIMIT_TIME_FORMATTER = new Intl.DateTimeFormat("ko-KR", {
+  timeZone: "Asia/Seoul",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
+export function getCourtRequestQuotaUi(requestLimit, aiQuota, trustScore) {
+  const abuseBlocked = requestLimit?.abuseBlocked === true;
+  const dailyBlocked = requestLimit?.dailyBlocked === true;
+  const aiBlocked = aiQuota?.blocked === true;
+  const dailyCount = Math.max(0, Number(requestLimit?.dailyCount) || 0);
+  const dailyLimit = Math.max(1, Number(requestLimit?.dailyLimit) || 3);
+  let message = "";
+  if (abuseBlocked) {
+    const blockedUntil = Date.parse(String(requestLimit.blockedUntil || ""));
+    const untilLabel = Number.isFinite(blockedUntil)
+      ? ` ${COURT_LIMIT_TIME_FORMATTER.format(new Date(blockedUntil))}까지`
+      : " 제한 기간 동안";
+    message = `허위 구장 신청이 운영자 확인으로 확정되어${untilLabel} 신청할 수 없습니다.`;
+  } else if (dailyBlocked) {
+    message = `구장 신청은 하루 ${dailyLimit}건까지 가능합니다. 한국시간 자정에 다시 신청할 수 있습니다.`;
+  } else if (aiBlocked) {
+    message = "금일 AI 구장 검증 가능량을 넘었습니다. 오전 9시 이후 다시 신청해 주세요.";
+  }
+  return {
+    blocked: abuseBlocked || dailyBlocked || aiBlocked,
+    label: abuseBlocked
+      ? "신청 제한"
+      : dailyBlocked
+        ? `오늘 ${dailyLimit}/${dailyLimit}`
+        : aiBlocked
+          ? "오늘 마감"
+          : requestLimit
+            ? `오늘 ${dailyCount}/${dailyLimit}`
+            : `신뢰도 ${trustScore}`,
+    message,
+    title: abuseBlocked ? "신청 제한" : "오늘 접수 마감",
+  };
+}
+
 export const DEFAULT_COURT_REQUEST = {
   name: "",
   buildingName: "",

@@ -6,11 +6,13 @@ import { uploadPrivateR2Webp } from "../server/api/_r2ImageStorage.js";
 import {
   getCourtAiQuotaState,
   getCourtAiUsage,
+  getCourtRequestLimitState,
   getCourtVerificationDecision,
   inspectCourtRequestPhotos,
   normalizeCourtPhotoAiAnswer,
 } from "../server/lib/courtRequestVerification.js";
 import courtAiWorker from "../cloudflare/court-ai/worker.js";
+import { getCourtRequestQuotaUi } from "../src/pages/settingsPageModel.js";
 
 const eligibleAssessment = {
   basketballCourt: true,
@@ -68,6 +70,26 @@ test("court AI token metrics map to neurons and block at 70 percent", () => {
   assert.equal(getCourtAiQuotaState(7_000).blocked, true);
 });
 
+test("court request limit state is normalized for the server", async () => {
+  const supabase = {
+    rpc: async (name, payload) => {
+      assert.equal(name, "rankball_get_court_request_limit_state");
+      assert.deepEqual(payload, { actor_profile_id: "u1" });
+      return { data: { dailyCount: 3, dailyLimit: 3, abuseBlocked: false }, error: null };
+    },
+  };
+  assert.deepEqual(await getCourtRequestLimitState(supabase, "u1"), {
+    dailyCount: 3,
+    dailyLimit: 3,
+    abuseBlocked: false,
+    remaining: 0,
+    dailyBlocked: true,
+    blocked: true,
+  });
+  assert.match(getCourtRequestQuotaUi({ dailyBlocked: true, dailyLimit: 3 }, null, 90).message, /하루 3건/);
+  assert.match(getCourtRequestQuotaUi({ abuseBlocked: true }, null, 90).message, /운영자 확인/);
+});
+
 test("court photo quality rejects unusable pixels before AI", () => {
   const pixels = (valueAt) => {
     const output = new Uint8ClampedArray(16 * 16 * 4);
@@ -84,10 +106,11 @@ test("court photo quality rejects unusable pixels before AI", () => {
 });
 
 test("court evidence and AI usage migrations keep data private", async () => {
-  const [sql, serviceRoleSql, usageSql] = await Promise.all([
+  const [sql, serviceRoleSql, usageSql, limitSql] = await Promise.all([
     readFile(new URL("../supabase/migrations/20260803222000_court_request_ai_verification.sql", import.meta.url), "utf8"),
     readFile(new URL("../supabase/migrations/20260804091749_court_request_evidence_service_role.sql", import.meta.url), "utf8"),
     readFile(new URL("../supabase/migrations/20260804120000_court_ai_daily_usage.sql", import.meta.url), "utf8"),
+    readFile(new URL("../supabase/migrations/20260804121640_court_request_submission_limits.sql", import.meta.url), "utf8"),
   ]);
   assert.match(sql, /enable row level security/i);
   assert.match(sql, /revoke all on table public\.court_request_evidence from public, anon, authenticated/i);
@@ -98,6 +121,12 @@ test("court evidence and AI usage migrations keep data private", async () => {
   assert.match(usageSql, /revoke all on table public\.court_ai_usage_events from public, anon, authenticated/i);
   assert.match(usageSql, /grant select, insert on table public\.court_ai_usage_events to service_role/i);
   assert.doesNotMatch(usageSql, /grant .* to (anon|authenticated)|drop table|truncate|delete from/i);
+  assert.match(limitSql, /court_request_submission_events[\s\S]*enable row level security/i);
+  assert.match(limitSql, /revoke all on table public\.court_request_submission_events from public, anon, authenticated/i);
+  assert.match(limitSql, /pg_advisory_xact_lock/);
+  assert.match(limitSql, /when offense_number = 1 then interval '3 days'[\s\S]*when offense_number = 2 then interval '7 days'[\s\S]*interval '30 days'/);
+  assert.match(limitSql, /before insert on public\.court_requests/);
+  assert.doesNotMatch(limitSql, /grant .* to (anon|authenticated)|drop table|truncate|delete from/i);
 });
 
 test("court photos use browser resizing and private R2", async () => {

@@ -11,6 +11,7 @@ export const COURT_REQUEST_AI_PROMPT_VERSION = "court-photo-v2";
 export const COURT_REQUEST_AI_PROXY_URL = "https://boxtier-court-ai.rankball.workers.dev";
 export const COURT_REQUEST_AI_DAILY_NEURONS = 10_000;
 export const COURT_REQUEST_AI_BLOCK_RATIO = 0.7;
+export const COURT_REQUEST_DAILY_LIMIT = 3;
 
 const COURT_REQUEST_AI_BLOCK_NEURONS = COURT_REQUEST_AI_DAILY_NEURONS * COURT_REQUEST_AI_BLOCK_RATIO;
 const COURT_REQUEST_AI_INPUT_NEURONS_PER_MILLION = 27_273;
@@ -95,6 +96,24 @@ export async function getCourtAiDailyQuota(supabase, now = new Date()) {
   if (error) throw error;
   const usedNeurons = (data ?? []).reduce((total, row) => total + (Number(row.neurons) || 0), 0);
   return getCourtAiQuotaState(usedNeurons, now);
+}
+
+export async function getCourtRequestLimitState(supabase, profileId) {
+  const { data, error } = await supabase.rpc("rankball_get_court_request_limit_state", {
+    actor_profile_id: profileId,
+  });
+  if (error) throw error;
+  const dailyLimit = Math.max(1, Number(data?.dailyLimit) || COURT_REQUEST_DAILY_LIMIT);
+  const dailyCount = Math.max(0, Number(data?.dailyCount) || 0);
+  return {
+    ...data,
+    dailyCount,
+    dailyLimit,
+    remaining: Math.max(0, dailyLimit - dailyCount),
+    dailyBlocked: data?.dailyBlocked === true || dailyCount >= dailyLimit,
+    abuseBlocked: data?.abuseBlocked === true,
+    blocked: data?.abuseBlocked === true || data?.dailyBlocked === true || dailyCount >= dailyLimit,
+  };
 }
 
 export async function recordCourtAiUsage(supabase, requestId, usage = {}) {

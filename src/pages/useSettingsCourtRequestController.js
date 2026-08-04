@@ -19,6 +19,7 @@ import {
   COURT_NEARBY_REVIEW_FIELDS,
   DEFAULT_COURT_REQUEST,
   getCourtAddressDong,
+  getCourtRequestQuotaUi,
 } from "./settingsPageModel.js";
 import { COURT_REQUEST_FIELD_CAPTURE_MAX_AGE_MS, COURT_REQUEST_PHOTO_MAX, getCoordinateDistanceMeters } from "../../shared/lib/courtRequestImagePolicy.js";
 import { getCourtRequestPhotoErrorMessage, prepareCourtRequestPhotos } from "../lib/courtRequestImages.js";
@@ -40,6 +41,7 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
   const [courtFieldLocation, setCourtFieldLocation] = useState(null);
   const [courtFieldLocationPending, setCourtFieldLocationPending] = useState(false);
   const [courtAiQuota, setCourtAiQuota] = useState(null);
+  const [courtRequestLimit, setCourtRequestLimit] = useState(null);
   const courtAddressSearchRef = useRef(0);
   const courtPinPendingRef = useRef(false);
   const courtSubmitPendingRef = useRef(false);
@@ -95,7 +97,12 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
   const courtSourceUrlInput = String(courtDraft.sourceUrl ?? "").trim();
   const courtSourceUrl = normalizeCourtSourceUrl(courtSourceUrlInput);
   const courtSourceUrlInvalid = Boolean(courtSourceUrlInput && !courtSourceUrl);
-  const courtQuotaBlocked = courtAiQuota?.blocked === true;
+  const {
+    blocked: courtQuotaBlocked,
+    label: courtQuotaLabel,
+    message: courtQuotaMessage,
+    title: courtQuotaTitle,
+  } = getCourtRequestQuotaUi(courtRequestLimit, courtAiQuota, currentTrustScore);
   const canOpenCourtRequestForm = currentTrustScore >= COURT_REQUEST_TRUST_MIN && !courtQuotaBlocked;
   const canSubmitCourtRequest = canOpenCourtRequestForm
     && Boolean(courtDisplayName)
@@ -119,6 +126,7 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
     postServerAction("/api/court-requests/quota", {}, { allowWhenDisabled: true })
       .then((result) => {
         if (active && result?.quota) setCourtAiQuota(result.quota);
+        if (active && result?.requestLimit) setCourtRequestLimit(result.requestLimit);
       })
       .catch(() => null);
     return () => { active = false; };
@@ -159,7 +167,7 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
   };
   const searchCourtAddress = async () => {
     if (!canOpenCourtRequestForm) {
-      setCourtLookupStatus(`구장 등록요청은 신뢰도 ${COURT_REQUEST_TRUST_MIN}점 이상부터 가능합니다.`);
+      setCourtLookupStatus(courtQuotaMessage || `구장 등록요청은 신뢰도 ${COURT_REQUEST_TRUST_MIN}점 이상부터 가능합니다.`);
       return;
     }
     const normalizedAddressQuery = courtAddressQuery.trim();
@@ -297,7 +305,7 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
     event.target.value = "";
     if (!files?.length) return;
     if (courtQuotaBlocked) {
-      setCourtLookupStatus("금일 구장 신청 가능량을 넘었습니다. 오전 9시 이후 다시 신청해 주세요.");
+      setCourtLookupStatus(courtQuotaMessage);
       return;
     }
     if (courtPhotos.length >= COURT_REQUEST_PHOTO_MAX) {
@@ -335,7 +343,7 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
     event.preventDefault();
     if (courtSubmitPendingRef.current) return;
     if (courtQuotaBlocked) {
-      setCourtLookupStatus("금일 구장 신청 가능량을 넘었습니다. 오전 9시 이후 다시 신청해 주세요.");
+      setCourtLookupStatus(courtQuotaMessage);
       return;
     }
     if (!courtDisplayName) {
@@ -389,7 +397,18 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
       );
       if (result?.error === "court_ai_daily_quota_reached") {
         setCourtAiQuota((current) => ({ ...(current ?? {}), blocked: true }));
-        setCourtLookupStatus("금일 구장 신청 가능량을 넘었습니다. 오전 9시 이후 다시 신청해 주세요.");
+        setCourtLookupStatus(getCourtRequestQuotaUi(courtRequestLimit, { blocked: true }, currentTrustScore).message);
+        return;
+      }
+      if (["court_request_daily_limit_reached", "court_request_abuse_blocked"].includes(result?.error)) {
+        const nextLimit = result?.details?.requestLimit ?? {
+          ...(courtRequestLimit ?? {}),
+          blocked: true,
+          dailyBlocked: result.error === "court_request_daily_limit_reached",
+          abuseBlocked: result.error === "court_request_abuse_blocked",
+        };
+        setCourtRequestLimit(nextLimit);
+        setCourtLookupStatus(getCourtRequestQuotaUi(nextLimit, courtAiQuota, currentTrustScore).message);
         return;
       }
       const photoError = String(result?.error || "").replace(/^court_photo_\d+_/, "court_photo_");
@@ -409,6 +428,7 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
       setCourtPhotos([]);
       setCourtFieldLocation(null);
       if (result.quota) setCourtAiQuota(result.quota);
+      if (result.requestLimit) setCourtRequestLimit(result.requestLimit);
       setCourtDraft({
         ...DEFAULT_COURT_REQUEST,
         region: app.currentUser?.region ?? DEFAULT_COURT_REQUEST.region,
@@ -440,6 +460,9 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
     courtFieldLocation,
     courtFieldLocationPending,
     courtQuotaBlocked,
+    courtQuotaLabel,
+    courtQuotaMessage,
+    courtQuotaTitle,
     naverMapKeyReady,
     courtAddressSelected,
     courtDisplayName,

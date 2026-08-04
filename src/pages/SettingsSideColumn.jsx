@@ -52,6 +52,9 @@ export default function SettingsSideColumn({ controller }) {
     courtFieldLocation,
     courtFieldLocationPending,
     courtQuotaBlocked,
+    courtQuotaLabel,
+    courtQuotaMessage,
+    courtQuotaTitle,
     userMap,
     matchMap,
     courtRequests,
@@ -150,13 +153,13 @@ export default function SettingsSideColumn({ controller }) {
                 <p className="eyebrow">Court</p>
                 <h2>구장 등록요청</h2>
               </div>
-              <Badge tone={canSubmitCourtRequest ? "green" : "orange"}>{courtQuotaBlocked ? "오늘 마감" : `신뢰도 ${currentTrustScore}`}</Badge>
+              <Badge tone={canSubmitCourtRequest ? "green" : "orange"}>{courtQuotaLabel}</Badge>
             </div>
             <div className={canSubmitCourtRequest ? "tier-range-note" : "tier-range-note tier-range-note-warning"}>
               <div>
                 <span>등록 권한</span>
-                <strong>{courtQuotaBlocked ? "오늘 접수 마감" : currentTrustScore < COURT_REQUEST_TRUST_MIN ? "등록 제한" : courtDuplicate ? "중복 확인 필요" : courtNearbyReviewRequired && !courtNearbyConfirmed ? "근처 구장 확인 필요" : courtSourceUrlInvalid ? "링크 확인 필요" : !courtFieldLocation ? "현장 위치 필요" : !courtPhotos.length ? "현장 사진 필요" : "등록 가능"}</strong>
-                <em>{courtQuotaBlocked ? "금일 구장 신청 가능량을 넘었습니다. 오전 9시 이후 다시 신청해 주세요." : courtDuplicateMessage || (courtNearbyReviewRequired && !courtNearbyConfirmed ? "근처 등록·검토 중 구장을 확인하고 체크해 주세요." : courtSourceUrlInvalid ? "공식 안내 링크는 https:// 주소만 사용할 수 있습니다." : !courtFieldLocation ? "GPS를 켜고 현장 위치를 확인해 주세요." : !courtPhotos.length ? "현장에서 사진을 1장 이상 촬영해 주세요." : `신뢰도 ${COURT_REQUEST_TRUST_MIN}점 이상 필요 · 허위 등록은 운영 정책에 따라 신뢰도 차감`)}</em>
+                <strong>{courtQuotaBlocked ? courtQuotaTitle : currentTrustScore < COURT_REQUEST_TRUST_MIN ? "등록 제한" : courtDuplicate ? "중복 확인 필요" : courtNearbyReviewRequired && !courtNearbyConfirmed ? "근처 구장 확인 필요" : courtSourceUrlInvalid ? "링크 확인 필요" : !courtFieldLocation ? "현장 위치 필요" : !courtPhotos.length ? "현장 사진 필요" : "등록 가능"}</strong>
+                <em>{courtQuotaBlocked ? courtQuotaMessage : courtDuplicateMessage || (courtNearbyReviewRequired && !courtNearbyConfirmed ? "근처 등록·검토 중 구장을 확인하고 체크해 주세요." : courtSourceUrlInvalid ? "공식 안내 링크는 https:// 주소만 사용할 수 있습니다." : !courtFieldLocation ? "GPS를 켜고 현장 위치를 확인해 주세요." : !courtPhotos.length ? "현장에서 사진을 1장 이상 촬영해 주세요." : `신뢰도 ${COURT_REQUEST_TRUST_MIN}점 이상 필요 · 허위 등록은 운영 정책에 따라 신뢰도 차감 및 신청 제한`)}</em>
               </div>
               <MapPin size={22} />
             </div>

@@ -13,6 +13,7 @@ import {
 import {
   getCourtAiDailyQuota,
   getCourtAiQuotaState,
+  getCourtRequestLimitState,
   getCourtVerificationDecision,
   inspectCourtRequestPhotos,
   recordCourtAiUsage,
@@ -28,9 +29,10 @@ import { allowRequestMethod, getAuthenticatedContext, readJsonBody, sendJson } f
 
 const COURT_REQUEST_BODY_MAX_BYTES = 1_900_000;
 
-function requestError(statusCode, message) {
+function requestError(statusCode, message, details = null) {
   const error = new Error(message);
   error.statusCode = statusCode;
+  error.details = details;
   return error;
 }
 
@@ -120,7 +122,12 @@ export default async function handler(request, response) {
     if (Buffer.byteLength(JSON.stringify(body), "utf8") > COURT_REQUEST_BODY_MAX_BYTES) throw requestError(413, "request_body_too_large");
 
     const context = await getAuthenticatedContext(request, { profileSelect: "id, auth_user_id, trust_score" });
-    const quota = await getCourtAiDailyQuota(context.supabase);
+    const [quota, requestLimit] = await Promise.all([
+      getCourtAiDailyQuota(context.supabase),
+      getCourtRequestLimitState(context.supabase, context.profileId),
+    ]);
+    if (requestLimit.abuseBlocked) throw requestError(429, "court_request_abuse_blocked", { requestLimit });
+    if (requestLimit.dailyBlocked) throw requestError(429, "court_request_daily_limit_reached", { requestLimit });
     if (quota.blocked) throw requestError(429, "court_ai_daily_quota_reached");
     const fieldLocation = requestPayload.fieldLocation && typeof requestPayload.fieldLocation === "object"
       ? requestPayload.fieldLocation
@@ -224,12 +231,32 @@ export default async function handler(request, response) {
       approvedCourtId: approval?.approvedCourtId ?? null,
       verification,
       quota: quotaAfter,
+      requestLimit: {
+        ...requestLimit,
+        dailyCount: requestLimit.dailyCount + 1,
+        remaining: Math.max(0, requestLimit.dailyLimit - requestLimit.dailyCount - 1),
+        dailyBlocked: requestLimit.dailyCount + 1 >= requestLimit.dailyLimit,
+        blocked: requestLimit.dailyCount + 1 >= requestLimit.dailyLimit,
+        blockedReason: requestLimit.dailyCount + 1 >= requestLimit.dailyLimit ? "daily" : null,
+      },
     });
   } catch (error) {
     if (storageConfig && uploadedKeys.length) {
       for (const objectKey of uploadedKeys) await deleteR2Object(storageConfig, objectKey, "court request evidence rollback").catch(() => null);
     }
     console.error("Court request submit failed.", error.message);
-    sendJson(response, error.statusCode || 500, { error: error.message || "court_request_submit_failed" });
+    const knownLimitError = ["court_request_abuse_blocked", "court_request_daily_limit_reached"].includes(error.message);
+    let errorDetails = error.details;
+    if (knownLimitError && typeof errorDetails === "string") {
+      try {
+        errorDetails = { requestLimit: JSON.parse(errorDetails) };
+      } catch {
+        errorDetails = null;
+      }
+    }
+    sendJson(response, error.statusCode || (knownLimitError ? 429 : 500), {
+      error: error.message || "court_request_submit_failed",
+      ...(errorDetails ? { details: errorDetails } : {}),
+    });
   }
 }
