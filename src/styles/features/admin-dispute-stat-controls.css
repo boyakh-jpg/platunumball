@@ -377,7 +377,7 @@
 .arena-dispute-score-row label,
 .arena-dispute-player label {
   display: grid;
-  gap: 5px;
+  gap: var(--space-2);
   color: var(--muted);
   font-size: 0.72rem;
   font-weight: 900;
@@ -418,7 +418,9 @@
 .arena-dispute-side,
 .arena-dispute-player {
   display: grid;
-  gap: var(--space-4);
+  align-content: start;
+  grid-auto-rows: max-content;
+  gap: var(--space-3);
 }
 
 .arena-dispute-side > strong {
@@ -430,6 +432,7 @@
 .arena-dispute-player {
   grid-template-columns: minmax(88px, 0.22fr) minmax(0, 1fr);
   align-items: center;
+  gap: var(--space-2);
   border-bottom: var(--ui-stroke-width) solid var(--ui-liquid-glass-divider, var(--line));
   padding: 6px 0 8px;
 }
@@ -441,7 +444,7 @@
 
 .arena-stat-stepper {
   grid-template-areas: "down value up";
-  grid-template-columns: 26px minmax(28px, 1fr) 26px;
+  grid-template-columns: 20px minmax(22px, 1fr) 20px;
   grid-template-rows: 44px;
 }
 
@@ -479,8 +482,10 @@
 
 .arena-dispute-player > div {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--space-2);
+  grid-template-columns: repeat(auto-fit, minmax(66px, 1fr));
+  grid-auto-rows: max-content;
+  align-content: start;
+  gap: var(--space-3) var(--space-2);
 }
 
 @media (max-width: 1280px) {

@@ -1,28 +1,3 @@
-@media (max-width: 640px) {
-  .arena-dispute-stat-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .arena-dispute-player > div {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .arena-stat-stepper {
-    width: 100%;
-    min-width: 0;
-    grid-template-columns: 21px minmax(36px, 1fr) 21px;
-    grid-template-rows: 44px;
-  }
-
-  .arena-stat-stepper button {
-    min-height: 44px;
-  }
-
-  .arena-stat-stepper input {
-    min-height: 44px;
-  }
-}
-
 .profile-hero,
 .team-detail-hero {
   position: relative;

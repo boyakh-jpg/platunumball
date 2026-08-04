@@ -71,9 +71,18 @@ html[data-theme="light"] .arena-lobby-arena {
     scrollbar-gutter: auto;
   }
 
+  .arena-lobby-modal .arena-dispute-stat-grid {
+    gap: var(--space-6);
+  }
+
+  .arena-lobby-modal .arena-dispute-side {
+    gap: var(--space-4);
+  }
+
   .arena-lobby-modal .arena-dispute-player {
     grid-template-columns: minmax(0, 1fr);
     gap: var(--space-2);
+    padding: 4px 0 6px;
   }
 
   .arena-lobby-modal .arena-dispute-player > span {
@@ -82,9 +91,6 @@ html[data-theme="light"] .arena-lobby-arena {
     white-space: nowrap;
   }
 
-  .arena-lobby-modal .arena-dispute-player > div {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
 }
 @media (max-width: 380px) {
   .arena-lobby-modal-scroll {
