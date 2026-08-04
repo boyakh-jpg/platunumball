@@ -111,13 +111,15 @@ export default function SettingsSideColumn({ controller }) {
     setCourtLocationEntryMode,
   } = controller;
   const courtLocationReady = courtAddressSelected && courtPinConfirmed && (!onsiteCourtEntry || courtFieldLocation);
-  const courtPhotoGpsCount = courtPhotos.filter((photo) => photo.metadata?.latitude !== null
+  const courtReadyPhotos = courtPhotos.filter((photo) => photo.imageBase64 && !photo.pending && !photo.error);
+  const courtPhotoError = courtPhotos.find((photo) => photo.error)?.error || "";
+  const courtPhotoGpsCount = courtReadyPhotos.filter((photo) => photo.metadata?.latitude !== null
     && photo.metadata?.latitude !== undefined
     && photo.metadata?.longitude !== null
     && photo.metadata?.longitude !== undefined
     && Number.isFinite(Number(photo.metadata.latitude))
     && Number.isFinite(Number(photo.metadata.longitude))).length;
-  const courtPhotoStepComplete = courtPinConfirmed && (!onsiteCourtEntry || courtPhotos.length > 0);
+  const courtPhotoStepComplete = courtPinConfirmed && !courtPhotoPending && !courtPhotoError && (!onsiteCourtEntry || courtReadyPhotos.length > 0);
   const courtStatusTitle = courtQuotaBlocked ? courtQuotaTitle
     : currentTrustScore < COURT_REQUEST_TRUST_MIN ? "등록 제한"
       : onsiteCourtEntry && !courtFieldLocation ? "현장 위치 필요"
@@ -126,7 +128,9 @@ export default function SettingsSideColumn({ controller }) {
           : courtNearbyLookupFailed ? "근처 구장 조회 필요"
             : courtDuplicate ? "중복 확인 필요"
             : courtNearbyReviewRequired && !courtNearbyConfirmed ? "근처 구장 확인 필요"
-              : onsiteCourtEntry && !courtPhotos.length ? "현장 사진 필요"
+              : courtPhotoPending ? "사진 처리 중"
+                : courtPhotoError ? "사진 다시 촬영 필요"
+                  : onsiteCourtEntry && !courtReadyPhotos.length ? "현장 사진 필요"
                   : !courtDisplayName ? "시설명 필요"
                     : courtRequiresUnit && !courtDraft.courtUnit.trim() ? "코트 구분 필요"
                       : courtSourceUrlInvalid ? "링크 확인 필요"
@@ -139,7 +143,9 @@ export default function SettingsSideColumn({ controller }) {
           : courtNearbyLookupFailed ? "지도 핀을 다시 확정해 근처 구장을 불러와 주세요."
             : courtDuplicate ? courtDuplicateMessage
             : courtNearbyReviewRequired && !courtNearbyConfirmed ? "근처 등록·검토 중 구장을 확인하고 체크해 주세요."
-              : onsiteCourtEntry && !courtPhotos.length ? "현장에서 사진을 1장 이상 촬영해 주세요."
+              : courtPhotoPending ? "촬영한 사진을 자동 최적화하는 중입니다."
+                : courtPhotoError ? courtPhotoError
+                  : onsiteCourtEntry && !courtReadyPhotos.length ? "현장에서 사진을 1장 이상 촬영해 주세요."
                   : !courtDisplayName ? "시설/장소명을 입력해 주세요."
                     : courtRequiresUnit && !courtDraft.courtUnit.trim() ? "같은 장소의 다른 코트라면 코트 구분을 입력해 주세요."
                       : courtSourceUrlInvalid ? "공식 안내 링크는 https:// 주소만 사용할 수 있습니다."
@@ -275,17 +281,22 @@ export default function SettingsSideColumn({ controller }) {
                     </div>
                     <em>{courtPhotos.length ? `${courtPhotos.length}/4장` : courtPhotoStepComplete ? "선택사항" : courtPinConfirmed ? "현재 단계" : "대기"}</em>
                   </div>
-                  <small>{courtPhotos.length
-                    ? `사진 GPS ${courtPhotoGpsCount}/${courtPhotos.length} · ${courtPhotos.length >= 2 && courtPhotoGpsCount === courtPhotos.length ? "다른 조건도 충족하면 AI 자동승인 후보" : "관리자 검토 가능"}`
+                  <small role="status" aria-live="polite">{courtPhotoPending
+                    ? "촬영한 사진을 자동 최적화하는 중입니다."
+                    : courtPhotoError
+                      ? courtPhotoError
+                      : courtReadyPhotos.length
+                    ? `사진 GPS ${courtPhotoGpsCount}/${courtReadyPhotos.length} · ${courtReadyPhotos.length >= 2 && courtPhotoGpsCount === courtReadyPhotos.length ? "다른 조건도 충족하면 AI 자동승인 후보" : "관리자 검토 가능"}`
                     : onsiteCourtEntry ? "2장 이상과 사진 GPS가 확인되면 자동승인 후보가 됩니다." : "사진 없이 신청하면 관리자 검토로 접수됩니다."}</small>
                   <div className="settings-court-photo-grid">
                     {courtPhotos.map((photo, index) => (
-                      <div key={`${photo.byteSize}-${index}`}>
+                      <div key={photo.id || `${photo.byteSize}-${index}`}>
                         <img src={photo.previewUrl} alt={`구장 현장 사진 ${index + 1}`} />
+                        {photo.pending || photo.error ? <span className="settings-court-photo-state">{photo.pending ? "처리 중" : "다시 촬영"}</span> : null}
                         <div className="settings-court-photo-actions">
                           <Button as="label" variant="secondary" size="sm" className="settings-court-photo-retake" aria-disabled={courtPhotoPending} aria-label={`구장 현장 사진 ${index + 1} 다시 촬영`} title="다시 촬영">
                             <RefreshCw size={15} />
-                            <input type="file" accept="image/*" capture={onsiteCourtEntry ? "environment" : undefined} onChange={(event) => selectCourtPhotos(event, index)} />
+                            <input type="file" accept="image/*" capture={onsiteCourtEntry ? "environment" : undefined} onInput={(event) => selectCourtPhotos(event, index)} onChange={(event) => selectCourtPhotos(event, index)} />
                           </Button>
                           <Button type="button" variant="secondary" size="sm" className="settings-court-photo-remove" disabled={courtPhotoPending} onClick={() => removeCourtPhoto(index)} aria-label={`구장 현장 사진 ${index + 1} 삭제`} title="사진 삭제"><X size={15} /></Button>
                         </div>
@@ -295,7 +306,7 @@ export default function SettingsSideColumn({ controller }) {
                       <Button as="label" variant="secondary" className="settings-court-photo-add" aria-disabled={!courtPinConfirmed || courtPhotoPending}>
                         <Plus size={24} />
                         <span>{courtPhotoPending ? "처리 중" : courtPinConfirmed ? onsiteCourtEntry ? "사진 촬영" : "사진 선택" : "위치 지정 후"}</span>
-                        <input type="file" accept="image/*" capture={onsiteCourtEntry ? "environment" : undefined} disabled={!courtPinConfirmed} onChange={selectCourtPhotos} />
+                        <input type="file" accept="image/*" capture={onsiteCourtEntry ? "environment" : undefined} disabled={!courtPinConfirmed} onInput={selectCourtPhotos} onChange={selectCourtPhotos} />
                       </Button>
                     ) : null}
                   </div>

@@ -188,10 +188,12 @@ test("court photos use browser resizing and private R2", async () => {
   assert.match(server, /rankball_auto_approve_court_request/);
   assert.match(evidence, /requireAdminContext/);
   assert.match(evidence, /\^cr_sim_/);
-  const fileInputs = form.match(/<input type="file"[^>]+>/g) ?? [];
+  const fileInputs = form.match(/<input type="file"[\s\S]*?\/>/g) ?? [];
   assert.equal(fileInputs.length, 2);
   assert.ok(fileInputs.every((input) => input.includes('accept="image/*"')));
   assert.ok(fileInputs.every((input) => !input.includes("courtPhotoPending")));
+  assert.ok(fileInputs.every((input) => input.includes("onInput=")));
+  assert.ok(fileInputs.every((input) => input.includes("onChange=")));
   assert.match(form, /capture=\{onsiteCourtEntry \? "environment" : undefined\}/);
   assert.match(form, /disabled=\{!courtPinConfirmed\}/);
   assert.match(form, /settings-court-photo-add/);
@@ -208,16 +210,25 @@ test("court photos use browser resizing and private R2", async () => {
   assert.match(server, /if \(!photoInputs\.length\)/);
   const photoHandler = controller.slice(controller.indexOf("const selectCourtPhotos"), controller.indexOf("const removeCourtPhoto"));
   assert.match(photoHandler, /Array\.from\(input\.files \?\? \[\]\)/);
+  assert.match(photoHandler, /courtPhotoSelectionRef\.current === selectionKey/);
+  assert.ok(photoHandler.indexOf("URL.createObjectURL(file)") < photoHandler.indexOf("prepareCourtRequestPhotos"));
+  assert.match(photoHandler, /pending:\s*true/);
+  assert.match(photoHandler, /error:\s*message/);
   assert.ok(photoHandler.indexOf("prepareCourtRequestPhotos") < photoHandler.indexOf('input.value = ""'));
   assert.match(photoHandler, /replaceIndex === null/);
   assert.doesNotMatch(photoHandler, /readCourtFieldLocation/);
+  assert.match(controller, /const courtReadyPhotos = courtPhotos\.filter/);
+  assert.match(controller, /!courtPhotoHasError/);
+  assert.match(controller, /courtReadyPhotos\.map/);
   const evidenceStepIndex = form.indexOf('aria-labelledby="court-step-photo-title"');
   assert.ok(evidenceStepIndex > -1 && evidenceStepIndex < form.indexOf('<div className="form-grid two">', evidenceStepIndex));
-  assert.match(form, /const courtPhotoStepComplete = courtPinConfirmed && \(!onsiteCourtEntry \|\| courtPhotos\.length > 0\)/);
+  assert.match(form, /const courtPhotoStepComplete = courtPinConfirmed && !courtPhotoPending && !courtPhotoError/);
   assert.match(form, /id="court-step-details-title">구장 정보/);
+  assert.match(form, /settings-court-photo-state/);
   assert.match(styles, /settings-court-step/);
   assert.match(styles, /inset:\s*0;[\s\S]{0,80}width:\s*100%;[\s\S]{0,80}height:\s*100%/);
   assert.match(styles, /settings-court-photo-add\[aria-disabled="true"\][\s\S]{0,180}pointer-events:\s*none/);
+  assert.match(styles, /\.settings-court-photo-state/);
 });
 
 test("court AI retries one malformed response", async (context) => {
