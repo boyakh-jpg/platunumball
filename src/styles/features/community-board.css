@@ -370,10 +370,10 @@
   }
 
   .community-post-row {
-    grid-template-columns: minmax(0, 1fr) auto auto auto;
+    grid-template-columns: auto minmax(0, 1fr) auto auto auto;
     grid-template-areas:
-      "labels title title title"
-      "author date likes comments";
+      "labels title title title title"
+      "author author date likes comments";
     gap: var(--space-2) var(--space-4);
     min-height: 76px;
     padding: 8px 0;

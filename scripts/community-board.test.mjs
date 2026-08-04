@@ -78,5 +78,5 @@ test("게시글 목록은 제목 중심 열과 모바일 두 줄 구조를 사�
   assert.match(page, /community-post-list-head/);
   assert.match(page, /<span>작성자<\/span>[\s\S]*<span>날짜<\/span>[\s\S]*<span>추천<\/span>[\s\S]*<span>댓글<\/span>/);
   assert.doesNotMatch(page, /community-post-open|ChevronRight/);
-  assert.match(styles, /"labels title title title"\s*"author date likes comments"/);
+  assert.match(styles, /"labels title title title title"\s*"author author date likes comments"/);
 });
