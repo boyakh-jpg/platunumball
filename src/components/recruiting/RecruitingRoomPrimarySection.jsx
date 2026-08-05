@@ -90,7 +90,7 @@ export function RecruitingRoomPrimarySection({ context }) {
     app, attendanceScanState, autoBalancedIndividualRoom, benchCapacity, canInspectMatchAttendance, canInvitePlayerByRoom, canInviteSideFromRoom,
     canManageEntry, canManageMatchCheckin, canMoveMatchSides, closeModal, contextPanel, copyRoomShareUrl,
     courtByName, disabledInvitePlayerIds, entryPoint, favoritePlayerIds, favoriteTeamIds, getInviteAllowedTeamId,
-    getLobbyPrimaryTeamId, getMatchPeriodLabel, getPickupParticipantIds, getRecruitingSideCapacity, getRoomRefereeLabel, getRoomScheduleLabel,
+    getMatchPeriodLabel, getPickupParticipantIds, getRecruitingSideCapacity, getRoomRefereeLabel, getRoomScheduleLabel,
     getRoomTeamSelectionEligibility, getTeamCaptainId, getTeamHashtag, individualOnlyRoom, invitations, inviteError,
     lobby, matchRoom, mine, moveCandidate, openInviteSlot, openSelfSlotAction,
     pickupAssignmentPolicy, pickupPoolMode, referee, remoteDirectoryEnabled, removeCandidate, renderMatchRecordSetupPanels,
@@ -98,8 +98,8 @@ export function RecruitingRoomPrimarySection({ context }) {
     renderSlotCommand, renderSourceMatchRecordBoard, requiresPaidCourtNotice, roomCompetitionLabel, roomDisplayTitle, roomMatchTypeLabel,
     roomOwnerId, roomPhaseBadge, roomPhaseSectionsAfterVersus, roomPhaseSectionsBeforeVersus, roomPhaseViewModel, roomReadyLabel,
     roomShareEnabled, roomShareStatus, roomState, roomTeamACandidates, roomTeamBCandidates, roomTeamFeedback,
-    roomTeamQuery, roomTeamSavingSide, roomTeamSelectionOpen, showRoomTeamSelection, roomTitleSizeClass, roomVisibilityLabel, roomVisibilityTone,
-    saveRoomTeam, selectedMatchRules, selectedPost, selectedRoomTeamA, selectedRoomTeamAId, selectedRoomTeamB,
+    roomTeamQuery, roomTeamSavingSide, roomTeamSelectionOpen, roomTitleSizeClass, roomVisibilityLabel, roomVisibilityTone,
+    saveRoomTeam, selectedMatchRules, selectedPost, selectedRoomTeamAId,
     selectedRoomTeamBId, sendInvites, setAttendanceStartStatus, setInviteDraft, setRoomTeamQuery, setSlotActionDraft,
     shareRoom, showCaptainBadge, slotPositions, sourceMatch, sourceMatchAttendance, sourceMatchCheckedInIds,
     sideMmrBalance, sourceMatchIsRecordRoom, sourceMatchPlacementByPlayerId, sourceMatchSideLeaderIds, sourceMatchSlotManagementOpen, sourceRoomReadOnly, teamAMeta,
@@ -164,21 +164,15 @@ export function RecruitingRoomPrimarySection({ context }) {
                   }}
                 />
 
-                {showRoomTeamSelection ? (
+                {roomTeamSelectionOpen ? (
                   <section className="arena-record-setup-panel ui-modal-section">
                     <header>
                       <strong>팀 선택</strong>
                     </header>
                     <div className="arena-record-setup-grid">
-                      <section>
+                      {!selectedRoomTeamAId ? <section>
                         <strong>A사이드</strong>
-                        {selectedRoomTeamAId ? (
-                          <span className="arena-record-team-selected">
-                            {selectedRoomTeamA ? <TeamEmblem team={selectedRoomTeamA} size="xs" /> : null}
-                            <strong>{selectedRoomTeamA?.name ?? "선택된 A팀"}</strong>
-                            <Badge tone="green">고정</Badge>
-                          </span>
-                        ) : mine ? (
+                        {mine ? (
                           roomTeamACandidates.length ? (
                             <div className="arena-team-choice-grid">
                               {roomTeamACandidates.map((team) => {
@@ -200,22 +194,10 @@ export function RecruitingRoomPrimarySection({ context }) {
                             </div>
                           ) : <em>현재 소속된 팀이 없습니다.</em>
                         ) : <em>방장이 A팀을 선택하는 중입니다.</em>}
-                      </section>
-                      <section>
+                      </section> : null}
+                      {selectedPost.visibility === "private" && selectedRoomTeamAId && !selectedRoomTeamBId ? <section>
                         <strong>B사이드</strong>
-                        {selectedRoomTeamBId ? (
-                          <span className="arena-record-team-selected">
-                            {selectedRoomTeamB ? <TeamEmblem team={selectedRoomTeamB} size="xs" /> : null}
-                            <strong>{selectedRoomTeamB?.name ?? "선택된 B팀"}</strong>
-                            <Badge tone={selectedPost.visibility === "private" ? "orange" : "green"}>
-                              {selectedPost.visibility === "private" && !getLobbyPrimaryTeamId(lobby, "teamB") ? "주장 초대 대기" : "고정"}
-                            </Badge>
-                          </span>
-                        ) : !selectedRoomTeamAId ? (
-                          <em>A팀을 먼저 선택해야 합니다.</em>
-                        ) : selectedPost.visibility === "public" ? (
-                          <em>상대 팀원이 B사이드장으로 참가할 때까지 기다립니다.</em>
-                        ) : mine ? (
+                        {mine ? (
                           <SearchPicker
                             value={roomTeamQuery}
                             onChange={setRoomTeamQuery}
@@ -234,7 +216,7 @@ export function RecruitingRoomPrimarySection({ context }) {
                             renderItem={renderRoomTeamResult}
                           />
                         ) : <em>방장이 B팀을 선택하고 있습니다.</em>}
-                      </section>
+                      </section> : null}
                     </div>
                     {roomTeamFeedback ? (
                       <div className="ui-status-strip" role="status" aria-live="polite">

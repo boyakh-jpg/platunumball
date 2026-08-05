@@ -116,13 +116,10 @@ const lobby = getRecruitingLobby(selectedPost, app.state);
           && !sourceMatch
           && selectedPost.status === "open"
           && !recruitingRoomConfirmed
-          && (!selectedRoomTeamAId || !selectedRoomTeamBId);
-        const showRoomTeamSelection = roomTeamSelectionOpen || Boolean(
-          teamOnlyRoom
-          && selectedPost.visibility === "private"
-          && selectedRoomTeamBId
-          && !getLobbyPrimaryTeamId(lobby, "teamB")
-        );
+          && (
+            !selectedRoomTeamAId
+            || (selectedPost.visibility === "private" && !selectedRoomTeamBId)
+          );
         const getRoomTeamSelectionEligibility = (team, sideName) => {
           const eligibility = getTeamEventEligibility(team, app.state.users, {
             capacity: getRecruitingSideCapacity(selectedPost),
@@ -387,7 +384,7 @@ const lobby = getRecruitingLobby(selectedPost, app.state);
     matchRoom, recruitingRoomConfirmed, storedRoomPost, slotPositions, roomOwnerId, mine,
     myEntry, alreadyApplied, currentUserIsRoomReferee, changeApprovalSource, scheduleProposalProgress, scheduleChangePending,
     canInviteFromRoom, canChat, selectedRoomState, refereeWanted, getJoinRosterPatch, teamJoinValid,
-    canJoinReferee, joinMmrLimitMode, joinTierAllowed, canJoin, roomTeamSelectionOpen, showRoomTeamSelection, getRoomTeamSelectionEligibility,
+    canJoinReferee, joinMmrLimitMode, joinTierAllowed, canJoin, roomTeamSelectionOpen, getRoomTeamSelectionEligibility,
     roomTeamACandidates, roomTeamBCandidates, saveRoomTeam, renderRoomTeamResult, joiningThisRoom, joinModeEntries,
     selectedRange, roomEditDraft, roomEditStatus, roomEditCurrentCourt, roomEditCourtOptions, roomEditRange,
     roomEditCourt, roomEditCourtWarning, selectedRoomPolicySource, selectedMatchRules, selectedMatchRuleRows, selectedCreationSummary,

@@ -249,7 +249,10 @@ test("team room hides completed selection and labels active and reserve slots on
   const dialogSource = readFileSync(new URL("../src/components/recruiting/RecruitingRoomDialogSection.jsx", import.meta.url), "utf8");
   const rendererSource = readFileSync(new URL("../src/components/recruiting/RecruitingRoomMatchRenderers.jsx", import.meta.url), "utf8");
 
-  assert.match(recruitingSource, /&& \(!selectedRoomTeamAId \|\| !selectedRoomTeamBId\)/);
+  assert.match(recruitingSource, /!selectedRoomTeamAId[\s\S]*selectedPost\.visibility === "private" && !selectedRoomTeamBId/);
+  assert.match(recruitingSource, /\{!selectedRoomTeamAId \? <section>/);
+  assert.match(recruitingSource, /selectedPost\.visibility === "private" && selectedRoomTeamAId && !selectedRoomTeamBId \? <section>/);
+  assert.doesNotMatch(recruitingSource, /arena-record-team-selected/);
   assert.doesNotMatch(recruitingSource, /ROOM ONLY/);
   assert.doesNotMatch(recruitingSource, /팀 선택과 명단 관리는 이 공용 방 모달에서만 진행합니다/);
   assert.doesNotMatch(recruitingSource, /A팀을 선택했습니다\./);

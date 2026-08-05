@@ -1135,7 +1135,8 @@ test("season rival challenge closes the created room when the B-team invite fail
   assert.match(createWizard, /<Button type="button" disabled=\{submitDisabled\} onClick=\{onSubmit\}>\{submitLabel\}<\/Button>/u);
   assert.match(createLayout, /onSubmit=\{\(event\) => event\.preventDefault\(\)\}/u);
   assert.match(roomPolicy, /getLobbyPrimaryTeamId\(lobby, "teamB"\) \|\| selectedPost\.opponentTeamId \|\| selectedPost\.targetTeamId \|\| ""/u);
-  assert.match(roomPolicy, /const showRoomTeamSelection = roomTeamSelectionOpen \|\| Boolean\([\s\S]*selectedRoomTeamBId[\s\S]*!getLobbyPrimaryTeamId\(lobby, "teamB"\)/u);
+  assert.match(roomPolicy, /!selectedRoomTeamAId[\s\S]*selectedPost\.visibility === "private" && !selectedRoomTeamBId/u);
+  assert.doesNotMatch(roomPolicy, /showRoomTeamSelection/u);
 });
 
 test("remote favorite search hydrates the selected entity before optimistic toggle", async () => {
