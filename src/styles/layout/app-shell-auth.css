@@ -271,6 +271,17 @@ body.rankball-scroll-locked .app-main {
   white-space: nowrap;
 }
 
+.sidebar-profile-handle {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.sidebar-profile-handle small {
+  min-width: 0;
+}
+
 .sidebar-profile .tier-badge {
   max-width: none;
 }

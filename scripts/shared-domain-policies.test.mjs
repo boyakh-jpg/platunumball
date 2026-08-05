@@ -1381,12 +1381,13 @@ test("profile icon background choice and image preview stay persistent and separ
 });
 
 test("profile icon picker lists owned icons only and locked achievements conceal artwork", async () => {
-  const [dialog, achievements, achievementApi, profileActions, styles] = await Promise.all([
+  const [dialog, achievements, achievementApi, profileActions, styles, foundingBackfill] = await Promise.all([
     readSource("src/components/profile/ProfileIconDialog.jsx"),
     readSource("src/pages/ProfileAchievements.jsx"),
     readSource("server/api/_profileIconAchievements.js"),
     readSource("src/hooks/appData/actions/profileTeamActions.js"),
     readCssTree("src/styles/features/profile-emblems.css"),
+    readSource("supabase/migrations/20260805183000_backfill_founding_player_icon_unlocks.sql"),
   ]);
   assert.match(dialog, /group\.icons\.filter\(\(icon\) => unlockedSet\.has\(icon\.id\)\)/);
   assert.match(dialog, /unlockedGroups\.map\(\(group\) =>/);
@@ -1415,6 +1416,10 @@ test("profile icon picker lists owned icons only and locked achievements conceal
   assert.match(achievementApi, /refereeExamCompletedCount/);
   assert.match(achievementApi, /select\("founding_player"\)/);
   assert.match(achievementApi, /foundingPlayer: Number\(profileResult\.data\?\.founding_player === true\)/);
+  assert.match(foundingBackfill, /where profile\.founding_player/);
+  assert.match(foundingBackfill, /'341-founding-player-s0'/);
+  assert.match(foundingBackfill, /on conflict \(profile_id, icon_key\) do nothing/);
+  assert.doesNotMatch(foundingBackfill, /delete\s+from|truncate\s+table|drop\s+table/i);
   assert.match(achievementApi, /activeUnlockedRows = \(unlockedRows \?\? \[\]\)\.filter\(\(row\) => PROFILE_ICON_ID_SET\.has\(row\.icon_key\)\)/);
   assert.match(profileActions, /if \(!isSupabaseConfigured\)[\s\S]*DEFAULT_UNLOCKED_PROFILE_ICON_KEYS/);
   assert.match(profileActions, /saveLocalProfileIconPatch/);

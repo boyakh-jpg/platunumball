@@ -4,7 +4,7 @@ import HoverPortal, { HoverCardCloseButton, HoverCardTrigger } from "../common/H
 import TierEmblem from "../rating/TierEmblem.jsx";
 import TeamEmblem from "../team/TeamEmblem.jsx";
 import useHoverCardInteraction from "../../hooks/useHoverCardInteraction.js";
-import { isDiscordLinked } from "../../lib/discord.js";
+import { getDiscordProfileUrl } from "../../lib/discord.js";
 import { getTeamHashtag, getUserHashtag } from "../../lib/handles.js";
 import { isTouchPreviewEvent } from "../../lib/hoverPreviewPin.js";
 import { getAgeGroupForUser, getAgeGroupLabel, getRepresentativeTeam, getUserProfileTeams } from "../../lib/profileSetup.js";
@@ -54,7 +54,7 @@ export default function PlayerHoverCard({ user, teams = [], children, className 
   const activeTeam = userTeams.find((team) => team.id === user.representativeTeamId)
     ?? projectedRepresentativeTeam
     ?? getRepresentativeTeam(user.id, userTeams, user.representativeTeamId);
-  const discordLinked = isDiscordLinked(user);
+  const discordProfileUrl = getDiscordProfileUrl(user);
   const placementComplete = isPlacementComplete(user.ratings);
   const modes = placementComplete
     ? [
@@ -104,13 +104,13 @@ export default function PlayerHoverCard({ user, teams = [], children, className 
             <span className="player-hover-identity">
               <strong>{user.name}</strong>
               <span className="hover-hashtag">{getUserHashtag(user)}</span>
+              {discordProfileUrl ? (
+                <a className="discord-link-badge discord-icon-link" href={discordProfileUrl} target="_blank" rel="noreferrer" aria-label="Discord에서 DM 열기" title="Discord에서 DM 열기">
+                  <MessageCircle size={13} aria-hidden="true" />
+                </a>
+              ) : null}
               <span className="hover-age-group">{getAgeGroupLabel(getAgeGroupForUser(user))}</span>
             </span>
-            {discordLinked ? (
-              <span className="discord-link-badge" aria-label="Discord 연동됨" title="Discord 연동됨">
-                <MessageCircle size={13} aria-hidden="true" />
-              </span>
-            ) : null}
             <em>{anonymousUser ? `${user.participationLabel ?? "개인참여"} · ${user.position ?? "free"}` : `${user.region} · ${user.position}`} · 신뢰도 {user.trustScore ?? "-"}</em>
           </span>
         </span>

@@ -284,7 +284,7 @@ test("player and team details share one entity profile hero", () => {
   assert.doesNotMatch(pageSources.playerDetail, /leading=\{<ProfileEmblem|<TierBadge|rank-tier-statement/);
   assert.match(pageSources.playerDetail, /className="player-tier-hero"/);
   assert.match(pageSources.playerDetail, /className="ui-liquid-glass"/);
-  assert.match(pageSources.playerDetail, /<MessageCircle size=\{14\} aria-hidden="true" \/>/);
+  assert.match(pageSources.playerDetail, /subtitle=\{\([\s\S]*<MessageCircle size=\{13\} aria-hidden="true" \/>/);
   assert.match(globalWorkflowStyles, /\.team-tier-hero \.tier-emblem figcaption strong,\s*\.player-tier-hero \.tier-emblem figcaption strong\s*\{[^}]*color:\s*var\(--rb-yellow\);/);
 });
 
@@ -322,14 +322,16 @@ test("player detail uses shared record rows and one support rail", () => {
   assert.match(globalSurfaceStyles, /\.profile-detail-page \.profile-hero\s*\{[^}]*--page-hero-bg:\s*var\(--bg-profile\);/);
 });
 
-test("공개 프로필은 Discord 식별자를 노출하지 않는다", () => {
+test("Discord는 ID 문자 없이 해시태그 옆 DM 아이콘으로 표시한다", () => {
   const playerHoverCard = read("src/components/profile/PlayerHoverCard.jsx");
+  const sidebar = read("src/components/layout/Sidebar.jsx");
   const settingsPrimaryColumn = read("src/pages/SettingsPrimaryColumn.jsx");
 
-  assert.doesNotMatch(pageSources.playerDetail, /getDiscordDisplayName|getDiscordProfileUrl|discordDisplayName/);
-  assert.doesNotMatch(playerHoverCard, /getDiscordDisplayName|getDiscordProfileUrl|discordDisplayName/);
-  assert.match(pageSources.playerDetail, /aria-label="Discord 연동됨"/);
-  assert.match(playerHoverCard, /aria-label="Discord 연동됨"/);
+  assert.doesNotMatch(pageSources.playerDetail, /getDiscordDisplayName|discordDisplayName/);
+  assert.doesNotMatch(playerHoverCard, /getDiscordDisplayName|discordDisplayName/);
+  assert.match(pageSources.playerDetail, /getDiscordProfileUrl/);
+  assert.match(playerHoverCard, /hover-hashtag[\s\S]*aria-label="Discord에서 DM 열기"/);
+  assert.match(sidebar, /sidebar-profile-handle[\s\S]*aria-label="Discord에서 DM 열기"/);
   assert.match(settingsPrimaryColumn, /<strong>\{app\.currentUser\.name\}<\/strong>/);
 });
 
@@ -1094,6 +1096,7 @@ test("home Season Zero banner routes by founding player status", () => {
   assert.match(pageSources.home, /to=\{user\.foundingPlayer \? "\/app\/profile#icons" : "\/app\/signup"\}/);
   assert.match(pageSources.home, /FOUNDING PLAYER 특전 지급 완료/);
   assert.match(pageSources.home, /getProfileIcon\("341-founding-player-s0"\)/);
+  assert.match(read("src/lib/assets.js"), /normalizedPath\.startsWith\("\/assets\/profile-icons\/"\)/);
   assert.match(pageSources.profile, /useState\(\(\) => location\.hash === "#icons"\)/);
   assert.match(pageSources.profile, /if \(location\.hash === "#icons"\) setIconDialogOpen\(true\)/);
   assert.doesNotMatch(pageSources.playerDetail, /foundingPlayer|FOUNDING PLAYER/);

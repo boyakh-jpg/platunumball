@@ -1,10 +1,11 @@
-import { CalendarDays, ClipboardList, Handshake, House, LogOut, MessageSquareText, Settings, Trophy, UserRound, UsersRound } from "lucide-react";
+import { CalendarDays, ClipboardList, Handshake, House, LogOut, MessageCircle, MessageSquareText, Settings, Trophy, UserRound, UsersRound } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import BrandLockup from "../common/BrandLockup.jsx";
 import PlayerHoverCard from "../profile/PlayerHoverCard.jsx";
 import ProfileEmblem from "../profile/ProfileEmblem.jsx";
 import TierBadge from "../rating/TierBadge.jsx";
 import { BRAND_NAME } from "../../lib/brand.js";
+import { getDiscordProfileUrl } from "../../lib/discord.js";
 import { getUserHashtag } from "../../lib/handles.js";
 import { DEFAULT_RATING, getTestAccountDisplayLabel } from "../../lib/constants.js";
 
@@ -25,6 +26,7 @@ export default function Sidebar({ user, teams = [], auth }) {
   const authDisplayName = auth?.user?.user_metadata?.providerName || auth?.user?.email || "";
   const displayName = safeUser.name || getTestAccountDisplayLabel(authDisplayName) || BRAND_NAME;
   const displayHashtag = getUserHashtag(safeUser);
+  const discordProfileUrl = getDiscordProfileUrl(safeUser);
   const integratedRating = safeUser.ratings?.integrated ?? DEFAULT_RATING;
   return (
     <aside className="sidebar">
@@ -46,7 +48,14 @@ export default function Sidebar({ user, teams = [], auth }) {
         <ProfileEmblem user={safeUser} />
         <div className="sidebar-profile-copy">
           <strong>{displayName}</strong>
-          <small>{displayHashtag}</small>
+          <span className="sidebar-profile-handle">
+            <small>{displayHashtag}</small>
+            {discordProfileUrl ? (
+              <a className="discord-link-badge discord-icon-link" href={discordProfileUrl} target="_blank" rel="noreferrer" aria-label="Discord에서 DM 열기" title="Discord에서 DM 열기" onClick={(event) => event.stopPropagation()}>
+                <MessageCircle size={12} aria-hidden="true" />
+              </a>
+            ) : null}
+          </span>
           <TierBadge mmr={integratedRating} ratings={safeUser.ratings} compact />
         </div>
         {auth?.session ? (

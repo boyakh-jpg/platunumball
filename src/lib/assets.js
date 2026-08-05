@@ -12,6 +12,7 @@ export function assetUrl(path = "") {
   const normalizedPath = String(path || "").startsWith("/")
     ? String(path || "")
     : `/${String(path || "").replace(/^\/+/, "")}`;
+  if (normalizedPath.startsWith("/assets/profile-icons/")) return normalizedPath;
   const baseUrl = getAssetBaseUrl();
   return baseUrl ? `${baseUrl}${normalizedPath}` : normalizedPath;
 }
