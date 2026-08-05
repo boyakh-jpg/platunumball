@@ -5,7 +5,7 @@ import { COMMUNITY_POST_BODY_MAX, COMMUNITY_POST_TITLE_MAX } from "../../shared/
 
 export default function CommunityPostEditor({ initialPost = null, canModerate = false, pending = false, onCancel, onSave }) {
   const [draft, setDraft] = useState(() => ({
-    category: initialPost?.category === "notice" ? "notice" : "general",
+    category: initialPost?.category === "notice" ? "notice" : initialPost?.category === "question" ? "question" : "general",
     title: initialPost?.title ?? "",
     body: initialPost?.body ?? "",
     pinned: initialPost?.pinned === true,
@@ -13,7 +13,7 @@ export default function CommunityPostEditor({ initialPost = null, canModerate = 
 
   useEffect(() => {
     setDraft({
-      category: initialPost?.category === "notice" ? "notice" : "general",
+      category: initialPost?.category === "notice" ? "notice" : initialPost?.category === "question" ? "question" : "general",
       title: initialPost?.title ?? "",
       body: initialPost?.body ?? "",
       pinned: initialPost?.pinned === true,
@@ -30,15 +30,14 @@ export default function CommunityPostEditor({ initialPost = null, canModerate = 
       event.preventDefault();
       if (canSubmit) await onSave(draft);
     }}>
-      {canModerate ? (
-        <label>
-          분류
-          <select value={draft.category} onChange={(event) => setDraft((current) => ({ ...current, category: event.target.value, pinned: event.target.value === "notice" && current.pinned }))}>
-            <option value="general">자유글</option>
-            <option value="notice">공지</option>
-          </select>
-        </label>
-      ) : null}
+      <label>
+        분류
+        <select value={draft.category} onChange={(event) => setDraft((current) => ({ ...current, category: event.target.value, pinned: event.target.value === "notice" && current.pinned }))}>
+          <option value="general">자유</option>
+          <option value="question">질문</option>
+          {canModerate ? <option value="notice">공지</option> : null}
+        </select>
+      </label>
       <label>
         제목
         <input autoFocus maxLength={COMMUNITY_POST_TITLE_MAX} value={draft.title} onChange={(event) => setDraft((current) => ({ ...current, title: event.target.value }))} />

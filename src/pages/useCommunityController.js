@@ -18,10 +18,10 @@ function makeLocalId(prefix) {
 function makeDemoBoard(currentUser, users = []) {
   const secondUser = users.find((user) => user.id !== currentUser?.id) ?? currentUser;
   const posts = [
-    { id: "community_demo_notice", authorId: secondUser?.id, author: secondUser, category: "notice", title: "커뮤니티 이용 안내", body: "경기 모집은 매칭 메뉴를 이용하고, 이곳에는 농구 이야기와 구장 정보를 남겨 주세요.", pinned: true, likeCount: 4, commentCount: 0, liked: false, createdAt: hoursAgo(8), updatedAt: hoursAgo(8) },
-    { id: "community_demo_1", authorId: secondUser?.id, author: secondUser, category: "general", title: "오늘 저녁 야외 코트 상태 어떤가요?", body: "비가 그친 뒤 바닥이 말랐는지 궁금합니다. 다녀온 분 있으면 알려 주세요.", pinned: false, likeCount: 8, commentCount: 2, liked: false, createdAt: hoursAgo(3), updatedAt: hoursAgo(3) },
-    { id: "community_demo_2", authorId: currentUser?.id, author: currentUser, category: "general", title: "처음 3대3 할 때 지키면 좋은 것", body: "공격 전 체크볼과 파울 콜을 먼저 합의하면 경기가 훨씬 매끄럽습니다.", pinned: false, likeCount: 5, commentCount: 1, liked: true, createdAt: hoursAgo(10), updatedAt: hoursAgo(10) },
-    { id: "community_demo_3", authorId: secondUser?.id, author: secondUser, category: "general", title: "주말 오전 슛 연습", body: "혼자 연습하기 좋은 시간대와 구장을 공유해 봐요.", pinned: false, likeCount: 3, commentCount: 0, liked: false, createdAt: hoursAgo(28), updatedAt: hoursAgo(28) },
+    { id: "community_demo_notice", authorId: secondUser?.id, author: secondUser, category: "notice", title: "커뮤니티 이용 안내", body: "경기 모집은 매칭 메뉴를 이용하고, 이곳에는 농구 이야기와 구장 정보를 남겨 주세요.", pinned: true, viewCount: 42, likeCount: 4, commentCount: 0, liked: false, createdAt: hoursAgo(8), updatedAt: hoursAgo(8) },
+    { id: "community_demo_1", authorId: secondUser?.id, author: secondUser, category: "question", title: "오늘 저녁 야외 코트 상태 어떤가요?", body: "비가 그친 뒤 바닥이 말랐는지 궁금합니다. 다녀온 분 있으면 알려 주세요.", pinned: false, viewCount: 31, likeCount: 8, commentCount: 2, liked: false, createdAt: hoursAgo(3), updatedAt: hoursAgo(3) },
+    { id: "community_demo_2", authorId: currentUser?.id, author: currentUser, category: "general", title: "처음 3대3 할 때 지키면 좋은 것", body: "공격 전 체크볼과 파울 콜을 먼저 합의하면 경기가 훨씬 매끄럽습니다.", pinned: false, viewCount: 24, likeCount: 5, commentCount: 1, liked: true, createdAt: hoursAgo(10), updatedAt: hoursAgo(10) },
+    { id: "community_demo_3", authorId: secondUser?.id, author: secondUser, category: "general", title: "주말 오전 슛 연습", body: "혼자 연습하기 좋은 시간대와 구장을 공유해 봐요.", pinned: false, viewCount: 17, likeCount: 3, commentCount: 0, liked: false, createdAt: hoursAgo(28), updatedAt: hoursAgo(28) },
   ];
   const comments = [
     { id: "community_demo_comment_1", postId: "community_demo_1", authorId: currentUser?.id, author: currentUser, parentId: null, body: "오후에는 거의 말랐습니다.", createdAt: hoursAgo(2), updatedAt: hoursAgo(2) },
@@ -71,6 +71,7 @@ export default function useCommunityController(app) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const listRequestRef = useRef(0);
+  const localViewedPostIdsRef = useRef(new Set());
 
   useEffect(() => {
     if (remote) return;
@@ -78,6 +79,7 @@ export default function useCommunityController(app) {
     setLocalComments(demoBoard.comments);
     setSelectedPost(null);
     setComments([]);
+    localViewedPostIdsRef.current.clear();
   }, [demoBoard, remote]);
 
   const loadPosts = useCallback(async (targetPage = 0) => {
@@ -125,7 +127,13 @@ export default function useCommunityController(app) {
     setComments([]);
     setError("");
     if (!remote) {
-      setSelectedPost(localPosts.find((item) => item.id === post.id) ?? post);
+      const currentPost = localPosts.find((item) => item.id === post.id) ?? post;
+      const nextPost = localViewedPostIdsRef.current.has(post.id)
+        ? currentPost
+        : { ...currentPost, viewCount: Number(currentPost.viewCount ?? 0) + 1 };
+      localViewedPostIdsRef.current.add(post.id);
+      setLocalPosts((current) => current.map((item) => item.id === post.id ? nextPost : item));
+      setSelectedPost(nextPost);
       setComments(localComments.filter((comment) => comment.postId === post.id));
       return;
     }
@@ -133,6 +141,8 @@ export default function useCommunityController(app) {
     try {
       const result = await communityAction("detail", { postId: post.id });
       if (!result || result.ok === false) throw new Error(result?.error || "community_detail_failed");
+      setRemotePosts((current) => current.map((item) => item.id === post.id ? { ...item, ...result.post } : item));
+      setRemotePopularPosts((current) => current.map((item) => item.id === post.id ? { ...item, ...result.post } : item));
       setSelectedPost(result.post);
       setComments(result.comments ?? []);
       setCanModerate(result.canModerate === true);
@@ -168,7 +178,7 @@ export default function useCommunityController(app) {
       const now = new Date().toISOString();
       const savedPost = postId
         ? { ...localPosts.find((post) => post.id === postId), ...normalized, updatedAt: now }
-        : { id: makeLocalId("community"), authorId: app.currentUserId, author: app.currentUser, ...normalized, likeCount: 0, commentCount: 0, liked: false, createdAt: now, updatedAt: now };
+        : { id: makeLocalId("community"), authorId: app.currentUserId, author: app.currentUser, ...normalized, viewCount: 0, likeCount: 0, commentCount: 0, liked: false, createdAt: now, updatedAt: now };
       setLocalPosts((current) => postId
         ? current.map((post) => post.id === postId ? savedPost : post)
         : [savedPost, ...current]);

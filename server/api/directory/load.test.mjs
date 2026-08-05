@@ -134,6 +134,7 @@ test("directory loader does not call the legacy broad repository loader", async 
   assert.match(source, /includeTeamMemberProfiles \|\| row\.role === "captain"/);
   assert.match(source, /normalizeDirectoryRankingSort\(body\.rankingSort\)/);
   assert.match(source, /ratings->modes->\$\{rankingSort\}/);
+  assert.match(source, /if \(kind === "affiliations"\)[\s\S]*placementCompleteOnly: false,[\s\S]*rankingSort: ""/);
   assert.doesNotMatch(source, /readOptional\(/);
 });
 

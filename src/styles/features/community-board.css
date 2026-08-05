@@ -1,8 +1,6 @@
 .community-page .page-header {
   --page-hero-bg: var(--bg-teams);
   --page-hero-bg-position: var(--hero-bg-position-court);
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: end;
 }
 
 .community-popular,
@@ -80,6 +78,10 @@
   max-width: 100%;
 }
 
+.community-board-toolbar {
+  flex-wrap: wrap;
+}
+
 .community-post-byline {
   justify-content: flex-end;
 }
@@ -91,7 +93,7 @@
 .community-post-list-head,
 .community-post-row {
   display: grid;
-  grid-template-columns: 72px minmax(0, 1fr) minmax(96px, 152px) 68px 48px 48px;
+  grid-template-columns: 72px minmax(0, 1fr) minmax(96px, 152px) 68px 48px 48px 48px;
   align-items: center;
   gap: var(--space-5);
 }
@@ -364,10 +366,6 @@
 }
 
 @media (max-width: 720px) {
-  .community-page .page-header {
-    grid-template-columns: 1fr;
-  }
-
   .community-popular-list > button {
     grid-template-columns: 24px minmax(0, 1fr);
   }
@@ -381,11 +379,11 @@
   }
 
   .community-post-row {
-    grid-template-columns: auto minmax(0, 1fr) auto auto auto;
+    grid-template-columns: auto minmax(0, 1fr) auto auto auto auto;
     grid-template-areas:
-      "labels title title title title"
-      "author author date likes comments";
-    gap: var(--space-2) var(--space-4);
+      "labels title title title title title"
+      "author author date views likes comments";
+    gap: var(--space-2) var(--space-3);
     min-height: 76px;
     padding: 8px 0;
   }
@@ -404,6 +402,10 @@
 
   .community-post-date {
     grid-area: date;
+  }
+
+  .community-post-views {
+    grid-area: views;
   }
 
   .community-post-likes {

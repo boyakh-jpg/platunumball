@@ -154,6 +154,8 @@ async function loadDirectoryPage(context, body = {}) {
         filter,
         region: "",
         profileId: "",
+        placementCompleteOnly: false,
+        rankingSort: "",
         limit: pageRequest.limit,
         offset: pageRequest.offset,
         nextOffset: affiliationPage.hasMore ? pageRequest.offset + pageRequest.limit : null,

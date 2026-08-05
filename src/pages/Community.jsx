@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Flame, MessageCircle, PenLine, Pin, ThumbsUp } from "lucide-react";
+import { Eye, Flame, MessageCircle, PenLine, Pin, ThumbsUp } from "lucide-react";
 import Button from "../components/common/Button.jsx";
 import Badge from "../components/common/Badge.jsx";
 import Card from "../components/common/Card.jsx";
 import Pagination from "../components/common/Pagination.jsx";
 import { formatKoreanDateTime } from "../../shared/lib/matchTimeUtils.js";
+import { COMMUNITY_POST_CATEGORY_LABELS } from "../../shared/lib/communityPolicy.js";
 import CommunityPostEditor from "./CommunityPostEditor.jsx";
 import CommunityPostDialog, { CommunityAuthorLink } from "./CommunityPostDialog.jsx";
 import useCommunityController from "./useCommunityController.js";
@@ -13,6 +14,7 @@ import useCommunityController from "./useCommunityController.js";
 function PostMetrics({ post }) {
   return (
     <span className="community-post-metrics">
+      <span><Eye size={14} /> {post.viewCount}</span>
       <span><ThumbsUp size={14} /> {post.likeCount}</span>
       <span><MessageCircle size={14} /> {post.commentCount}</span>
     </span>
@@ -53,7 +55,6 @@ export default function Community({ app }) {
           <p className="eyebrow">Community</p>
           <h1>커뮤니티</h1>
         </div>
-        <Button type="button" onClick={() => setComposing(true)}><PenLine size={17} /> 글쓰기</Button>
       </header>
 
       {controller.popularPosts.length ? (
@@ -84,11 +85,12 @@ export default function Community({ app }) {
               ["all", "전체"],
               ["notice", "공지"],
               ["general", "자유"],
+              ["question", "질문"],
             ].map(([id, label]) => (
               <button key={id} type="button" role="tab" aria-selected={controller.category === id} className={controller.category === id ? "active" : ""} onClick={() => controller.setCategory(id)}>{label}</button>
             ))}
           </div>
-          <Badge tone="neutral">{controller.page.total}개</Badge>
+          <Button type="button" onClick={() => setComposing(true)}><PenLine size={17} /> 글쓰기</Button>
         </div>
 
         {composing ? (
@@ -110,6 +112,7 @@ export default function Community({ app }) {
               <span>제목</span>
               <span>작성자</span>
               <span>날짜</span>
+              <span>조회</span>
               <span>추천</span>
               <span>댓글</span>
             </div>
@@ -117,7 +120,7 @@ export default function Community({ app }) {
           {controller.posts.map((post) => (
             <article key={post.id} className="community-post-row">
               <span className="community-post-labels">
-                <Badge tone={post.category === "notice" ? "orange" : "neutral"}>{post.category === "notice" ? "공지" : "자유"}</Badge>
+                <Badge tone={post.category === "notice" ? "orange" : post.category === "question" ? "blue" : "neutral"}>{COMMUNITY_POST_CATEGORY_LABELS[post.category] ?? "자유"}</Badge>
                 {post.pinned ? <Pin size={14} aria-label="상단 고정" /> : null}
               </span>
               <button type="button" className="community-post-title" onClick={() => controller.openPost(post)}>{post.title}</button>
@@ -125,6 +128,7 @@ export default function Community({ app }) {
               <time className="community-post-date" dateTime={post.createdAt} title={formatKoreanDateTime(post.createdAt)}>
                 {formatKoreanDateTime(post.createdAt, { month: "2-digit", day: "2-digit" })}
               </time>
+              <span className="community-post-count community-post-views" aria-label={`조회 ${post.viewCount}회`}><Eye size={14} /> {post.viewCount}</span>
               <span className="community-post-count community-post-likes" aria-label={`추천 ${post.likeCount}개`}><ThumbsUp size={14} /> {post.likeCount}</span>
               <span className="community-post-count community-post-comments" aria-label={`댓글 ${post.commentCount}개`}><MessageCircle size={14} /> {post.commentCount}</span>
             </article>

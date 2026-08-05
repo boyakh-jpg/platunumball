@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { MessageCircle, ThumbsUp } from "lucide-react";
+import { Eye, MessageCircle, ThumbsUp } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
@@ -83,7 +83,7 @@ export default function PlayerCommunityActivity({ app, player, isOwnProfile }) {
                 {kind === "comments" ? <p>{item.body}</p> : null}
               </span>
               <time dateTime={item.createdAt}>{formatKoreanDateTime(item.createdAt, { month: "2-digit", day: "2-digit" })}</time>
-              {kind === "posts" ? <small><ThumbsUp size={13} /> {item.likeCount} <MessageCircle size={13} /> {item.commentCount}</small> : null}
+              {kind === "posts" ? <small><Eye size={13} /> {item.viewCount} <ThumbsUp size={13} /> {item.likeCount} <MessageCircle size={13} /> {item.commentCount}</small> : null}
             </Link>
           );
         })}

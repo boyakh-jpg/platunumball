@@ -19,7 +19,7 @@ const post = (id, hoursAgo, likeCount, commentCount, category = "general") => ({
   createdAt: new Date(now - hoursAgo * 60 * 60 * 1000).toISOString(),
 });
 
-test("인기글은 최근 3일 일반 글을 추천 3점과 댓글 1점으로 최대 5개 정렬한다", () => {
+test("인기글은 최근 3일 공지 외 글을 추천 3점과 댓글 1점으로 최대 5개 정렬한다", () => {
   const posts = [
     post("old", 73, 99, 99),
     post("notice", 1, 99, 99, "notice"),
@@ -30,15 +30,17 @@ test("인기글은 최근 3일 일반 글을 추천 3점과 댓글 1점으로 �
     post("d", 5, 1, 1),
     post("e", 6, 1, 0),
     post("f", 7, 0, 2),
+    post("question", 2, 1, 6, "question"),
   ];
 
   assert.equal(getCommunityPopularityScore(posts[3]), 6);
-  assert.deepEqual(selectPopularCommunityPosts(posts, now).map(({ id }) => id), ["b", "a", "c", "d", "e"]);
+  assert.deepEqual(selectPopularCommunityPosts(posts, now).map(({ id }) => id), ["question", "b", "a", "c", "d"]);
 });
 
 test("공지는 운영자만 작성하고 답글은 같은 글의 원댓글에만 허용한다", () => {
   assert.throws(() => normalizeCommunityPostDraft({ category: "notice", title: "공지", body: "내용" }, 0), /community_notice_admin_required/);
   assert.equal(normalizeCommunityPostDraft({ category: "notice", title: "공지", body: "내용", pinned: true }, 30).pinned, true);
+  assert.equal(normalizeCommunityPostDraft({ category: "question", title: "질문", body: "내용" }, 0).category, "question");
   assert.equal(assertCommunityReplyParent({ id: "root", post_id: "post", parent_id: null, status: "published" }, "post"), "root");
   assert.throws(() => assertCommunityReplyParent({ id: "reply", post_id: "post", parent_id: "root", status: "published" }, "post"), /community_reply_parent_invalid/);
 });
@@ -85,13 +87,33 @@ test("게시글 목록은 제목 중심 열과 모바일 두 줄 구조를 사�
   ]);
 
   assert.match(page, /community-post-list-head/);
-  assert.match(page, /<span>작성자<\/span>[\s\S]*<span>날짜<\/span>[\s\S]*<span>추천<\/span>[\s\S]*<span>댓글<\/span>/);
+  assert.match(page, /<span>작성자<\/span>[\s\S]*<span>날짜<\/span>[\s\S]*<span>조회<\/span>[\s\S]*<span>추천<\/span>[\s\S]*<span>댓글<\/span>/);
+  assert.match(page, /\["question", "질문"\]/);
+  assert.match(page, /community-post-views/);
+  assert.doesNotMatch(page, /controller\.page\.total\}개/);
   assert.doesNotMatch(page, /community-post-open|ChevronRight/);
-  assert.match(styles, /"labels title title title title"\s*"author author date likes comments"/);
+  assert.match(styles, /"labels title title title title title"\s*"author author date views likes comments"/);
   assert.match(styles, /width: min\(960px, 100%\)/);
   assert.match(styles, /@media \(min-width: 721px\)[\s\S]*font-size: var\(--font-size-section-title\)/);
   assert.match(styles, /\.community-post-byline \{\s*justify-content: flex-end/);
   assert.match(styles, /@media \(max-width: 720px\)[\s\S]*\.community-post-byline \.community-author small \{\s*display: none/);
+});
+
+test("조회수는 계정당 글별 한 번만 저장하고 모든 페이지에 숫자를 표시한다", async () => {
+  const [api, migration, pagination, editor] = await Promise.all([
+    readFile(new URL("../server/api/community/posts.js", import.meta.url), "utf8"),
+    readFile(new URL("../supabase/migrations/20260805170000_community_questions_and_views.sql", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/common/Pagination.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/pages/CommunityPostEditor.jsx", import.meta.url), "utf8"),
+  ]);
+  assert.match(api, /community_post_views/);
+  assert.match(api, /error\.code === "23505"/);
+  assert.match(api, /viewCount: Number\(row\.view_count/);
+  assert.match(migration, /primary key \(post_id, user_id\)/);
+  assert.match(migration, /community_post_views_increment_count/);
+  assert.match(migration, /category in \('general', 'question', 'notice'\)/);
+  assert.doesNotMatch(pagination, /totalPages <= 1/);
+  assert.match(editor, /option value="question">질문/);
 });
 
 test("게시판 페이지와 프로필 활동은 같은 30개 페이지 규칙을 사용한다", async () => {

@@ -20104,13 +20104,14 @@ begin;
 create table if not exists public.community_posts (
   id uuid primary key default gen_random_uuid(),
   author_id text not null references public.profiles(id) on delete cascade,
-  category text not null default 'general' check (category in ('general', 'notice')),
+  category text not null default 'general' check (category in ('general', 'question', 'notice')),
   title text not null check (char_length(btrim(title)) between 2 and 100),
   body text not null check (char_length(btrim(body)) between 2 and 5000),
   status text not null default 'published' check (status in ('published', 'deleted')),
   pinned boolean not null default false,
   like_count integer not null default 0 check (like_count >= 0),
   comment_count integer not null default 0 check (comment_count >= 0),
+  view_count integer not null default 0 check (view_count >= 0),
   deleted_by text references public.profiles(id) on delete set null,
   deleted_at timestamptz,
   created_at timestamptz not null default now(),
@@ -20139,6 +20140,13 @@ create table if not exists public.community_post_likes (
   primary key (post_id, user_id)
 );
 
+create table if not exists public.community_post_views (
+  post_id uuid not null references public.community_posts(id) on delete cascade,
+  user_id text not null references public.profiles(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (post_id, user_id)
+);
+
 create index if not exists community_posts_feed_idx
   on public.community_posts (status, pinned desc, created_at desc);
 create index if not exists community_posts_popular_idx
@@ -20149,6 +20157,8 @@ create index if not exists community_comments_post_idx
   on public.community_comments (post_id, status, created_at);
 create index if not exists community_comments_author_idx
   on public.community_comments (author_id, created_at desc);
+create index if not exists community_post_views_user_idx
+  on public.community_post_views (user_id);
 
 create or replace function public.rankball_refresh_community_like_count()
 returns trigger
@@ -20191,6 +20201,20 @@ begin
 end;
 $$;
 
+create or replace function public.rankball_increment_community_view_count()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  update public.community_posts
+  set view_count = view_count + 1
+  where id = new.post_id;
+  return new;
+end;
+$$;
+
 drop trigger if exists community_post_likes_refresh_count on public.community_post_likes;
 create trigger community_post_likes_refresh_count
 after insert or delete on public.community_post_likes
@@ -20201,21 +20225,31 @@ create trigger community_comments_refresh_count
 after insert or update of status or delete on public.community_comments
 for each row execute function public.rankball_refresh_community_comment_count();
 
+drop trigger if exists community_post_views_increment_count on public.community_post_views;
+create trigger community_post_views_increment_count
+after insert on public.community_post_views
+for each row execute function public.rankball_increment_community_view_count();
+
 alter table public.community_posts enable row level security;
 alter table public.community_comments enable row level security;
 alter table public.community_post_likes enable row level security;
+alter table public.community_post_views enable row level security;
 
 revoke all on table public.community_posts from public, anon, authenticated;
 revoke all on table public.community_comments from public, anon, authenticated;
 revoke all on table public.community_post_likes from public, anon, authenticated;
+revoke all on table public.community_post_views from public, anon, authenticated;
 grant all on table public.community_posts to service_role;
 grant all on table public.community_comments to service_role;
 grant all on table public.community_post_likes to service_role;
+grant all on table public.community_post_views to service_role;
 
 revoke all on function public.rankball_refresh_community_like_count() from public, anon, authenticated;
 revoke all on function public.rankball_refresh_community_comment_count() from public, anon, authenticated;
+revoke all on function public.rankball_increment_community_view_count() from public, anon, authenticated;
 grant execute on function public.rankball_refresh_community_like_count() to service_role;
 grant execute on function public.rankball_refresh_community_comment_count() to service_role;
+grant execute on function public.rankball_increment_community_view_count() to service_role;
 
 select pg_notify('pgrst', 'reload schema');
 

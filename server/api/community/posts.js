@@ -6,6 +6,7 @@ import {
   COMMUNITY_COMMENT_DAILY_LIMIT,
   COMMUNITY_PAGE_SIZE,
   COMMUNITY_POPULAR_WINDOW_MS,
+  COMMUNITY_POST_CATEGORIES,
   COMMUNITY_POST_DAILY_LIMIT,
   assertCommunityReplyParent,
   canViewCommunityActivity,
@@ -14,7 +15,7 @@ import {
   selectPopularCommunityPosts,
 } from "../../../shared/lib/communityPolicy.js";
 
-const POST_LIST_COLUMNS = "id,author_id,category,title,status,pinned,like_count,comment_count,created_at,updated_at";
+const POST_LIST_COLUMNS = "id,author_id,category,title,status,pinned,like_count,comment_count,view_count,created_at,updated_at";
 const POST_DETAIL_COLUMNS = `${POST_LIST_COLUMNS},body`;
 const COMMENT_COLUMNS = "id,post_id,author_id,parent_id,body,status,created_at,updated_at";
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -48,6 +49,7 @@ function toPost(row = {}, profileById = new Map(), likedPostIds = new Set()) {
     pinned: row.pinned === true,
     likeCount: Number(row.like_count ?? 0),
     commentCount: Number(row.comment_count ?? 0),
+    viewCount: Number(row.view_count ?? 0),
     liked: likedPostIds.has(row.id),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -141,7 +143,7 @@ function getBlockedUserIds(context) {
 async function listPosts(context, body, adminLevel) {
   const limit = Math.max(10, Math.min(40, Math.floor(Number(body.limit) || COMMUNITY_PAGE_SIZE)));
   const offset = Math.max(0, Math.floor(Number(body.offset) || 0));
-  const category = body.category === "notice" || body.category === "general" ? body.category : "all";
+  const category = COMMUNITY_POST_CATEGORIES.includes(body.category) ? body.category : "all";
   let query = context.supabase
     .from("community_posts")
     .select(POST_LIST_COLUMNS, { count: "exact" })
@@ -158,7 +160,7 @@ async function listPosts(context, body, adminLevel) {
       .from("community_posts")
       .select(POST_LIST_COLUMNS)
       .eq("status", "published")
-      .eq("category", "general")
+      .neq("category", "notice")
       .gte("created_at", popularCutoff)
       .order("created_at", { ascending: false })
       .limit(1000),
@@ -242,11 +244,20 @@ async function loadProfileActivity(context, body) {
   };
 }
 
-async function loadPostDetail(context, postId, adminLevel) {
+async function recordPostView(context, postId) {
+  const { error } = await context.supabase
+    .from("community_post_views")
+    .insert({ post_id: postId, user_id: context.profileId });
+  if (!error) return true;
+  if (error.code === "23505") return false;
+  throw error;
+}
+
+async function loadPostDetail(context, postId, adminLevel, countView = false) {
   const row = await readPublishedPost(context, postId);
   const blockedIds = getBlockedUserIds(context);
   if (row.category !== "notice" && blockedIds.has(row.author_id)) throw requestError("community_post_not_found", 404);
-  const [commentsResult, likedPostIds] = await Promise.all([
+  const [commentsResult, likedPostIds, viewRecorded] = await Promise.all([
     context.supabase
       .from("community_comments")
       .select(COMMENT_COLUMNS)
@@ -254,6 +265,7 @@ async function loadPostDetail(context, postId, adminLevel) {
       .eq("status", "published")
       .order("created_at", { ascending: true }),
     loadLikedPostIds(context, [postId]),
+    countView ? recordPostView(context, postId) : false,
   ]);
   if (commentsResult.error) throw commentsResult.error;
   const visibleComments = (commentsResult.data ?? []).filter((comment) => !blockedIds.has(comment.author_id));
@@ -262,7 +274,7 @@ async function loadPostDetail(context, postId, adminLevel) {
   const profileById = await loadProfileMap(context, [row.author_id, ...threadedComments.map((comment) => comment.author_id)]);
   return {
     ok: true,
-    post: toPost(row, profileById, likedPostIds),
+    post: toPost(viewRecorded ? { ...row, view_count: Number(row.view_count ?? 0) + 1 } : row, profileById, likedPostIds),
     comments: threadedComments.map((comment) => toComment(comment, profileById)),
     canModerate: adminLevel >= 30,
   };
@@ -379,7 +391,7 @@ export default async function handler(request, response) {
     let result;
     if (operation === "list") result = await listPosts(context, body, adminLevel);
     else if (operation === "profileActivity") result = await loadProfileActivity(context, body);
-    else if (operation === "detail") result = await loadPostDetail(context, requiredId(body.postId, "community_post_id_invalid"), adminLevel);
+    else if (operation === "detail") result = await loadPostDetail(context, requiredId(body.postId, "community_post_id_invalid"), adminLevel, true);
     else if (operation === "createPost") result = await createPost(context, body, adminLevel);
     else if (operation === "updatePost") result = await updatePost(context, body, adminLevel);
     else if (operation === "deletePost") result = await deletePost(context, body, adminLevel);

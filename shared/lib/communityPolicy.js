@@ -5,6 +5,8 @@ export const COMMUNITY_POST_DAILY_LIMIT = 5;
 export const COMMUNITY_COMMENT_DAILY_LIMIT = 50;
 export const COMMUNITY_PAGE_SIZE = 30;
 export const COMMUNITY_POPULAR_WINDOW_MS = 3 * 24 * 60 * 60 * 1000;
+export const COMMUNITY_POST_CATEGORIES = Object.freeze(["general", "question", "notice"]);
+export const COMMUNITY_POST_CATEGORY_LABELS = Object.freeze({ general: "자유", question: "질문", notice: "공지" });
 
 export function canViewCommunityActivity(privacy = {}, kind = "posts", isOwnProfile = false) {
   const key = kind === "comments" ? "communityComments" : "communityPosts";
@@ -24,7 +26,7 @@ function requiredText(value, minLength, maxLength, errorCode) {
 }
 
 export function normalizeCommunityPostDraft(source = {}, adminLevel = 0) {
-  const category = source.category === "notice" ? "notice" : "general";
+  const category = COMMUNITY_POST_CATEGORIES.includes(source.category) ? source.category : "general";
   if (category === "notice" && adminLevel < 30) throw policyError("community_notice_admin_required", 403);
   return {
     category,
@@ -46,7 +48,7 @@ export function getCommunityPopularityScore(post = {}) {
 export function selectPopularCommunityPosts(posts = [], nowMs = Date.now()) {
   const cutoff = nowMs - COMMUNITY_POPULAR_WINDOW_MS;
   return posts
-    .filter((post) => post.category === "general"
+    .filter((post) => post.category !== "notice"
       && new Date(post.createdAt ?? post.created_at ?? 0).getTime() >= cutoff
       && getCommunityPopularityScore(post) > 0)
     .sort((a, b) => getCommunityPopularityScore(b) - getCommunityPopularityScore(a)

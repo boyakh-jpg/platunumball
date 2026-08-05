@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { MessageCircle, Pencil, Reply, ThumbsUp, Trash2, X } from "lucide-react";
+import { Eye, MessageCircle, Pencil, Reply, ThumbsUp, Trash2, X } from "lucide-react";
 import Button from "../components/common/Button.jsx";
 import Badge from "../components/common/Badge.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import ProfileEmblem from "../components/profile/ProfileEmblem.jsx";
 import { getUserHashtag } from "../lib/handles.js";
 import { formatKoreanDateTime } from "../../shared/lib/matchTimeUtils.js";
-import { COMMUNITY_COMMENT_BODY_MAX } from "../../shared/lib/communityPolicy.js";
+import { COMMUNITY_COMMENT_BODY_MAX, COMMUNITY_POST_CATEGORY_LABELS } from "../../shared/lib/communityPolicy.js";
 import CommunityPostEditor from "./CommunityPostEditor.jsx";
 
 export function CommunityAuthorLink({ author, teams }) {
@@ -94,7 +94,7 @@ export default function CommunityPostDialog({ app, controller }) {
       <section className="app-confirm-dialog community-post-dialog" role="dialog" aria-modal="true" aria-labelledby="community-post-dialog-title" onMouseDown={(event) => event.stopPropagation()}>
         <header className="community-dialog-header">
           <div>
-            <Badge tone={post.category === "notice" ? "orange" : "neutral"}>{post.category === "notice" ? "공지" : "자유"}</Badge>
+            <Badge tone={post.category === "notice" ? "orange" : post.category === "question" ? "blue" : "neutral"}>{COMMUNITY_POST_CATEGORY_LABELS[post.category] ?? "자유"}</Badge>
             <h2 id="community-post-dialog-title">{post.title}</h2>
           </div>
           <Button type="button" variant="secondary" size="sm" className="community-dialog-close" aria-label="게시글 닫기" title="닫기" disabled={pending} onClick={controller.closePost}><X size={18} /></Button>
@@ -121,6 +121,7 @@ export default function CommunityPostDialog({ app, controller }) {
               <Button type="button" variant={post.liked ? "primary" : "secondary"} disabled={pending || detailLoading} aria-pressed={post.liked} onClick={() => controller.toggleLike(post.id)}>
                 <ThumbsUp size={16} /> 추천 {post.likeCount}
               </Button>
+              <span><Eye size={15} /> 조회 {post.viewCount}</span>
               <span><MessageCircle size={15} /> 댓글 {post.commentCount}</span>
               {ownsPost ? <Button type="button" variant="secondary" size="sm" disabled={pending || detailLoading} onClick={() => setEditing(true)}><Pencil size={15} /> 수정</Button> : null}
               {canDeletePost ? <Button type="button" variant="secondary" size="sm" disabled={pending} onClick={() => setConfirmingDelete(true)}><Trash2 size={15} /> 삭제</Button> : null}
