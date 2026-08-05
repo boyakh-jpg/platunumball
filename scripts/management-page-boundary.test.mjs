@@ -658,13 +658,16 @@ test("랜딩의 모집방·대표팀·최근 경기는 선택 대상을 유지�
   assert.match(landing, /authenticated \? \([\s\S]*?경기 찾기[\s\S]*?홈[\s\S]*?\) : \([\s\S]*?로그인/u);
 });
 
-test("랜딩의 통계와 최근 경기 점수는 표시 목록이 아닌 전체 확정 데이터로 계산한다", async () => {
+test("랜딩은 공개 피드와 전체 통계를 분리하고 공개 경기 점수를 표시한다", async () => {
   const landing = await read("src/pages/Landing.jsx");
-  assert.match(landing, /const openRecruiting = openRecruitingPosts\.slice\(0, 3\)/u);
+  assert.match(landing, /const openRecruiting = publicFeed\?\.openRecruiting \?\? openRecruitingPosts\.slice\(0, 3\)/u);
+  assert.match(landing, /const completedMatches = publicFeed\?\.recentMatches \?\? confirmedMatches\.slice\(-3\)\.reverse\(\)/u);
+  assert.match(landing, /post\.status === "open" && post\.visibility !== "private"/u);
+  assert.match(landing, /match\.status === "confirmed" && match\.visibility !== "private"/u);
   assert.match(landing, /openRecruiting: openRecruitingPosts\.length/u);
   assert.match(landing, /completedMatches: confirmedMatches\.length/u);
-  assert.match(landing, /match\.result\?\.scoreA \?\? match\.teamA\?\.score \?\? 0/u);
-  assert.match(landing, /match\.result\?\.scoreB \?\? match\.teamB\?\.score \?\? 0/u);
+  assert.match(landing, /match\.scoreA \?\? match\.result\?\.scoreA \?\? match\.teamA\?\.score \?\? 0/u);
+  assert.match(landing, /match\.scoreB \?\? match\.result\?\.scoreB \?\? match\.teamB\?\.score \?\? 0/u);
 });
 
 test("경로 없는 검색과 방 팝업은 키보드 이동과 조회 실패 복구를 제공한다", async () => {

@@ -55,10 +55,13 @@ export default function TeamDetailView({ controller }) {
         action={(
           <Button
               type="button"
+              size="sm"
               variant={isFavoriteTeam ? "primary" : "secondary"}
               className={isFavoriteTeam ? "favorite-toggle-button ui-liquid-glass active" : "favorite-toggle-button ui-liquid-glass"}
               disabled={favoritePending}
               onClick={() => { void toggleTeamFavorite(); }}
+              aria-label={favoritePending ? "즐겨찾기 저장 중" : isFavoriteTeam ? "즐겨찾기 해제" : "즐겨찾기 추가"}
+              title={isFavoriteTeam ? "즐겨찾기 해제" : "즐겨찾기 추가"}
             >
               <Star size={16} fill={isFavoriteTeam ? "currentColor" : "none"} />
               {favoritePending ? "저장 중" : isFavoriteTeam ? "즐겨찾기됨" : "즐겨찾기"}

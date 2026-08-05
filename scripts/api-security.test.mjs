@@ -187,7 +187,7 @@ test("production schema health cannot seed privileged demo actors", async () => 
   assert.match(source, /production_test_seed_disabled/);
 });
 
-test("public landing stats exposes aggregate counts only", async () => {
+test("public landing exposes aggregate counts and bounded public feed fields", async () => {
   const route = API_ROUTES.get("/landing/stats");
   const source = await readSource("server/api/landing/stats.js");
 
@@ -197,7 +197,12 @@ test("public landing stats exposes aggregate counts only", async () => {
   assert.match(source, /\.eq\("status", "open"\)[\s\S]*?\.eq\("visibility", "public"\)/);
   assert.match(source, /\.eq\("status", "confirmed"\)[\s\S]*?\.eq\("visibility", "public"\)/);
   assert.match(source, /\.is\("deleted_at", null\)/);
+  assert.match(source, /select\("id,title,mode,court_name,scheduled_date,scheduled_time,scheduled_at"\)[\s\S]*?\.limit\(3\)/);
+  assert.match(source, /select\("id,title,team_a_id,team_b_id,score_a,score_b"\)[\s\S]*?\.limit\(3\)/);
+  assert.match(source, /select\("id,name"\)/);
+  assert.match(source, /sendJson\(response, 200, \{ ok: true, stats, feed \}\)/);
   assert.doesNotMatch(source, /getAuthenticatedContext|select\("\*"\)/);
+  assert.doesNotMatch(source, /player_ids|room_state|rules|created_by|referee_id|memo|evidence/);
 });
 
 test("Discord delivery cron uses Vault and stays separate from system maintenance", async () => {

@@ -256,17 +256,13 @@
 }
 
 /* 2026-07-21 compact team actions and separated team controls. */
-.team-detail-heading-row {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-5);
-}
-
-.rank-team-hero .team-detail-heading-row .favorite-toggle-button {
-  flex: 0 0 auto;
-  margin-top: 0;
+.entity-profile-hero-action .favorite-toggle-button {
+  width: var(--ui-icon-button-size);
+  height: var(--ui-icon-button-size);
+  min-height: var(--ui-icon-button-size);
+  padding: 0;
+  gap: 0;
+  font-size: 0;
 }
 
 .my-team-row {

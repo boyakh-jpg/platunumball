@@ -122,14 +122,18 @@ html[data-theme] .app-main :is(
   .gm-room-hero,
   .home-rank-board-head
 ) .eyebrow {
-  color: var(--rb-orange-2);
+  color: var(--hero-eyebrow-color);
 }
 html[data-theme="light"] .ui-page-hero,
 html[data-theme="light"] .ui-page-hero :where(*) {
   text-shadow: none;
 }
 html[data-theme="light"] .app-main .ui-page-hero .eyebrow {
-  color: var(--rb-orange-pressed);
+  color: var(--hero-eyebrow-color);
+}
+html[data-theme="light"] .app-main .rank-home .ui-page-hero {
+  --hero-title-color: var(--rb-orange-pressed);
+  --hero-eyebrow-color: var(--rb-cream);
 }
 /* Home hero keeps the next-match board below the rank copy on the left. */
 .rank-home .rank-summary-grid .home-rank-board-head {
@@ -259,9 +263,6 @@ html[data-theme] .app-main :is(
 ) {
   color: var(--hero-title-color);
 }
-html[data-theme] .app-main .team-hub-board strong {
-  color: var(--rb-gold);
-}
 html[data-theme] .app-main :is(
   .home-hero-next > em,
   .home-hero-stats em,
@@ -274,14 +275,11 @@ html[data-theme] .app-main :is(
 ) {
   color: var(--hero-copy-color);
 }
-html[data-theme="light"] .app-main .team-hub-board :is(
-  .team-hub-board-head > b,
-  .team-hub-board-name strong,
-  .team-hub-board-identity em,
-  .team-hub-board-stats b,
-  .team-hub-board-stats em
-) {
+html[data-theme] .app-main .ui-page-hero .ui-liquid-glass :where(*) {
   color: var(--rb-cream);
+}
+html[data-theme] .app-main .ui-page-hero .team-hub-board .team-hub-board-identity em {
+  color: var(--rb-yellow);
 }
 html[data-theme] .app-main :is(.om-match-hero, .arena-recruit-hero) {
   grid-template-columns: minmax(0, 1fr) minmax(0, var(--ui-hero-status-width));

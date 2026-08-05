@@ -23,7 +23,7 @@ function getScheduleLabel(item = {}) {
 }
 
 function getSideName(match = {}, sideName) {
-  return match?.[sideName]?.name || MATCH_SIDE_FALLBACK_NAMES[sideName];
+  return match?.[sideName]?.name || match?.[`${sideName}Name`] || MATCH_SIDE_FALLBACK_NAMES[sideName];
 }
 
 function normalizeLandingStats(value = {}) {
@@ -36,16 +36,25 @@ function normalizeLandingStats(value = {}) {
     : null;
 }
 
+function normalizeLandingFeed(value = {}) {
+  if (!Array.isArray(value?.openRecruiting) || !Array.isArray(value?.recentMatches)) return null;
+  return {
+    openRecruiting: value.openRecruiting.filter((item) => typeof item?.id === "string").slice(0, 3),
+    recentMatches: value.recentMatches.filter((item) => typeof item?.id === "string").slice(0, 3),
+  };
+}
+
 export default function Landing({ state, authenticated = false }) {
   const [publicStats, setPublicStats] = useState(null);
+  const [publicFeed, setPublicFeed] = useState(null);
   const users = state?.users ?? [];
   const matches = state?.matches ?? [];
   const teams = state?.teams ?? [];
   const openRecruitingPosts = (state?.recruitingPosts ?? [])
-    .filter((post) => post.status !== "closed");
-  const openRecruiting = openRecruitingPosts.slice(0, 3);
-  const confirmedMatches = matches.filter((match) => match.status === "confirmed");
-  const completedMatches = confirmedMatches.slice(-3).reverse();
+    .filter((post) => post.status === "open" && post.visibility !== "private");
+  const confirmedMatches = matches.filter((match) => match.status === "confirmed" && match.visibility !== "private");
+  const openRecruiting = publicFeed?.openRecruiting ?? openRecruitingPosts.slice(0, 3);
+  const completedMatches = publicFeed?.recentMatches ?? confirmedMatches.slice(-3).reverse();
   const topUser = users
     .filter((user) => isPlacementComplete(user.ratings))
     .sort((a, b) => (b.ratings?.integrated ?? 0) - (a.ratings?.integrated ?? 0))[0];
@@ -70,7 +79,9 @@ export default function Landing({ state, authenticated = false }) {
       .then((response) => (response.ok ? response.json() : null))
       .then((payload) => {
         const nextStats = normalizeLandingStats(payload?.stats);
+        const nextFeed = normalizeLandingFeed(payload?.feed);
         if (nextStats) setPublicStats(nextStats);
+        if (nextFeed) setPublicFeed(nextFeed);
       })
       .catch(() => {});
     return () => controller.abort();
@@ -218,7 +229,7 @@ export default function Landing({ state, authenticated = false }) {
                 <Link to={`/app/matches?match=${encodeURIComponent(match.id)}`} className="ui-design-result-row" key={match.id}>
                   <span className="is-win">완료</span>
                   <strong>{getSideName(match, "teamA")} vs {getSideName(match, "teamB")}</strong>
-                  <b>{match.result?.scoreA ?? match.teamA?.score ?? 0} : {match.result?.scoreB ?? match.teamB?.score ?? 0}</b>
+                  <b>{match.scoreA ?? match.result?.scoreA ?? match.teamA?.score ?? 0} : {match.scoreB ?? match.result?.scoreB ?? match.teamB?.score ?? 0}</b>
                 </Link>
               )) : (
                 <div className="ui-empty-state-compact">아직 공개된 경기 기록이 없습니다.</div>

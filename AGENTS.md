@@ -12,6 +12,7 @@ Caveman mode.
 
 # Coding
 
+- 제1원칙: 운영 데이터, 사용자 값, 테마 색상, 경로, 화면별 시각 규칙을 하드코딩하지 않는다. canonical DB/API, 공용 helper, 디자인 토큰을 재사용한다.
 - Do not rewrite whole files unless necessary.
 - Make minimal safe changes.
 - Do not delete assets unless asked.

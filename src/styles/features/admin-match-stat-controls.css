@@ -25,11 +25,15 @@
   gap: var(--space-6);
 }
 
-.entity-profile-hero-heading-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-6);
+.entity-profile-hero-action {
+  position: absolute;
+  top: var(--space-8);
+  right: var(--space-8);
+  z-index: 3;
+}
+
+.entity-profile-hero-action + .entity-profile-hero-copy {
+  padding-right: calc(var(--ui-icon-button-size) + var(--space-8));
 }
 
 .entity-profile-hero-identity {

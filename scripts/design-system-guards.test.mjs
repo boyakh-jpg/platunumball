@@ -1107,12 +1107,12 @@ test("home Season Zero banner routes by founding player status", () => {
 });
 
 test("hero inner boards share one readable liquid-glass system", () => {
-  assert.equal(count(tokenStyles, "--hero-copy-color: var(--rb-cream);"), 1);
+  assert.equal(count(tokenStyles, "--hero-copy-color: var(--rb-cream);"), 2);
   assert.equal(count(tokenStyles, "0 2px 3px rgba(5, 7, 10, 0.84)"), 1);
   assert.equal(count(tokenStyles, "0 6px 18px rgba(0, 0, 0, 0.32)"), 1);
   assert.equal(count(tokenStyles, "0 1px 2px rgba(5, 7, 10, 0.84)"), 1);
   assert.equal(count(tokenStyles, "0 3px 8px rgba(0, 0, 0, 0.28)"), 1);
-  assert.match(tokenStyles, /html\[data-theme="light"\][\s\S]*?--hero-title-color:\s*var\(--rb-text\);[\s\S]*?--hero-title-shadow:\s*none;[\s\S]*?--hero-copy-color:\s*var\(--rb-text\);[\s\S]*?--hero-copy-shadow:\s*none;/);
+  assert.match(tokenStyles, /html\[data-theme="light"\][\s\S]*?--hero-title-color:\s*var\(--rb-cream\);[\s\S]*?--hero-eyebrow-color:\s*var\(--rb-orange-pressed\);[\s\S]*?--hero-title-shadow:\s*none;[\s\S]*?--hero-copy-color:\s*var\(--rb-cream\);[\s\S]*?--hero-copy-shadow:\s*none;/);
   assert.doesNotMatch(tokenStyles, /--hero-title-shadow:[\s\S]{0,100}?14px 34px/);
   assert.doesNotMatch(tokenStyles, /--hero-copy-shadow:[\s\S]{0,100}?8px 20px/);
   assert.equal(count(tokenStyles, "--ui-liquid-glass-filter: blur(0.75px) saturate(1.02);"), 2);
@@ -1149,7 +1149,9 @@ test("hero inner boards share one readable liquid-glass system", () => {
   assert.match(visualSystemStyles, /\.om-match-hero,\s*\.arena-recruit-hero[\s\S]*?grid-template-columns:\s*minmax\(0,\s*1fr\) minmax\(0,\s*var\(--ui-hero-status-width\)\);/);
   assert.match(visualSystemStyles, /\.om-match-panel,\s*\.arena-hero-panel[\s\S]*?width:\s*min\(100%,\s*var\(--ui-hero-status-width\)\);/);
   assert.match(visualSystemStyles, /\.om-match-actions,\s*\.arena-hero-actions[\s\S]*?height:\s*var\(--ui-button-height\);/);
-  assert.match(visualSystemStyles, /\.eyebrow\s*\{[^}]*color:\s*var\(--rb-orange-2\);/);
+  assert.match(visualSystemStyles, /\.eyebrow\s*\{[^}]*color:\s*var\(--hero-eyebrow-color\);/);
+  assert.match(visualSystemStyles, /html\[data-theme="light"\] \.app-main \.rank-home \.ui-page-hero\s*\{[^}]*--hero-title-color:\s*var\(--rb-orange-pressed\);[^}]*--hero-eyebrow-color:\s*var\(--rb-cream\);/);
+  assert.match(visualSystemStyles, /html\[data-theme\] \.app-main \.ui-page-hero \.ui-liquid-glass :where\(\*\)\s*\{[^}]*color:\s*var\(--rb-cream\);/);
   assert.match(visualSystemStyles, /\.home-hero-next > strong,[\s\S]*?\.arena-hero-stats strong[\s\S]*?color:\s*var\(--hero-title-color\);/);
   assert.doesNotMatch(pageSources.landing, /landing-compact-summary/);
   assert.match(
@@ -1235,14 +1237,8 @@ test("팀 허브 대표팀 보드는 팀 전용 너비와 테마 대응 고대�
     read("src/styles/tokens.css"),
     /--rb-yellow:\s*#ffd36c;/,
   );
-  assert.match(
-    visualSystemStyles,
-    /\.team-hub-board strong\s*\{[^}]*color:\s*var\(--rb-gold\);/,
-  );
-  assert.match(
-    visualSystemStyles,
-    /html\[data-theme="light"\] \.app-main \.team-hub-board :is\([\s\S]*?\.team-hub-board-name strong,[\s\S]*?\)\s*\{[^}]*color:\s*var\(--rb-cream\);/,
-  );
+  assert.match(visualSystemStyles, /\.ui-page-hero \.ui-liquid-glass :where\(\*\)\s*\{[^}]*color:\s*var\(--rb-cream\);/);
+  assert.match(visualSystemStyles, /\.ui-page-hero \.team-hub-board \.team-hub-board-identity em\s*\{[^}]*color:\s*var\(--rb-yellow\);/);
   assert.match(
     readCssTree("src/styles/global-surfaces.css"),
     /\.team-hub-board\s*\{[^}]*width:\s*min\(100%,\s*720px\);[^}]*max-width:\s*none;/,
@@ -1270,6 +1266,10 @@ test("team heroes keep one tier emblem and use the shared liquid-glass primitive
     teamDetailSource,
     /favorite-toggle-button ui-liquid-glass/,
   );
+  assert.match(entityProfileHeroSource, /className="entity-profile-hero-action"/);
+  assert.match(teamDetailSource, /aria-label=\{favoritePending \? "즐겨찾기 저장 중" : isFavoriteTeam \? "즐겨찾기 해제" : "즐겨찾기 추가"\}/);
+  assert.match(globalAdminStyles, /\.entity-profile-hero-action\s*\{[^}]*position:\s*absolute;[^}]*top:\s*var\(--space-8\);[^}]*right:\s*var\(--space-8\);/);
+  assert.match(readCssTree("src/styles/global-court-controls.css"), /\.entity-profile-hero-action \.favorite-toggle-button\s*\{[^}]*width:\s*var\(--ui-icon-button-size\);[^}]*font-size:\s*0;/);
   assert.equal(count(teamDetailSource, 'className="ui-liquid-glass"'), 2);
   assert.doesNotMatch(
     visualSystemStyles,

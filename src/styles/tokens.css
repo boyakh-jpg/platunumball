@@ -222,6 +222,7 @@
   --hero-title-line-height: 0.9;
   --hero-title-letter-spacing: 0.018em;
   --hero-title-color: var(--rb-cream);
+  --hero-eyebrow-color: var(--rb-orange-2);
   --hero-title-shadow:
     0 2px 3px rgba(5, 7, 10, 0.84),
     0 6px 18px rgba(0, 0, 0, 0.32);
@@ -347,9 +348,10 @@ html[data-theme="light"] {
   --ui-liquid-glass-refraction: url("#ui-liquid-glass-refraction");
   --ui-liquid-glass-shadow: 0 6px 18px rgba(35, 50, 59, 0.06);
   --ui-liquid-glass-filter: blur(0.75px) saturate(1.02);
-  --hero-title-color: var(--rb-text);
+  --hero-title-color: var(--rb-cream);
+  --hero-eyebrow-color: var(--rb-orange-pressed);
   --hero-title-shadow: none;
-  --hero-copy-color: var(--rb-text);
+  --hero-copy-color: var(--rb-cream);
   --hero-copy-shadow: none;
   --court-line: rgba(30, 24, 18, 0.05);
   --scoreboard: #fffaf1;
