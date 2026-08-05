@@ -381,11 +381,11 @@
   .community-post-row {
     grid-template-columns: auto minmax(0, 1fr) auto auto auto auto;
     grid-template-areas:
-      "labels title title title title title"
-      "author author date views likes comments";
-    gap: var(--space-2) var(--space-3);
+      "title title title title title title"
+      "labels author date views likes comments";
+    gap: var(--space-3);
     min-height: 76px;
-    padding: 8px 0;
+    padding: 10px 0;
   }
 
   .community-post-labels {
@@ -394,10 +394,34 @@
 
   .community-post-title {
     grid-area: title;
+    min-height: 32px;
+    padding: 0;
+    font-size: 0.95rem;
   }
 
   .community-post-author-cell {
     grid-area: author;
+  }
+
+  .community-post-author-cell .community-author > .avatar,
+  .community-post-author-cell .community-author small,
+  .community-post-count > svg {
+    display: none;
+  }
+
+  .community-post-author-cell .community-author {
+    gap: 0;
+  }
+
+  .community-post-count {
+    justify-content: flex-start;
+    gap: 0;
+    font-size: 0;
+  }
+
+  .community-post-count::before {
+    content: attr(aria-label);
+    font-size: var(--font-size-meta);
   }
 
   .community-post-date {

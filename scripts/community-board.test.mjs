@@ -92,7 +92,9 @@ test("게시글 목록은 제목 중심 열과 모바일 두 줄 구조를 사�
   assert.match(page, /community-post-views/);
   assert.doesNotMatch(page, /controller\.page\.total\}개/);
   assert.doesNotMatch(page, /community-post-open|ChevronRight/);
-  assert.match(styles, /"labels title title title title title"\s*"author author date views likes comments"/);
+  assert.match(styles, /"title title title title title title"\s*"labels author date views likes comments"/);
+  assert.match(styles, /\.community-post-author-cell \.community-author > \.avatar,[\s\S]*\.community-post-count > svg\s*\{\s*display: none/);
+  assert.match(styles, /\.community-post-count::before\s*\{[\s\S]*content: attr\(aria-label\)/);
   assert.match(styles, /width: min\(960px, 100%\)/);
   assert.match(styles, /@media \(min-width: 721px\)[\s\S]*font-size: var\(--font-size-section-title\)/);
   assert.match(styles, /\.community-post-byline \{\s*justify-content: flex-end/);
