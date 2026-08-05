@@ -1,5 +1,11 @@
 # RankBall 데이터 저장 모델
 
+## 업로드 이미지 저장 원칙
+
+- 사용자·운영자 업로드 이미지 객체는 Cloudflare R2만 canonical storage로 사용한다.
+- 공개 객체와 비공개 증거 객체는 bucket을 분리하고, DB에는 공개 URL이나 바이너리가 아닌 R2 object key와 검증 메타데이터만 저장한다.
+- `community-post-images` Supabase Storage는 R2 이관이 필요한 기존 예외다. 이관은 복사·해시 검증·DB key 전환 후 원본 정리 순서로 수행한다.
+
 ## 2026-08-05 회원 탈퇴
 
 - `account_withdrawals`는 Google 계정 식별자의 SHA-256 해시와 7일 차단 만료 시각만 service-role 전용으로 보관한다.
