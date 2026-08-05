@@ -6,11 +6,13 @@ import SettingsPrimaryColumn from "./SettingsPrimaryColumn.jsx";
 import SettingsSideColumn from "./SettingsSideColumn.jsx";
 import SettingsRefereeSection from "./SettingsRefereeSection.jsx";
 import SettingsActivityDialog from "./SettingsActivityDialog.jsx";
+import SettingsListDialog from "./SettingsListDialog.jsx";
 
 export default function SettingsPageView({ controller, auth }) {
   const { sectionMeta, settingsSection, selectedReportCourtRequest } = controller;
   const canSwitchTestAccount = controller.serverAdminLevel >= 100 || Boolean(controller.currentTestLoginId);
   const [activityDetail, setActivityDetail] = useState(null);
+  const [activityList, setActivityList] = useState("");
   const [testLoginId, setTestLoginId] = useState(() => controller.currentTestLoginId || auth?.testAccounts?.[0]?.id || "");
   const [testSwitchStatus, setTestSwitchStatus] = useState("");
 
@@ -39,7 +41,7 @@ export default function SettingsPageView({ controller, auth }) {
       <div className={`content-grid ${settingsSection === "main" ? "" : "settings-section-grid"}`}>
         <SettingsPrimaryColumn controller={controller} />
 
-        <SettingsSideColumn controller={controller} onOpenDetail={setActivityDetail} />
+        <SettingsSideColumn controller={controller} onOpenList={setActivityList} />
       </div>
 
       <SettingsRefereeSection controller={controller} />
@@ -73,6 +75,15 @@ export default function SettingsPageView({ controller, auth }) {
           </Button>
         </div>
       ) : null}
+      <SettingsListDialog
+        kind={activityList}
+        controller={controller}
+        onClose={() => setActivityList("")}
+        onOpenDetail={(detail) => {
+          setActivityList("");
+          setActivityDetail(detail);
+        }}
+      />
       <SettingsActivityDialog detail={activityDetail} controller={controller} onClose={() => setActivityDetail(null)} />
     </div>
   );

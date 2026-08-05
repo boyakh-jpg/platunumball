@@ -8,6 +8,7 @@ export const SETTINGS_PAGE_SOURCE_PATHS = [
   "src/pages/useSettingsReportController.jsx",
   "src/pages/SettingsPageView.jsx",
   "src/pages/SettingsActivityDialog.jsx",
+  "src/pages/SettingsListDialog.jsx",
   "src/pages/SettingsPrimaryColumn.jsx",
   "src/pages/SettingsSideColumn.jsx",
   "src/pages/SettingsReportCard.jsx",

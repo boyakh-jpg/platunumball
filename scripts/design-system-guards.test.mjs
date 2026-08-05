@@ -550,7 +550,7 @@ test("페이지 CSS는 공통 표면 토큰을 다시 1px로 덮지 않는다", 
 
 test("설정 보조 정보는 같은 작은 글자 규격을 사용한다", () => {
   assert.equal(count(settingsSource, "contract-grid single ui-support-grid"), 2);
-  assert.equal(count(settingsSource, "compact-list ui-support-list"), 4);
+  assert.equal(count(settingsSource, "compact-list ui-support-list"), 2);
   assert.match(settingsSource, /ui-empty-state-compact ui-support-copy/);
   assert.match(
     primitiveStyles,

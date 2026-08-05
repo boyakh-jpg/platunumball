@@ -1594,7 +1594,7 @@ test("blocked player labels remain identifiable after directory filtering", asyn
     readSource("src/data/repository/settings.js"),
     readSource("src/hooks/appData/actions.js"),
     readSource("server/api/settings/sync.js"),
-    readSource("src/pages/SettingsSideColumn.jsx"),
+    readSource("src/pages/SettingsListDialog.jsx"),
   ]);
   assert.match(settingsRepository, /blockedUserProfiles/);
   assert.match(settingsRepository, /userProfile\?\.id === userId \? userProfile/);

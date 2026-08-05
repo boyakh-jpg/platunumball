@@ -4,13 +4,12 @@ import Card from "../components/common/Card.jsx";
 import Badge from "../components/common/Badge.jsx";
 import SearchPicker from "../components/common/SearchPicker.jsx";
 import { COURT_REQUEST_TRUST_MIN } from "../lib/constants.js";
-import { COURT_ACCESS_OPTIONS, COURT_KIND_OPTIONS, COURT_LAYOUT_OPTIONS, COURT_PUBLIC_ACCESS_OPTIONS, COURT_SOURCE_URL_MAX_LENGTH, COURT_SURFACE_OPTIONS, COURT_TYPE_OPTIONS, getCourtPublicAccessLabel, normalizeCourtFacilityName } from "../lib/courts.js";
-import { getAdminStatusLabel } from "../lib/admin.js";
+import { COURT_ACCESS_OPTIONS, COURT_KIND_OPTIONS, COURT_LAYOUT_OPTIONS, COURT_PUBLIC_ACCESS_OPTIONS, COURT_SOURCE_URL_MAX_LENGTH, COURT_SURFACE_OPTIONS, COURT_TYPE_OPTIONS, normalizeCourtFacilityName } from "../lib/courts.js";
 import { COURT_COST_OPTIONS, COURT_LIGHTING_OPTIONS, formatCourtDistance } from "./settingsPageModel.js";
 import { COURT_REQUEST_PHOTO_MAX } from "../../shared/lib/courtRequestImagePolicy.js";
 
 import { SettingsReportCard } from "./SettingsReportCard.jsx";
-export default function SettingsSideColumn({ controller, onOpenDetail }) {
+export default function SettingsSideColumn({ controller, onOpenList }) {
   const {
     app,
     blockedUserIds,
@@ -39,8 +38,6 @@ export default function SettingsSideColumn({ controller, onOpenDetail }) {
     courtQuotaLabel,
     courtQuotaMessage,
     courtQuotaTitle,
-    userMap,
-    matchMap,
     courtRequests,
     naverMapKeyReady,
     courtAddressSelected,
@@ -57,7 +54,6 @@ export default function SettingsSideColumn({ controller, onOpenDetail }) {
     selectedBlockUserId,
     submitBlock,
     renderBlockUserSearchItem,
-    releaseBlock,
     updateCourtDraft,
     searchCourtAddress,
     pickCourtMapPin,
@@ -66,7 +62,6 @@ export default function SettingsSideColumn({ controller, onOpenDetail }) {
     removeCourtPhoto,
     confirmCourtFieldLocation,
     submitCourtRequest,
-    reportCourtRequest,
     setCourtLocationEntryMode,
   } = controller;
   const courtLocationReady = courtAddressSelected && courtPinConfirmed && (!onsiteCourtEntry || courtFieldLocation);
@@ -111,17 +106,7 @@ export default function SettingsSideColumn({ controller, onOpenDetail }) {
               <Button type="submit" variant="secondary" disabled={!selectedBlockUserId || blockSavePending}>{blockSavePending ? "저장 중" : "차단"}</Button>
               {blockSaveStatus ? <small role="status">{blockSaveStatus}</small> : null}
             </form>
-            <div className="compact-list ui-support-list">
-              {blockedUserIds.length ? blockedUserIds.map((userId) => (
-                <div key={userId} className="settings-history-row">
-                  <span>{userMap[userId]?.name ?? app.state.settings?.blockedUserProfiles?.[userId]?.name ?? "플레이어"}</span>
-                  <div className="settings-list-actions">
-                    <button type="button" className="ui-compact-action" onClick={() => onOpenDetail?.({ kind: "block", item: { userId } })}>보기</button>
-                    <button type="button" className="ui-compact-action" disabled={blockSavePending} onClick={() => releaseBlock(userId)}>해제</button>
-                  </div>
-                </div>
-              )) : <div><span>차단한 플레이어가 없습니다.</span><strong>0</strong></div>}
-            </div>
+            <Button type="button" variant="secondary" className="ui-button-block" onClick={() => onOpenList?.("blocks")}>차단 플레이어 목록</Button>
           </Card>
 
           <Card className="section-card settings-court-card">
@@ -431,36 +416,10 @@ export default function SettingsSideColumn({ controller, onOpenDetail }) {
                 </section>
               </form>
             ) : null}
-            <div className="compact-list ui-support-list">
-              {courtRequests.slice(0, 4).map((request) => {
-                const requester = userMap[request.requestedBy];
-                const alreadyReported = app.state.reports?.some((report) => (
-                  report.type === "court_request" &&
-                  report.targetId === request.id &&
-                  report.by === app.currentUserId &&
-                  report.status !== "dismissed"
-                ));
-                const canReportRequest = request.requestedBy !== app.currentUserId
-                  && ["pending", "reported"].includes(request.status ?? "pending")
-                  && !alreadyReported;
-                return (
-                  <div key={request.id} className="settings-history-row">
-                    <span>{request.name} · {request.addressText} · 공개 여부 {getCourtPublicAccessLabel(request)} · {requester?.name ?? "요청자"} 신뢰도 {request.requestedByTrustScore ?? requester?.trustScore ?? "-"}</span>
-                    <strong>{getAdminStatusLabel(request.status)}</strong>
-                    <div className="settings-list-actions">
-                      <button type="button" className="ui-compact-action" onClick={() => onOpenDetail?.({ kind: "courtRequest", item: request })}>보기</button>
-                      <button type="button" className="ui-compact-action" disabled={!canReportRequest} onClick={() => reportCourtRequest(request)}>
-                        {alreadyReported ? "신고됨" : "신고 선택"}
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-              {!courtRequests.length ? <div className="settings-court-empty"><span>요청한 구장이 없습니다.</span></div> : null}
-            </div>
+            <Button type="button" variant="secondary" className="ui-button-block" onClick={() => onOpenList?.("courtRequests")}>구장 신청 목록 {courtRequests.length}건</Button>
           </Card>
 
-<SettingsReportCard controller={controller} onOpenDetail={onOpenDetail} />
+<SettingsReportCard controller={controller} onOpenList={onOpenList} />
 
         </aside>
   );

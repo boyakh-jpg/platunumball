@@ -55,11 +55,18 @@ test("차단 상세는 저장된 차단 시각을 표시한다", () => {
   assert.notEqual(rowsByLabel(model)["차단 시각"], "-");
 });
 
-test("사용자와 운영자 신고 목록은 열람 전 기본 닫힘이다", async () => {
-  const sources = await Promise.all([
+test("설정 목록은 공용 팝업을 사용하고 운영자 신고 목록은 기본 닫힘이다", async () => {
+  const [settingsView, settingsSide, settingsReport, settingsList, adminDetail] = await Promise.all([
+    readFile(new URL("../src/pages/SettingsPageView.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/pages/SettingsSideColumn.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/pages/SettingsReportCard.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/pages/SettingsListDialog.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/pages/AdminDetailPanel.jsx", import.meta.url), "utf8"),
   ]);
 
-  sources.forEach((source) => assert.match(source, /<details>[\s\S]*?<summary>신고 목록 열람<\/summary>[\s\S]*?<\/details>/u));
+  assert.match(settingsView, /<SettingsListDialog/u);
+  assert.match(settingsSide, /onOpenList\?\.\("blocks"\)[\s\S]*onOpenList\?\.\("courtRequests"\)/u);
+  assert.match(settingsReport, /onOpenList\?\.\("reports"\)/u);
+  assert.match(settingsList, /kind === "reports"[\s\S]*kind === "blocks"/u);
+  assert.match(adminDetail, /<details>[\s\S]*?<summary>신고 목록 열람<\/summary>[\s\S]*?<\/details>/u);
 });

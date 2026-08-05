@@ -24,14 +24,6 @@
   min-width: 172px;
 }
 
-.compact-list > .settings-court-empty {
-  justify-content: flex-start;
-  font-family: inherit;
-  font-size: var(--ui-button-font-size);
-  font-weight: var(--ui-button-font-weight);
-  letter-spacing: 0;
-}
-
 @media (max-width: 520px) {
   .naver-pin-picker-footer {
     align-items: stretch !important;
