@@ -110,7 +110,7 @@
   - 신청자는 자기 application을 읽을 수 있음
   - public은 tournament를 insert/update 할 수 없음
   - legacy `rankball_state`는 앱 경로에서 쓰지 않으며 production DB에도 존재하지 않음
-- OAuth/profile 소유권이 안정된 뒤에만 demo login을 `VITE_DEMO_LOGIN=true` 뒤로 이동.
+- 공개 demo login은 `VITE_DEMO_LOGIN=true`여도 localhost 비프로덕션 런타임에서만 허용한다. 배포 환경의 설정 전환은 현재 JWT와 서버 관리자 레벨 또는 정확한 테스트 Auth identity를 다시 검증한다.
 
 ## 2026-06-24 구장 등록 배포 TODO
 
@@ -471,7 +471,7 @@ Remaining:
 
 - `npm run seed:supabase` now maps seeded demo profiles to backend test login ids.
 - Mapping rule: `u1 -> rankball-001`, `u2 -> rankball-002`, and so on.
-- Test login uses Supabase password Auth for `rankball-001@rankball.test`, `rankball-002@rankball.test`, and so on.
+- Test login uses a server-generated one-time magic-link token for `rankball-001@rankball.test`, `rankball-002@rankball.test`, and so on. No shared test password is bundled in the browser.
 - Test seed profiles link `profiles.auth_user_id` to `auth.users.id`; Google accounts use the same ownership path.
 - Test seed profiles are saved as onboarding-complete rows. If older `profiles.test_login_id` rows lack onboarding lock fields, the client maps them as completed test profiles until the seed is rerun.
 - `npm run seed:supabase:cleanup` is dry-run by default.
@@ -589,6 +589,16 @@ Remaining:
 - Missing required maintenance RPCs are operational failures. `/api/system/maintenance` and the Discord worker return HTTP `503` instead of reporting a skipped cleanup as success.
 - Remote full simulation uses a `60s` request timeout by default; local in-process simulation keeps `20s`. This prevents transient remote latency from being misreported as a reducer failure.
 - Remaining external operation work is Discord room channel/thread linking and a continuously supervised bridge worker. Court hard delete/restore stays intentionally deferred until retention policy is fixed.
+
+## 2026-08-05 security hardening
+
+- Public alpha login now requires localhost, the explicit flag, and a non-production runtime. Settings switching still requires a fresh Supabase Auth/profile binding.
+- A regular test account cannot switch into a test profile with an active administrator appointment. Only a server-verified level 100 session may target one.
+- Test referee IDs no longer bypass qualification, search, favorites, match creation, or trust revocation. Demo referees remain usable through their ordinary active referee appointments.
+- Production schema health can no longer seed privileged demo actors. The legacy `rankball-001` region-manager bootstrap appointment is revoked with an audit row; demo player data remains intact.
+- Court database updates require a 4–160 character audit reason from every administrator; the temporary `boyakh` exception was removed.
+- Supabase, React Router, Vite, and PostCSS were moved past applicable Auth routing, open-redirect/XSS, dev-server path traversal, and source-map disclosure advisories.
+- The remaining React Router audit alert affects only unstable RSC APIs. This SPA imports none, and `api-security.test.mjs` blocks adding an RSC action path. Upgrade to the patched RSC release when it is published.
 
 ## 2026-07-13 Discord bridge worker hardening
 

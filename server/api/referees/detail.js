@@ -1,7 +1,7 @@
 import { allowRequestMethod, getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
 import { fromRemoteProfile } from "../../../shared/lib/profileMappers.js";
 import { PROFILE_CARD_COLUMNS, PROFILE_ME_COLUMNS } from "../../../shared/lib/repositoryColumns.js";
-import { isRefereeGrade, TEST_REFEREE_LOGIN_IDS } from "../../../shared/lib/constants.js";
+import { isRefereeGrade } from "../../../shared/lib/constants.js";
 import { loadCompactMatchList } from "../matches/list.js";
 
 function isActiveAppointment(row = {}, now = Date.now()) {
@@ -37,7 +37,7 @@ export default async function handler(request, response) {
     const context = await getAuthenticatedContext(request, { allowMissingProfile: true, profileSelect: PROFILE_ME_COLUMNS });
     const limit = Math.max(1, Math.min(20, Math.floor(Number(body.limit) || 12)));
     const [profileResult, appointmentResult, matchResult, totalResult, rankedResult, officialResult] = await Promise.all([
-      context.supabase.from("profiles").select(`${PROFILE_CARD_COLUMNS},test_login_id`).eq("id", refereeId).maybeSingle(),
+      context.supabase.from("profiles").select(PROFILE_CARD_COLUMNS).eq("id", refereeId).maybeSingle(),
       context.supabase
         .from("referee_appointments")
         .select("id,user_id,role,grade,status,starts_at,ends_at")
@@ -60,8 +60,7 @@ export default async function handler(request, response) {
     if (rankedResult.error) throw rankedResult.error;
     if (officialResult.error) throw officialResult.error;
     const appointment = (appointmentResult.data ?? []).find((row) => isActiveAppointment(row));
-    const isTestReferee = TEST_REFEREE_LOGIN_IDS.includes(profileResult.data?.test_login_id);
-    if (!profileResult.data || (!appointment && !isTestReferee)) {
+    if (!profileResult.data || !appointment) {
       sendJson(response, 404, { error: "referee_not_found", refereeId });
       return;
     }

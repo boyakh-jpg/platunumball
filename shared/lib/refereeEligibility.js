@@ -1,7 +1,6 @@
 import {
   REFEREE_ACTIVE_TRUST_MIN,
   REFEREE_TRUST_MIN,
-  TEST_REFEREE_LOGIN_IDS,
   isRefereeGrade,
 } from "./constants.js";
 
@@ -13,8 +12,6 @@ const INACTIVE_REFEREE_STATUSES = new Set([
   "suspended",
   "blocked",
 ]);
-const TEST_REFEREE_LOGIN_ID_SET = new Set(TEST_REFEREE_LOGIN_IDS);
-
 function isActiveRefereeStatus(status = "active") {
   return !INACTIVE_REFEREE_STATUSES.has(String(status || "active"));
 }
@@ -53,7 +50,6 @@ function hasRefereeQualification(
   throughMs = nowMs,
 ) {
   if (!user?.id) return false;
-  if (TEST_REFEREE_LOGIN_ID_SET.has(String(user.testLoginId ?? "").toLowerCase())) return true;
   const profile = user.refereeProfile ?? {};
   const profileGrade = profile.grade ?? user.refereeGrade;
   const profileStatus = profile.status ?? user.refereeStatus ?? "active";
@@ -101,7 +97,6 @@ export function isEligibleReferee(
         : throughDate,
     ).getTime()
     : Date.now();
-  if (TEST_REFEREE_LOGIN_ID_SET.has(String(user?.testLoginId ?? "").toLowerCase())) return true;
   return hasRefereeQualification(user, refereeAppointments, Date.now(), parsedThroughMs);
 }
 

@@ -16,18 +16,11 @@ export async function isActiveReferee(supabase, userId) {
 
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("id, test_login_id")
+    .select("id")
     .eq("id", userId)
     .maybeSingle();
   if (profileError) throw profileError;
   if (!profile) return false;
-
-  const user = {
-    id: profile.id,
-    trustScore: 70,
-    testLoginId: profile.test_login_id ?? "",
-  };
-  if (isEligibleReferee(user, undefined, [])) return true;
 
   const { data: appointments, error } = await supabase
     .from("referee_appointments")
@@ -37,5 +30,5 @@ export async function isActiveReferee(supabase, userId) {
     .eq("status", "active");
   if (error) throw error;
 
-  return isEligibleReferee(user, undefined, (appointments ?? []).map(mapRefereeAppointment));
+  return isEligibleReferee({ id: profile.id }, undefined, (appointments ?? []).map(mapRefereeAppointment));
 }

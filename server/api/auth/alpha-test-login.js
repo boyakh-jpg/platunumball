@@ -11,8 +11,6 @@ import { normalizeTestLoginId, TEST_ACCOUNT_COUNT } from "../../../shared/lib/co
 
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 const RATE_LIMIT_MAX_REQUESTS = 10;
-// TEMPORARY ALPHA EXCEPTION: remove before beta and restore the all-admin block.
-const TEMPORARY_ADMIN_TEST_LOGIN_IDS = new Set(["rankball-001"]);
 const requestWindows = new Map();
 
 function createAlphaLoginError(code, statusCode) {
@@ -61,7 +59,13 @@ export function isLocalAlphaTestRequest(request = {}) {
 
 export function assertAlphaTestLoginEnabled(request) {
   const vercelEnvironment = String(process.env.VERCEL_ENV ?? "").trim().toLowerCase();
-  if (!isAlphaTestLoginEnabled() || ["production", "preview"].includes(vercelEnvironment) || !isLocalAlphaTestRequest(request)) {
+  const nodeEnvironment = String(process.env.NODE_ENV ?? "").trim().toLowerCase();
+  if (
+    !isAlphaTestLoginEnabled()
+    || nodeEnvironment === "production"
+    || (vercelEnvironment && vercelEnvironment !== "development")
+    || !isLocalAlphaTestRequest(request)
+  ) {
     throw createAlphaLoginError("alpha_test_login_disabled", 404);
   }
 }
@@ -76,10 +80,6 @@ export function normalizeAlphaTestLoginId(value = "") {
   return normalized;
 }
 
-export function isTemporaryAdminTestLoginAllowed(testLoginId = "") {
-  return TEMPORARY_ADMIN_TEST_LOGIN_IDS.has(normalizeTestLoginId(testLoginId));
-}
-
 export function isSettingsTestSwitchActor({ adminLevel = 0, testLoginId = "", email = "" } = {}) {
   if (Number(adminLevel) >= 100) return true;
   try {
@@ -90,22 +90,23 @@ export function isSettingsTestSwitchActor({ adminLevel = 0, testLoginId = "", em
   }
 }
 
-async function assertSettingsTestSwitchAllowed(request) {
+async function getSettingsTestSwitchAccess(request) {
   const context = await getAuthenticatedContext(request, {
     freshAuth: true,
     profileSelect: "id, auth_user_id, test_login_id",
   });
-  if (isSettingsTestSwitchActor({
+  const adminLevel = await getAdminLevel(context);
+  if (!isSettingsTestSwitchActor({
+    adminLevel,
     testLoginId: context.profile?.test_login_id,
     email: context.authUser?.email,
-  })) return;
-  const adminLevel = await getAdminLevel(context);
-  if (!isSettingsTestSwitchActor({ adminLevel })) {
+  })) {
     throw createAlphaLoginError("test_account_switch_forbidden", 403);
   }
+  return { allowActiveAdminTarget: Number(adminLevel) >= 100 };
 }
 
-export async function assertNonAdminTestProfile(client, testLoginId, email) {
+export async function assertTestProfileAvailable(client, testLoginId, email, { allowActiveAdminTarget = false } = {}) {
   const { data: profile, error: profileError } = await client
     .from("profiles")
     .select("id,auth_user_id,test_login_id")
@@ -128,10 +129,7 @@ export async function assertNonAdminTestProfile(client, testLoginId, email) {
     .eq("user_id", profile.id)
     .eq("role", "admin");
   if (appointmentError) throw appointmentError;
-  if (
-    !isTemporaryAdminTestLoginAllowed(testLoginId)
-    && (appointments ?? []).some((appointment) => isActiveAdminAppointment(appointment))
-  ) {
+  if (!allowActiveAdminTarget && (appointments ?? []).some((appointment) => isActiveAdminAppointment(appointment))) {
     throw createAlphaLoginError("alpha_test_admin_login_forbidden", 403);
   }
 }
@@ -142,13 +140,14 @@ export default async function handler(request, response) {
   try {
     assertRateLimit(request);
     const body = await readJsonBody(request);
-    if (body.settingsSwitch === true) await assertSettingsTestSwitchAllowed(request);
+    let switchAccess = { allowActiveAdminTarget: false };
+    if (body.settingsSwitch === true) switchAccess = await getSettingsTestSwitchAccess(request);
     else assertAlphaTestLoginEnabled(request);
     const testLoginId = normalizeAlphaTestLoginId(body.testLoginId);
     const email = getTestAuthEmail(testLoginId);
     const client = getSupabaseAdminClient();
 
-    await assertNonAdminTestProfile(client, testLoginId, email);
+    await assertTestProfileAvailable(client, testLoginId, email, switchAccess);
     const { data, error } = await client.auth.admin.generateLink({
       type: "magiclink",
       email,

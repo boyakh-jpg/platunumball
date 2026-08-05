@@ -9,10 +9,7 @@ import {
   TEAM_COLUMNS,
   TEAM_MEMBER_COLUMNS,
 } from "../../shared/lib/repositoryColumns.js";
-import {
-  TEST_REFEREE_LOGIN_IDS,
-  isRefereeGrade,
-} from "../../shared/lib/constants.js";
+import { isRefereeGrade } from "../../shared/lib/constants.js";
 import { COURT_MAP_SEARCH_LIMIT, COURT_MAP_SEARCH_PURPOSE } from "../../shared/lib/queryPolicy.js";
 import { fromRemoteApprovedCourt, getRemotePayload } from "../../shared/lib/remotePayloadMappers.js";
 import { isWithinOneEdit, preferExactSearchMatches } from "../../shared/lib/fuzzyText.js";
@@ -327,51 +324,29 @@ async function searchCourtReviews(supabase, profileId, query, limit) {
 async function searchReferees(supabase, query, limit, searchContext = {}) {
   const throughText = String(searchContext.refereeThroughDate ?? "").slice(0, 10);
   const throughMs = throughText ? new Date(`${throughText}T23:59:59.999Z`).getTime() : Date.now();
-  let testProfileQuery = supabase
-    .from("profiles")
-    .select(`${PROFILE_COLUMNS},test_login_id`)
-    .in("test_login_id", TEST_REFEREE_LOGIN_IDS)
-    .limit(TEST_REFEREE_LOGIN_IDS.length);
-  if (query) testProfileQuery = testProfileQuery.or(searchFilter(["name", "hashtag", "handle", "region", "position"], query));
-  const [appointmentResult, testProfileResult] = await Promise.all([
-    supabase
-      .from("referee_appointments")
-      .select(REFEREE_APPOINTMENT_COLUMNS)
-      .eq("role", "referee")
-      .eq("status", "active")
-      .limit(REFEREE_QUALIFICATION_SEARCH_LIMIT),
-    testProfileQuery,
-  ]);
-  const { data: appointmentRows, error: appointmentError } = appointmentResult;
+  const { data: appointmentRows, error: appointmentError } = await supabase
+    .from("referee_appointments")
+    .select(REFEREE_APPOINTMENT_COLUMNS)
+    .eq("role", "referee")
+    .eq("status", "active")
+    .limit(REFEREE_QUALIFICATION_SEARCH_LIMIT);
   if (appointmentError) throw appointmentError;
-  const { data: testProfileRows, error: testProfileError } = testProfileResult;
-  if (testProfileError) throw testProfileError;
   const appointmentByUserId = new Map();
   (appointmentRows ?? []).filter((appointment) => isActiveRefereeAppointment(appointment, throughMs)).forEach((appointment) => {
     if (!appointmentByUserId.has(appointment.user_id)) appointmentByUserId.set(appointment.user_id, appointment);
   });
   const appointmentProfileIds = [...appointmentByUserId.keys()];
-  let qualifiedProfileRows = [];
-  if (appointmentProfileIds.length) {
-    let profileQuery = supabase
-      .from("public_profiles")
-      .select(PROFILE_COLUMNS)
-      .in("id", appointmentProfileIds)
-      .order("trust_score", { ascending: false })
-      .limit(Math.max(limit * 3, limit));
-    if (query) profileQuery = profileQuery.or(searchFilter(["name", "hashtag", "handle", "region", "position"], query));
-    const { data, error } = await profileQuery;
-    if (error) throw error;
-    qualifiedProfileRows = data ?? [];
-  }
-  const testProfileIdSet = new Set((testProfileRows ?? []).map((profile) => profile.id));
-  const profileRows = [...new Map([
-    ...qualifiedProfileRows,
-    ...(testProfileRows ?? []),
-  ].map((profile) => [profile.id, profile])).values()]
-    .sort((a, b) => Number(b.trust_score ?? 0) - Number(a.trust_score ?? 0) || String(a.name ?? "").localeCompare(String(b.name ?? "")));
-  return profileRows
-    .filter((profile) => appointmentByUserId.has(profile.id) || testProfileIdSet.has(profile.id))
+  if (!appointmentProfileIds.length) return [];
+  let profileQuery = supabase
+    .from("public_profiles")
+    .select(PROFILE_COLUMNS)
+    .in("id", appointmentProfileIds)
+    .order("trust_score", { ascending: false })
+    .limit(Math.max(limit * 3, limit));
+  if (query) profileQuery = profileQuery.or(searchFilter(["name", "hashtag", "handle", "region", "position"], query));
+  const { data: profileRows, error: profileError } = await profileQuery;
+  if (profileError) throw profileError;
+  return (profileRows ?? [])
     .slice(0, limit)
     .map((row) => {
       const appointment = appointmentByUserId.get(row.id);

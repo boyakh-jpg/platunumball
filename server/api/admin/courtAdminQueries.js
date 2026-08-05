@@ -11,10 +11,6 @@ export const NORMALIZATION_BATCH_SIZE = 10;
 
 export const MAX_BATCH_BYTES = 524_288;
 
-export const TEMPORARY_REASON_OPTIONAL_PROFILE_ID = "p_a6086f1e61b34ebca4";
-
-export const TEMPORARY_COURT_UPDATE_REASON = "한시적 boyakh 구장 DB 정리";
-
 export const COURT_COLUMNS = "name,facility_name,court_unit,indoor_outdoor,venue_type,court_kind,surface_type,court_layout,hoop_count,access_type,reservation_required,paid,lighting,public_access,operational_status,verification_status,sido,sigungu,emd,name_modification_count,registration_origin,status,updated_at,id,hashtag,address_text,road_address,jibun_address,zonecode,lat,lng,operator_name,contact_phone,official_url,reservation_url,opening_hours_text,application_method,access_note,detail_address,location_note,facility_area_sqm,facility_area_scope,name_evidence_decision,name_evidence_application_status,name_evidence_reference,name_evidence_kind,name_evidence_relation,name_evidence_distance_m,name_evidence_proposed_facility,name_evidence_applied_facility,name_evidence_url,name_evidence_snapshot_date,regional_alias_no,regional_alias_region_key,admin_review_count,admin_reviewed_at,admin_reviewed_by,admin_review_scenario,admin_review_priority";
 
 export const HISTORY_COLUMNS = "id,court_id,sigungu,changed_by,changed_by_name,change_source,changed_fields,changes,changes_text,reason,created_at";
@@ -117,21 +113,16 @@ export function safeFilters(value) {
   return value && typeof value === "object" && !Array.isArray(value) ? value : {};
 }
 
-export function isTemporaryReasonOptional(profileId) {
-  return String(profileId ?? "") === TEMPORARY_REASON_OPTIONAL_PROFILE_ID;
-}
-
-export function getCourtUpdateReason(profileId, value) {
+export function getCourtUpdateReason(value) {
   const reason = String(value ?? "").trim().slice(0, 160);
   if (reason.length >= 4) return reason;
-  if (isTemporaryReasonOptional(profileId)) return TEMPORARY_COURT_UPDATE_REASON;
   const error = new Error("court_update_reason_required");
   error.statusCode = 400;
   throw error;
 }
 
-export function getCourtReviewReason(profileId, scenario, value) {
-  if (scenario === "manual") return getCourtUpdateReason(profileId, value);
+export function getCourtReviewReason(scenario, value) {
+  if (scenario === "manual") return getCourtUpdateReason(value);
   const reason = COURT_REVIEW_REASONS[scenario];
   if (!reason) {
     const error = new Error("court_review_scenario_invalid");
@@ -296,7 +287,6 @@ export async function loadCourtRows(context, body) {
     ok: true,
     rows,
     page: { page, pageSize: PAGE_SIZE, total, pageCount: Math.max(1, Math.ceil(total / PAGE_SIZE)) },
-    capabilities: { reasonOptional: isTemporaryReasonOptional(context.profileId) },
   };
 }
 

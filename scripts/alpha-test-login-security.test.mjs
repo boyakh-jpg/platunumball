@@ -2,11 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import handler, {
   assertAlphaTestLoginEnabled,
-  assertNonAdminTestProfile,
+  assertTestProfileAvailable,
   isAlphaTestLoginEnabled,
   isLocalAlphaTestRequest,
   isSettingsTestSwitchActor,
-  isTemporaryAdminTestLoginAllowed,
   normalizeAlphaTestLoginId,
 } from "../server/api/auth/alpha-test-login.js";
 import { getBoundAuthProfileId } from "../src/hooks/appData/metadata.js";
@@ -102,20 +101,27 @@ test("alpha test login flag is exact and disabled by default", () => {
 test("public alpha login is localhost-only even when the flag is enabled", () => {
   const previousDemoLogin = process.env.VITE_DEMO_LOGIN;
   const previousVercelEnvironment = process.env.VERCEL_ENV;
+  const previousNodeEnvironment = process.env.NODE_ENV;
   try {
     process.env.VITE_DEMO_LOGIN = "true";
     delete process.env.VERCEL_ENV;
+    process.env.NODE_ENV = "test";
     assert.equal(isLocalAlphaTestRequest({ headers: { host: "127.0.0.1:4174" } }), true);
     assert.equal(isLocalAlphaTestRequest({ headers: { host: "boxtier.kr" } }), false);
     assert.doesNotThrow(() => assertAlphaTestLoginEnabled({ headers: { host: "localhost:4174" } }));
     assert.throws(() => assertAlphaTestLoginEnabled({ headers: { host: "boxtier.kr" } }), /alpha_test_login_disabled/);
     process.env.VERCEL_ENV = "preview";
     assert.throws(() => assertAlphaTestLoginEnabled({ headers: { host: "localhost:4174" } }), /alpha_test_login_disabled/);
+    delete process.env.VERCEL_ENV;
+    process.env.NODE_ENV = "production";
+    assert.throws(() => assertAlphaTestLoginEnabled({ headers: { host: "localhost:4174" } }), /alpha_test_login_disabled/);
   } finally {
     if (previousDemoLogin === undefined) delete process.env.VITE_DEMO_LOGIN;
     else process.env.VITE_DEMO_LOGIN = previousDemoLogin;
     if (previousVercelEnvironment === undefined) delete process.env.VERCEL_ENV;
     else process.env.VERCEL_ENV = previousVercelEnvironment;
+    if (previousNodeEnvironment === undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV = previousNodeEnvironment;
   }
 });
 
@@ -135,13 +141,13 @@ test("disabled alpha login fails before reading credentials or reaching Supabase
 });
 
 test("active administrator test profiles cannot receive an alpha login token", async () => {
-  await assert.doesNotReject(() => assertNonAdminTestProfile(
+  await assert.doesNotReject(() => assertTestProfileAvailable(
     createProfileClient([{ role: "admin", status: "inactive" }]),
     "rankball-006",
     "rankball-006@rankball.test",
   ));
   await assert.rejects(
-    () => assertNonAdminTestProfile(
+    () => assertTestProfileAvailable(
       createProfileClient([{ role: "admin", status: "active" }]),
       "rankball-006",
       "rankball-006@rankball.test",
@@ -150,13 +156,18 @@ test("active administrator test profiles cannot receive an alpha login token", a
   );
 });
 
-test("rankball-001 alone temporarily bypasses the active administrator block", async () => {
-  assert.equal(isTemporaryAdminTestLoginAllowed("rankball-001"), true);
-  assert.equal(isTemporaryAdminTestLoginAllowed("rankball-002"), false);
-  await assert.doesNotReject(() => assertNonAdminTestProfile(
+test("only a verified owner switch may target an active administrator test profile", async () => {
+  const client = createProfileClient([{ role: "admin", status: "active" }], "rankball-001");
+  await assert.rejects(() => assertTestProfileAvailable(
+    client,
+    "rankball-001",
+    "rankball-001@rankball.test",
+  ), /alpha_test_admin_login_forbidden/);
+  await assert.doesNotReject(() => assertTestProfileAvailable(
     createProfileClient([{ role: "admin", status: "active" }], "rankball-001"),
     "rankball-001",
     "rankball-001@rankball.test",
+    { allowActiveAdminTarget: true },
   ));
 });
 

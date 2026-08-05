@@ -1,8 +1,7 @@
 import { allowRequestMethod, getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
-import { FAVORITE_LIMIT, REFEREE_ACTIVE_TRUST_MIN, TEST_REFEREE_LOGIN_IDS, isRefereeGrade } from "../../../shared/lib/constants.js";
+import { FAVORITE_LIMIT, REFEREE_ACTIVE_TRUST_MIN, isRefereeGrade } from "../../../shared/lib/constants.js";
 
 const TARGET_TYPES = new Set(["player", "team", "court", "referee"]);
-const TEST_REFEREE_LOGIN_ID_SET = new Set(TEST_REFEREE_LOGIN_IDS);
 
 function isActiveAppointment(appointment = {}, nowMs = Date.now()) {
   if (appointment.status && appointment.status !== "active") return false;
@@ -29,7 +28,7 @@ async function assertTargetExists(context, targetType, targetId) {
 
   const table = targetType === "player" || targetType === "referee" ? "profiles" : "teams";
   let query = context.supabase.from(table).select("id").eq("id", targetId);
-  if (targetType === "referee") query = context.supabase.from(table).select("id, trust_score, test_login_id").eq("id", targetId);
+  if (targetType === "referee") query = context.supabase.from(table).select("id, trust_score").eq("id", targetId);
   if (targetType === "team") query = query.is("deleted_at", null);
   const { data, error } = await query.maybeSingle();
   if (error) throw error;
@@ -39,10 +38,7 @@ async function assertTargetExists(context, targetType, targetId) {
     throw targetError;
   }
   if (targetType === "referee") {
-    if (
-      Number(data.trust_score ?? 0) < REFEREE_ACTIVE_TRUST_MIN
-      && !TEST_REFEREE_LOGIN_ID_SET.has(String(data.test_login_id ?? "").toLowerCase())
-    ) {
+    if (Number(data.trust_score ?? 0) < REFEREE_ACTIVE_TRUST_MIN) {
       const targetError = new Error("favorite_target_not_found");
       targetError.statusCode = 404;
       throw targetError;

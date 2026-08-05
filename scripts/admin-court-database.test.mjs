@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { buildCourtAddressNameUpdates, getAdminCourtStreetViewUrl, getCourtAddressFacilityName, getCourtFacilityBaseName, getCourtMapUrl, getCourtNaverMapAppUrl } from "../src/lib/courts.js";
+import { getCourtUpdateReason } from "../server/api/admin/courtAdminQueries.js";
 import { APP_DATA_ACTION_SOURCE_PATHS, readSourceGroup } from "./management-source-groups.mjs";
 import { readCssTree } from "./css-source-tree.mjs";
 
@@ -27,8 +28,7 @@ test("관리자 구장 DB는 전체 DB 서버 필터와 100행 페이지를 사�
   assert.match(server, /for \(const update of standaloneUpdates\) await saveUpdate\(update\)/);
   assert.doesNotMatch(server, /duplicateUpdates = plan\.updates\.filter/);
   assert.match(server, /rpc\("rankball_admin_update_courts_batch_with_auto_unit"/);
-  assert.match(server, /TEMPORARY_REASON_OPTIONAL_PROFILE_ID = "p_a6086f1e61b34ebca4"/);
-  assert.match(server, /TEMPORARY_COURT_UPDATE_REASON = "한시적 boyakh 구장 DB 정리"/);
+  assert.doesNotMatch(server, /TEMPORARY_REASON_OPTIONAL_PROFILE_ID|TEMPORARY_COURT_UPDATE_REASON|reasonOptional/);
   assert.match(server, /name_evidence_decision/);
   assert.match(server, /applyExactFilter\(next, "name_evidence_relation", filters\.nameEvidenceRelation\)/);
   assert.match(server, /rpc\("rankball_admin_review_court_with_auto_unit"/);
@@ -131,6 +131,11 @@ test("원터치 검수는 단순 판정, 영구 지역순번, 감사 로그를 �
   assert.doesNotMatch(migration, /\b(?:delete\s+from|truncate|drop\s+table)\b/i);
   assert.match(hook, /reviewAdminCourt: async/);
   assert.match(hook, /operation: "review"/);
+});
+
+test("구장 DB 변경 사유는 모든 관리자에게 4자 이상 필요하다", () => {
+  assert.equal(getCourtUpdateReason("  위치 검증 완료  "), "위치 검증 완료");
+  assert.throws(() => getCourtUpdateReason("짧음"), /court_update_reason_required/);
 });
 
 test("중복 구장 신고 확정은 중앙 구장 검수와 신고 해결을 한 transaction으로 묶는다", async () => {

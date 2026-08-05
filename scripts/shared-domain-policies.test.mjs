@@ -2142,7 +2142,8 @@ test("referee profiles use canonical grades and public confirmed officiating his
   assert.match(pageSource, /loadRefereeDetail\(refereeId, RECENT_REFEREE_MATCH_LIMIT\)/);
   assert.doesNotMatch(pageSource, /actions\?\.runServerAction/);
   assert.match(apiSource, /referee_appointments/);
-  assert.match(apiSource, /TEST_REFEREE_LOGIN_IDS\.includes\(profileResult\.data\?\.test_login_id\)/);
+  assert.match(apiSource, /!profileResult\.data \|\| !appointment/);
+  assert.doesNotMatch(apiSource, /TEST_REFEREE_LOGIN_IDS|test_login_id/);
   assert.match(apiSource, /const grade = appointment\?\.grade \?\? "candidate"/);
   assert.match(querySource, /\.eq\("referee_id", safeRefereeId\)/);
   assert.match(querySource, /\.eq\("status", "confirmed"\)/);

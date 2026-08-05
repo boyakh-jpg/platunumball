@@ -42,7 +42,6 @@ export default function CourtDatabasePanelView({ controller }) {
     activeCell,
     reason,
     setReason,
-    reasonOptional,
     saving,
     reviewMode,
     proximityReview,
@@ -153,9 +152,9 @@ const modal = open ? (
                 <input
                   className="ui-control ui-control-xs"
                   value={reason}
-                  placeholder={reasonOptional ? "boyakh 한시적 입력 잠금" : "4자 이상"}
+                  placeholder="4자 이상"
                   maxLength={160}
-                  disabled={saving || reasonOptional}
+                  disabled={saving}
                   onChange={(event) => setReason(event.target.value)}
                   onKeyDown={(event) => {
                     if (event.key === "Enter") {
@@ -332,9 +331,9 @@ const modal = open ? (
                   <input
                     className="ui-control"
                     value={reason}
-                    placeholder={reasonOptional ? "boyakh 한시적 자동 기록" : "수동 저장 때 4자 이상"}
+                    placeholder="수동 저장 때 4자 이상"
                     maxLength={160}
-                    disabled={saving || reasonOptional}
+                    disabled={saving}
                     onChange={(event) => setReason(event.target.value)}
                   />
                 </label>

@@ -172,6 +172,21 @@ test("API routes use deny-by-default method and credential policies", async () =
   internalSources.forEach((source) => assert.match(source, /bearerTokenMatches\(request,/));
 });
 
+test("React Router stays on SPA APIs and does not enable vulnerable RSC actions", async () => {
+  const clientSource = await readSourceTree("src");
+  assert.doesNotMatch(
+    clientSource,
+    /react-server|RSCHydratedRouter|RSCStaticRouter|matchRSCServerRequest|unstable_[A-Za-z0-9_]*RSC/u,
+  );
+});
+
+test("production schema health cannot seed privileged demo actors", async () => {
+  const source = await readSource("server/api/system/schema-health.js");
+  assert.doesNotMatch(source, /RANKBALL_ALLOW_PRODUCTION_TEST_SEED/);
+  assert.doesNotMatch(source, /ap_region_rankball_001|regionManagerProfileId/);
+  assert.match(source, /production_test_seed_disabled/);
+});
+
 test("public landing stats exposes aggregate counts only", async () => {
   const route = API_ROUTES.get("/landing/stats");
   const source = await readSource("server/api/landing/stats.js");
@@ -292,12 +307,7 @@ test("referee search supports qualified discovery on focus only", async () => {
   assert.ok(
     refereeSearchSource.indexOf('.from("referee_appointments")') < refereeSearchSource.indexOf('.from("public_profiles")'),
   );
-  assert.match(refereeSearchSource, /\.from\("profiles"\)[\s\S]*?\.in\("test_login_id", TEST_REFEREE_LOGIN_IDS\)/);
-  const testProfileQuerySource = refereeSearchSource.slice(
-    refereeSearchSource.indexOf("let testProfileQuery"),
-    refereeSearchSource.indexOf("if (query) testProfileQuery"),
-  );
-  assert.doesNotMatch(testProfileQuerySource, /\.gte\("trust_score", 90\)/);
+  assert.doesNotMatch(refereeSearchSource, /TEST_REFEREE_LOGIN_IDS|test_login_id/);
   assert.doesNotMatch(refereeSearchSource, /\.gte\("trust_score", REFEREE_ACTIVE_TRUST_MIN\)/);
   assert.doesNotMatch(refereeSearchSource, /Number\(profile\.trust_score \?\? 0\) >= REFEREE_ACTIVE_TRUST_MIN/);
   assert.match(refereeSearchSource, /\.in\("id", appointmentProfileIds\)/);
@@ -309,12 +319,13 @@ test("referee search supports qualified discovery on focus only", async () => {
   assert.match(createMatchSource, /mapRemoteItem=\{\(user\) => activePlayerIds\.has\(user\.id\) \? null : user\}/);
 });
 
-test("referee entry trust and active trust stay separated", async () => {
-  const [appointmentSource, localAppointmentSource, migrationSource, eligibilityMigrationSource] = await Promise.all([
+test("referee entry trust and active trust stay separated without test-account exceptions", async () => {
+  const [appointmentSource, localAppointmentSource, migrationSource, eligibilityMigrationSource, hardeningMigrationSource] = await Promise.all([
     readSource("server/api/admin/appointment-action.js"),
     readSource("src/data/repository/admin/appointment.js"),
     readSource("supabase/migrations/20260730213000_referee_trust_lifecycle.sql"),
     readSource("supabase/migrations/20260730230000_align_alpha_referee_creation_eligibility.sql"),
+    readSource("supabase/migrations/20260805173000_remove_alpha_referee_exceptions.sql"),
   ]);
   assert.match(appointmentSource, /actionType === "appointReferee"/);
   assert.match(appointmentSource, /trust_score \?\? 0\) < REFEREE_TRUST_MIN/);
@@ -324,23 +335,26 @@ test("referee entry trust and active trust stay separated", async () => {
   assert.match(migrationSource, /rankball_referee_active_trust_guard/);
   assert.match(migrationSource, /referee_trust_below_70/);
   assert.match(migrationSource, /rankball_tournament_referee_authorized/);
-  assert.match(migrationSource, /test_login_id[\s\S]*?'rankball-001', 'rankball-011'/);
   assert.match(migrationSource, /payload->>'autoRevoked' = 'true'/);
   assert.match(migrationSource, /recruiting_referee_fixed_trust_shape_changed/);
   assert.match(migrationSource, /recruiting_referee_stored_trust_shape_changed/);
   assert.doesNotMatch(migrationSource, /delete\s+from|truncate\s+table|drop\s+table/i);
   assert.match(eligibilityMigrationSource, /rankball_referee_assignment_eligible/);
-  assert.match(eligibilityMigrationSource, /test_login_id[\s\S]*?'rankball-001', 'rankball-011'/);
   assert.match(eligibilityMigrationSource, /appointment\.grade in \('candidate', 'silver', 'gold', 'platinum', 'official'\)/);
   assert.match(eligibilityMigrationSource, /recruiting_referee_trust_shape_changed/);
   assert.match(eligibilityMigrationSource, /alphaTestException/);
   assert.doesNotMatch(eligibilityMigrationSource, /delete\s+from|truncate\s+table|drop\s+table/i);
+  assert.match(hardeningMigrationSource, /rankball_referee_assignment_eligible/);
+  assert.match(hardeningMigrationSource, /coalesce\(new\.trust_score, 0\) < 70/);
+  assert.match(hardeningMigrationSource, /set search_path = ''/);
+  assert.doesNotMatch(hardeningMigrationSource, /test_login_id|rankball-001|rankball-011|alphaTestException/);
+  assert.doesNotMatch(hardeningMigrationSource, /delete\s+from|truncate\s+table|drop\s+table/i);
 });
 
-test("server referee eligibility matches alpha discovery and active appointment rules", async () => {
+test("server referee eligibility requires an active appointment for test and regular profiles", async () => {
   assert.equal(await isActiveReferee(createRefereeEligibilitySupabase({
     profile: { id: "alpha-referee", trust_score: 10, test_login_id: "rankball-001" },
-  }), "alpha-referee"), true);
+  }), "alpha-referee"), false);
   assert.equal(await isActiveReferee(createRefereeEligibilitySupabase({
     profile: { id: "regular-referee", trust_score: 70, test_login_id: null },
     appointments: [{

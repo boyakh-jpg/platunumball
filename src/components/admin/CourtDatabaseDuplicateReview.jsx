@@ -18,7 +18,6 @@ export function CourtDatabaseDuplicateReview({ controller }) {
     activeCell,
     reason,
     setReason,
-    reasonOptional,
     saving,
     reviewMode,
     proximityReview,

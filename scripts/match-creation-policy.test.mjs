@@ -1406,17 +1406,19 @@ test("대회 원격 팀 검색 선택은 로컬 directory 밖에서도 snapshot�
   assert.match(source, /teamIds: draft\.tournamentTeamIds/);
 });
 
-test("알파 테스트 심판은 운영 신뢰도와 무관하게 심판 검색 자격을 유지한다", () => {
-  assert.equal(isEligibleReferee({
+test("테스트 계정도 활성 심판 임명이 있어야 자격을 얻는다", () => {
+  const testReferee = {
     id: "test-referee",
     testLoginId: "rankball-011",
     trustScore: 82,
-  }), true);
-  assert.equal(isEligibleReferee({
-    id: "regular-player",
-    testLoginId: "rankball-012",
-    trustScore: 82,
-  }), false);
+  };
+  assert.equal(isEligibleReferee(testReferee), false);
+  assert.equal(isEligibleReferee(testReferee, 90, [{
+    userId: testReferee.id,
+    role: "referee",
+    grade: "gold",
+    status: "active",
+  }]), true);
 });
 
 test("심판 초대는 활성 자격만 보고 신뢰도를 다시 평가하지 않는다", () => {

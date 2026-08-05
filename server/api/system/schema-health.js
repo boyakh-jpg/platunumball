@@ -27,10 +27,7 @@ const REQUIRED_FEED_TRIGGERS = [
 ];
 
 function canEnsureSimulationTestActors() {
-  if (process.env.VERCEL_ENV === "production" || process.env.NODE_ENV === "production") {
-    return process.env.RANKBALL_ALLOW_PRODUCTION_TEST_SEED === "true";
-  }
-  return true;
+  return process.env.VERCEL_ENV !== "production" && process.env.NODE_ENV !== "production";
 }
 
 async function checkTable(client, table, columns) {
@@ -332,13 +329,6 @@ async function ensureSimulationTestActors(client) {
 }
 
 async function ensureCourtAdminAppointments(client) {
-  const { data: rankballProfiles, error: rankballProfileError } = await client
-    .from("profiles")
-    .select("id, test_login_id")
-    .eq("test_login_id", "rankball-001")
-    .limit(1);
-  if (rankballProfileError) throw rankballProfileError;
-
   const { data: ownerProfiles, error: ownerProfileError } = await client
     .from("profiles")
     .select("id, name, handle, hashtag")
@@ -346,14 +336,12 @@ async function ensureCourtAdminAppointments(client) {
     .limit(1);
   if (ownerProfileError) throw ownerProfileError;
 
-  const regionManager = rankballProfiles?.[0];
   const owner = ownerProfiles?.[0];
-  if (!regionManager?.id || !owner?.id) {
+  if (!owner?.id) {
     return {
       ok: false,
-      error: !owner?.id ? "boyakh_profile_missing" : "rankball_001_profile_missing",
-      ownerFound: Boolean(owner?.id),
-      regionManagerFound: Boolean(regionManager?.id),
+      error: "boyakh_profile_missing",
+      ownerFound: false,
     };
   }
 
@@ -375,23 +363,6 @@ async function ensureCourtAdminAppointments(client) {
       created_at: now,
       updated_at: now,
     },
-    {
-      id: "ap_region_rankball_001",
-      user_id: regionManager.id,
-      role: "admin",
-      grade: "regionManager",
-      status: "active",
-      appointed_by: owner.id,
-      starts_at: null,
-      ends_at: null,
-      payload: {
-        source: "schema_health_court_admin_bootstrap",
-        profile: "rankball-001",
-        region: "서울특별시",
-      },
-      created_at: now,
-      updated_at: now,
-    },
   ];
 
   const { error } = await client
@@ -406,7 +377,6 @@ async function ensureCourtAdminAppointments(client) {
     ok: !error && !readError,
     error: error?.message ?? readError?.message ?? null,
     ownerProfileId: owner.id,
-    regionManagerProfileId: regionManager.id,
     rows: (savedRows ?? rows).map((row) => ({ id: row.id, userId: row.user_id ?? row.userId, grade: row.grade, status: row.status, startsAt: row.starts_at ?? null, endsAt: row.ends_at ?? null })),
   };
 }

@@ -158,7 +158,7 @@ export default async function handler(request, response) {
         p_actor_admin_level: adminLevel,
         p_court_id: safeText(body.courtId),
         p_patch: patch,
-        p_reason: getCourtUpdateReason(context.profileId, body.reason),
+        p_reason: getCourtUpdateReason(body.reason),
       });
       if (error) throw error;
       sendJson(response, 200, data ?? { ok: true });
@@ -170,7 +170,7 @@ export default async function handler(request, response) {
         p_actor_profile_id: context.profileId,
         p_actor_admin_level: adminLevel,
         p_updates: updates,
-        p_reason: getCourtUpdateReason(context.profileId, body.reason),
+        p_reason: getCourtUpdateReason(body.reason),
       });
       if (error) throw error;
       sendJson(response, 200, data ?? { ok: true, updatedCount: updates.length });
@@ -240,7 +240,7 @@ export default async function handler(request, response) {
         p_court_id: safeText(body.courtId),
         p_scenario: scenario,
         p_patch: patch,
-        p_reason: getCourtReviewReason(context.profileId, scenario, body.reason),
+        p_reason: getCourtReviewReason(scenario, body.reason),
       });
       if (error) throw error;
       sendJson(response, 200, data ?? { ok: true, scenario });
@@ -256,7 +256,7 @@ export default async function handler(request, response) {
       p_actor_admin_level: adminLevel,
       p_court_id: safeText(body.courtId),
       p_patch: { facilityName: safeText(body.facilityName) },
-      p_reason: getCourtUpdateReason(context.profileId, body.reason),
+      p_reason: getCourtUpdateReason(body.reason),
     });
     if (error) throw error;
     sendJson(response, 200, data ?? { ok: true });

@@ -37,7 +37,7 @@
 6-1. 생성 단계의 `다음`은 단계만 이동한다. 방·경기·기록 저장은 마지막 단계의 명시적 생성 버튼으로만 시작한다.
 6-2. 비공개 팀방의 `targetTeamId`는 B팀 참가 확정 전에도 선택된 상대 팀이다. 주장 초대가 대기 중이면 방 모달은 해당 팀과 초대 대상 주장을 B사이드장 `초대 대기` 슬롯으로 표시하고 B팀 검색을 다시 열지 않는다. 대기 슬롯은 수락 전 실제 참가 인원과 정원 충족 수에는 포함하지 않는다.
 7. 홈 경량 로드 뒤 내 프로필로 이동했을 때 `matchSummary`가 없으면 프로필 화면이 현재 사용자 요약을 한 번 보완 로드한다.
-8. 심판 프로필은 활성 `referee_appointments`의 `candidate/silver/gold/platinum/official`을 서버 기준으로 사용한다. 알파 테스트 심판 로그인 ID는 검색 자격과 동일하게 임명 row가 없어도 `candidate` 프로필을 연다. 화면은 공용 앱 액션의 전용 심판 상세 로더를 사용하며 로더·서버 오류를 비활성 심판으로 처리하지 않는다. 공개된 확정 경기 중 해당 사용자가 `referee_id`인 경기만 최근 심판 경기와 활동 통계에 포함하며 비공개 경기는 제외한다.
+8. 심판 프로필은 활성 `referee_appointments`의 `candidate/silver/gold/platinum/official`을 서버 기준으로 사용한다. 테스트 로그인 ID도 예외 없이 유효한 임명 row가 있어야 한다. 화면은 공용 앱 액션의 전용 심판 상세 로더를 사용하며 로더·서버 오류를 비활성 심판으로 처리하지 않는다. 공개된 확정 경기 중 해당 사용자가 `referee_id`인 경기만 최근 심판 경기와 활동 통계에 포함하며 비공개 경기는 제외한다.
 9. 통합 검색은 입력과 완전히 같은 엔티티 이름이 하나라도 있으면 그 이름의 결과만 표시한다. 완전 일치가 없을 때는 기존 부분·퍼지 검색을 유지한다.
 10. 선수 프로필 경기 통계는 현재 출전 명단뿐 아니라 `playedPlayerIds`에 남은 실제 출전자를 포함한다. 세부 선수 기록이 없어도 확정 경기 수·승·패·무·승률은 표시하며, 세부 기록은 기록된 경기만 별도로 합산한다.
 11. 활성 심판 자격이 있는 선수 프로필은 같은 사용자 ID의 심판 프로필 진입 버튼을 표시한다.
@@ -995,7 +995,7 @@
 
 - legacy `test-token-rankball-xxx` 인증은 제거됐다.
 - `RANKBALL_ALLOW_PRODUCTION_TEST_LOGIN`와 production test-token allowlist 경로도 제거됐다.
-- `/api/system/schema-health`의 `ensureTestActors`는 production DB를 기본 변경하지 않는다. production seed가 꼭 필요하면 `RANKBALL_ALLOW_PRODUCTION_TEST_SEED=true`를 별도로 명시한다.
+- `/api/system/schema-health`의 `ensureTestActors`는 production DB에서 항상 거부한다. 환경변수로 우회할 수 없다.
 - 원격 `scripts/simulate-backend-flow.mjs`는 기본적으로 schema-health actor seed를 요청하지 않는다. 필요한 경우 `RANKBALL_SIM_ENSURE_TEST_ACTORS=true`로 opt-in 한다.
 
 ## 2026-06-30 현장 이의 처리
@@ -1187,7 +1187,7 @@ UI/CSS/반응형/라이트·다크 세부 기준은 `docs/design-system.md`를 �
 
 1. 실제 Google/Supabase `auth.users.id` 하나는 RankBall 프로필 하나에만 연결한다.
 2. 앱 상태에서는 `user.authUserId`로 연결하고, normalized Supabase에서는 `profiles.auth_user_id` unique index로 막는다.
-3. 실제 auth 프로필은 Settings의 테스트 계정 전환으로 바꾸지 못한다.
+3. 일반 실제 auth 프로필은 Settings의 테스트 계정 전환으로 바꾸지 못한다. 서버가 현재 세션에서 `level 100`을 확인한 운영자만 테스트 계정 전환을 사용할 수 있다.
 4. `test-*`와 local demo 계정은 개발 검증용 전환을 유지한다.
 
 ## 2026-06-24 가입정보 고정 원칙
@@ -2200,7 +2200,7 @@ flowchart TD
 7. Supabase 설정 환경에서는 구장 등록요청 제출, 구장 신고, 구장 승인·반려가 전용 server action을 같이 호출한다. 끄려면 `VITE_ENABLE_SERVER_ACTIONS=false`를 명시한다.
 8. 구장 승인은 `rankball_approve_court_request()`에서 승인 구장 생성, 요청 상태 변경, audit log, 알림을 한 transaction으로 처리한다. 일반 반려는 `rankball_reject_court_request()`에서 요청 상태, 반려 사유, audit log, 요청자 알림을 한 transaction으로 처리하며 신고 인정이 아니므로 신뢰도를 차감하지 않는다.
 9. 프론트는 구장 승인 성공 전 로컬 승인 구장을 만들지 않고, 서버가 반환한 `approvedCourtId`만 승인 구장 ID로 쓴다.
-10. `POST /api/system/schema-health`의 `ensureCourtAdmins`는 `CRON_SECRET` 인증이 있을 때만 `boyakh` owner와 `rankball-001` regionManager appointment를 idempotent upsert한다.
+10. `POST /api/system/schema-health`의 `ensureCourtAdmins`는 `CRON_SECRET` 인증이 있을 때만 `boyakh` owner appointment를 idempotent upsert한다. 테스트 프로필에는 관리자 권한을 자동 부여하지 않는다.
 11. `rankball_report_court_request()`는 신고 생성, 요청의 `reported` 전환, 판정 전 무차감 알림만 한 transaction으로 처리한다. 관리자 판정 transaction의 신고 상태 전환 trigger는 인정 시 요청을 `rejected`로 바꾸고 정책 신뢰도 차감을 요청별 1회 적용하며, 기각 시 남은 미처리 신고가 없으면 `pending`으로 복원한다.
 12. 구장 등록요청 제출은 `rankball_submit_court_request()`에서 신뢰도와 승인/대기 중복을 서버에서 다시 검사한다.
 13. 일반 관리자 신고 처리, 임명/징계 처리, Discord DM 발송은 별도 server action으로 분리한다. Discord interaction은 앱 URL 안내만 담당한다.
@@ -2316,6 +2316,7 @@ flowchart TD
 12. 공개 로그인 화면의 테스트 계정 선택기는 운영 배포에서 끈다. 운영자 레벨 100과 실제 테스트 Auth 계정만 설정 최하단에서 고정 테스트 계정으로 전환할 수 있다.
 13. 설정 계정 전환은 현재 Supabase JWT의 `profiles.auth_user_id` 바인딩을 먼저 검증한다. 테스트 계정은 고정 `test_login_id`와 Auth 이메일까지 일치해야 하며, 일반 사용자가 `test_login_id` 값만 입력해 권한을 얻을 수 없다.
 14. 계정 전환도 서버가 발급한 일회용 magic link token hash만 사용한다. 운영자 계정으로 복귀할 때는 일반 OAuth 로그인을 다시 사용한다.
+15. 일반 테스트 계정은 활성 관리자 임명이 없는 테스트 계정으로만 전환할 수 있다. 활성 관리자 테스트 계정은 현재 세션의 서버 관리자 레벨이 `100`일 때만 대상이 될 수 있으며 요청 body로 이 권한을 지정할 수 없다.
 ## 2026-06-25 심판 있음 방 초대 슬롯
 
 1. 심판 있음 방은 `refereeWanted`를 가진다.
@@ -2324,7 +2325,7 @@ flowchart TD
 4. 공개방 심판 직접참여는 `refereeWanted` 방에서만 가능하다.
 5. 심판 초대 대상은 심판 자격이 있고 현재 방 참가자/선수 초대자가 아닌 사용자만 가능하다.
 6. 일반 모집방 생성 단계에서는 심판을 검색하거나 초대하지 않는다. 방 생성 뒤 방 모달에서 기존 방 참가자가 초대하며, 자격 심판의 공개방 직접참여와 초대 수락은 별도 참가 액션이다.
-7. 심판 검색창은 입력 전 focus 시에도 현재 활성 자격을 가진 심판을 제한 조회해 추천한다. 신규 자격 취득·임명은 신뢰도 90 이상이어야 하지만, 활성 심판 검색·초대·배정은 현재 유효한 자격만 확인하고 신뢰도를 별도로 재평가하지 않는다. 방·경기에 저장된 구형 `refereeTrustMin` 값은 신규 자격 취득 기준의 스냅샷이며 검색·초대·배정 기준으로 사용하지 않는다. 허용된 알파 테스트 심판은 테스트 진행을 위해 자격을 유지한다. 검색 서버는 활성 `referee_appointments`와 허용된 알파 테스트 심판을 먼저 확정한 뒤 공개 프로필을 조회하며, 일반 프로필 상위 결과를 먼저 자르지 않는다. 이름·해시태그·지역 입력 검색에도 같은 자격 필터를 적용하고 현재 경기 선수는 결과에서 제외한다.
+7. 심판 검색창은 입력 전 focus 시에도 현재 활성 자격을 가진 심판을 제한 조회해 추천한다. 신규 자격 취득·임명은 신뢰도 90 이상이어야 하지만, 활성 심판 검색·초대·배정은 현재 유효한 자격만 확인하고 신뢰도를 별도로 재평가하지 않는다. 방·경기에 저장된 구형 `refereeTrustMin` 값은 신규 자격 취득 기준의 스냅샷이며 검색·초대·배정 기준으로 사용하지 않는다. 검색 서버는 활성 `referee_appointments`를 먼저 확정한 뒤 공개 프로필을 조회하며, 일반 프로필 상위 결과를 먼저 자르지 않는다. 테스트 로그인 ID도 같은 임명 기준을 적용한다. 이름·해시태그·지역 입력 검색에도 같은 자격 필터를 적용하고 현재 경기 선수는 결과에서 제외한다.
 
 ## 2026-06-25 1v1 개인방 파티 제한
 
@@ -3514,7 +3515,7 @@ flowchart TD
 ## 2026-07-22 구장 표준명·관리자 DB
 
 1. 사용자 신청, 관리자 승인, 공공 원장, 관리자 이름 변경은 모두 DB `BEFORE` trigger의 `시군구 + 시설명 + 농구장 + 코트 구분(선택)` 표준명을 최종 원본으로 사용한다. 클라이언트 미리보기는 같은 규칙을 복제해 입력 전에 결과만 보여준다.
-2. 구장 DB 수정은 level 50 이상만 가능하다. 서버가 허용한 관계형 칼럼과 시설 정보 칼럼만 최대 100개 구장 단위의 한 transaction에서 갱신한다. 일반 관리자는 4~160자 공통 사유가 필요하다. 초기 원장 정리 기간의 `boyakh` 프로필만 UI 사유 입력을 잠그고 서버가 `한시적 boyakh 구장 DB 정리`를 자동 기록한다. 시설명·코트 구분·지역 변경으로 표준명이 바뀌면 승인 구장, legacy mirror, 경기, 모집방, 대회, 리뷰의 이름 snapshot도 함께 갱신한다.
+2. 구장 DB 수정은 level 50 이상만 가능하다. 서버가 허용한 관계형 칼럼과 시설 정보 칼럼만 최대 100개 구장 단위의 한 transaction에서 갱신한다. 모든 관리자는 4~160자 공통 사유가 필요하다. 시설명·코트 구분·지역 변경으로 표준명이 바뀌면 승인 구장, legacy mirror, 경기, 모집방, 대회, 리뷰의 이름 snapshot도 함께 갱신한다.
 3. 모든 실제 필드 변경은 변경 전·후, 구장 ID, 처리자 ID·표시명, 사유, 시각을 `admin_audit_log`에 보존한다. 표준명 변경은 `court_name_change_log`에도 보존하며 초기 일괄 표준화는 처리자 `시스템`, 이후 관리자 변경은 실제 프로필을 기록한다.
 4. 관리자 `구장 DB` 목록과 수정 이력은 level 50 이상 전용 server action으로 조회한다. 칼럼별 필터와 정렬은 전체 DB query에 먼저 적용하고 그 결과만 한 페이지 100행으로 반환한다. 브라우저에 전체 구장 배열을 내려받아 현재 페이지에서 필터하지 않는다.
 5. 승인 목록에서 제거한 demo/simulation 구장은 관리자 DB와 공개 구장 후보에 다시 합치지 않는다. 과거 참조가 있는 legacy shell은 이름 fallback·기록 무결성에만 사용한다.
@@ -3789,11 +3790,12 @@ flowchart TD
 3. 사후 경기기록과 개인 기록은 생성 화면에서 입력한 실제 시행일을 사용한다. 보관 인덱스의 `record_date`와 `occurred_at`도 같은 기준으로 갱신한다.
 4. 과거 기록은 `recordDate/occurredAt → playedAt → startedAt → endedAt → confirmedAt → 예약일 → createdAt` 순서로만 보완하며 `즉시` 문자열을 날짜로 표시하지 않는다.
 
-## 2026-07-28 알파 테스트 관리자 로그인 임시 예외
+## 2026-08-05 테스트 계정 관리자 경계
 
-1. 알파 테스트 로그인이 활성화된 동안 `rankball-001`만 활성 관리자 임명이 있어도 테스트 로그인을 허용한다.
-2. 다른 활성 관리자 테스트 계정은 계속 `alpha_test_admin_login_forbidden`으로 차단한다.
-3. 베타 전환 전 이 예외와 `TEMPORARY_ADMIN_TEST_LOGIN_IDS`를 제거하고 전체 관리자 차단을 복원한다.
+1. 공개 알파 로그인은 localhost이면서 비프로덕션 런타임일 때만 허용한다.
+2. 일반 테스트 계정은 활성 관리자 테스트 계정으로 전환할 수 없다.
+3. 서버가 현재 Supabase 세션의 관리자 레벨 `100`을 확인한 경우에만 활성 관리자 테스트 계정을 전환 대상으로 허용한다.
+4. 운영 `schema-health`는 테스트 프로필에 관리자·심판 권한을 시드하지 않는다. `ensureCourtAdmins`는 `boyakh` owner 임명만 복구하며 환경변수 우회도 허용하지 않는다.
 
 ## 현재 유효: 경기 종료·이의신청·중복 경기 정책
 
@@ -3845,7 +3847,7 @@ flowchart TD
 2. 신규 심판 시험·임명 진입 기준은 신뢰도 90 이상이다. 임명 뒤 신뢰도가 70 미만이 되면 DB trigger가 활성 심판 임명을 자동 회수한다. 신뢰도 70은 회수 대상이 아니다.
 3. 자동 회수 전에 시작된 경기·대회는 회수 이력을 확인해 종료까지 기존 심판이 진행할 수 있다. 새 경기·대회에는 회수된 자격을 사용할 수 없다.
 4. 모집방을 확정 경기로 전환할 때도 범위 조회 상태에 현재 심판 임명을 포함해, 이미 수락한 활성 심판을 신뢰도로 다시 탈락시키거나 누락하지 않는다.
-5. 알파 심판 계정 `rankball-001`, `rankball-011`은 검색·초대·생성 검증에서 같은 임시 예외를 사용한다.
+5. 테스트 계정도 일반 계정과 같은 활성 심판 임명·등급·임기 기준을 사용한다. `test_login_id` 자체는 검색·초대·경기 생성·상세 조회 권한을 만들지 않는다.
 6. 확정 경기 화면은 저장된 `refereeId`로 배정 심판 UI를 복원한다. 실제 시작·변경 action은 DB가 현재 자격과 진행 중 자동회수 예외를 다시 검증한다.
 
 ## 현재 유효: 경기시계 구간 종료와 인정 판정

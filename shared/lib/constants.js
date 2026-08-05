@@ -90,7 +90,6 @@ export const MAX_TEAM_NAME_LENGTH = 14;
 export const REFEREE_TRUST_MIN = 90;
 export const REFEREE_ACTIVE_TRUST_MIN = 70;
 export const REFEREE_GRADE_IDS = Object.freeze(["candidate", "silver", "gold", "platinum", "official"]);
-export const TEST_REFEREE_LOGIN_IDS = Object.freeze(["rankball-001", "rankball-011"]);
 const REFEREE_GRADE_ID_SET = new Set(REFEREE_GRADE_IDS);
 export function isRefereeGrade(value = "") {
   return REFEREE_GRADE_ID_SET.has(value);

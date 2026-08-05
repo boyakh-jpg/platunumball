@@ -33,7 +33,6 @@ const [open, setOpen] = useState(true);
   const [draftRows, setDraftRows] = useState({});
   const [activeCell, setActiveCell] = useState(null);
   const [reason, setReason] = useState("");
-  const [reasonOptional, setReasonOptional] = useState(false);
   const [saving, setSaving] = useState(false);
   const [reviewMode, setReviewMode] = useState(false);
   const [reviewIndex, setReviewIndex] = useState(0);
@@ -90,7 +89,7 @@ const [open, setOpen] = useState(true);
   const duplicateGroup = duplicateReview?.groups?.[duplicateReview.index] ?? null;
   const duplicateDetectedCount = Number(duplicateGroup?.detectedCount ?? 0);
   const duplicateDisplayCourts = duplicateGroup?.courts ?? [];
-  const reasonValid = reasonOptional || reason.trim().length >= 4;
+  const reasonValid = reason.trim().length >= 4;
 
   const loadRows = async (preserveStatus = false) => {
     const requestId = requestRef.current + 1;
@@ -109,7 +108,6 @@ const [open, setOpen] = useState(true);
       if (tab === "courts") {
         setCourtRows(result.rows ?? []);
         setCourtPage(result.page ?? { page: 1, pageSize: 100, total: 0, pageCount: 1 });
-        setReasonOptional(result.capabilities?.reasonOptional === true);
       } else {
         setHistoryRows(result.rows ?? []);
         setHistoryPage(result.page ?? { page: 1, pageSize: 100, total: 0, pageCount: 1 });
@@ -378,7 +376,6 @@ const [open, setOpen] = useState(true);
     activeCell,
     reason,
     setReason,
-    reasonOptional,
     saving,
     reviewMode,
     proximityReview,
