@@ -41,6 +41,7 @@ import profileAchievements from "../server/api/profile/achievements.js";
 import profileAffiliation from "../server/api/profile/affiliation.js";
 import profileMe from "../server/api/profile/me.js";
 import profileUpsert from "../server/api/profile/upsert.js";
+import profileWithdraw from "../server/api/profile/withdraw.js";
 import recordList from "../server/api/records/list.js";
 import refereeSync from "../server/api/referee/sync.js";
 import refereeDetail from "../server/api/referees/detail.js";
@@ -110,6 +111,7 @@ export const API_ROUTES = new Map([
   ["/profile/affiliation", route(profileAffiliation, ["POST"], "user")],
   ["/profile/me", route(profileMe, ["POST"], "user")],
   ["/profile/upsert", route(profileUpsert, ["POST"], "user")],
+  ["/profile/withdraw", route(profileWithdraw, ["POST"], "user")],
   ["/records/list", route(recordList, ["POST"], "user")],
   ["/referee/sync", route(refereeSync, ["POST"], "user")],
   ["/referees/detail", route(refereeDetail, ["POST"], "user")],

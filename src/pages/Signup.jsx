@@ -6,7 +6,7 @@ import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import ProfileBasicsFields from "../components/profile/ProfileBasicsFields.jsx";
 import { BASKETBALL_POSITIONS } from "../lib/constants.js";
-import { getUserHashtag, makeRandomDigitSuffix, makeSuggestedHashtagBody, sameHashtag, stripHandle, toHashtag } from "../lib/handles.js";
+import { getUserHashtag, makeRandomDigitSuffix, makeSuggestedHashtagBody, PROFILE_HASHTAG_MIN_LENGTH, sameHashtag, stripHandle, toHashtag } from "../lib/handles.js";
 import {
   AGE_GROUPS,
   canChangeProfileName,
@@ -25,9 +25,15 @@ import {
   shouldSetupProfile,
 } from "../lib/profileSetup.js";
 
-function getInitialHandleBody(user = {}, suffix = "") {
+function getSuggestedHandleBody(name, suffix, users = [], currentUserId = "") {
+  const base = makeSuggestedHashtagBody(name);
+  const baseTaken = users.some((item) => item.id !== currentUserId && sameHashtag(base, getUserHashtag(item)));
+  return baseTaken ? makeSuggestedHashtagBody(name, suffix) : base;
+}
+
+function getInitialHandleBody(user = {}, suffix = "", users = []) {
   if (user.handleLockedAt || user.hashtagLockedAt) return stripHandle(getUserHashtag(user));
-  return stripHandle(user.hashtag ?? user.handle ?? "") || makeSuggestedHashtagBody(user.name, suffix);
+  return stripHandle(user.hashtag ?? user.handle ?? "") || getSuggestedHandleBody(user.name, suffix, users, user.id);
 }
 
 export default function Signup({ app, auth }) {
@@ -40,7 +46,7 @@ export default function Signup({ app, auth }) {
   const [handleTouched, setHandleTouched] = useState(() => Boolean(stripHandle(user.hashtag ?? user.handle ?? "")));
   const [draft, setDraft] = useState(() => ({
     name: user.name ?? "",
-    handle: getInitialHandleBody(user, suggestionSuffix),
+    handle: getInitialHandleBody(user, suggestionSuffix, app.state.users),
     birthYear: user.birthYear ?? "",
     position: BASKETBALL_POSITIONS.includes(user.position) ? user.position : "PG",
     sido: user.regionSido ?? inferredRegion.sido,
@@ -69,9 +75,9 @@ export default function Signup({ app, auth }) {
 
   useEffect(() => {
     if (handleLocked || handleTouched) return;
-    const nextHandle = makeSuggestedHashtagBody(draft.name || user.name, suggestionSuffix);
+    const nextHandle = getSuggestedHandleBody(draft.name || user.name, suggestionSuffix, app.state.users, user.id);
     setDraft((current) => (current.handle === nextHandle ? current : { ...current, handle: nextHandle }));
-  }, [draft.name, handleLocked, handleTouched, suggestionSuffix, user.name]);
+  }, [app.state.users, draft.name, handleLocked, handleTouched, suggestionSuffix, user.id, user.name]);
 
   useEffect(() => {
     if (!redirectAfterSave) return;
@@ -97,6 +103,10 @@ export default function Signup({ app, auth }) {
     }
     if (!handleLocked && !handleBody) {
       setFormError("해시태그를 직접 입력해 주세요.");
+      return;
+    }
+    if (!handleLocked && handleBody.length < PROFILE_HASHTAG_MIN_LENGTH) {
+      setFormError(`해시태그는 ${PROFILE_HASHTAG_MIN_LENGTH}글자 이상 입력해 주세요.`);
       return;
     }
     const birthYear = birthYearLocked ? Number(user.birthYear) : Number(draft.birthYear);
@@ -125,12 +135,16 @@ export default function Signup({ app, auth }) {
         ...(name !== user.name ? { nameUpdatedAt: now } : {}),
       });
       if (!result || result.ok === false) {
-        setFormError("프로필을 저장하지 못했습니다. 입력 내용을 확인한 뒤 다시 시도해 주세요.");
+        setFormError(result?.error === "account_rejoin_blocked"
+          ? "탈퇴한 Google 계정은 탈퇴일로부터 7일 동안 다시 가입할 수 없습니다."
+          : "프로필을 저장하지 못했습니다. 입력 내용을 확인한 뒤 다시 시도해 주세요.");
         return;
       }
       setRedirectAfterSave(true);
     } catch (error) {
-      setFormError("프로필을 저장하지 못했습니다. 입력 내용을 확인한 뒤 다시 시도해 주세요.");
+      setFormError(error?.message === "account_rejoin_blocked"
+        ? "탈퇴한 Google 계정은 탈퇴일로부터 7일 동안 다시 가입할 수 없습니다."
+        : "프로필을 저장하지 못했습니다. 입력 내용을 확인한 뒤 다시 시도해 주세요.");
     } finally {
       profileSavePendingRef.current = false;
       setProfileSavePending(false);
@@ -167,12 +181,13 @@ export default function Signup({ app, auth }) {
               해시태그
               <span className="prefixed-input">
                 <span>#</span>
-                <input value={handleBody} maxLength={20} disabled={handleLocked} onChange={(event) => {
+                <input value={handleBody} minLength={PROFILE_HASHTAG_MIN_LENGTH} maxLength={20} disabled={handleLocked} onChange={(event) => {
                   setHandleTouched(true);
                   update({ handle: stripHandle(event.target.value) });
                 }} />
               </span>
               {handleDuplicate ? <span className="form-warning">이미 사용 중인 해시태그입니다.</span> : null}
+              {!handleLocked && handleBody && handleBody.length < PROFILE_HASHTAG_MIN_LENGTH ? <span className="form-warning">해시태그는 {PROFILE_HASHTAG_MIN_LENGTH}글자 이상이어야 합니다.</span> : null}
               {handleLocked ? <span className="muted">해시태그는 최초 등록 후 수정할 수 없습니다.</span> : null}
             </label>
             <label>

@@ -1,3 +1,5 @@
+export const PROFILE_HASHTAG_MIN_LENGTH = 3;
+
 export function stripHandle(value, fallback = "") {
   const raw = String(value || fallback || "")
     .trim()
@@ -33,16 +35,16 @@ function romanizeHangul(value = "") {
 }
 
 export function makeRandomDigitSuffix() {
-  return String(Math.floor(Math.random() * 10000)).padStart(4, "0");
+  return String(Math.floor(Math.random() * 1000)).padStart(3, "0");
 }
 
-export function makeSuggestedHashtagBody(name = "", suffix = makeRandomDigitSuffix()) {
+export function makeSuggestedHashtagBody(name = "", suffix = "") {
   const romanized = romanizeHangul(name)
     .normalize("NFKD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase();
-  const base = romanized.replace(/[^a-z0-9]+/g, "").slice(0, 8) || "boxtier";
-  return `${base}${suffix}`;
+  const base = romanized.replace(/[^a-z0-9]+/g, "") || "boxtier";
+  return `${base.slice(0, suffix ? 17 : 20)}${suffix}`;
 }
 
 export function getUserHashtag(user = {}) {

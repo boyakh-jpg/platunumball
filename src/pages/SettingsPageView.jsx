@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRightLeft, LogOut } from "lucide-react";
+import { ArrowRightLeft, LogOut, Trash2 } from "lucide-react";
 import Button from "../components/common/Button.jsx";
+import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import SettingsPrimaryColumn from "./SettingsPrimaryColumn.jsx";
 import SettingsSideColumn from "./SettingsSideColumn.jsx";
 import SettingsRefereeSection from "./SettingsRefereeSection.jsx";
@@ -15,6 +16,10 @@ export default function SettingsPageView({ controller, auth }) {
   const [activityList, setActivityList] = useState("");
   const [testLoginId, setTestLoginId] = useState(() => controller.currentTestLoginId || auth?.testAccounts?.[0]?.id || "");
   const [testSwitchStatus, setTestSwitchStatus] = useState("");
+  const [withdrawalOpen, setWithdrawalOpen] = useState(false);
+  const [withdrawalConfirmation, setWithdrawalConfirmation] = useState("");
+  const [withdrawalStatus, setWithdrawalStatus] = useState("");
+  useBodyScrollLock(withdrawalOpen);
 
   const switchTestAccount = async (event) => {
     event.preventDefault();
@@ -25,6 +30,18 @@ export default function SettingsPageView({ controller, auth }) {
       return;
     }
     window.location.assign("/app/settings");
+  };
+
+  const withdrawAccount = async () => {
+    setWithdrawalStatus("");
+    const result = await auth.withdrawAccount(withdrawalConfirmation);
+    if (result?.ok) {
+      window.location.assign("/login?withdrawn=1");
+      return;
+    }
+    setWithdrawalStatus(result?.error === "account_withdrawal_team_captain"
+      ? "팀장인 팀을 먼저 위임하거나 삭제해 주세요."
+      : "탈퇴하지 못했습니다. 잠시 후 다시 시도해 주세요.");
   };
 
   return (
@@ -73,6 +90,37 @@ export default function SettingsPageView({ controller, auth }) {
           <Button type="button" variant="danger" onClick={auth.signOut} disabled={auth.authActionPending}>
             <LogOut size={16} /> 로그아웃
           </Button>
+          {!controller.currentTestLoginId ? (
+            <Button type="button" variant="secondary" onClick={() => setWithdrawalOpen(true)} disabled={auth.authActionPending}>
+              <Trash2 size={16} /> 회원 탈퇴
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
+      {withdrawalOpen ? (
+        <div className="app-confirm-backdrop" role="presentation" onMouseDown={() => !auth.authActionPending && setWithdrawalOpen(false)}>
+          <div className="app-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="account-withdrawal-title" onMouseDown={(event) => event.stopPropagation()}>
+            <h2 id="account-withdrawal-title">회원 탈퇴</h2>
+            <p>탈퇴하면 프로필과 개인 기록은 복구할 수 없습니다.</p>
+            <p>다른 참가자의 경기 결과 정합성에 필요한 기록은 익명 처리 후 남을 수 있습니다.</p>
+            <p><strong>탈퇴한 Google 계정은 7일 동안 다시 가입할 수 없습니다.</strong></p>
+            <label className="settings-withdrawal-confirmation">
+              계속하려면 <strong>탈퇴</strong>를 입력하세요.
+              <input
+                value={withdrawalConfirmation}
+                onChange={(event) => setWithdrawalConfirmation(event.target.value)}
+                autoComplete="off"
+                disabled={auth.authActionPending}
+              />
+            </label>
+            {withdrawalStatus ? <p className="form-warning" role="alert">{withdrawalStatus}</p> : null}
+            <div className="ui-action-row app-confirm-actions">
+              <Button type="button" variant="secondary" onClick={() => setWithdrawalOpen(false)} disabled={auth.authActionPending}>취소</Button>
+              <Button type="button" variant="danger" onClick={withdrawAccount} disabled={auth.authActionPending || withdrawalConfirmation !== "탈퇴"}>
+                {auth.authActionPending ? "처리 중" : "영구 탈퇴"}
+              </Button>
+            </div>
+          </div>
         </div>
       ) : null}
       <SettingsListDialog

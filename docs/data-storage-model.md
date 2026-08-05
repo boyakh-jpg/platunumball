@@ -1,5 +1,11 @@
 # RankBall 데이터 저장 모델
 
+## 2026-08-05 회원 탈퇴
+
+- `account_withdrawals`는 Google 계정 식별자의 SHA-256 해시와 7일 차단 만료 시각만 service-role 전용으로 보관한다.
+- 탈퇴 프로필은 공유 경기 FK 정합성을 위해 익명 row로 남기되 `withdrawn_at`을 기록하고 `public_profiles`에서 제외한다.
+- 개인 요약·아이콘·커뮤니티·즐겨찾기·알림·Discord 전달·팀 소속 데이터는 탈퇴 RPC에서 삭제한다.
+
 ## 2026-07-25 대회 심판·지역 승인 원본
 
 | 원본 | 필드 | 역할 |

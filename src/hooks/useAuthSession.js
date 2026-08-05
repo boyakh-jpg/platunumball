@@ -279,6 +279,31 @@ export function useAuthSession() {
         setAuthActionPending(false);
       }
     },
+    withdrawAccount: async (confirmation) => {
+      if (authActionPendingRef.current) return { ok: false, error: "auth_action_pending" };
+      authActionPendingRef.current = true;
+      setAuthActionPending(true);
+      setError("");
+      setMessage("");
+      try {
+        const result = await postServerAction(
+          "/api/profile/withdraw",
+          { confirmation },
+          { allowWhenDisabled: true },
+        );
+        clearSupabaseSessionStorage();
+        writeTestSession(null);
+        setClientActionSession(null);
+        setSession(null);
+        setLoading(false);
+        return result;
+      } catch (withdrawalError) {
+        return { ok: false, error: withdrawalError?.code || withdrawalError?.message || "account_withdrawal_failed" };
+      } finally {
+        authActionPendingRef.current = false;
+        setAuthActionPending(false);
+      }
+    },
     signInWithTestAccount: async (testLoginId, options = {}) => {
       if (testLoginPendingRef.current || authActionPendingRef.current) return null;
 

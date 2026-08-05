@@ -5,6 +5,8 @@ import { DEFAULT_PLAYER_RATINGS } from "../../../shared/lib/matchConstants.js";
 import { getAgeGroupByBirthYear, normalizeProfileName } from "../../../shared/lib/profileSetup.js";
 import { getDiscordCdnAvatarUrl } from "../../../shared/lib/discordProtocol.js";
 import { getProfileShellId as makeProfileId } from "../../../shared/lib/profileMappers.js";
+import { assertAccountRejoinAllowed } from "./_accountWithdrawal.js";
+import { PROFILE_HASHTAG_MIN_LENGTH, stripHandle } from "../../../shared/lib/handles.js";
 
 const EXISTING_PROFILE_COLUMNS = "id,auth_user_id,name,handle,hashtag,birth_year,age_group,age_group_checked_season,region_sido,region_district,onboarding_complete,profile_version,handle_locked_at,birth_year_locked_at,name_updated_at,region,position,avatar_color,avatar_source,avatar_updated_at,trust_score,ratings,school,company,club,streak,discord_connection,discord_user_id,discord_avatar_url,test_login_id";
 
@@ -157,6 +159,11 @@ async function buildProfileRow({ existing, profile, authUser, authUserId }) {
     error.statusCode = 400;
     throw error;
   }
+  if (profile.onboardingComplete && stripHandle(nextHashtag).length < PROFILE_HASHTAG_MIN_LENGTH) {
+    const error = new Error("hashtag_too_short");
+    error.statusCode = 400;
+    throw error;
+  }
   if (profile.onboardingComplete && (!nextBirthYear || !profile.ageGroupCheckedSeason)) {
     const error = new Error("profile_setup_required");
     error.statusCode = 400;
@@ -204,6 +211,7 @@ export default async function handler(request, response) {
 
   try {
     const context = await getAuthenticatedContext(request, { allowMissingProfile: true });
+    await assertAccountRejoinAllowed(context.supabase, context.authUser);
     const body = await readJsonBody(request);
     const profile = body.profile && typeof body.profile === "object" ? body.profile : {};
     const existingQuery = context.profileId
@@ -244,6 +252,9 @@ export default async function handler(request, response) {
     sendJson(response, 200, { ok: true, profile: data, ...profileState });
   } catch (error) {
     console.error("Profile upsert failed.", error);
-    sendJson(response, error.statusCode || 500, { error: error.message || "profile_upsert_failed" });
+    sendJson(response, error.statusCode || 500, {
+      error: error.message || "profile_upsert_failed",
+      ...(error.blockedUntil ? { blockedUntil: error.blockedUntil } : {}),
+    });
   }
 }
