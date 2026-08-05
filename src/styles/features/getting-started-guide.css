@@ -200,8 +200,7 @@
   letter-spacing: 0.08em;
 }
 
-.getting-started-chapter__copy h1,
-.getting-started-chapter__copy h2 {
+.getting-started-chapter__copy h1 {
   max-width: 14ch;
   margin: 0;
   font-family: var(--font-body);
