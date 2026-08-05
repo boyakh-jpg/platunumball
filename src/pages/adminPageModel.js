@@ -5,7 +5,7 @@ export const ADMIN_SECTION_OPTIONS = [
   { id: "courts", label: "구장 신청", caption: "등록 신청과 구장 신고", icon: MapPin },
   { id: "courtDb", label: "구장 DB", caption: "전체 조회·이름·이력", icon: Database, minLevel: 50 },
   { id: "players", label: "플레이어 신고", caption: "신고와 징계", icon: UserRound },
-  { id: "userOps", label: "사용자 운영", caption: "통계·경고·제재", icon: Activity, minLevel: 50 },
+  { id: "userOps", label: "사용자 운영", caption: "가입자·통계·제재", icon: Activity, minLevel: 50 },
   { id: "matches", label: "경기 심사", caption: "기록 오류와 이의", icon: ClipboardList },
   { id: "teams", label: "팀·소속", caption: "이름과 엠블럼 신고", icon: ShieldAlert },
   { id: "appointments", label: "권한 관리", caption: "심판과 관리자 임명", icon: ShieldCheck },

@@ -603,6 +603,8 @@ test("관리자 조치는 현재 선택 대상과 서버 전체 대기 건수를
   assert.match(detailPanel, /disabled=\{reviewActionPending \|\| !reportOptions\.length\}/u);
   assert.match(userOperations, /const requestTargetUserId = selected\.id;[\s\S]{0,180}selectedUserIdRef\.current === requestTargetUserId/u);
   assert.match(userOperations, /className=\{selected\?\.id === user\.id[\s\S]{0,140}disabled=\{actionPending\}/u);
+  assert.match(userOperations, /const \[riskOnly, setRiskOnly\] = useState\(false\);[\s\S]{0,9000}30일 신규 가입/u);
+  assert.match(userOperations, /가입 \{formatDateTime\(user\.createdAt\)\}/u);
   assert.equal((adminLoader.match(/select\("id", \{ count: "exact", head: true \}\)\.eq\("status", "pending"\)/g) ?? []).length, 2);
   assert.match(adminLoader, /refereeRequestPage\.total \+ pendingAppointmentCount/u);
 });

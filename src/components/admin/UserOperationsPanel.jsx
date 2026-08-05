@@ -59,7 +59,7 @@ export default function UserOperationsPanel({ app }) {
   const commitOperation = app.actions.commitAdminUserOperation;
   const requestVersionRef = useRef(0);
   const selectedUserIdRef = useRef("");
-  const [riskOnly, setRiskOnly] = useState(true);
+  const [riskOnly, setRiskOnly] = useState(false);
   const [search, setSearch] = useState("");
   const [appliedSearch, setAppliedSearch] = useState("");
   const [result, setResult] = useState(EMPTY_RESULT);
@@ -187,6 +187,7 @@ export default function UserOperationsPanel({ app }) {
     <div className="admin-user-operations">
       <div className="admin-summary-grid">
         <Card className="section-card"><span>전체 사용자</span><strong>{result.summary.totalUsers ?? 0}</strong><em>등록 프로필</em></Card>
+        <Card className="section-card"><span>30일 신규 가입</span><strong>{result.summary.newUsers30d ?? 0}</strong><em>프로필 생성 기준</em></Card>
         <Card className="section-card"><span>30일 활동</span><strong>{result.summary.activeUsers30d ?? 0}</strong><em>경기·방·채팅·프로필</em></Card>
         <Card className="section-card"><span>검토 필요</span><strong>{result.summary.reviewUsers ?? 0}</strong><em>우선도 30 이상</em></Card>
         <Card className="section-card"><span>활성 제재</span><strong>{result.summary.activeSanctionUsers ?? 0}</strong><em>현재 제한 사용자</em></Card>
@@ -223,8 +224,8 @@ export default function UserOperationsPanel({ app }) {
           <Button type="button" variant="secondary" disabled={loading || actionPending} onClick={() => loadPage({ offset: 0 })}><RefreshCw size={16} /> 새로고침</Button>
         </div>
         <div className="ui-segmented-control segmented-control compact-segments admin-user-ops-mode">
-          <button type="button" className={riskOnly ? "active" : ""} disabled={actionPending} onClick={() => setRiskOnly(true)}>주의 신호 {result.summary.signalUsers ?? 0}</button>
           <button type="button" className={!riskOnly ? "active" : ""} disabled={actionPending} onClick={() => setRiskOnly(false)}>전체 사용자</button>
+          <button type="button" className={riskOnly ? "active" : ""} disabled={actionPending} onClick={() => setRiskOnly(true)}>주의 신호 {result.summary.signalUsers ?? 0}</button>
         </div>
       </Card>
 
@@ -249,7 +250,7 @@ export default function UserOperationsPanel({ app }) {
                   <span>
                     <strong>{user.name || "이름 없음"}</strong>
                     <em>{user.hashtag || user.id} · {user.region || "지역 미정"}</em>
-                    <small>최근 활동 {formatDateTime(user.lastActivityAt)}</small>
+                    <small>가입 {formatDateTime(user.createdAt)} · 최근 활동 {formatDateTime(user.lastActivityAt)}</small>
                   </span>
                   <span>
                     <Badge tone={risk.tone}>{risk.label}</Badge>
@@ -275,7 +276,7 @@ export default function UserOperationsPanel({ app }) {
                 <div>
                   <p className="eyebrow">User Detail</p>
                   <h2>{selected.name || "이름 없음"}</h2>
-                  <span>{selected.hashtag || selected.id} · {selected.position || "포지션 미정"} · 신뢰도 {selected.trustScore ?? 80}</span>
+                  <span>{selected.hashtag || selected.id} · {selected.position || "포지션 미정"} · 가입 {formatDateTime(selected.createdAt)} · 신뢰도 {selected.trustScore ?? 80}</span>
                 </div>
                 <Badge tone={selectedRisk.tone}>{selectedRisk.label} {Number(selected.riskScore ?? 0)}</Badge>
               </div>
