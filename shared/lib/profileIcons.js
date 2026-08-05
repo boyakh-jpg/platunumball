@@ -1,5 +1,5 @@
 // Shared profile-icon catalog and unlock policy.
-const PROFILE_ICON_ASSET_VERSION = "20260724-25";
+const PROFILE_ICON_ASSET_VERSION = "20260805-26";
 
 const icon = (id, name) => Object.freeze({
   id,
@@ -248,6 +248,10 @@ for (const seriesGroup of PROFILE_ICON_SERIES_GROUPS) {
 
 if (nextExpandedIconNumber !== 341) throw new Error("profile_icon_catalog_size_mismatch");
 
+PROFILE_ICON_ACHIEVEMENTS["341-founding-player-s0"] = achievement("Season Zero 창립 선수", [
+  requirement("foundingPlayer", 1, "FOUNDING PLAYER"),
+]);
+
 const REFEREE_EXAM_ICON_ENTRIES = Object.freeze([
   ["221-referee-exam-rookie", "룰북 루키", 1],
   ["222-referee-exam-signal", "시그널 연습생", 3],
@@ -370,6 +374,7 @@ export const PROFILE_ICON_GROUPS = Object.freeze([
     ["78-lucky-rabbit", "럭키 래빗"],
     ["79-bulldog-center", "코트 불독"],
     ["80-crown-goat", "크라운 GOAT"],
+    ["341-founding-player-s0", "FOUNDING PLAYER · S0"],
   ]),
   ...EXPANDED_PROFILE_ICON_GROUPS,
 ]);

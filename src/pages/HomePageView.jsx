@@ -8,7 +8,11 @@ import MatchCard from "../components/match/MatchCard.jsx";
 import RecentMatchRow from "../components/match/RecentMatchRow.jsx";
 import HomeRightRail from "../components/home/HomeRightRail.jsx";
 import { isHomeGuideCardVisible } from "../data/settingsMappers.js";
+import { assetUrl } from "../lib/assets.js";
 import { getRoomScheduleLabel } from "../lib/matchUtils.js";
+import { getProfileIcon } from "../lib/profileIcons.js";
+
+const FOUNDING_PLAYER_ICON = getProfileIcon("341-founding-player-s0");
 
 export default function HomePageView({
   query, setQuery, searchResults, mapRemoteHomeSearchItem, homeFavoriteSearchItems,
@@ -80,6 +84,32 @@ export default function HomePageView({
             </aside>
           </div>
         </section>
+
+        <Card
+          as={Link}
+          to={user.foundingPlayer ? "/app/profile#icons" : "/app/signup"}
+          className="home-guide-card home-season-zero-card"
+          aria-label={user.foundingPlayer ? "FOUNDING PLAYER 시즌 제로 업적 아이콘 선택" : "시즌 제로 특전 받기"}
+        >
+          <span className="home-guide-card__icon">
+            <img src={assetUrl(FOUNDING_PLAYER_ICON.src)} alt="" width="40" height="40" decoding="async" />
+          </span>
+          <span className="home-guide-card__copy">
+            <small>SEASON ZERO · EARLY PLAYER</small>
+            <strong>{user.foundingPlayer ? "FOUNDING PLAYER 특전 지급 완료" : "프로필 완성하고 창립 선수 특전 받기"}</strong>
+          </span>
+          <span className="home-guide-card__path" aria-hidden="true">
+            <b>JOIN</b>
+            <i>→</i>
+            <b>PROFILE</b>
+            <i>→</i>
+            <b>S0</b>
+          </span>
+          <span className="home-guide-card__link">
+            {user.foundingPlayer ? "아이콘 선택" : "특전 받기"}
+            <ArrowRight size={18} aria-hidden="true" />
+          </span>
+        </Card>
 
         {isHomeGuideCardVisible(app.state.settings) ? (
           <Card

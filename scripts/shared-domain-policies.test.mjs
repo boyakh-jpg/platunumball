@@ -1396,11 +1396,15 @@ test("profile icon picker lists owned icons only and locked achievements conceal
   assert.match(styles, /\.profile-achievement-icon\s*{[^}]*-webkit-mask-image: radial-gradient\(circle closest-side at center, #000 98%, transparent 100%\)/s);
   assert.match(styles, /\.profile-achievement-icon\s*{[^}]*contain: paint/s);
   assert.match(styles, /\.profile-achievement-card\.locked \.profile-achievement-icon img\s*{[^}]*filter: brightness\(0\) saturate\(0\) blur\(1\.2px\)/s);
-  assert.equal(PROFILE_ICON_CATALOG.length, 340);
+  assert.equal(PROFILE_ICON_CATALOG.length, 341);
   assert.equal(PROFILE_ICON_CATALOG.some((icon) => icon.id.includes("four-on-four")), false);
   assert.equal(PROFILE_ICON_CATALOG.some((icon) => icon.id.startsWith("226-five-on-five-")), true);
   assert.equal(PROFILE_ICON_CATALOG.filter((icon) => /^22[1-5]-referee-exam-/.test(icon.id)).length, 5);
   assert.equal(DEFAULT_UNLOCKED_PROFILE_ICON_KEYS.length, 5);
+  assert.deepEqual(
+    PROFILE_ICON_CATALOG.find((icon) => icon.id === "341-founding-player-s0")?.achievement.requirements,
+    [{ metric: "foundingPlayer", target: 1, label: "FOUNDING PLAYER" }],
+  );
   assert.deepEqual(
     PROFILE_ICON_CATALOG
       .filter((icon) => /^22[1-5]-referee-exam-/.test(icon.id))
@@ -1409,6 +1413,8 @@ test("profile icon picker lists owned icons only and locked achievements conceal
   );
   assert.match(achievementApi, /referee_exam_attempts/);
   assert.match(achievementApi, /refereeExamCompletedCount/);
+  assert.match(achievementApi, /select\("founding_player"\)/);
+  assert.match(achievementApi, /foundingPlayer: Number\(profileResult\.data\?\.founding_player === true\)/);
   assert.match(achievementApi, /activeUnlockedRows = \(unlockedRows \?\? \[\]\)\.filter\(\(row\) => PROFILE_ICON_ID_SET\.has\(row\.icon_key\)\)/);
   assert.match(profileActions, /if \(!isSupabaseConfigured\)[\s\S]*DEFAULT_UNLOCKED_PROFILE_ICON_KEYS/);
   assert.match(profileActions, /saveLocalProfileIconPatch/);

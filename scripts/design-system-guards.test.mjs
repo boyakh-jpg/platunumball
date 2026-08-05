@@ -1090,6 +1090,15 @@ test("알파 온보딩은 기록 중심 무료 핵심 흐름을 안내한다", (
   assert.doesNotMatch(pageSources.home, /onboardingComplete[\s\S]*home-guide-card/);
 });
 
+test("home Season Zero banner routes by founding player status", () => {
+  assert.match(pageSources.home, /to=\{user\.foundingPlayer \? "\/app\/profile#icons" : "\/app\/signup"\}/);
+  assert.match(pageSources.home, /FOUNDING PLAYER 특전 지급 완료/);
+  assert.match(pageSources.home, /getProfileIcon\("341-founding-player-s0"\)/);
+  assert.match(pageSources.profile, /useState\(\(\) => location\.hash === "#icons"\)/);
+  assert.match(pageSources.profile, /if \(location\.hash === "#icons"\) setIconDialogOpen\(true\)/);
+  assert.doesNotMatch(pageSources.playerDetail, /foundingPlayer|FOUNDING PLAYER/);
+});
+
 test("hero inner boards share one readable liquid-glass system", () => {
   assert.equal(count(tokenStyles, "--hero-copy-color: var(--rb-cream);"), 2);
   assert.equal(count(tokenStyles, "--hero-title-shadow: 0 2px 12px rgba(0, 0, 0, 0.26);"), 2);
