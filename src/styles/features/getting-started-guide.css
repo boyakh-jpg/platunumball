@@ -1,37 +1,17 @@
 .home-guide-card {
   --ui-card-padding: var(--space-8);
-  --ui-card-bg:
-    linear-gradient(
-      112deg,
-      color-mix(in srgb, var(--rb-orange) 13%, var(--rb-bg-2)),
-      color-mix(in srgb, var(--rb-blue) 7%, var(--rb-bg-2))
-    );
   --ui-card-border: color-mix(in srgb, var(--rb-orange) 32%, var(--rb-line));
   position: relative;
-  isolation: isolate;
   display: grid;
   grid-template-columns: auto minmax(190px, 1fr) auto auto;
   gap: var(--space-8);
   align-items: center;
   min-width: 0;
-  overflow: hidden;
   color: var(--rb-text);
   text-decoration: none;
   transition:
     transform 150ms ease,
     border-color 150ms ease;
-}
-
-.home-guide-card::after {
-  position: absolute;
-  right: -40px;
-  bottom: -66px;
-  z-index: -1;
-  width: 170px;
-  aspect-ratio: 1;
-  content: "";
-  border: 22px solid color-mix(in srgb, var(--rb-orange) 8%, transparent);
-  border-radius: 50%;
 }
 
 .home-guide-card:hover {

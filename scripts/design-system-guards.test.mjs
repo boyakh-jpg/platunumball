@@ -1097,6 +1097,8 @@ test("home Season Zero banner routes by founding player status", () => {
   assert.match(pageSources.home, /FOUNDING PLAYER 특전 지급 완료/);
   assert.match(pageSources.home, /getProfileIcon\("341-founding-player-s0"\)/);
   assert.match(read("src/lib/assets.js"), /normalizedPath\.startsWith\("\/assets\/profile-icons\/"\)/);
+  assert.doesNotMatch(gettingStartedStyles, /\.home-guide-card\s*\{[^}]*--ui-card-bg:/s);
+  assert.doesNotMatch(gettingStartedStyles, /\.home-guide-card::after/);
   assert.match(pageSources.profile, /useState\(\(\) => location\.hash === "#icons"\)/);
   assert.match(pageSources.profile, /if \(location\.hash === "#icons"\) setIconDialogOpen\(true\)/);
   assert.doesNotMatch(pageSources.playerDetail, /foundingPlayer|FOUNDING PLAYER/);
