@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 import {
+  COMMUNITY_PAGE_SIZE,
   normalizeCommunityCommentBody,
   normalizeCommunityPostDraft,
   selectPopularCommunityPosts,
@@ -59,7 +60,8 @@ export default function useCommunityController(app) {
   const [localComments, setLocalComments] = useState(demoBoard.comments);
   const [remotePosts, setRemotePosts] = useState([]);
   const [remotePopularPosts, setRemotePopularPosts] = useState([]);
-  const [page, setPage] = useState({ hasMore: false, nextOffset: 0 });
+  const [page, setPage] = useState({ offset: 0, limit: COMMUNITY_PAGE_SIZE, total: 0, hasMore: false });
+  const [pageIndex, setPageIndex] = useState(0);
   const [category, setCategory] = useState("all");
   const [selectedPost, setSelectedPost] = useState(null);
   const [comments, setComments] = useState([]);
@@ -68,6 +70,7 @@ export default function useCommunityController(app) {
   const [detailLoading, setDetailLoading] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
+  const listRequestRef = useRef(0);
 
   useEffect(() => {
     if (remote) return;
@@ -77,38 +80,48 @@ export default function useCommunityController(app) {
     setComments([]);
   }, [demoBoard, remote]);
 
-  const loadPosts = useCallback(async (append = false) => {
+  const loadPosts = useCallback(async (targetPage = 0) => {
     if (!remote) return;
+    const requestId = ++listRequestRef.current;
     setLoading(true);
     setError("");
     try {
-      const result = await communityAction("list", { category, limit: 30, offset: append ? page.nextOffset : 0 });
+      const result = await communityAction("list", { category, limit: COMMUNITY_PAGE_SIZE, offset: targetPage * COMMUNITY_PAGE_SIZE });
       if (!result || result.ok === false) throw new Error(result?.error || "community_list_failed");
-      setRemotePosts((current) => append
-        ? [...current, ...result.posts.filter((post) => !current.some((item) => item.id === post.id))]
-        : result.posts);
+      if (requestId !== listRequestRef.current) return;
+      setRemotePosts(result.posts);
       setRemotePopularPosts(result.popularPosts ?? []);
-      setPage(result.page ?? { hasMore: false, nextOffset: 0 });
+      setPage(result.page ?? { offset: 0, limit: COMMUNITY_PAGE_SIZE, total: 0, hasMore: false });
+      setPageIndex(targetPage);
       setCanModerate(result.canModerate === true);
     } catch (loadError) {
-      setError(getCommunityErrorMessage(loadError.message));
+      if (requestId === listRequestRef.current) setError(getCommunityErrorMessage(loadError.message));
     } finally {
-      setLoading(false);
+      if (requestId === listRequestRef.current) setLoading(false);
     }
-  }, [category, communityAction, page.nextOffset, remote]);
+  }, [category, communityAction, remote]);
 
   useEffect(() => {
-    if (remote && app.remoteReady) void loadPosts(false);
+    setPageIndex(0);
+    if (remote && app.remoteReady) {
+      setRemotePosts([]);
+      void loadPosts(0);
+    }
   }, [app.remoteReady, category, remote]);
 
-  const posts = remote
-    ? remotePosts
-    : localPosts.filter((post) => category === "all" || post.category === category);
+  const filteredLocalPosts = localPosts.filter((post) => category === "all" || post.category === category);
+  const posts = remote ? remotePosts : filteredLocalPosts.slice(pageIndex * COMMUNITY_PAGE_SIZE, (pageIndex + 1) * COMMUNITY_PAGE_SIZE);
+  const currentPage = remote ? page : {
+    offset: pageIndex * COMMUNITY_PAGE_SIZE,
+    limit: COMMUNITY_PAGE_SIZE,
+    total: filteredLocalPosts.length,
+    hasMore: (pageIndex + 1) * COMMUNITY_PAGE_SIZE < filteredLocalPosts.length,
+  };
   const popularPosts = remote ? remotePopularPosts : selectPopularCommunityPosts(localPosts);
   const commentThreads = useMemo(() => getCommunityCommentThreads(comments), [comments]);
 
   const openPost = async (post) => {
-    setSelectedPost(post);
+    setSelectedPost(remote && !post.title ? null : post);
     setComments([]);
     setError("");
     if (!remote) {
@@ -145,7 +158,8 @@ export default function useCommunityController(app) {
         const operation = postId ? "updatePost" : "createPost";
         const result = await communityAction(operation, { postId, post: draft });
         if (!result || result.ok === false) throw new Error(result?.error || "community_post_save_failed");
-        await loadPosts(false);
+        const targetPage = postId ? pageIndex : 0;
+        await loadPosts(targetPage);
         setSelectedPost(result.post);
         setComments(result.comments ?? []);
         return true;
@@ -176,7 +190,8 @@ export default function useCommunityController(app) {
       if (remote) {
         const result = await communityAction("deletePost", { postId });
         if (!result || result.ok === false) throw new Error(result?.error || "community_post_delete_failed");
-        await loadPosts(false);
+        const targetPage = remotePosts.length === 1 && pageIndex > 0 ? pageIndex - 1 : pageIndex;
+        await loadPosts(targetPage);
       } else {
         setLocalPosts((current) => current.filter((post) => post.id !== postId));
         setLocalComments((current) => current.filter((comment) => comment.postId !== postId));
@@ -273,9 +288,18 @@ export default function useCommunityController(app) {
   }, []);
 
   return {
-    posts, popularPosts, page, category, setCategory, selectedPost, comments, commentThreads,
+    posts, popularPosts, page: currentPage, pageIndex, category, setCategory, selectedPost, comments, commentThreads,
     canModerate, loading, detailLoading, pending, error, setError,
     openPost, closePost,
-    loadMore: () => loadPosts(true), savePost, deletePost, toggleLike, saveComment, deleteComment,
+    goToPage: (targetPage) => {
+      const maxPage = Math.max(0, Math.ceil(currentPage.total / COMMUNITY_PAGE_SIZE) - 1);
+      const nextPage = Math.max(0, Math.min(maxPage, Math.floor(Number(targetPage) || 0)));
+      setPageIndex(nextPage);
+      if (remote) {
+        setRemotePosts([]);
+        void loadPosts(nextPage);
+      }
+    },
+    savePost, deletePost, toggleLike, saveComment, deleteComment,
   };
 }

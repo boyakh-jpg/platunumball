@@ -3,6 +3,8 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import {
   assertCommunityReplyParent,
+  canViewCommunityActivity,
+  COMMUNITY_PAGE_SIZE,
   getCommunityPopularityScore,
   normalizeCommunityPostDraft,
   selectPopularCommunityPosts,
@@ -39,6 +41,13 @@ test("공지는 운영자만 작성하고 답글은 같은 글의 원댓글에�
   assert.equal(normalizeCommunityPostDraft({ category: "notice", title: "공지", body: "내용", pinned: true }, 30).pinned, true);
   assert.equal(assertCommunityReplyParent({ id: "root", post_id: "post", parent_id: null, status: "published" }, "post"), "root");
   assert.throws(() => assertCommunityReplyParent({ id: "reply", post_id: "post", parent_id: "root", status: "published" }, "post"), /community_reply_parent_invalid/);
+});
+
+test("프로필 활동은 30개씩 조회하고 공개 설정을 본인에게는 적용하지 않는다", () => {
+  assert.equal(COMMUNITY_PAGE_SIZE, 30);
+  assert.equal(canViewCommunityActivity({ communityPosts: false }, "posts", false), false);
+  assert.equal(canViewCommunityActivity({ communityComments: false }, "comments", false), false);
+  assert.equal(canViewCommunityActivity({ communityPosts: false, communityComments: false }, "posts", true), true);
 });
 
 test("커뮤니티 경로와 작성자 프로필카드가 연결되어 있다", async () => {
@@ -79,4 +88,27 @@ test("게시글 목록은 제목 중심 열과 모바일 두 줄 구조를 사�
   assert.match(page, /<span>작성자<\/span>[\s\S]*<span>날짜<\/span>[\s\S]*<span>추천<\/span>[\s\S]*<span>댓글<\/span>/);
   assert.doesNotMatch(page, /community-post-open|ChevronRight/);
   assert.match(styles, /"labels title title title title"\s*"author author date likes comments"/);
+  assert.match(styles, /width: min\(960px, 100%\)/);
+  assert.match(styles, /@media \(min-width: 721px\)[\s\S]*font-size: var\(--font-size-section-title\)/);
+  assert.match(styles, /\.community-post-byline \{\s*justify-content: flex-end/);
+  assert.match(styles, /@media \(max-width: 720px\)[\s\S]*\.community-post-byline \.community-author small \{\s*display: none/);
+});
+
+test("게시판 페이지와 프로필 활동은 같은 30개 페이지 규칙을 사용한다", async () => {
+  const [page, controller, profileActivity, api, hoverCard, settings] = await Promise.all([
+    readFile(new URL("../src/pages/Community.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/pages/useCommunityController.js", import.meta.url), "utf8"),
+    readFile(new URL("../src/pages/PlayerCommunityActivity.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../server/api/community/posts.js", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/profile/PlayerHoverCard.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../server/api/settings/sync.js", import.meta.url), "utf8"),
+  ]);
+  assert.match(page, /<Pagination page=\{controller\.pageIndex\}/);
+  assert.doesNotMatch(page, /controller\.loadMore/);
+  assert.match(controller, /limit: COMMUNITY_PAGE_SIZE, offset: targetPage \* COMMUNITY_PAGE_SIZE/);
+  assert.match(profileActivity, /"profileActivity"[\s\S]*COMMUNITY_PAGE_SIZE/);
+  assert.match(api, /operation === "profileActivity"/);
+  assert.match(api, /representativeTeam: fromRemoteTeam/);
+  assert.match(hoverCard, /userTeams\.find[\s\S]*projectedRepresentativeTeam[\s\S]*getRepresentativeTeam/);
+  assert.match(settings, /"communityPosts", "communityComments"/);
 });

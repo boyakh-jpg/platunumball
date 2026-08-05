@@ -61,9 +61,13 @@ test("directory privacy defaults closed for users without scoped private rows", 
   }]);
   assert.equal(result[0].privacy.regionRanking, true);
   assert.equal(result[0].privacy.teamHistory, true);
+  assert.equal(result[0].privacy.communityPosts, true);
+  assert.equal(result[0].privacy.communityComments, true);
   assert.equal(result[0].representativeTeamId, "team-visible");
   assert.equal(result[1].privacy.regionRanking, false);
   assert.equal(result[1].privacy.teamHistory, false);
+  assert.equal(result[1].privacy.communityPosts, false);
+  assert.equal(result[1].privacy.communityComments, false);
   assert.equal(result[1].representativeTeamId, undefined);
 });
 

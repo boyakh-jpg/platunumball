@@ -48,7 +48,12 @@ export default function PlayerHoverCard({ user, teams = [], children, className 
 
   const anonymousUser = Boolean(user.anonymous || user.participationLabel === "개인참여");
   const userTeams = getUserTeams(user.id, teams);
-  const activeTeam = getRepresentativeTeam(user.id, userTeams, user.representativeTeamId) ?? userTeams[0];
+  const projectedRepresentativeTeam = user.representativeTeam
+    ? getUserTeams(user.id, [user.representativeTeam])[0]
+    : null;
+  const activeTeam = userTeams.find((team) => team.id === user.representativeTeamId)
+    ?? projectedRepresentativeTeam
+    ?? getRepresentativeTeam(user.id, userTeams, user.representativeTeamId);
   const discordProfileUrl = getDiscordProfileUrl(user);
   const discordDisplayName = getDiscordDisplayName(user);
   const placementComplete = isPlacementComplete(user.ratings);

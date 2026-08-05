@@ -59,7 +59,7 @@ function sanitizeSettingsPatch(value) {
     }));
   }
 
-  const privacy = sanitizeBooleanPatch(source.privacy, ["regionRanking", "teamHistory", "statSummary"]);
+  const privacy = sanitizeBooleanPatch(source.privacy, ["regionRanking", "teamHistory", "statSummary", "communityPosts", "communityComments"]);
   if (privacy) patch.privacy = privacy;
 
   const notificationChannels = sanitizeNotificationChannels(source.notificationChannels);

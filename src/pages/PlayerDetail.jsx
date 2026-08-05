@@ -23,6 +23,7 @@ import { getPlacementLabel, isPlacementComplete } from "../lib/rating.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 import { getTierDivision } from "../lib/tier.js";
 import { MatchRoomModal } from "./Matches.jsx";
+import PlayerCommunityActivity from "./PlayerCommunityActivity.jsx";
 
 function getPlayerOutcome(match, playerId) {
   const sideName = getActualMatchPlayerSideName(match, playerId);
@@ -141,6 +142,7 @@ export default function PlayerDetail({ app }) {
   const isOwnProfile = player.id === app.currentUser.id;
   const canViewTeamHistory = isOwnProfile || player.privacy?.teamHistory === true || (!isSupabaseConfigured && player.privacy?.teamHistory !== false);
   const canViewStatSummary = isOwnProfile || player.privacy?.statSummary !== false;
+  const canViewCommunity = isOwnProfile || player.privacy?.communityPosts !== false || player.privacy?.communityComments !== false;
   const hasRefereeProfile = refereeProfileState.playerId === player.id && refereeProfileState.available;
   const userMap = Object.fromEntries(app.state.users.map((user) => [user.id, user]));
   const playerTeams = getUserProfileTeams(player.id, app.state.teams);
@@ -249,13 +251,14 @@ export default function PlayerDetail({ app }) {
         </Card>
       ) : null}
 
-      {canViewStatSummary || canViewTeamHistory || hasRefereeProfile ? (
+      {canViewStatSummary || canViewTeamHistory || canViewCommunity || hasRefereeProfile ? (
         <div className="profile-page-navigation">
-          {canViewStatSummary || canViewTeamHistory ? <nav className="rank-profile-tabs">
+          {canViewStatSummary || canViewTeamHistory || canViewCommunity ? <nav className="rank-profile-tabs">
             {canViewStatSummary ? <a href="#summary">종합</a> : null}
             {canViewTeamHistory ? <a href="#history">전적</a> : null}
             {canViewTeamHistory ? <a href="#teams">팀</a> : null}
             {canViewTeamHistory ? <a href="#links">상대</a> : null}
+            {canViewCommunity ? <a href="#community">커뮤니티</a> : null}
           </nav> : null}
           {hasRefereeProfile ? (
             <Button as={Link} size="sm" variant="secondary" className="profile-role-link" to={`/app/referees/${player.id}`}>
@@ -356,6 +359,7 @@ export default function PlayerDetail({ app }) {
         </section>
 
         <div className="page-stack player-profile-detail-content">
+          {canViewCommunity ? <PlayerCommunityActivity app={app} player={player} isOwnProfile={isOwnProfile} /> : null}
           {placementComplete ? <section className="mode-grid">
             {Object.entries(player.ratings.modes).map(([mode, mmr]) => (
               <RatingCard key={mode} title={mode} mmr={mmr} ratings={player.ratings} mode={mode} />

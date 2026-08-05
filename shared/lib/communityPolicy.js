@@ -3,7 +3,13 @@ export const COMMUNITY_POST_BODY_MAX = 5000;
 export const COMMUNITY_COMMENT_BODY_MAX = 1000;
 export const COMMUNITY_POST_DAILY_LIMIT = 5;
 export const COMMUNITY_COMMENT_DAILY_LIMIT = 50;
+export const COMMUNITY_PAGE_SIZE = 30;
 export const COMMUNITY_POPULAR_WINDOW_MS = 3 * 24 * 60 * 60 * 1000;
+
+export function canViewCommunityActivity(privacy = {}, kind = "posts", isOwnProfile = false) {
+  const key = kind === "comments" ? "communityComments" : "communityPosts";
+  return isOwnProfile || privacy?.[key] !== false;
+}
 
 function policyError(code, statusCode = 400) {
   const error = new Error(code);

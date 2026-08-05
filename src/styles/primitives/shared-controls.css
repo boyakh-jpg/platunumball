@@ -158,6 +158,18 @@ textarea::placeholder,
   background: var(--button-secondary-bg);
   box-shadow: none;
 }
+.ui-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+}
+.ui-pagination .button {
+  width: 40px;
+  min-width: 40px;
+  padding-inline: 0;
+  font-variant-numeric: tabular-nums;
+}
 .bottom-nav {
   background: rgba(29, 30, 31, 0.94);
   border-top: var(--ui-stroke-width) solid var(--card-border);

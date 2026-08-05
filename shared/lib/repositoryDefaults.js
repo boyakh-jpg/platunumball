@@ -5,6 +5,8 @@ export const DEFAULT_SETTINGS = {
     regionRanking: true,
     teamHistory: true,
     statSummary: true,
+    communityPosts: true,
+    communityComments: true,
   },
   notificationChannels: {
     discord: {

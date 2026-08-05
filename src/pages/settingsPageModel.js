@@ -124,6 +124,8 @@ export function getPrivacyDraft(privacy = {}) {
     regionRanking: privacy.regionRanking !== false,
     teamHistory: privacy.teamHistory !== false,
     statSummary: privacy.statSummary !== false,
+    communityPosts: privacy.communityPosts !== false,
+    communityComments: privacy.communityComments !== false,
   };
 }
 

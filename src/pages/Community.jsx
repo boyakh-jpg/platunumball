@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Flame, MessageCircle, PenLine, Pin, ThumbsUp } from "lucide-react";
 import Button from "../components/common/Button.jsx";
 import Badge from "../components/common/Badge.jsx";
 import Card from "../components/common/Card.jsx";
+import Pagination from "../components/common/Pagination.jsx";
 import { formatKoreanDateTime } from "../../shared/lib/matchTimeUtils.js";
 import CommunityPostEditor from "./CommunityPostEditor.jsx";
 import CommunityPostDialog, { CommunityAuthorLink } from "./CommunityPostDialog.jsx";
@@ -20,6 +22,29 @@ function PostMetrics({ post }) {
 export default function Community({ app }) {
   const controller = useCommunityController(app);
   const [composing, setComposing] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const openedPostIdRef = useRef("");
+  const linkedPostId = searchParams.get("post")?.trim() ?? "";
+  const totalPages = Math.max(1, Math.ceil(controller.page.total / controller.page.limit));
+
+  useEffect(() => {
+    if (!linkedPostId) {
+      openedPostIdRef.current = "";
+      return;
+    }
+    if (openedPostIdRef.current === linkedPostId) return;
+    openedPostIdRef.current = linkedPostId;
+    void controller.openPost({ id: linkedPostId });
+  }, [linkedPostId]);
+
+  const closePost = () => {
+    if (linkedPostId) {
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.delete("post");
+      setSearchParams(nextParams, { replace: true });
+    }
+    controller.closePost();
+  };
 
   return (
     <div className="page-stack community-page">
@@ -63,7 +88,7 @@ export default function Community({ app }) {
               <button key={id} type="button" role="tab" aria-selected={controller.category === id} className={controller.category === id ? "active" : ""} onClick={() => controller.setCategory(id)}>{label}</button>
             ))}
           </div>
-          <Badge tone="neutral">{controller.posts.length}개</Badge>
+          <Badge tone="neutral">{controller.page.total}개</Badge>
         </div>
 
         {composing ? (
@@ -107,10 +132,10 @@ export default function Community({ app }) {
           {controller.loading && !controller.posts.length ? <div className="ui-empty-state">게시글 불러오는 중</div> : null}
           {!controller.loading && !controller.posts.length ? <div className="ui-empty-state">등록된 게시글이 없습니다.</div> : null}
         </div>
-        {controller.page.hasMore ? <Button type="button" variant="secondary" disabled={controller.loading} onClick={controller.loadMore}>{controller.loading ? "불러오는 중" : "더 보기"}</Button> : null}
+        <Pagination page={controller.pageIndex} totalPages={totalPages} disabled={controller.loading} onChange={controller.goToPage} />
       </Card>
 
-      <CommunityPostDialog app={app} controller={controller} />
+      <CommunityPostDialog app={app} controller={{ ...controller, closePost }} />
     </div>
   );
 }

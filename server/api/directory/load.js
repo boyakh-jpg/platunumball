@@ -55,7 +55,7 @@ import {
 export { getPageRequest, normalizeFilter, getAdminSection, getQueueMode } from "./loadAdminSection.js";
 
 
-const PROFILE_PRIVACY_KEYS = ["regionRanking", "teamHistory", "statSummary"];
+const PROFILE_PRIVACY_KEYS = ["regionRanking", "teamHistory", "statSummary", "communityPosts", "communityComments"];
 
 
 

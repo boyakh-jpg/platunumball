@@ -236,6 +236,8 @@ test("settings 기본값 병합과 Discord enabled 정책은 shared canonical �
     regionRanking: false,
     teamHistory: true,
     statSummary: true,
+    communityPosts: true,
+    communityComments: true,
   });
   assert.deepEqual(normalized.notificationChannels.discord, {
     enabled: true,

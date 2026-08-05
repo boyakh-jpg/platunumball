@@ -344,6 +344,24 @@ export default function SettingsPrimaryColumn({ controller }) {
                   />
                   개인 통계 공개
                 </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={privacyDraft.communityPosts !== false}
+                    disabled={generalSettingsSavePending}
+                    onChange={(event) => setPrivacyDraft((current) => ({ ...current, communityPosts: event.target.checked }))}
+                  />
+                  작성 게시글 공개
+                </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={privacyDraft.communityComments !== false}
+                    disabled={generalSettingsSavePending}
+                    onChange={(event) => setPrivacyDraft((current) => ({ ...current, communityComments: event.target.checked }))}
+                  />
+                  작성 댓글 공개
+                </label>
               </div>
             </div>
 

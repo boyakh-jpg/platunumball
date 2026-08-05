@@ -1,11 +1,14 @@
 import { allowRequestMethod, getAdminLevel, getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
 import { fromRemoteProfile } from "../../../shared/lib/profileMappers.js";
-import { PROFILE_CARD_COLUMNS } from "../../../shared/lib/repositoryColumns.js";
+import { PROFILE_CARD_COLUMNS, TEAM_COLUMNS, TEAM_MEMBER_COLUMNS } from "../../../shared/lib/repositoryColumns.js";
+import { fromRemoteTeam } from "../../../shared/lib/teamMappers.js";
 import {
   COMMUNITY_COMMENT_DAILY_LIMIT,
+  COMMUNITY_PAGE_SIZE,
   COMMUNITY_POPULAR_WINDOW_MS,
   COMMUNITY_POST_DAILY_LIMIT,
   assertCommunityReplyParent,
+  canViewCommunityActivity,
   normalizeCommunityCommentBody,
   normalizeCommunityPostDraft,
   selectPopularCommunityPosts,
@@ -25,6 +28,12 @@ function requestError(code, statusCode = 400) {
 function requiredId(value, code) {
   const id = String(value ?? "").trim();
   if (!UUID_PATTERN.test(id)) throw requestError(code);
+  return id;
+}
+
+function requiredProfileId(value) {
+  const id = String(value ?? "").trim();
+  if (!id || id.length > 128) throw requestError("community_profile_id_invalid");
   return id;
 }
 
@@ -61,9 +70,34 @@ function toComment(row = {}, profileById = new Map()) {
 async function loadProfileMap(context, ids = []) {
   const profileIds = [...new Set(ids.filter(Boolean))];
   if (!profileIds.length) return new Map();
-  const { data, error } = await context.supabase.from("profiles").select(PROFILE_CARD_COLUMNS).in("id", profileIds);
+  const { data, error } = await context.supabase.from("profiles").select(`${PROFILE_CARD_COLUMNS},app_settings`).in("id", profileIds);
   if (error) throw error;
-  return new Map((data ?? []).map((row) => [row.id, fromRemoteProfile(row)]));
+  const rows = data ?? [];
+  const representativeTeamIdByProfileId = new Map(rows.flatMap((row) => {
+    const teamId = row.id === context.profileId || row.app_settings?.privacy?.teamHistory !== false
+      ? String(row.app_settings?.representativeTeamId ?? "").trim()
+      : "";
+    return teamId ? [[row.id, teamId]] : [];
+  }));
+  const teamIds = [...new Set(representativeTeamIdByProfileId.values())];
+  const [teamResult, memberResult] = teamIds.length ? await Promise.all([
+    context.supabase.from("teams").select(TEAM_COLUMNS).in("id", teamIds).is("deleted_at", null),
+    context.supabase.from("team_members").select(TEAM_MEMBER_COLUMNS).in("team_id", teamIds).in("user_id", profileIds),
+  ]) : [{ data: [] }, { data: [] }];
+  if (teamResult.error) throw teamResult.error;
+  if (memberResult.error) throw memberResult.error;
+  const teamById = new Map((teamResult.data ?? []).map((row) => [row.id, row]));
+  const memberByProfileAndTeam = new Map((memberResult.data ?? []).map((row) => [`${row.user_id}\0${row.team_id}`, row]));
+  return new Map(rows.map((row) => {
+    const representativeTeamId = representativeTeamIdByProfileId.get(row.id) ?? "";
+    const member = memberByProfileAndTeam.get(`${row.id}\0${representativeTeamId}`);
+    const teamRow = member ? teamById.get(representativeTeamId) : null;
+    const profile = fromRemoteProfile({ ...row, app_settings: representativeTeamId ? { representativeTeamId } : {} });
+    return [row.id, {
+      ...profile,
+      ...(teamRow ? { representativeTeam: fromRemoteTeam(teamRow, [member]) } : {}),
+    }];
+  }));
 }
 
 async function loadLikedPostIds(context, postIds = []) {
@@ -105,7 +139,7 @@ function getBlockedUserIds(context) {
 }
 
 async function listPosts(context, body, adminLevel) {
-  const limit = Math.max(10, Math.min(40, Math.floor(Number(body.limit) || 30)));
+  const limit = Math.max(10, Math.min(40, Math.floor(Number(body.limit) || COMMUNITY_PAGE_SIZE)));
   const offset = Math.max(0, Math.floor(Number(body.offset) || 0));
   const category = body.category === "notice" || body.category === "general" ? body.category : "all";
   let query = context.supabase
@@ -135,16 +169,15 @@ async function listPosts(context, body, adminLevel) {
   const blockedIds = getBlockedUserIds(context);
   const visibleFeed = (feedResult.data ?? []).filter((row) => row.category === "notice" || !blockedIds.has(row.author_id));
   const visiblePopular = (popularResult.data ?? []).filter((row) => !blockedIds.has(row.author_id));
-  const allRows = [...visibleFeed, ...visiblePopular];
+  const selectedPopularRows = selectPopularCommunityPosts(visiblePopular);
+  const allRows = [...visibleFeed, ...selectedPopularRows];
   const postIds = [...new Set(allRows.map((row) => row.id))];
   const [profileById, likedPostIds] = await Promise.all([
     loadProfileMap(context, allRows.map((row) => row.author_id)),
     loadLikedPostIds(context, postIds),
   ]);
   const posts = visibleFeed.map((row) => toPost(row, profileById, likedPostIds));
-  const popularPosts = selectPopularCommunityPosts(
-    visiblePopular.map((row) => toPost(row, profileById, likedPostIds)),
-  );
+  const popularPosts = selectedPopularRows.map((row) => toPost(row, profileById, likedPostIds));
   return {
     ok: true,
     posts,
@@ -156,6 +189,55 @@ async function listPosts(context, body, adminLevel) {
       total: Number(feedResult.count ?? posts.length),
       hasMore: offset + limit < Number(feedResult.count ?? 0),
       nextOffset: offset + limit,
+    },
+  };
+}
+
+async function loadProfileActivity(context, body) {
+  const profileId = requiredProfileId(body.profileId);
+  const kind = body.kind === "comments" ? "comments" : "posts";
+  const offset = Math.max(0, Math.floor(Number(body.offset) || 0));
+  let target = context.profile;
+  if (profileId !== context.profileId) {
+    const targetResult = await context.supabase.from("profiles").select("id,app_settings").eq("id", profileId).maybeSingle();
+    if (targetResult.error) throw targetResult.error;
+    target = targetResult.data;
+  }
+  if (!target) throw requestError("community_profile_not_found", 404);
+  const visible = canViewCommunityActivity(target.app_settings?.privacy, kind, profileId === context.profileId)
+    && !getBlockedUserIds(context).has(profileId);
+  if (!visible) return { ok: true, hidden: true, items: [], page: { offset, limit: COMMUNITY_PAGE_SIZE, total: 0, hasMore: false } };
+
+  const query = kind === "comments"
+    ? context.supabase
+      .from("community_comments")
+      .select(`${COMMENT_COLUMNS},post:community_posts!inner(${POST_LIST_COLUMNS})`, { count: "exact" })
+      .eq("author_id", profileId)
+      .eq("status", "published")
+      .eq("post.status", "published")
+    : context.supabase
+      .from("community_posts")
+      .select(POST_LIST_COLUMNS, { count: "exact" })
+      .eq("author_id", profileId)
+      .eq("status", "published");
+  const { data, count, error } = await query
+    .order("created_at", { ascending: false })
+    .range(offset, offset + COMMUNITY_PAGE_SIZE - 1);
+  if (error) throw error;
+  const items = kind === "comments"
+    ? (data ?? []).flatMap((row) => {
+      const post = Array.isArray(row.post) ? row.post[0] : row.post;
+      return post ? [{ ...toComment(row), post: toPost(post) }] : [];
+    })
+    : (data ?? []).map((row) => toPost(row));
+  return {
+    ok: true,
+    items,
+    page: {
+      offset,
+      limit: COMMUNITY_PAGE_SIZE,
+      total: Number(count ?? items.length),
+      hasMore: offset + COMMUNITY_PAGE_SIZE < Number(count ?? 0),
     },
   };
 }
@@ -296,6 +378,7 @@ export default async function handler(request, response) {
     const adminLevel = await getAdminLevel(context);
     let result;
     if (operation === "list") result = await listPosts(context, body, adminLevel);
+    else if (operation === "profileActivity") result = await loadProfileActivity(context, body);
     else if (operation === "detail") result = await loadPostDetail(context, requiredId(body.postId, "community_post_id_invalid"), adminLevel);
     else if (operation === "createPost") result = await createPost(context, body, adminLevel);
     else if (operation === "updatePost") result = await updatePost(context, body, adminLevel);
