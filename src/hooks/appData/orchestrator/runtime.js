@@ -17,6 +17,7 @@ export function useAppDataRuntime(context) {
     createInitialMatchListStore,
     createMatchListStore,
     createProfileShell,
+    demoPreview,
     ensureLocalDemoInitialState,
     getBlockedUserIdsFromState,
     getBoundAuthProfileId,
@@ -175,6 +176,29 @@ const authUserId = typeof authUser === "string" ? authUser : authUser?.id ?? nul
   }, []);
 
   useEffect(() => {
+    if (!demoPreview) return undefined;
+    let mounted = true;
+    remoteReadyRef.current = false;
+    setRemoteReady(false);
+    ensureLocalDemoInitialState({ preview: true })
+      .then(() => {
+        if (!mounted) return;
+        setState(loadState({ includeDemo: true, authUserId, email: authEmail }));
+        remoteReadyRef.current = true;
+        setRemoteReady(true);
+      })
+      .catch((error) => {
+        console.warn("Guest preview state load failed.", error.message);
+        if (!mounted) return;
+        remoteReadyRef.current = true;
+        setRemoteReady(true);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [authEmail, authUserId, demoPreview, setState]);
+
+  useEffect(() => {
     if (isSupabaseConfigured || hasDemoInitialState()) return undefined;
     let mounted = true;
     ensureLocalDemoInitialState()
@@ -211,6 +235,7 @@ const authUserId = typeof authUser === "string" ? authUser : authUser?.id ?? nul
     ...context,
     authEmail,
     authUserId,
+    demoPreview,
   }, {
     adminCacheRef, adminContextLoadedAuthRef, adminContextPromiseRef, adminContextRef, adminPromiseRef,
     blockedSettingsCommittedIdsRef, blockedSettingsPendingCountRef, blockedSettingsSyncRef,

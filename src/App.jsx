@@ -114,7 +114,13 @@ class AppErrorBoundary extends Component {
 export default function App() {
   const auth = useAuthSession();
   const location = useLocation();
-  const app = useAppData(auth.user ?? null, location);
+  const guestPreview = Boolean(
+    auth.configured
+      && !auth.loading
+      && !auth.session
+      && location.pathname === "/app",
+  );
+  const app = useAppData(auth.user ?? null, location, { demoPreview: guestPreview });
   useImageInteractionGuard();
   const theme = app.state.settings?.theme === "light" ? "light" : "dark";
   const profileGateReady = isProfileGateReady({
@@ -189,9 +195,9 @@ export default function App() {
           <Route path="/terms" element={<Terms />} />
           <Route path="/demo/visual-direction" element={<VisualDirectionDemo />} />
         </Route>
-        <Route element={<RequireAuth auth={auth} />}>
+        <Route element={<RequireAuth auth={auth} allowGuestHome={guestPreview} />}>
           <Route path="/app/admin/court-map" element={<RequireAdmin app={app}><AdminCourtMapPopup /></RequireAdmin>} />
-          <Route element={<AppShell app={app} auth={auth} />}>
+          <Route element={<AppShell app={app} auth={auth} guestPreview={guestPreview} />}>
             <Route path="/app" element={<Home app={app} />} />
             <Route path="/app/guide" element={<GettingStarted app={app} />} />
             <Route path="/app/guide/practice" element={<PracticeMatch app={app} />} />

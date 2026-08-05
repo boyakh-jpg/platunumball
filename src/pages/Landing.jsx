@@ -113,9 +113,14 @@ export default function Landing({ state, authenticated = false }) {
                     </Button>
                   </>
                 ) : (
-                  <Button as={Link} to="/login">
-                    로그인 <LogIn size={18} />
-                  </Button>
+                  <>
+                    <Button as={Link} to="/app">
+                      홈 <House size={18} />
+                    </Button>
+                    <Button as={Link} to="/login" variant="secondary">
+                      로그인 <LogIn size={18} />
+                    </Button>
+                  </>
                 )}
               </div>
             </div>

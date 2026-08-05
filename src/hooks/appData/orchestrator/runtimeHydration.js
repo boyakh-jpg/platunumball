@@ -10,6 +10,7 @@ export function useAppDataRuntimeHydration(context, runtime) {
     cacheCurrentProfileState,
     createInitialMatchListStore,
     createMatchListStore,
+    demoPreview,
     getBlockedUserIdsFromState,
     getCachedBootstrapState,
     getHomeRouteLoadKey,
@@ -90,7 +91,7 @@ export function useAppDataRuntimeHydration(context, runtime) {
     blockedSettingsSyncRef.current = Promise.resolve(true);
     blockedSettingsCommittedIdsRef.current = getBlockedUserIdsFromState(stateRef.current);
     blockedSettingsPendingCountRef.current = 0;
-    if (!isSupabaseConfigured || !authUserId) {
+    if (demoPreview || !isSupabaseConfigured || !authUserId) {
       remoteReadyRef.current = !isSupabaseConfigured;
       directoryPromiseRef.current = new Map();
       directoryCacheRef.current = new Map();
@@ -275,5 +276,5 @@ export function useAppDataRuntimeHydration(context, runtime) {
       mounted = false;
       unsubscribe();
     };
-  }, [authEmail, authUserId]);
+  }, [authEmail, authUserId, demoPreview]);
 }

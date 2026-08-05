@@ -10,7 +10,7 @@ import {
   withoutDeletedSyntheticCourts,
 } from "./mockData/stateFinalizers.js";
 
-// P-DEMO-CLEANUP: seed/local-dev only. Production app must not import this module.
+// Seed/local-dev data. Production imports it only for the read-only guest home preview.
 const demoSurnames = ["강", "김", "박", "이", "최", "정", "한", "오", "문", "서", "윤", "장", "배", "권", "노", "신"];
 const demoGivenNames = ["도하", "이준", "채원", "하준", "라온", "서진", "지민", "유겸", "태린", "아린", "현준", "나겸", "시우", "예준", "하온", "민서"];
 const demoSchools = ["연희대", "건대", "서강대", "한양대", "중앙대", "상암고", "동교고", "잠실고"];

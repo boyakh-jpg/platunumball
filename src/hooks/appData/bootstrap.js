@@ -76,12 +76,13 @@ function getHomeRouteLoadKey(location = null) {
 
 let demoInitialStatePromise = null;
 
-async function ensureLocalDemoInitialState() {
-  if (isSupabaseConfigured || hasDemoInitialState()) return null;
-  if (!import.meta.env.DEV) return null;
+async function ensureLocalDemoInitialState(options = {}) {
+  const preview = options.preview === true;
+  if ((!preview && isSupabaseConfigured) || hasDemoInitialState()) return null;
+  if (!preview && !import.meta.env.DEV) return null;
   if (!demoInitialStatePromise) {
-    // P-DEMO-CLEANUP: local development fallback only. Do not load demo data in production builds.
-    demoInitialStatePromise = import(/* @vite-ignore */ "/src/lib/mockData.js").then((module) => {
+    // Loaded on demand for local development and the read-only guest home preview.
+    demoInitialStatePromise = import("../../lib/mockData.js").then((module) => {
       setDemoInitialState(module.initialState);
       return module.initialState;
     });

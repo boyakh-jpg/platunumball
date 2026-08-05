@@ -651,11 +651,16 @@ test("인증 저장소와 링크 복사 실패는 로그인 화면을 멈추지 
 test("랜딩의 모집방·대표팀·최근 경기는 선택 대상을 유지한다", async () => {
   const landing = await read("src/pages/Landing.jsx");
   const app = await read("src/App.jsx");
+  const authGuard = await read("src/components/auth/RequireAuth.jsx");
+  const runtime = await read("src/hooks/appData/orchestrator/runtime.js");
   assert.match(landing, /`\/app\/recruiting\?post=\$\{encodeURIComponent\(post\.id\)\}`/u);
   assert.match(landing, /`\/app\/teams\/\$\{encodeURIComponent\(featuredTeam\.id\)\}`/u);
   assert.match(landing, /`\/app\/matches\?match=\$\{encodeURIComponent\(match\.id\)\}`/u);
   assert.match(app, /<Landing state=\{app\.state\} authenticated=\{Boolean\(auth\.user\)\} \/>/u);
-  assert.match(landing, /authenticated \? \([\s\S]*?경기 찾기[\s\S]*?홈[\s\S]*?\) : \([\s\S]*?로그인/u);
+  assert.match(landing, /authenticated \? \([\s\S]*?경기 찾기[\s\S]*?홈[\s\S]*?\) : \([\s\S]*?to="\/app"[\s\S]*?홈[\s\S]*?to="\/login"[\s\S]*?로그인/u);
+  assert.match(app, /location\.pathname === "\/app"[\s\S]*useAppData\(auth\.user \?\? null, location, \{ demoPreview: guestPreview \}\)/u);
+  assert.match(authGuard, /!auth\.session && !allowGuestHome/u);
+  assert.match(runtime, /ensureLocalDemoInitialState\(\{ preview: true \}\)[\s\S]*loadState\(\{ includeDemo: true/u);
 });
 
 test("랜딩은 공개 피드와 전체 통계를 분리하고 공개 경기 점수를 표시한다", async () => {

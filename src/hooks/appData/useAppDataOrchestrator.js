@@ -13,7 +13,8 @@ import { useAppDataLoaders } from "./orchestrator/loaders.js";
 import { useAppDataRuntime } from "./orchestrator/runtime.js";
 import { useAppDataServerActions } from "./orchestrator/serverActions.js";
 
-export function useAppData(authUser = null, appLocation = null) {
+export function useAppData(authUser = null, appLocation = null, options = {}) {
+  const demoPreview = options.demoPreview === true;
   const {
     adminCacheRef,
     adminContext,
@@ -100,6 +101,7 @@ export function useAppData(authUser = null, appLocation = null) {
     ...APP_DATA_ORCHESTRATOR_DEPENDENCIES,
     appLocation,
     authUser,
+    demoPreview,
   });
 
   const {
@@ -347,6 +349,7 @@ useEffect(() => {
     currentUser: safeCurrentUser,
     currentUserId: safeCurrentUserId || safeCurrentUser.id,
     profileBound: true,
+    demoPreview,
     profileLocked,
     remoteReady,
     serverBusy: serverActionPendingCount > 0,
