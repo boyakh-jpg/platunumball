@@ -14,7 +14,7 @@ import ProgressionChecklist from "../components/rating/ProgressionChecklist.jsx"
 import RatingCard from "../components/rating/RatingCard.jsx";
 import TierEmblem from "../components/rating/TierEmblem.jsx";
 import TeamEmblem from "../components/team/TeamEmblem.jsx";
-import { getDiscordDisplayName, getDiscordProfileUrl } from "../lib/discord.js";
+import { isDiscordLinked } from "../lib/discord.js";
 import { getUserHashtag } from "../lib/handles.js";
 import { getTeamRoleLabel } from "../lib/constants.js";
 import { getActualMatchPlayerSideName, getMatchSideScore as getSideScore, getPlayerRecentRecordMatches, isEligibleReferee, isPersonalRecordMatch } from "../lib/matchUtils.js";
@@ -180,8 +180,7 @@ export default function PlayerDetail({ app }) {
   const losses = confirmedHistory.filter((match) => getPlayerOutcome(match, player.id) === "loss").length;
   const winRate = confirmedHistory.length ? Math.round((wins / confirmedHistory.length) * 100) : 0;
   const recentOutcomes = confirmedHistory.slice(0, 10).map((match) => getPlayerOutcome(match, player.id));
-  const discordProfileUrl = getDiscordProfileUrl(player);
-  const discordDisplayName = getDiscordDisplayName(player);
+  const discordLinked = isDiscordLinked(player);
   const placementComplete = isPlacementComplete(player.ratings);
   const placementLabel = getPlacementLabel(player.ratings);
 
@@ -229,16 +228,14 @@ export default function PlayerDetail({ app }) {
               ) : null}
               <Badge tone="green" className="ui-liquid-glass">{player.region}</Badge>
               <Badge tone="blue" className="ui-liquid-glass">{player.position}</Badge>
-              {discordProfileUrl ? (
-                <a
+              {discordLinked ? (
+                <span
                   className="badge ui-badge badge-blue ui-badge-blue ui-liquid-glass discord-link-badge"
-                  href={discordProfileUrl}
-                  target="_blank"
-                  rel="noreferrer"
+                  aria-label="Discord 연동됨"
+                  title="Discord 연동됨"
                 >
                   <MessageCircle size={14} aria-hidden="true" />
-                  {discordDisplayName}
-                </a>
+                </span>
               ) : null}
           </>
         )}

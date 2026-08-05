@@ -2206,7 +2206,7 @@ flowchart TD
 7. Supabase 설정 환경에서는 구장 등록요청 제출, 구장 신고, 구장 승인·반려가 전용 server action을 같이 호출한다. 끄려면 `VITE_ENABLE_SERVER_ACTIONS=false`를 명시한다.
 8. 구장 승인은 `rankball_approve_court_request()`에서 승인 구장 생성, 요청 상태 변경, audit log, 알림을 한 transaction으로 처리한다. 일반 반려는 `rankball_reject_court_request()`에서 요청 상태, 반려 사유, audit log, 요청자 알림을 한 transaction으로 처리하며 신고 인정이 아니므로 신뢰도를 차감하지 않는다.
 9. 프론트는 구장 승인 성공 전 로컬 승인 구장을 만들지 않고, 서버가 반환한 `approvedCourtId`만 승인 구장 ID로 쓴다.
-10. `POST /api/system/schema-health`의 `ensureCourtAdmins`는 `CRON_SECRET` 인증이 있을 때만 `boyakh` owner appointment를 idempotent upsert한다. 테스트 프로필에는 관리자 권한을 자동 부여하지 않는다.
+10. `POST /api/system/schema-health`의 `ensureCourtAdmins`는 `CRON_SECRET` 인증이 있을 때만 고정 운영 프로필의 owner appointment를 idempotent upsert한다. 공개 닉네임·해시태그를 owner 식별자로 사용하지 않으며 테스트 프로필에는 관리자 권한을 자동 부여하지 않는다.
 11. `rankball_report_court_request()`는 신고 생성, 요청의 `reported` 전환, 판정 전 무차감 알림만 한 transaction으로 처리한다. 관리자 판정 transaction의 신고 상태 전환 trigger는 인정 시 요청을 `rejected`로 바꾸고 정책 신뢰도 차감을 요청별 1회 적용하며, 기각 시 남은 미처리 신고가 없으면 `pending`으로 복원한다.
 12. 구장 등록요청 제출은 `rankball_submit_court_request()`에서 신뢰도와 승인/대기 중복을 서버에서 다시 검사한다.
 13. 일반 관리자 신고 처리, 임명/징계 처리, Discord DM 발송은 별도 server action으로 분리한다. Discord interaction은 앱 URL 안내만 담당한다.
@@ -2743,6 +2743,7 @@ flowchart TD
 ## 2026-06-28 public feed access
 
 1. `public_profiles`는 공개 표시용 프로필 컬럼만 제공한다. `school`, `company`, `club`, 테스트 로그인 ID와 Discord 연결 원본은 현재 사용자 private profile 또는 server action에서만 읽는다.
+1-1. 선수 상세와 hover 카드의 Discord 표시는 연결 여부 아이콘만 사용한다. Discord 사용자명·표시명·숫자 ID·외부 프로필 링크는 공개하지 않으며, 본인 설정 화면도 Discord ID 대신 BOXTIER 닉네임을 표시한다.
 2. `user_room_feed.feed_scope='public'` 지역 공개 feed는 서버 API/service-role 전용 source다. `profile_id='*'`는 legacy 저장키/fallback일 뿐 공개 feed 의미 기준이 아니다. 브라우저 RLS 직접 read는 `feed_scope='profile'`인 현재 프로필 feed row만 허용한다.
 3. 구장 이름/지역은 `court_id`가 있으면 legacy `courts`를 먼저 보고, 없거나 찾지 못하면 active `approved_courts`와 기존 `court_name`/지역 텍스트를 fallback으로 쓴다. hidden/disabled approved court는 공개 목록 fallback에 쓰지 않는다.
 
@@ -3801,7 +3802,7 @@ flowchart TD
 1. 공개 알파 로그인은 localhost이면서 비프로덕션 런타임일 때만 허용한다.
 2. 일반 테스트 계정은 활성 관리자 테스트 계정으로 전환할 수 없다.
 3. 서버가 현재 Supabase 세션의 관리자 레벨 `100`을 확인한 경우에만 활성 관리자 테스트 계정을 전환 대상으로 허용한다.
-4. 운영 `schema-health`는 테스트 프로필에 관리자·심판 권한을 시드하지 않는다. `ensureCourtAdmins`는 `boyakh` owner 임명만 복구하며 환경변수 우회도 허용하지 않는다.
+4. 운영 `schema-health`는 테스트 프로필에 관리자·심판 권한을 시드하지 않는다. `ensureCourtAdmins`는 공개 닉네임과 분리된 고정 운영 프로필의 owner 임명만 복구하며 환경변수 우회도 허용하지 않는다.
 
 ## 현재 유효: 경기 종료·이의신청·중복 경기 정책
 

@@ -3,7 +3,7 @@ import { getRegisteredCourts } from "../lib/courts.js";
 import { getUserHashtag } from "../lib/handles.js";
 import { DIRECTORY_SELF_PAGE_LIMIT } from "../lib/queryPolicy.js";
 import { isHomeGuideCardVisible } from "../data/settingsMappers.js";
-import { DISCORD_NOTIFICATION_EVENTS, acknowledgeDiscordOAuthResult, consumeDiscordOAuthResult, findDiscordConnectionOwner, getDiscordChannel, getDiscordDisplayName, getDiscordProfileUrl, isDiscordLinked, startDiscordOAuth } from "../lib/discord.js";
+import { DISCORD_NOTIFICATION_EVENTS, acknowledgeDiscordOAuthResult, consumeDiscordOAuthResult, findDiscordConnectionOwner, getDiscordChannel, getDiscordProfileUrl, isDiscordLinked, startDiscordOAuth } from "../lib/discord.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 import {
   SETTINGS_SECTIONS,
@@ -68,7 +68,6 @@ export default function useSettingsPageController({ app, section = "main" }) {
   const discordLinked = isDiscordLinked(app.currentUser);
   const discordChannel = getDiscordChannel(app.state.settings);
   const discordProfileUrl = getDiscordProfileUrl(app.currentUser);
-  const discordDisplayName = getDiscordDisplayName(app.currentUser);
   const queuedDiscordDeliveries = (app.state.discordNotificationDeliveries ?? [])
     .filter((delivery) => delivery.targetUserId === app.currentUserId && delivery.status === "queued");
   const [discordLinkError, setDiscordLinkError] = useState("");
@@ -415,7 +414,6 @@ export default function useSettingsPageController({ app, section = "main" }) {
     discordLinked,
     discordChannel,
     discordProfileUrl,
-    discordDisplayName,
     queuedDiscordDeliveries,
     discordLinkError,
     discordLinkPending,

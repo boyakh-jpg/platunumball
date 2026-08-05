@@ -322,6 +322,17 @@ test("player detail uses shared record rows and one support rail", () => {
   assert.match(globalSurfaceStyles, /\.profile-detail-page \.profile-hero\s*\{[^}]*--page-hero-bg:\s*var\(--bg-profile\);/);
 });
 
+test("공개 프로필은 Discord 식별자를 노출하지 않는다", () => {
+  const playerHoverCard = read("src/components/profile/PlayerHoverCard.jsx");
+  const settingsPrimaryColumn = read("src/pages/SettingsPrimaryColumn.jsx");
+
+  assert.doesNotMatch(pageSources.playerDetail, /getDiscordDisplayName|getDiscordProfileUrl|discordDisplayName/);
+  assert.doesNotMatch(playerHoverCard, /getDiscordDisplayName|getDiscordProfileUrl|discordDisplayName/);
+  assert.match(pageSources.playerDetail, /aria-label="Discord 연동됨"/);
+  assert.match(playerHoverCard, /aria-label="Discord 연동됨"/);
+  assert.match(settingsPrimaryColumn, /<strong>\{app\.currentUser\.name\}<\/strong>/);
+});
+
 test("referee detail uses the player hero structure and dedicated tier emblems", () => {
   assert.ok(fs.statSync("public/assets/rankball-record-create-night.webp").size > 0);
   assert.ok(fs.statSync("public/assets/rankball-record-create-day.webp").size > 0);

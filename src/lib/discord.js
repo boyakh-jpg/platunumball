@@ -51,11 +51,6 @@ export function findDiscordConnectionOwner(users = [], connection = {}, exceptUs
   );
 }
 
-export function getDiscordDisplayName(user = {}) {
-  const connection = getDiscordConnection(user);
-  return connection?.username || connection?.globalName || connection?.userId || "";
-}
-
 function getDiscordAvatarUrl(user = {}) {
   const connection = getDiscordConnection(user);
   return isDiscordLinked(user) ? getSafeImageUrl(connection?.avatarUrl || "") : "";

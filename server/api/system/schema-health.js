@@ -332,7 +332,7 @@ async function ensureCourtAdminAppointments(client) {
   const { data: ownerProfiles, error: ownerProfileError } = await client
     .from("profiles")
     .select("id, name, handle, hashtag")
-    .or("id.eq.boyakh,name.eq.boyakh,handle.eq.boyakh,handle.eq.#boyakh,hashtag.eq.boyakh,hashtag.eq.#boyakh")
+    .eq("id", "p_a6086f1e61b34ebca4")
     .limit(1);
   if (ownerProfileError) throw ownerProfileError;
 
@@ -340,7 +340,7 @@ async function ensureCourtAdminAppointments(client) {
   if (!owner?.id) {
     return {
       ok: false,
-      error: "boyakh_profile_missing",
+      error: "owner_profile_missing",
       ownerFound: false,
     };
   }
@@ -358,7 +358,7 @@ async function ensureCourtAdminAppointments(client) {
       ends_at: null,
       payload: {
         source: "schema_health_court_admin_bootstrap",
-        profile: "boyakh",
+        profile: owner.id,
       },
       created_at: now,
       updated_at: now,

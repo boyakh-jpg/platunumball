@@ -33,7 +33,6 @@ export default function SettingsPrimaryColumn({ controller }) {
     discordLinked,
     discordChannel,
     discordProfileUrl,
-    discordDisplayName,
     queuedDiscordDeliveries,
     discordLinkError,
     discordLinkPending,
@@ -209,7 +208,7 @@ export default function SettingsPrimaryColumn({ controller }) {
                   <span className={getDiscordAvatarClassName(app.currentUser, "avatar small")} style={getDiscordAvatarStyle(app.currentUser)}>
                     {app.currentUser.name.slice(0, 1)}
                   </span>
-                  <strong>@{discordDisplayName}</strong>
+                  <strong>{app.currentUser.name}</strong>
                 </div>
               ) : null}
               <div>
