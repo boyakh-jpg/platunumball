@@ -258,15 +258,18 @@ export function SettingsReportCard({ controller, onOpenDetail }) {
               <Button type="submit" variant="secondary" disabled={!canSubmitReport || reportSubmitPending}>{reportSubmitPending ? "저장 중" : "신고 접수"}</Button>
               {reportSubmitStatus ? <small role="status">{reportSubmitStatus}</small> : null}
             </form>
-            <div className="compact-list ui-support-list">
-              {app.state.reports?.slice(0, 4).map((report) => (
-                <div key={report.id} className="settings-history-row">
-                  <span>{getSettingsReportTargetName(report, { courtRequests, approvedCourts, courtReviews, teams: app.state.teams, userMap, matchMap })} · {report.reason}</span>
-                  <strong>{getAdminStatusLabel(report.status)}</strong>
-                  <button type="button" className="ui-compact-action" onClick={() => onOpenDetail?.({ kind: "report", item: report })}>보기</button>
-                </div>
-              ))}
-            </div>
+            <details>
+              <summary>신고 목록 열람</summary>
+              <div className="compact-list ui-support-list">
+                {app.state.reports?.slice(0, 4).map((report) => (
+                  <div key={report.id} className="settings-history-row">
+                    <span>{getSettingsReportTargetName(report, { courtRequests, approvedCourts, courtReviews, teams: app.state.teams, userMap, matchMap })} · {report.reason}</span>
+                    <strong>{getAdminStatusLabel(report.status)}</strong>
+                    <button type="button" className="ui-compact-action" onClick={() => onOpenDetail?.({ kind: "report", item: report })}>보기</button>
+                  </div>
+                ))}
+              </div>
+            </details>
           </Card>
   );
 }

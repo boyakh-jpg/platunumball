@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { getSettingsActivityDetail } from "../src/pages/settingsPageModel.js";
 
@@ -52,4 +53,13 @@ test("차단 상세는 저장된 차단 시각을 표시한다", () => {
     app: { state: { settings: { blockedUserProfiles: { u1: { blockedAt: "2026-08-03T00:00:00.000Z" } } } } },
   });
   assert.notEqual(rowsByLabel(model)["차단 시각"], "-");
+});
+
+test("사용자와 운영자 신고 목록은 열람 전 기본 닫힘이다", async () => {
+  const sources = await Promise.all([
+    readFile(new URL("../src/pages/SettingsReportCard.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/pages/AdminDetailPanel.jsx", import.meta.url), "utf8"),
+  ]);
+
+  sources.forEach((source) => assert.match(source, /<details>[\s\S]*?<summary>신고 목록 열람<\/summary>[\s\S]*?<\/details>/u));
 });

@@ -482,21 +482,24 @@ export function AdminDetailPanel({ controller }) {
                 </div>
               ) : null}
 
-              {selectedRow.reports.length ? <DetailList title={view === "courts" ? "구장 신고" : "쌓인 신고"} empty="신고 없음">
-                {selectedRow.reports.length ? selectedRow.reports.slice(0, 8).map((report) => (
-                  <div key={report.id} className="admin-detail-row">
-                    <span>
-                      <strong>{report.reason}</strong>
-                      <em>
-                        {report.type === "match" && matchMap[report.targetId] ? `${getMatchHashtag(matchMap[report.targetId])} · ` : ""}
-                        신고자 {userMap[report.by]?.name ?? report.by ?? "-"} · {getAdminReportTypeLabel(report.type)} · {formatDate(report.createdAt)}
-                      </em>
-                      {report.resolution ? <small>처리 {ADMIN_REVIEW_ACTIONS[report.resolution.actionType]?.label ?? "완료"} · {userMap[report.resolvedBy]?.name ?? report.resolvedBy ?? "관리자"} · {report.resolution.reason || "사유 없음"} · {report.resolution.feedback || "답변 없음"}</small> : null}
-                    </span>
-                    <Badge tone={report.status === "open" ? "orange" : "neutral"}>{getAdminStatusLabel(report.status)}</Badge>
-                  </div>
-                )) : null}
-              </DetailList> : null}
+              {selectedRow.reports.length ? <details>
+                <summary>신고 목록 열람</summary>
+                <DetailList title={view === "courts" ? "구장 신고" : "쌓인 신고"} empty="신고 없음">
+                  {selectedRow.reports.slice(0, 8).map((report) => (
+                    <div key={report.id} className="admin-detail-row">
+                      <span>
+                        <strong>{report.reason}</strong>
+                        <em>
+                          {report.type === "match" && matchMap[report.targetId] ? `${getMatchHashtag(matchMap[report.targetId])} · ` : ""}
+                          신고자 {userMap[report.by]?.name ?? report.by ?? "-"} · {getAdminReportTypeLabel(report.type)} · {formatDate(report.createdAt)}
+                        </em>
+                        {report.resolution ? <small>처리 {ADMIN_REVIEW_ACTIONS[report.resolution.actionType]?.label ?? "완료"} · {userMap[report.resolvedBy]?.name ?? report.resolvedBy ?? "관리자"} · {report.resolution.reason || "사유 없음"} · {report.resolution.feedback || "답변 없음"}</small> : null}
+                      </span>
+                      <Badge tone={report.status === "open" ? "orange" : "neutral"}>{getAdminStatusLabel(report.status)}</Badge>
+                    </div>
+                  ))}
+                </DetailList>
+              </details> : null}
 
               {view === "players" ? <DetailList title="최근 제재" empty="제재 없음">
                 {selectedRow.disciplinaryActions?.length ? selectedRow.disciplinaryActions.slice(0, 8).map((action) => (
