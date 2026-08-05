@@ -442,6 +442,10 @@
   .community-post-byline .community-author small {
     display: none;
   }
+
+  .community-post-byline .community-author strong {
+    font-size: var(--font-size-meta);
+  }
 }
 
 @media (max-width: 390px) {
