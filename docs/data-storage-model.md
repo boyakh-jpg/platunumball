@@ -2,9 +2,15 @@
 
 ## 업로드 이미지 저장 원칙
 
-- 사용자·운영자 업로드 이미지 객체는 Cloudflare R2만 canonical storage로 사용한다.
-- 공개 객체와 비공개 증거 객체는 bucket을 분리하고, DB에는 공개 URL이나 바이너리가 아닌 R2 object key와 검증 메타데이터만 저장한다.
-- `community-post-images` Supabase Storage는 R2 이관이 필요한 기존 예외다. 이관은 복사·해시 검증·DB key 전환 후 원본 정리 순서로 수행한다.
+| 미디어 종류 | canonical storage | 접근 |
+| --- | --- | --- |
+| 게시판 사진과 DB row 수명주기에 결합된 사용자 첨부 | Supabase Storage | 공개 또는 사용자 권한 기반 |
+| 팀 엠블럼·프로필 업로드 등 고조회 이미지 | Cloudflare R2 public bucket | 공용 asset base |
+| 구장 등록·운영 증거 | Cloudflare R2 private bucket | 권한 검사 서버 API |
+
+- 미디어 종류별 provider와 bucket은 공용 서버 정책·환경 설정에서 결정한다. 개별 파일이나 화면이 저장소를 선택하지 않는다.
+- DB에는 공개 URL이나 바이너리가 아닌 object key와 검증 메타데이터를 저장한다. 이관 중 provider가 혼재할 때만 row에 provider 원본을 추가한다.
+- 저장소 이관은 종류 전체의 복사·해시 검증·DB 전환·읽기 검증 뒤 기존 객체를 정리하는 비파괴 순서를 따른다.
 
 ## 2026-08-05 회원 탈퇴
 

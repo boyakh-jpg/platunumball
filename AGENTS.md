@@ -13,7 +13,7 @@ Caveman mode.
 # Coding
 
 - 제1원칙: 운영 데이터, 사용자 값, 테마 색상, 경로, 화면별 시각 규칙을 하드코딩하지 않는다. canonical DB/API, 공용 helper, 디자인 토큰을 재사용한다.
-- 제2원칙: 사용자·운영자가 업로드하는 이미지 원본과 파생본은 Cloudflare R2에만 저장한다. Supabase Storage, DB Base64/blob, Vercel runtime filesystem에 신규 저장하지 않으며 DB에는 R2 object key와 검증·표시에 필요한 메타데이터만 저장한다.
+- 제2원칙: 업로드 이미지는 용도별 canonical 저장소를 고정한다. DB row 수명주기에 결합된 게시판·사용자 첨부는 Supabase Storage, 고조회 공개 이미지와 서버 전용 비공개 증거는 Cloudflare R2를 사용한다. 파일별 동적 전환과 브라우저 직접 쓰기를 금지하고 DB에는 object key와 검증 메타데이터만 저장한다.
 - Do not rewrite whole files unless necessary.
 - Make minimal safe changes.
 - Do not delete assets unless asked.
