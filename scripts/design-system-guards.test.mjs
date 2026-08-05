@@ -651,6 +651,8 @@ test("공용 버튼과 badge 라벨은 한 줄을 유지한다", () => {
   assert.match(primitiveStyles, /\.ui-button\s*\{[\s\S]*?white-space:\s*nowrap;/);
   assert.match(primitiveStyles, /\.ui-badge\s*\{[\s\S]*?flex:\s*0 0 auto;[\s\S]*?white-space:\s*nowrap;/);
   assert.match(primitiveStyles, /\.ui-action-row > \*\s*\{\s*flex:\s*0 0 auto;\s*\}/);
+  assert.match(tokenStyles, /--ui-button-bg:\s*color-mix\(in srgb,\s*var\(--rb-text\) 14%,\s*var\(--rb-bg\)\);/);
+  assert.equal(count(read("src/styles/themes/home-dashboard-theme.css"), "background: var(--ui-button-bg);"), 2);
   assert.doesNotMatch(hoverSurfaceStyles, /(?:^|\n)\s*\.button\s*\{[^{}]*white-space:\s*normal;/);
 });
 
@@ -828,8 +830,8 @@ test("매칭과 기록 생성 선택 영역은 같은 제목과 버튼 타이포
     courtControlStyles,
     /\.create-match-page :is\(\.create-mode-grid,\s*\.match-intent-preset-grid\) button strong\s*\{[^}]*font-size:\s*var\(--create-choice-option-title-font-size\);[^}]*line-height:\s*1\.35;/,
   );
-  assert.match(courtControlStyles, /\.create-match-page\s*\{[^}]*--button-secondary-bg:\s*var\(--surface-3\);[^}]*--ui-button-bg:\s*var\(--surface-3\);/);
-  assert.match(courtControlStyles, /html\[data-theme\] \.create-match-page \.button-secondary\s*\{[^}]*background:\s*var\(--surface-3\);/);
+  assert.doesNotMatch(courtControlStyles, /\.create-match-page\s*\{[^}]*--(?:button-secondary|ui-button)-bg:/);
+  assert.doesNotMatch(courtControlStyles, /html\[data-theme\] \.create-match-page \.button-secondary/);
   assert.match(courtControlStyles, /\.match-intent-preset-grid > button\s*\{[^}]*background:\s*var\(--surface-3\);/);
   assert.match(
     courtControlStyles,

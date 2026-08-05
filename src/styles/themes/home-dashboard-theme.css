@@ -24,7 +24,7 @@ html[data-theme="light"] .provider-button,
 html[data-theme="light"] .button-icon,
 html[data-theme="light"] .arena-icon-button {
   border-color: rgba(30, 24, 18, 0.14);
-  background: rgba(255, 255, 255, 0.72);
+  background: var(--ui-button-bg);
   color: var(--rb-text);
 }
 html[data-theme="light"] input[type="radio"] {
@@ -309,7 +309,7 @@ button:not(:focus-visible) {
 .button-secondary,
 .provider-button,
 .button-icon {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--ui-button-bg);
   color: var(--rb-text);
 }
 .rank-home {
