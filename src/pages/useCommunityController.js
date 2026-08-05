@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { isSupabaseConfigured } from "../lib/supabase.js";
+import { getLoginPath } from "../lib/profileSetup.js";
 import {
   COMMUNITY_PAGE_SIZE,
   normalizeCommunityCommentBody,
@@ -79,7 +80,7 @@ export default function useCommunityController(app) {
   const requireLogin = () => {
     if (!app.demoPreview) return false;
     const redirect = `${window.location.pathname}${window.location.search}${window.location.hash}`;
-    window.location.assign(`/login?redirect=${encodeURIComponent(redirect)}`);
+    window.location.assign(getLoginPath(redirect));
     return true;
   };
 

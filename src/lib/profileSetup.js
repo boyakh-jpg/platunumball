@@ -107,6 +107,10 @@ export function getAppRedirectFromLocation(location, fallback = "/app") {
   return getSafeAppRedirect(fallback, "/app");
 }
 
+export function getLoginPath(redirect = "/app") {
+  return `/login?redirect=${encodeURIComponent(getSafeAppRedirect(redirect))}`;
+}
+
 const teamRolePriority = {
   captain: 0,
   regular: 1,

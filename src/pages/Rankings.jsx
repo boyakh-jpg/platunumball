@@ -105,7 +105,7 @@ export default function Rankings({ app }) {
     && app.directoryStatus?.page?.placementCompleteOnly === placementCompleteOnly
     && app.directoryStatus?.page?.rankingSort === rankingSort;
   const directoryLoadError = !promotionView && directoryStatusMatches ? app.directoryStatus?.error : "";
-  const directoryLoading = !promotionView && !directoryLoadError && isSupabaseConfigured && (
+  const directoryLoading = !app.demoPreview && !promotionView && !directoryLoadError && isSupabaseConfigured && (
     !directoryStatusMatches
     ||
     app.remoteReady === false

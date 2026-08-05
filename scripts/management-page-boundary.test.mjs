@@ -664,19 +664,22 @@ test("랜딩의 모집방·대표팀·최근 경기는 선택 대상을 유지�
 });
 
 test("게스트 저장 요청은 원래 경로를 보존해 로그인으로 보낸다", async () => {
-  const [serverActions, communityPage, community, rankings] = await Promise.all([
+  const [profileSetup, serverActions, communityPage, community, rankings] = await Promise.all([
+    read("src/lib/profileSetup.js"),
     read("src/lib/serverActions.js"),
     read("src/pages/Community.jsx"),
     read("src/pages/useCommunityController.js"),
     read("src/pages/Rankings.jsx"),
   ]);
 
-  assert.match(serverActions, /window\.location\.assign\(`\/login\?redirect=\$\{encodeURIComponent\(redirect\)\}`\)/u);
+  assert.match(profileSetup, /export function getLoginPath\(redirect = "\/app"\)/u);
+  assert.match(serverActions, /window\.location\.assign\(getLoginPath\(redirect\)\)/u);
   assert.match(serverActions, /if \(!accessToken\) \{[\s\S]*redirectToLogin\(\);[\s\S]*server_action_missing_access_token/u);
   assert.match(community, /const remote = isSupabaseConfigured && !app\.demoPreview/u);
-  assert.match(community, /const requireLogin = \(\) => \{[\s\S]*window\.location\.assign/u);
+  assert.match(community, /const requireLogin = \(\) => \{[\s\S]*window\.location\.assign\(getLoginPath\(redirect\)\)/u);
   assert.match(communityPage, /controller\.requireLogin\(\) \|\| setComposing\(true\)/u);
   assert.match(rankings, /promotionView && !app\.demoPreview/u);
+  assert.match(rankings, /const directoryLoading = !app\.demoPreview/u);
 });
 
 test("게스트 매칭은 읽기 전용 방 보기만 허용한다", async () => {
@@ -692,10 +695,11 @@ test("게스트 매칭은 읽기 전용 방 보기만 허용한다", async () =>
   assert.match(app, /\/app\/recruiting/u);
   assert.match(app, /<Recruiting app=\{app\} readOnly=\{guestPreview\} \/>/u);
   assert.match(recruiting, /<RecruitingReady app=\{app\} readOnly=\{readOnly\} \/>/u);
+  assert.match(recruiting, /useState\(readOnly \? "all" : "instant"\)/u);
   assert.match(page, /<RecruitingRoomModal[\s\S]*?readOnly=\{readOnly\}/u);
   assert.match(controller, /readOnly = false[\s\S]*?readOnly, requiresPaidCourtNotice/u);
   assert.match(matchModel, /const sourceRoomReadOnly = Boolean\([\s\S]*?readOnly \|\|/u);
-  assert.match(actionSection, /readOnly \? \([\s\S]*?로그인 후 참가[\s\S]*?navigate\("\/login"\)/u);
+  assert.match(actionSection, /readOnly \? \([\s\S]*?로그인 후 참가[\s\S]*?navigate\(getLoginPath/u);
 });
 
 test("랜딩은 공개 피드와 전체 통계를 분리하고 공개 경기 점수를 표시한다", async () => {

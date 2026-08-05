@@ -1,5 +1,6 @@
 import { isServerActionsEnabled, isSupabaseConfigured, supabase } from "./supabase.js";
 import { assertSafeInputPayload } from "./inputSecurity.js";
+import { getLoginPath } from "./profileSetup.js";
 
 let cachedActionSession = { accessToken: "", expiresAtMs: 0 };
 
@@ -65,7 +66,7 @@ export async function getClientActionAccessToken() {
 function redirectToLogin() {
   if (typeof window === "undefined" || window.location.pathname === "/login") return;
   const redirect = `${window.location.pathname}${window.location.search}${window.location.hash}`;
-  window.location.assign(`/login?redirect=${encodeURIComponent(redirect)}`);
+  window.location.assign(getLoginPath(redirect));
 }
 
 export async function getServerActionAvailability(path = "") {
