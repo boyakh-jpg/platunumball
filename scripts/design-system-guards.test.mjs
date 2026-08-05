@@ -1105,11 +1105,12 @@ test("home Season Zero banner routes by founding player status", () => {
 });
 
 test("hero inner boards share one readable liquid-glass system", () => {
-  assert.equal(count(tokenStyles, "--hero-copy-color: var(--rb-cream);"), 2);
-  assert.equal(count(tokenStyles, "0 2px 3px rgba(5, 7, 10, 0.84)"), 2);
-  assert.equal(count(tokenStyles, "0 6px 18px rgba(0, 0, 0, 0.32)"), 2);
-  assert.equal(count(tokenStyles, "0 1px 2px rgba(5, 7, 10, 0.84)"), 2);
-  assert.equal(count(tokenStyles, "0 3px 8px rgba(0, 0, 0, 0.28)"), 2);
+  assert.equal(count(tokenStyles, "--hero-copy-color: var(--rb-cream);"), 1);
+  assert.equal(count(tokenStyles, "0 2px 3px rgba(5, 7, 10, 0.84)"), 1);
+  assert.equal(count(tokenStyles, "0 6px 18px rgba(0, 0, 0, 0.32)"), 1);
+  assert.equal(count(tokenStyles, "0 1px 2px rgba(5, 7, 10, 0.84)"), 1);
+  assert.equal(count(tokenStyles, "0 3px 8px rgba(0, 0, 0, 0.28)"), 1);
+  assert.match(tokenStyles, /html\[data-theme="light"\][\s\S]*?--hero-title-color:\s*var\(--rb-text\);[\s\S]*?--hero-title-shadow:\s*none;[\s\S]*?--hero-copy-color:\s*var\(--rb-text\);[\s\S]*?--hero-copy-shadow:\s*none;/);
   assert.doesNotMatch(tokenStyles, /--hero-title-shadow:[\s\S]{0,100}?14px 34px/);
   assert.doesNotMatch(tokenStyles, /--hero-copy-shadow:[\s\S]{0,100}?8px 20px/);
   assert.equal(count(tokenStyles, "--ui-liquid-glass-filter: blur(0.75px) saturate(1.02);"), 2);
@@ -1209,6 +1210,8 @@ test("page heroes keep shared eyebrows without implementation copy", () => {
   assert.match(visualSystemStyles, /\.ui-page-hero__copy h1\s*\{[^}]*text-shadow:\s*var\(--hero-title-shadow\);[^}]*font-family:\s*var\(--hero-title-font\);/);
   assert.match(visualSystemStyles, /\.ui-page-hero__copy p:not\(\.eyebrow\)\s*\{[^}]*color:\s*var\(--hero-copy-color\);[^}]*text-shadow:\s*var\(--hero-copy-shadow\);/);
   assert.match(visualSystemStyles, /\.ui-page-hero__copy \.eyebrow\s*\{[^}]*text-shadow:\s*var\(--hero-copy-shadow\);/);
+  assert.match(visualSystemStyles, /html\[data-theme="light"\] \.ui-page-hero,[\s\S]*?html\[data-theme="light"\] \.ui-page-hero :where\(\*\)\s*\{[^}]*text-shadow:\s*none;/);
+  assert.match(visualSystemStyles, /\.rank-home \.rank-summary-grid \.home-rank-board-head p:not\(\.eyebrow\),[\s\S]*?\{[^}]*text-shadow:\s*var\(--hero-copy-shadow\);/);
   assert.doesNotMatch(
     readCssTree("src/styles/responsive/global-home-responsive.css"),
     /\.home-rank-board-head h1,[\s\S]{0,700}?\.home-rank-board-head \.eyebrow\s*\{[^}]*color:\s*var\(--rb-orange\);/,
@@ -1225,7 +1228,7 @@ test("page heroes keep shared eyebrows without implementation copy", () => {
   );
 });
 
-test("팀 허브 대표팀 보드는 팀 전용 너비와 테마 대응 골드 팀명을 사용한다", () => {
+test("팀 허브 대표팀 보드는 팀 전용 너비와 테마 대응 고대비 팀명을 사용한다", () => {
   assert.match(
     read("src/styles/tokens.css"),
     /--rb-yellow:\s*#ffd36c;/,
@@ -1233,6 +1236,10 @@ test("팀 허브 대표팀 보드는 팀 전용 너비와 테마 대응 골드 �
   assert.match(
     visualSystemStyles,
     /\.team-hub-board strong\s*\{[^}]*color:\s*var\(--rb-gold\);/,
+  );
+  assert.match(
+    visualSystemStyles,
+    /html\[data-theme="light"\] \.app-main \.team-hub-board :is\([\s\S]*?\.team-hub-board-name strong,[\s\S]*?\)\s*\{[^}]*color:\s*var\(--rb-cream\);/,
   );
   assert.match(
     readCssTree("src/styles/global-surfaces.css"),

@@ -650,9 +650,12 @@ test("인증 저장소와 링크 복사 실패는 로그인 화면을 멈추지 
 
 test("랜딩의 모집방·대표팀·최근 경기는 선택 대상을 유지한다", async () => {
   const landing = await read("src/pages/Landing.jsx");
+  const app = await read("src/App.jsx");
   assert.match(landing, /`\/app\/recruiting\?post=\$\{encodeURIComponent\(post\.id\)\}`/u);
   assert.match(landing, /`\/app\/teams\/\$\{encodeURIComponent\(featuredTeam\.id\)\}`/u);
   assert.match(landing, /`\/app\/matches\?match=\$\{encodeURIComponent\(match\.id\)\}`/u);
+  assert.match(app, /<Landing state=\{app\.state\} authenticated=\{Boolean\(auth\.user\)\} \/>/u);
+  assert.match(landing, /authenticated \? \([\s\S]*?경기 찾기[\s\S]*?홈[\s\S]*?\) : \([\s\S]*?로그인/u);
 });
 
 test("랜딩의 통계와 최근 경기 점수는 표시 목록이 아닌 전체 확정 데이터로 계산한다", async () => {

@@ -387,7 +387,7 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head h1 
 }
 .rank-home .rank-summary-grid .home-rank-board-head p:not(.eyebrow),
 html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head p:not(.eyebrow) {
-  text-shadow: 0 8px 20px rgba(0, 0, 0, 0.48);
+  text-shadow: var(--hero-copy-shadow);
 }
 .rank-home .rank-tier-rail {
   display: grid;

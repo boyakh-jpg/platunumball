@@ -182,7 +182,7 @@ export default function App() {
       <Suspense fallback={<BasketballLoader overlay label="페이지 불러오는 중" />}>
         <Routes>
         <Route element={<PublicShell />}>
-          <Route path="/" element={<Landing state={app.state} />} />
+          <Route path="/" element={<Landing state={app.state} authenticated={Boolean(auth.user)} />} />
           <Route path="/login" element={<Login auth={auth} app={app} />} />
           <Route path="/data-sources" element={<DataSources />} />
           <Route path="/privacy" element={<Privacy />} />

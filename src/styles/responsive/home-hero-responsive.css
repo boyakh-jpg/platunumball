@@ -456,7 +456,7 @@ html[data-theme="light"] .match-hero h1,
 html[data-theme="light"] .team-hub-hero h1,
 html[data-theme="light"] .profile-hero h1,
 html[data-theme="light"] .team-detail-hero h1 {
-  color: var(--rb-cream);
+  color: var(--hero-title-color);
 }
 /* 2026-07-02 final hero guard: no image wash/blur and one title font. */
 .rank-home .rank-summary-grid,

@@ -801,12 +801,12 @@ RankBall 다크 모드는 이 팔레트를 기본 CSS 색상 표준으로 쓴다
 2026-07-01: 홈/경기/모집 hero 이미지 위에는 1px 반복 격자/스캔라인을 얹지 않고, 가독성용 어두운 overlay와 이미지 질감만 둔다.
 2026-07-01: 앱 바닥과 주요 hero/방 모달 overlay의 1px 격자무늬는 제거한다. 코트 정체성은 실제 배경 이미지와 scoreboard/card hierarchy로만 표현한다.
 2026-07-02: "hero들"이라고 하면 홈/경기/모집만이 아니라 `page-header`, landing, team hub, season, profile, team detail, rulebook, tournament, match room 같은 모든 page-level hero를 포함한다.
-2026-07-02: 모든 page-level hero는 이미지 위에 dark/white wash, scanline/grid, 별도 `::before`/`::after` overlay를 얹지 않는다. hero 텍스트는 dark에서 `--rb-orange`/`--rb-orange-2`, light 큰 제목은 `--rb-cream`로 시인성을 확보한다.
+2026-07-02: 모든 page-level hero는 이미지 위에 dark/white wash, scanline/grid, 별도 `::before`/`::after` overlay를 얹지 않는다. hero 텍스트는 dark에서 `--rb-cream`과 `--rb-orange`/`--rb-orange-2`, light 앱 hero에서 `--rb-text`와 `--rb-orange-pressed`로 시인성을 확보한다. 어두운 고정 배경을 쓰는 공개 메인과 팀 대표 보드는 light에서도 `--rb-cream`을 사용할 수 있다.
 2026-07-02: hero 제목은 모두 `--hero-title-font`와 홈 hero 기준 `--hero-title-shadow`를 쓴다. 개별 feature/theme CSS는 제목 그림자를 덮어쓰지 않는다. 원인/결과: 개별 파일의 `linear-gradient` background와 `::before`/`::after` overlay가 뒤쪽 CSS에서 다시 살아나 이미지 위 막이 반복됐으므로, page-level hero는 최종 guard에서 image + fallback color만 남기고 `backdrop-filter`/blur/filter를 쓰지 않는다.
 2026-08-02: page-level hero는 eyebrow, 제목, 상태 badge/action, 날짜·구장·지역 같은 동적 정보만 표시한다. 작은 분류 라벨은 공용 `.eyebrow` 클래스를 사용하고 별도 `*-kicker` 클래스와 고정 설명은 두지 않으며, 서버 원본·모듈·저장 통로·공용 모달 같은 내부 구현 용어를 사용자 화면에 노출하지 않는다.
 2026-08-03: 라이트 테마 모바일 하단 메뉴의 활성 항목은 `--radius-sm`을 사용한다. 메뉴 바와 비활성 항목은 기존 flat 규격을 유지한다.
 2026-08-03: 모든 page-level hero는 역할 클래스 `.ui-page-hero`와 텍스트 영역 `.ui-page-hero__copy`를 사용한다. 화면별 hero 클래스는 배경·배치 modifier만 소유하고 제목 글꼴·색·그림자·모바일 크기와 설명 색·그림자는 공용 primitive가 소유한다. 모든 섹션 제목 행은 `.section-title-row`를 기본 역할 클래스로 함께 사용하고 화면별 `*-head` 클래스는 구조 차이만 보정한다.
-2026-08-05: 모든 page-level hero의 크림색 제목·설명과 표준 오렌지 eyebrow는 밝고 어두운 사진 모두에서 경계가 유지되도록 공용 `--hero-title-shadow`/`--hero-copy-shadow`를 사용한다. 화면별 색·그림자 덮어쓰기는 추가하지 않는다.
+2026-08-05: dark page-level hero의 크림색 제목·설명과 표준 오렌지 eyebrow는 공용 `--hero-title-shadow`/`--hero-copy-shadow`를 사용한다. light page-level hero는 그림자를 쓰지 않고 표준 진한 글자색으로 대비를 확보하며, 팀 대표 보드는 어두운 농구공 위에서 크림색 팀명·순위·지표를 사용한다.
 2026-07-23: 방만들기(`/app/create`) page-header는 다크·라이트 전용 체육관 이미지 hero를 쓴다. 왼쪽 제목 영역은 단순한 벽면 여백을 유지하고 오른쪽 골대·접힌 관중석·조명 구조는 중앙 crop 안에 둔다. 장식용 공은 두지 않고 보이는 코트선은 실제 바닥 구조에 맞게 한 번만 표시한다.
 2026-07-28: 팀 허브 모바일 hero에도 데스크톱처럼 대표팀 보드를 포함한다. 대표팀이 있으면 팀명·MMR·전적을 표시하며 759px 이하에서도 숨기지 않는다.
 2026-07-02: 홈 image hero와 rank spotlight card는 조각난 frame처럼 보이는 border, underline, inner pseudo frame을 쓰지 않는다. 이미지 경계는 배경/간격으로 처리한다.

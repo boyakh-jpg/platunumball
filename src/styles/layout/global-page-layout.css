@@ -124,6 +124,13 @@ html[data-theme] .app-main :is(
 ) .eyebrow {
   color: var(--rb-orange-2);
 }
+html[data-theme="light"] .ui-page-hero,
+html[data-theme="light"] .ui-page-hero :where(*) {
+  text-shadow: none;
+}
+html[data-theme="light"] .app-main .ui-page-hero .eyebrow {
+  color: var(--rb-orange-pressed);
+}
 /* Home hero keeps the next-match board below the rank copy on the left. */
 .rank-home .rank-summary-grid .home-rank-board-head {
   display: grid;
@@ -266,6 +273,15 @@ html[data-theme] .app-main :is(
   .gm-room-actions > div
 ) {
   color: var(--hero-copy-color);
+}
+html[data-theme="light"] .app-main .team-hub-board :is(
+  .team-hub-board-head > b,
+  .team-hub-board-name strong,
+  .team-hub-board-identity em,
+  .team-hub-board-stats b,
+  .team-hub-board-stats em
+) {
+  color: var(--rb-cream);
 }
 html[data-theme] .app-main :is(.om-match-hero, .arena-recruit-hero) {
   grid-template-columns: minmax(0, 1fr) minmax(0, var(--ui-hero-status-width));

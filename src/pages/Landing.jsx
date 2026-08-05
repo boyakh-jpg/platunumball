@@ -36,7 +36,7 @@ function normalizeLandingStats(value = {}) {
     : null;
 }
 
-export default function Landing({ state }) {
+export default function Landing({ state, authenticated = false }) {
   const [publicStats, setPublicStats] = useState(null);
   const users = state?.users ?? [];
   const matches = state?.matches ?? [];
@@ -92,15 +92,20 @@ export default function Landing({ state }) {
               <Badge tone="green">Season Zero</Badge>
               <h1>오늘,<br />농구할 사람?</h1>
               <div className="ui-action-row ui-design-actions">
-                <Button as={Link} to="/app/recruiting">
-                  경기 찾기 <ArrowRight size={18} />
-                </Button>
-                <Button as={Link} to="/login" variant="secondary">
-                  로그인 <LogIn size={18} />
-                </Button>
-                <Button as={Link} to="/app" variant="secondary">
-                  홈 <House size={18} />
-                </Button>
+                {authenticated ? (
+                  <>
+                    <Button as={Link} to="/app/recruiting">
+                      경기 찾기 <ArrowRight size={18} />
+                    </Button>
+                    <Button as={Link} to="/app" variant="secondary">
+                      홈 <House size={18} />
+                    </Button>
+                  </>
+                ) : (
+                  <Button as={Link} to="/login">
+                    로그인 <LogIn size={18} />
+                  </Button>
+                )}
               </div>
             </div>
             <div className="ui-design-stat-strip ui-design-hero__stats" aria-label={`${BRAND_NAME} 활동 요약`}>
