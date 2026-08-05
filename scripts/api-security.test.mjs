@@ -319,6 +319,13 @@ test("referee search supports qualified discovery on focus only", async () => {
   assert.match(createMatchSource, /mapRemoteItem=\{\(user\) => activePlayerIds\.has\(user\.id\) \? null : user\}/);
 });
 
+test("anonymous users cannot read raw directory tables", async () => {
+  const migrationSource = await readSource("supabase/migrations/20260805180000_revoke_anonymous_directory_tables.sql");
+  assert.match(migrationSource, /revoke select on table public\.teams, public\.team_members, public\.affiliations\s+from public, anon;/);
+  assert.match(migrationSource, /grant select on table public\.teams, public\.team_members, public\.affiliations\s+to authenticated;/);
+  assert.doesNotMatch(migrationSource, /delete\s+from|truncate\s+table|drop\s+table/i);
+});
+
 test("referee entry trust and active trust stay separated without test-account exceptions", async () => {
   const [appointmentSource, localAppointmentSource, migrationSource, eligibilityMigrationSource, hardeningMigrationSource] = await Promise.all([
     readSource("server/api/admin/appointment-action.js"),

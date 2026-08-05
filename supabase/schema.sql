@@ -20488,3 +20488,15 @@ where profile.id = appointment.user_id
   and appointment.status = 'active';
 
 commit;
+
+begin;
+
+-- Anonymous visitors use explicit public projections and server APIs, not raw directory tables.
+revoke select on table public.teams, public.team_members, public.affiliations
+  from public, anon;
+grant select on table public.teams, public.team_members, public.affiliations
+  to authenticated;
+
+select pg_notify('pgrst', 'reload schema');
+
+commit;
