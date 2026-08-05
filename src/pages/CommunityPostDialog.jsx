@@ -6,6 +6,7 @@ import Badge from "../components/common/Badge.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import ProfileEmblem from "../components/profile/ProfileEmblem.jsx";
 import { getUserHashtag } from "../lib/handles.js";
+import { getSafeImageUrl } from "../lib/inputSecurity.js";
 import { formatKoreanDateTime } from "../../shared/lib/matchTimeUtils.js";
 import { COMMUNITY_COMMENT_BODY_MAX, COMMUNITY_POST_CATEGORY_LABELS } from "../../shared/lib/communityPolicy.js";
 import CommunityPostEditor from "./CommunityPostEditor.jsx";
@@ -79,6 +80,7 @@ export default function CommunityPostDialog({ app, controller }) {
   if (!post || typeof document === "undefined") return null;
   const ownsPost = post.authorId === app.currentUserId;
   const canDeletePost = ownsPost || canModerate;
+  const imageUrl = getSafeImageUrl(post.imageUrl);
   const commentLength = commentBody.trim().length;
   const submitComment = async (event) => {
     event.preventDefault();
@@ -116,7 +118,12 @@ export default function CommunityPostDialog({ app, controller }) {
               <CommunityAuthorLink author={post.author} teams={app.state.teams} />
               <time>{formatKoreanDateTime(post.createdAt)}</time>
             </div>
-            {detailLoading ? <div className="ui-empty-state-compact">글 불러오는 중</div> : <p className="community-post-body">{post.body}</p>}
+            {detailLoading ? <div className="ui-empty-state-compact">글 불러오는 중</div> : (
+              <>
+                {imageUrl ? <img className="community-post-image" src={imageUrl} alt={post.title} /> : null}
+                <p className="community-post-body">{post.body}</p>
+              </>
+            )}
             <div className="ui-action-row community-post-actions">
               <Button type="button" variant={post.liked ? "primary" : "secondary"} disabled={pending || detailLoading} aria-pressed={post.liked} onClick={() => controller.toggleLike(post.id)}>
                 <ThumbsUp size={16} /> 추천 {post.likeCount}

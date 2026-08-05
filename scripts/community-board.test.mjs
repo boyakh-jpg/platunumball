@@ -39,10 +39,31 @@ test("인기글은 최근 3일 공지 외 글을 추천 3점과 댓글 1점으�
 
 test("공지는 운영자만 작성하고 답글은 같은 글의 원댓글에만 허용한다", () => {
   assert.throws(() => normalizeCommunityPostDraft({ category: "notice", title: "공지", body: "내용" }, 0), /community_notice_admin_required/);
+  assert.throws(() => normalizeCommunityPostDraft({ category: "photo", title: "사진", body: "내용" }, 0), /community_photo_admin_required/);
   assert.equal(normalizeCommunityPostDraft({ category: "notice", title: "공지", body: "내용", pinned: true }, 30).pinned, true);
+  assert.equal(normalizeCommunityPostDraft({ category: "photo", title: "사진", body: "내용" }, 30).category, "photo");
   assert.equal(normalizeCommunityPostDraft({ category: "question", title: "질문", body: "내용" }, 0).category, "question");
   assert.equal(assertCommunityReplyParent({ id: "root", post_id: "post", parent_id: null, status: "published" }, "post"), "root");
   assert.throws(() => assertCommunityReplyParent({ id: "reply", post_id: "post", parent_id: "root", status: "published" }, "post"), /community_reply_parent_invalid/);
+});
+
+test("사진 탭은 운영자 전용 WebP 한 장을 서버 검증 뒤 저장한다", async () => {
+  const [page, editor, dialog, api, migration] = await Promise.all([
+    readFile(new URL("../src/pages/Community.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/pages/CommunityPostEditor.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/pages/CommunityPostDialog.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../server/api/community/posts.js", import.meta.url), "utf8"),
+    readFile(new URL("../supabase/migrations/20260806100000_community_photo_posts.sql", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(page, /\["photo", "사진"\]/);
+  assert.match(editor, /canModerate \? <option value="photo">사진/);
+  assert.match(editor, /type="file"[\s\S]*accept="image\/jpeg,image\/png,image\/webp,image\/avif,image\/heic,image\/heif"/);
+  assert.match(dialog, /className="community-post-image"/);
+  assert.match(api, /validateWebpImage\(bytes/);
+  assert.match(api, /\.from\(COMMUNITY_POST_IMAGE_BUCKET\)[\s\S]*\.upload\(imagePath/);
+  assert.match(migration, /category in \('general', 'question', 'photo', 'notice'\)/);
+  assert.match(migration, /'community-post-images'[\s\S]*array\['image\/webp'\]/);
 });
 
 test("프로필 활동은 30개씩 조회하고 공개 설정을 본인에게는 적용하지 않는다", () => {

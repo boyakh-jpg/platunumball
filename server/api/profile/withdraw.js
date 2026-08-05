@@ -1,6 +1,7 @@
 import { allowRequestMethod, getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
 import { authContextCache, authUserCache } from "../_supabaseAuth.js";
 import { getAccountWithdrawalIdentity } from "./_accountWithdrawal.js";
+import { COMMUNITY_POST_IMAGE_BUCKET } from "../../../shared/lib/communityPolicy.js";
 
 export default async function handler(request, response) {
   if (!allowRequestMethod(request, response)) return;
@@ -18,12 +19,25 @@ export default async function handler(request, response) {
       return sendJson(response, 403, { error: "test_account_withdrawal_forbidden" });
     }
 
+    const { data: communityImages, error: communityImageError } = await context.supabase
+      .from("community_posts")
+      .select("image_path")
+      .eq("author_id", context.profileId)
+      .not("image_path", "is", null);
+    if (communityImageError) throw communityImageError;
+
     const { data, error } = await context.supabase.rpc("rankball_withdraw_account", {
       p_profile_id: context.profileId,
       p_auth_user_id: context.authUserId,
       p_identity_hash: getAccountWithdrawalIdentity(context.authUser),
     });
     if (error) throw error;
+
+    const communityImagePaths = (communityImages ?? []).map((row) => row.image_path).filter(Boolean);
+    if (communityImagePaths.length) {
+      const { error: cleanupError } = await context.supabase.storage.from(COMMUNITY_POST_IMAGE_BUCKET).remove(communityImagePaths);
+      if (cleanupError) console.error("Withdrawn community photo cleanup failed.", cleanupError);
+    }
 
     const { error: deleteAuthError } = await context.supabase.auth.admin.deleteUser(context.authUserId);
     if (deleteAuthError) console.error("Withdrawn auth user cleanup failed.", deleteAuthError);

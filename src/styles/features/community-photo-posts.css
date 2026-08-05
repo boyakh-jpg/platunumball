@@ -1,0 +1,51 @@
+.community-photo-field,
+.community-photo-preview {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.community-photo-input {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 48px;
+  gap: var(--space-3);
+  border: var(--ui-stroke-width) solid var(--card-border);
+  border-radius: var(--radius-md);
+  background: var(--ui-control-group-bg);
+  padding: 10px 12px;
+  color: var(--text);
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.community-photo-input > svg {
+  color: var(--orange);
+}
+
+.community-photo-input input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.community-photo-preview {
+  justify-items: end;
+}
+
+.community-photo-preview img,
+.community-post-image {
+  width: 100%;
+  max-height: 560px;
+  border-radius: var(--radius-md);
+  background: var(--ui-control-group-bg);
+  object-fit: contain;
+}
+
+@media (max-width: 720px) {
+  .community-photo-preview img,
+  .community-post-image {
+    max-height: 420px;
+  }
+}

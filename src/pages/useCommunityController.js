@@ -46,6 +46,9 @@ export function getCommunityErrorMessage(errorCode = "") {
   if (errorCode === "community_post_daily_limit") return "24시간 동안 글은 5개까지 작성할 수 있습니다.";
   if (errorCode === "community_comment_daily_limit") return "24시간 동안 댓글은 50개까지 작성할 수 있습니다.";
   if (errorCode === "community_notice_admin_required") return "공지는 운영진만 작성할 수 있습니다.";
+  if (errorCode === "community_photo_admin_required") return "사진 게시글은 운영진만 작성할 수 있습니다.";
+  if (errorCode === "community_photo_required") return "사진 게시글에는 사진 1장을 첨부해 주세요.";
+  if (errorCode.startsWith("community_photo_")) return "사진을 저장하지 못했습니다. 다른 사진을 선택해 주세요.";
   if (errorCode.includes("title")) return "제목은 2자 이상 100자 이하로 입력해 주세요.";
   if (errorCode.includes("comment")) return "댓글 내용을 확인해 주세요.";
   if (errorCode.includes("body")) return "본문은 2자 이상 5,000자 이하로 입력해 주세요.";

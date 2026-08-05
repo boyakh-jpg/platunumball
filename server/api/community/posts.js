@@ -1,4 +1,6 @@
+import { randomUUID } from "node:crypto";
 import { allowRequestMethod, getAdminLevel, getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+import { decodeBase64Image, validateWebpImage } from "../_r2ImageStorage.js";
 import { fromRemoteProfile } from "../../../shared/lib/profileMappers.js";
 import { PROFILE_CARD_COLUMNS, TEAM_COLUMNS, TEAM_MEMBER_COLUMNS } from "../../../shared/lib/repositoryColumns.js";
 import { fromRemoteTeam } from "../../../shared/lib/teamMappers.js";
@@ -8,6 +10,9 @@ import {
   COMMUNITY_POPULAR_WINDOW_MS,
   COMMUNITY_POST_CATEGORIES,
   COMMUNITY_POST_DAILY_LIMIT,
+  COMMUNITY_POST_IMAGE_BUCKET,
+  COMMUNITY_POST_IMAGE_MAX_BYTES,
+  COMMUNITY_POST_IMAGE_MAX_DIMENSION,
   assertCommunityReplyParent,
   canViewCommunityActivity,
   normalizeCommunityCommentBody,
@@ -15,9 +20,11 @@ import {
   selectPopularCommunityPosts,
 } from "../../../shared/lib/communityPolicy.js";
 
-const POST_LIST_COLUMNS = "id,author_id,category,title,status,pinned,like_count,comment_count,view_count,created_at,updated_at";
+const POST_LIST_COLUMNS = "id,author_id,category,title,status,pinned,image_path,like_count,comment_count,view_count,created_at,updated_at";
 const POST_DETAIL_COLUMNS = `${POST_LIST_COLUMNS},body`;
 const COMMENT_COLUMNS = "id,post_id,author_id,parent_id,body,status,created_at,updated_at";
+const COMMUNITY_IMAGE_PATH_PATTERN = /^posts\/[0-9a-f-]{36}\.webp$/;
+const COMMUNITY_IMAGE_BASE64_MAX_LENGTH = Math.ceil(COMMUNITY_POST_IMAGE_MAX_BYTES / 3) * 4 + 8;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function requestError(code, statusCode = 400) {
@@ -38,7 +45,12 @@ function requiredProfileId(value) {
   return id;
 }
 
-function toPost(row = {}, profileById = new Map(), likedPostIds = new Set()) {
+function getCommunityImageUrl(context, imagePath = "") {
+  if (!COMMUNITY_IMAGE_PATH_PATTERN.test(imagePath)) return "";
+  return context.supabase.storage.from(COMMUNITY_POST_IMAGE_BUCKET).getPublicUrl(imagePath).data.publicUrl;
+}
+
+function toPost(context, row = {}, profileById = new Map(), likedPostIds = new Set()) {
   return {
     id: row.id,
     authorId: row.author_id,
@@ -46,6 +58,7 @@ function toPost(row = {}, profileById = new Map(), likedPostIds = new Set()) {
     category: row.category,
     title: row.title,
     body: row.body,
+    imageUrl: getCommunityImageUrl(context, row.image_path),
     pinned: row.pinned === true,
     likeCount: Number(row.like_count ?? 0),
     commentCount: Number(row.comment_count ?? 0),
@@ -178,8 +191,8 @@ async function listPosts(context, body, adminLevel) {
     loadProfileMap(context, allRows.map((row) => row.author_id)),
     loadLikedPostIds(context, postIds),
   ]);
-  const posts = visibleFeed.map((row) => toPost(row, profileById, likedPostIds));
-  const popularPosts = selectedPopularRows.map((row) => toPost(row, profileById, likedPostIds));
+  const posts = visibleFeed.map((row) => toPost(context, row, profileById, likedPostIds));
+  const popularPosts = selectedPopularRows.map((row) => toPost(context, row, profileById, likedPostIds));
   return {
     ok: true,
     posts,
@@ -229,9 +242,9 @@ async function loadProfileActivity(context, body) {
   const items = kind === "comments"
     ? (data ?? []).flatMap((row) => {
       const post = Array.isArray(row.post) ? row.post[0] : row.post;
-      return post ? [{ ...toComment(row), post: toPost(post) }] : [];
+      return post ? [{ ...toComment(row), post: toPost(context, post) }] : [];
     })
-    : (data ?? []).map((row) => toPost(row));
+    : (data ?? []).map((row) => toPost(context, row));
   return {
     ok: true,
     items,
@@ -274,49 +287,91 @@ async function loadPostDetail(context, postId, adminLevel, countView = false) {
   const profileById = await loadProfileMap(context, [row.author_id, ...threadedComments.map((comment) => comment.author_id)]);
   return {
     ok: true,
-    post: toPost(viewRecorded ? { ...row, view_count: Number(row.view_count ?? 0) + 1 } : row, profileById, likedPostIds),
+    post: toPost(context, viewRecorded ? { ...row, view_count: Number(row.view_count ?? 0) + 1 } : row, profileById, likedPostIds),
     comments: threadedComments.map((comment) => toComment(comment, profileById)),
     canModerate: adminLevel >= 30,
   };
 }
 
+function decodeCommunityPostImage(post = {}, required = false) {
+  const imageBase64 = String(post.imageBase64 ?? "").trim();
+  if (!imageBase64) {
+    if (required) throw requestError("community_photo_required");
+    return null;
+  }
+  const bytes = decodeBase64Image(imageBase64, { maxBytes: COMMUNITY_POST_IMAGE_MAX_BYTES, errorPrefix: "community_photo" });
+  validateWebpImage(bytes, { maxDimension: COMMUNITY_POST_IMAGE_MAX_DIMENSION, errorPrefix: "community_photo", safeContainer: true });
+  return bytes;
+}
+
+async function uploadCommunityPostImage(context, bytes) {
+  const imagePath = `posts/${randomUUID()}.webp`;
+  const { error } = await context.supabase.storage
+    .from(COMMUNITY_POST_IMAGE_BUCKET)
+    .upload(imagePath, bytes, { cacheControl: "31536000", contentType: "image/webp", upsert: false });
+  if (error) throw requestError("community_photo_upload_failed", 503);
+  return imagePath;
+}
+
+async function removeCommunityPostImage(context, imagePath) {
+  if (!COMMUNITY_IMAGE_PATH_PATTERN.test(imagePath ?? "")) return;
+  const { error } = await context.supabase.storage.from(COMMUNITY_POST_IMAGE_BUCKET).remove([imagePath]);
+  if (error) console.error("Community photo cleanup failed.", error.message);
+}
+
 async function createPost(context, body, adminLevel) {
   if (adminLevel < 30) await enforceDailyLimit(context, "community_posts", COMMUNITY_POST_DAILY_LIMIT, "community_post_daily_limit");
   const draft = normalizeCommunityPostDraft(body.post, adminLevel);
+  if (draft.category !== "photo" && body.post?.imageBase64) throw requestError("community_photo_category_required");
+  const imageBytes = decodeCommunityPostImage(body.post, draft.category === "photo");
+  const imagePath = imageBytes ? await uploadCommunityPostImage(context, imageBytes) : null;
   const { data, error } = await context.supabase
     .from("community_posts")
-    .insert({ author_id: context.profileId, ...draft })
+    .insert({ author_id: context.profileId, ...draft, image_path: imagePath })
     .select("id")
     .single();
-  if (error) throw error;
+  if (error) {
+    await removeCommunityPostImage(context, imagePath);
+    throw error;
+  }
   return loadPostDetail(context, data.id, adminLevel);
 }
 
 async function updatePost(context, body, adminLevel) {
   const postId = requiredId(body.postId, "community_post_id_invalid");
-  const current = await readPublishedPost(context, postId, "id,author_id");
+  const current = await readPublishedPost(context, postId, "id,author_id,category,image_path");
   if (current.author_id !== context.profileId) throw requestError("community_post_edit_forbidden", 403);
   const draft = normalizeCommunityPostDraft(body.post, adminLevel);
+  if (draft.category !== "photo" && body.post?.imageBase64) throw requestError("community_photo_category_required");
+  const imageBytes = decodeCommunityPostImage(body.post);
+  const uploadedImagePath = imageBytes ? await uploadCommunityPostImage(context, imageBytes) : null;
+  const imagePath = draft.category === "photo" ? uploadedImagePath || current.image_path : null;
+  if (draft.category === "photo" && !imagePath) throw requestError("community_photo_required");
   const { error } = await context.supabase
     .from("community_posts")
-    .update({ ...draft, updated_at: new Date().toISOString() })
+    .update({ ...draft, image_path: imagePath, updated_at: new Date().toISOString() })
     .eq("id", postId)
     .eq("status", "published");
-  if (error) throw error;
+  if (error) {
+    await removeCommunityPostImage(context, uploadedImagePath);
+    throw error;
+  }
+  if (current.image_path && current.image_path !== imagePath) await removeCommunityPostImage(context, current.image_path);
   return loadPostDetail(context, postId, adminLevel);
 }
 
 async function deletePost(context, body, adminLevel) {
   const postId = requiredId(body.postId, "community_post_id_invalid");
-  const current = await readPublishedPost(context, postId, "id,author_id");
+  const current = await readPublishedPost(context, postId, "id,author_id,image_path");
   if (current.author_id !== context.profileId && adminLevel < 30) throw requestError("community_post_delete_forbidden", 403);
   const now = new Date().toISOString();
   const { error } = await context.supabase
     .from("community_posts")
-    .update({ status: "deleted", pinned: false, deleted_by: context.profileId, deleted_at: now, updated_at: now })
+    .update({ status: "deleted", pinned: false, image_path: null, deleted_by: context.profileId, deleted_at: now, updated_at: now })
     .eq("id", postId)
     .eq("status", "published");
   if (error) throw error;
+  await removeCommunityPostImage(context, current.image_path);
   return { ok: true, postId };
 }
 
@@ -384,7 +439,7 @@ async function deleteComment(context, body, adminLevel) {
 export default async function handler(request, response) {
   if (!allowRequestMethod(request, response)) return;
   try {
-    const body = await readJsonBody(request);
+    const body = await readJsonBody(request, { maxStringLength: COMMUNITY_IMAGE_BASE64_MAX_LENGTH });
     const operation = String(body.operation ?? "list");
     const context = await getAuthenticatedContext(request, { profileSelect: "id,auth_user_id,app_settings" });
     const adminLevel = await getAdminLevel(context);

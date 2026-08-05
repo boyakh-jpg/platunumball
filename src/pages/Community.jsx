@@ -86,6 +86,7 @@ export default function Community({ app }) {
               ["notice", "공지"],
               ["general", "자유"],
               ["question", "질문"],
+              ["photo", "사진"],
             ].map(([id, label]) => (
               <button key={id} type="button" role="tab" aria-selected={controller.category === id} className={controller.category === id ? "active" : ""} onClick={() => controller.setCategory(id)}>{label}</button>
             ))}
@@ -95,6 +96,7 @@ export default function Community({ app }) {
 
         {composing ? (
           <CommunityPostEditor
+            initialCategory={controller.canModerate && controller.category === "photo" ? "photo" : "general"}
             canModerate={controller.canModerate}
             pending={controller.pending}
             onCancel={() => setComposing(false)}
