@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { getTestAccountDisplayLabel, normalizeTestLoginId, TEST_ACCOUNT_COUNT } from "../lib/constants.js";
 import { getSafeAppRedirect } from "../lib/profileSetup.js";
 import { isSupabaseConfigured, supabase } from "../lib/supabase.js";
-import { setClientActionSession } from "../lib/serverActions.js";
+import { postServerAction, setClientActionSession } from "../lib/serverActions.js";
 
 const TEST_SESSION_KEY = "rankball.auth.testSession.v1";
 const PROVIDER_LABELS = { naver: "Naver", kakao: "Kakao", google: "Google" };
@@ -279,7 +279,7 @@ export function useAuthSession() {
         setAuthActionPending(false);
       }
     },
-    signInWithTestAccount: async (testLoginId) => {
+    signInWithTestAccount: async (testLoginId, options = {}) => {
       if (testLoginPendingRef.current || authActionPendingRef.current) return null;
 
       const loginGeneration = testLoginGenerationRef.current + 1;
@@ -290,21 +290,34 @@ export function useAuthSession() {
       try {
         setError("");
         setMessage("");
-        if (!isDemoLoginAllowed()) {
+        const settingsSwitch = options.settingsSwitch === true;
+        if (!settingsSwitch && !isDemoLoginAllowed()) {
           setError("현재 환경에서는 테스트 계정 로그인을 사용할 수 없습니다.");
           return null;
         }
         const normalizedLoginId = normalizeTestLoginId(testLoginId);
         if (isSupabaseConfigured) {
-          const alphaResponse = await fetch("/api/auth/alpha-test-login", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ testLoginId: normalizedLoginId }),
-          }).catch(() => null);
-          const alphaPayload = await alphaResponse?.json().catch(() => ({}));
+          let alphaStatus = 0;
+          const alphaPayload = settingsSwitch
+            ? await postServerAction(
+                "/api/auth/alpha-test-login",
+                { testLoginId: normalizedLoginId, settingsSwitch: true },
+                { allowWhenDisabled: true },
+              ).catch((requestError) => {
+                alphaStatus = Number(requestError?.statusCode ?? 0);
+                return null;
+              })
+            : await fetch("/api/auth/alpha-test-login", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ testLoginId: normalizedLoginId }),
+              }).then(async (response) => {
+                alphaStatus = response.status;
+                return response.ok ? response.json().catch(() => null) : null;
+              }).catch(() => null);
           if (loginGeneration !== testLoginGenerationRef.current) return null;
-          if (!alphaResponse?.ok || !alphaPayload?.tokenHash) {
-            setError(alphaResponse?.status === 429
+          if (!alphaPayload?.tokenHash) {
+            setError(alphaStatus === 429
               ? "요청이 많습니다. 잠시 후 다시 시도해 주세요."
               : "선택한 테스트 계정으로 로그인하지 못했습니다.");
             return null;
@@ -351,5 +364,6 @@ export function useAuthSession() {
     error,
     isAuthenticated: !isSupabaseConfigured || Boolean(session),
     ...actions,
+    switchTestAccount: (testLoginId) => actions.signInWithTestAccount(testLoginId, { settingsSwitch: true }),
   };
 }

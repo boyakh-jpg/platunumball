@@ -2313,6 +2313,9 @@ flowchart TD
 9. 테스트 계정 프로필 저장은 실제 Auth 경로에서 `auth_user_id`를 유지한다.
 10. 실제 Google 프로필 저장은 `test_login_id` 컬럼에 의존하지 않는다.
 11. Supabase가 없는 로컬 데모 로그인은 세션의 정확한 `testLoginId`와 데모 프로필의 `testLoginId`가 일치하는 사용자를 선택한다. 숫자 ID 추정이나 서버 권한 판단에는 사용하지 않는다.
+12. 공개 로그인 화면의 테스트 계정 선택기는 운영 배포에서 끈다. 운영자 레벨 100과 실제 테스트 Auth 계정만 설정 최하단에서 고정 테스트 계정으로 전환할 수 있다.
+13. 설정 계정 전환은 현재 Supabase JWT의 `profiles.auth_user_id` 바인딩을 먼저 검증한다. 테스트 계정은 고정 `test_login_id`와 Auth 이메일까지 일치해야 하며, 일반 사용자가 `test_login_id` 값만 입력해 권한을 얻을 수 없다.
+14. 계정 전환도 서버가 발급한 일회용 magic link token hash만 사용한다. 운영자 계정으로 복귀할 때는 일반 OAuth 로그인을 다시 사용한다.
 ## 2026-06-25 심판 있음 방 초대 슬롯
 
 1. 심판 있음 방은 `refereeWanted`를 가진다.
@@ -2552,7 +2555,7 @@ flowchart TD
 1. Supabase 모드 방/경기/팀 write는 optimistic update 전에 server action 가능 여부를 확인한다.
 2. Google OAuth session access token이 없으면 로컬 화면만 먼저 바꾸지 않는다.
 3. 테스트 로그인은 localhost 기본 허용과 `VITE_DEMO_LOGIN=true` 명시 허용만 사용한다. `.vercel.app` 도메인이라는 이유만으로 허용하지 않는다.
-4. 테스트 로그인 UI는 Supabase password Auth만 사용한다. 실패하면 로그인 실패로 처리한다.
+4. 테스트 로그인 UI는 서버가 발급한 일회용 Supabase magic link token hash만 사용한다. 실패하면 로그인 실패로 처리한다.
 
 ## 2026-06-27 Google profile binding
 

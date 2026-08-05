@@ -13,6 +13,7 @@ import { assetUrl } from "../lib/assets.js";
 import { getUserHashtag } from "../lib/handles.js";
 import { compareMatchRecency, getMatchSideScore } from "../lib/matchUtils.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
+import { MatchRoomModal } from "./Matches.jsx";
 
 const RECENT_REFEREE_MATCH_LIMIT = 12;
 
@@ -61,6 +62,7 @@ export default function RefereeDetail({ app }) {
   const loadRefereeDetail = app.actions?.loadRefereeDetail;
   const [detail, setDetail] = useState(null);
   const [status, setStatus] = useState("loading");
+  const [selectedMatchId, setSelectedMatchId] = useState("");
 
   useEffect(() => {
     if (!refereeId || app.remoteReady === false) return undefined;
@@ -212,6 +214,7 @@ export default function RefereeDetail({ app }) {
                   opponentScore={getMatchSideScore(match, "teamB")}
                   teams={teams}
                   to={`/app/matches?match=${match.id}`}
+                  onOpen={() => setSelectedMatchId(match.id)}
                   detail={match.official ? "공식 경기 심판" : match.ranked !== false ? "경쟁전 심판" : "친선전 심판"}
                 />
               ))}
@@ -220,6 +223,7 @@ export default function RefereeDetail({ app }) {
           </Card>
         </div>
       </div>
+      <MatchRoomModal app={app} matchId={selectedMatchId} entryPoint="referee-history" onClose={() => setSelectedMatchId("")} />
     </div>
   );
 }

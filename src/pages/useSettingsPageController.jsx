@@ -430,7 +430,7 @@ export default function useSettingsPageController({ app, section = "main" }) {
     favoriteSearchIdleItems,
     favoriteActionPendingKey, favoriteActionError, favoriteSearchResetKey, toggleFavoriteItem,
     renderFavoriteSearchItem,
-    canOpenAdminMenu,
+    canOpenAdminMenu, serverAdminLevel, currentTestLoginId: String(app.currentUser?.testLoginId ?? ""),
     themeDirty,
     generalSettingsDirty,
     generalSettingsStatus,

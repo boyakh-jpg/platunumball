@@ -341,6 +341,8 @@ test("referee detail uses the player hero structure and dedicated tier emblems",
   assert.match(globalSearchStyles, /\.referee-profile-body\s*\{[^}]*grid-template-columns:/s);
   assert.match(globalSearchStyles, /\.profile-detail-page \.rank-profile-hero\.referee-profile-hero\s*\{[^}]*--page-hero-bg:\s*var\(--referee-page-hero-bg-night\);/s);
   assert.match(globalSearchStyles, /html\[data-theme="light"\] \.profile-detail-page \.rank-profile-hero\.referee-profile-hero\s*\{[^}]*--page-hero-bg:\s*var\(--referee-page-hero-bg-day\);/s);
+  assert.match(pageSources.refereeDetail, /onOpen=\{\(\) => setSelectedMatchId\(match\.id\)\}/);
+  assert.match(pageSources.refereeDetail, /<MatchRoomModal[\s\S]*entryPoint="referee-history"/);
 });
 
 test("signed-in login redirects and settings exposes logout", () => {
@@ -351,6 +353,8 @@ test("signed-in login redirects and settings exposes logout", () => {
   assert.doesNotMatch(settingsSource, /<header[^>]*>[\s\S]*?auth\.signOut[\s\S]*?<\/header>/);
   assert.match(settingsSource, /<SettingsRefereeSection controller=\{controller\} \/>[\s\S]*?settings-signout-row/);
   assert.match(settingsSource, /settings-signout-row[\s\S]*?variant="danger"/);
+  assert.match(settingsSource, /canSwitchTestAccount[\s\S]*?<details className="settings-test-account-switcher"/);
+  assert.match(settingsSource, /auth\.switchTestAccount\(testLoginId\)/);
   assert.match(settingsStyles, /\.settings-signout-row \.button\s*\{[^}]*width:\s*100%;/);
 });
 

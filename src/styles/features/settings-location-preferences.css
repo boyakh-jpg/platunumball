@@ -298,11 +298,19 @@
   padding-block: var(--space-6);
 }
 
+.settings-test-account-switcher { border-top: var(--ui-stroke-width) solid var(--line); padding-top: var(--space-4); }
+.settings-test-account-switcher summary { width: fit-content; color: var(--muted); cursor: pointer; font-size: 0.82rem; font-weight: 800; }
+.settings-test-account-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: var(--space-3); margin-top: var(--space-3); }
+.settings-test-account-form label { display: grid; gap: var(--space-2); }
+
 .settings-signout-row .button {
   width: 100%;
 }
 
 @media (max-width: 560px) {
+  .settings-test-account-form { grid-template-columns: minmax(0, 1fr); }
+  .settings-test-account-form .button { width: 100%; }
+
   .settings-address-results button {
     grid-template-columns: minmax(0, 1fr);
     gap: var(--space-2);

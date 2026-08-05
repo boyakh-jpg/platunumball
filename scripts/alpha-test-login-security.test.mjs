@@ -3,6 +3,7 @@ import test from "node:test";
 import handler, {
   assertNonAdminTestProfile,
   isAlphaTestLoginEnabled,
+  isSettingsTestSwitchActor,
   isTemporaryAdminTestLoginAllowed,
   normalizeAlphaTestLoginId,
 } from "../server/api/auth/alpha-test-login.js";
@@ -135,6 +136,22 @@ test("rankball-001 alone temporarily bypasses the active administrator block", a
     "rankball-001",
     "rankball-001@rankball.test",
   ));
+});
+
+test("settings test account switching requires the owner or an exact test auth identity", () => {
+  assert.equal(isSettingsTestSwitchActor({ adminLevel: 100 }), true);
+  assert.equal(isSettingsTestSwitchActor({
+    testLoginId: "rankball-006",
+    email: "rankball-006@rankball.test",
+  }), true);
+  assert.equal(isSettingsTestSwitchActor({
+    testLoginId: "rankball-006",
+    email: "player@example.com",
+  }), false);
+  assert.equal(isSettingsTestSwitchActor({
+    testLoginId: "rankball-051",
+    email: "rankball-051@rankball.test",
+  }), false);
 });
 
 test("local test session selects the demo profile with the exact login id", () => {

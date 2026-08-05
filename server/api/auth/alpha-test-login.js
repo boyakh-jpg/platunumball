@@ -1,5 +1,7 @@
 import {
   allowRequestMethod,
+  getAdminLevel,
+  getAuthenticatedContext,
   getSupabaseAdminClient,
   isActiveAdminAppointment,
   readJsonBody,
@@ -71,6 +73,31 @@ export function isTemporaryAdminTestLoginAllowed(testLoginId = "") {
   return TEMPORARY_ADMIN_TEST_LOGIN_IDS.has(normalizeTestLoginId(testLoginId));
 }
 
+export function isSettingsTestSwitchActor({ adminLevel = 0, testLoginId = "", email = "" } = {}) {
+  if (Number(adminLevel) >= 100) return true;
+  try {
+    const normalizedLoginId = normalizeAlphaTestLoginId(testLoginId);
+    return String(email).trim().toLowerCase() === getTestAuthEmail(normalizedLoginId).toLowerCase();
+  } catch {
+    return false;
+  }
+}
+
+async function assertSettingsTestSwitchAllowed(request) {
+  const context = await getAuthenticatedContext(request, {
+    freshAuth: true,
+    profileSelect: "id, auth_user_id, test_login_id",
+  });
+  if (isSettingsTestSwitchActor({
+    testLoginId: context.profile?.test_login_id,
+    email: context.authUser?.email,
+  })) return;
+  const adminLevel = await getAdminLevel(context);
+  if (!isSettingsTestSwitchActor({ adminLevel })) {
+    throw createAlphaLoginError("test_account_switch_forbidden", 403);
+  }
+}
+
 export async function assertNonAdminTestProfile(client, testLoginId, email) {
   const { data: profile, error: profileError } = await client
     .from("profiles")
@@ -106,9 +133,10 @@ export default async function handler(request, response) {
   if (!allowRequestMethod(request, response)) return;
 
   try {
-    assertAlphaTestLoginEnabled();
     assertRateLimit(request);
     const body = await readJsonBody(request);
+    if (body.settingsSwitch === true) await assertSettingsTestSwitchAllowed(request);
+    else assertAlphaTestLoginEnabled();
     const testLoginId = normalizeAlphaTestLoginId(body.testLoginId);
     const email = getTestAuthEmail(testLoginId);
     const client = getSupabaseAdminClient();

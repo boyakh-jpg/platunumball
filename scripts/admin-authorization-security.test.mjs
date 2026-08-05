@@ -340,12 +340,15 @@ test("alpha test login uses a one-time server token without bundling a password"
   assert.doesNotMatch(authSource, /VITE_TEST_AUTH_PASSWORD|test-0000/);
   assert.match(authSource, /VITE_DEMO_LOGIN/);
   assert.match(authSource, /\/api\/auth\/alpha-test-login/);
+  assert.match(authSource, /postServerAction\([\s\S]*settingsSwitch:\s*true/);
   assert.match(authSource, /verifyOtp\(\{[\s\S]*token_hash:\s*alphaPayload\.tokenHash[\s\S]*type:\s*"magiclink"/);
   assert.doesNotMatch(authSource, /signInWithPassword/);
   assert.doesNotMatch(loginSource, /type="password"|testCredential/);
   assert.match(alphaLoginSource, /VITE_DEMO_LOGIN/);
   assert.match(alphaLoginSource, /TEST_ACCOUNT_COUNT/);
   assert.match(alphaLoginSource, /isActiveAdminAppointment/);
+  assert.match(alphaLoginSource, /getAuthenticatedContext[\s\S]*settingsSwitch/);
+  assert.match(alphaLoginSource, /getAdminLevel/);
   assert.match(alphaLoginSource, /generateLink\(\{[\s\S]*type:\s*"magiclink"/);
   assert.doesNotMatch(alphaLoginSource, /password|VITE_TEST_AUTH_PASSWORD|RANKBALL_TEST_PASSWORD/);
 });
