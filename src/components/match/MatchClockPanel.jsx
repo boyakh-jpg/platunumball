@@ -479,7 +479,7 @@ export default function MatchClockPanel({
     if (action === "start" && Number(shotClockSeconds) > 0) {
       void activateMatchClockMediaSession();
     }
-    if (!window.confirm(message)) return;
+    if (!(action === "start" && match.practiceMode) && !window.confirm(message)) return;
     void runAction(action, payload).then((succeeded) => {
       if (
         succeeded

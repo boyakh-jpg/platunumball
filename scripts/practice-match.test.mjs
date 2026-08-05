@@ -642,6 +642,7 @@ test("연습 adapter와 화면은 브라우저 저장소나 실서버 호출을 
   assert.match(matchClockPanelSource, /!match\.refereeId/);
   assert.match(matchClockPanelSource, /경기 종료/);
   assert.match(matchClockPanelSource, /canEndMatch && onEndMatch && !match\.endedAt/);
+  assert.match(matchClockPanelSource, /if \(!\(action === "start" && match\.practiceMode\) && !window\.confirm\(message\)\) return;/);
   assert.match(recruitingSource, /canEndSourceMatch && !selectedMatchRules\.gameClockEnabled/);
   assert.match(settingsSyncSource, /typeof source\.showHomeGuideCard === "boolean"/);
   assert.ok(recruitingSyncSource.indexOf("hasPracticeMutationPayload(body)") < recruitingSyncSource.indexOf("getAuthenticatedContext(request)"));
