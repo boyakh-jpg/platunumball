@@ -233,7 +233,8 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .getting-started-chapter__copy h1 {
+  .getting-started-chapter__copy h1,
+  .getting-started-chapter__copy h2 {
     max-width: 18ch;
   }
 
@@ -330,7 +331,8 @@
     gap: var(--space-10);
   }
 
-  .getting-started-chapter__copy h1 {
+  .getting-started-chapter__copy h1,
+  .getting-started-chapter__copy h2 {
     font-size: clamp(1.85rem, 8.5vw, 2.6rem);
   }
 

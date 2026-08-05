@@ -194,6 +194,10 @@ test("앱은 분류 박스 없는 표준 디자인을 사용하고 비교 데모
   assert.match(pageSources.landing, /Team basketball/);
   assert.match(pageSources.landing, /Season ranking/);
   assert.match(pageSources.landing, /Recent games/);
+  assert.match(pageSources.landing, /GUIDE_CHAPTERS\.filter/);
+  assert.match(pageSources.landing, /\["matching", "attendance", "live", "records"\]/);
+  assert.match(pageSources.landing, /id="how-it-works"/);
+  assert.match(pageSources.landing, /getting-started-steps ui-design-borderless-list/);
 assert.match(editorialDesignStyles, /\.ui-design-spotlight__stats > div\s*\{[^}]*color:\s*var\(--text\);/);
   assert.doesNotMatch(pageSources.landing, /ui-design-preference-list|화면 설정/);
   assert.doesNotMatch(pageSources.landing, /ui-design-main-brand|brand-logo-frame|brand-letter-wrap/);

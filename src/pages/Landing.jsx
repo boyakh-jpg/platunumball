@@ -12,11 +12,18 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
+import Card from "../components/common/Card.jsx";
 import { getTierEmblemSrc } from "../components/rating/TierEmblem.jsx";
+import { assetUrl } from "../lib/assets.js";
 import { BRAND_NAME } from "../lib/brand.js";
 import { MATCH_SIDE_FALLBACK_NAMES } from "../lib/constants.js";
 import { isPlacementComplete } from "../lib/rating.js";
 import { getTierDivision } from "../lib/tier.js";
+import { GUIDE_CHAPTERS } from "./gettingStartedGuideData.jsx";
+
+const LANDING_SHOWCASE_CHAPTERS = GUIDE_CHAPTERS.filter(({ id }) => (
+  ["matching", "attendance", "live", "records"].includes(id)
+));
 
 function getScheduleLabel(item = {}) {
   return item.scheduledAt || item.scheduledTime || item.scheduledDate || "일정 협의";
@@ -128,6 +135,73 @@ export default function Landing({ state, authenticated = false }) {
               <span><b>{landingStats.openRecruiting}</b>열린 매칭</span>
               <span><b>{landingStats.completedMatches}</b>경기 기록</span>
               <span><b>{landingStats.activeTeams}</b>활동 팀</span>
+            </div>
+          </section>
+
+          <section
+            className="ui-design-section getting-started-section"
+            id="how-it-works"
+            aria-labelledby="landing-showcase-title"
+          >
+            <div className="section-title-row ui-design-section-heading">
+              <div>
+                <p className="eyebrow">How it works</p>
+                <h2 id="landing-showcase-title">처음부터 기록까지, 화면 그대로</h2>
+              </div>
+              <span>4가지 핵심 흐름</span>
+            </div>
+
+            {LANDING_SHOWCASE_CHAPTERS.map((chapter, chapterIndex) => (
+              <section
+                className="getting-started-section"
+                aria-labelledby={`landing-showcase-${chapter.id}`}
+                key={chapter.id}
+              >
+                <Card as="article" className="getting-started-chapter">
+                  <header className="getting-started-chapter__copy">
+                    <Badge tone="orange">{chapterIndex + 1} / {LANDING_SHOWCASE_CHAPTERS.length}</Badge>
+                    <p className="eyebrow">{chapter.eyebrow}</p>
+                    <h2 id={`landing-showcase-${chapter.id}`}>{chapter.title}</h2>
+                    <p>{chapter.lead}</p>
+                    {chapter.id === "records" ? (
+                      <p>경기 확정 뒤 나·팀 기록에서 함께 뛴 선수를 추천할 수 있습니다.</p>
+                    ) : null}
+                  </header>
+                  <figure className="getting-started-shot ui-design-borderless-surface">
+                    <img
+                      src={assetUrl(chapter.image)}
+                      alt={chapter.imageAlt}
+                      loading="lazy"
+                      decoding="async"
+                    />
+                    <figcaption>{chapter.caption}</figcaption>
+                  </figure>
+                </Card>
+
+                <ol className="getting-started-steps ui-design-borderless-list">
+                  {chapter.steps.map(({ title, body, Icon }, stepIndex) => (
+                    <li className="getting-started-step ui-panel" key={title}>
+                      <div>
+                        <span>{String(stepIndex + 1).padStart(2, "0")}</span>
+                        <Icon size={21} aria-hidden="true" />
+                      </div>
+                      <h3>{title}</h3>
+                      <p>{body}</p>
+                    </li>
+                  ))}
+                </ol>
+              </section>
+            ))}
+
+            <div className="ui-action-row">
+              <Button as={Link} to={authenticated ? "/app/guide/practice" : "/app"}>
+                {authenticated ? "연습 경기 시작" : "게스트 홈 보기"} <ArrowRight size={18} />
+              </Button>
+              {!authenticated ? (
+                <Button as={Link} to="/login" variant="secondary">
+                  가입하고 시작 <LogIn size={18} />
+                </Button>
+              ) : null}
             </div>
           </section>
 
