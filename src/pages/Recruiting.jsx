@@ -55,7 +55,7 @@ import RecruitingPageView from "./RecruitingPageView.jsx";
 
 export { RecruitingRoomLoadFailedView, RecruitingRoomLoadingView, RecruitingRoomModal, getRecruitingRoomListStatus };
 
-function RecruitingReady({ app }) {
+function RecruitingReady({ app, readOnly = false }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -316,16 +316,16 @@ function RecruitingReady({ app }) {
     userById, teamById, myTeamIds, courtById, courtByName,
     targetPostId, openSelectedPost, queueListLoading, selectedPostDetailFailed, closeSelectedPost,
     selectedPostRefreshRef, requestSelectedPostDetail, selectedPostId, selectedPost, selectedPostDetailLoading,
-    navigate, location, setSelectedPostId, selectedPostPending,
+    navigate, location, setSelectedPostId, selectedPostPending, readOnly,
   }} />;
 }
 
-export default function Recruiting({ app }) {
+export default function Recruiting({ app, readOnly = false }) {
   if (!app?.currentUser?.id) {
     return <BasketballLoader overlay label="프로필 불러오는 중" />;
   }
   if (app.remoteReady === false) {
     return null;
   }
-  return <RecruitingReady app={app} />;
+  return <RecruitingReady app={app} readOnly={readOnly} />;
 }

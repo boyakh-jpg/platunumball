@@ -57,6 +57,33 @@ function preloadCoreAppRoutes() {
   ]);
 }
 
+const GUEST_PUBLIC_APP_PATHS = new Set([
+  "/app",
+  "/app/affiliations",
+  "/app/community",
+  "/app/guide",
+  "/app/guide/practice",
+  "/app/matches",
+  "/app/rankings",
+  "/app/recruiting",
+  "/app/referee-rulebook",
+  "/app/season",
+  "/app/teams",
+]);
+const GUEST_PUBLIC_APP_PREFIXES = [
+  "/app/courts/",
+  "/app/matches/",
+  "/app/players/",
+  "/app/referees/",
+  "/app/teams/",
+  "/app/tournaments/",
+];
+
+export function isGuestPublicAppPath(pathname = "") {
+  return GUEST_PUBLIC_APP_PATHS.has(pathname)
+    || GUEST_PUBLIC_APP_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+}
+
 function LegacyMatchRoomRedirect() {
   const { matchId = "" } = useParams();
   const location = useLocation();
@@ -118,7 +145,7 @@ export default function App() {
     auth.configured
       && !auth.loading
       && !auth.session
-      && location.pathname === "/app",
+      && isGuestPublicAppPath(location.pathname),
   );
   const app = useAppData(auth.user ?? null, location, { demoPreview: guestPreview });
   useImageInteractionGuard();
@@ -209,7 +236,7 @@ export default function App() {
             <Route path="/app/referee-rulebook" element={<RefereeRulebook theme={theme} />} />
             <Route path="/app/season" element={<Season app={app} />} />
             <Route path="/app/rankings" element={<Rankings app={app} />} />
-            <Route path="/app/recruiting" element={<Recruiting app={app} />} />
+            <Route path="/app/recruiting" element={<Recruiting app={app} readOnly={guestPreview} />} />
             <Route path="/app/community" element={<Community app={app} />} />
             <Route path="/app/teams" element={<Teams app={app} />} />
             <Route path="/app/teams/:teamId" element={<TeamDetail app={app} />} />

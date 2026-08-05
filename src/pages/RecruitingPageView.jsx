@@ -21,7 +21,7 @@ export default function RecruitingPageView({
   userById, teamById, myTeamIds, courtById, courtByName,
   targetPostId, openSelectedPost, queueListLoading, selectedPostDetailFailed, closeSelectedPost,
   selectedPostRefreshRef, requestSelectedPostDetail, selectedPostId, selectedPost, selectedPostDetailLoading,
-  navigate, location, setSelectedPostId, selectedPostPending,
+  navigate, location, setSelectedPostId, selectedPostPending, readOnly = false,
 }) {
   return (
     <div className="page-stack arena-recruit-page">
@@ -132,9 +132,9 @@ export default function RecruitingPageView({
           const targetTeam = post.targetTeamId ? teamById[post.targetTeamId] : null;
           const hostName = host?.name ?? post.hostName ?? "방장";
           const hostTeamName = hostTeam?.name ?? post.hostTeamName ?? "";
-          const mine = roomOwnerId === app.currentUser.id;
-          const myRoom = isRecruitingPostForUser(post, app.currentUser.id, myTeamIds);
-          const invited = hasPendingRecruitingInvitation(post, app.currentUser.id);
+          const mine = !readOnly && roomOwnerId === app.currentUser.id;
+          const myRoom = !readOnly && isRecruitingPostForUser(post, app.currentUser.id, myTeamIds);
+          const invited = !readOnly && hasPendingRecruitingInvitation(post, app.currentUser.id);
           const roomTag = "";
           const refereeLabel = getRoomRefereeLabel(post);
           const roomStatus = getRecruitingRoomListStatus(lobby, { post });
@@ -214,6 +214,7 @@ export default function RecruitingPageView({
         <RecruitingRoomModal
           app={app}
           post={selectedPost}
+          readOnly={readOnly}
           skipInitialDetailLoad
           onClose={closeSelectedPost}
           onOpenMatch={(matchId) => navigate(`/app/matches?match=${encodeURIComponent(matchId)}`, {

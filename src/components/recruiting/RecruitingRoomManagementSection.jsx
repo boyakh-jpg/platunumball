@@ -19,7 +19,7 @@ export function RecruitingRoomManagementSection({ context }) {
 
   return (
     <>
-{scheduleChangePending && scheduleProposalProgress.proposal ? (
+{!sourceRoomReadOnly && scheduleChangePending && scheduleProposalProgress.proposal ? (
                 <section className="ui-panel ui-modal-section">
                   <div className="ui-status-strip">
                     <span>일정 변경 승인</span>
@@ -58,7 +58,7 @@ export function RecruitingRoomManagementSection({ context }) {
                 </section>
               ) : null}
 
-              {ruleAcknowledgementPending ? (
+              {!sourceRoomReadOnly && ruleAcknowledgementPending ? (
                 <section className="ui-panel ui-modal-section">
                   <div className="ui-status-strip">
                     <span>변경 내용 확인</span>
@@ -82,7 +82,7 @@ export function RecruitingRoomManagementSection({ context }) {
               {roomPhaseViewModel.showRules ? <div className="arena-room-rule-panel">
                 <div className="arena-room-rule-head">
                   <strong>규칙</strong>
-                  {canOperateSourceRoomRules ? (
+                  {!sourceRoomReadOnly && canOperateSourceRoomRules ? (
                     <Button
                       type="button"
                       size="sm"

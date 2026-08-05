@@ -11,7 +11,7 @@ export function RecruitingRoomActionSection({ context }) {
     confirmingMatchId, createPortal, currentUserIsRoomReferee, deleteSourceSoloRecord, fit, getDefaultApplyTeamId,
     getEditableSourceMatchStatFields, getJoinRosterPatch, getJoinTeamEligibility, getLobbyPrimaryTeamId, getPartyOptionKey, getPartyOptionLabel,
     getRoomCancellationActionLabel, individualOnlyRoom, joinCapacity, joinDraft, joinModeEntries, joinSideParty,
-    joiningPartyKey, joiningThisRoom, lobby, matchRoom, mine, myTeams,
+    joiningPartyKey, joiningThisRoom, lobby, matchRoom, mine, myTeams, navigate, readOnly,
     paidCourtJoinPrompt, pickupPoolMode, recruitingRoomConfirmed, recruitingRoomTerminalStatus, refreshSourceMatchReview, remakeRoom,
     requestRecruitingCancellation, requestSourceMatchCancellation, requestSourceMatchFinalization, roomCancellationPolicy, roomQueueStatus, roomTimingStatus,
     ruleAcknowledgementPending, scheduleChangePending, selectedJoinPlayerIds, selectedJoinReserveIds, selectedJoinTeam, selectedJoinTeamEligibility,
@@ -24,7 +24,13 @@ export function RecruitingRoomActionSection({ context }) {
   return (
     <>
 <div className="arena-join-panel">
-                {matchRoom ? (
+                {readOnly ? (
+                  <div className="arena-owner-panel">
+                    <strong>로그인 후 참가</strong>
+                    <span>방 정보는 볼 수 있고 참가·채팅·수정은 로그인 후 사용할 수 있습니다.</span>
+                    <Button type="button" onClick={() => navigate("/login")}>로그인</Button>
+                  </div>
+                ) : matchRoom ? (
                   <div className="arena-owner-panel">
                     <strong>{sourceMatchAction.label}</strong>
                     <span>{sourceMatchAction.detail}</span>

@@ -51,7 +51,7 @@ export default function Rankings({ app }) {
   };
   const myRegion = app.currentUser.region;
   const season = getCurrentSeason(app.state);
-  const canonicalEnabled = isSupabaseConfigured && app.remoteReady && promotionView;
+  const canonicalEnabled = isSupabaseConfigured && app.remoteReady && promotionView && !app.demoPreview;
   const canonicalRankings = useCanonicalSeasonRankings(canonicalEnabled, season.id);
   const loadDirectory = app.actions.loadDirectory;
   const directoryKind = tab === "teams" ? "teams" : tab === "affiliations" ? "affiliations" : tab === "region" ? "all" : "players";

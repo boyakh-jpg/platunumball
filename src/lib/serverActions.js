@@ -62,11 +62,20 @@ export async function getClientActionAccessToken() {
   return getSupabaseActionAccessToken();
 }
 
+function redirectToLogin() {
+  if (typeof window === "undefined" || window.location.pathname === "/login") return;
+  const redirect = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+  window.location.assign(`/login?redirect=${encodeURIComponent(redirect)}`);
+}
+
 export async function getServerActionAvailability(path = "") {
   if (!isSupabaseConfigured) return { ok: false, error: "supabase_not_configured", path };
   if (!isServerActionsEnabled) return { ok: false, error: "server_actions_disabled", path };
   const accessToken = await getClientActionAccessToken();
-  if (!accessToken) return { ok: false, error: "server_action_missing_access_token", path };
+  if (!accessToken) {
+    redirectToLogin();
+    return { ok: false, error: "server_action_missing_access_token", path };
+  }
   return { ok: true, accessToken, path };
 }
 
@@ -105,6 +114,7 @@ export async function postServerAction(path, payload = {}, options = {}) {
 
   const accessToken = await getClientActionAccessToken();
   if (!accessToken) {
+    redirectToLogin();
     throw createServerActionError("server_action_missing_access_token", { path });
   }
 

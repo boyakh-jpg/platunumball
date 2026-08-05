@@ -7,7 +7,7 @@ export function buildRecruitingRoomMatchModel(context) {
     getRecruitingRoomStatus, getRecruitingSideCapacity, getRecruitingSideLeaderId, getTeamCaptainId, getTournamentRosterTeam, individualOnlyRoom,
     isMatchPregameSlotManagementOpen, isMatchRecordMatch, isMatchRecordParticipantSetupOpen, isMatchRecordParticipantSetupRequired, isMatchReferee, isPersonalRecordMatch,
     isTournamentGovernanceEnabled, isTournamentMatchLineupEditable, lobby, matchRoom, mine, myEntry,
-    pickupAssignmentPolicy, roomChatLocked, roomOwnerId, roomPhaseViewModel, roomState, ruleAcknowledgementPending,
+    pickupAssignmentPolicy, readOnly, roomChatLocked, roomOwnerId, roomPhaseViewModel, roomState, ruleAcknowledgementPending,
     scheduleChangePending, selectedMatchRules, selectedPost, sourceMatch, sourceMatchSideName, sourceMatchStatus,
     teamById,
   } = context;
@@ -40,6 +40,7 @@ const roomQueueStatus = getRecruitingRoomStatus(lobby, { post: selectedPost, myE
           && isMatchReferee(sourceMatch, app.currentUser.id)
         );
         const sourceRoomReadOnly = Boolean(
+          readOnly ||
           recruitingRoomTerminalStatus ||
           (matchRoom && (
             sourceMatch?.status === "disputed" ||

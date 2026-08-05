@@ -56,7 +56,7 @@ export function getCommunityErrorMessage(errorCode = "") {
 }
 
 export default function useCommunityController(app) {
-  const remote = isSupabaseConfigured;
+  const remote = isSupabaseConfigured && !app.demoPreview;
   const communityAction = app.actions.community;
   const demoBoard = useMemo(() => makeDemoBoard(app.currentUser, app.state.users), [app.currentUserId]);
   const [localPosts, setLocalPosts] = useState(demoBoard.posts);
@@ -75,6 +75,13 @@ export default function useCommunityController(app) {
   const [error, setError] = useState("");
   const listRequestRef = useRef(0);
   const localViewedPostIdsRef = useRef(new Set());
+
+  const requireLogin = () => {
+    if (!app.demoPreview) return false;
+    const redirect = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+    window.location.assign(`/login?redirect=${encodeURIComponent(redirect)}`);
+    return true;
+  };
 
   useEffect(() => {
     if (remote) return;
@@ -164,6 +171,7 @@ export default function useCommunityController(app) {
   };
 
   const savePost = async (draft, postId = "") => {
+    if (requireLogin()) return false;
     setPending(true);
     setError("");
     try {
@@ -197,6 +205,7 @@ export default function useCommunityController(app) {
   };
 
   const deletePost = async (postId) => {
+    if (requireLogin()) return false;
     setPending(true);
     setError("");
     try {
@@ -221,6 +230,7 @@ export default function useCommunityController(app) {
   };
 
   const toggleLike = async (postId) => {
+    if (requireLogin()) return;
     if (pending) return;
     setPending(true);
     setError("");
@@ -244,6 +254,7 @@ export default function useCommunityController(app) {
   };
 
   const saveComment = async (body, parentId = null) => {
+    if (requireLogin()) return false;
     setPending(true);
     setError("");
     try {
@@ -271,6 +282,7 @@ export default function useCommunityController(app) {
   };
 
   const deleteComment = async (commentId) => {
+    if (requireLogin()) return false;
     setPending(true);
     setError("");
     try {
@@ -303,6 +315,7 @@ export default function useCommunityController(app) {
   return {
     posts, popularPosts, page: currentPage, pageIndex, category, setCategory, selectedPost, comments, commentThreads,
     canModerate, loading, detailLoading, pending, error, setError,
+    requireLogin,
     openPost, closePost,
     goToPage: (targetPage) => {
       const maxPage = Math.max(0, Math.ceil(currentPage.total / COMMUNITY_PAGE_SIZE) - 1);

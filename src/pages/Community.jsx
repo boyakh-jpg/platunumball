@@ -91,7 +91,7 @@ export default function Community({ app }) {
               <button key={id} type="button" role="tab" aria-selected={controller.category === id} className={controller.category === id ? "active" : ""} onClick={() => controller.setCategory(id)}>{label}</button>
             ))}
           </div>
-          <Button type="button" onClick={() => setComposing(true)}><PenLine size={17} /> 글쓰기</Button>
+          <Button type="button" onClick={() => controller.requireLogin() || setComposing(true)}><PenLine size={17} /> 글쓰기</Button>
         </div>
 
         {composing ? (
