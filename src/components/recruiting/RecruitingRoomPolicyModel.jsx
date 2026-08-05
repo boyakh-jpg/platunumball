@@ -166,9 +166,7 @@ const lobby = getRecruitingLobby(selectedPost, app.state);
               return;
             }
             setRoomTeamQuery("");
-            setRoomTeamFeedback(sideName === "teamA"
-              ? "A팀을 선택했습니다."
-              : "B팀 현재 주장에게 초대 1건을 보냈습니다.");
+            setRoomTeamFeedback(sideName === "teamA" ? "" : "B팀 현재 주장에게 초대 1건을 보냈습니다.");
           } catch {
             setRoomTeamFeedback("팀을 선택하지 못했습니다. 잠시 후 다시 시도해 주세요.");
           } finally {

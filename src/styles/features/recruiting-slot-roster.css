@@ -84,6 +84,13 @@
   font-style: normal;
 }
 
+.arena-room-player-slot .arena-room-slot-state {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+}
+
 .arena-room-player-slot .tier-badge,
 .arena-room-player-slot .badge {
   grid-row: 5;

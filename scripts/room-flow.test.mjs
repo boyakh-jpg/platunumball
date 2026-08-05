@@ -252,8 +252,10 @@ test("team room hides completed selection and labels active and reserve slots on
   assert.match(recruitingSource, /&& \(!selectedRoomTeamAId \|\| !selectedRoomTeamBId\)/);
   assert.doesNotMatch(recruitingSource, /ROOM ONLY/);
   assert.doesNotMatch(recruitingSource, /팀 선택과 명단 관리는 이 공용 방 모달에서만 진행합니다/);
+  assert.doesNotMatch(recruitingSource, /A팀을 선택했습니다\./);
   assert.match(recruitingSource, /title=\{entry\.status === "ready" \? "출전" : "대기"\}/);
   assert.match(recruitingSource, /title="후보"\s+detail=\{getRoomSlotTeamName\(entry, teams\)\}/);
+  assert.match(slotCoreSource, /title === "출전" \? <CircleCheck/);
   assert.match(slotCoreSource, /if \(entry\?\.kind !== "team"\) return "개인 참여";/);
   assert.match(recruitingSource, /sidePartyJoinOptions\.length \? \([\s\S]*?arena-party-quick-join-list[\s\S]*?\) : null\}[\s\S]*?arena-join-mode-control/);
   assert.match(dialogSource, /reason: event\.target\.value\.slice\(0, 200\)/);

@@ -4,6 +4,7 @@ import {
 } from "react";
 
 import {
+  CircleCheck,
   Crown,
   UserRound,
   X,
@@ -365,7 +366,10 @@ export function PlayerRoomSlot({
       <strong>{user?.name ?? "플레이어"}</strong>
       <small>{displayPosition}</small>
       {detail ? <span className="arena-room-slot-detail">{detail}</span> : null}
-      <em>{title}</em>
+      <em className="arena-room-slot-state">
+        {title === "출전" ? <CircleCheck size={11} aria-hidden="true" /> : null}
+        {title}
+      </em>
     </>
   );
 
