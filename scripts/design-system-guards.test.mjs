@@ -360,6 +360,7 @@ test("referee detail uses the player hero structure and dedicated tier emblems",
 
 test("signed-in login redirects and settings exposes logout", () => {
   assert.match(loginSource, /if \(auth\.session\) return <Navigate to=\{from\} replace \/>;/);
+  assert.match(loginSource, /<Button as=\{Link\} to=\{from\}[^>]*className="auth-back-link"/);
   assert.match(settingsSource, /<SettingsPageView controller=\{controller\} auth=\{props\.auth\} \/>/);
   assert.match(settingsSource, /onClick=\{auth\.signOut\}/);
   assert.match(settingsSource, /<LogOut size=\{16\} \/> 로그아웃/);
@@ -369,6 +370,19 @@ test("signed-in login redirects and settings exposes logout", () => {
   assert.match(settingsSource, /canSwitchTestAccount[\s\S]*?<details className="settings-test-account-switcher"/);
   assert.match(settingsSource, /auth\.switchTestAccount\(testLoginId\)/);
   assert.match(settingsStyles, /\.settings-signout-row \.button\s*\{[^}]*width:\s*100%;/);
+});
+
+test("guest shell replaces the demo identity with login actions", () => {
+  const sidebar = read("src/components/layout/Sidebar.jsx");
+  const bottomNav = read("src/components/layout/BottomNav.jsx");
+
+  assert.match(appShellSource, /<Sidebar[^>]*guestPreview=\{guestPreview\}/);
+  assert.match(appShellSource, /<BottomNav guestPreview=\{guestPreview\} \/>/);
+  assert.doesNotMatch(appShellSource, /guest-preview-bar/);
+  assert.match(sidebar, /guestPreview \? \([\s\S]*?<strong>로그인<\/strong>/);
+  assert.match(bottomNav, /guestPreview && item\.to === "\/app\/profile"/);
+  assert.match(bottomNav, /isGuestProfile \? "로그인" : item\.label/);
+  assert.doesNotMatch(read("src/styles/layout/app-shell-auth.css"), /\.guest-preview-bar/);
 });
 
 test("court request report selection reveals the existing report form", () => {

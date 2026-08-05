@@ -1,5 +1,5 @@
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
-import { ArrowRight, Copy, ExternalLink, LogOut, ShieldCheck } from "lucide-react";
+import { ArrowLeft, ArrowRight, Copy, ExternalLink, LogOut, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import Badge from "../components/common/Badge.jsx";
 import BrandLockup from "../components/common/BrandLockup.jsx";
@@ -63,9 +63,15 @@ export default function Login({ auth, app }) {
     <main className="auth-shell">
       <section className="auth-card">
         <div className="auth-card-head">
-          <Link to="/" className="brand auth-brand" aria-label={BRAND_NAME}>
-            <BrandLockup />
-          </Link>
+          <div className="auth-card-primary">
+            <Button as={Link} to={from} variant="secondary" size="sm" className="auth-back-link" aria-label="이전 화면으로 돌아가기">
+              <ArrowLeft size={18} />
+              <span>뒤로</span>
+            </Button>
+            <Link to="/" className="brand auth-brand" aria-label={BRAND_NAME}>
+              <BrandLockup />
+            </Link>
+          </div>
           <Badge tone={auth.session ? "green" : "blue"}>{auth.session ? "로그인됨" : auth.configured ? "로그인 가능" : "체험 모드"}</Badge>
         </div>
 

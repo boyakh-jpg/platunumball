@@ -109,11 +109,6 @@ h3 {
   margin-left: var(--sidebar-width);
 }
 
-.guest-preview-bar {
-  display: flex; align-items: center; justify-content: space-between; gap: var(--space-5); font-size: var(--font-size-meta);
-  margin: var(--app-main-pad-top, var(--page-gutter)) var(--app-main-pad-x, var(--page-gutter)) 0; padding: var(--space-5) var(--space-6);
-}
-
 .basketball-loader-overlay {
   position: fixed;
   inset: 0;
@@ -328,6 +323,10 @@ body.rankball-scroll-locked .app-main {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-7);
+}
+
+.auth-card-primary {
+  display: flex; min-width: 0; align-items: center; gap: var(--space-6);
 }
 
 .auth-brand {
