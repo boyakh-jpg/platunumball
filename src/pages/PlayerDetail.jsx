@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
-import { ArrowUpRight, MessageCircle, ShieldCheck } from "lucide-react";
+import { ArrowUpRight, Crown, MessageCircle, ShieldCheck } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import BasketballLoader from "../components/common/BasketballLoader.jsx";
 import Button from "../components/common/Button.jsx";
@@ -222,6 +222,11 @@ export default function PlayerDetail({ app }) {
               <Badge tone="gold" className="ui-liquid-glass">
                 {placementComplete ? `${Math.round(player.ratings.integrated)} MMR` : placementLabel}
               </Badge>
+              {player.foundingPlayer ? (
+                <Badge tone="gold" className="ui-liquid-glass">
+                  <Crown size={14} aria-hidden="true" />{" "}FOUNDING PLAYER · S0
+                </Badge>
+              ) : null}
               <Badge tone="green" className="ui-liquid-glass">{player.region}</Badge>
               <Badge tone="blue" className="ui-liquid-glass">{player.position}</Badge>
               {discordProfileUrl ? (

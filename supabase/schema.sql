@@ -21,6 +21,7 @@ begin
     execute 'alter table public.profiles add column if not exists region_sido text';
     execute 'alter table public.profiles add column if not exists region_district text';
     execute 'alter table public.profiles add column if not exists onboarding_complete boolean not null default false';
+    execute 'alter table public.profiles add column if not exists founding_player boolean not null default false';
     execute 'alter table public.profiles add column if not exists profile_version integer not null default 0';
     execute 'alter table public.profiles add column if not exists handle_locked_at timestamptz';
     execute 'alter table public.profiles add column if not exists birth_year_locked_at timestamptz';
@@ -134,7 +135,8 @@ begin
         age_group,
         age_group_checked_season,
         onboarding_complete,
-        updated_at
+        updated_at,
+        founding_player
       from public.profiles
     $view$;
 
@@ -213,6 +215,42 @@ begin
     raise exception 'auth_user_id is server-managed' using errcode = '42501';
   end if;
 
+  return new;
+end;
+$$;
+
+create or replace function public.rankball_assign_founding_player()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  cutoff_at timestamptz;
+  signup_at timestamptz;
+begin
+  if tg_op = 'UPDATE' and old.founding_player then
+    new.founding_player := true;
+    return new;
+  end if;
+
+  select (season.ends_at + 1)::timestamp at time zone 'Asia/Seoul'
+  into cutoff_at
+  from public.seasons season
+  where season.id = 'season-zero';
+
+  select account.created_at
+  into signup_at
+  from auth.users account
+  where account.id = new.auth_user_id;
+
+  new.founding_player := coalesce(
+    coalesce(new.onboarding_complete, false)
+      and new.test_login_id is null
+      and signup_at < cutoff_at
+      and now() < cutoff_at,
+    false
+  );
   return new;
 end;
 $$;
@@ -297,6 +335,10 @@ begin
     ';
     execute 'revoke insert (auth_user_id) on public.profiles from anon, authenticated';
     execute 'revoke update (auth_user_id) on public.profiles from anon, authenticated';
+    execute 'drop trigger if exists rankball_profiles_founding_player_guard on public.profiles';
+    execute 'create trigger rankball_profiles_founding_player_guard before insert or update of onboarding_complete, founding_player, auth_user_id, test_login_id on public.profiles for each row execute function public.rankball_assign_founding_player()';
+    execute 'revoke insert (founding_player) on public.profiles from anon, authenticated';
+    execute 'revoke update (founding_player) on public.profiles from anon, authenticated';
     execute 'drop trigger if exists rankball_profiles_snapshot_guard on public.profiles';
     execute 'create trigger rankball_profiles_snapshot_guard before insert or update of handle, hashtag, region, region_sido, region_district, discord_connection, discord_user_id on public.profiles for each row execute function public.rankball_profile_snapshot_guard()';
 

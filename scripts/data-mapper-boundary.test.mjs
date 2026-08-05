@@ -72,11 +72,13 @@ test("shared mapper behavior fixtures preserve profile, team, match, tournament,
     hashtag: "Player_1",
     ratings: { integrated: 1234, modes: { "3v3": 1200 } },
     avatar_background_enabled: false,
+    founding_player: true,
   });
   assert.equal(profile.hashtag, "#player_1");
   assert.equal(profile.handle, "#player_1");
   assert.equal(profile.ratings.integrated, 1234);
   assert.equal(profile.avatarBackgroundEnabled, false);
+  assert.equal(profile.foundingPlayer, true);
 
   const team = sharedTeamMappers.fromRemoteTeam({
     id: "team-1",
