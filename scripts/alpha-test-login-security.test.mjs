@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import handler, {
+  assertAlphaTestLoginEnabled,
   assertNonAdminTestProfile,
   isAlphaTestLoginEnabled,
+  isLocalAlphaTestRequest,
   isSettingsTestSwitchActor,
   isTemporaryAdminTestLoginAllowed,
   normalizeAlphaTestLoginId,
@@ -94,6 +96,26 @@ test("alpha test login flag is exact and disabled by default", () => {
   } finally {
     if (previous === undefined) delete process.env.VITE_DEMO_LOGIN;
     else process.env.VITE_DEMO_LOGIN = previous;
+  }
+});
+
+test("public alpha login is localhost-only even when the flag is enabled", () => {
+  const previousDemoLogin = process.env.VITE_DEMO_LOGIN;
+  const previousVercelEnvironment = process.env.VERCEL_ENV;
+  try {
+    process.env.VITE_DEMO_LOGIN = "true";
+    delete process.env.VERCEL_ENV;
+    assert.equal(isLocalAlphaTestRequest({ headers: { host: "127.0.0.1:4174" } }), true);
+    assert.equal(isLocalAlphaTestRequest({ headers: { host: "boxtier.kr" } }), false);
+    assert.doesNotThrow(() => assertAlphaTestLoginEnabled({ headers: { host: "localhost:4174" } }));
+    assert.throws(() => assertAlphaTestLoginEnabled({ headers: { host: "boxtier.kr" } }), /alpha_test_login_disabled/);
+    process.env.VERCEL_ENV = "preview";
+    assert.throws(() => assertAlphaTestLoginEnabled({ headers: { host: "localhost:4174" } }), /alpha_test_login_disabled/);
+  } finally {
+    if (previousDemoLogin === undefined) delete process.env.VITE_DEMO_LOGIN;
+    else process.env.VITE_DEMO_LOGIN = previousDemoLogin;
+    if (previousVercelEnvironment === undefined) delete process.env.VERCEL_ENV;
+    else process.env.VERCEL_ENV = previousVercelEnvironment;
   }
 });
 

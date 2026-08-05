@@ -55,8 +55,15 @@ export function isAlphaTestLoginEnabled() {
   return String(process.env.VITE_DEMO_LOGIN ?? "").trim().toLowerCase() === "true";
 }
 
-export function assertAlphaTestLoginEnabled() {
-  if (!isAlphaTestLoginEnabled()) throw createAlphaLoginError("alpha_test_login_disabled", 404);
+export function isLocalAlphaTestRequest(request = {}) {
+  return /^(?:localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$/i.test(String(request.headers?.host ?? "").trim());
+}
+
+export function assertAlphaTestLoginEnabled(request) {
+  const vercelEnvironment = String(process.env.VERCEL_ENV ?? "").trim().toLowerCase();
+  if (!isAlphaTestLoginEnabled() || ["production", "preview"].includes(vercelEnvironment) || !isLocalAlphaTestRequest(request)) {
+    throw createAlphaLoginError("alpha_test_login_disabled", 404);
+  }
 }
 
 export function normalizeAlphaTestLoginId(value = "") {
@@ -136,7 +143,7 @@ export default async function handler(request, response) {
     assertRateLimit(request);
     const body = await readJsonBody(request);
     if (body.settingsSwitch === true) await assertSettingsTestSwitchAllowed(request);
-    else assertAlphaTestLoginEnabled();
+    else assertAlphaTestLoginEnabled(request);
     const testLoginId = normalizeAlphaTestLoginId(body.testLoginId);
     const email = getTestAuthEmail(testLoginId);
     const client = getSupabaseAdminClient();

@@ -90,12 +90,12 @@ function makeLocalTestSession(testLoginId) {
 }
 
 function isDemoLoginAllowed() {
-  if (DEMO_LOGIN_ENV === "true") return true;
-  if (DEMO_LOGIN_ENV === "false") return false;
   if (typeof window === "undefined") return false;
 
   const host = window.location.hostname;
-  return import.meta.env.DEV && (host === "localhost" || host === "127.0.0.1");
+  const localHost = host === "localhost" || host === "127.0.0.1" || host === "::1";
+  if (!localHost || DEMO_LOGIN_ENV === "false") return false;
+  return import.meta.env.DEV || DEMO_LOGIN_ENV === "true";
 }
 
 function getOAuthCode() {

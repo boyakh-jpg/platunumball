@@ -2306,7 +2306,7 @@ flowchart TD
 3-1. 시뮬레이션은 `rankball-010 -> u10` 같은 legacy id 추정을 우선하지 않고, 로그인 세션으로 로드한 실제 `profiles.id`를 사용한다.
 3-2. 시뮬레이션 팀전은 `t1` 같은 legacy team id를 우선하지 않고 `/api/teams/list`가 반환한 실제 팀 멤버십의 team id를 사용한다.
 4. 로컬 demo session은 server action 인증에 쓰지 않는다.
-5. Vercel 배포 도메인에서는 테스트 계정 로그인을 기본 허용하지 않는다. 필요하면 `VITE_DEMO_LOGIN=true`를 명시한다.
+5. 공개 테스트 계정 로그인은 localhost에서만 허용한다. Vercel production/preview는 `VITE_DEMO_LOGIN=true`가 잘못 설정돼도 UI와 API를 닫는다.
 6. 테스트 계정 server action은 실제 Supabase Auth session이 있으면 Google과 같은 `profiles.auth_user_id` 경로를 탄다.
 7. 서버 action은 테스트 계정도 Supabase Auth JWT만 허용한다.
 8. legacy `test-token` fallback과 `RANKBALL_ENABLE_TEST_LOGIN` 경로는 제거됐다. 테스트 계정도 Supabase Auth JWT만 사용한다.
@@ -2554,7 +2554,7 @@ flowchart TD
 
 1. Supabase 모드 방/경기/팀 write는 optimistic update 전에 server action 가능 여부를 확인한다.
 2. Google OAuth session access token이 없으면 로컬 화면만 먼저 바꾸지 않는다.
-3. 테스트 로그인은 localhost 기본 허용과 `VITE_DEMO_LOGIN=true` 명시 허용만 사용한다. `.vercel.app` 도메인이라는 이유만으로 허용하지 않는다.
+3. 공개 테스트 로그인은 localhost에서만 허용한다. `VITE_DEMO_LOGIN=true`는 localhost 허용 플래그이며 배포 도메인을 열지 않는다.
 4. 테스트 로그인 UI는 서버가 발급한 일회용 Supabase magic link token hash만 사용한다. 실패하면 로그인 실패로 처리한다.
 
 ## 2026-06-27 Google profile binding
@@ -3646,7 +3646,7 @@ flowchart TD
 7. `current_profile_id()`, `current_admin_level()`, `current_is_admin()`은 `SECURITY DEFINER`, 빈 `search_path`, 고정 소유자, 최소 실행권을 사용한다. 관리자 상태는 정확히 `active`만 허용한다.
 8. `admin_appointments`, `referee_appointments`, `admin_audit_log`, `admin_disciplinary_actions`는 RLS를 활성화하고 브라우저 role의 직접 table 권한을 제거한다.
 9. `rankball.auth.profileCache.v2`는 현재 인증 사용자 한 명의 최소 공개 프로필과 theme만 저장한다. v1은 첫 접근 때 삭제하며 관리자·감사·징계·전체 구장·Discord 식별자·인증 식별자는 저장하지 않는다. Supabase 운영 부팅 시 과거 로컬 데모 상태와 프로필 바인딩도 삭제한다.
-10. 테스트 계정 비밀번호는 frontend profile, API 응답, localStorage, production bundle에 포함하지 않는다. `VITE_DEMO_LOGIN=true`인 알파 환경은 1~50번 allowlist의 비관리자 테스트 계정에만 서버가 일회용 magic-link token을 발급하고 브라우저가 Supabase OTP로 교환한다. 활성 관리자 임명이 있는 계정은 차단하며 분당 요청 상한을 적용한다. 베타 전환 시 같은 환경변수를 `false`로 바꿔 UI와 API를 함께 닫는다.
+10. 테스트 계정 비밀번호는 frontend profile, API 응답, localStorage, production bundle에 포함하지 않는다. localhost 알파 환경은 1~50번 allowlist의 비관리자 테스트 계정에만 서버가 일회용 magic-link token을 발급하고 브라우저가 Supabase OTP로 교환한다. 배포 환경의 공개 발급은 항상 닫고, 설정 내부 전환만 검증된 운영자·테스트 JWT로 허용한다. 활성 관리자 임명이 있는 대상 계정은 차단하며 분당 요청 상한을 적용한다.
 
 ## 2026-07-24 방 변경 승인·픽업 팀 배치
 

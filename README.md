@@ -70,7 +70,7 @@ simulation은 실행 전에 environment, 직접 Supabase project ref, 원격 API
 | `VITE_SUPABASE_PUBLISHABLE_KEY` / `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` / `VITE_SUPABASE_ANON_KEY` | 브라우저 | Supabase anon/publishable key |
 | `SUPABASE_SERVICE_ROLE_KEY` | 서버/스크립트 전용 | server action, seed, simulation |
 | `VITE_ENABLE_SERVER_ACTIONS` | 브라우저 | server action 활성화 |
-| `VITE_DEMO_LOGIN` | 브라우저 | 테스트 로그인 UI 허용 |
+| `VITE_DEMO_LOGIN` | 브라우저 | localhost 테스트 로그인 UI 허용 |
 | `RANKBALL_SEED_REAL_TEST_AUTH` / `RANKBALL_SEED_AUTH_ONLY` | 스크립트 | 테스트 계정을 Supabase Auth user로 만들고 기존 profile에 연결 |
 | `RANKBALL_TEST_PASSWORD` / `VITE_TEST_AUTH_PASSWORD` | 스크립트/브라우저 | 테스트 계정 password Auth용 비밀번호 |
 | `RANKBALL_TEST_AUTH_EMAIL_DOMAIN` / `VITE_TEST_AUTH_EMAIL_DOMAIN` | 스크립트/브라우저 | 테스트 계정 email domain. 기본값 `rankball.test` |
