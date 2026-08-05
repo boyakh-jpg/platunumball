@@ -379,13 +379,14 @@
   }
 
   .community-post-row {
-    grid-template-columns: auto minmax(0, 1fr) auto auto auto auto;
+    grid-template-columns: auto minmax(0, 1fr) auto;
     grid-template-areas:
-      "title title title title title title"
-      "labels author date views likes comments";
-    gap: var(--space-3);
+      "labels title comments"
+      "likes date author";
+    column-gap: var(--space-3);
+    row-gap: var(--space-4);
     min-height: 76px;
-    padding: 10px 0;
+    padding: var(--space-5) 0;
   }
 
   .community-post-labels {
@@ -394,33 +395,34 @@
 
   .community-post-title {
     grid-area: title;
-    min-height: 32px;
+    min-height: 0;
     padding: 0;
-    font-size: 0.95rem;
+    font-size: var(--font-size-title-sm);
   }
 
   .community-post-author-cell {
     grid-area: author;
+    justify-self: end;
   }
 
-  .community-post-author-cell .community-author > .avatar,
-  .community-post-author-cell .community-author small,
-  .community-post-count > svg {
+  .community-post-author-cell .community-author small {
     display: none;
   }
 
+  .community-post-author-cell .community-author > .avatar {
+    width: var(--space-10);
+    height: var(--space-10);
+    flex-basis: var(--space-10);
+    font-size: var(--font-size-caption);
+  }
+
   .community-post-author-cell .community-author {
-    gap: 0;
+    gap: var(--space-3);
   }
 
   .community-post-count {
     justify-content: flex-start;
-    gap: 0;
-    font-size: 0;
-  }
-
-  .community-post-count::before {
-    content: attr(aria-label);
+    gap: var(--space-2);
     font-size: var(--font-size-meta);
   }
 
@@ -429,15 +431,21 @@
   }
 
   .community-post-views {
-    grid-area: views;
+    display: none;
   }
 
   .community-post-likes {
     grid-area: likes;
+    color: var(--blue);
   }
 
   .community-post-comments {
     grid-area: comments;
+    color: var(--blue);
+  }
+
+  .community-post-comments > svg {
+    display: none;
   }
 
   .community-board-toolbar {
