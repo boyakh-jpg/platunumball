@@ -1106,8 +1106,10 @@ test("home Season Zero banner routes by founding player status", () => {
 
 test("hero inner boards share one readable liquid-glass system", () => {
   assert.equal(count(tokenStyles, "--hero-copy-color: var(--rb-cream);"), 2);
-  assert.equal(count(tokenStyles, "--hero-title-shadow: 0 2px 12px rgba(0, 0, 0, 0.26);"), 2);
-  assert.equal(count(tokenStyles, "0 3px 8px"), 2);
+  assert.equal(count(tokenStyles, "0 2px 3px rgba(5, 7, 10, 0.84)"), 2);
+  assert.equal(count(tokenStyles, "0 6px 18px rgba(0, 0, 0, 0.32)"), 2);
+  assert.equal(count(tokenStyles, "0 1px 2px rgba(5, 7, 10, 0.84)"), 2);
+  assert.equal(count(tokenStyles, "0 3px 8px rgba(0, 0, 0, 0.28)"), 2);
   assert.doesNotMatch(tokenStyles, /--hero-title-shadow:[\s\S]{0,100}?14px 34px/);
   assert.doesNotMatch(tokenStyles, /--hero-copy-shadow:[\s\S]{0,100}?8px 20px/);
   assert.equal(count(tokenStyles, "--ui-liquid-glass-filter: blur(0.75px) saturate(1.02);"), 2);
@@ -1206,7 +1208,7 @@ test("page heroes keep shared eyebrows without implementation copy", () => {
   });
   assert.match(visualSystemStyles, /\.ui-page-hero__copy h1\s*\{[^}]*text-shadow:\s*var\(--hero-title-shadow\);[^}]*font-family:\s*var\(--hero-title-font\);/);
   assert.match(visualSystemStyles, /\.ui-page-hero__copy p:not\(\.eyebrow\)\s*\{[^}]*color:\s*var\(--hero-copy-color\);[^}]*text-shadow:\s*var\(--hero-copy-shadow\);/);
-  assert.match(visualSystemStyles, /\.home-rank-board-head[\s\S]*?\) \.eyebrow\s*\{[^}]*text-shadow:\s*none;/);
+  assert.match(visualSystemStyles, /\.ui-page-hero__copy \.eyebrow\s*\{[^}]*text-shadow:\s*var\(--hero-copy-shadow\);/);
   assert.doesNotMatch(
     readCssTree("src/styles/responsive/global-home-responsive.css"),
     /\.home-rank-board-head h1,[\s\S]{0,700}?\.home-rank-board-head \.eyebrow\s*\{[^}]*color:\s*var\(--rb-orange\);/,

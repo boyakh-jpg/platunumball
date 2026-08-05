@@ -218,6 +218,7 @@ button.ui-choice-tile:is(.active, .selected),
 .match-card .eyebrow,
 .ui-page-hero__copy .eyebrow {
   color: var(--rb-orange);
+  text-shadow: var(--hero-copy-shadow);
 }
 .ui-page-hero__copy h1 {
   color: var(--hero-title-color);
