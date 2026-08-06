@@ -118,7 +118,7 @@ export function createInitialMatchListStore(state = {}) {
   });
 }
 export function getRecruitingRegionRequest(page = {}) {
-  const regionScope = page.regionScope === "region" ? "region" : "local";
+  const regionScope = ["all", "region"].includes(page.regionScope) ? page.regionScope : "local";
   const regionKey = regionScope === "region" ? String(page.regionKey ?? "").trim() : "";
   return { regionScope, regionKey };
 }

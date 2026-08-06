@@ -16,7 +16,7 @@ import { QueueRoomBoard, RecruitingRoomLoadFailedView, RecruitingRoomLoadingView
 export default function RecruitingPageView({
   scopedPosts, rankedCount, friendlyCount, queueControlsOpen, posts,
   setQueueControlsOpen, regionFilterSido, selectRegionSido, selectedRegionDistrict, selectRegionDistrict,
-  regionDistrictOptions, queue, setQueue, modeFilter, setModeFilter,
+  regionDistrictOptions, regionFilterLabel, defaultRegionSelection, queue, setQueue, modeFilter, setModeFilter,
   startDateOptions, startFilter, selectStartFilter, startFilterLabel, app,
   userById, teamById, myTeamIds, courtById, courtByName,
   targetPostId, openSelectedPost, queueListLoading, selectedPostDetailFailed, closeSelectedPost,
@@ -73,11 +73,14 @@ export default function RecruitingPageView({
             <section id="recruiting-queue-filters" className="arena-filter-bar" aria-label="필터">
               <label className="arena-filter-select arena-region-sido-filter">
                 <select className="ui-control" aria-label="시도" value={regionFilterSido} onChange={selectRegionSido}>
+                  <option value="__mine__">{`내 지역 · ${defaultRegionSelection.sido} ${defaultRegionSelection.district}`}</option>
+                  <option value="__all__">전체</option>
                   {REGION_TREE.map((region) => <option key={region.sido} value={region.sido}>{region.sido}</option>)}
                 </select>
               </label>
               <label className="arena-filter-select arena-region-district-filter">
-                <select className="ui-control" aria-label="시군구" value={selectedRegionDistrict} onChange={selectRegionDistrict}>
+                <select className="ui-control" aria-label="시군구" value={selectedRegionDistrict} onChange={selectRegionDistrict} disabled={!regionDistrictOptions.length}>
+                  {!regionDistrictOptions.length ? <option value="">전체 지역</option> : null}
                   {regionDistrictOptions.map((district) => <option key={district} value={district}>{district}</option>)}
                 </select>
               </label>
@@ -115,7 +118,7 @@ export default function RecruitingPageView({
           </>
         ) : (
           <div id="recruiting-queue-filters" className="arena-queue-summary">
-            <span>{`${regionFilterSido} ${selectedRegionDistrict}`}</span>
+            <span>{regionFilterLabel}</span>
             <span>{queue === "ranked" ? "정규전" : queue === "friendly" ? "친선전" : "전체"}</span>
             <span>{modeFilter === "all" ? "전체 방식" : MATCH_MODES.find((mode) => mode.id === modeFilter)?.label ?? modeFilter}</span>
             <span>{startFilterLabel}</span>

@@ -24,6 +24,22 @@ export default function HomePageView({
   openActionRoom, placementComplete, priorityItems, priorityNoticeItems, processingInviteId, inviteActionError,
   rankSpotlightLabel, seasonProgress, topRankers, homeRoomOverlays,
 }) {
+  if (app?.demoPreview) {
+    return (
+      <div className="page-stack rank-home">
+        <Card className="section-card ui-design-category-surface">
+          <p className="eyebrow">PUBLIC COURT</p>
+          <h1>공개 매칭을 둘러보세요</h1>
+          <p>개인 일정, 경기 기록, 알림은 로그인 후 내 데이터로 표시됩니다.</p>
+          <div className="ui-action-row">
+            <Button as={Link} to="/app/recruiting">매칭 보기 <ArrowRight size={18} /></Button>
+            <Button as={Link} to="/login" variant="secondary">로그인</Button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="page-stack rank-home">
       <Card className="home-search-panel rank-search-card">

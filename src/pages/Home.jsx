@@ -112,7 +112,7 @@ function getUserMatchLine(match, userId) {
 const SEARCH_PREVIEW_LIMIT = 5;
 const SEARCH_DETAIL_LIMIT = 20;
 
-export default function Home({ app }) {
+function AuthenticatedHome({ app }) {
   const user = app.currentUser;
   const [query, setQuery] = useState("");
   const [processingInviteId, setProcessingInviteId] = useState("");
@@ -462,4 +462,10 @@ export default function Home({ app }) {
     openActionRoom, placementComplete, priorityItems, priorityNoticeItems, processingInviteId, inviteActionError,
     rankSpotlightLabel, seasonProgress, topRankers, homeRoomOverlays,
   }} />;
+}
+
+export default function Home({ app }) {
+  return app?.demoPreview
+    ? <HomePageView app={app} />
+    : <AuthenticatedHome app={app} />;
 }

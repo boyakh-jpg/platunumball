@@ -106,7 +106,7 @@ export function useDirectoryLoaders(context) {
   const loadRecruitingRegion = useCallback(async ({ regionKey = "", regionScope = "local", limit = REMOTE_CLIENT_INITIAL_RECRUITING_LIMIT, startFilter = "", includeFeedCounts = false } = {}) => {
     if (!isSupabaseConfigured || !authUserId) return false;
     const pageLimit = Math.max(1, Math.min(REMOTE_CLIENT_RECRUITING_LIMIT, Number(limit) || REMOTE_CLIENT_INITIAL_RECRUITING_LIMIT));
-    const regionRequest = getRecruitingRegionRequest({ regionScope: regionScope === "region" && regionKey ? "region" : "local", regionKey });
+    const regionRequest = getRecruitingRegionRequest({ regionScope: regionScope === "all" ? "all" : regionScope === "region" && regionKey ? "region" : "local", regionKey });
     const startFilterRequest = getRecruitingStartFilterRequest({ startFilter });
     const shouldIncludeFeedCounts = includeFeedCounts === true;
     const promiseKey = `${regionRequest.regionScope}:${regionRequest.regionKey}:${startFilterRequest.startFilter}:${pageLimit}:${shouldIncludeFeedCounts ? "counts" : "plain"}`;

@@ -59,24 +59,14 @@ function preloadCoreAppRoutes() {
 
 const GUEST_PUBLIC_APP_PATHS = new Set([
   "/app",
-  "/app/affiliations",
-  "/app/community",
   "/app/guide",
   "/app/guide/practice",
   "/app/matches",
-  "/app/rankings",
   "/app/recruiting",
   "/app/referee-rulebook",
-  "/app/season",
-  "/app/teams",
 ]);
 const GUEST_PUBLIC_APP_PREFIXES = [
-  "/app/courts/",
   "/app/matches/",
-  "/app/players/",
-  "/app/referees/",
-  "/app/teams/",
-  "/app/tournaments/",
 ];
 
 export function isGuestPublicAppPath(pathname = "") {

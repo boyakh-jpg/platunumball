@@ -3,6 +3,19 @@ import {
   getSupabaseAdminClient,
   sendJson,
 } from "../_supabaseAdmin.js";
+import { REMOTE_CLIENT_RECRUITING_LIMIT } from "../../../shared/lib/constants.js";
+
+const LANDING_RECRUITING_LIMIT = 3;
+
+function getRecruitingLimit(request) {
+  const rawLimit = Array.isArray(request.query?.recruitingLimit)
+    ? request.query.recruitingLimit[0]
+    : request.query?.recruitingLimit;
+  const limit = Number.parseInt(rawLimit, 10);
+  return Number.isSafeInteger(limit) && limit > 0
+    ? Math.min(limit, REMOTE_CLIENT_RECRUITING_LIMIT)
+    : LANDING_RECRUITING_LIMIT;
+}
 
 async function readCount(query, label) {
   const { count, error } = await query;
@@ -54,16 +67,16 @@ export async function loadLandingStats(supabase) {
   return { openRecruiting, completedMatches, activeTeams, players };
 }
 
-export async function loadLandingFeed(supabase) {
+export async function loadLandingFeed(supabase, recruitingLimit = LANDING_RECRUITING_LIMIT) {
   const [recruitingRows, matchRows] = await Promise.all([
     readRows(
       supabase
         .from("recruiting_posts")
-        .select("id,title,mode,court_name,scheduled_date,scheduled_time,scheduled_at")
+        .select("id,title,mode,court_name,region,scheduled_date,scheduled_time,scheduled_at,ranked")
         .eq("status", "open")
         .eq("visibility", "public")
         .order("updated_at", { ascending: false })
-        .limit(3),
+        .limit(recruitingLimit),
     ),
     readRows(
       supabase
@@ -87,9 +100,13 @@ export async function loadLandingFeed(supabase) {
       title: row.title,
       mode: row.mode,
       court: row.court_name,
+      region: row.region,
       scheduledDate: row.scheduled_date,
       scheduledTime: row.scheduled_time ? String(row.scheduled_time).slice(0, 5) : "",
       scheduledAt: row.scheduled_at,
+      ranked: row.ranked !== false,
+      status: "open",
+      visibility: "public",
     })),
     recentMatches: matchRows.map((row) => ({
       id: row.id,
@@ -107,7 +124,10 @@ export default async function handler(request, response) {
 
   try {
     const supabase = getSupabaseAdminClient();
-    const [stats, feed] = await Promise.all([loadLandingStats(supabase), loadLandingFeed(supabase)]);
+    const [stats, feed] = await Promise.all([
+      loadLandingStats(supabase),
+      loadLandingFeed(supabase, getRecruitingLimit(request)),
+    ]);
     sendJson(response, 200, { ok: true, stats, feed });
   } catch (error) {
     sendJson(response, error.statusCode || 500, { error: error.message || "landing_stats_load_failed" });

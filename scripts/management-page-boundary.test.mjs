@@ -653,6 +653,7 @@ test("랜딩의 모집방·대표팀·최근 경기는 선택 대상을 유지�
   const app = await read("src/App.jsx");
   const authGuard = await read("src/components/auth/RequireAuth.jsx");
   const runtime = await read("src/hooks/appData/orchestrator/runtime.js");
+  const hydration = await read("src/hooks/appData/orchestrator/runtimeHydration.js");
   assert.match(landing, /`\/app\/recruiting\?post=\$\{encodeURIComponent\(post\.id\)\}`/u);
   assert.match(landing, /`\/app\/teams\/\$\{encodeURIComponent\(featuredTeam\.id\)\}`/u);
   assert.match(landing, /`\/app\/matches\?match=\$\{encodeURIComponent\(match\.id\)\}`/u);
@@ -660,7 +661,8 @@ test("랜딩의 모집방·대표팀·최근 경기는 선택 대상을 유지�
   assert.match(landing, /authenticated \? \([\s\S]*?경기 찾기[\s\S]*?홈[\s\S]*?\) : \([\s\S]*?to="\/app"[\s\S]*?홈[\s\S]*?to="\/login"[\s\S]*?로그인/u);
   assert.match(app, /function isGuestPublicAppPath\(pathname = ""\)[\s\S]*GUEST_PUBLIC_APP_PREFIXES\.some[\s\S]*isGuestPublicAppPath\(location\.pathname\)[\s\S]*useAppData\(auth\.user \?\? null, location, \{ demoPreview: guestPreview \}\)/u);
   assert.match(authGuard, /!auth\.session && !allowGuestHome/u);
-  assert.match(runtime, /ensureLocalDemoInitialState\(\{ preview: true \}\)[\s\S]*loadState\(\{ includeDemo: true/u);
+  assert.doesNotMatch(runtime, /ensureLocalDemoInitialState\(\{ preview: true \}\)/u);
+  assert.match(hydration, /setRemoteReady\(demoPreview \|\| !isSupabaseConfigured\)/u);
 });
 
 test("게스트 저장 요청은 원래 경로를 보존해 로그인으로 보낸다", async () => {
@@ -682,24 +684,26 @@ test("게스트 저장 요청은 원래 경로를 보존해 로그인으로 보�
   assert.match(rankings, /const directoryLoading = !app\.demoPreview/u);
 });
 
-test("게스트 매칭은 읽기 전용 방 보기만 허용한다", async () => {
-  const [app, recruiting, page, controller, matchModel, actionSection] = await Promise.all([
+test("게스트는 실제 공개 매칭만 보고 개인 화면은 로그인 상태로 끝난다", async () => {
+  const [app, recruiting, recruitingView, home, matches, bootstrap] = await Promise.all([
     read("src/App.jsx"),
     read("src/pages/Recruiting.jsx"),
     read("src/pages/RecruitingPageView.jsx"),
-    read("src/components/recruiting/useRecruitingRoomController.js"),
-    read("src/components/recruiting/RecruitingRoomMatchModel.jsx"),
-    read("src/components/recruiting/RecruitingRoomActionSection.jsx"),
+    read("src/pages/HomePageView.jsx"),
+    read("src/pages/Matches.jsx"),
+    read("src/hooks/appData/bootstrap.js"),
   ]);
 
   assert.match(app, /\/app\/recruiting/u);
   assert.match(app, /<Recruiting app=\{app\} readOnly=\{guestPreview\} \/>/u);
-  assert.match(recruiting, /<RecruitingReady app=\{app\} readOnly=\{readOnly\} \/>/u);
-  assert.match(recruiting, /useState\(readOnly \? "all" : "instant"\)/u);
-  assert.match(page, /<RecruitingRoomModal[\s\S]*?readOnly=\{readOnly\}/u);
-  assert.match(controller, /readOnly = false[\s\S]*?readOnly, requiresPaidCourtNotice/u);
-  assert.match(matchModel, /const sourceRoomReadOnly = Boolean\([\s\S]*?readOnly \|\|/u);
-  assert.match(actionSection, /readOnly \? \([\s\S]*?로그인 후 참가[\s\S]*?navigate\(getLoginPath/u);
+  assert.match(recruiting, /fetch\(`\/api\/landing\/stats\?recruitingLimit=\$\{REMOTE_CLIENT_RECRUITING_LIMIT\}`/u);
+  assert.match(recruiting, /if \(readOnly\) return <GuestRecruiting \/>/u);
+  assert.match(recruiting, /useState\(REGION_FILTER_ALL\)/u);
+  assert.match(recruitingView, /<option value="__mine__">\{`내 지역/u);
+  assert.match(recruitingView, /<option value="__all__">전체<\/option>/u);
+  assert.match(home, /app\?\.demoPreview[\s\S]*개인 일정, 경기 기록, 알림은 로그인 후/u);
+  assert.match(matches, /일정은 로그인 후 확인할 수 있습니다/u);
+  assert.match(bootstrap, /regionScope: "all", startFilter: "all"/u);
 });
 
 test("랜딩은 공개 피드와 전체 통계를 분리하고 공개 경기 점수를 표시한다", async () => {

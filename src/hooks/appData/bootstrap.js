@@ -47,7 +47,7 @@ function getInitialStateLoadOptions(location = null) {
   }
   if (pathname === "/app/recruiting") {
     if (searchParams?.get("post")) return { profileOnly: true, matchLimit: 0, recruitingLimit: 0, tournamentLimit: 0 };
-    return { endpoint: "recruitingList", matchLimit: 0, recruitingLimit: REMOTE_CLIENT_RECRUITING_LIMIT, tournamentLimit: 0, startFilter: "instant" };
+    return { endpoint: "recruitingList", matchLimit: 0, recruitingLimit: REMOTE_CLIENT_RECRUITING_LIMIT, tournamentLimit: 0, regionScope: "all", startFilter: "all" };
   }
   if (pathname === "/app/recorder") {
     return { endpoint: "playMatches", matchLimit: REMOTE_CLIENT_MATCH_LIMIT, recruitingLimit: 0, tournamentLimit: 0 };
@@ -163,7 +163,7 @@ function getEndpointFallbackMeta(options = {}, errorMessage = "") {
     recruitingPage: {
       exhausted: true,
       feedCounts: null,
-      regionScope: "local",
+      regionScope: options.regionScope === "all" ? "all" : "local",
       regionKey: "",
       ...getRecruitingStartFilterRequest({ startFilter: options.startFilter ?? "all" }),
       ...(error ? { error } : {}),
@@ -230,7 +230,7 @@ async function loadBackendState(authUserId, authEmail, options = getInitialState
           authUserId,
           authEmail,
           limit: loadOptions.recruitingLimit,
-          regionScope: "local",
+          regionScope: options.regionScope === "all" ? "all" : "local",
           ...(options.startFilter ? { startFilter: options.startFilter } : {}),
           listOnly: true,
           adminContext: false,

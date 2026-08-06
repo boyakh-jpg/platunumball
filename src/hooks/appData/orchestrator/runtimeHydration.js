@@ -92,7 +92,7 @@ export function useAppDataRuntimeHydration(context, runtime) {
     blockedSettingsCommittedIdsRef.current = getBlockedUserIdsFromState(stateRef.current);
     blockedSettingsPendingCountRef.current = 0;
     if (demoPreview || !isSupabaseConfigured || !authUserId) {
-      remoteReadyRef.current = !isSupabaseConfigured;
+      remoteReadyRef.current = demoPreview || !isSupabaseConfigured;
       directoryPromiseRef.current = new Map();
       directoryCacheRef.current = new Map();
       latestDirectoryRequestRef.current = "";
@@ -126,7 +126,7 @@ export function useAppDataRuntimeHydration(context, runtime) {
       pendingMatchMutationCountsRef.current = new Map();
       recentMatchMutationTimesRef.current = new Map();
       syncedDiscordDeliveryIdsRef.current = new Set();
-      setRemoteReady(!isSupabaseConfigured);
+      setRemoteReady(demoPreview || !isSupabaseConfigured);
       setMatchPagination({ loading: false, exhausted: true, error: "", cursor: "" });
       setMatchLists(createInitialMatchListStore(stateRef.current));
       setRecruitingPagination({ loading: false, exhausted: true, error: "", loadMoreError: "", cursor: "", offset: 0, regionScope: "local", regionKey: "", startFilter: "all", timingType: "", scheduledDate: "", feedCounts: null });

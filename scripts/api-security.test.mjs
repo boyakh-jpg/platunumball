@@ -197,7 +197,8 @@ test("public landing exposes aggregate counts and bounded public feed fields", a
   assert.match(source, /\.eq\("status", "open"\)[\s\S]*?\.eq\("visibility", "public"\)/);
   assert.match(source, /\.eq\("status", "confirmed"\)[\s\S]*?\.eq\("visibility", "public"\)/);
   assert.match(source, /\.is\("deleted_at", null\)/);
-  assert.match(source, /select\("id,title,mode,court_name,scheduled_date,scheduled_time,scheduled_at"\)[\s\S]*?\.limit\(3\)/);
+  assert.match(source, /select\("id,title,mode,court_name,region,scheduled_date,scheduled_time,scheduled_at,ranked"\)[\s\S]*?\.limit\(recruitingLimit\)/);
+  assert.match(source, /Math\.min\(limit, REMOTE_CLIENT_RECRUITING_LIMIT\)/);
   assert.match(source, /select\("id,title,team_a_id,team_b_id,score_a,score_b"\)[\s\S]*?\.limit\(3\)/);
   assert.match(source, /select\("id,name"\)/);
   assert.match(source, /sendJson\(response, 200, \{ ok: true, stats, feed \}\)/);
