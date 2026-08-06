@@ -55,11 +55,11 @@ inviteTeamMember: (teamId, targetUserId, role = "regular") => applyTeamInvitatio
     "cancel",
     () => ({ invitationId }),
   ),
-  requestTeamMembership: (teamId) => applyTeamInvitationMutation(
+  requestTeamMembership: (teamId, application) => applyTeamInvitationMutation(
     "팀 가입 신청",
     (prev) => prev,
     "request_join",
-    () => ({ teamId }),
+    () => ({ teamId, application }),
   ),
   approveTeamJoinRequest: (invitationId) => applyTeamInvitationMutation(
     "팀 가입 승인",

@@ -1,6 +1,7 @@
 import { allowRequestMethod, getAuthenticatedContext, readJsonBody, sendJson, toArray } from "../_supabaseAdmin.js";
 import { loadCurrentProfileState, PROFILE_ME_COLUMNS } from "../profile/me.js";
 import { isTeamInviteRole, MAX_TEAM_DESCRIPTION_LENGTH, MAX_TEAM_DESCRIPTION_LINES, MAX_TEAM_MEMBERS, MAX_TEAM_NAME_LENGTH, normalizeTeamRole } from "../../../shared/lib/constants.js";
+import { getTeamJoinApplicationError, normalizeTeamJoinApplication } from "../../../shared/lib/teamJoinApplication.js";
 
 function uniqueMembers(members = []) {
   const seen = new Set();
@@ -163,10 +164,17 @@ async function respondTeamInvitation(context, body = {}) {
 }
 
 async function requestTeamMembership(context, body = {}) {
-  const { data, error } = await context.supabase.rpc("rankball_request_team_membership", {
+  const applicationError = getTeamJoinApplicationError(body.application);
+  if (applicationError) {
+    const invalidApplication = new Error(applicationError);
+    invalidApplication.statusCode = 400;
+    throw invalidApplication;
+  }
+  const { data, error } = await context.supabase.rpc("rankball_request_team_membership_with_application", {
     p_actor_profile_id: context.profileId,
     p_team_id: String(body.teamId || "").trim(),
     p_request_id: String(body.invitationId || "").trim() || null,
+    p_application: normalizeTeamJoinApplication(body.application),
   });
   if (error) throw error;
   return data ?? { ok: true };

@@ -48,6 +48,11 @@ import {
   updateTeamMemberRole,
 } from "../src/data/repository/account.js";
 import { getRoomScheduleLabel } from "../src/lib/matchUtils.js";
+import {
+  getTeamJoinApplicationBlockReason,
+  getTeamJoinApplicationError,
+  normalizeTeamJoinApplication,
+} from "../src/lib/teamJoinApplication.js";
 import { getResumableRefereeExamAttempt, matchesReportSearchQuery } from "../src/pages/settingsPageModel.js";
 import { fromRemoteApprovedCourt } from "../src/data/remotePayloadMappers.js";
 import { toApprovedCourtRow } from "../src/data/remoteRowSerializers.js";
@@ -1755,6 +1760,23 @@ test("team invites and join requests share locked membership limits", async () =
   const schemaHealth = await readSource("server/api/system/schemaHealthRequirements.js");
   assert.match(schemaHealth, /teams:\s*\[[^\]]*"description"/);
   assert.doesNotMatch(schemaHealth, /public_profiles:\s*\[[^\]]*"description"/);
+
+  const applicationMigration = await readSource("supabase/migrations/20260807100000_team_join_application.sql");
+  assert.match(applicationMigration, /rankball_request_team_membership_with_application/);
+  assert.match(applicationMigration, /rankball_request_team_membership\(p_actor_profile_id, p_team_id, p_request_id\)/);
+  assert.match(getTeamJoinApplicationBlockReason({ currentTeamCount: 3 }), /최대 3개 팀/);
+  assert.match(getTeamJoinApplicationBlockReason({ targetTeamMemberCount: 30 }), /정원 30명/);
+  assert.equal(getTeamJoinApplicationError({ heightCm: 180, position: "PG", ageGroup: "open", gender: "male" }), "");
+  assert.match(getTeamJoinApplicationError({ heightCm: 99 }), /100~250cm/);
+  assert.deepEqual(normalizeTeamJoinApplication({ sns: "  @box_tier  ", extra: "discard" }), {
+    sns: "@box_tier",
+    contact: "",
+    heightCm: null,
+    position: "",
+    availability: "",
+    ageGroup: "",
+    gender: "",
+  });
 });
 
 test("favorite reducers add, remove, and validate current or retired targets", () => {

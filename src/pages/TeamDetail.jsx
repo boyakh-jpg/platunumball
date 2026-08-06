@@ -27,6 +27,7 @@ import { formatEmblemDate, getNextEmblemUploadAt, isEmblemUploadLocked } from ".
 import { getUserHashtag } from "../lib/handles.js";
 import { getTeamScoreSummary, getTeamSide } from "../lib/season.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
+import { getTeamJoinApplicationBlockReason } from "../lib/teamJoinApplication.js";
 import TeamDetailView from "./TeamDetailView.jsx";
 
 function isHistoryInDetailWindow(match) {
@@ -56,6 +57,8 @@ export default function TeamDetail({ app }) {
   const [favoriteError, setFavoriteError] = useState("");
   const [teamManagementPending, setTeamManagementPending] = useState(false);
   const [teamManagementError, setTeamManagementError] = useState("");
+  const [joinApplicationOpen, setJoinApplicationOpen] = useState(false);
+  const [reviewedJoinApplication, setReviewedJoinApplication] = useState(null);
   const [teamDescriptionDraft, setTeamDescriptionDraft] = useState(displayTeam?.description ?? "");
   const [teamDetailLoad, setTeamDetailLoad] = useState(() => ({
     teamId,
@@ -243,8 +246,6 @@ export default function TeamDetail({ app }) {
   const teamFull = team.members.length >= MAX_TEAM_MEMBERS;
   const currentUserIsMember = team.members.some((member) => member.userId === app.currentUser.id);
   const currentUserTeamCount = membershipCounts.get(app.currentUser.id) ?? 0;
-  const canRequestTeamMembership = !app.demoPreview && !currentUserIsMember && !teamFull
-    && currentUserTeamCount < MAX_TEAM_MEMBERSHIPS && !pendingOwnJoinRequest && !pendingOwnTeamInvite;
   const canAddMember = canManage && Boolean(addUserId) && selectedCount < MAX_TEAM_MEMBERSHIPS && !teamFull;
   const history = app.state.matches.filter((match) => match.status === "confirmed" && getTeamSide(match, team.id));
   const detailHistory = history.filter(isHistoryInDetailWindow);
@@ -358,7 +359,27 @@ export default function TeamDetail({ app }) {
   const cancelPendingTeamInvitation = (invitationId) => (
     runTeamManagementMutation(() => app.actions.cancelTeamInvitation(invitationId))
   );
-  const requestTeamMembership = () => runTeamManagementMutation(() => app.actions.requestTeamMembership(team.id));
+  const openTeamJoinApplication = () => {
+    const reason = getTeamJoinApplicationBlockReason({
+      demoPreview: app.demoPreview,
+      currentUserIsMember,
+      currentTeamCount: currentUserTeamCount,
+      targetTeamMemberCount: team.members.length,
+      hasPendingRequest: Boolean(pendingOwnJoinRequest),
+      hasPendingInvite: Boolean(pendingOwnTeamInvite),
+    });
+    if (reason) {
+      setTeamManagementError(reason);
+      return;
+    }
+    setTeamManagementError("");
+    setJoinApplicationOpen(true);
+  };
+  const requestTeamMembership = async (application) => {
+    const saved = await runTeamManagementMutation(() => app.actions.requestTeamMembership(team.id, application));
+    if (saved) setJoinApplicationOpen(false);
+    return saved;
+  };
   const cancelTeamJoinRequest = (invitationId) => runTeamManagementMutation(() => app.actions.cancelTeamJoinRequest(invitationId));
   const approveTeamJoinRequest = (invitationId) => runTeamManagementMutation(() => app.actions.approveTeamJoinRequest(invitationId));
   const declineTeamJoinRequest = (invitationId) => runTeamManagementMutation(() => app.actions.declineTeamJoinRequest(invitationId));
@@ -514,5 +535,5 @@ export default function TeamDetail({ app }) {
   const emblemUploadLocked = moderationLocked || isEmblemUploadLocked(team.emblemUploadCount, team.emblemUploadedAt);
   const emblemSource = team.emblemSource ?? (team.emblemKey ? "upload" : "initial");
 
-  return <TeamDetailView controller={{ addUserId, app, archivedHistory, availableUsers, approveTeamJoinRequest, canAddMember, canManage, canRequestTeamMembership, cancelPendingTeamInvitation, cancelTeamJoinRequest, captain, changeTeamMemberRole, confirmEmblemUpload, confirmedCount, cooldownNextAt, currentUserIsMember, deleteArmed, deleteTeam, detailHistory, directoryPending, declineTeamJoinRequest, emblemAbbreviationCharacterCount, emblemCanRestore, emblemFeedback, emblemFile, emblemInputRef, emblemPending, emblemSource, emblemStatusError, emblemStatusRequestRef, emblemStyleDraft, emblemUploadLocked, excludeTeamMember, favoriteError, favoritePending, favoriteTeamIds, history, historyCount, historyIds, inviteMember, isFavoriteTeam, loadDirectory, loadTeamEmblemStatus, loadTeamRecords, loadedLosses, loadedWins, losses, memberDraft, memberQuery, membershipCounts, moderationBlockedAt, moderationLocked, nextEmblemUploadAt, pendingOwnJoinRequest, pendingOwnTeamInvite, pendingTargetIds, pendingTeamInvitations, pendingTeamJoinRequests, refreshTeamDetail, regularMembers, renderInviteSearchItem, renderMembers, requestTeamMembership, reserveMembers, restorePreviousEmblem, retryTeamEmblemStatus, saveEmblemStyle, saveTeamDescription, selectEmblemSource, selectedCount, selectedHistoryMatchId, selectedInviteProfile, selectedInviteUser, selectedRemoteUser, setDeleteArmed, setEmblemCanRestore, setEmblemFeedback, setEmblemFile, setEmblemPending, setEmblemStyleDraft, setMemberDraft, setMemberQuery, setSelectedHistoryMatchId, setSelectedInviteProfile, setTeamDescriptionDraft, setTeamInviteError, team, teamDescriptionDraft, teamDetailError, teamFull, teamId, teamInviteError, teamInvitePending, teamManagementError, teamManagementPending, teamRecordArchive, teamScoreSummary, toggleTeamFavorite, uploadEmblem, userMap, winRate, wins }} />;
+  return <TeamDetailView controller={{ addUserId, app, archivedHistory, availableUsers, approveTeamJoinRequest, canAddMember, canManage, cancelPendingTeamInvitation, cancelTeamJoinRequest, captain, changeTeamMemberRole, confirmEmblemUpload, confirmedCount, cooldownNextAt, currentUserIsMember, deleteArmed, deleteTeam, detailHistory, directoryPending, declineTeamJoinRequest, emblemAbbreviationCharacterCount, emblemCanRestore, emblemFeedback, emblemFile, emblemInputRef, emblemPending, emblemSource, emblemStatusError, emblemStatusRequestRef, emblemStyleDraft, emblemUploadLocked, excludeTeamMember, favoriteError, favoritePending, favoriteTeamIds, history, historyCount, historyIds, inviteMember, isFavoriteTeam, joinApplicationOpen, loadDirectory, loadTeamEmblemStatus, loadTeamRecords, loadedLosses, loadedWins, losses, memberDraft, memberQuery, membershipCounts, moderationBlockedAt, moderationLocked, nextEmblemUploadAt, openTeamJoinApplication, pendingOwnJoinRequest, pendingOwnTeamInvite, pendingTargetIds, pendingTeamInvitations, pendingTeamJoinRequests, refreshTeamDetail, regularMembers, renderInviteSearchItem, renderMembers, requestTeamMembership, reserveMembers, restorePreviousEmblem, retryTeamEmblemStatus, reviewedJoinApplication, saveEmblemStyle, saveTeamDescription, selectEmblemSource, selectedCount, selectedHistoryMatchId, selectedInviteProfile, selectedInviteUser, selectedRemoteUser, setDeleteArmed, setEmblemCanRestore, setEmblemFeedback, setEmblemFile, setEmblemPending, setEmblemStyleDraft, setJoinApplicationOpen, setMemberDraft, setMemberQuery, setReviewedJoinApplication, setSelectedHistoryMatchId, setSelectedInviteProfile, setTeamDescriptionDraft, setTeamInviteError, team, teamDescriptionDraft, teamDetailError, teamFull, teamId, teamInviteError, teamInvitePending, teamManagementError, teamManagementPending, teamRecordArchive, teamScoreSummary, toggleTeamFavorite, uploadEmblem, userMap, winRate, wins }} />;
 }

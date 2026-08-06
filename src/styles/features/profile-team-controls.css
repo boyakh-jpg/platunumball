@@ -480,3 +480,63 @@
 .team-membership-request-actions {
   margin-top: var(--space-4);
 }
+
+.team-join-application-dialog {
+  width: min(620px, 100%);
+  max-height: calc(100dvh - 36px);
+  overflow-y: auto;
+}
+
+.team-join-application-form,
+.team-join-application-grid,
+.team-join-application-review {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.team-join-application-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.team-join-application-grid label {
+  display: grid;
+  gap: var(--space-3);
+  color: var(--text);
+  font-size: 0.82rem;
+  font-weight: 850;
+}
+
+.team-join-application-wide {
+  grid-column: 1 / -1;
+}
+
+.team-join-application-review {
+  margin: 0;
+}
+
+.team-join-application-review div {
+  display: grid;
+  grid-template-columns: minmax(92px, 0.35fr) minmax(0, 1fr);
+  gap: var(--space-5);
+}
+
+.team-join-application-review dt {
+  color: var(--muted);
+  font-weight: 850;
+}
+
+.team-join-application-review dd {
+  margin: 0;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 520px) {
+  .team-join-application-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .team-join-application-wide {
+    grid-column: auto;
+  }
+}

@@ -7,6 +7,7 @@ import SearchPicker from "../components/common/SearchPicker.jsx";
 import RecentMatchRow from "../components/match/RecentMatchRow.jsx";
 import EntityProfileHero from "../components/profile/EntityProfileHero.jsx";
 import TeamEmblem from "../components/team/TeamEmblem.jsx";
+import TeamJoinApplicationDialog from "../components/team/TeamJoinApplicationDialog.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import ProfileEmblem from "../components/profile/ProfileEmblem.jsx";
 import TierEmblem from "../components/rating/TierEmblem.jsx";
@@ -34,7 +35,7 @@ function getManagedRoleOptions(member, captainId) {
 }
 
 export default function TeamDetailView({ controller }) {
-  const { addUserId, app, archivedHistory, availableUsers, approveTeamJoinRequest, canAddMember, canManage, canRequestTeamMembership, cancelPendingTeamInvitation, cancelTeamJoinRequest, captain, changeTeamMemberRole, confirmEmblemUpload, confirmedCount, cooldownNextAt, currentUserIsMember, deleteArmed, deleteTeam, detailHistory, directoryPending, declineTeamJoinRequest, emblemAbbreviationCharacterCount, emblemCanRestore, emblemFeedback, emblemFile, emblemInputRef, emblemPending, emblemSource, emblemStatusError, emblemStatusRequestRef, emblemStyleDraft, emblemUploadLocked, excludeTeamMember, favoriteError, favoritePending, favoriteTeamIds, history, historyCount, historyIds, inviteMember, isFavoriteTeam, loadDirectory, loadTeamEmblemStatus, loadTeamRecords, loadedLosses, loadedWins, losses, memberDraft, memberQuery, membershipCounts, moderationBlockedAt, moderationLocked, nextEmblemUploadAt, pendingOwnJoinRequest, pendingOwnTeamInvite, pendingTargetIds, pendingTeamInvitations, refreshTeamDetail, regularMembers, renderInviteSearchItem, renderMembers, requestTeamMembership, reserveMembers, restorePreviousEmblem, retryTeamEmblemStatus, saveEmblemStyle, saveTeamDescription, selectEmblemSource, selectedCount, selectedHistoryMatchId, selectedInviteProfile, selectedInviteUser, selectedRemoteUser, setDeleteArmed, setEmblemCanRestore, setEmblemFeedback, setEmblemFile, setEmblemPending, setEmblemStyleDraft, setMemberDraft, setMemberQuery, setSelectedHistoryMatchId, setSelectedInviteProfile, setTeamDescriptionDraft, setTeamInviteError, team, teamDescriptionDraft, teamDetailError, teamFull, teamId, teamInviteError, teamInvitePending, teamManagementError, teamManagementPending, teamRecordArchive, teamScoreSummary, toggleTeamFavorite, uploadEmblem, userMap, winRate, wins } = controller;
+  const { addUserId, app, archivedHistory, availableUsers, approveTeamJoinRequest, canAddMember, canManage, cancelPendingTeamInvitation, cancelTeamJoinRequest, captain, changeTeamMemberRole, confirmEmblemUpload, confirmedCount, cooldownNextAt, currentUserIsMember, deleteArmed, deleteTeam, detailHistory, directoryPending, declineTeamJoinRequest, emblemAbbreviationCharacterCount, emblemCanRestore, emblemFeedback, emblemFile, emblemInputRef, emblemPending, emblemSource, emblemStatusError, emblemStatusRequestRef, emblemStyleDraft, emblemUploadLocked, excludeTeamMember, favoriteError, favoritePending, favoriteTeamIds, history, historyCount, historyIds, inviteMember, isFavoriteTeam, joinApplicationOpen, loadDirectory, loadTeamEmblemStatus, loadTeamRecords, loadedLosses, loadedWins, losses, memberDraft, memberQuery, membershipCounts, moderationBlockedAt, moderationLocked, nextEmblemUploadAt, openTeamJoinApplication, pendingOwnJoinRequest, pendingOwnTeamInvite, pendingTargetIds, pendingTeamInvitations, refreshTeamDetail, regularMembers, renderInviteSearchItem, renderMembers, requestTeamMembership, reserveMembers, restorePreviousEmblem, retryTeamEmblemStatus, reviewedJoinApplication, saveEmblemStyle, saveTeamDescription, selectEmblemSource, selectedCount, selectedHistoryMatchId, selectedInviteProfile, selectedInviteUser, selectedRemoteUser, setDeleteArmed, setEmblemCanRestore, setEmblemFeedback, setEmblemFile, setEmblemPending, setEmblemStyleDraft, setJoinApplicationOpen, setMemberDraft, setMemberQuery, setReviewedJoinApplication, setSelectedHistoryMatchId, setSelectedInviteProfile, setTeamDescriptionDraft, setTeamInviteError, team, teamDescriptionDraft, teamDetailError, teamFull, teamId, teamInviteError, teamInvitePending, teamManagementError, teamManagementPending, teamRecordArchive, teamScoreSummary, toggleTeamFavorite, uploadEmblem, userMap, winRate, wins } = controller;
   const teamControlPending = teamInvitePending || teamManagementPending;
   return (
     <div className="page-stack team-detail-page rank-team-page">
@@ -112,7 +113,7 @@ export default function TeamDetailView({ controller }) {
             ) : pendingOwnTeamInvite ? (
               <Badge tone="green">팀 초대 도착</Badge>
             ) : (
-              <Button type="button" size="sm" disabled={!canRequestTeamMembership || teamManagementPending} onClick={() => { void requestTeamMembership(); }}>
+              <Button type="button" size="sm" disabled={teamManagementPending} onClick={openTeamJoinApplication}>
                 {teamFull ? "팀 정원 마감" : "가입 신청"}
               </Button>
             )}
@@ -355,6 +356,7 @@ export default function TeamDetailView({ controller }) {
                           <span className="member-control-state">{joinRequest ? "가입 신청" : "초대 대기"}</span>
                           {joinRequest ? (
                             <span className="ui-action-row">
+                              <Button type="button" size="sm" variant="secondary" onClick={() => setReviewedJoinApplication({ applicantName: user?.name ?? "지원자", application: invitation.application })}>신청서</Button>
                               <Button type="button" size="sm" disabled={teamControlPending} onClick={() => { void approveTeamJoinRequest(invitation.id); }}>승인</Button>
                               <Button type="button" size="sm" variant="secondary" disabled={teamControlPending} onClick={() => { void declineTeamJoinRequest(invitation.id); }}>거절</Button>
                             </span>
@@ -528,6 +530,19 @@ export default function TeamDetailView({ controller }) {
           entryPoint="team-history"
         />
       ) : null}
+      <TeamJoinApplicationDialog
+        open={joinApplicationOpen}
+        pending={teamManagementPending}
+        onClose={() => setJoinApplicationOpen(false)}
+        onSubmit={requestTeamMembership}
+      />
+      <TeamJoinApplicationDialog
+        open={Boolean(reviewedJoinApplication)}
+        mode="review"
+        applicantName={reviewedJoinApplication?.applicantName}
+        application={reviewedJoinApplication?.application}
+        onClose={() => setReviewedJoinApplication(null)}
+      />
       <EmblemCropEditor
         file={emblemFile}
         pending={emblemPending}

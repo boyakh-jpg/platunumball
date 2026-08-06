@@ -1,4 +1,5 @@
 import { DEFAULT_RATING } from "./constants.js";
+import { normalizeTeamJoinApplication } from "./teamJoinApplication.js";
 import { projectTeamRow } from "./teamRowProjection.js";
 
 export function fromRemoteTeam(row, memberRows) {
@@ -25,6 +26,7 @@ export function fromRemoteTeamInvitation(row = {}) {
     role: row.role ?? "regular",
     requestKind: row.request_kind ?? "invite",
     status: row.status ?? "pending",
+    application: normalizeTeamJoinApplication(row.application),
     createdAt: row.created_at,
     updatedAt: row.updated_at ?? row.created_at,
   };
