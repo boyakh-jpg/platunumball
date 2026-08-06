@@ -81,5 +81,6 @@ After every task, report:
 # Deployment
 
 - Vercel Git integration already creates a preview deployment on every push. Do not run `vercel deploy --prod` after pushing.
-- Verify that the ready preview deployment metadata matches the pushed commit SHA, then promote that existing deployment with `vercel promote`.
+- Do not promote every commit. Accumulate completed commits and promote only at an explicit user-approved release checkpoint.
+- At that checkpoint, verify that the newest ready preview deployment metadata matches the release HEAD commit SHA, then promote that existing deployment once with `vercel promote`.
 - Run a new CLI deployment only when Git integration did not create a preview. Never create both a Git preview and a duplicate CLI production build for the same commit.
