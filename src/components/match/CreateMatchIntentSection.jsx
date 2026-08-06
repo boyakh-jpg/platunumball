@@ -242,7 +242,7 @@ export function CreateMatchIntentSection({ context }) {
                     type="button"
                     role="radio"
                     aria-checked={recordComposition === option.id}
-                    className={recordComposition === option.id ? "active" : ""}
+                    className={recordComposition === option.id ? "ui-choice-tile active" : "ui-choice-tile"}
                     onClick={() => update({
                       recordComposition: option.id,
                       hostJoinMode: option.id === "team" ? "team" : "player",
@@ -277,7 +277,7 @@ export function CreateMatchIntentSection({ context }) {
                     type="button"
                     role="radio"
                     aria-checked={recordEntryMode === option.id}
-                    className={recordEntryMode === option.id ? "active" : ""}
+                    className={recordEntryMode === option.id ? "ui-choice-tile active" : "ui-choice-tile"}
                     onClick={() => update({ recordEntryMode: option.id })}
                   >
                     <strong>{option.label}</strong>
@@ -295,7 +295,7 @@ export function CreateMatchIntentSection({ context }) {
                   type="button"
                   role="radio"
                   aria-checked={draft.visibility !== "public"}
-                  className={`has-icon${draft.visibility !== "public" ? " active" : ""}`}
+                  className={`ui-choice-tile has-icon${draft.visibility !== "public" ? " active" : ""}`}
                   onClick={() => update({ visibility: "private" })}
                 >
                   <Lock size={19} />
@@ -308,7 +308,7 @@ export function CreateMatchIntentSection({ context }) {
                   type="button"
                   role="radio"
                   aria-checked={draft.visibility === "public"}
-                  className={`has-icon${draft.visibility === "public" ? " active" : ""}`}
+                  className={`ui-choice-tile has-icon${draft.visibility === "public" ? " active" : ""}`}
                   onClick={() => update({ visibility: "public" })}
                 >
                   <Globe2 size={19} />

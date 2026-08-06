@@ -849,10 +849,8 @@ test("같은 행의 랜딩 칸과 생성 control은 같은 폭과 높이를 사�
 });
 
 test("매칭과 기록 생성 선택 영역은 같은 제목과 버튼 타이포그래피를 사용한다", () => {
-  assert.match(
-    courtControlStyles,
-    /\.match-intent-preset-grid > button\s*\{[^}]*font:\s*inherit;/,
-  );
+  assert.match(matchCreationWizardSource, /className=\{purposeValue === option\.id \? "ui-choice-tile active" : "ui-choice-tile"\}/);
+  assert.match(matchCreationWizardSource, /className=\{active \? "ui-choice-tile active" : "ui-choice-tile"\}/);
   assert.match(
     courtControlStyles,
     /\.create-match-page \.create-choice-heading\s*\{[^}]*font-size:\s*var\(--create-choice-heading-font-size\);[^}]*font-weight:\s*900;/,
@@ -863,7 +861,7 @@ test("매칭과 기록 생성 선택 영역은 같은 제목과 버튼 타이포
   );
   assert.doesNotMatch(courtControlStyles, /\.create-match-page\s*\{[^}]*--(?:button-secondary|ui-button)-bg:/);
   assert.doesNotMatch(courtControlStyles, /html\[data-theme\] \.create-match-page \.button-secondary/);
-  assert.match(courtControlStyles, /\.match-intent-preset-grid > button\s*\{[^}]*background:\s*var\(--surface-3\);/);
+  assert.doesNotMatch(courtControlStyles, /\.match-intent-preset-grid > button(?:\.active)?\s*\{[^}]*(?:background|border(?:-color|-radius)?):/);
   assert.match(
     courtControlStyles,
     /\.create-match-page \.create-mode-grid button em,[\s\S]*?font-size:\s*var\(--create-choice-option-copy-font-size\);[\s\S]*?line-height:\s*1\.45;/,

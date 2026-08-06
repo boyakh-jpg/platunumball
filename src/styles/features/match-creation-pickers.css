@@ -117,33 +117,14 @@ label {
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: var(--space-5);
-  border: var(--ui-stroke-width) solid var(--line);
-  border-radius: var(--radius);
-  background: var(--surface-2);
-  color: var(--text);
-  cursor: pointer;
-  font: inherit;
   padding: 12px;
   text-align: left;
-}
-.create-mode-grid button.active {
-  border-color: rgba(70, 224, 182, 0.44);
-  background: rgba(70, 224, 182, 0.1);
-}
-.create-mode-grid button > svg {
-  color: var(--muted);
-}
-.create-mode-grid button.active > svg {
-  color: #fff;
 }
 .create-mode-grid span,
 .create-public-note {
   display: grid;
   min-width: 0;
   gap: var(--space-2);
-}
-.create-mode-grid strong {
-  color: var(--text);
 }
 .create-mode-grid em,
 .create-public-note span {

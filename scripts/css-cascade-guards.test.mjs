@@ -628,14 +628,17 @@ test("native text controls keep one primitive visual owner", () => {
   assert.deepEqual(duplicateOwners, []);
 });
 
-test("page tab buttons keep one primitive visual owner", () => {
+test("page tabs and choice tiles keep one primitive visual owner", () => {
   const protectedAncestors = [
     "rank-profile-tabs",
     "admin-section-tabs",
     "profile-record-folder-tabs",
     "profile-icon-group-tabs",
     "emblem-source-grid",
+    "create-mode-grid",
+    "match-intent-preset-grid",
   ];
+  const layoutSizedChoices = new Set(["create-mode-grid", "match-intent-preset-grid"]);
   const visualProperties = new Set([
     "background",
     "background-color",
@@ -657,14 +660,14 @@ test("page tab buttons keep one primitive visual owner", () => {
 
   for (const file of styleDirectoryCssFiles.filter((entry) => !entry.replaceAll("\\", "/").includes("/primitives/"))) {
     parseCss(file).walkRules((rule) => {
-      const ownsProtectedButton = (rule.selectors ?? [rule.selector]).some((selector) => {
+      const protectedAncestor = protectedAncestors.find((className) => (rule.selectors ?? [rule.selector]).some((selector) => {
         const normalized = normalizeSelector(selector);
-        return protectedAncestors.some((className) => normalized.includes(`.${className}`))
-          && interactiveBranch.test(normalized);
-      });
-      if (!ownsProtectedButton) return;
+        return normalized.includes(`.${className}`) && interactiveBranch.test(normalized);
+      }));
+      if (!protectedAncestor) return;
       rule.walkDecls((declaration) => {
         if (!visualProperties.has(declaration.prop)) return;
+        if (layoutSizedChoices.has(protectedAncestor) && ["min-height", "padding", "padding-block", "padding-inline"].includes(declaration.prop)) return;
         duplicateOwners.push(`${file}:${declaration.source.start.line} ${rule.selector} ${declaration.prop}`);
       });
     });

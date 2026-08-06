@@ -201,6 +201,9 @@ button.ui-choice-tile:is(.active, .selected),
   background: var(--button-primary-bg);
   color: #fff;
 }
+button.ui-choice-tile:is(.active, .selected) :is(svg, strong, span, em) {
+  color: inherit;
+}
 .provider-test,
 .create-submit-row .button:not(.button-secondary) {
   background: var(--button-primary-bg);

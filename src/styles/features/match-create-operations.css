@@ -192,18 +192,15 @@
   min-height: 74px;
   align-content: center;
   gap: 5px;
-  border: var(--ui-stroke-width) solid var(--ui-control-border);
-  border-radius: var(--ui-control-radius);
-  background: var(--surface-3);
-  color: var(--text);
-  cursor: pointer;
-  font: inherit;
   padding: 10px 12px;
   text-align: left;
 }
 
-.match-intent-preset-grid > button span {
+.match-intent-preset-grid > button:not(.active) > span {
   color: var(--muted);
+}
+
+.match-intent-preset-grid > button > span {
   font-size: 0.78rem;
   line-height: 1.35;
 }
@@ -215,7 +212,7 @@
   padding: 12px;
 }
 
-.match-intent-preset-grid > button.has-icon > svg {
+.match-intent-preset-grid > button.has-icon:not(.active) > svg {
   color: var(--muted);
 }
 
@@ -226,16 +223,22 @@
 }
 
 .match-intent-preset-grid > button.has-icon strong {
-  color: var(--text);
   font-size: var(--control-font-size);
 }
 
+.match-intent-preset-grid > button.has-icon:not(.active) strong {
+  color: var(--text);
+}
+
 .match-intent-preset-grid > button.has-icon em {
-  color: var(--muted);
   font-size: 0.8rem;
   font-style: normal;
   font-weight: 850;
   line-height: 1.45;
+}
+
+.match-intent-preset-grid > button.has-icon:not(.active) em {
+  color: var(--muted);
 }
 
 .create-match-page :is(.create-mode-grid, .match-intent-preset-grid) button strong {
@@ -250,15 +253,6 @@
   font-size: var(--create-choice-option-copy-font-size);
   font-weight: 850;
   line-height: 1.45;
-}
-
-.match-intent-preset-grid > button.has-icon.active > svg {
-  color: var(--rb-orange);
-}
-
-.match-intent-preset-grid > button.active {
-  border-color: var(--rb-orange);
-  background: color-mix(in srgb, var(--rb-orange) 10%, var(--ui-control-bg));
 }
 
 .match-roster-policy-fields {

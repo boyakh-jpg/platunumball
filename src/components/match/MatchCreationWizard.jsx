@@ -115,7 +115,7 @@ export function MatchIntentPresetSelector({ matchPurpose, formationMode, onPurpo
               type="button"
               role="radio"
               aria-checked={purposeValue === option.id}
-              className={purposeValue === option.id ? "active" : ""}
+              className={purposeValue === option.id ? "ui-choice-tile active" : "ui-choice-tile"}
               title={option.description}
               onClick={() => {
                 if (purposeValue !== option.id) onPurposeSelect(option.id);
@@ -138,7 +138,7 @@ export function MatchIntentPresetSelector({ matchPurpose, formationMode, onPurpo
                 type="button"
                 role="radio"
                 aria-checked={active}
-                className={active ? "active" : ""}
+                className={active ? "ui-choice-tile active" : "ui-choice-tile"}
                 disabled={formationLocked && option.id === "pickup"}
                 onClick={() => {
                   if (option.id !== formationMode) onFormationSelect(option.id);
