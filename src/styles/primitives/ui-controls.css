@@ -96,6 +96,7 @@ html[data-theme] .app-main :is(.recent-match-row.result-d, .rank-match-draw) {
 
 .ui-button {
   display: inline-flex;
+  height: var(--ui-button-height);
   align-items: center;
   justify-content: center;
   gap: 8px;
@@ -124,6 +125,7 @@ html[data-theme] .app-main :is(.recent-match-row.result-d, .rank-match-draw) {
 }
 
 .ui-button.ui-button-sm {
+  height: var(--ui-button-height-sm);
   min-height: var(--ui-button-height-sm);
   padding-inline: var(--ui-button-padding-x-sm);
 }

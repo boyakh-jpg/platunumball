@@ -32,10 +32,13 @@
   flex: 1 1 0;
 }
 
-.create-match-info-grid.is-standard-room input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+.create-match-info-grid.is-standard-room input:not([type="checkbox"]):not([type="radio"]):not([type="color"]) {
+  min-height: var(--ui-segmented-field-height);
+}
+
 .create-match-info-grid.is-standard-room select,
 .match-roster-policy-fields > label > select {
-  min-height: var(--ui-segmented-field-height);
+  min-height: var(--ui-button-height);
 }
 
 .match-creation-wizard-nav {

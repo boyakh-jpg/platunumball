@@ -689,6 +689,10 @@ test("공용 CTA는 ui-button-block 하나로 너비만 확장한다", () => {
 
 test("공용 버튼과 badge 라벨은 한 줄을 유지한다", () => {
   assert.match(primitiveStyles, /\.ui-button\s*\{[\s\S]*?white-space:\s*nowrap;/);
+  assert.match(primitiveStyles, /\.ui-button\s*\{[\s\S]*?height:\s*var\(--ui-button-height\);/);
+  assert.match(read("src/styles/primitives/shared-controls.css"), /select\s*\{\s*height:\s*var\(--ui-button-height\);/);
+  assert.match(primitiveStyles, /\.ui-button\.ui-button-sm\s*\{[\s\S]*?height:\s*var\(--ui-button-height-sm\);/);
+  assert.match(read("src/styles/features/match-create-operations.css"), /\.create-match-info-grid\.is-standard-room select,[\s\S]*?min-height:\s*var\(--ui-button-height\);/);
   assert.match(primitiveStyles, /\.ui-badge\s*\{[\s\S]*?flex:\s*0 0 auto;[\s\S]*?white-space:\s*nowrap;/);
   assert.match(primitiveStyles, /\.ui-action-row > \*\s*\{\s*flex:\s*0 0 auto;\s*\}/);
   assert.match(tokenStyles, /--ui-button-bg:\s*var\(--button-secondary-bg\);/);
@@ -833,7 +837,11 @@ test("같은 행의 랜딩 칸과 생성 control은 같은 폭과 높이를 사�
   assert.match(landingStats, /max-width:\s*none;/);
   assert.match(
     courtControlStyles,
-    /\.create-match-info-grid\.is-standard-room input:not\(\[type="checkbox"\]\):not\(\[type="radio"\]\):not\(\[type="color"\]\),\s*\.create-match-info-grid\.is-standard-room select,\s*\.match-roster-policy-fields > label > select\s*\{[^}]*min-height:\s*var\(--ui-segmented-field-height\);/,
+    /\.create-match-info-grid\.is-standard-room input:not\(\[type="checkbox"\]\):not\(\[type="radio"\]\):not\(\[type="color"\]\)\s*\{[^}]*min-height:\s*var\(--ui-segmented-field-height\);/,
+  );
+  assert.match(
+    courtControlStyles,
+    /\.create-match-info-grid\.is-standard-room select,\s*\.match-roster-policy-fields > label > select\s*\{[^}]*min-height:\s*var\(--ui-button-height\);/,
   );
   assert.match(
     courtControlStyles,
