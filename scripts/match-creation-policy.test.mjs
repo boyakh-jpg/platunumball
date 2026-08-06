@@ -1345,7 +1345,7 @@ test("CreateMatch persists bench capacity at top level and inside rules", () => 
   assert.match(wizardSource, /vestsProvided:\s*event\.target\.value === "provided"/);
   assert.doesNotMatch(wizardSource, /type="checkbox" checked=\{policy\.vestsProvided\}/);
   const ruleSelectorSource = fs.readFileSync(path.join(root, "src/components/match/RuleSelector.jsx"), "utf8");
-  assert.match(ruleSelectorSource, /BOXTIER 경기시계 사용 여부/);
+  assert.match(ruleSelectorSource, /BOXTIER 모바일 전광판 사용 여부/);
   assert.match(ruleSelectorSource, /rules\.gameClockEnabled && rules\.clockMode === "running"/);
   assert.match(ruleSelectorSource, /winByTwo:\s*event\.target\.value === "enabled"/);
   assert.doesNotMatch(ruleSelectorSource, /type="checkbox" checked=\{rules\.winByTwo\}/);

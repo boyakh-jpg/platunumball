@@ -83,6 +83,19 @@ export function getRoomChangeCancellationWaiver(room = {}, now = new Date()) {
 export function getRoomCancellationPolicy(room = {}, now = new Date()) {
   const scheduledAt = getMatchScheduledDate(room);
   const nowAt = toValidDate(now);
+  if (room.rules?.rosterNeedsFill === true) {
+    const hoursUntilStart = scheduledAt && nowAt
+      ? (scheduledAt.getTime() - nowAt.getTime()) / 3_600_000
+      : null;
+    return {
+      allowed: true,
+      penalty: 0,
+      waived: true,
+      waiverReason: "participant_shortage",
+      hoursUntilStart,
+      code: "",
+    };
+  }
   const waiver = getRoomChangeCancellationWaiver(room, nowAt ?? now);
   if (!scheduledAt || !nowAt) {
     return { allowed: true, penalty: 0, waived: waiver.waived, waiverReason: waiver.reason, hoursUntilStart: null };
@@ -118,8 +131,10 @@ export function getRoomCancellationConfirmMessage(actionLabel = "경기 취소",
   const penalty = Math.max(0, Number(policy.penalty ?? 0));
   const consequence = penalty > 0
     ? `지금 취소하면 신뢰도 ${penalty}점이 차감됩니다.`
-    : policy.waived
-      ? "일정 변경 동의가 성립되지 않은 면책 취소라 신뢰도는 차감되지 않습니다."
+    : policy.waiverReason === "participant_shortage"
+      ? "참가 취소로 출전 인원이 부족해 방장 신뢰도는 차감되지 않습니다."
+      : policy.waived
+        ? "일정 변경 동의가 성립되지 않은 면책 취소라 신뢰도는 차감되지 않습니다."
       : "현재 취소 신뢰도 패널티는 없습니다.";
   return `${actionLabel}할까요?\n\n${consequence}\n취소한 방은 복구되지 않습니다. 수정이 필요하면 취소 후 '같은 설정으로 다시 만들기'로 새 방을 만들어 주세요.`;
 }

@@ -79,8 +79,8 @@ export default function RuleSelector({ draft, onChange }) {
       </div>
       <fieldset className="match-rule-custom-fields" disabled={!customRules}>
       <div className="match-clock-preset-row">
-        <span>BOXTIER 경기시계</span>
-        <div className="ui-segmented-control segmented-control compact-segments" role="radiogroup" aria-label="BOXTIER 경기시계 사용 여부">
+        <span>BOXTIER 모바일 전광판</span>
+        <div className="ui-segmented-control segmented-control compact-segments" role="radiogroup" aria-label="BOXTIER 모바일 전광판 사용 여부">
           <button
             type="button"
             role="radio"
@@ -102,7 +102,7 @@ export default function RuleSelector({ draft, onChange }) {
         </div>
       </div>
       {!rules.gameClockEnabled ? (
-        <small className="match-rule-summary">경기 진행과 점수 기록은 가능합니다. 경쟁전은 경기시계 사용 여부를 서버에서 검증합니다.</small>
+        <small className="match-rule-summary">경기 진행과 점수 기록은 가능합니다. 경쟁전은 모바일 전광판의 경기시계 사용 여부를 서버에서 검증합니다.</small>
       ) : null}
       {["public", "tournament"].includes(draft.visibility) && rules.gameClockEnabled ? (
         <label className="switch-line">

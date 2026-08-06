@@ -2,7 +2,7 @@ export function buildRecruitingRoomMatchModel(context) {
   const {
     MATCH_SIDES, ROOM_BODY_MODES, activeInviteDraftRaw, activeSelfSlotDraftRaw, app, attendanceStartStatus,
     canChat, canUserResolveMatchDispute, currentUserIsAdmin, entryPoint, getMatchManualFinalizationStatus, getMatchRecordPlayerIds,
-    getMatchRecordWindow, getMatchReservePlayerIds, getMatchResultEntryPermission, getMatchRoomPhase, getMatchSideLeaderId, getMatchSidePlayerIds,
+    getMatchRecordWindow, getMatchParticipationCancellationState, getMatchReservePlayerIds, getMatchResultEntryPermission, getMatchRoomPhase, getMatchSideLeaderId, getMatchSidePlayerIds,
     getMissingStartAttendanceIds, getOpenMatchDisputes, getPickupRerollState, getPostgameRecordVerification, getRecruitingBenchCapacity, getRecruitingPostTerminalState,
     getRecruitingRoomStatus, getRecruitingSideCapacity, getRecruitingSideLeaderId, getTeamCaptainId, getTournamentRosterTeam, individualOnlyRoom,
     isMatchPregameSlotManagementOpen, isMatchRecordMatch, isMatchRecordParticipantSetupOpen, isMatchRecordParticipantSetupRequired, isMatchReferee, isPersonalRecordMatch,
@@ -248,6 +248,9 @@ const roomQueueStatus = getRecruitingRoomStatus(lobby, { post: selectedPost, myE
             ? "심판 기록 제출"
             : "내 득점 저장";
         const canCancelSourceMatch = Boolean(matchRoom && sourceMatch && ["contract", "agreed"].includes(sourceMatch.status) && (sourceMatchStarted || sourceMatch.endedAt || sourceMatch.result ? currentUserCanOperateStartedSourceMatch : mine));
+        const sourceParticipationCancellation = sourceMatch
+          ? getMatchParticipationCancellationState(sourceMatch, app.currentUser.id)
+          : { allowed: false, side: "", reserve: false };
         const canDeleteSourceSoloRecord = Boolean(matchRoom && isPersonalRecordMatch(sourceMatch) && sourceMatch.createdBy === app.currentUser.id && sourceMatch.status !== "cancelled");
         const sourceMatchRecordWindow = sourceMatch ? getMatchRecordWindow(sourceMatch) : null;
         const sourceOpenDisputes = sourceMatch ? getOpenMatchDisputes(sourceMatch) : [];
@@ -302,7 +305,7 @@ const roomQueueStatus = getRecruitingRoomStatus(lobby, { post: selectedPost, myE
     sourceMatchMissingStartAttendanceIds, pickupAssignmentSideCapacity, pickupAssignmentBenchCapacity, pickupAssignmentAttendanceReady, pickupAssignmentSidesComplete, pickupRerollState,
     currentUserCheckedInForPickup, canRequestPickupReroll, pickupRerollTrustReady, canStartSourceMatch, sourceMatchStartButtonLabel, sourceMatchStartButtonTitle,
     canRequestRefereeAbsence, canConfirmRefereeAbsence, canEndSourceMatch, sourceManualFinalizationStatus, canFinalizeSourceMatch, sourceMatchResultEntryPermission,
-    canReviewSourceMatch, canSubmitSourceMatchLiveResult, canSubmitSourceMatchPostgameResult, getEditableSourceMatchStatFields, sourceMatchResultSubmitLabel, canCancelSourceMatch,
+    canReviewSourceMatch, canSubmitSourceMatchLiveResult, canSubmitSourceMatchPostgameResult, getEditableSourceMatchStatFields, sourceMatchResultSubmitLabel, canCancelSourceMatch, sourceParticipationCancellation,
     canDeleteSourceSoloRecord, sourceMatchRecordWindow, sourceOpenDisputes, sourceHasOwnOpenDispute, canManageSourceMatchSubstitutionSide, sourceMatchApprovalOpen,
     canRefreshSourceMatchReview, canRequestSourceMatchPointDispute, showSourceMatchRecordSummary, canShowSourceMatchRecordEditor, sourceMatchRecordBoardFirst,
   };

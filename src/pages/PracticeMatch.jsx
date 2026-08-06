@@ -236,7 +236,7 @@ export default function PracticeMatch({ app }) {
         actorId === match.refereeId ? "심판" : "",
         activePlayerIds.includes(actorId) ? "출전 선수" : "",
         reservePlayerIds.includes(actorId) ? "후보 선수" : "",
-        actorId === clockControllerId ? "경기시계 담당" : "",
+        actorId === clockControllerId ? "모바일 전광판 담당" : "",
       ].filter(Boolean);
       return { id: actorId, label: `${user?.name || "연습 선수"} · ${roles.join("·")}` };
     });
@@ -323,7 +323,7 @@ export default function PracticeMatch({ app }) {
       ) : null}
       {canSwitchToClockController ? (
         <Button type="button" size="sm" onClick={() => selectPracticeActor(clockControllerId)}>
-          경기시계 담당 화면으로 전환
+          모바일 전광판 담당 화면으로 전환
         </Button>
       ) : null}
       {helperLabel ? <Button type="button" size="sm" onClick={runHelper}>{helperLabel}</Button> : null}

@@ -5,8 +5,7 @@ export { toFiniteNumber, toTournamentRow, toTournamentTeamRows, persistTournamen
 export const configuredDiscordQueueTimeoutMs = Number(process.env.DISCORD_QUEUE_TIMEOUT_MS || 2500);
 
 export const DISCORD_QUEUE_TIMEOUT_MS = Number.isFinite(configuredDiscordQueueTimeoutMs) && configuredDiscordQueueTimeoutMs > 0
-  ? configuredDiscordQueueTimeoutMs
-  : 2500;
+  ? configuredDiscordQueueTimeoutMs : 2500;
 
 export function reject(statusCode, message) {
   const error = new Error(message);
@@ -184,6 +183,7 @@ export const PARTICIPANT_MATCH_ACTIONS = new Set([
   "submitMatchThumbs",
   "disputeMatch",
   "respondMatchScheduleProposal",
+  "cancelMatchParticipation",
 ]);
 
 export const REFEREE_ELIGIBILITY_ACTIONS = new Set([
@@ -388,6 +388,7 @@ export const SQL_REDUCER_MATCH_ACTIONS = new Set([
   "agreeMatch",
   "approveMatch",
   "cancelMatch",
+  "cancelMatchParticipation",
   "checkInMatchPlayer",
   "confirmPickupSideAssignment",
   "generatePickupSideAssignment",
@@ -424,7 +425,7 @@ export function isMissingSqlMatchReducer(error = {}) {
     error?.code === "PGRST202" ||
     message.includes("rankball_match_agree_action") ||
     message.includes("rankball_match_approval_action") ||
-    message.includes("rankball_match_checkin_action") ||
+    message.includes("rankball_match_checkin_action") || message.includes("rankball_match_participation_cancel_action") ||
     message.includes("rankball_match_confirm_pickup_assignment") ||
     message.includes("rankball_match_generate_pickup_assignment") ||
     message.includes("rankball_match_finalize_locked") ||
@@ -467,6 +468,7 @@ export function canUseSqlMatchActionWithoutSnapshot(operation = {}) {
     "agreeMatch",
     "approveMatch",
     "cancelMatch",
+    "cancelMatchParticipation",
     "checkInMatchPlayer",
     "confirmPickupSideAssignment",
     "generatePickupSideAssignment",

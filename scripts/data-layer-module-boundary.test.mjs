@@ -64,7 +64,7 @@ test("repository와 useAppData 호환 배럴은 공개 export만 유지한다", 
   assert.ok(appDataSource.split(/\r?\n/u).length <= 30);
   assert.doesNotMatch(repositorySource, /\b(?:function|class)\s+[A-Za-z_$]/u);
   assert.doesNotMatch(appDataSource, /\b(?:function|class)\s+[A-Za-z_$]/u);
-  assert.equal(Object.keys(repository).length, 128);
+  assert.equal(Object.keys(repository).length, 129);
   assert.equal(typeof repository.rejectCourtRequest, "function");
   assert.equal("loadNormalizedDirectoryStateFromClient" in repository, false);
   assert.equal("loadNormalizedMatchDetailFromClient" in repository, false);
@@ -124,6 +124,7 @@ test("데이터 계층 책임 모듈은 순환과 브라우저-서버 역참조�
   assert.deepEqual(repository.names.filter((name) => name.startsWith("matches/")), [
     "matches/feedback.js",
     "matches/lifecycle.js",
+    "matches/participationCancellation.js",
     "matches/pickup.js",
     "matches/recordParticipants.js",
     "matches/result.js",

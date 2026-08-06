@@ -38,6 +38,7 @@ export const PRACTICE_REDUCER_ACTIONS = new Set([
   "agreeMatch",
   "approveMatch",
   "cancelMatch",
+  "cancelMatchParticipation",
   "cancelRecruitingParticipation",
   "checkInMatchPlayer",
   "closeRecruitingPost",

@@ -4,7 +4,7 @@ import { getLoginPath } from "../../lib/profileSetup.js";
 
 export function RecruitingRoomActionSection({ context }) {
   const {
-    ApprovalPanel, Button, MATCH_DISPUTE_REASON_OPTIONS, MatchRecommendationPanel, OTHER_MATCH_DISPUTE_REASON, PLAYER_POSITIONS,
+    ApprovalPanel, Button, CircleHelp, MATCH_DISPUTE_REASON_OPTIONS, MatchRecommendationPanel, OTHER_MATCH_DISPUTE_REASON, PLAYER_POSITIONS,
     PLAYER_STAT_FIELDS, RefreshCw, RotateCcw, SIDE_LABELS, ShieldCheck, SourceMatchDisputeReviewPanel,
     SourceMatchDisputeEditor, SourceMatchRecordSummary, Swords, TeamMemberPicker, TierBadge, UserRound,
     UsersRound, XCircle, alreadyApplied, app, autoBalancedIndividualRoom, benchCapacity, canCancelSourceMatch,
@@ -18,9 +18,10 @@ export function RecruitingRoomActionSection({ context }) {
     paidCourtJoinPrompt, pickupPoolMode, recruitingRoomConfirmed, recruitingRoomTerminalStatus, refreshSourceMatchReview, remakeRoom,
     requestRecruitingCancellation, requestSourceMatchCancellation, requestSourceMatchFinalization, roomCancellationPolicy, roomQueueStatus, roomTimingStatus,
     ruleAcknowledgementPending, scheduleChangePending, selectedJoinPlayerIds, selectedJoinReserveIds, selectedJoinTeam, selectedJoinTeamEligibility,
-    selectedMatchRules, selectedPost, setPaidCourtJoinPrompt, setSourceDisputeDraft, showSourceMatchRecordSummary, sidePartyJoinOptions,
+    selectedMatchRules, selectedPost, setPaidCourtJoinPrompt, setRoomHelpOpen, setSourceDisputeDraft, showSourceMatchRecordSummary, sidePartyJoinOptions,
     setSourceMatchDraftScore, sourceDisputeDraft, sourceDisputePending, sourceDisputeStatus, sourceFinalAuthorityLabel, sourceHasOwnOpenDispute, sourceMatch, sourceMatchAction, sourceMatchActionPending, sourceMatchApprovalOpen,
     sourceMatchCancelActionLabel, sourceMatchIsRecordRoom, sourceMatchRecordBoardFirst, sourceMatchRecordWindow, sourceMatchResultSubmitLabel, sourceMatchReviewRefreshing, sourceMatchSideName,
+    sourceParticipationCancellation,
     sourceMatchResultEntryPermission, sourceMatchStartButtonLabel, sourceMatchStartButtonTitle, sourceOpenDisputes, sourceRoomReadOnly, submitJoin, submitSourceDispute,
     teamOnlyRoom, teamRoomHasJoinableSide, updateJoinDraft, userById, runSourceMatchAction,
   } = context;
@@ -35,7 +36,12 @@ export function RecruitingRoomActionSection({ context }) {
                   </div>
                 ) : matchRoom ? (
                   <div className="arena-owner-panel">
-                    <strong>{sourceMatchAction.label}</strong>
+                    <div className="arena-owner-panel-heading">
+                      <strong>{sourceMatchAction.label}</strong>
+                      <Button type="button" size="sm" variant="secondary" className="arena-room-help-button" aria-label="현재 단계 도움말" onClick={() => setRoomHelpOpen(true)}>
+                        <CircleHelp size={18} />
+                      </Button>
+                    </div>
                     <span>{sourceMatchAction.detail}</span>
                     {sourceMatchApprovalOpen && sourceMatchRecordWindow?.disputeClosesAt ? (
                       <RecruitingRoomDisputeCountdown closesAt={sourceMatchRecordWindow.disputeClosesAt} />
@@ -209,6 +215,16 @@ export function RecruitingRoomActionSection({ context }) {
                         onClick={requestSourceMatchCancellation}
                       >
                         {sourceMatchCancelActionLabel}
+                      </Button>
+                    ) : null}
+                    {!sourceRoomReadOnly && sourceParticipationCancellation.allowed ? (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        className="danger-button"
+                        onClick={() => context.requestMatchParticipationCancellation()}
+                      >
+                        <XCircle size={18} /> 참가 취소
                       </Button>
                     ) : null}
                     {canDeleteSourceSoloRecord ? (

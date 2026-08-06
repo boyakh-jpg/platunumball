@@ -49,7 +49,7 @@ export const baseMatches = [
       statEntryMinutes: STAT_ENTRY_WINDOW_MINUTES,
       disputeMinutes: DISPUTE_WINDOW_MINUTES,
       rules: { targetScore: 21, timeLimit: 1440, winByTwo: false, ball: "7호" },
-      memo: "경기시계 담당자 권한 검증용 live demo.",
+      memo: "모바일 전광판 담당자 권한 검증용 live demo.",
       stakes: "Demo match for live clock access.",
       ranked: true,
       objectionWindow: "2시간",

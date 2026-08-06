@@ -34,3 +34,4 @@ export {
   setMatchRecordTeamRoster,
   setMatchRoomPlayerPlacement,
 } from "./matches/roster.js";
+export { cancelMatchParticipation } from "./matches/participationCancellation.js";

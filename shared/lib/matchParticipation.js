@@ -213,6 +213,44 @@ export function getMatchPlayerPlacement(match = {}, playerId = "") {
   return null;
 }
 
+export function getMatchParticipationCancellationState(
+  match = {},
+  userId = "",
+) {
+  const placement = getMatchPlayerPlacement(match, userId);
+  const recordType = getMatchRecordType(match);
+  const blocked = !userId
+    || !placement
+    || Boolean(match.tournamentId)
+    || recordType !== RECORD_TYPES.match
+    || !["contract", "agreed"].includes(match.status)
+    || Boolean(match.startedAt || match.endedAt || match.result || match.cancelledAt || match.voidedAt);
+  return {
+    allowed: !blocked,
+    side: placement?.side ?? "",
+    reserve: placement?.reserve === true,
+  };
+}
+
+export function getMatchParticipationCancellationPenalty(
+  match = {},
+  policy = {},
+  now = new Date(),
+) {
+  const nowMs = now instanceof Date ? now.getTime() : new Date(now).getTime();
+  const scheduledAt = getMatchScheduledDate(match);
+  const checkinMs = scheduledAt
+    ? scheduledAt.getTime() - (match.rules?.qrAttendanceEnabled === true ? 20 : 10) * MINUTE_MS
+    : Number.NEGATIVE_INFINITY;
+  if (!scheduledAt || nowMs >= checkinMs) {
+    return Math.max(0, Math.min(15, Number(policy.participantCancelCheckinPenalty ?? 4)));
+  }
+  if (scheduledAt.getTime() - nowMs <= 4 * 60 * MINUTE_MS) {
+    return Math.max(0, Math.min(10, Number(policy.participantCancelShortNoticePenalty ?? 2)));
+  }
+  return 0;
+}
+
 export function getReportableMatchUserIds(match = {}) {
   return uniquePlayerIds([
     match.createdBy,

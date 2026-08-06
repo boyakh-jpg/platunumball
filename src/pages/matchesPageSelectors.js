@@ -106,7 +106,7 @@ export function getMatchRoomPost(match, state) {
   const hostTeamId = hostJoinMode === "team" ? (hostParty?.teamId ?? match[hostSide]?.teamId ?? null) : null;
   const hostPlayers = hostJoinMode === "team"
     ? uniquePlayerIds(hostParty?.players?.length ? hostParty.players : match[hostSide]?.players ?? [])
-    : [hostPlayerId].filter(Boolean);
+    : assignedHostSide ? [hostPlayerId] : [];
   const pushPlayerApplicant = (playerId, side, reserve = false, status = "ready") => {
     if (!playerId || playerId === hostPlayerId) return;
     applicants.push({

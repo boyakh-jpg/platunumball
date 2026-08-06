@@ -852,6 +852,20 @@ test("확정 픽업 방모달은 실제 A/B 출전·후보 명단을 그대로 �
       return [...placement.activeIds, ...placement.reserveIds];
     }).filter((playerId) => playerId === "b1").length, 1);
 
+    const organizerOnlyMatch = {
+      ...match,
+      teamB: { players: ["b1", "b2"], teamId: null },
+      reservePlayers: { teamA: ["ra"], teamB: ["rb"] },
+      parties: [],
+      rules: { ...match.rules, participationCancelledIds: ["host"] },
+    };
+    const organizerOnlyLobby = getRecruitingLobby(
+      getMatchRoomPost(organizerOnlyMatch, { ...state, matches: [organizerOnlyMatch] }),
+      state,
+    );
+    assert.equal(organizerOnlyLobby.entries.some((entry) => entry.players.includes("host")), false);
+    assert.deepEqual([...organizerOnlyLobby.sides.teamB.players].sort(), ["b1", "b2"]);
+
     const emptySideMatch = {
       ...match,
       teamB: { players: [], teamId: null },

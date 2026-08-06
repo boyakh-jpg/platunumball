@@ -632,8 +632,8 @@ test("연습 adapter와 화면은 브라우저 저장소나 실서버 호출을 
   assert.match(pageSource, /window\.setInterval\(pollClock, 15_000\)/);
   assert.match(pageSource, /!match\?\.startedAt/);
   assert.match(pageSource, /getMatchReservePlayerIds\(match, "teamA"\)/);
-  assert.match(pageSource, /actorId === clockControllerId \? "경기시계 담당"/);
-  assert.match(pageSource, /경기시계 담당 화면으로 전환/);
+  assert.match(pageSource, /actorId === clockControllerId \? "모바일 전광판 담당"/);
+  assert.match(pageSource, /모바일 전광판 담당 화면으로 전환/);
   assert.match(pageSource, /selectPracticeActor\(clockControllerId\)/);
   assert.doesNotMatch(pageSource, /actorId === statRecorders\.teamA \? "A 기록원"/);
   assert.doesNotMatch(pageSource, /actorId === statRecorders\.teamB \? "B 기록원"/);

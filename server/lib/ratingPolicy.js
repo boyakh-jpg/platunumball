@@ -23,6 +23,8 @@ export const DEFAULT_RATING_POLICY = Object.freeze({
     thumbsDelta: 1,
     refereeAbsencePenalty: 4,
     matchVoidHostPenalty: 2,
+    participantCancelShortNoticePenalty: 2,
+    participantCancelCheckinPenalty: 4,
     falseCourtReportPenalty: 8,
     closeWithApplicantsPenalty: 2,
     closeUnreadyPenalty: 2,
@@ -83,6 +85,8 @@ export const RATING_POLICY_GROUPS = Object.freeze([
       { path: ["trust", "thumbsDelta"], label: "추천 증감", unit: "점", min: 0, max: 5, step: 1 },
       { path: ["trust", "refereeAbsencePenalty"], label: "심판 불참", unit: "점", min: 0, max: 15, step: 1 },
       { path: ["trust", "matchVoidHostPenalty"], label: "경기 무효 처리", unit: "점", min: 0, max: 10, step: 1 },
+      { path: ["trust", "participantCancelShortNoticePenalty"], label: "확정 후 참가 취소", unit: "점", min: 0, max: 10, step: 1 },
+      { path: ["trust", "participantCancelCheckinPenalty"], label: "출석 단계 참가 취소", unit: "점", min: 0, max: 15, step: 1 },
     ],
   },
   {

@@ -5,7 +5,7 @@ export function createRecruitingRoomMatchRenderers(context) {
     ApprovalPanel, MATCH_SIDES, MatchSubstitutionPanel, ReserveLine, SourceMatchDisputeReviewPanel, SourceMatchDisputeEditor,
     SourceMatchRecordSummary, app, benchCapacity, canInviteSideFromRoom, canManageEntry, canManageMatchCheckin,
     canManageSourceMatchSubstitutionSide, canRefreshSourceMatchReview, canResolveSourceMatchDispute, canShowSourceMatchRecordEditor, changeApprovalSource, currentUserIsSourceReferee,
-    getEditableSourceMatchStatFields, getMatchCancelCopy, getMatchRecordCompositionLabel, getRecruitingDisplayTitle, getRoomCancellationActionLabel, getRoomCancellationPolicy,
+    getEditableSourceMatchStatFields, getMatchCancelCopy, getMatchParticipationCancellationPenalty, getMatchRecordCompositionLabel, getRecruitingDisplayTitle, getRoomCancellationActionLabel, getRoomCancellationPolicy,
     getRoomCompetitionLabel, getRoomEditAvailability, getRoomRemakeDraft, getRoomTitleSizeClass, getRoomVisibilityLabel, getTournamentMatchDisplayTitle,
     individualOnlyRoom, isMatchSideTeamParty, isPartyEntry, lobby, matchRoom, mine,
     moveCandidate, navigate, onRemake, openInviteSlot, openSelfSlotAction, playingIds,
@@ -153,6 +153,16 @@ const renderSourceMatchRecordBoard = () => {
             error: "",
           });
         };
+        const requestMatchParticipationCancellation = () => {
+          setRoomCancellationTarget({
+            kind: "participation",
+            id: sourceMatch.id,
+            label: "참가 취소",
+            penalty: getMatchParticipationCancellationPenalty(sourceMatch, app.state.settings?.ratingPolicy?.trust),
+            reason: "",
+            error: "",
+          });
+        };
         const submitRoomCancellation = async (event) => {
           event.preventDefault();
           if (!roomCancellationTarget || roomCancellationPending) return;
@@ -165,7 +175,9 @@ const renderSourceMatchRecordBoard = () => {
           try {
             const result = roomCancellationTarget.kind === "match"
               ? await app.actions.cancelMatch(roomCancellationTarget.id, reason)
-              : await app.actions.closeRecruitingPost(roomCancellationTarget.id, reason);
+              : roomCancellationTarget.kind === "participation"
+                ? await app.actions.cancelMatchParticipation(roomCancellationTarget.id, reason)
+                : await app.actions.closeRecruitingPost(roomCancellationTarget.id, reason);
             if (!result || result?.ok === false) {
               setRoomCancellationTarget((current) => ({ ...current, error: "취소하지 못했습니다. 잠시 후 다시 시도해 주세요." }));
               return;
@@ -222,7 +234,7 @@ const renderSourceMatchRecordBoard = () => {
     renderSourceMatchRecordBoard, renderMatchSubstitutionPanel, renderRoomReserveLine, canMoveMatchSides, canOperateSourceRoomRules, roomEditAvailability,
     roomEditAvailable, roomCancellationPolicy, roomCompetitionLabel, roomDisplayTitle, roomTitleSizeClass, roomVisibilityLabel,
     roomVisibilityTone, sourceTeamSideCount, lobbyTeamEntryCount, teamMatchSideLocked, recordCompositionLabel, roomMatchTypeLabel,
-    sourceMatchCancelCopy, sourceMatchCancelActionLabel, requestSourceMatchCancellation, requestRecruitingCancellation, submitRoomCancellation, cancellationReasonText,
+    sourceMatchCancelCopy, sourceMatchCancelActionLabel, requestSourceMatchCancellation, requestRecruitingCancellation, requestMatchParticipationCancellation, submitRoomCancellation, cancellationReasonText,
     canRemakeRoom, remakeRoom,
   };
 }

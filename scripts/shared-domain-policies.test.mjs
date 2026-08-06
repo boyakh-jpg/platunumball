@@ -142,6 +142,8 @@ import {
   getActualMatchPlayerIds,
   getActualMatchPlayerSideName,
   getMatchParticipationType,
+  getMatchParticipationCancellationPenalty,
+  getMatchParticipationCancellationState,
   getMatchScoreEditableSides,
   getMatchResultEntryPermission,
   hasMatchScoreboardOperators,
@@ -218,6 +220,27 @@ const readSource = (path) => readFile(new URL(path, root), "utf8");
 const readRecruitingPageSource = () => readSourceGroup(readSource, RECRUITING_PAGE_SOURCE_PATHS);
 const readHomePageSource = () => readSourceGroup(readSource, HOME_PAGE_SOURCE_PATHS);
 const readCreateMatchPageSource = () => readSourceGroup(readSource, CREATE_MATCH_PAGE_SOURCE_PATHS);
+
+test("confirmed match participant cancellation keeps phase and penalty policy", () => {
+  const match = {
+    status: "agreed",
+    scheduledAt: "2026-08-10T10:00:00.000Z",
+    teamA: { players: ["player-1"] },
+    teamB: { players: ["player-2"] },
+    rules: { qrAttendanceEnabled: true },
+  };
+
+  assert.deepEqual(getMatchParticipationCancellationState(match, "player-1"), {
+    allowed: true,
+    side: "teamA",
+    reserve: false,
+  });
+  assert.equal(getMatchParticipationCancellationState({ ...match, startedAt: "2026-08-10T10:00:00.000Z" }, "player-1").allowed, false);
+  assert.equal(getMatchParticipationCancellationState({ ...match, tournamentId: "tournament-1" }, "player-1").allowed, false);
+  assert.equal(getMatchParticipationCancellationPenalty(match, {}, "2026-08-10T05:00:00.000Z"), 0);
+  assert.equal(getMatchParticipationCancellationPenalty(match, {}, "2026-08-10T06:00:00.000Z"), 2);
+  assert.equal(getMatchParticipationCancellationPenalty(match, {}, "2026-08-10T09:45:00.000Z"), 4);
+});
 
 async function readGlobalStyles() {
   return readCssTree("src/styles/globals.css");
@@ -2651,7 +2674,7 @@ test("referee rulebook matches current FIBA and BOXTIER operating rules", async 
   assert.match(rulebookText, /심판 경기는 배정 심판, 무심판 경기는 방장이 판정/);
   assert.match(rulebookText, /사용 안 함·24초·30초·60초/);
   assert.match(rulebookText, /자동 공격권 판정과 14초 자동 재설정은 지원하지 않습니다/);
-  assert.match(rulebookText, /현재 경기시계 담당자는 담당 기기에 연결된 워치·비오디오 미디어 리모컨의 재생·일시정지 입력으로 샷클락을 초기화/);
+  assert.match(rulebookText, /현재 모바일 전광판 담당자는 담당 기기에 연결된 워치·비오디오 미디어 리모컨의 재생·일시정지 입력으로 샷클락을 초기화/);
   assert.match(rulebookText, /이어폰·헤드셋은 부저 출력과 충돌할 수 있어 지원 대상으로 안내하지 않습니다/);
   assert.match(rulebookText, /무심판 경기에는 개인활약 입력과 빈 0 스탯을 만들지 않습니다/);
   assert.match(rulebookText, /지각 QR만 찍고 실제 교체하지 않은 선수는 실제 출전 기록·개인 전적·MMR 대상이 아닙니다/);

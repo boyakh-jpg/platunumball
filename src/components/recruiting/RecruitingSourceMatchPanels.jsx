@@ -113,10 +113,10 @@ export function getSourceMatchAction(match, userId, teams = [], userById = {}) {
     return {
       label: "경기시작",
       detail: match.refereeId
-        ? "배정 심판만 팀 점수와 개인 스탯을 기록합니다. 경기시계 담당자는 시계와 샷클락만 조작합니다."
+        ? "배정 심판만 팀 점수와 개인 스탯을 기록합니다. 모바일 전광판 담당자는 경기시계와 샷클락만 조작합니다."
         : match.rules?.gameClockEnabled === false
           ? "방장이 경기 종료 전까지 양쪽 팀 점수를 기록합니다."
-          : "경기시계 담당자가 경기 종료 전까지 양쪽 팀 점수를 기록합니다.",
+          : "모바일 전광판 담당자가 경기 종료 전까지 양쪽 팀 점수를 기록합니다.",
     };
   }
   if (phase.phase === "postgame") {

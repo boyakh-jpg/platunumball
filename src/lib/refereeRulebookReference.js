@@ -141,7 +141,7 @@ export const REFEREE_STAT_GUIDELINES = [
 ];
 
 export const REFEREE_RULEBOOK_CHECKLIST = [
-  "출석·후보·심판·경기시계 담당자 확인",
+  "출석·후보·심판·모바일 전광판 담당자 확인",
   "QR 적용 가능 방·경기 20분 전 시작·5분 토큰 확인",
   "목표 점수·제한 시간·2점차·사용 공 확인",
   "샷클락·자유투·득점 방식 적용 여부 확인",

@@ -10,6 +10,7 @@ const MATCH_SQL_ACTION_DEPENDENCIES = { ...MATCH_SYNC_DEPENDENCIES, ...MATCH_SYN
 const {
 
   DISCORD_QUEUE_TIMEOUT_MS, RECORD_TYPES, isMatchRecordMatch, isMissingSqlMatchReducer, queueMatchDiscordDeliveries,
+  queueMatchParticipationCancellationDeliveries,
 
   reject, rejectSqlMatchFallback, withTimeout,
 
@@ -130,6 +131,49 @@ export async function applySqlMatchAction(context, operation = {}, match = {}) {
     }
     rejectSqlMatchFallback(data);
     return { ok: true, ...(data && typeof data === "object" ? data : {}), matchId };
+  }
+
+  if (operation.action === "cancelMatchParticipation" && (match?.id || operation.matchId)) {
+    const matchId = operation.matchId ?? match.id;
+    const { data, error } = await context.supabase.rpc("rankball_match_participation_cancel_action", {
+      p_actor_profile_id: context.profileId,
+      p_match_id: matchId,
+      p_reason: operation.reason ?? "",
+    });
+    if (error) {
+      if (isMissingSqlMatchReducer(error)) return null;
+      throw error;
+    }
+    rejectSqlMatchFallback(data);
+    const deliveryMatch = await loadSyncedMatchAfterWrite(context, matchId, match?.id ? match : null, {
+      predicate: (loaded) => ![
+        ...(loaded?.teamA?.players ?? []),
+        ...(loaded?.teamB?.players ?? []),
+        ...(loaded?.reservePlayers?.teamA ?? []),
+        ...(loaded?.reservePlayers?.teamB ?? []),
+      ].includes(context.profileId),
+    });
+    let discordDeliveryCount = 0;
+    let discordDeliveryError = null;
+    try {
+      if (deliveryMatch?.id) {
+        discordDeliveryCount = await withTimeout(
+          queueMatchParticipationCancellationDeliveries(context.supabase, deliveryMatch, data),
+          DISCORD_QUEUE_TIMEOUT_MS,
+          "discord_match_participation_cancel_timeout",
+        );
+      }
+    } catch (deliveryError) {
+      discordDeliveryError = deliveryError.message || "discord_match_participation_cancel_failed";
+      console.error("Match participation cancellation Discord queue failed.", deliveryError);
+    }
+    return {
+      ok: true,
+      ...(data && typeof data === "object" ? data : {}),
+      matchId,
+      discordDeliveryCount,
+      discordDeliveryError,
+    };
   }
 
   if (["setMatchRoomPlayerPlacement", "removeMatchRoomPlayer"].includes(operation.action) && (match?.id || operation.matchId)) {

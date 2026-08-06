@@ -140,6 +140,7 @@ export function useRecruitingRoomController({
   const [, setFinalizationTick] = useState(0);
   const [roomCancellationTarget, setRoomCancellationTarget] = useState(null);
   const [roomCancellationPending, setRoomCancellationPending] = useState(false);
+  const [roomHelpOpen, setRoomHelpOpen] = useState(false);
   const [sourceMatchReviewRefreshing, setSourceMatchReviewRefreshing] = useState(false);
   const [sheetDragOffset, setSheetDragOffset] = useState(0);
   const [sheetDragSettling, setSheetDragSettling] = useState(false);
@@ -484,9 +485,9 @@ export function useRecruitingRoomController({
     getRefereeInviteQuery, getRoomEditDraftByPost, handleChatVisibleChange, inviteDraft, inviteError, joinSideParty, joiningPartyKey,
     joiningPostId, lobbyModalRef, moveSheetDrag, myTeams, navigate, onRemake, openInviteSlot,
     openRoomEdit, openSelfSlotAction, paidCourtJoinPrompt, refreshSourceMatchReview, registeredCourts, remoteDirectoryEnabled, requestSourceMatchFinalization,
-    readOnly, requiresPaidCourtNotice, roomCancellationPending, roomCancellationTarget, roomChatLocked, roomDataState, roomEditStatusByPost, roomShareEnabled, roomShareStatus,
+    readOnly, requiresPaidCourtNotice, roomCancellationPending, roomCancellationTarget, roomHelpOpen, roomChatLocked, roomDataState, roomEditStatusByPost, roomShareEnabled, roomShareStatus,
     roomTeamFeedback, roomTeamQuery, roomTeamSavingSide, runRoomSlotAction, runSourceMatchAction, saveRoomEdit, selectedPost, sendInvites, setAttendanceStartStatus,
-    setFinalizeMatchTarget, setInviteDraft, setPaidCourtJoinPrompt, setRoomCancellationPending, setRoomCancellationTarget, setRoomTeamFeedback, setRoomTeamQuery,
+    setFinalizeMatchTarget, setInviteDraft, setPaidCourtJoinPrompt, setRoomCancellationPending, setRoomCancellationTarget, setRoomHelpOpen, setRoomTeamFeedback, setRoomTeamQuery,
     setRoomTeamSavingSide, setSlotActionDraft, setSoloRecordDeleteTarget, setSourceDisputeDraft, setSourceMatchDraftScore, shareRoom, sheetBackdropOpacity, sheetDragOffset,
     sheetDragSettling, sheetModalOpacity, slotActionDraft, slotActionPending, soloRecordDeleteTarget, sourceDisputeDraft, sourceDisputePending, sourceDisputeStatus,
     sourceMatch, sourceMatchActionPending, sourceMatchDraftScore, sourceMatchReviewRefreshing,

@@ -206,7 +206,7 @@ export default function MatchRoom({ app }) {
       ? `심판 ${referee.name}`
       : match.rules?.gameClockEnabled === false
         ? "방장 · 양쪽 점수"
-        : "경기시계 담당자 · 양쪽 점수";
+        : "모바일 전광판 담당자 · 양쪽 점수";
   const statSubmissionStatus = getStatSubmissionStatus(match);
   const activeEvidenceIds = new Set(EVIDENCE_OPTIONS.map((item) => item.id));
   const activeEvidenceCount = (match.evidence ?? []).filter((evidence) => activeEvidenceIds.has(evidence.id ?? evidence.type)).length;
@@ -372,7 +372,7 @@ export default function MatchRoom({ app }) {
       ? "작성자 본인의 개인 스탯 입력"
       : match.rules?.gameClockEnabled === false
         ? "방장이 양쪽 팀 점수 입력"
-        : "경기시계 담당자가 양쪽 팀 점수 입력";
+        : "모바일 전광판 담당자가 양쪽 팀 점수 입력";
   const nextAction = (() => {
     if (match.status === "contract") {
       if (currentUserSideName && !currentUserAgreementDone) {

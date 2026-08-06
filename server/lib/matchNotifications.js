@@ -55,6 +55,7 @@ export const MATCH_REFRESH_SCHEDULED_NOTICE_ACTIONS = new Set([
   "setMatchRoomPlayerPlacement",
   "swapPickupMatchPlayers",
   "removeMatchRoomPlayer",
+  "cancelMatchParticipation",
   "setMatchRecordParticipants",
   "setMatchRecordTeamRoster",
   "checkInMatchPlayer",
@@ -304,6 +305,10 @@ export async function queueMatchDiscordDeliveries(
   action = "sync",
 ) {
   const participantIds = Array.from(getMatchParticipantIds(match));
+  if (action === "cancelMatch") {
+    participantIds.push(...(match.rules?.participationCancelledIds ?? []).filter(Boolean));
+  }
+  const uniqueParticipantIds = [...new Set(participantIds)];
   const attendanceTargetIds = getRequiredMatchAttendanceIds(match);
   const checkedInIds = getCheckedInMatchAttendanceIds(match);
   const missingAttendanceIds = attendanceTargetIds
@@ -358,8 +363,8 @@ export async function queueMatchDiscordDeliveries(
     await cancelPendingMatchNotificationPrefixes(supabase, match.id, cancelPrefixes);
   }
 
-  if (!participantIds.length && !managerIds.length) return 0;
-  const profiles = await getDiscordProfiles(supabase, participantIds);
+  if (!uniqueParticipantIds.length && !managerIds.length) return 0;
+  const profiles = await getDiscordProfiles(supabase, uniqueParticipantIds);
   const discordProfilesFor = (targetIds = []) => {
     const targetIdSet = new Set(targetIds);
     return profiles.filter((profile) => targetIdSet.has(profile.id));
@@ -396,7 +401,7 @@ export async function queueMatchDiscordDeliveries(
   if (action === "cancelMatch") {
     const cancelCopy = getMatchCancelCopy(match);
     const cancellationReason = String(match.rules?.cancellationReason ?? "").trim();
-    addRows(participantIds, profiles, {
+    addRows(uniqueParticipantIds, profiles, {
       idPrefix: "match-cancelled",
       title: cancelCopy.notificationTitle,
       intro: cancellationReason
@@ -408,7 +413,7 @@ export async function queueMatchDiscordDeliveries(
   }
 
   if (action === "voidMatch") {
-    addRows(participantIds, profiles, {
+    addRows(uniqueParticipantIds, profiles, {
       idPrefix: "match-voided",
       title: "경기 무효",
       intro: "경기가 무효 처리되었습니다. 경기 상세에서 무효 사유를 확인해 주세요.",
@@ -420,14 +425,14 @@ export async function queueMatchDiscordDeliveries(
   if (action === "endMatch") {
     const endedAt = match.endedAt ? new Date(match.endedAt) : new Date();
     const disputeReminder = getMatchDisputeReminderTiming(match);
-    addRows(participantIds, profiles, {
+    addRows(uniqueParticipantIds, profiles, {
       idPrefix: "match-ended-score",
       actionRequired: true,
       homeAction: true,
       title: "경기 종료",
       intro: "경기가 종료되었습니다. 경기 점수를 입력해 주세요.",
     });
-    addRows(participantIds, profiles, {
+    addRows(uniqueParticipantIds, profiles, {
       idPrefix: "match-dispute-check",
       actionRequired: true,
       homeAction: true,
@@ -475,4 +480,22 @@ export async function queueMatchDiscordDeliveries(
 
   await upsertMatchNotificationRows(supabase, notificationRows);
   return upsertDiscordDeliveryRows(supabase, rows);
+}
+
+export async function queueMatchParticipationCancellationDeliveries(
+  supabase,
+  match = {},
+  result = {},
+) {
+  const targetIds = [...new Set((result.notificationTargetIds ?? []).filter(Boolean))];
+  if (!match.id || !targetIds.length) return 0;
+  const eventKey = String(result.eventId ?? "event").replace(/[^a-z0-9-]/gi, "").slice(0, 40) || "event";
+  const profiles = await getDiscordProfiles(supabase, targetIds);
+  return upsertDiscordDeliveryRows(supabase, toDiscordDeliveryRows(match, profiles, {
+    idPrefix: `match-participation-cancelled-${eventKey}`,
+    title: "확정 경기 참가 취소",
+    intro: result.rosterNeedsFill
+      ? `${result.actorName || "참가자"}님이 참가를 취소했습니다. 출전 인원을 보충해 주세요.`
+      : `${result.actorName || "참가자"}님이 참가를 취소했습니다. 변경된 명단을 확인해 주세요.`,
+  }));
 }

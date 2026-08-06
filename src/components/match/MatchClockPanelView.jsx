@@ -33,8 +33,8 @@ export default function MatchClockPanelView({ context }) {
   const { activePlayers, applyResponse, attendanceQr, breakElapsedMs, breakLimitMinutes, breakLimitMs, breakOvertimeMs, breakRemainingMs, canEndMatch, canResetShotClock, canResumeEndedClock, clockClient, clockEditableScoreSides, closeFocusMode, configurationDirtyRef, confirmAction, controller, controllerCanEditScores, deadlineRemainingMs, deviceNotice, directScoreControlsEnabled, editableScoreSides, enableMediaControl, error, focusMode, halftimeAfterPeriod, hasRemainingPeriodTime, incrementScore, isBreak, isEnded, isHalftimeBreak, isPending, isRunning, lastMediaResetAtRef, liveClock, liveControllerCanEditScores, match, matchEndedNotifiedRef, matchRules, mediaControlEligible, mediaResetEnabled, nowMs, onEndMatch, onIncrementScore, onMatchEnded, onRosterChanged, openFocusMode, pendingAction, periodDisplayLabel, recognition, regulationEnded, requestMatchEnd, requestWakeLock, requiresForcedMatchEnd, rosterRevisionRef, runAction, saveConfiguration, score, scoreError, scorePendingSide, scoreboardEnabled, selectController, selectShotClock, selectedControllerId, setActivePlayers, setAttendanceQr, setDeviceNotice, setError, setFocusMode, setNowMs, setPendingAction, setScore, setScoreError, setScorePendingSide, setSelectedControllerId, setShotClockSeconds, setSnapshot, setVolume, setWakeLockActive, setWakeLockRequested, shotClockEnabled, shotClockSeconds, showAttendanceQr, snapshot, soundedRef, testBuzzer, tied, toggleWakeLock, volume, wakeLockActive, wakeLockRef, wakeLockRequested, wakeLockRequestedRef } = context;
   if (!liveClock) {
     return (
-      <section className="ui-match-clock-panel ui-panel" aria-label="경기시계">
-        <strong>경기시계 불러오는 중</strong>
+      <section className="ui-match-clock-panel ui-panel" aria-label="모바일 전광판">
+        <strong>모바일 전광판 불러오는 중</strong>
         {error ? <p className="ui-match-clock-error" role="alert">{error}</p> : null}
       </section>
     );
@@ -53,13 +53,13 @@ export default function MatchClockPanelView({ context }) {
   const clockPanel = (
     <section
       className={`ui-match-clock-panel ui-panel${focusMode ? " ui-match-clock-panel-focus" : ""}${isPending ? " ui-match-clock-panel-pending" : ""}`}
-      aria-label="경기시계"
+      aria-label="모바일 전광판"
       onPointerDown={enableMediaControl}
     >
       <header className="ui-match-clock-header">
         <div>
           <span className="ui-match-clock-eyebrow">GAME CLOCK</span>
-          <h3>경기시계</h3>
+          <h3>모바일 전광판</h3>
         </div>
         <div className="ui-match-clock-header-tools">
           <div className="ui-match-clock-badges">

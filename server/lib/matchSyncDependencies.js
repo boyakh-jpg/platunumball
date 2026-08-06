@@ -16,6 +16,7 @@ import {
   MATCH_REFRESH_SCHEDULED_NOTICE_ACTIONS,
   getMatchParticipantIds as getParticipantIds,
   queueMatchDiscordDeliveries,
+  queueMatchParticipationCancellationDeliveries,
 } from "./matchNotifications.js";
 import {
   getMatchPlayedIdMap,
@@ -44,7 +45,7 @@ export const MATCH_SYNC_DEPENDENCIES = {
   allowRequestMethod, getAuthenticatedContext, readJsonBody, sendJson, toArray, toNotificationRows, uniqueIds, DEFAULT_TOURNAMENT_MMR_GAP,
   MATCH_SIDES, PLAYER_STAT_FIELDS, RECORD_TYPES, isRefereeGrade, PROFILE_CARD_COLUMNS, PROFILE_ME_COLUMNS, TEAM_COLUMNS,
   TEAM_MEMBER_COLUMNS, fromRemoteProfile, fromRemoteTeam, hasPracticeMutationPayload, PRACTICE_LOCAL_ONLY_ERROR, sortPlainObject, projectTournamentDbIdentity,
-  MATCH_REFRESH_SCHEDULED_NOTICE_ACTIONS, getParticipantIds, queueMatchDiscordDeliveries, getMatchPlayedIdMap, getSidePlayerRows, toAgreementRows, toApprovalRows,
+  MATCH_REFRESH_SCHEDULED_NOTICE_ACTIONS, getParticipantIds, queueMatchDiscordDeliveries, queueMatchParticipationCancellationDeliveries, getMatchPlayedIdMap, getSidePlayerRows, toAgreementRows, toApprovalRows,
   toAuthoritativeMatchRow, toAuthoritativePlayerStatRows, toDisputeRows, toResultRow, validateMatchCreateCourt, validateMatchRosterEligibility, validateMatchShape,
   validateResultShape, validateSoloRecordSnapshot, applyAuthoritativeMatchOperation, getOperation, loadAuthoritativeState,
 };

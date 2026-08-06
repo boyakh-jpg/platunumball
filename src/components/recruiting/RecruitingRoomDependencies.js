@@ -13,6 +13,7 @@ import {
 } from "react-router-dom";
 import {
   Clock3,
+  CircleHelp,
   Copy,
   Crown,
   MapPin,
@@ -137,6 +138,8 @@ import {
   getMatchRecordCompositionLabel,
   getOpenMatchDisputes,
   getMatchRecordPlayerIds,
+  getMatchParticipationCancellationState,
+  getMatchParticipationCancellationPenalty,
   getMatchResultEntryPermission,
   getMatchRecordWindow,
   getMatchManualFinalizationStatus,
@@ -260,7 +263,7 @@ import {
 
 export const RECRUITING_ROOM_DEPENDENCIES = {
   useCallback, useEffect, useMemo, useRef, useState, createPortal,
-  useNavigate, Clock3, Copy, Crown, MapPin, RefreshCw,
+  useNavigate, Clock3, CircleHelp, Copy, Crown, MapPin, RefreshCw,
   RotateCcw, Share2, ShieldCheck, Swords, UserRound, UsersRound,
   X, XCircle, Badge, BasketballLoader, Button, EmptyState,
   NumericStepper, SearchPicker, CourtHoverCard, ApprovalPanel, MatchDisputeQueue, MatchClockPanel, MatchScoreControls,
@@ -275,7 +278,7 @@ export const RECRUITING_ROOM_DEPENDENCIES = {
   isPickupRecruitingRoom, getTeamHashtag, getLinkedPersonalRecordDisplayUser, getPartyPlayerIds, getPartyReserveIds, isTournamentGovernanceEnabled,
   BRAND_NAME, isSupabaseConfigured, MATCH_DISPUTE_REASON_OPTIONS, OTHER_MATCH_DISPUTE_REASON, buildMatchDisputeRequest, canUserResolveMatchDispute,
   getRoomCompetitionLabel, getRoomRefereeLabel, getRoomVisibilityLabel, getMatchCancelCopy, getMatchRecordCompositionLabel, getOpenMatchDisputes,
-  getMatchRecordPlayerIds, getMatchResultEntryPermission, getMatchRecordWindow, getMatchManualFinalizationStatus, getMatchResultRevision, getMatchRoomPhase,
+  getMatchRecordPlayerIds, getMatchParticipationCancellationState, getMatchParticipationCancellationPenalty, getMatchResultEntryPermission, getMatchRecordWindow, getMatchManualFinalizationStatus, getMatchResultRevision, getMatchRoomPhase,
   getMatchReservePlayerIds, getMatchSideLeaderId, getMatchSidePlayerIds, getTournamentMatchDisplayTitle, getPublicRoomTimingStatus, getRoomScheduleLabel,
   canOperateAssignedMatchReferee, isEligibleReferee, isMatchReferee, isMatchRecordMatch, isMatchRoomChatLocked, isMatchSideTeamParty, isPersonalRecordMatch,
   isTournamentMatchLineupEditable, getMatchPeriodLabel, getMatchRuleDetailRows, getMatchRuleInputValidation, getMatchRuleSummary, getMeetingPointSummary, normalizeMatchRules,

@@ -84,7 +84,7 @@ export default function MatchContract({ match, users = [], teams = [], matches =
           <strong>{getMatchEndLabel(rules, match.mode)}</strong>
         </div>
         <div>
-          <span>BOXTIER 경기시계</span>
+          <span>BOXTIER 모바일 전광판</span>
           <strong>{getMatchClockLabel(rules, match.mode)}</strong>
         </div>
         <div>
@@ -130,8 +130,8 @@ export default function MatchContract({ match, users = [], teams = [], matches =
           <strong>{referee ? "배정 심판" : personalRecord ? "작성자 본인" : "미기록"}</strong>
         </div>
         <div>
-          <span>점수·경기시계</span>
-          <strong>{personalRecord ? "작성자 입력" : rules.gameClockEnabled === false ? (referee ? "배정 심판" : "방장 · 양쪽 점수") : "지정 경기시계 담당자"}</strong>
+          <span>점수·모바일 전광판</span>
+          <strong>{personalRecord ? "작성자 입력" : rules.gameClockEnabled === false ? (referee ? "배정 심판" : "방장 · 양쪽 점수") : "모바일 전광판 담당자"}</strong>
         </div>
         <div>
           <span>공격권</span>

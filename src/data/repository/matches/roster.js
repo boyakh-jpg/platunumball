@@ -282,8 +282,9 @@ export function setMatchRecordTeamRoster(state, matchId, sideName, roster = {}) 
   };
 }
 
-function autoPromoteMatchReservesForCheckin(match = {}, excludedPlayerIds = []) {
-  if (getMatchRoomPhase(match).phase !== "checkin" || match.startedAt || match.endedAt || match.result) return match;
+export function autoPromoteMatchReservesForCheckin(match = {}, excludedPlayerIds = []) {
+  const phase = getMatchRoomPhase(match).phase;
+  if (!["locked", "checkin"].includes(phase) || match.startedAt || match.endedAt || match.result) return match;
   const excludedIds = new Set(excludedPlayerIds);
   const sideCapacity = getRecruitingSideCapacity(match);
   let nextMatch = match;
@@ -293,7 +294,8 @@ function autoPromoteMatchReservesForCheckin(match = {}, excludedPlayerIds = []) 
     while (activeIds.length < sideCapacity) {
       const attendance = getMatchAttendance(nextMatch);
       const reserveId = getMatchReservePlayerIds(nextMatch, sideName).find((playerId) => (
-        !excludedIds.has(playerId) && attendance[sideName].includes(playerId)
+        !excludedIds.has(playerId)
+        && (phase === "locked" || attendance[sideName].includes(playerId))
       ));
       if (!reserveId) break;
 

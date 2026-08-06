@@ -72,6 +72,7 @@ export {
 export {
   agreeMatch,
   approveMatch,
+  cancelMatchParticipation,
   cancelMatch,
   checkInMatchPlayer,
   confirmMatchRefereeAbsence,

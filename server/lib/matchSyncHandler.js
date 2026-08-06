@@ -326,7 +326,7 @@ export default async function handler(request, response) {
           ["submitMatchResult", "approveMatch", "finalizeMatch", "resolveMatchDispute", "forfeitTournamentMatch"].includes(operation.action);
         if (shouldRefreshMatchDeliveries && syncedMatch?.id) {
           try {
-            discordDeliveryCount = await withTimeout(
+            discordDeliveryCount += await withTimeout(
               queueMatchDiscordDeliveries(context.supabase, syncedMatch, operation.action),
               DISCORD_QUEUE_TIMEOUT_MS,
               "discord_match_delivery_timeout",

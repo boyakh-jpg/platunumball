@@ -7,7 +7,7 @@ const ERROR_LABELS = Object.freeze({
   match_clock_resume_forbidden: "남은 경기시간이 없습니다. 쿼터 종료를 눌러주세요.",
   match_clock_transfer_forbidden: "시계 담당자 또는 경기 관리자만 넘길 수 있습니다.",
   match_clock_overtime_requires_tie: "동점일 때만 연장을 시작할 수 있습니다.",
-  match_clock_disabled: "이 경기는 BOXTIER 경기시계를 사용하지 않습니다.",
+  match_clock_disabled: "이 경기는 BOXTIER 모바일 전광판을 사용하지 않습니다.",
   server_actions_disabled: "서버 기능이 꺼져 있어 경기시계를 사용할 수 없습니다.",
 });
 
@@ -118,7 +118,7 @@ export async function activateMatchClockMediaSession() {
     const mediaElement = getMatchClockControlMediaElement();
     if ("mediaSession" in navigator && "MediaMetadata" in window) {
       navigator.mediaSession.metadata = new MediaMetadata({
-        title: "BOXTIER 경기시계",
+        title: "BOXTIER 모바일 전광판",
         artist: "재생·일시정지로 샷클락 초기화",
       });
     }

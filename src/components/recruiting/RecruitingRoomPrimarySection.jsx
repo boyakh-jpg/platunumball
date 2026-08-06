@@ -83,7 +83,7 @@ function RecruitingRoomVersusSide({ context, sideName, meta }) {
 
 export function RecruitingRoomPrimarySection({ context }) {
   const {
-    Badge, Button, Clock3, Copy, CourtHoverCard, Crown,
+    Badge, Button, CircleHelp, Clock3, Copy, CourtHoverCard, Crown,
     InvitationPanel, InvitePanel, MapPin, MatchAttendanceQrPanel, ROOM_BODY_MODES, RoomKickPanel,
     RoomPhaseRenderer, SearchPicker, Share2, ShieldCheck, SideRoster, Swords,
     TeamEmblem, UsersRound, X, acceptRoomInvitation, activeInviteDraft, alreadyApplied,
@@ -102,7 +102,7 @@ export function RecruitingRoomPrimarySection({ context }) {
     saveRoomTeam, selectedMatchRules, selectedPost, selectedRoomTeamAId,
     selectedRoomTeamBId, sendInvites, setAttendanceStartStatus, setInviteDraft, setRoomTeamQuery, setSlotActionDraft,
     shareRoom, showCaptainBadge, slotPositions, sourceMatch, sourceMatchAttendance, sourceMatchCheckedInIds,
-    sideMmrBalance, sourceMatchIsRecordRoom, sourceMatchPlacementByPlayerId, sourceMatchSideLeaderIds, sourceMatchSlotManagementOpen, sourceRoomReadOnly, teamAMeta,
+    setRoomHelpOpen, sideMmrBalance, sourceMatchIsRecordRoom, sourceMatchPlacementByPlayerId, sourceMatchSideLeaderIds, sourceMatchSlotManagementOpen, sourceRoomReadOnly, teamAMeta,
     teamBMeta, teamOnlyRoom, toggleInvitePlayer, tournamentRoomOwnerName, updateInviteDraft, userById,
   } = context;
 
@@ -123,6 +123,9 @@ export function RecruitingRoomPrimarySection({ context }) {
                     {requiresPaidCourtNotice(selectedPost) ? <Badge tone="orange">유료 구장</Badge> : null}
                   </div>
                   <div className="arena-room-share-actions" aria-label={roomShareEnabled ? "방 공유" : "방 작업"}>
+                    <Button type="button" size="sm" variant="secondary" onClick={() => setRoomHelpOpen(true)}>
+                      <CircleHelp size={15} /> 진행 도움말
+                    </Button>
                     {roomShareEnabled ? (
                       <>
                         <Button type="button" size="sm" variant="secondary" onClick={copyRoomShareUrl}>

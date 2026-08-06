@@ -282,7 +282,7 @@ export function getMatchRuleDetailRows(rules = {}, mode = "3v3") {
   const normalized = normalizeMatchRules(rules, { mode });
   return [
     { label: "경기 구성", value: getMatchPeriodLabel(normalized, mode) },
-    { label: "BOXTIER 경기시계", value: getMatchClockLabel(normalized, mode) },
+    { label: "BOXTIER 모바일 전광판", value: getMatchClockLabel(normalized, mode) },
     ...(normalized.qrAttendanceEnabled ? [{ label: "출석", value: "5분 회전 QR 출석" }] : []),
     { label: "종료 기준", value: getMatchEndLabel(normalized, mode) },
     ...(normalized.periodCount > 1 ? [{ label: "휴식", value: getMatchBreakLabel(normalized, mode) }] : []),

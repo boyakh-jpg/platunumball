@@ -130,7 +130,7 @@ function getRecruitingHostEntry(post = {}, state = {}) {
   if (waitingForHostTeam) return null;
   const players = joinMode === "team"
     ? (exactStoredRoster ? unique(post.playerIds ?? []).slice(0, capacity) : getTeamEntryPlayerIds(team, capacity, post.playerIds, post.playerId))
-    : [post.playerId].filter(Boolean);
+    : (exactStoredRoster ? unique(post.playerIds ?? []).slice(0, 1) : [post.playerId].filter(Boolean));
   const explicitReserves = joinMode === "team"
     ? (exactStoredRoster
         ? unique(roomState.partyReserves.host ?? [])
