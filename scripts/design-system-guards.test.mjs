@@ -682,7 +682,7 @@ test("공용 버튼과 badge 라벨은 한 줄을 유지한다", () => {
   assert.match(primitiveStyles, /\.ui-button\s*\{[\s\S]*?white-space:\s*nowrap;/);
   assert.match(primitiveStyles, /\.ui-badge\s*\{[\s\S]*?flex:\s*0 0 auto;[\s\S]*?white-space:\s*nowrap;/);
   assert.match(primitiveStyles, /\.ui-action-row > \*\s*\{\s*flex:\s*0 0 auto;\s*\}/);
-  assert.match(tokenStyles, /--ui-button-bg:\s*color-mix\(in srgb,\s*var\(--rb-text\) 14%,\s*var\(--rb-bg\)\);/);
+  assert.match(tokenStyles, /--ui-button-bg:\s*var\(--button-secondary-bg\);/);
   assert.equal(count(read("src/styles/themes/home-dashboard-theme.css"), "background: var(--ui-button-bg);"), 2);
   assert.doesNotMatch(hoverSurfaceStyles, /(?:^|\n)\s*\.button\s*\{[^{}]*white-space:\s*normal;/);
 });

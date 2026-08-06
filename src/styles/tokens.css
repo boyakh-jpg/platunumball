@@ -163,7 +163,7 @@
   --ui-button-padding-x-sm: 11px;
   --ui-button-font-size: var(--control-font-size);
   --ui-button-font-weight: var(--font-weight-control);
-  --ui-button-bg: color-mix(in srgb, var(--rb-text) 14%, var(--rb-bg));
+  --ui-button-bg: var(--button-secondary-bg);
   --ui-button-bg-active: var(--button-primary-bg);
   --ui-button-bg-hover: var(--button-primary-hover-bg);
   --ui-button-bg-pressed: var(--button-primary-pressed-bg);
