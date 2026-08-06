@@ -272,7 +272,7 @@ export default function Notifications({ app }) {
                 <div key={invitation.id} className="home-invitation-row">
                   <span className="home-action-main">
                     <strong>{team?.name ?? "팀 초대"}</strong>
-                    <em>{sender?.name ?? "주장"} · 팀 가입 초대</em>
+                    <em>{sender?.name ?? "팀장"} · 팀 가입 초대</em>
                     {invitationActionErrors[actionKey] ? <small role="status" className="form-warning">{invitationActionErrors[actionKey]}</small> : null}
                   </span>
                   <span className="ui-action-row home-invitation-actions">

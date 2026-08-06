@@ -411,7 +411,7 @@ export function getTournamentTeamRows(tournament, teamById, userById, currentUse
         team,
         teamId,
         captainId,
-        captainName: userById[captainId]?.name ?? "주장 미지정",
+        captainName: userById[captainId]?.name ?? "팀장 미지정",
         status,
         canApprove: tournament.status === "draft" && captainId === currentUserId && status !== "accepted",
       };

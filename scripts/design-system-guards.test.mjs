@@ -1111,7 +1111,7 @@ test("알파 온보딩은 기록 중심 무료 핵심 흐름을 안내한다", (
   assert.match(gettingStartedSource, /이어폰·헤드셋은 부저 소리를 가져갈 수 있어 지원 기기로 안내하지 않습니다/);
   assert.match(gettingStartedSource, /MMR은 실력이 비슷한 상대를 찾고 순위를 계산하는 경기력 점수/);
   assert.match(gettingStartedSource, /팀 파티는 그 팀 선수들이 한 경기에 같이 신청한 임시 묶음/);
-  assert.match(gettingStartedSource, /팀장은 팀 자체를 관리합니다\. 사이드장은 이번 경기에서 자기 편의 명단을 관리/);
+  assert.match(gettingStartedSource, /팀장은 팀 자체를 관리합니다\. 주장은 이번 경기에서 자기 편의 명단을 관리/);
   assert.match(gettingStartedSource, /모바일 전광판 담당자는 현장에서 경기시계·샷클락을 맡으며 무심판 경기에서는 양쪽 점수도 조작/);
   assert.match(gettingStartedSource, /개인전은 선수가 개인으로 참가하고, 팀전은 등록팀이 A팀·B팀을 이룹니다\. 픽업은 개인 참가자를 현장에서 두 편으로 나누는 방식/);
   assert.match(gettingStartedSource, /경기 후 함께 확인하는 기록은 끝난 경기를 참가자들이 함께 등록하는 방식/);

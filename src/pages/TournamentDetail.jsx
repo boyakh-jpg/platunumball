@@ -91,7 +91,7 @@ const location = useLocation();
         team,
         teamId,
         captainId,
-        captainName: userById[captainId]?.name ?? "주장 미지정",
+        captainName: userById[captainId]?.name ?? "팀장 미지정",
         status: getTournamentTeamStatus(tournament, teamId),
         canApprove: tournament.status === "draft"
           && captainId === app.currentUser.id

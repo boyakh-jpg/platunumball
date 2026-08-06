@@ -745,7 +745,7 @@ test("픽업 팀 나누기 작업판은 공용 모달 안에서 전용 반응형
   assert.match(recruitingStyles, /\.arena-lobby-modal \.arena-lobby-actions > div\s*\{[^}]*min-height:\s*var\(--ui-button-height\);/s);
   assert.match(recruitingStyles, /\.arena-host-kick-panel\.is-pickup-assignment \.arena-host-kick-actions\s*\{[^}]*grid-template-columns:\s*repeat\(2,/s);
   assert.match(recruitingStyles, /\.pickup-rotation-panel \.arena-room-edit-actions\s*\{[^}]*grid-template-columns:\s*repeat\(auto-fit,/s);
-  assert.match(recruitingSource, /sideLeader:\s*\{\s*tone:\s*"captain",\s*label:\s*"사이드장"\s*\}/);
+  assert.match(recruitingSource, /sideLeader:\s*\{\s*tone:\s*"captain",\s*label:\s*"주장"\s*\}/);
   assert.match(recruitingSource, /const slotTrackCount = Math\.max\(1,\s*Number\(side\.capacity\) \|\| activeSlots\.length \|\| 1\)/);
   assert.match(recruitingSource, /displayedSideLeaderId = \([\s\S]*playerId === hostPlayerId[\s\S]*\) \? "" : sideLeaderId/);
   assert.match(recruitingSource, /showCaptainBadge:\s*!sourceMatch && showCaptainBadge/);

@@ -95,7 +95,7 @@ return (
                 <TeamEmblem team={row.team} size="md" />
                 <div className="tournament-team-copy">
                   <TeamHoverCard team={row.team}>{row.team.name}</TeamHoverCard>
-                  <span>{row.team.region} · {row.team.homeCourt} · 주장 {row.captainName}</span>
+                  <span>{row.team.region} · {row.team.homeCourt} · 팀장 {row.captainName}</span>
                 </div>
                 <div className="tournament-team-state">
                   <TierBadge mmr={row.team.mmr} compact />

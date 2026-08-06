@@ -468,7 +468,7 @@ Retained compatibility paths:
 
 - Frontend local reducers remain only for non-Supabase demo behavior. Production room/match/tournament mutations are thin server calls.
 - 경기 이의 처리는 명시적인 `disputeId`를 받는 `resolveMatchDispute`만 유지한다. 구형 `resumeMatchApproval`, 일괄 `rejectMatchDispute`와 대응 RPC는 제거한다.
-- 공개 팀전의 `interestRecruitingPost` team 참가 payload는 DB에서 팀 주장 1명·후보 없음으로 정규화한다. 같은 사이드의 다른 팀과 일반 팀원의 대표 참가를 거부한다.
+- 공개 팀전의 `interestRecruitingPost` team 참가 payload는 DB에서 팀장 1명·후보 없음으로 정규화한다. 같은 사이드의 다른 팀과 일반 팀원의 대표 참가를 거부한다.
 - 자동 확정은 실제 출전자 중 `player_match_stats`가 없는 선수에게만 `record_source='auto_finalize'` 0 통계 row를 추가한다. 기존 통계 row는 `ON CONFLICT DO NOTHING`으로 보존한다.
 - exact simulation cleanup은 삭제와 프로필·구장 파생 집계 갱신을 같은 transaction에서 끝내며, 이미 삭제된 ID의 동일 요청은 멱등 no-op으로 처리한다.
 - `room_remake_events`는 직접 mutation 권한을 열지 않고 schema health가 컬럼을 검증할 수 있도록 `service_role`에 `select`만 부여한다.

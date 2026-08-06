@@ -179,7 +179,7 @@ export function RoomSlotAvatar({ user, mmr = DEFAULT_RATING, position = null }) 
 
 const ROOM_SLOT_BADGES = {
   host: { tone: "host", label: "방장" },
-  sideLeader: { tone: "captain", label: "사이드장" },
+  sideLeader: { tone: "captain", label: "주장" },
   partyLeader: { tone: "captain", label: "파티장" },
 };
 

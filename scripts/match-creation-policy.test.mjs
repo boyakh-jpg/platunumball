@@ -1383,7 +1383,7 @@ test("CreateMatch persists bench capacity at top level and inside rules", () => 
   assert.match(recruitingSource, /const selectedJoinPlayerIds = teamOnlyRoom[\s\S]*app\.currentUser\.id \? \[app\.currentUser\.id\] : \[\]/);
   assert.doesNotMatch(recruitingSource, /teamOnlyRoom \|\| selectedJoinPlayerIds\.length >= getRecruitingSideCapacity/);
   assert.match(recruitingSource, /<span>대표 1명 참가<\/span>/);
-  assert.match(recruitingSource, /참가 후 방 안에서 사이드장이 출전·후보 명단을 확정합니다\./);
+  assert.match(recruitingSource, /참가 후 방 안에서 주장이 출전·후보 명단을 확정합니다\./);
   assert.match(recruitingSource, /const sourceMatchRecordBoardFirst = Boolean\([\s\S]*Boolean\(sourceMatch\?\.refereeId\)/);
   const compactSource = [
     fs.readFileSync(path.join(root, "server/api/recruiting/_listProjection.js"), "utf8"),

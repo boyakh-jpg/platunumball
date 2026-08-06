@@ -161,7 +161,7 @@ export const GUIDE_CHAPTERS_SECONDARY = [
     lead: "비슷해 보이는 경기 구성, 역할, 기록 용어를 실제 권한과 반영 기준에 맞춰 구분합니다.",
     image: "/assets/guide/terms.jpg?v=20260728-guide-r2",
     imageAlt: "MMR, 팀과 사이드, 경기 역할을 나눠 설명하는 용어 화면",
-    caption: "MMR·티어, 팀·파티·사이드, 방장·사이드장·심판처럼 헷갈리는 말을 역할별로 확인합니다.",
+    caption: "MMR·티어, 팀·파티·사이드, 방장·주장·심판처럼 헷갈리는 말을 역할별로 확인합니다.",
     steps: [
       {
         title: "MMR·티어·배정 전",
@@ -174,8 +174,8 @@ export const GUIDE_CHAPTERS_SECONDARY = [
         Icon: UsersRound,
       },
       {
-        title: "팀장·사이드장·방장",
-        body: "팀장은 팀 자체를 관리합니다. 사이드장은 이번 경기에서 자기 편의 명단을 관리하고, 방장은 방을 만든 사람으로 방 설정과 경기 운영의 정해진 단계만 맡습니다.",
+        title: "팀장·주장·방장",
+        body: "팀장은 팀 자체를 관리합니다. 주장은 이번 경기에서 자기 편의 명단을 관리하고, 방장은 방을 만든 사람으로 방 설정과 경기 운영의 정해진 단계만 맡습니다.",
         Icon: UserRoundCheck,
       },
       {

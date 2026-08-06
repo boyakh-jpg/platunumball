@@ -26,7 +26,7 @@ export function applyTeamOnlyRosterSummon(state, post, roomState, lobby, side, r
       notification: {
         id: makeId("n"),
         title: "팀원 소집 권한 없음",
-        body: "팀전 출전/후보 명단은 해당 사이드장이 정합니다.",
+        body: "팀전 출전/후보 명단은 해당 주장이 정합니다.",
         tone: "orange",
         recruitingPostId: post.id,
       },

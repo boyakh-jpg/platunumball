@@ -447,7 +447,7 @@ export function MatchRecordRosterPanel({
                 <ProfileEmblem user={user} className="small" />
                 <span>
                   <strong>{user.name}</strong>
-                  <em>{user.position ?? "포지션 자유"} · {eligible ? stateLabel : "조건 불일치"}{isLeader ? " · 사이드장" : ""}</em>
+                  <em>{user.position ?? "포지션 자유"} · {eligible ? stateLabel : "조건 불일치"}{isLeader ? " · 주장" : ""}</em>
                 </span>
               </PlayerHoverCard>
               <Button

@@ -90,7 +90,7 @@ function makeRefereeAbsenceState(currentUserId = "host") {
   };
 }
 
-test("심판 미출석은 상대 사이드장 확인 뒤 한 번만 차감한다", () => {
+test("심판 미출석은 상대 주장 확인 뒤 한 번만 차감한다", () => {
   const initial = makeRefereeAbsenceState();
   const requested = requestMatchRefereeAbsence(initial, "referee-absence");
   const repeated = requestMatchRefereeAbsence(requested, "referee-absence");

@@ -35,7 +35,7 @@ export function createMatchRoomHeroRenderers(context) {
           const roleBadge = playerId === matchHostPlayerId
             ? { tone: "host", label: "방장" }
             : sideLeader
-              ? { tone: "captain", label: "사이드장" }
+              ? { tone: "captain", label: "주장" }
               : null;
           const slotLabel = match.status === "contract"
             ? ready ? "동의" : "대기"
@@ -73,7 +73,7 @@ export function createMatchRoomHeroRenderers(context) {
             const roleBadge = playerId === matchHostPlayerId
               ? { tone: "host", label: "방장" }
               : sideLeaderId === playerId
-                ? { tone: "captain", label: "사이드장" }
+                ? { tone: "captain", label: "주장" }
                 : null;
             return (
               <PlayerHoverCard key={`${sideName}-reserve-${playerId}`} user={user} teams={app.state.teams} className="gm-player-slot reserve ready">

@@ -373,10 +373,10 @@ export function CreateMatchCourtRosterSection({ context }) {
               <UsersRound size={17} />
               <span>
                 {hasTeamChallenge
-                  ? `${app.state.teams.find((team) => team.id === challengeTeamAId)?.name ?? "내 팀"}으로 방을 만든 뒤 ${app.state.teams.find((team) => team.id === challengeTeamBId)?.name ?? "라이벌 팀"} 현재 주장에게 자동 초대합니다.`
+                  ? `${app.state.teams.find((team) => team.id === challengeTeamAId)?.name ?? "내 팀"}으로 방을 만든 뒤 ${app.state.teams.find((team) => team.id === challengeTeamBId)?.name ?? "라이벌 팀"} 현재 팀장에게 자동 초대합니다.`
                   : isPublicRoom
-                  ? "빈 팀방을 만든 뒤 경기방에서 A팀을 선택합니다. B사이드는 상대 팀 주장이 참가합니다."
-                  : "빈 팀방을 만든 뒤 경기방에서 A팀과 B팀을 순서대로 선택합니다. B팀 현재 주장에게 초대 1건이 자동 생성됩니다."}
+                  ? "빈 팀방을 만든 뒤 경기방에서 A팀을 선택합니다. B사이드는 상대 팀장이 참가합니다."
+                  : "빈 팀방을 만든 뒤 경기방에서 A팀과 B팀을 순서대로 선택합니다. B팀 현재 팀장에게 초대 1건이 자동 생성됩니다."}
               </span>
             </div>
           ) : null}
@@ -389,7 +389,7 @@ export function CreateMatchCourtRosterSection({ context }) {
           {isPublicRoom ? (
             <div className="create-public-note ui-design-borderless-surface">
               <Globe2 size={17} />
-              <span>{isTeamRoom ? "공개 팀방은 A팀 선택 후 상대 팀 주장이 B사이드로 참가합니다." : "공개방은 매칭 목록에 표시됩니다. 상대 사이드는 방 안의 빈 슬롯을 공개 모집합니다."}</span>
+              <span>{isTeamRoom ? "공개 팀방은 A팀 선택 후 상대 팀장이 B사이드로 참가합니다." : "공개방은 매칭 목록에 표시됩니다. 상대 사이드는 방 안의 빈 슬롯을 공개 모집합니다."}</span>
             </div>
           ) : null}
         </Card>

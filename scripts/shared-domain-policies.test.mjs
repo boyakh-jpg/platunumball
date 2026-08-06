@@ -946,7 +946,7 @@ test("public product copy uses the BOXTIER brand and production tone", async () 
     "로드 실패",
     "복사 실패",
     "삭제됐거나 아직 동기화되지 않은 대회다.",
-    "초대팀 주장이 모두 승인하면 자동으로 경기와 대진이 열린다.",
+    "초대팀 팀장이 모두 승인하면 자동으로 경기와 대진이 열린다.",
   ].forEach((legacyCopy) => assert.equal(refinedUiSource.includes(legacyCopy), false, legacyCopy));
   assert.doesNotMatch(refinedUiSource, /fallback\s*=\s*"rankball"|\|\|\s*"rankball"/);
   assert.doesNotMatch(refinedUiSource, /\?\?\s*(?:match|tournament|report|request|review)\.(?:status|actionType|mmrPolicy|format)/);

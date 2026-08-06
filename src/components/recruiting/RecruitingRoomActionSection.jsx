@@ -362,7 +362,7 @@ export function RecruitingRoomActionSection({ context }) {
                             <div>
                               <span>대표 1명 참가</span>
                               <strong>{app.currentUser.name}</strong>
-                              <em>참가 후 방 안에서 사이드장이 출전·후보 명단을 확정합니다.</em>
+                              <em>참가 후 방 안에서 주장이 출전·후보 명단을 확정합니다.</em>
                             </div>
                             <ShieldCheck size={18} />
                           </div>

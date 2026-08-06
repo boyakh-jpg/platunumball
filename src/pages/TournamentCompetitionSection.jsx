@@ -29,7 +29,7 @@ export function TournamentCompetitionSection({ controller }) {
             <p>
               {governanceEnabled
                 ? "팀장·심판 승인 후 지역 승인 또는 지역 비승인 개최를 선택하면 경기와 대진이 생성됩니다."
-                : "초대팀 주장이 모두 승인하면 경기와 대진이 자동으로 생성됩니다."}
+                : "초대팀 팀장이 모두 승인하면 경기와 대진이 자동으로 생성됩니다."}
             </p>
           </div>
         ) : tournament.format === "tournament" ? (

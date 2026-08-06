@@ -1277,7 +1277,7 @@ test("방 모달은 후보 자동충원 예상치를 출전 슬롯으로 표시�
   assert.doesNotMatch(primarySource, /lobby\.sides\.team[AB]\.projectedFilled/);
 });
 
-test("비공개 팀방은 수락 전 B사이드장을 빈 슬롯 대신 초대 대기로 표시한다", async () => {
+test("비공개 팀방은 수락 전 B주장을 빈 슬롯 대신 초대 대기로 표시한다", async () => {
   const [primarySource, rosterSource] = await Promise.all([
     readFile(new URL("../src/components/recruiting/RecruitingRoomPrimarySection.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/components/recruiting/RecruitingRoomRosterPanels.jsx", import.meta.url), "utf8"),

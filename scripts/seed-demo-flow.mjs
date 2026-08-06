@@ -846,7 +846,7 @@ assertFlow(getMatchRoomPhase(getMatch(state, lifecycleMatchId)).phase === "check
   phase: getMatchRoomPhase(getMatch(state, lifecycleMatchId)),
 });
 
-assertFlow(getMatchSideLeaderId(getMatch(state, lifecycleMatchId), state.teams, "teamB") === "u6", "비공개 팀전: 팀장이 B사이드장", {
+assertFlow(getMatchSideLeaderId(getMatch(state, lifecycleMatchId), state.teams, "teamB") === "u6", "비공개 팀전: 팀장이 B주장", {
   leaderId: getMatchSideLeaderId(getMatch(state, lifecycleMatchId), state.teams, "teamB"),
 });
 
@@ -1094,7 +1094,7 @@ assertFlow(
     publicTeamInviteLobby.sides.teamB.reserveCandidates.some((candidate) => candidate.playerId === "u8") &&
     publicTeamInviteLobby.sides.teamB.reserveCandidates.some((candidate) => candidate.playerId === "u9") &&
     publicTeamInvitePost.roomState.invitations.length === 0,
-  "공개 팀전: 사이드장이 방 안에서 출전·후보 명단 직접 확정",
+  "공개 팀전: 주장이 방 안에서 출전·후보 명단 직접 확정",
   {
     teamB: publicTeamInviteLobby.sides.teamB.players,
     reserves: publicTeamInviteLobby.sides.teamB.reserveCandidates,
@@ -1140,7 +1140,7 @@ assertFlow(getMatch(state, refereeAbsentMatchId).refereeAbsenceRequest?.status =
   request: getMatch(state, refereeAbsentMatchId).refereeAbsenceRequest,
 });
 state = withUser(state, "u6", (scoped) => confirmMatchRefereeAbsence(scoped, refereeAbsentMatchId));
-assertFlow(!getMatch(state, refereeAbsentMatchId).refereeId && getMatch(state, refereeAbsentMatchId).formerRefereeId === "u11", "상대 사이드장 심판 미출석 인정", {
+assertFlow(!getMatch(state, refereeAbsentMatchId).refereeId && getMatch(state, refereeAbsentMatchId).formerRefereeId === "u11", "상대 주장 심판 미출석 인정", {
   refereeId: getMatch(state, refereeAbsentMatchId).refereeId,
   formerRefereeId: getMatch(state, refereeAbsentMatchId).formerRefereeId,
 });
@@ -1158,7 +1158,7 @@ assertFlow(getMatch(state, refereeAbsentMatchId).attendance.teamA.includes("u1")
 });
 
 room = createRoom(state, "u12", {
-  title: "FLOW 후보 자동승격 3v3",
+  title: "FLOW 후보 자동 출전 전환 3v3",
   visibility: "private",
   hostJoinMode: "player",
   mode: "3v3",
@@ -1242,7 +1242,7 @@ assertFlow(
     personalRoomLeaderAfterKick &&
     personalRoomLeaderAfterKick !== personalRoomLeaderBeforeKick &&
     personalRoomLeaderAfterKickMatch.teamB.players.includes(personalRoomLeaderAfterKick),
-  "비공개 개인전: 사이드장 강퇴 후 다음 출전자가 사이드장",
+  "비공개 개인전: 주장 강퇴 후 다음 출전자가 주장",
   {
     before: personalRoomLeaderBeforeKick,
     after: personalRoomLeaderAfterKick,
@@ -1291,7 +1291,7 @@ partyLobby = getRecruitingLobby(getPost(state, partyPostId), state);
 assertFlow(
   partyLobby.entries.some((entry) => (entry.reserves ?? []).includes("u5")) &&
     getPost(state, partyPostId).roomState.invitations.every((invitation) => invitation.targetUserId !== "u5"),
-  "팀 전용 방: 사이드장이 후보를 직접 소집하고 초대 row는 만들지 않음",
+  "팀 전용 방: 주장이 후보를 직접 소집하고 초대 row는 만들지 않음",
   {},
 );
 state = withUser(state, "u1", (scoped) => detachRecruitingPartyPlayer(scoped, partyPostId, partyEntry.id, "u1", { side: "teamA", reserve: false }));

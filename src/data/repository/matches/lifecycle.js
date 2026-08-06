@@ -87,7 +87,7 @@ export function requestMatchRefereeAbsence(state, matchId) {
       {
         id: makeId("n"),
         title: "심판 미출석 요청",
-        body: "상대 사이드장이 인정하면 심판 없는 경기로 전환됩니다.",
+        body: "상대 주장이 인정하면 심판 없는 경기로 전환됩니다.",
         tone: "match",
         matchId,
       },
