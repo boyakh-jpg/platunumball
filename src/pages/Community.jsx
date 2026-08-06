@@ -136,7 +136,6 @@ export default function Community({ app }) {
               </span>
             </article>
           ))}
-          {controller.loading && !controller.posts.length ? <div className="ui-empty-state">게시글 불러오는 중</div> : null}
           {!controller.loading && !controller.posts.length ? <div className="ui-empty-state">등록된 게시글이 없습니다.</div> : null}
         </div>
         <Pagination page={controller.pageIndex} totalPages={totalPages} disabled={controller.loading} onChange={controller.goToPage} />

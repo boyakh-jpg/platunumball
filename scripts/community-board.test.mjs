@@ -118,6 +118,7 @@ test("게스트 커뮤니티는 실제 공개 글만 읽고 쓰기는 인증을 
   assert.match(controller, /canWriteCategory: !app\.demoPreview/);
   assert.match(serverActions, /options\.allowAnonymous !== true/);
   assert.match(loaderActions, /allowAnonymous: publicRead/);
+  assert.match(loaderActions, /blocking: operation === "list" \|\| operation === "detail"/);
 });
 
 test("커뮤니티 입력 버튼은 서버와 같은 최대 길이에서 막힌다", async () => {

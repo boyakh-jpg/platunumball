@@ -118,7 +118,7 @@ export function useMatchLoaders(context) {
             includeRecruitingSchedule: true,
             adminContext: false,
           },
-          { allowWhenDisabled: true },
+          { allowWhenDisabled: true, blocking: true },
         );
         const preserveCurrentRoomLists = roomMutationPending || roomMutationVersion !== roomMutationVersionRef.current;
         const remoteState = normalizeServerState(filterPendingMatches(
@@ -184,7 +184,7 @@ export function useMatchLoaders(context) {
             includeTeamSchedule: true,
             adminContext: false,
           },
-          { allowWhenDisabled: true },
+          { allowWhenDisabled: true, blocking: true },
         );
         const preserveCurrentRoomLists = roomMutationPending || roomMutationVersion !== roomMutationVersionRef.current;
         const remoteState = normalizeServerState(filterPendingMatches(result?.state ?? {}, pendingMatchIdsRef.current, recentMatchMutationTimesRef.current));

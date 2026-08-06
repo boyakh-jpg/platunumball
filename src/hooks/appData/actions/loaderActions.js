@@ -197,7 +197,10 @@ loadMatchDetail,
         const serverReady = await ensureServerActionAvailable("/api/community/posts", "커뮤니티");
         if (serverReady !== true) return serverReady;
       }
-      return runServerAction("/api/community/posts", { operation, ...payload }, { allowAnonymous: publicRead });
+      return runServerAction("/api/community/posts", { operation, ...payload }, {
+        allowAnonymous: publicRead,
+        blocking: operation === "list" || operation === "detail",
+      });
     },
     loadMoreMatches,
     loadMoreRecruiting,

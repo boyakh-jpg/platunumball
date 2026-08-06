@@ -118,7 +118,7 @@ export default function CommunityPostDialog({ app, controller }) {
               <CommunityAuthorLink author={post.author} teams={app.state.teams} />
               <time>{formatKoreanDateTime(post.createdAt)}</time>
             </div>
-            {detailLoading ? <div className="ui-empty-state-compact">글 불러오는 중</div> : (
+            {detailLoading ? null : (
               <>
                 {imageUrl ? <img className="community-post-image" src={imageUrl} alt={post.title} /> : null}
                 <p className="community-post-body">{post.body}</p>

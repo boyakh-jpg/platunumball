@@ -582,7 +582,7 @@
 7. 음수 `letter-spacing`은 쓰지 않는다. 좁은 스포츠 느낌은 `--sports-display-condense`의 `scaleX(0.92)`로 처리한다.
 
 ## 2026-07-04 전역 로더 표시
-1. `BasketballLoader` 전역 오버레이는 초기 원격 hydrate, auth 확인, lazy page load, 명시적 blocking 호출에서만 보인다.
+1. `BasketballLoader`는 인라인 변형 없이 전역 오버레이로만 렌더하며, 초기 원격 hydrate, auth 확인, lazy page load, 명시적 blocking 호출에서만 보인다.
 2. 설정 저장, 피드 보강, 검색, 채팅 polling 같은 배경성 서버 호출은 전역 오버레이를 띄우지 않는다.
 3. 전역 오버레이 문구는 다크/라이트 모두 흰 veil 위에서 읽히도록 충분히 진한 색을 쓴다.
 4. 플레이 메뉴에서 선택 경기 상세를 불러오는 동안은 명시적 detail load로 보고 같은 전역 오버레이를 쓴다.
@@ -671,8 +671,8 @@
 
 ## 2026-06-28 페이지 로딩 바운딩볼
 
-1. 전역 remote DB hydrate뿐 아니라 auth 확인, lazy page load, page-level 목록 확인 상태도 공통 `BasketballLoader`를 쓴다.
-2. overlay가 이미 떠 있는 remote loading 상태에서는 페이지별 로더가 보조 표시여야 하며, 별도 카드/테두리/그림자 프레임을 만들지 않는다.
+1. 전역 remote DB hydrate뿐 아니라 auth 확인, lazy page load, 명시적 목록·상세 확인 상태도 공통 전역 `BasketballLoader`를 쓴다.
+2. 페이지·카드·모달 내부 인라인 로더는 금지한다. 필요한 서버 조회는 공용 blocking 상태를 올리고 중복 전역 오버레이는 한 개만 보이게 한다.
 
 1. 모집 화면은 원격 서버 데이터가 준비되지 않았을 때 로딩 empty-state를 보여준다.
 2. 원격 hydrate 중에는 `0개 방` 또는 `내 참여방 0`을 확정 상태처럼 보여주지 않는다.
@@ -716,12 +716,12 @@
 5. The remote animated loader renders without a card background, border, shadow, or blur frame.
 6. The blocking overlay uses a light veil so stale page content is visibly unavailable until remote data is ready.
 7. The animated asset must render above the blocking veil and reset its failed state each time remote loading starts.
-8. While `html.rankball-remote-loading` is active, the global overlay is the only visible loading indicator; page-level inline loaders stay hidden.
+8. The global overlay is the only visible loading indicator; page-level inline loaders are not supported.
 9. Blocking/page overlay loaders render at `document.body` level so they are centered against the full viewport, not a card, section, or page div.
 10. During remote DB hydration, the app shell does not render route page content behind the overlay; cached counts/lists must not be visible before the authoritative first response.
 11. Remote DB hydration may show one short random basketball scene label. It must avoid server/DB wording, keep one fixed-height line, and not shift the loader layout.
 12. User-triggered server actions and explicit detail/list loads may reuse the same blocking overlay after initial hydration. The current page may stay rendered behind the veil, but background-only sync such as Discord delivery sync or chat polling must not trigger the global blocking loader.
-13. Matches schedule hydration may use the same blocking overlay while the final match+recruiting schedule snapshot is not checked yet, so partial schedule cards do not flash before the final list.
+13. Matches schedule and community list/detail hydration use the same blocking overlay while the authoritative response is pending, so partial content does not flash.
 
 # 2026-06-28 referee rulebook images
 

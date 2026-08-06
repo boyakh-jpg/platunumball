@@ -23,7 +23,7 @@ function pickRandomLoaderLabel() {
   return randomLoaderLabels[Math.floor(Math.random() * randomLoaderLabels.length)] ?? randomLoaderLabels[0];
 }
 
-export default function BasketballLoader({ label = "불러오는 중", overlay = false, className = "", randomLabel = false }) {
+export default function BasketballLoader({ label = "불러오는 중", className = "", randomLabel = true }) {
   const [imageFailed, setImageFailed] = useState(false);
   const [imageIndex, setImageIndex] = useState(0);
   const [displayLabel, setDisplayLabel] = useState(() => (randomLabel ? pickRandomLoaderLabel() : label));
@@ -32,7 +32,7 @@ export default function BasketballLoader({ label = "불러오는 중", overlay =
     setImageFailed(false);
     setImageIndex(0);
     setDisplayLabel(randomLabel ? pickRandomLoaderLabel() : label);
-  }, [label, overlay, randomLabel]);
+  }, [label, randomLabel]);
 
   const content = (
     <div className="basketball-loader">
@@ -61,25 +61,18 @@ export default function BasketballLoader({ label = "불러오는 중", overlay =
     </div>
   );
 
-  if (overlay) {
-    const overlayNode = (
-      <div
-        className={`basketball-loader-overlay ${className}`.trim()}
-        role="status"
-        aria-live="polite"
-        aria-label={displayLabel}
-        onTouchMove={(event) => event.preventDefault()}
-        onWheel={(event) => event.preventDefault()}
-      >
-        {content}
-      </div>
-    );
-    return typeof document === "undefined" ? overlayNode : createPortal(overlayNode, document.body);
-  }
-
-  return (
-    <div className={`basketball-loader-inline ${className}`.trim()} role="status" aria-live="polite" aria-label={displayLabel}>
+  const overlayNode = (
+    <div
+      className={`basketball-loader-overlay ${className}`.trim()}
+      role="status"
+      aria-live="polite"
+      aria-label={displayLabel}
+      onTouchMove={(event) => event.preventDefault()}
+      onWheel={(event) => event.preventDefault()}
+    >
       {content}
     </div>
   );
+
+  return typeof document === "undefined" ? overlayNode : createPortal(overlayNode, document.body);
 }

@@ -1,6 +1,5 @@
 import { Link } from "react-router-dom";
 import { CalendarDays, ClipboardCheck, ChevronLeft, ChevronRight, PlusCircle, Trophy, UserRound, UsersRound } from "lucide-react";
-import BasketballLoader from "../components/common/BasketballLoader.jsx";
 import Button from "../components/common/Button.jsx";
 import EmptyState from "../components/common/EmptyState.jsx";
 import CourtHoverCard from "../components/court/CourtHoverCard.jsx";
@@ -354,8 +353,6 @@ return (
           onOpenMatch={openSelectedMatch}
         />
       ) : null}
-
-      {scheduleLoading ? <BasketballLoader overlay label="서버 데이터 불러오는 중" /> : null}
 
       {panelMode !== "tournament" ? <section className="om-match-list" aria-label="경기 목록">
         <div className="section-title-row om-list-head">

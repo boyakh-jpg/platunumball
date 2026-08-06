@@ -1724,6 +1724,13 @@ test("admin court controls use canonical primitives without feature-owned skins"
   );
 });
 
+test("basketball loader has one global presentation", () => {
+  const loaderSource = read("src/components/common/BasketballLoader.jsx");
+  assert.match(loaderSource, /randomLabel = true/);
+  assert.doesNotMatch(loaderSource, /basketball-loader-inline/);
+  assert.doesNotMatch(allStyleSources, /\.basketball-loader-inline/);
+});
+
 test("control-like surfaces use one primitive visual owner", () => {
   const controlSurfaceRule = getRuleBody(primitiveStyles, ".ui-control-surface");
   assert.match(controlSurfaceRule, /border:\s*var\(--ui-card-border-width\) solid var\(--ui-control-border\);/);
