@@ -227,13 +227,14 @@ test("court evidence and AI usage migrations keep data private", async () => {
 });
 
 test("court photos use browser resizing and private R2", async () => {
-  const [client, server, storage, evidence, form, controller, styles, map] = await Promise.all([
+  const [client, server, storage, evidence, form, controller, evidenceController, styles, map] = await Promise.all([
     readFile(new URL("../src/lib/courtRequestImages.js", import.meta.url), "utf8"),
     readFile(new URL("../server/api/court-requests/submit.js", import.meta.url), "utf8"),
     readFile(new URL("../server/api/_r2ImageStorage.js", import.meta.url), "utf8"),
     readFile(new URL("../server/api/court-requests/evidence.js", import.meta.url), "utf8"),
     readFile(new URL("../src/pages/SettingsSideColumn.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/pages/useSettingsCourtRequestController.js", import.meta.url), "utf8"),
+    readFile(new URL("../src/pages/useSettingsCourtEvidenceController.js", import.meta.url), "utf8"),
     readFile(new URL("../src/styles/features/court-request-evidence.css", import.meta.url), "utf8"),
     readFile(new URL("../src/lib/naverAddress.js", import.meta.url), "utf8"),
   ]);
@@ -279,13 +280,13 @@ test("court photos use browser resizing and private R2", async () => {
   assert.doesNotMatch(form, /settings-court-location-edit/);
   assert.match(form, /다른 조건도 충족하면 AI 자동승인 후보/);
   assert.match(form, /setCourtAddressQuery\(event\.target\.value, true\)/);
-  assert.match(controller, /reverseGeocodeNaverCoordinate/);
+  assert.match(evidenceController, /reverseGeocodeNaverCoordinate/);
   assert.match(controller, /onsiteCourtEntry && courtPinConfirmed && courtFieldLocation/);
   assert.match(controller, /distanceMeters: getCoordinateDistanceMeters\(pinLat, pinLng, current\.lat, current\.lng\)/);
   assert.match(map, /zoom: 18/);
   assert.match(server, /rankball_submit_court_request"/);
   assert.match(server, /if \(!photoInputs\.length\)/);
-  const photoHandler = controller.slice(controller.indexOf("const selectCourtPhotos"), controller.indexOf("const removeCourtPhoto"));
+  const photoHandler = evidenceController.slice(evidenceController.indexOf("const selectCourtPhotos"), evidenceController.indexOf("const removeCourtPhoto"));
   assert.match(photoHandler, /Array\.from\(input\.files \?\? \[\]\)/);
   assert.match(photoHandler, /courtPhotoSelectionRef\.current === selectionKey/);
   assert.ok(photoHandler.indexOf("URL.createObjectURL(file)") < photoHandler.indexOf("prepareCourtRequestPhotos"));

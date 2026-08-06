@@ -12,7 +12,6 @@ import {
 import {
   getNaverMapClientId,
   openNaverMapPinPicker,
-  reverseGeocodeNaverCoordinate,
   searchNaverAddresses,
   searchNearbyCourtCandidates,
 } from "../lib/naverAddress.js";
@@ -22,9 +21,10 @@ import {
   getCourtAddressDong,
   getCourtRequestQuotaUi,
 } from "./settingsPageModel.js";
-import { COURT_REQUEST_FIELD_CAPTURE_MAX_AGE_MS, COURT_REQUEST_PHOTO_MAX, getCoordinateDistanceMeters } from "../../shared/lib/courtRequestImagePolicy.js";
-import { getCourtRequestPhotoErrorMessage, prepareCourtRequestPhotos } from "../lib/courtRequestImages.js";
+import { COURT_REQUEST_FIELD_CAPTURE_MAX_AGE_MS, getCoordinateDistanceMeters } from "../../shared/lib/courtRequestImagePolicy.js";
+import { getCourtRequestPhotoErrorMessage } from "../lib/courtRequestImages.js";
 import { postServerAction } from "../lib/serverActions.js";
+import useSettingsCourtEvidenceController from "./useSettingsCourtEvidenceController.js";
 
 export default function useSettingsCourtRequestController({ app, currentTrustScore }) {
   const [courtAddressQuery, setCourtAddressQueryState] = useState("");
@@ -37,38 +37,18 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
   const [courtServerNearbyCandidates, setCourtServerNearbyCandidates] = useState([]);
   const [courtNearbyLookupFailed, setCourtNearbyLookupFailed] = useState(false);
   const [courtNearbyConfirmed, setCourtNearbyConfirmed] = useState(false);
-  const [courtPhotos, setCourtPhotos] = useState([]);
-  const [courtPhotoPending, setCourtPhotoPending] = useState(false);
-  const [courtFieldLocation, setCourtFieldLocation] = useState(null);
-  const [courtFieldLocationPending, setCourtFieldLocationPending] = useState(false);
   const [courtAiQuota, setCourtAiQuota] = useState(null);
   const [courtRequestLimit, setCourtRequestLimit] = useState(null);
   const courtAddressSearchRef = useRef(0);
   const courtPinPendingRef = useRef(false);
   const courtSubmitPendingRef = useRef(false);
-  const courtFieldLocationPendingRef = useRef(false);
   const courtNearbySearchRef = useRef(0);
-  const courtPhotoSequenceRef = useRef(0);
-  const courtPhotoObjectUrlsRef = useRef(new Set());
-  const courtPhotoSelectionRef = useRef("");
   const [courtDraft, setCourtDraft] = useState(() => ({
     ...DEFAULT_COURT_REQUEST,
     region: app.currentUser?.region ?? DEFAULT_COURT_REQUEST.region,
   }));
 
   const naverMapKeyReady = Boolean(getNaverMapClientId());
-  const revokeCourtPhotoPreview = (url) => {
-    if (!courtPhotoObjectUrlsRef.current.delete(url)) return;
-    URL.revokeObjectURL(url);
-  };
-  const clearCourtPhotos = () => {
-    courtPhotoObjectUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
-    courtPhotoObjectUrlsRef.current.clear();
-    setCourtPhotos([]);
-  };
-  useEffect(() => () => {
-    courtPhotoObjectUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
-  }, []);
   const setCourtAddressQuery = (value, resetSelection = false) => {
     courtAddressSearchRef.current += 1;
     setCourtAddressSearchPending(false);
@@ -136,8 +116,6 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
   const courtSourceUrl = normalizeCourtSourceUrl(courtSourceUrlInput);
   const courtSourceUrlInvalid = Boolean(courtSourceUrlInput && !courtSourceUrl);
   const onsiteCourtEntry = courtDraft.locationEntryMode !== "address";
-  const courtReadyPhotos = courtPhotos.filter((photo) => photo.imageBase64 && !photo.pending && !photo.error);
-  const courtPhotoHasError = courtPhotos.some((photo) => photo.error);
   const {
     blocked: courtQuotaBlocked,
     label: courtQuotaLabel,
@@ -145,20 +123,6 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
     title: courtQuotaTitle,
   } = getCourtRequestQuotaUi(courtRequestLimit, courtAiQuota, currentTrustScore);
   const canOpenCourtRequestForm = currentTrustScore >= COURT_REQUEST_TRUST_MIN && !courtQuotaBlocked;
-  const canSubmitCourtRequest = canOpenCourtRequestForm
-    && Boolean(courtDisplayName)
-    && courtAddressSelected
-    && courtHasMapPin
-    && courtPinConfirmed
-    && !courtDuplicate
-    && !courtSourceUrlInvalid
-    && !courtNearbyLookupFailed
-    && !courtPhotoPending
-    && !courtPhotoHasError
-    && (!onsiteCourtEntry || courtReadyPhotos.length > 0)
-    && (!onsiteCourtEntry || Boolean(courtFieldLocation))
-    && (!courtNearbyReviewRequired || courtNearbyConfirmed)
-    && (!courtRequiresUnit || Boolean(courtDraft.courtUnit.trim()));
 
   useEffect(() => {
     setCourtNearbyConfirmed(false);
@@ -345,160 +309,30 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
     setCourtPinConfirmed(false);
     setCourtLookupStatus("근처 주소를 선택했습니다. 지도 핀으로 실제 구장 위치를 확정해 주세요.");
   };
-  const readCourtFieldLocation = () => new Promise((resolve, reject) => {
-    const fail = (code) => {
-      const error = new Error(code);
-      error.code = code;
-      reject(error);
-    };
-    if (!navigator.geolocation) {
-      fail("court_field_location_unavailable");
-      return;
-    }
-    if (courtFieldLocationPendingRef.current) {
-      fail("court_field_location_pending");
-      return;
-    }
-    courtFieldLocationPendingRef.current = true;
-    setCourtFieldLocationPending(true);
-    navigator.geolocation.getCurrentPosition(
-      ({ coords }) => {
-        const location = {
-          lat: coords.latitude,
-          lng: coords.longitude,
-          accuracy: coords.accuracy,
-          distanceMeters: getCoordinateDistanceMeters(courtDraft.lat, courtDraft.lng, coords.latitude, coords.longitude),
-          capturedAt: new Date().toISOString(),
-        };
-        setCourtFieldLocation(location);
-        courtFieldLocationPendingRef.current = false;
-        setCourtFieldLocationPending(false);
-        resolve(location);
-      },
-      () => {
-        courtFieldLocationPendingRef.current = false;
-        setCourtFieldLocationPending(false);
-        fail("court_field_location_failed");
-      },
-      { enableHighAccuracy: true, maximumAge: 0, timeout: 15_000 },
-    );
+  const {
+    clearCourtPhotos, confirmCourtFieldLocation, courtFieldLocation, courtFieldLocationPending,
+    courtPhotoPending, courtPhotos, removeCourtPhoto, selectCourtPhotos, setCourtFieldLocation,
+  } = useSettingsCourtEvidenceController({
+    courtAddressSelected, courtDraft, courtPinConfirmed, courtQuotaBlocked, courtQuotaMessage,
+    getCourtAddressRegion, loadCourtNearbyCandidates, naverMapKeyReady, onsiteCourtEntry,
+    setCourtAddressQuery, setCourtLookupStatus, setCourtPinConfirmed, setNaverAddressResults, updateCourtDraft,
   });
-  const selectCourtPhotos = async (event, replaceIndex = null) => {
-    const input = event.currentTarget;
-    const files = Array.from(input.files ?? []);
-    if (!files.length) {
-      setCourtLookupStatus("촬영한 사진을 받지 못했습니다. 카메라에서 사진 사용을 눌러 주세요.");
-      return;
-    }
-    const selectionKey = files.map((file) => `${file.name}:${file.size}:${file.lastModified}`).join("|");
-    if (courtPhotoSelectionRef.current === selectionKey) return;
-    courtPhotoSelectionRef.current = selectionKey;
-    let pendingPhoto = null;
-    try {
-      if (courtQuotaBlocked) {
-        setCourtLookupStatus(courtQuotaMessage);
-        return;
-      }
-      if (replaceIndex === null && courtPhotos.length >= COURT_REQUEST_PHOTO_MAX) {
-        setCourtLookupStatus("현장 사진은 최대 2장까지 촬영할 수 있습니다.");
-        return;
-      }
-      if (!courtPinConfirmed) {
-        setCourtLookupStatus("구장 위치를 먼저 지정한 뒤 사진을 추가해 주세요.");
-        return;
-      }
-      if (onsiteCourtEntry && !courtFieldLocation) {
-        setCourtLookupStatus("현장 위치를 먼저 확인한 뒤 사진을 촬영해 주세요.");
-        return;
-      }
-      if (onsiteCourtEntry && Date.now() - Date.parse(courtFieldLocation.capturedAt) > COURT_REQUEST_FIELD_CAPTURE_MAX_AGE_MS) {
-        setCourtFieldLocation(null);
-        setCourtLookupStatus("현장 위치 확인 시간이 지났습니다. 위치를 다시 확인해 주세요.");
-        return;
-      }
-      const file = files[0];
-      const previewUrl = URL.createObjectURL(file);
-      courtPhotoObjectUrlsRef.current.add(previewUrl);
-      pendingPhoto = {
-        id: `court-photo-${++courtPhotoSequenceRef.current}`,
-        previewUrl,
-        byteSize: file.size,
-        pending: true,
-        error: "",
-      };
-      if (replaceIndex !== null) revokeCourtPhotoPreview(courtPhotos[replaceIndex]?.previewUrl);
-      setCourtPhotos((current) => replaceIndex === null
-        ? [...current, pendingPhoto].slice(0, COURT_REQUEST_PHOTO_MAX)
-        : current.map((photo, index) => (index === replaceIndex ? pendingPhoto : photo)));
-      setCourtPhotoPending(true);
-      setCourtLookupStatus("촬영한 사진을 자동 최적화하는 중입니다.");
-      const [prepared] = await prepareCourtRequestPhotos([file], courtFieldLocation);
-      revokeCourtPhotoPreview(previewUrl);
-      setCourtPhotos((current) => current.map((photo) => (photo.id === pendingPhoto.id
-        ? { ...prepared, id: pendingPhoto.id, pending: false, error: "" }
-        : photo)));
-      setCourtLookupStatus(replaceIndex === null
-        ? `현장 사진 ${Math.min(courtPhotos.length + 1, COURT_REQUEST_PHOTO_MAX)}장을 촬영하고 자동 최적화했습니다.`
-        : `현장 사진 ${replaceIndex + 1}장을 다시 촬영했습니다.`);
-    } catch (error) {
-      const message = String(error?.code || "").startsWith("court_field_location_")
-        ? "현장 위치를 확인하지 못했습니다. GPS와 위치 권한을 켠 뒤 다시 촬영해 주세요."
-        : getCourtRequestPhotoErrorMessage(error?.code);
-      if (pendingPhoto) {
-        setCourtPhotos((current) => current.map((photo) => (photo.id === pendingPhoto.id
-          ? { ...photo, pending: false, error: message }
-          : photo)));
-      }
-      setCourtLookupStatus(message);
-    } finally {
-      if (courtPhotoSelectionRef.current === selectionKey) courtPhotoSelectionRef.current = "";
-      input.value = "";
-      setCourtPhotoPending(false);
-    }
-  };
-  const removeCourtPhoto = (index) => {
-    revokeCourtPhotoPreview(courtPhotos[index]?.previewUrl);
-    setCourtPhotos((current) => current.filter((_, photoIndex) => photoIndex !== index));
-  };
-  const confirmCourtFieldLocation = async () => {
-    let location = null;
-    try {
-      location = await readCourtFieldLocation();
-      if (courtPinConfirmed && courtAddressSelected) {
-        setCourtLookupStatus(`현장 위치 확인됨 · 오차 ${Math.round(location.accuracy)}m · 핀과 ${Math.round(location.distanceMeters)}m`);
-        return;
-      }
-      if (!naverMapKeyReady) throw new Error("court_reverse_geocode_unavailable");
-      const pin = await reverseGeocodeNaverCoordinate(location.lat, location.lng);
-      const addressDong = getCourtAddressDong(pin);
-      const buildingName = normalizeCourtFacilityName(pin.buildingName);
-      updateCourtDraft({
-        buildingName,
-        ...(buildingName ? { name: buildingName } : {}),
-        region: getCourtAddressRegion(pin),
-        sido: pin.sido ?? "",
-        sigungu: pin.sigungu ?? "",
-        addressText: pin.addressText,
-        roadAddress: pin.roadAddress,
-        jibunAddress: pin.jibunAddress,
-        addressDong,
-        zonecode: pin.zonecode,
-        lat: String(location.lat),
-        lng: String(location.lng),
-      });
-      const confirmedLocation = { ...location, distanceMeters: 0 };
-      setCourtFieldLocation(confirmedLocation);
-      setCourtAddressQuery(pin.addressText);
-      setNaverAddressResults([]);
-      setCourtPinConfirmed(true);
-      setCourtLookupStatus(`현재 위치로 구장을 지정했습니다 · GPS 오차 ${Math.round(location.accuracy)}m`);
-      await loadCourtNearbyCandidates({ ...pin, lat: location.lat, lng: location.lng });
-    } catch {
-      setCourtLookupStatus(location
-        ? "현재 위치는 확인했지만 주소를 찾지 못했습니다. 주소로 찾기를 선택해 직접 지정해 주세요."
-        : "현장 위치를 확인하지 못했습니다. GPS와 위치 권한을 켠 뒤 다시 시도해 주세요.");
-    }
-  };
+  const courtReadyPhotos = courtPhotos.filter((photo) => photo.imageBase64 && !photo.pending && !photo.error);
+  const courtPhotoHasError = courtPhotos.some((photo) => photo.error);
+  const canSubmitCourtRequest = canOpenCourtRequestForm
+    && Boolean(courtDisplayName)
+    && courtAddressSelected
+    && courtHasMapPin
+    && courtPinConfirmed
+    && !courtDuplicate
+    && !courtSourceUrlInvalid
+    && !courtNearbyLookupFailed
+    && !courtPhotoPending
+    && !courtPhotoHasError
+    && (!onsiteCourtEntry || courtReadyPhotos.length > 0)
+    && (!onsiteCourtEntry || Boolean(courtFieldLocation))
+    && (!courtNearbyReviewRequired || courtNearbyConfirmed)
+    && (!courtRequiresUnit || Boolean(courtDraft.courtUnit.trim()));
   const submitCourtRequest = async (event) => {
     event.preventDefault();
     if (courtSubmitPendingRef.current) return;

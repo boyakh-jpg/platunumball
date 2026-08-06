@@ -3,6 +3,7 @@ export const SETTINGS_PAGE_SOURCE_PATHS = [
   "src/pages/settingsPageModel.js",
   "src/pages/useSettingsPageController.jsx",
   "src/pages/useSettingsCourtRequestController.js",
+  "src/pages/useSettingsCourtEvidenceController.js",
   "src/pages/useSettingsFavorites.jsx",
   "src/pages/useSettingsRefereeController.js",
   "src/pages/useSettingsReportController.jsx",
@@ -21,6 +22,7 @@ export const ADMIN_PAGE_SOURCE_PATHS = [
   "src/pages/AdminPageParts.jsx",
   "src/pages/useAdminPageController.jsx",
   "src/pages/AdminPageView.jsx",
+  "src/pages/AdminCourtRequestEvidence.jsx",
   "src/pages/AdminAppointmentSection.jsx",
   "src/pages/AdminDetailPanel.jsx",
 ];

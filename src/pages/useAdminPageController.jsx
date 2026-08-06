@@ -4,12 +4,7 @@ import { ADMIN_REVIEW_ACTIONS, buildAdminAppointmentModel, buildAdminReviewModel
 import { getCourtCorrectionPatch, getCourtFacilityBaseName, getCourtLocationMatches, getCourtMapUrl, getCourtStandardName, normalizeCourtSourceUrl } from "../lib/courts.js";
 import { ADMIN_DEFAULT_PAGE_LIMIT, DEFAULT_ADMIN_QUEUE_MODE, DEFAULT_ADMIN_SECTION } from "../lib/queryPolicy.js";
 import { getTeamEmblemErrorMessage } from "../lib/teamEmblem.js";
-import {
-  ADMIN_SECTION_OPTIONS,
-  ACTION_OPTIONS,
-  REVIEW_WORKFLOW_COPY,
-  isPendingCourtRequest,
-} from "./adminPageModel.js";
+import { ACTION_OPTIONS, ADMIN_SECTION_OPTIONS, REVIEW_WORKFLOW_COPY, isPendingCourtRequest } from "./adminPageModel.js";
 
 export default function useAdminPageController({
   app
@@ -431,26 +426,13 @@ const [searchParams, setSearchParams] = useSearchParams();
     }
   };
   return {
-    app,
-    adminLevel,
-    sectionOptions,
-    section,
-    view,
-    queueMode,
-    setQueueMode,
-    queueFilter,
-    appliedQueueFilter,
-    loadAdminSection,
-    setSelectedIdByView,
-    setSelectedReportIdByScope,
-    actionDraft,
-    mergeAffiliationQuery,
-    setMergeAffiliationQuery,
-    appointmentDraft,
-    appointmentUserQuery,
+    app, adminLevel, sectionOptions, section, view,
+    queueMode, setQueueMode, queueFilter, appliedQueueFilter,
+    loadAdminSection, setSelectedIdByView, setSelectedReportIdByScope,
+    actionDraft, mergeAffiliationQuery, setMergeAffiliationQuery,
+    appointmentDraft, appointmentUserQuery,
     setAppointmentUserQuery: changeAppointmentUserQuery,
-    appointmentUserSnapshot,
-    courtApprovalDraft,
+    appointmentUserSnapshot, courtApprovalDraft,
     courtApprovalStatus,
     courtRejectionReason,
     setCourtRejectionReason,
