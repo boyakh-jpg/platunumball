@@ -2047,7 +2047,7 @@ UI 수정 전:
 ## 2026-07-21 농구장 데이터 출처 표기
 
 1. 공개 화면과 로그인 후 화면은 같은 `DataAttribution` 푸터를 사용한다. 화면별 출처 문구와 링크를 복제하지 않는다.
-2. 푸터는 공식 `Instagram @box_tier` 링크와 `농구장 데이터: 공공데이터포털 · © OpenStreetMap contributors`를 표시하고, OSM 표기는 공식 저작권 페이지로 연결한다.
+2. 푸터는 공식 Instagram 아이콘과 `@box_tier` 링크, `농구장 데이터: 공공데이터포털 · © OpenStreetMap contributors`를 표시하고, OSM 표기는 공식 저작권 페이지로 연결한다.
 3. `/data-sources`는 원본 데이터셋 링크, ODbL 링크, 현장 정보 차이 안내, 서비스 내 신고 경로를 한 카드에 제공한다.
 4. 푸터는 좁은 화면에서 단어 단위로 줄바꿈하고 가로 overflow를 만들지 않는다. 출처 페이지는 공용 surface, line, radius, 주황 강조 토큰만 사용하며 dark/light에서 같은 정보 위계를 유지한다.
 

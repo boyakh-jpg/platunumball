@@ -104,6 +104,18 @@ html[data-theme="light"] .scroll-to-top-button {
   text-decoration: none;
 }
 
+.site-footer-social-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.site-footer-social-link svg {
+  width: 1em;
+  height: 1em;
+  flex: none;
+}
+
 .site-data-footer a:hover,
 .site-data-footer a:focus-visible {
   color: var(--rb-text);

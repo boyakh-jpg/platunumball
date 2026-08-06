@@ -1,3 +1,4 @@
+import { Instagram } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const DATA_PORTAL_URL = "https://www.data.go.kr/";
@@ -11,7 +12,10 @@ export default function DataAttribution() {
       <span aria-hidden="true">·</span>
       <Link to="/terms">서비스 약관</Link>
       <span aria-hidden="true">·</span>
-      <a href={INSTAGRAM_URL} target="_blank" rel="noopener noreferrer">Instagram @box_tier</a>
+      <a className="site-footer-social-link" href={INSTAGRAM_URL} target="_blank" rel="noopener noreferrer">
+        <Instagram aria-hidden="true" />
+        Instagram @box_tier
+      </a>
       <span className="site-footer-divider" aria-hidden="true">|</span>
       <Link to="/data-sources">농구장 데이터:</Link>
       <a href={DATA_PORTAL_URL} target="_blank" rel="noopener noreferrer">공공데이터포털</a>
