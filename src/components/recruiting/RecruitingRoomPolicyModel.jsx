@@ -8,12 +8,12 @@ export function buildRecruitingRoomPolicyModel(context) {
     getRoomEditDraftByPost, getRoomPhaseViewModel, getRoomScheduleProposalProgress, getSameSidePartyOptions, getSourceMatchAction, getSourceMatchDecisionSideName,
     getSourceMatchStatus, getTeamCaptainId, getTeamEventEligibility, getTeamHashtag, inviteDraft, isCurrentUserRoomParticipant,
     isEligibleReferee, isIndividualOnlyRecruitingRoom, isMmrBalancedRecruitingRoom, isPartyEntry, isPickupRecruitingRoom, isRoomScheduleChangePending, isSupabaseConfigured,
-    isTeamOnlyRoom, joiningPostId, myTeams, normalizeMatchRules, registeredCourts, roomEditStatusByPost,
+    isTeamOnlyRoom, joiningPostId, myTeams, normalizeMatchRules, registeredCourts, roomDataState, roomEditStatusByPost,
     roomTeamSavingSide, selectedPost, setRoomTeamFeedback, setRoomTeamQuery, setRoomTeamSavingSide, slotActionDraft,
     sourceMatch, teamById, userById,
   } = context;
 
-const lobby = getRecruitingLobby(selectedPost, app.state);
+const lobby = getRecruitingLobby(selectedPost, roomDataState);
         const roomPhaseViewModel = getRoomPhaseViewModel({ post: selectedPost, match: sourceMatch });
         const pickupPoolMode = roomPhaseViewModel.mode === ROOM_BODY_MODES.pickupPool;
         const joinDraft = getJoinDraft(selectedPost);

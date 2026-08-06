@@ -26,7 +26,7 @@ export function getRecruitingRoomRosterProps(context, sideName) {
   return {
     lobby,
     userById,
-    teams: app.state.teams,
+    teams: context.roomDataState?.teams ?? app.state.teams,
     hostPlayerId: roomOwnerId,
     currentUserId: app.currentUser.id,
     showCaptainBadge: !sourceMatch && showCaptainBadge,

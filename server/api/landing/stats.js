@@ -4,6 +4,15 @@ import {
   sendJson,
 } from "../_supabaseAdmin.js";
 import { REMOTE_CLIENT_RECRUITING_LIMIT } from "../../../shared/lib/constants.js";
+import { fromRemoteProfile } from "../../../shared/lib/profileMappers.js";
+import {
+  fromRemoteRecruitingPost,
+  toClientRecruitingTeam,
+} from "../../../shared/lib/recruitingMappers.js";
+import {
+  PROFILE_CARD_COLUMNS,
+  TEAM_COLUMNS,
+} from "../../../shared/lib/repositoryColumns.js";
 
 const LANDING_RECRUITING_LIMIT = 3;
 
@@ -29,6 +38,84 @@ async function readRows(query) {
   const { data, error } = await query;
   if (error) throw error;
   return Array.isArray(data) ? data : [];
+}
+
+function stringArray(value) {
+  return Array.isArray(value) ? value.filter((item) => typeof item === "string" && item) : [];
+}
+
+function stringRecord(value, allowedValues = null) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  return Object.fromEntries(Object.entries(value).filter(([key, item]) => (
+    key && typeof item === "string" && item && (!allowedValues || allowedValues.has(item))
+  )));
+}
+
+function stringArrayRecord(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  return Object.fromEntries(Object.entries(value)
+    .map(([key, items]) => [key, stringArray(items)])
+    .filter(([key, items]) => key && items.length));
+}
+
+export function projectPublicRecruitingRoomState(value = {}, ownerId = "") {
+  const source = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  return {
+    ownerId,
+    timingType: source.timingType === "instant" ? "instant" : "scheduled",
+    mmrRangeMode: source.mmrRangeMode,
+    mmrLimitMode: source.mmrLimitMode,
+    teamOnly: source.teamOnly === true,
+    refereeWanted: source.refereeWanted === true,
+    hostReserve: source.hostReserve === true,
+    matchRosterProjection: true,
+    partyReserves: stringArrayRecord(source.partyReserves),
+    pinnedReservePlayers: stringArrayRecord(source.pinnedReservePlayers),
+    partyLeaders: stringRecord(source.partyLeaders),
+    partySides: stringRecord(source.partySides, new Set(["teamA", "teamB"])),
+    slotPositions: stringRecord(source.slotPositions),
+  };
+}
+
+function getRowPublicRoomState(row = {}) {
+  return {
+    timingType: row.timing_type,
+    mmrRangeMode: row.mmr_range_mode,
+    mmrLimitMode: row.mmr_limit_mode,
+    teamOnly: row.team_only,
+    refereeWanted: row.referee_wanted,
+    hostReserve: row.host_reserve,
+    partyReserves: row.party_reserves,
+    pinnedReservePlayers: row.pinned_reserve_players,
+    partyLeaders: row.party_leaders,
+    partySides: row.party_sides,
+    slotPositions: row.slot_positions,
+  };
+}
+
+function getPublicRosterIds(row = {}, applications = []) {
+  const roomState = projectPublicRecruitingRoomState(getRowPublicRoomState(row), row.player_id);
+  return [...new Set([
+    row.player_id,
+    row.referee_id,
+    ...stringArray(row.player_ids),
+    ...applications.flatMap((application) => [application.player_id, ...stringArray(application.player_ids)]),
+    ...Object.values(roomState.partyReserves).flat(),
+    ...Object.values(roomState.pinnedReservePlayers).flat(),
+  ].filter(Boolean))];
+}
+
+function getPublicRosterTeamIds(row = {}, applications = []) {
+  return [...new Set([
+    row.team_id,
+    row.target_team_id,
+    ...applications.flatMap((application) => [application.team_id, application.source_team_id]),
+  ].filter(Boolean))];
+}
+
+async function readRowsByIds(supabase, table, columns, ids = []) {
+  const chunks = Array.from({ length: Math.ceil(ids.length / 100) }, (_item, index) => ids.slice(index * 100, index * 100 + 100));
+  return (await Promise.all(chunks.map((chunk) => readRows(supabase.from(table).select(columns).in("id", chunk))))).flat();
 }
 
 export async function loadLandingStats(supabase) {
@@ -72,7 +159,7 @@ export async function loadLandingFeed(supabase, recruitingLimit = LANDING_RECRUI
     readRows(
       supabase
         .from("recruiting_posts")
-        .select("id,type,title,mode,court_id,court_name,region,scheduled_date,scheduled_time,scheduled_at,timing_type:room_state->>timingType,ranked,official,pre_registered,rating_scale,age_restriction,allowed_age_groups,rules,stakes,court_reserved,court_fee,spots,referee_wanted:room_state->refereeWanted,referee_trust_min,stat_entry_minutes,dispute_minutes,host_join_mode,side_capacity,bench_capacity")
+        .select("id,type,title,visibility,mode,court_id,court_name,region,scheduled_date,scheduled_time,scheduled_at,timing_type:room_state->>timingType,mmr_range_mode:room_state->>mmrRangeMode,mmr_limit_mode:room_state->>mmrLimitMode,team_only:room_state->teamOnly,referee_wanted:room_state->refereeWanted,host_reserve:room_state->hostReserve,party_reserves:room_state->partyReserves,pinned_reserve_players:room_state->pinnedReservePlayers,party_leaders:room_state->partyLeaders,party_sides:room_state->partySides,slot_positions:room_state->slotPositions,ranked,official,pre_registered,rating_scale,age_restriction,allowed_age_groups,rules,stakes,court_reserved,court_fee,spots,referee_trust_min,stat_entry_minutes,dispute_minutes,host_join_mode,host_side,host_ready,side_capacity,bench_capacity,player_id,player_ids,position,team_id,target_team_id,referee_id,created_at,updated_at")
         .eq("status", "open")
         .eq("visibility", "public")
         .order("updated_at", { ascending: false })
@@ -88,46 +175,56 @@ export async function loadLandingFeed(supabase, recruitingLimit = LANDING_RECRUI
         .limit(3),
     ),
   ]);
-  const teamIds = [...new Set(matchRows.flatMap((row) => [row.team_a_id, row.team_b_id]).filter(Boolean))];
-  const teamRows = teamIds.length
-    ? await readRows(supabase.from("teams").select("id,name").in("id", teamIds).is("deleted_at", null))
+  const postIds = recruitingRows.map((row) => row.id).filter(Boolean);
+  const applicationRows = postIds.length
+    ? await readRows(supabase
+      .from("recruiting_applications")
+      .select("post_id,kind,team_id,player_id,side,status,reserve,position,player_ids,source_team_id,source_entry_id,created_at,updated_at")
+      .in("post_id", postIds))
     : [];
+  const applicationsByPost = applicationRows.reduce((map, application) => {
+    const list = map.get(application.post_id) ?? [];
+    list.push(application);
+    map.set(application.post_id, list);
+    return map;
+  }, new Map());
+  const rosterIdsByPost = new Map(recruitingRows.map((row) => [
+    row.id,
+    getPublicRosterIds(row, applicationsByPost.get(row.id) ?? []),
+  ]));
+  const rosterTeamIdsByPost = new Map(recruitingRows.map((row) => [
+    row.id,
+    getPublicRosterTeamIds(row, applicationsByPost.get(row.id) ?? []),
+  ]));
+  const profileIds = [...new Set([...rosterIdsByPost.values()].flat())];
+  const teamIds = [...new Set([
+    ...matchRows.flatMap((row) => [row.team_a_id, row.team_b_id]),
+    ...[...rosterTeamIdsByPost.values()].flat(),
+  ].filter(Boolean))];
+  const [profileRows, teamRows] = await Promise.all([
+    readRowsByIds(supabase, "public_profiles", PROFILE_CARD_COLUMNS, profileIds),
+    teamIds.length
+      ? readRows(supabase.from("teams").select(TEAM_COLUMNS).in("id", teamIds).is("deleted_at", null))
+      : [],
+  ]);
+  const publicProfileById = new Map(profileRows.map((row) => [row.id, fromRemoteProfile(row)]));
+  const publicTeamById = new Map(teamRows.map((row) => [row.id, toClientRecruitingTeam(row)]));
   const teamNames = new Map(teamRows.map((team) => [team.id, team.name]));
 
   return {
-    openRecruiting: recruitingRows.map((row) => ({
-      id: row.id,
-      type: row.type,
-      title: row.title,
-      mode: row.mode,
-      courtId: row.court_id,
-      court: row.court_name,
-      region: row.region,
-      scheduledDate: row.scheduled_date,
-      scheduledTime: row.scheduled_time ? String(row.scheduled_time).slice(0, 5) : "",
-      scheduledAt: row.scheduled_at,
-      timingType: row.timing_type,
-      ranked: row.ranked !== false,
-      official: row.official === true,
-      preRegistered: row.pre_registered === true,
-      ratingScale: Number(row.rating_scale) || 1,
-      ageRestriction: row.age_restriction ?? "any",
-      allowedAgeGroups: row.allowed_age_groups ?? [],
-      rules: row.rules ?? {},
-      stakes: row.stakes ?? "",
-      courtReserved: row.court_reserved === true,
-      courtFee: row.court_fee ?? "",
-      spots: Number(row.spots) || 0,
-      refereeWanted: row.referee_wanted === true,
-      refereeTrustMin: Number(row.referee_trust_min) || 0,
-      statEntryMinutes: Number(row.stat_entry_minutes) || 0,
-      disputeMinutes: Number(row.dispute_minutes) || 0,
-      hostJoinMode: row.host_join_mode ?? "player",
-      sideCapacity: Number(row.side_capacity) || 0,
-      benchCapacity: Number(row.bench_capacity) || 0,
-      status: "open",
-      visibility: "public",
-    })),
+    openRecruiting: recruitingRows.map((row) => {
+      const rosterIds = rosterIdsByPost.get(row.id) ?? [];
+      const rosterTeamIds = rosterTeamIdsByPost.get(row.id) ?? [];
+      return {
+        ...fromRemoteRecruitingPost({
+          ...row,
+          status: "open",
+          room_state: projectPublicRecruitingRoomState(getRowPublicRoomState(row), row.player_id),
+        }, { applicationsByPost }),
+        publicParticipants: rosterIds.map((id) => publicProfileById.get(id)).filter(Boolean),
+        publicTeams: rosterTeamIds.map((id) => publicTeamById.get(id)).filter(Boolean),
+      };
+    }),
     recentMatches: matchRows.map((row) => ({
       id: row.id,
       title: row.title,

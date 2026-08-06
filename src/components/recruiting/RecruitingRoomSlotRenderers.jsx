@@ -10,7 +10,7 @@ export function createRecruitingRoomSlotRenderers(context) {
     joinSideParty, lobby, mine, myEntry, myTeams, openInviteSlot,
     pickupAssignmentAttendanceReady, pickupAssignmentPolicy, pickupAssignmentSideCapacity, pickupAssignmentSidesComplete, pickupOpenSlotPlacements, pickupPoolMode,
     pickupRerollState, pickupRerollTrustReady, remoteDirectoryEnabled, roomOwnerId, roomPhaseViewModel, roomQueueStatus,
-    roomState, runRoomSlotAction, runSourceMatchAction, selectedPost, sendInvites, setInviteDraft, setSlotActionDraft, showMatchRecordRosterPanel,
+    roomDataState, roomState, runRoomSlotAction, runSourceMatchAction, selectedPost, sendInvites, setInviteDraft, setSlotActionDraft, showMatchRecordRosterPanel,
     slotPositions, sourceMatch, sourceMatchCheckedInIds, sourceMatchIsRecordRoom, sourceMatchIsTournamentPregame, sourceMatchPhase,
     sourceMatchRecordTeams, sourceMatchSideLeaderIds, sourceRoomReadOnly, teamById, teamMatchSideLocked, teamOnlyRoom,
     slotActionPending, sourceMatchActionPending, toggleInvitePlayer, updateInviteDraft, userById,
@@ -289,7 +289,7 @@ const roomPhaseBadge = sourceMatch ? sourceMatchPhase : roomQueueStatus;
               return (
                 <PlayerRoomSlot
                   user={user}
-                  teams={app.state.teams}
+                  teams={roomDataState.teams}
                   status={roomPhaseViewModel.mode === ROOM_BODY_MODES.pickupAssignment ? "ready" : entry?.status}
                   title={roomPhaseViewModel.mode === ROOM_BODY_MODES.pickupAssignment ? "출석" : entry?.status === "ready" ? "참가" : "대기"}
                   mmr={user?.ratings?.integrated ?? getEntryMmr(entry)}

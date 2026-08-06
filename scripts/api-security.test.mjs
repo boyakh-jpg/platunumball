@@ -35,6 +35,7 @@ import {
   normalizeAdminReviewInput,
 } from "../server/api/admin/review-action.js";
 import { isActiveReferee } from "../server/lib/refereeEligibilityPolicy.js";
+import { projectPublicRecruitingRoomState } from "../server/api/landing/stats.js";
 
 const root = new URL("../", import.meta.url);
 const readSource = (path) => readFile(new URL(path, root), "utf8");
@@ -187,7 +188,7 @@ test("production schema health cannot seed privileged demo actors", async () => 
   assert.match(source, /production_test_seed_disabled/);
 });
 
-test("public landing exposes aggregate counts and bounded public feed fields", async () => {
+test("public landing exposes aggregate counts and a roster-only public room projection", async () => {
   const route = API_ROUTES.get("/landing/stats");
   const source = await readSource("server/api/landing/stats.js");
 
@@ -197,16 +198,33 @@ test("public landing exposes aggregate counts and bounded public feed fields", a
   assert.match(source, /\.eq\("status", "open"\)[\s\S]*?\.eq\("visibility", "public"\)/);
   assert.match(source, /\.eq\("status", "confirmed"\)[\s\S]*?\.eq\("visibility", "public"\)/);
   assert.match(source, /\.is\("deleted_at", null\)/);
-  assert.match(source, /select\("id,type,title,mode,court_id,court_name,region,scheduled_date,scheduled_time,scheduled_at,timing_type:room_state->>timingType,ranked,official,pre_registered,rating_scale,age_restriction,allowed_age_groups,rules,stakes,court_reserved,court_fee,spots,referee_wanted:room_state->refereeWanted,referee_trust_min,stat_entry_minutes,dispute_minutes,host_join_mode,side_capacity,bench_capacity"\)[\s\S]*?\.limit\(recruitingLimit\)/);
+  assert.match(source, /from\("recruiting_posts"\)[\s\S]*?\.select\("id,type,title,visibility,[^"]*player_id,player_ids,[^"]*"\)[\s\S]*?\.limit\(recruitingLimit\)/);
+  assert.match(source, /party_reserves:room_state->partyReserves/);
+  assert.doesNotMatch(source, /\.select\("[^"]*(?:^|,)room_state(?:,|$)[^"]*"\)/);
+  assert.match(source, /from\("recruiting_applications"\)[\s\S]*?\.select\("post_id,kind,team_id,player_id,side,status,reserve,position,player_ids,source_team_id,source_entry_id,created_at,updated_at"\)/);
   assert.match(source, /Math\.min\(limit, REMOTE_CLIENT_RECRUITING_LIMIT\)/);
   assert.match(source, /select\("id,title,team_a_id,team_b_id,score_a,score_b"\)[\s\S]*?\.limit\(3\)/);
-  assert.match(source, /select\("id,name"\)/);
+  assert.match(source, /from\("teams"\)\.select\(TEAM_COLUMNS\)/);
   assert.match(source, /sendJson\(response, 200, \{ ok: true, stats, feed \}\)/);
   assert.doesNotMatch(source, /getAuthenticatedContext|select\("\*"\)/);
-  const publicProjectionSource = source
-    .replaceAll("timing_type:room_state->>timingType", "")
-    .replaceAll("referee_wanted:room_state->refereeWanted", "");
-  assert.doesNotMatch(publicProjectionSource, /player_ids|room_state|created_by|referee_id|memo|evidence/);
+  assert.doesNotMatch(source, /\.select\("[^"]*(?:memo|evidence|chat_messages)[^"]*"\)/);
+
+  const publicRoomState = projectPublicRecruitingRoomState({
+    timingType: "instant",
+    partyReserves: { host: ["player-2"] },
+    slotPositions: { "player-2": "SG" },
+    chatMessages: [{ body: "비공개" }],
+    invitations: [{ targetUserId: "private-player" }],
+    kickLog: [{ playerId: "private-player" }],
+    scheduleProposal: { requiredIds: ["private-player"] },
+  }, "player-1");
+  assert.deepEqual(publicRoomState.partyReserves, { host: ["player-2"] });
+  assert.deepEqual(publicRoomState.slotPositions, { "player-2": "SG" });
+  assert.equal(publicRoomState.matchRosterProjection, true);
+  assert.equal(publicRoomState.ownerId, "player-1");
+  ["chatMessages", "invitations", "kickLog", "scheduleProposal"].forEach((key) => {
+    assert.equal(Object.hasOwn(publicRoomState, key), false);
+  });
 });
 
 test("Discord delivery cron uses Vault and stays separate from system maintenance", async () => {

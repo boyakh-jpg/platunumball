@@ -67,9 +67,20 @@ export function useRecruitingRoomController({
     });
   }, [sourceMatchLinkedProfileIds]);
 
+  const roomDataState = useMemo(() => ({
+    ...app.state,
+    users: Object.values(Object.fromEntries([
+      ...(selectedPost.publicParticipants ?? []),
+      ...app.state.users,
+    ].map((user) => [user.id, user]))),
+    teams: Object.values(Object.fromEntries([
+      ...(selectedPost.publicTeams ?? []),
+      ...app.state.teams,
+    ].map((team) => [team.id, team]))),
+  }), [app.state, selectedPost.publicParticipants, selectedPost.publicTeams]);
   const userById = useMemo(
     () => {
-      const profileById = Object.fromEntries(app.state.users.map((user) => [user.id, user]));
+      const profileById = Object.fromEntries(roomDataState.users.map((user) => [user.id, user]));
       const anonymousEntries = Object.values(sourceMatch?.anonymousPlayers ?? {}).map((user) => [
         user.id,
         getLinkedPersonalRecordDisplayUser(user, profileById),
@@ -79,9 +90,9 @@ export function useRecruitingRoomController({
         ...Object.fromEntries(anonymousEntries),
       };
     },
-    [app.state.users, sourceMatch?.anonymousPlayers],
+    [roomDataState.users, sourceMatch?.anonymousPlayers],
   );
-  const teamById = useMemo(() => Object.fromEntries(app.state.teams.map((team) => [team.id, team])), [app.state.teams]);
+  const teamById = useMemo(() => Object.fromEntries(roomDataState.teams.map((team) => [team.id, team])), [roomDataState.teams]);
   const currentUserIsAdmin = Number(app.adminContext?.level ?? 0) >= 30;
   const registeredCourts = useMemo(() => getRegisteredCourts(app.state), [app.state]);
   const courtById = useMemo(() => Object.fromEntries(registeredCourts.map((court) => [court.id, court])), [registeredCourts]);
@@ -176,7 +187,7 @@ export function useRecruitingRoomController({
     roomPostId === sourceMatch.recruitingPostId &&
     !app.state.recruitingPosts?.some((item) => item.id === roomPostId && !item.listCardOnly),
   );
-  const roomChatLobby = useMemo(() => getRecruitingLobby(selectedPost, app.state), [app.state, selectedPost]);
+  const roomChatLobby = useMemo(() => getRecruitingLobby(selectedPost, roomDataState), [roomDataState, selectedPost]);
   const canPollRoomChat = isCurrentUserRoomParticipant(selectedPost, roomChatLobby, app.currentUser.id);
   const roomShareUrl = useMemo(() => getRoomShareUrl(roomPostId), [roomPostId]);
   const roomChatLocked = sourceMatch
@@ -473,7 +484,7 @@ export function useRecruitingRoomController({
     getRefereeInviteQuery, getRoomEditDraftByPost, handleChatVisibleChange, inviteDraft, inviteError, joinSideParty, joiningPartyKey,
     joiningPostId, lobbyModalRef, moveSheetDrag, myTeams, navigate, onRemake, openInviteSlot,
     openRoomEdit, openSelfSlotAction, paidCourtJoinPrompt, refreshSourceMatchReview, registeredCourts, remoteDirectoryEnabled, requestSourceMatchFinalization,
-    readOnly, requiresPaidCourtNotice, roomCancellationPending, roomCancellationTarget, roomChatLocked, roomEditStatusByPost, roomShareEnabled, roomShareStatus,
+    readOnly, requiresPaidCourtNotice, roomCancellationPending, roomCancellationTarget, roomChatLocked, roomDataState, roomEditStatusByPost, roomShareEnabled, roomShareStatus,
     roomTeamFeedback, roomTeamQuery, roomTeamSavingSide, runRoomSlotAction, runSourceMatchAction, saveRoomEdit, selectedPost, sendInvites, setAttendanceStartStatus,
     setFinalizeMatchTarget, setInviteDraft, setPaidCourtJoinPrompt, setRoomCancellationPending, setRoomCancellationTarget, setRoomTeamFeedback, setRoomTeamQuery,
     setRoomTeamSavingSide, setSlotActionDraft, setSoloRecordDeleteTarget, setSourceDisputeDraft, setSourceMatchDraftScore, shareRoom, sheetBackdropOpacity, sheetDragOffset,

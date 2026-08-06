@@ -1290,7 +1290,7 @@ test("팀 허브 대표팀 보드는 팀 전용 너비와 테마 대응 고대�
   );
 });
 
-test("게스트 팀 hero와 공개 방은 개인 상태를 추정하지 않는다", () => {
+test("게스트 팀 hero는 개인 상태를 추정하지 않고 공개 방은 명단만 표시한다", () => {
   const matchModelSource = read("src/components/recruiting/RecruitingRoomMatchModel.jsx");
   const primarySectionSource = read("src/components/recruiting/RecruitingRoomPrimarySection.jsx");
   const managementSectionSource = read("src/components/recruiting/RecruitingRoomManagementSection.jsx");
@@ -1299,7 +1299,9 @@ test("게스트 팀 hero와 공개 방은 개인 상태를 추정하지 않는�
   assert.match(teamsSource, /const heroTeam = readOnly \? rankingTeams\[0\] : representativeTeam;/);
   assert.match(teamsSource, /<span>\{readOnly \? "1위 팀" : "대표팀"\}<\/span>/);
   assert.match(matchModelSource, /const publicPreview = Boolean\(readOnly && app\.demoPreview\);/);
-  assert.match(primarySectionSource, /publicPreview \? \(\s*<section className="ui-empty-state-compact ui-modal-section">/);
+  assert.match(primarySectionSource, /participantPool: renderPickupParticipantPool/);
+  assert.match(primarySectionSource, /\{roomPhaseViewModel\.showVersusStage \? <div className="arena-lobby-versus-stage">/);
+  assert.doesNotMatch(primarySectionSource, /참가 현황은 로그인 후 확인할 수 있습니다/);
   assert.match(managementSectionSource, /publicPreview=\{publicPreview\}/);
   assert.match(managementSectionSource, /onVisibleChange=\{publicPreview \? null : handleChatVisibleChange\}/);
   assert.match(rosterPanelsSource, /publicPreview \? "로그인 필요"/);
