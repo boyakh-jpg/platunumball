@@ -22,6 +22,8 @@
 3. 운영자 사칭, 욕설, 혐오 표현은 약관·신고 사유·소속명 제재 기준을 합쳐 `profile_identity_block_terms`에서 관리한다. 브라우저에 범용 금지어 목록을 복제하지 않는다.
 4. 단어별 `exact`·`prefix`·`contains` 일치 방식을 구분해 일상어 오탐을 줄인다. DB trigger가 최종 저장 권위이며 서버는 `reserved_operator_identity`와 `profile_identity_blocked`를 사용자 오류로 반환한다.
 5. 현재 active owner 프로필은 canonical 운영자 조회를 통해 닉네임 `boxtier`, 해시태그·handle `#boxtier`로 통일한다. 다른 기존 프로필은 migration에서 일괄 변경하지 않는다.
+6. 외부 금지어는 `profile_identity_block_sources`에 URL·라이선스·revision을 고정하고 `profile_identity_block_terms.source_key`로 출처를 보존한다. Tetrapod 한국어 사전과 dsojevic 영어 강도 3~4 항목을 사용하며 외부 항목은 오탐 방지를 위해 `exact`로만 적용한다.
+7. 성정체성 자체를 금지어로 취급하지 않도록 dsojevic의 `lgbtq` 태그 항목은 수입하지 않는다. 오픈소스 저작권 고지는 `docs/open-source-notices.md`에 보존한다.
 
 ## 2026-08-05 공개 메인 인증 CTA
 

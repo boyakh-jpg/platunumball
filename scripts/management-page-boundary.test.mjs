@@ -33,11 +33,13 @@ test("프로필 운영자 예약어는 표기 변형을 막고 빈 추천값은 
   assert.equal(hasReservedOperatorIdentity({ name: "농구인" }), false);
   assert.equal(makeSuggestedHashtagBody(""), "player");
 
-  const [signupSource, profileSource, serverSource, migrationSource] = await Promise.all([
+  const [signupSource, profileSource, serverSource, migrationSource, expandedTermsSource, noticesSource] = await Promise.all([
     read("src/pages/Signup.jsx"),
     read("src/pages/Profile.jsx"),
     read("server/api/profile/upsert.js"),
     read("supabase/migrations/20260806094951_reserve_operator_identity.sql"),
+    read("supabase/migrations/20260806113000_expand_profile_identity_block_terms.sql"),
+    read("docs/open-source-notices.md"),
   ]);
 
   assert.match(signupSource, /hasReservedOperatorIdentity/);
@@ -47,6 +49,15 @@ test("프로필 운영자 예약어는 표기 변형을 막고 빈 추천값은 
   assert.match(migrationSource, /profile_identity_block_terms/);
   assert.match(migrationSource, /grade = 'owner'/);
   assert.match(migrationSource, /create trigger rankball_profiles_identity_guard/);
+  const importedTermLists = [...expandedTermsSource.matchAll(/\$terms\$(\[[\s\S]*?\])\$terms\$::jsonb/g)]
+    .map((match) => JSON.parse(match[1]));
+  assert.equal(importedTermLists.length, 5);
+  assert.equal(importedTermLists.flat().length, 1050);
+  assert.equal(importedTermLists.flat().includes("enby"), false);
+  assert.match(expandedTermsSource, /profile_identity_block_sources/);
+  assert.match(expandedTermsSource, /'exact'/);
+  assert.match(noticesSource, /Copyright \(c\) 2019 hmmhmmhm/);
+  assert.match(noticesSource, /Copyright \(c\) 2021 David Sojevic/);
 });
 
 test("가입정보 guard는 현재 인증 사용자의 프로필 hydration 뒤에만 판정한다", () => {
