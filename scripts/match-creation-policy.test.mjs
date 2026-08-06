@@ -268,28 +268,28 @@ test("all supported modes allow up to three bench slots through the shared UI op
   assert.match(wizardSource, /BENCH_CAPACITY_OPTIONS\.map/);
 });
 
-test("small modes preserve target-score defaults while 5v5 uses the community clock", () => {
-  for (const mode of ["1v1", "2v2", "3v3"]) {
+test("all modes default to 8-minute halves and offer 8-minute quarters", () => {
+  for (const mode of ["1v1", "2v2", "3v3", "5v5"]) {
     const preset = getModeClockPreset(mode);
-    assert.equal(preset.endCondition, "target_or_time");
-    assert.equal(preset.periodCount, 1);
-    assert.equal(preset.targetScore, 21);
+    assert.equal(preset.periodCount, 2);
+    assert.equal(preset.periodMinutes, 8);
     assert.equal(preset.lastPeriodStopMinutes, 0);
+    const quarters = getModeClockPreset(mode, "quarters");
+    assert.equal(quarters.periodCount, 4);
+    assert.equal(quarters.periodMinutes, 8);
   }
-  const community = getModeClockPreset("5v5", "community");
-  assert.equal(community.periodCount, 4);
-  assert.equal(community.periodMinutes, 8);
-  assert.equal(community.clockMode, "running");
-  assert.equal(community.lastPeriodStopMinutes, 2);
+  assert.equal(getModeClockPreset("5v5", "quarters").lastPeriodStopMinutes, 2);
   const official = getModeClockPreset("5v5", "official");
   assert.equal(official.periodMinutes, 10);
   assert.equal(official.clockMode, "stopped");
   assert.equal(getMatchModeChangePatch({ mode: "3v3", gameClockEnabled: false }, "5v5").gameClockEnabled, false);
 });
 
-test("match rule presets offer four mode-aware choices before custom editing", () => {
+test("match rule presets preserve existing choices and add both requested 8-minute formats", () => {
   for (const mode of ["1v1", "2v2", "3v3", "5v5"]) {
-    assert.equal(getMatchClockPresetOptions(mode).length, 4);
+    const options = getMatchClockPresetOptions(mode);
+    assert.equal(options.length, 5);
+    assert.deepEqual(options.slice(0, 2).map(({ id }) => id), ["community", "quarters"]);
   }
   const ruleSelectorSource = fs.readFileSync(path.join(root, "src/components/match/RuleSelector.jsx"), "utf8");
   assert.match(ruleSelectorSource, /<fieldset className="match-rule-custom-fields" disabled=\{!customRules\}>/);
@@ -743,7 +743,8 @@ test("intent and mode changes preserve unrelated user input", () => {
   assert.equal(resized.meetBeforeMinutes, 20);
   assert.equal(resized.attackRule, "커스텀 공격권");
   assert.equal(resized.foulRule, "커스텀 파울");
-  assert.equal(resized.periodCount, 1);
+  assert.equal(resized.periodCount, 2);
+  assert.equal(resized.periodMinutes, 8);
 
   const customized = { ...source, periodCount: 2, periodMinutes: 9 };
   const sameMode = { ...customized, ...getMatchModeChangePatch(customized, "5v5") };
