@@ -111,6 +111,13 @@ function getRegionSnapshot(regionSido, regionDistrict, fallbackRegion) {
   return structuredRegion ?? normalizeOptionalText(fallbackRegion);
 }
 
+function getProfileUpsertErrorStatus(error = {}) {
+  const message = String(error.message ?? "");
+  if (message.includes("reserved_operator_identity")) return 403;
+  if (message.includes("profile_identity_blocked")) return 400;
+  return error.statusCode || 500;
+}
+
 function getRequestedRegion(profile = {}, existing = {}) {
   const regionSido = normalizeOptionalText(profile.regionSido) ?? normalizeOptionalText(existing?.region_sido);
   const regionDistrict = normalizeOptionalText(profile.regionDistrict) ?? normalizeOptionalText(existing?.region_district);
@@ -252,7 +259,7 @@ export default async function handler(request, response) {
     sendJson(response, 200, { ok: true, profile: data, ...profileState });
   } catch (error) {
     console.error("Profile upsert failed.", error);
-    sendJson(response, error.statusCode || 500, {
+    sendJson(response, getProfileUpsertErrorStatus(error), {
       error: error.message || "profile_upsert_failed",
       ...(error.blockedUntil ? { blockedUntil: error.blockedUntil } : {}),
     });

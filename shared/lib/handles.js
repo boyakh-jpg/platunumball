@@ -1,4 +1,14 @@
+import { BRAND_NAME, BRAND_NAME_KO } from "./brand.js";
+
 export const PROFILE_HASHTAG_MIN_LENGTH = 3;
+const RESERVED_OPERATOR_IDENTITIES = [BRAND_NAME.toLowerCase(), BRAND_NAME_KO];
+
+export function hasReservedOperatorIdentity(profile = {}) {
+  return [profile.name, profile.hashtag, profile.handle].some((value) => {
+    const normalized = String(value ?? "").normalize("NFKC").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "");
+    return RESERVED_OPERATOR_IDENTITIES.some((reserved) => normalized.includes(reserved));
+  });
+}
 
 export function stripHandle(value, fallback = "") {
   const raw = String(value || fallback || "")
@@ -9,9 +19,9 @@ export function stripHandle(value, fallback = "") {
   return raw.replace(/[^\p{L}\p{N}_-]+/gu, "");
 }
 
-export function toHashtag(value, fallback = "boxtier") {
+export function toHashtag(value, fallback = "player") {
   const slug = stripHandle(value, fallback);
-  return `#${slug || stripHandle(fallback) || "boxtier"}`;
+  return `#${slug || stripHandle(fallback) || "player"}`;
 }
 
 const HANGUL_BASE = 0xac00;
@@ -43,7 +53,7 @@ export function makeSuggestedHashtagBody(name = "", suffix = "") {
     .normalize("NFKD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase();
-  const base = romanized.replace(/[^a-z0-9]+/g, "") || "boxtier";
+  const base = romanized.replace(/[^a-z0-9]+/g, "") || "player";
   return `${base.slice(0, suffix ? 17 : 20)}${suffix}`;
 }
 

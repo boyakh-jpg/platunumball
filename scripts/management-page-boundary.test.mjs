@@ -12,6 +12,7 @@ import { submitRefereeRequest } from "../src/data/repository/courts.js";
 import { updateSettings } from "../src/data/repository/settings.js";
 import { buildProfileTeamActions } from "../src/hooks/appData/actions/profileTeamActions.js";
 import { buildSettingsActions } from "../src/hooks/appData/actions/settingsActions.js";
+import { hasReservedOperatorIdentity, makeSuggestedHashtagBody, toHashtag } from "../src/lib/handles.js";
 import { isProfileGateReady, normalizeProfileName, PROFILE_NAME_MAX_LENGTH, shouldSetupProfile } from "../src/lib/profileSetup.js";
 
 const root = path.resolve(new URL("../", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1"));
@@ -24,6 +25,29 @@ function createStateHarness(initialState) {
   };
   return { stateRef, setState };
 }
+
+test("프로필 운영자 예약어는 표기 변형을 막고 빈 추천값은 일반 사용자용이다", async () => {
+  assert.equal(hasReservedOperatorIdentity({ name: "MyBOXTIER" }), true);
+  assert.equal(hasReservedOperatorIdentity({ name: "우리 박스-티어" }), true);
+  assert.equal(hasReservedOperatorIdentity({ hashtag: toHashtag("box tier") }), true);
+  assert.equal(hasReservedOperatorIdentity({ name: "농구인" }), false);
+  assert.equal(makeSuggestedHashtagBody(""), "player");
+
+  const [signupSource, profileSource, serverSource, migrationSource] = await Promise.all([
+    read("src/pages/Signup.jsx"),
+    read("src/pages/Profile.jsx"),
+    read("server/api/profile/upsert.js"),
+    read("supabase/migrations/20260806094951_reserve_operator_identity.sql"),
+  ]);
+
+  assert.match(signupSource, /hasReservedOperatorIdentity/);
+  assert.match(profileSource, /hasReservedOperatorIdentity/);
+  assert.match(serverSource, /reserved_operator_identity/);
+  assert.match(serverSource, /profile_identity_blocked/);
+  assert.match(migrationSource, /profile_identity_block_terms/);
+  assert.match(migrationSource, /grade = 'owner'/);
+  assert.match(migrationSource, /create trigger rankball_profiles_identity_guard/);
+});
 
 test("가입정보 guard는 현재 인증 사용자의 프로필 hydration 뒤에만 판정한다", () => {
   assert.equal(isProfileGateReady({}), true);

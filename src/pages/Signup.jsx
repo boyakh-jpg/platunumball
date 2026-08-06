@@ -6,7 +6,7 @@ import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import ProfileBasicsFields from "../components/profile/ProfileBasicsFields.jsx";
 import { BASKETBALL_POSITIONS } from "../lib/constants.js";
-import { getUserHashtag, makeRandomDigitSuffix, makeSuggestedHashtagBody, PROFILE_HASHTAG_MIN_LENGTH, sameHashtag, stripHandle, toHashtag } from "../lib/handles.js";
+import { getUserHashtag, hasReservedOperatorIdentity, makeRandomDigitSuffix, makeSuggestedHashtagBody, PROFILE_HASHTAG_MIN_LENGTH, sameHashtag, stripHandle, toHashtag } from "../lib/handles.js";
 import {
   AGE_GROUPS,
   canChangeProfileName,
@@ -93,6 +93,10 @@ export default function Signup({ app, auth }) {
       setFormError("닉네임을 입력해 주세요.");
       return;
     }
+    if (name !== user.name && hasReservedOperatorIdentity({ name })) {
+      setFormError("boxtier와 박스티어는 운영자 전용입니다.");
+      return;
+    }
     if (user.onboardingComplete && name !== user.name && !nameChangeAllowed) {
       setFormError(`닉네임은 월 1회만 변경할 수 있습니다. 다음 변경 가능일: ${formatProfileDate(nextNameChangeDate)}`);
       return;
@@ -103,6 +107,10 @@ export default function Signup({ app, auth }) {
     }
     if (!handleLocked && !handleBody) {
       setFormError("해시태그를 직접 입력해 주세요.");
+      return;
+    }
+    if (!handleLocked && hasReservedOperatorIdentity({ hashtag: normalizedHandle })) {
+      setFormError("boxtier와 박스티어는 운영자 전용입니다.");
       return;
     }
     if (!handleLocked && handleBody.length < PROFILE_HASHTAG_MIN_LENGTH) {
@@ -137,14 +145,22 @@ export default function Signup({ app, auth }) {
       if (!result || result.ok === false) {
         setFormError(result?.error === "account_rejoin_blocked"
           ? "탈퇴한 Google 계정은 탈퇴일로부터 7일 동안 다시 가입할 수 없습니다."
-          : "프로필을 저장하지 못했습니다. 입력 내용을 확인한 뒤 다시 시도해 주세요.");
+          : result?.error === "reserved_operator_identity"
+            ? "boxtier와 박스티어는 운영자 전용입니다."
+            : result?.error === "profile_identity_blocked"
+              ? "사용할 수 없는 닉네임 또는 해시태그입니다."
+            : "프로필을 저장하지 못했습니다. 입력 내용을 확인한 뒤 다시 시도해 주세요.");
         return;
       }
       setRedirectAfterSave(true);
     } catch (error) {
       setFormError(error?.message === "account_rejoin_blocked"
         ? "탈퇴한 Google 계정은 탈퇴일로부터 7일 동안 다시 가입할 수 없습니다."
-        : "프로필을 저장하지 못했습니다. 입력 내용을 확인한 뒤 다시 시도해 주세요.");
+        : error?.message === "reserved_operator_identity"
+          ? "boxtier와 박스티어는 운영자 전용입니다."
+          : error?.message === "profile_identity_blocked"
+            ? "사용할 수 없는 닉네임 또는 해시태그입니다."
+            : "프로필을 저장하지 못했습니다. 입력 내용을 확인한 뒤 다시 시도해 주세요.");
     } finally {
       profileSavePendingRef.current = false;
       setProfileSavePending(false);

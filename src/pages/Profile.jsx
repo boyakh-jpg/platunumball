@@ -13,7 +13,7 @@ import ProgressionChecklist from "../components/rating/ProgressionChecklist.jsx"
 import RatingCard from "../components/rating/RatingCard.jsx";
 import ShareCard from "../components/share/ShareCard.jsx";
 import { BASKETBALL_POSITIONS, PLAYER_STAT_FIELDS } from "../lib/constants.js";
-import { getUserHashtag } from "../lib/handles.js";
+import { getUserHashtag, hasReservedOperatorIdentity } from "../lib/handles.js";
 import { getMatchSideScore as getSideScore, getPlayerMatchResult, getPlayerRecentRecordMatches, getPlayerSideName, hasVerifiedPlayerStats, isPersonalRecordMatch } from "../lib/matchUtils.js";
 import { canChangeProfileName, formatProfileDate, getNextNameChangeDate, getRegionDistrictOptions, inferRegionSelection, normalizeProfileName, PROFILE_NAME_MAX_LENGTH } from "../lib/profileSetup.js";
 import { isPlacementComplete } from "../lib/rating.js";
@@ -125,6 +125,11 @@ export default function Profile({ app }) {
       setProfileSaveStatus("");
       return;
     }
+    if (name !== user.name && hasReservedOperatorIdentity({ name })) {
+      setProfileError("boxtier와 박스티어는 운영자 전용입니다.");
+      setProfileSaveStatus("");
+      return;
+    }
     if (name !== user.name && !canChangeProfileName(user)) {
       setProfileError(`닉네임은 월 1회만 변경할 수 있습니다. 다음 변경 가능일: ${formatProfileDate(getNextNameChangeDate(user))}`);
       return;
@@ -143,13 +148,21 @@ export default function Profile({ app }) {
         regionDistrict: district,
       });
       if (!result || result.ok === false) {
-        setProfileError("프로필을 저장하지 못했습니다. 입력 내용을 확인한 뒤 다시 시도해 주세요.");
+        setProfileError(result?.error === "reserved_operator_identity"
+          ? "boxtier와 박스티어는 운영자 전용입니다."
+          : result?.error === "profile_identity_blocked"
+            ? "사용할 수 없는 닉네임 또는 해시태그입니다."
+            : "프로필을 저장하지 못했습니다. 입력 내용을 확인한 뒤 다시 시도해 주세요.");
         setProfileSaveStatus("");
         return;
       }
       setProfileSaveStatus("저장되었습니다.");
     } catch (error) {
-      setProfileError("프로필을 저장하지 못했습니다. 입력 내용을 확인한 뒤 다시 시도해 주세요.");
+      setProfileError(error?.message === "reserved_operator_identity"
+        ? "boxtier와 박스티어는 운영자 전용입니다."
+        : error?.message === "profile_identity_blocked"
+          ? "사용할 수 없는 닉네임 또는 해시태그입니다."
+          : "프로필을 저장하지 못했습니다. 입력 내용을 확인한 뒤 다시 시도해 주세요.");
       setProfileSaveStatus("");
     } finally {
       profileSavePendingRef.current = false;

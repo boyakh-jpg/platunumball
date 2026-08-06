@@ -8,7 +8,7 @@ export function uniqueById(items) {
 function normalizeDemoUserHashtag(user = {}) {
   const source = user.hashtag ?? user.handle ?? user.id;
   const legacyBrandHandle = String(source ?? "").match(/^[@#]?rankball(\d+)$/i);
-  const hashtag = toHashtag(legacyBrandHandle ? `boxtier${legacyBrandHandle[1]}` : source, user.id);
+  const hashtag = toHashtag(legacyBrandHandle ? `player${legacyBrandHandle[1]}` : source, user.id);
   return {
     ...user,
     handle: hashtag,

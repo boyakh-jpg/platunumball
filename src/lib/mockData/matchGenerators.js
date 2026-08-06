@@ -42,7 +42,7 @@ function makeDemoUser(index) {
   const position = cycle(PLAYER_POSITIONS.slice(1), index - 1);
   const mmr = 980 + ((index * 43) % 640);
   const name = `${cycle(demoSurnames, index)}${cycle(demoGivenNames, index * 3)}`;
-  const hashtag = `#boxtier${padNumber(index)}`;
+  const hashtag = `#player${padNumber(index)}`;
   return {
     id: `u${index}`,
     name,
