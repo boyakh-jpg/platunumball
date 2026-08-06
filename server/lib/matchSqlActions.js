@@ -9,9 +9,9 @@ const MATCH_SQL_ACTION_DEPENDENCIES = { ...MATCH_SYNC_DEPENDENCIES, ...MATCH_SYN
 
 const {
 
-  DISCORD_QUEUE_TIMEOUT_MS, MATCH_SIDES, RECORD_TYPES, isMatchRecordMatch, isMissingSqlMatchReducer, queueMatchDiscordDeliveries,
+  DISCORD_QUEUE_TIMEOUT_MS, RECORD_TYPES, isMatchRecordMatch, isMissingSqlMatchReducer, queueMatchDiscordDeliveries,
 
-  reject, rejectSqlMatchFallback, toArray, withTimeout,
+  reject, rejectSqlMatchFallback, withTimeout,
 
 } = MATCH_SQL_ACTION_DEPENDENCIES;
 
@@ -81,40 +81,6 @@ export async function loadSyncedMatchAfterWrite(context, matchId = "", fallbackM
   return latestMatch;
 }
 
-export async function assertMatchTeamPlacementSide(context, operation = {}, matchId = "") {
-  if (operation.action !== "setMatchRoomPlayerPlacement") return;
-  const playerId = String(operation.playerId ?? "").trim();
-  const requestedSide = MATCH_SIDES.includes(operation.placement?.side)
-    ? operation.placement.side
-    : null;
-  if (!matchId || !playerId || !requestedSide) return;
-
-  const [{ data: matchRow, error: matchError }, { data: playerRow, error: playerError }] = await Promise.all([
-    context.supabase
-      .from("matches")
-      .select("id,team_a_id,team_b_id,reserve_players")
-      .eq("id", matchId)
-      .maybeSingle(),
-    context.supabase
-      .from("match_players")
-      .select("side")
-      .eq("match_id", matchId)
-      .eq("user_id", playerId)
-      .maybeSingle(),
-  ]);
-  if (matchError) throw matchError;
-  if (playerError) throw playerError;
-  if (!matchRow) reject(404, "match_not_found");
-
-  const reserveSides = MATCH_SIDES.filter((sideName) => (
-    toArray(matchRow.reserve_players?.[sideName]).includes(playerId)
-  ));
-  const currentSide = playerRow?.side ?? (reserveSides.length === 1 ? reserveSides[0] : null);
-  if (!currentSide) return;
-  const currentTeamId = currentSide === "teamA" ? matchRow.team_a_id : matchRow.team_b_id;
-  if (currentTeamId && requestedSide !== currentSide) reject(409, "match_team_side_locked");
-}
-
 export async function applySqlMatchAction(context, operation = {}, match = {}) {
   const coreResult = await applySqlMatchCoreAction(context, operation, match);
   if (coreResult) return coreResult;
@@ -168,7 +134,6 @@ export async function applySqlMatchAction(context, operation = {}, match = {}) {
 
   if (["setMatchRoomPlayerPlacement", "removeMatchRoomPlayer"].includes(operation.action) && (match?.id || operation.matchId)) {
     const matchId = operation.matchId ?? match.id;
-    await assertMatchTeamPlacementSide(context, operation, matchId);
     const { data, error } = await context.supabase.rpc("rankball_match_room_action", {
       p_actor_profile_id: context.profileId,
       p_match_id: matchId,
