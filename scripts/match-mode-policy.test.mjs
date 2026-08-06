@@ -373,6 +373,7 @@ test("RPC grant health distinguishes current entry points from retired signature
     teamRegistrySource,
     accountWithdrawalRegistrySource,
     participationCancellationRegistrySource,
+    teamJoinApplicationRegistrySource,
     previousGeneralHealthSource,
     previousAuthoritativeHealthSource,
   ] = await Promise.all([
@@ -442,6 +443,13 @@ test("RPC grant health distinguishes current entry points from retired signature
     ),
     readFile(
       new URL(
+        "../supabase/migrations/20260807100000_team_join_application.sql",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+    readFile(
+      new URL(
         "../supabase/migrations/20260713160000_confirm_recruiting_match_atomic_rpc.sql",
         import.meta.url,
       ),
@@ -467,8 +475,8 @@ test("RPC grant health distinguishes current entry points from retired signature
     );
   };
   const registryRows = [
-    ...`${migrationSource}\n${registryDeltaSource}\n${seasonRegistrySource}\n${courtVerificationRegistrySource}\n${courtLimitRegistrySource}\n${courtRejectionRegistrySource}\n${teamRegistrySource}\n${accountWithdrawalRegistrySource}\n${participationCancellationRegistrySource}`.matchAll(
-      /\('(general|authoritative)',\s*'([^']+)',\s*'([^']+)',\s*'([^']+)',\s*'(active|retired)',\s*(true|false)\)/g,
+    ...`${migrationSource}\n${registryDeltaSource}\n${seasonRegistrySource}\n${courtVerificationRegistrySource}\n${courtLimitRegistrySource}\n${courtRejectionRegistrySource}\n${teamRegistrySource}\n${accountWithdrawalRegistrySource}\n${participationCancellationRegistrySource}\n${teamJoinApplicationRegistrySource}`.matchAll(
+      /\(\s*'(general|authoritative)',\s*'([^']+)',\s*'([^']+)',\s*'([^']+)',\s*'(active|retired)',\s*(true|false)\s*\)/g,
     ),
   ].map((match) => ({
     scope: match[1],
@@ -552,6 +560,7 @@ public.rankball_reject_court_request(text,integer,text,text)
 public.rankball_refresh_match_feed_for_match(text)
 public.rankball_refresh_recruiting_feed_for_post(text)
 public.rankball_related_active_match_list(text,integer,boolean)
+public.rankball_request_team_membership_with_application(text,text,text,jsonb)
 public.rankball_review_void_match_report(text,integer,text,text,text,text,integer,text,text)
 public.rankball_set_profile_affiliation(text,text,text)
 public.rankball_tournament_lineup_deadline_batch_action(timestamptz,integer)
@@ -633,8 +642,8 @@ public.rankball_update_team_emblem_design(text,text,text,boolean,text,text,text,
     "public.rankball_match_list(text,integer,text)",
     "retired",
   );
-  assert.equal(reviewedServiceOnlySignatures.length, 46);
-  assert.equal(new Set(reviewedServiceOnlySignatures).size, 46);
+  assert.equal(reviewedServiceOnlySignatures.length, 47);
+  assert.equal(new Set(reviewedServiceOnlySignatures).size, 47);
   reviewedServiceOnlySignatures.forEach((signature) => {
     assert.ok(
       activeRegistrySignatures.has(signature),

@@ -530,19 +530,12 @@ export default function TeamDetailView({ controller }) {
           entryPoint="team-history"
         />
       ) : null}
+      <TeamJoinApplicationDialog open={joinApplicationOpen} pending={teamManagementPending}
+        onClose={() => setJoinApplicationOpen(false)} onSubmit={requestTeamMembership} />
       <TeamJoinApplicationDialog
-        open={joinApplicationOpen}
-        pending={teamManagementPending}
-        onClose={() => setJoinApplicationOpen(false)}
-        onSubmit={requestTeamMembership}
-      />
-      <TeamJoinApplicationDialog
-        open={Boolean(reviewedJoinApplication)}
-        mode="review"
-        applicantName={reviewedJoinApplication?.applicantName}
-        application={reviewedJoinApplication?.application}
-        onClose={() => setReviewedJoinApplication(null)}
-      />
+        open={Boolean(reviewedJoinApplication)} mode="review"
+        applicantName={reviewedJoinApplication?.applicantName} application={reviewedJoinApplication?.application}
+        onClose={() => setReviewedJoinApplication(null)} />
       <EmblemCropEditor
         file={emblemFile}
         pending={emblemPending}
