@@ -388,6 +388,10 @@ span.referee-hover-card {
   text-decoration: none;
 }
 
+.rank-profile-page .rank-profile-hero .discord-link-badge {
+  margin-inline: var(--space-3);
+}
+
 .player-hover-head,
 .team-hover-head,
 .court-hover-head,

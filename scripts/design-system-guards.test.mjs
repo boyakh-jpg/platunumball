@@ -405,7 +405,7 @@ test("guest shell replaces the demo identity with login actions", () => {
   assert.equal((teamsSource.match(/showActions=\{false\}/g) ?? []).length, 2);
   assert.doesNotMatch(homePageSource, /<Badge tone="neutral">로그인<\/Badge>/);
   assert.match(homePageSource, /to="\/app\/profile"[^>]*aria-label="FOUNDING PLAYER 특전 알아보기"/);
-  assert.match(homePageSource, /<strong>공개 랭크보드<\/strong>/);
+  assert.match(homePageSource, /<h2>공개 랭크보드<\/h2>/);
   assert.doesNotMatch(read("src/styles/layout/app-shell-auth.css"), /\.guest-preview-bar/);
 });
 
@@ -675,7 +675,11 @@ test("KBO는 스포츠 표시, Pretendard는 읽기와 조작 UI에 사용한다
 test("공용 CTA는 ui-button-block 하나로 너비만 확장한다", () => {
   assert.match(
     pageSources.home,
-    /className="ui-action-row"><Button as=\{Link\} to="\/app\/teams"[\s\S]*?to="\/app\/community"[\s\S]*?to="\/app\/guide\/practice" size="sm"/,
+    /className="ui-action-row home-public-actions"><Button as=\{Link\} to="\/app\/teams"[\s\S]*?to="\/app\/community"[\s\S]*?to="\/app\/guide\/practice"/,
+  );
+  assert.match(
+    read("src/styles/responsive/home-dashboard-responsive.css"),
+    /\.home-public-actions\s*\{[^}]*flex-wrap:\s*nowrap;/,
   );
   assert.equal(countClassToken(pageSources.matches, "ui-button-block"), 2);
   assert.equal(countClassToken(pageSources.recruiting, "ui-button-block"), 2);
@@ -838,7 +842,7 @@ test("같은 행의 랜딩 칸과 생성 control은 같은 폭과 높이를 사�
   assert.match(landingStats, /max-width:\s*none;/);
   assert.match(
     courtControlStyles,
-    /\.create-match-info-grid\.is-standard-room input:not\(\[type="checkbox"\]\):not\(\[type="radio"\]\):not\(\[type="color"\]\)\s*\{[^}]*min-height:\s*var\(--ui-segmented-field-height\);/,
+    /\.create-match-info-grid\.is-standard-room input:not\(\[type="checkbox"\]\):not\(\[type="radio"\]\):not\(\[type="color"\]\)\s*\{[^}]*min-height:\s*var\(--ui-button-height\);/,
   );
   assert.match(
     courtControlStyles,
