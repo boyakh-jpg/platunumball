@@ -146,7 +146,9 @@ test("게시글 목록은 제목 중심 열과 모바일 두 줄 구조를 사�
   assert.match(page, /community-post-meta-line[\s\S]*community-post-likes[\s\S]*community-post-date/);
   assert.match(styles, /"title author"\s*"meta author"/);
   assert.match(styles, /\.community-post-labels \{\s*display: none/);
-  assert.match(styles, /\.community-post-title\s*\{[\s\S]*font-size: var\(--font-size-body-sm\)/);
+  assert.match(styles, /\.community-post-title\s*\{[\s\S]*font-size: var\(--font-size-body\)/);
+  assert.match(styles, /\.community-post-title-cell \{ flex: 0 1 auto; \}/);
+  assert.match(styles, /\.community-post-comments \{\s*flex: 0 0 auto;/);
   assert.match(styles, /\.community-post-author-cell \{[\s\S]*grid-area: author;[\s\S]*align-self: center/);
   assert.match(styles, /\.community-post-author-cell \.community-author > \.avatar\s*\{[\s\S]*width: var\(--space-10\)/);
   assert.match(styles, /\.community-post-views\s*\{\s*display: none/);
