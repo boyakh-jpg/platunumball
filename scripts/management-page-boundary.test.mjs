@@ -736,6 +736,8 @@ test("게스트는 실제 공개 매칭을 보고 개인 메뉴는 안내 상태
   assert.match(recruiting, /fetch\(`\/api\/landing\/stats\?recruitingLimit=\$\{REMOTE_CLIENT_RECRUITING_LIMIT\}`/u);
   assert.match(recruiting, /if \(readOnly\) return <GuestRecruiting app=\{app\} \/>/u);
   assert.match(recruiting, /<RecruitingRoomModal app=\{app\} post=\{selectedPost\} readOnly skipInitialDetailLoad/u);
+  assert.match(recruiting, /actionLabel="방 보기"[\s\S]*onAction=\{\(\) => openRoom\(post\)\}/u);
+  assert.doesNotMatch(recruiting, /actionLabel="참가 기능 안내"/u);
   assert.match(recruiting, /useState\(REGION_FILTER_ALL\)/u);
   assert.match(recruitingView, /<option value="__mine__">\{`내 지역/u);
   assert.match(recruitingView, /<option value="__all__">전체<\/option>/u);

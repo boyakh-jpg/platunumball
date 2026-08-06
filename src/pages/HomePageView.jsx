@@ -73,11 +73,11 @@ function GuestHomePage() {
         <div className="content-grid home-dashboard-grid rank-dashboard-grid"><div className="page-stack home-primary-stack">
           <Card className="match-focus-card home-upcoming-card ui-design-category-surface is-empty">
             <div className="section-title-row"><div><p className="eyebrow">Upcoming</p><h2>내 확정 경기</h2></div></div>
-            <GuestAccessNotice title="일정은 로그인 후 확인할 수 있습니다" description="로그인하면 내 참가 경기와 팀 일정을 불러옵니다." returnTo="/app/matches" />
+            <GuestAccessNotice title="일정은 로그인 후 확인할 수 있습니다" description="로그인하면 내 참가 경기와 팀 일정을 불러옵니다." returnTo="/app/matches" showActions={false} />
           </Card>
           <Card className="section-card home-recent-card">
             <div className="section-title-row"><div><p className="eyebrow">Recent Matches</p><h2>내 최근 전적</h2></div></div>
-            <GuestAccessNotice title="최근 전적은 로그인 후 확인할 수 있습니다" description="로그인하면 내 공개·비공개 경기 기록을 불러옵니다." returnTo="/app/profile/records" showPublicMatches={false} />
+            <GuestAccessNotice title="최근 전적은 로그인 후 확인할 수 있습니다" description="로그인하면 내 공개·비공개 경기 기록을 불러옵니다." returnTo="/app/profile/records" showPublicMatches={false} showActions={false} />
           </Card>
         </div></div>
       </div>

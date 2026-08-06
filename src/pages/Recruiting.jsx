@@ -70,7 +70,6 @@ const REGION_FILTER_MINE = "__mine__";
 
 function GuestRecruiting({ app }) {
   const location = useLocation();
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [reloadKey, setReloadKey] = useState(0);
   const [regionFilterSido, setRegionFilterSido] = useState(REGION_FILTER_ALL);
@@ -121,7 +120,6 @@ function GuestRecruiting({ app }) {
   }, [reloadKey]);
 
   const loginPath = getLoginPath(`${location.pathname}${location.search}${location.hash}`);
-  const openLogin = () => navigate(loginPath);
   const openRoom = (post) => {
     const next = new URLSearchParams(searchParams);
     next.set("post", post.id);
@@ -194,9 +192,9 @@ function GuestRecruiting({ app }) {
             visibility={getRoomVisibilityLabel(post)}
             title={getRecruitingDisplayTitle(post)}
             meta={<><CalendarDays size={15} /> {getRoomScheduleLabel(post)} · {[post.region, post.court].filter(Boolean).join(" · ") || "장소 미정"}</>}
-            actionLabel="참가 기능 안내"
+            actionLabel="방 보기"
             onOpen={() => openRoom(post)}
-            onAction={openLogin}
+            onAction={() => openRoom(post)}
           />
         )) : feed.loading ? (
           <EmptyState tone="loading" title="공개 매칭 불러오는 중" />

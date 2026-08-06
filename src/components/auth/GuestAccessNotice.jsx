@@ -8,6 +8,7 @@ export default function GuestAccessNotice({
   description,
   returnTo = "",
   showPublicMatches = true,
+  showActions = true,
   className = "",
 }) {
   const location = useLocation();
@@ -18,12 +19,12 @@ export default function GuestAccessNotice({
       title={title}
       description={description}
       className={className}
-      action={(
+      action={showActions ? (
         <>
           <Button as={Link} to={getLoginPath(returnTo || currentPath)}>로그인</Button>
           {showPublicMatches ? <Button as={Link} to="/app/recruiting" variant="secondary">공개 매칭 보기</Button> : null}
         </>
-      )}
+      ) : null}
     />
   );
 }

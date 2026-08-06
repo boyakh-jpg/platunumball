@@ -276,7 +276,7 @@ export default function Teams({ app }) {
           </div>
           <div className="my-team-list ui-design-borderless-list">
             {readOnly ? (
-              <GuestAccessNotice title="내 팀은 로그인 후 확인할 수 있습니다" description="공개 팀 검색과 랭킹은 지금 둘러볼 수 있습니다. 로그인하면 내 소속 팀과 초대를 불러옵니다." returnTo="/app/teams" showPublicMatches={false} />
+              <GuestAccessNotice title="내 팀은 로그인 후 확인할 수 있습니다" description="공개 팀 검색과 랭킹은 지금 둘러볼 수 있습니다. 로그인하면 내 소속 팀과 초대를 불러옵니다." returnTo="/app/teams" showPublicMatches={false} showActions={false} />
             ) : myTeams.length ? myTeams.map((team) => {
               const winRate = team.played ? Math.round((team.wins / team.played) * 100) : 0;
               const isCaptain = team.myRole === "captain";
@@ -430,7 +430,7 @@ export default function Teams({ app }) {
               <div><p className="eyebrow">Create Squad</p><h2>팀 만들기</h2></div>
               <PlusCircle size={22} />
             </div>
-            <GuestAccessNotice title="팀 생성은 로그인 후 사용할 수 있습니다" description="먼저 공개 팀을 검색해 분위기와 활동 지역을 확인할 수 있습니다. 로그인하면 팀 정보를 입력해 바로 만들 수 있습니다." returnTo="/app/teams" showPublicMatches={false} />
+            <GuestAccessNotice title="팀 생성은 로그인 후 사용할 수 있습니다" description="먼저 공개 팀을 검색해 분위기와 활동 지역을 확인할 수 있습니다. 로그인하면 팀 정보를 입력해 바로 만들 수 있습니다." returnTo="/app/teams" showPublicMatches={false} showActions={false} />
           </Card>
         ) : <Card className="section-card team-create-panel">
           <div className="section-title-row">
