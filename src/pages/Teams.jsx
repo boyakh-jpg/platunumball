@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
 import { PlusCircle, Search } from "lucide-react";
+import GuestAccessNotice from "../components/auth/GuestAccessNotice.jsx";
 import Badge from "../components/common/Badge.jsx";
 import BasketballLoader from "../components/common/BasketballLoader.jsx";
 import Button from "../components/common/Button.jsx";
@@ -14,7 +14,7 @@ import { getTeamDiscoveryGroups } from "../data/teamMappers.js";
 import { MAX_TEAM_MEMBERSHIPS, MAX_TEAM_NAME_LENGTH, getTeamRoleLabel, isSameRegion } from "../lib/constants.js";
 import { getCourtAddress, getCourtLayoutLabel, getCourtPickerResults, getCourtSearchText, getCourtSurfaceLabel, getRegisteredCourts, mergeCourtSearchCourts } from "../lib/courts.js";
 import { getCourtHashtag, getTeamHashtag } from "../lib/handles.js";
-import { getLoginPath, getProfileRegionSelection, getRepresentativeTeam, inferRegionSelection, REGION_TREE } from "../lib/profileSetup.js";
+import { getProfileRegionSelection, getRepresentativeTeam, inferRegionSelection, REGION_TREE } from "../lib/profileSetup.js";
 import { DIRECTORY_TEAM_PAGE_LIMIT } from "../lib/queryPolicy.js";
 import { getTierDivision } from "../lib/tier.js";
 
@@ -276,11 +276,7 @@ export default function Teams({ app }) {
           </div>
           <div className="my-team-list ui-design-borderless-list">
             {readOnly ? (
-              <div className="ui-empty-state-compact">
-                <strong>내 팀은 로그인 후 확인할 수 있습니다</strong>
-                <span>공개 팀 검색과 랭킹은 지금 둘러볼 수 있습니다. 로그인하면 내 소속 팀과 초대를 불러옵니다.</span>
-                <Button as={Link} to={getLoginPath("/app/teams")} size="sm">로그인</Button>
-              </div>
+              <GuestAccessNotice title="내 팀은 로그인 후 확인할 수 있습니다" description="공개 팀 검색과 랭킹은 지금 둘러볼 수 있습니다. 로그인하면 내 소속 팀과 초대를 불러옵니다." returnTo="/app/teams" showPublicMatches={false} />
             ) : myTeams.length ? myTeams.map((team) => {
               const winRate = team.played ? Math.round((team.wins / team.played) * 100) : 0;
               const isCaptain = team.myRole === "captain";
@@ -434,11 +430,7 @@ export default function Teams({ app }) {
               <div><p className="eyebrow">Create Squad</p><h2>팀 만들기</h2></div>
               <PlusCircle size={22} />
             </div>
-            <div className="ui-empty-state-compact">
-              <strong>팀 생성은 로그인 후 사용할 수 있습니다</strong>
-              <span>먼저 공개 팀을 검색해 분위기와 활동 지역을 확인할 수 있습니다. 로그인하면 팀 정보를 입력해 바로 만들 수 있습니다.</span>
-              <Button as={Link} to={getLoginPath("/app/teams")} size="sm">로그인</Button>
-            </div>
+            <GuestAccessNotice title="팀 생성은 로그인 후 사용할 수 있습니다" description="먼저 공개 팀을 검색해 분위기와 활동 지역을 확인할 수 있습니다. 로그인하면 팀 정보를 입력해 바로 만들 수 있습니다." returnTo="/app/teams" showPublicMatches={false} />
           </Card>
         ) : <Card className="section-card team-create-panel">
           <div className="section-title-row">

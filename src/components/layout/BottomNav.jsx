@@ -1,6 +1,5 @@
-import { CalendarDays, ClipboardList, Handshake, House, LogIn, MessageSquareText, Settings, UserRound, UsersRound } from "lucide-react";
-import { NavLink, useLocation } from "react-router-dom";
-import { getLoginPath } from "../../lib/profileSetup.js";
+import { CalendarDays, ClipboardList, Handshake, House, MessageSquareText, Settings, UserRound, UsersRound } from "lucide-react";
+import { NavLink } from "react-router-dom";
 
 const items = [
   { to: "/app", label: "홈", icon: House },
@@ -13,18 +12,15 @@ const items = [
   { to: "/app/settings", label: "설정", icon: Settings },
 ];
 
-export default function BottomNav({ guestPreview = false }) {
-  const location = useLocation();
-  const loginPath = getLoginPath(`${location.pathname}${location.search}${location.hash}`);
+export default function BottomNav() {
   return (
     <nav className="bottom-nav" aria-label="하단 메뉴">
       {items.map((item) => {
-        const isGuestProfile = guestPreview && item.to === "/app/profile";
-        const Icon = isGuestProfile ? LogIn : item.icon;
+        const Icon = item.icon;
         return (
-          <NavLink key={item.to} to={isGuestProfile ? loginPath : item.to} end={item.to === "/app"}>
+          <NavLink key={item.to} to={item.to} end={item.to === "/app"}>
             <Icon size={20} />
-            <span>{isGuestProfile ? "로그인" : item.label}</span>
+            <span>{item.label}</span>
           </NavLink>
         );
       })}

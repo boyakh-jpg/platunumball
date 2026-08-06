@@ -386,11 +386,19 @@ test("guest shell replaces the demo identity with login actions", () => {
   assert.match(appShellSource, /<BottomNav guestPreview=\{guestPreview\} \/>/);
   assert.doesNotMatch(appShellSource, /guest-preview-bar/);
   assert.match(sidebar, /guestPreview \? \([\s\S]*?<strong>로그인<\/strong>/);
-  assert.match(bottomNav, /guestPreview && item\.to === "\/app\/profile"/);
-  assert.match(bottomNav, /isGuestProfile \? "로그인" : item\.label/);
+  assert.match(bottomNav, /<NavLink key=\{item\.to\} to=\{item\.to\}/);
+  assert.doesNotMatch(bottomNav, /isGuestProfile|getLoginPath|LogIn/);
   assert.match(appSource, /"\/app\/community"/);
+  assert.match(appSource, /<GuestAccessNotice title="플레이는 로그인 후 확인할 수 있습니다"/);
+  assert.match(appSource, /<GuestAccessNotice title="내 정보는 로그인 후 확인할 수 있습니다"/);
+  assert.match(appSource, /<GuestAccessNotice title="설정은 로그인 후 확인할 수 있습니다"/);
   assert.match(homePageSource, /to="\/app\/community"[^>]*>[\s\S]*?커뮤니티/);
   assert.match(homePageSource, /function GuestHomePage[\s\S]*home-search-panel[\s\S]*home-left-rail[\s\S]*home-right-rail/);
+  assert.match(homePageSource, /<GuestAccessNotice title="일정은 로그인 후 확인할 수 있습니다"[\s\S]*returnTo="\/app\/matches"/);
+  assert.match(homePageSource, /<GuestAccessNotice title="최근 전적은 로그인 후 확인할 수 있습니다"[\s\S]*showPublicMatches=\{false\}/);
+  assert.doesNotMatch(homePageSource, /<Badge tone="neutral">로그인<\/Badge>/);
+  assert.match(homePageSource, /to="\/app\/profile"[^>]*aria-label="FOUNDING PLAYER 특전 알아보기"/);
+  assert.match(homePageSource, /<strong>공개 랭크보드<\/strong>/);
   assert.doesNotMatch(read("src/styles/layout/app-shell-auth.css"), /\.guest-preview-bar/);
 });
 

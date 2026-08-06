@@ -5,6 +5,7 @@ import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import SearchPicker from "../components/common/SearchPicker.jsx";
+import GuestAccessNotice from "../components/auth/GuestAccessNotice.jsx";
 import MatchCard from "../components/match/MatchCard.jsx";
 import RecentMatchRow from "../components/match/RecentMatchRow.jsx";
 import HomeRightRail from "../components/home/HomeRightRail.jsx";
@@ -12,7 +13,6 @@ import { isHomeGuideCardVisible } from "../data/settingsMappers.js";
 import { assetUrl } from "../lib/assets.js";
 import { getRoomScheduleLabel } from "../lib/matchUtils.js";
 import { getProfileIcon } from "../lib/profileIcons.js";
-import { getLoginPath } from "../lib/profileSetup.js";
 
 const FOUNDING_PLAYER_ICON = getProfileIcon("341-founding-player-s0");
 
@@ -38,7 +38,6 @@ function renderGuestSearchItem(item) {
 
 function GuestHomePage() {
   const [query, setQuery] = useState("");
-  const loginPath = getLoginPath("/app");
   return (
     <div className="page-stack rank-home">
       <Card className="home-search-panel rank-search-card">
@@ -60,10 +59,10 @@ function GuestHomePage() {
           </div>
         </section>
 
-        <Card as={Link} to={loginPath} className="home-guide-card home-season-zero-card" aria-label="로그인하고 FOUNDING PLAYER 특전 받기">
+        <Card as={Link} to="/app/profile" className="home-guide-card home-season-zero-card" aria-label="FOUNDING PLAYER 특전 알아보기">
           <span className="home-guide-card__icon"><img src={assetUrl(FOUNDING_PLAYER_ICON.src)} alt="" width="40" height="40" decoding="async" /></span>
-          <span className="home-guide-card__copy"><small>SEASON ZERO · EARLY PLAYER</small><strong>로그인하고 FOUNDING PLAYER 특전 받기</strong></span>
-          <span className="home-guide-card__link">로그인 <ArrowRight size={18} aria-hidden="true" /></span>
+          <span className="home-guide-card__copy"><small>SEASON ZERO · EARLY PLAYER</small><strong>FOUNDING PLAYER 특전 알아보기</strong></span>
+          <span className="home-guide-card__link">특전 보기 <ArrowRight size={18} aria-hidden="true" /></span>
         </Card>
         <Card as={Link} to="/app/guide" className="home-guide-card" aria-label="BOXTIER 사용 설명 보기">
           <span className="home-guide-card__icon"><BookOpenCheck size={24} aria-hidden="true" /></span>
@@ -73,20 +72,20 @@ function GuestHomePage() {
 
         <div className="content-grid home-dashboard-grid rank-dashboard-grid"><div className="page-stack home-primary-stack">
           <Card className="match-focus-card home-upcoming-card ui-design-category-surface is-empty">
-            <div className="section-title-row"><div><p className="eyebrow">Upcoming</p><h2>내 확정 경기</h2></div><Badge tone="neutral">로그인</Badge></div>
-            <div className="ui-empty-state-compact"><strong>일정은 로그인 후 확인할 수 있습니다</strong><span>로그인하면 내 참가 경기와 팀 일정을 불러옵니다.</span><Button as={Link} to="/app/recruiting" size="sm" variant="secondary">공개 매칭 보기</Button></div>
+            <div className="section-title-row"><div><p className="eyebrow">Upcoming</p><h2>내 확정 경기</h2></div></div>
+            <GuestAccessNotice title="일정은 로그인 후 확인할 수 있습니다" description="로그인하면 내 참가 경기와 팀 일정을 불러옵니다." returnTo="/app/matches" />
           </Card>
           <Card className="section-card home-recent-card">
-            <div className="section-title-row"><div><p className="eyebrow">Recent Matches</p><h2>내 최근 전적</h2></div><Badge tone="neutral">로그인</Badge></div>
-            <div className="ui-empty-state-compact home-panel-empty"><strong>최근 전적은 로그인 후 확인할 수 있습니다</strong><span>로그인하면 내 공개·비공개 경기 기록을 불러옵니다.</span><Button as={Link} to={loginPath} size="sm">로그인</Button></div>
+            <div className="section-title-row"><div><p className="eyebrow">Recent Matches</p><h2>내 최근 전적</h2></div></div>
+            <GuestAccessNotice title="최근 전적은 로그인 후 확인할 수 있습니다" description="로그인하면 내 공개·비공개 경기 기록을 불러옵니다." returnTo="/app/profile/records" showPublicMatches={false} />
           </Card>
         </div></div>
       </div>
 
       <aside className="page-stack home-right-rail">
         <aside className="page-stack home-top-rail">
-          <Card className="section-card rank-profile-card rank-spotlight-card"><div className="rank-spotlight-content"><p className="eyebrow">My Rank</p><strong>내 랭크는 로그인 후 확인할 수 있습니다</strong><span>전체 랭크보드는 지금 볼 수 있습니다.</span><Button as={Link} to="/app/rankings" variant="secondary" className="ui-button-block"><Trophy size={17} /> 전체 랭크보드</Button></div></Card>
-          <Card className="section-card home-action-card"><div className="section-title-row"><div><p className="eyebrow">Action Queue</p><h2>내가 처리할 일</h2></div><Badge tone="neutral">로그인</Badge></div><div className="home-action-list ui-design-borderless-list"><div className="home-action-row priority-5"><span className="home-action-icon"><Bell size={18} /></span><span className="home-action-main"><strong>알림은 로그인 후 확인할 수 있습니다</strong><em>로그인하면 초대와 경기 요청을 불러옵니다.</em></span></div></div></Card>
+          <Card className="section-card rank-profile-card rank-spotlight-card"><div className="rank-spotlight-content"><p className="eyebrow">My Rank</p><strong>공개 랭크보드</strong><span>전체 선수·팀 순위를 지금 볼 수 있습니다.</span><Button as={Link} to="/app/rankings" variant="secondary" className="ui-button-block"><Trophy size={17} /> 전체 랭크보드</Button></div></Card>
+          <Card className="section-card home-action-card"><div className="section-title-row"><div><p className="eyebrow">Action Queue</p><h2>내가 처리할 일</h2></div></div><div className="home-action-list ui-design-borderless-list"><div className="home-action-row priority-5"><span className="home-action-icon"><Bell size={18} /></span><span className="home-action-main"><strong>개인 알림</strong><em>로그인 후 초대와 경기 요청이 여기에 표시됩니다.</em></span></div></div></Card>
         </aside>
         <aside className="page-stack home-side-stack"><Card className="section-card home-side-wide-card"><div className="section-title-row"><div><p className="eyebrow">Public</p><h2>로그인 없이 둘러보기</h2></div></div><div className="ui-action-row"><Button as={Link} to="/app/teams" variant="secondary"><UsersRound size={17} /> 팀</Button><Button as={Link} to="/app/community" variant="secondary"><MessageSquareText size={17} /> 커뮤니티</Button></div></Card></aside>
       </aside>

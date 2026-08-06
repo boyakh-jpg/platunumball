@@ -719,14 +719,16 @@ test("게스트 저장 요청은 원래 경로를 보존해 로그인으로 보�
   assert.match(rankings, /const directoryLoading = !promotionView/u);
 });
 
-test("게스트는 실제 공개 매칭만 보고 개인 화면은 로그인 상태로 끝난다", async () => {
-  const [app, recruiting, recruitingView, home, matches, bootstrap] = await Promise.all([
+test("게스트는 실제 공개 매칭을 보고 개인 메뉴는 안내 상태로 끝난다", async () => {
+  const [app, recruiting, recruitingView, home, matches, bootstrap, guestAccess, bottomNav] = await Promise.all([
     read("src/App.jsx"),
     read("src/pages/Recruiting.jsx"),
     read("src/pages/RecruitingPageView.jsx"),
     read("src/pages/HomePageView.jsx"),
     read("src/pages/Matches.jsx"),
     read("src/hooks/appData/bootstrap.js"),
+    read("src/components/auth/GuestAccessNotice.jsx"),
+    read("src/components/layout/BottomNav.jsx"),
   ]);
 
   assert.match(app, /\/app\/recruiting/u);
@@ -738,8 +740,15 @@ test("게스트는 실제 공개 매칭만 보고 개인 화면은 로그인 상
   assert.match(recruitingView, /<option value="__mine__">\{`내 지역/u);
   assert.match(recruitingView, /<option value="__all__">전체<\/option>/u);
   assert.match(home, /app\?\.demoPreview[\s\S]*<GuestHomePage/u);
-  assert.match(home, /일정은 로그인 후 확인할 수 있습니다[\s\S]*공개 매칭 보기/u);
-  assert.match(matches, /일정은 로그인 후 확인할 수 있습니다/u);
+  assert.match(home, /<GuestAccessNotice title="일정은 로그인 후 확인할 수 있습니다"[\s\S]*returnTo="\/app\/matches"/u);
+  assert.match(matches, /<GuestAccessNotice[\s\S]*일정은 로그인 후 확인할 수 있습니다/u);
+  assert.match(app, /"\/app\/profile"[\s\S]*"\/app\/recorder"[\s\S]*"\/app\/settings"/u);
+  assert.match(app, /path="\/app\/recorder"[\s\S]*guestPreview \? \([\s\S]*<GuestAccessNotice/u);
+  assert.match(app, /path="\/app\/profile"[\s\S]*guestPreview \? \([\s\S]*<GuestAccessNotice/u);
+  assert.match(app, /path="\/app\/settings"[\s\S]*guestPreview \? \([\s\S]*<GuestAccessNotice/u);
+  assert.match(guestAccess, /getLoginPath\(returnTo \|\| currentPath\)/u);
+  assert.match(guestAccess, /to="\/app\/recruiting"[\s\S]*공개 매칭 보기/u);
+  assert.doesNotMatch(bottomNav, /isGuestProfile|로그인" : item\.label/u);
   assert.match(bootstrap, /regionScope: "all", startFilter: "all"/u);
 });
 

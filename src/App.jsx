@@ -2,6 +2,7 @@ import { Component, Suspense, lazy, useEffect, useLayoutEffect } from "react";
 import { Navigate, Route, Routes, useLocation, useParams } from "react-router-dom";
 import RequireAdmin from "./components/auth/RequireAdmin.jsx";
 import RequireAuth from "./components/auth/RequireAuth.jsx";
+import GuestAccessNotice from "./components/auth/GuestAccessNotice.jsx";
 import BasketballLoader from "./components/common/BasketballLoader.jsx";
 import AppShell from "./components/layout/AppShell.jsx";
 import PublicShell from "./components/layout/PublicShell.jsx";
@@ -64,9 +65,12 @@ const GUEST_PUBLIC_APP_PATHS = new Set([
   "/app/create",
   "/app/community",
   "/app/matches",
+  "/app/profile",
+  "/app/recorder",
   "/app/recruiting",
   "/app/referee-rulebook",
   "/app/rankings",
+  "/app/settings",
   "/app/teams",
 ]);
 const GUEST_PUBLIC_APP_PREFIXES = [
@@ -228,7 +232,9 @@ export default function App() {
             <Route path="/app/courts/:courtId" element={<CourtDetail app={app} />} />
             <Route path="/app/matches/:matchId" element={<LegacyMatchRoomRedirect />} />
             <Route path="/app/matches" element={<Matches app={app} />} />
-            <Route path="/app/recorder" element={<Recorder app={app} />} />
+            <Route path="/app/recorder" element={guestPreview ? (
+              <GuestAccessNotice title="플레이는 로그인 후 확인할 수 있습니다" description="로그인하면 진행 중인 경기와 기록 입력 대상을 불러옵니다." />
+            ) : <Recorder app={app} />} />
             <Route path="/app/referee-rulebook" element={<RefereeRulebook theme={theme} />} />
             <Route path="/app/season" element={<Season app={app} />} />
             <Route path="/app/rankings" element={<Rankings app={app} />} />
@@ -239,13 +245,17 @@ export default function App() {
             <Route path="/app/tournaments/:tournamentId" element={<TournamentDetail app={app} />} />
             <Route path="/app/players/:playerId" element={<PlayerDetail app={app} />} />
             <Route path="/app/referees/:refereeId" element={<RefereeDetail app={app} />} />
-            <Route path="/app/profile" element={<Profile app={app} />} />
+            <Route path="/app/profile" element={guestPreview ? (
+              <GuestAccessNotice title="내 정보는 로그인 후 확인할 수 있습니다" description="로그인하면 프로필, 랭크, 업적과 경기 기록을 불러옵니다." />
+            ) : <Profile app={app} />} />
             <Route path="/app/profile/achievements" element={<ProfileAchievements app={app} />} />
             <Route path="/app/profile/records" element={<ProfileRecords app={app} />} />
             <Route path="/app/affiliations" element={<Affiliations app={app} />} />
             <Route path="/app/notifications" element={<Notifications app={app} />} />
             <Route path="/app/admin" element={<RequireAdmin app={app}><Admin app={app} /></RequireAdmin>} />
-            <Route path="/app/settings" element={<Settings app={app} auth={auth} />} />
+            <Route path="/app/settings" element={guestPreview ? (
+              <GuestAccessNotice title="설정은 로그인 후 확인할 수 있습니다" description="로그인하면 계정, 화면, 구장과 연동 설정을 불러옵니다." />
+            ) : <Settings app={app} auth={auth} />} />
             <Route path="/app/settings/favorites" element={<Settings app={app} auth={auth} section="favorites" />} />
             <Route path="/app/settings/profile" element={<Settings app={app} auth={auth} section="profile" />} />
             <Route path="/app/settings/discord" element={<Settings app={app} auth={auth} section="discord" />} />
