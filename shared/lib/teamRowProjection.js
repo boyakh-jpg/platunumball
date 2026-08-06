@@ -5,6 +5,7 @@ export function projectTeamRow(row = {}) {
   return {
     id: row.id,
     name: row.name,
+    description: row.description ?? "",
     homeCourt: row.home_court,
     region: row.region,
     mmr: row.mmr ?? DEFAULT_RATING,

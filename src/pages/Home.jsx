@@ -165,6 +165,7 @@ function AuthenticatedHome({ app }) {
     .filter(({ invitation }) => !blockedUserIds.includes(invitation.fromUserId)), [app.state, blockedUserIds, user.id]);
   const pendingTeamInvitations = useMemo(() => (app.state.teamInvitations ?? []).filter((invitation) => (
     invitation.targetUserId === user.id &&
+    invitation.requestKind !== "request" &&
     invitation.status === "pending" &&
     !blockedUserIds.includes(invitation.fromUserId)
   )), [app.state.teamInvitations, blockedUserIds, user.id]);

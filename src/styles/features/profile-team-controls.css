@@ -468,3 +468,15 @@
   font-weight: 950;
   letter-spacing: -0.01em;
 }
+.team-description-copy {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  white-space: pre-line;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 5;
+}
+
+.team-membership-request-actions {
+  margin-top: var(--space-4);
+}

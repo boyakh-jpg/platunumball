@@ -400,7 +400,7 @@ export function createCreateMatchActions(context) {
     const createAsTeam = hasTeamChallenge || creationPolicyPayload.hostJoinMode === "team" && creationPolicyPayload.teamOnly;
     const remakeInvitationContext = remakeDraft
       ? [
-          "취소된 방을 같은 설정으로 다시 만들었습니다.",
+          draft.repeatMatch ? "이전 경기와 같은 방식의 재경기 초대입니다." : "취소된 방을 같은 설정으로 다시 만들었습니다.",
           draft.remakeCancellationReason ? `이전 방 취소 사유: ${draft.remakeCancellationReason}` : "",
         ].filter(Boolean).join("\n")
       : "";

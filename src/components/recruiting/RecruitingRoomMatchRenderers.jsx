@@ -187,7 +187,7 @@ const renderSourceMatchRecordBoard = () => {
         ).trim();
         const canRemakeRoom = mine && (
           Boolean(recruitingRoomTerminalStatus) ||
-          sourceMatch?.status === "cancelled"
+          ["cancelled", "confirmed"].includes(sourceMatch?.status)
         );
         const remakeRoom = () => {
           if (!canRemakeRoom) return;
@@ -195,6 +195,7 @@ const renderSourceMatchRecordBoard = () => {
             onRemake();
             return;
           }
+          const repeatMatch = sourceMatch?.status === "confirmed";
           const remakeSource = sourceMatch
             ? {
                 ...selectedPost,
@@ -205,13 +206,14 @@ const renderSourceMatchRecordBoard = () => {
                 teamId: selectedPost.teamId,
                 targetTeamId: selectedPost.targetTeamId,
                 rules: { ...(selectedPost.rules ?? {}), ...(sourceMatch.rules ?? {}) },
+                repeatMatch,
               }
             : selectedPost;
           navigate("/app/create", {
             state: {
               remakeDraft: getRoomRemakeDraft(remakeSource),
-              remakeSourceId: sourceMatch?.recruitingPostId ?? (/^match-room-/.test(selectedPost.id) ? "" : selectedPost.id),
-              remakeSourceMatchId: sourceMatch?.id ?? "",
+              remakeSourceId: repeatMatch ? "" : sourceMatch?.recruitingPostId ?? (/^match-room-/.test(selectedPost.id) ? "" : selectedPost.id),
+              remakeSourceMatchId: repeatMatch ? "" : sourceMatch?.id ?? "",
             },
           });
         };

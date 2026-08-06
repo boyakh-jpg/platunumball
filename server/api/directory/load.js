@@ -170,7 +170,7 @@ async function loadDirectoryPage(context, body = {}) {
     };
   }
 
-  const [favoriteRows, invitationRows, ownMembershipRows, targetProfileSettingRows] = await Promise.all([
+  const [favoriteRows, relatedInvitationRows, ownMembershipRows, targetProfileSettingRows] = await Promise.all([
     currentProfileId
       ? readRows(context.supabase.from("favorites").select(FAVORITE_COLUMNS).eq("user_id", currentProfileId))
       : [],
@@ -192,6 +192,16 @@ async function loadDirectoryPage(context, body = {}) {
         : readRowsByIds(context.supabase, "profiles", "id,app_settings", "id", [profileId])
       : [],
   ]);
+  const captainTeamIds = ownMembershipRows.filter((membership) => membership.role === "captain").map((membership) => membership.team_id);
+  const captainRequestRows = captainTeamIds.length
+    ? await readRows(context.supabase
+      .from("team_invitations")
+      .select(TEAM_INVITATION_COLUMNS)
+      .in("team_id", captainTeamIds)
+      .eq("request_kind", "request")
+      .eq("status", "pending"))
+    : [];
+  const invitationRows = uniqueRows([relatedInvitationRows, captainRequestRows]);
 
   let profilePage = { rows: [], total: 0, hasMore: false };
   if (["all", "players"].includes(kind)) {

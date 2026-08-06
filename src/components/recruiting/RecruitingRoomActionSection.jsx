@@ -41,7 +41,7 @@ export function RecruitingRoomActionSection({ context }) {
                     ) : null}
                     {canRemakeRoom ? (
                       <Button type="button" variant="secondary" onClick={remakeRoom}>
-                        <RotateCcw size={17} /> 같은 설정으로 다시 만들기
+                        <RotateCcw size={17} /> {sourceMatch?.status === "confirmed" ? "같은 경기 또하기" : "같은 설정으로 다시 만들기"}
                       </Button>
                     ) : null}
                     {!sourceMatchRecordBoardFirst && !sourceMatchIsRecordRoom && showSourceMatchRecordSummary ? (
@@ -222,7 +222,7 @@ export function RecruitingRoomActionSection({ context }) {
                     ) : null}
                     {canRemakeRoom ? (
                       <Button type="button" variant="secondary" onClick={remakeRoom}>
-                        <RotateCcw size={17} /> 같은 설정으로 다시 만들기
+                        <RotateCcw size={17} /> {sourceMatch?.status === "confirmed" ? "같은 경기 또하기" : "같은 설정으로 다시 만들기"}
                       </Button>
                     ) : null}
                   </div>

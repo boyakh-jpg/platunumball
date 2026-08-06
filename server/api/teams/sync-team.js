@@ -1,6 +1,6 @@
 import { allowRequestMethod, getAuthenticatedContext, readJsonBody, sendJson, toArray } from "../_supabaseAdmin.js";
 import { loadCurrentProfileState, PROFILE_ME_COLUMNS } from "../profile/me.js";
-import { isTeamInviteRole, MAX_TEAM_MEMBERS, MAX_TEAM_NAME_LENGTH, normalizeTeamRole } from "../../../shared/lib/constants.js";
+import { isTeamInviteRole, MAX_TEAM_DESCRIPTION_LENGTH, MAX_TEAM_DESCRIPTION_LINES, MAX_TEAM_MEMBERS, MAX_TEAM_NAME_LENGTH, normalizeTeamRole } from "../../../shared/lib/constants.js";
 
 function uniqueMembers(members = []) {
   const seen = new Set();
@@ -162,6 +162,42 @@ async function respondTeamInvitation(context, body = {}) {
   return data ?? { ok: true };
 }
 
+async function requestTeamMembership(context, body = {}) {
+  const { data, error } = await context.supabase.rpc("rankball_request_team_membership", {
+    p_actor_profile_id: context.profileId,
+    p_team_id: String(body.teamId || "").trim(),
+    p_request_id: String(body.invitationId || "").trim() || null,
+  });
+  if (error) throw error;
+  return data ?? { ok: true };
+}
+
+async function respondTeamJoinRequest(context, body = {}, action = "") {
+  const { data, error } = await context.supabase.rpc("rankball_respond_team_join_request", {
+    p_actor_profile_id: context.profileId,
+    p_invitation_id: String(body.invitationId || "").trim(),
+    p_action: action,
+  });
+  if (error) throw error;
+  return data ?? { ok: true };
+}
+
+async function updateTeamDescription(context, body = {}) {
+  const description = String(body.description ?? "").replace(/\r\n?/g, "\n").trim();
+  if (description.length > MAX_TEAM_DESCRIPTION_LENGTH || description.split("\n").length > MAX_TEAM_DESCRIPTION_LINES) {
+    const error = new Error("invalid_team_description");
+    error.statusCode = 400;
+    throw error;
+  }
+  const { data, error } = await context.supabase.rpc("rankball_update_team_description", {
+    p_actor_profile_id: context.profileId,
+    p_team_id: String(body.teamId || "").trim(),
+    p_description: description,
+  });
+  if (error) throw error;
+  return data ?? { ok: true };
+}
+
 async function withCurrentProfileState(context, result = {}) {
   try {
     const profileResult = await loadCurrentProfileState(context);
@@ -185,6 +221,12 @@ export default async function handler(request, response) {
     const teamInviteAction = String(body.teamInviteAction || "").trim();
     const result = teamInviteAction === "invite"
       ? await withCurrentProfileState(context, await inviteTeamMember(context, body))
+      : teamInviteAction === "request_join"
+        ? await withCurrentProfileState(context, await requestTeamMembership(context, body))
+        : ["approve_join", "decline_join", "cancel_join"].includes(teamInviteAction)
+          ? await withCurrentProfileState(context, await respondTeamJoinRequest(context, body, teamInviteAction.replace("_join", "")))
+          : teamInviteAction === "update_description"
+            ? await withCurrentProfileState(context, await updateTeamDescription(context, body))
       : ["accept", "decline", "cancel"].includes(teamInviteAction)
         ? await withCurrentProfileState(context, await respondTeamInvitation(context, body))
         : body.deletedTeamId

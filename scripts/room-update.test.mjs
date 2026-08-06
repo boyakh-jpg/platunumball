@@ -494,6 +494,27 @@ test("cancelled room remake copies configuration but clears lifecycle and partic
   );
 });
 
+test("confirmed match repeat creates a private room and reinvites only prior players", () => {
+  const teamRepeat = getRoomRemakeDraft({ ...makeRecruitingPost("private-team"), status: "confirmed", repeatMatch: true });
+  assert.equal(teamRepeat.visibility, "private");
+  assert.equal(teamRepeat.remakeTeamAId, "team-a");
+  assert.equal(teamRepeat.remakeTeamBId, "team-b");
+  assert.equal(teamRepeat.remakeInviteCount, 1);
+
+  const pickupRepeat = getRoomRemakeDraft({
+    ...makeRecruitingPost("pickup"),
+    status: "confirmed",
+    repeatMatch: true,
+    refereeId: "ref",
+    statRecorders: { teamA: "a2", teamB: "b2" },
+  });
+  const invitedIds = pickupRepeat.remakeInvitationGroups.flatMap((group) => group.playerIds).sort();
+  assert.equal(pickupRepeat.visibility, "private");
+  assert.deepEqual(invitedIds, ["a3", "b1", "b3", "ra", "rb"]);
+  assert.equal(invitedIds.includes("host"), false);
+  assert.equal(invitedIds.includes("ref"), false);
+});
+
 test("match rule acknowledgement records only the current revision", () => {
   const match = makeMatch();
   const changed = updateMatchRoomRules(makeMatchState(match), match.id, { periodMinutes: 10 });

@@ -22,6 +22,7 @@ import {
   getMatchCreationWizardType,
   getMatchIntentChangePatch,
   getMatchIntentPresetPatch,
+  getMatchClockPresetOptions,
   getMatchModeChangePatch,
   getModeClockPreset,
   getPersonalRecordDraftPayload,
@@ -284,6 +285,15 @@ test("small modes preserve target-score defaults while 5v5 uses the community cl
   assert.equal(official.periodMinutes, 10);
   assert.equal(official.clockMode, "stopped");
   assert.equal(getMatchModeChangePatch({ mode: "3v3", gameClockEnabled: false }, "5v5").gameClockEnabled, false);
+});
+
+test("match rule presets offer four mode-aware choices before custom editing", () => {
+  for (const mode of ["1v1", "2v2", "3v3", "5v5"]) {
+    assert.equal(getMatchClockPresetOptions(mode).length, 4);
+  }
+  const ruleSelectorSource = fs.readFileSync(path.join(root, "src/components/match/RuleSelector.jsx"), "utf8");
+  assert.match(ruleSelectorSource, /<fieldset className="match-rule-custom-fields" disabled=\{!customRules\}>/);
+  assert.match(ruleSelectorSource, />\s*커스텀\s*<\/button>/);
 });
 
 test("match rule number inputs stay editable and enforce the 70 percent regulation limit", () => {
@@ -1339,6 +1349,9 @@ test("CreateMatch persists bench capacity at top level and inside rules", () => 
   assert.match(ruleSelectorSource, /rules\.gameClockEnabled && rules\.clockMode === "running"/);
   assert.match(ruleSelectorSource, /winByTwo:\s*event\.target\.value === "enabled"/);
   assert.doesNotMatch(ruleSelectorSource, /type="checkbox" checked=\{rules\.winByTwo\}/);
+  const createRosterSource = fs.readFileSync(path.join(root, "src/components/match/CreateMatchCourtRosterSection.jsx"), "utf8");
+  assert.match(createRosterSource, /isTournamentRoom[\s\S]*?<SearchPicker[\s\S]*?value=\{teamQuery\}/);
+  assert.doesNotMatch(createRosterSource, /isTournamentRoom[\s\S]{0,1200}?value=\{teamRegion\}/);
   assert.match(source, /getScopedMatchCreationPolicyPayload\(draft, "match_record"\)/);
   assert.match(source, /getScopedMatchCreationPolicyPayload\(draft, "tournament"\)/);
   assert.match(source, /getMatchConfigurationChangePatch\(draft, \{ matchPurpose: "competitive", formationMode: "prearranged" \}\)/);

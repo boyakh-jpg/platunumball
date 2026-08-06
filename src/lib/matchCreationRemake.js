@@ -21,7 +21,8 @@ function getRoomRemakeInvitationGroups(source = {}, { pickup = false, teamRoom =
 
   const hostId = getRoomRemakePlayerId(source.playerId ?? source.ownerId ?? source.createdBy ?? source.created_by);
   const refereeId = getRoomRemakePlayerId(source.refereeId ?? source.referee_id);
-  const excludedIds = new Set([hostId, refereeId].filter(Boolean));
+  const recorderIds = Object.values(source.statRecorders ?? source.stat_recorders ?? source.rules?.statRecorders ?? {});
+  const excludedIds = new Set([hostId, refereeId, ...recorderIds.map(getRoomRemakePlayerId)].filter(Boolean));
   const seenIds = new Set(excludedIds);
   const groups = new Map();
   const addPlayers = (values, side = "teamB", reserve = false) => {
@@ -88,7 +89,8 @@ export function buildRoomRemakeDraft(source = {}, dependencies = {}) {
   const mode = String(normalizedSource.mode || "5v5");
   const policy = getMatchCreationPolicyPayload(normalizedSource);
   const rules = getMatchRulesPayload(normalizedSource, { mode });
-  const visibility = normalizedSource.visibility === "public" ? "public" : "private";
+  const repeatMatch = normalizedSource.repeatMatch === true;
+  const visibility = repeatMatch ? "private" : normalizedSource.visibility === "public" ? "public" : "private";
   const pickup = policy.formationMode === "pickup";
   const teamRoom = !pickup && policy.hostJoinMode === "team";
   const teamAId = teamRoom
@@ -144,6 +146,7 @@ export function buildRoomRemakeDraft(source = {}, dependencies = {}) {
     memo,
     stakes: String(normalizedSource.stakes ?? ""),
     remakeExpectedCount,
+    repeatMatch,
     remakeCancellationReason,
     remakeInvitationGroups,
     remakeTeamAId: teamAId,

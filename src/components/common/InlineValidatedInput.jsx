@@ -24,13 +24,12 @@ export default function InlineValidatedInput({
           if (inputProps.value !== "") blurFallbackRef.current = inputProps.value;
           inputProps.onFocus?.(event);
         }}
-        onPointerDown={(event) => {
-          inputProps.onPointerDown?.(event);
+        onClick={(event) => {
+          inputProps.onClick?.(event);
           if (!clearOnDirectEntry || inputProps.type !== "number" || inputProps.disabled) return;
           if (!isDirectNumericEntryPointer(event.clientX, event.currentTarget.getBoundingClientRect().right)) return;
           if (inputProps.value !== "") blurFallbackRef.current = inputProps.value;
-          event.currentTarget.value = "";
-          inputProps.onChange?.(event);
+          event.currentTarget.select();
         }}
         onBlur={(event) => {
           const blurValue = getNumericInputBlurValue(event.currentTarget.value, blurFallbackRef.current);

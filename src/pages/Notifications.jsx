@@ -90,7 +90,14 @@ export default function Notifications({ app }) {
   const pendingInvitations = getPendingRecruitingInvitations(app.state, app.currentUser.id);
   const pendingTeamInvitations = (app.state.teamInvitations ?? []).filter((invitation) => (
     invitation.targetUserId === app.currentUser.id &&
+    invitation.requestKind !== "request" &&
     invitation.status === "pending"
+  ));
+  const captainTeamIds = new Set(app.state.teams
+    .filter((team) => team.members.some((member) => member.userId === app.currentUser.id && member.role === "captain"))
+    .map((team) => team.id));
+  const pendingTeamJoinRequests = (app.state.teamInvitations ?? []).filter((invitation) => (
+    invitation.requestKind === "request" && invitation.status === "pending" && captainTeamIds.has(invitation.teamId)
   ));
   const runInvitationAction = async (key, action) => {
     if (pendingInvitationKeysRef.current.has(key)) return { ok: false, error: "invitation_action_pending" };
@@ -142,6 +149,12 @@ export default function Notifications({ app }) {
   const declineTeamInvite = (invitationId) => runInvitationAction(
     `team:${invitationId}`,
     () => app.actions.declineTeamInvitation(invitationId),
+  );
+  const respondTeamJoinRequest = (invitationId, action) => runInvitationAction(
+    `team-request:${invitationId}`,
+    () => action === "approve"
+      ? app.actions.approveTeamJoinRequest(invitationId)
+      : app.actions.declineTeamJoinRequest(invitationId),
   );
   const deletePastNotification = async (notificationId) => {
     if (!notificationId || notificationDeletePendingRef.current) return;
@@ -265,6 +278,39 @@ export default function Notifications({ app }) {
                   <span className="ui-action-row home-invitation-actions">
                     <Button size="sm" type="button" disabled={actionPending} onClick={() => acceptTeamInvite(invitation)}>수락</Button>
                     <Button size="sm" type="button" variant="secondary" disabled={actionPending} onClick={() => declineTeamInvite(invitation.id)}>거절</Button>
+                    <Button as={Link} variant="secondary" size="sm" to={`/app/teams/${invitation.teamId}`}>팀 보기</Button>
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      ) : null}
+      {pendingTeamJoinRequests.length ? (
+        <Card className="section-card notification-invitation-card">
+          <div className="section-title-row">
+            <div>
+              <p className="eyebrow">Team Join Requests</p>
+              <h2>팀 가입 신청</h2>
+            </div>
+            <Badge tone="orange">{pendingTeamJoinRequests.length}개</Badge>
+          </div>
+          <div className="home-invitation-list ui-design-borderless-list">
+            {pendingTeamJoinRequests.map((invitation) => {
+              const team = app.state.teams.find((item) => item.id === invitation.teamId);
+              const applicant = app.state.users.find((user) => user.id === invitation.targetUserId);
+              const actionKey = `team-request:${invitation.id}`;
+              const actionPending = pendingInvitationKeys.includes(actionKey);
+              return (
+                <div key={invitation.id} className="home-invitation-row">
+                  <span className="home-action-main">
+                    <strong>{applicant?.name ?? "가입 신청자"}</strong>
+                    <em>{team?.name ?? "팀"} · 가입 신청</em>
+                    {invitationActionErrors[actionKey] ? <small role="status" className="form-warning">{invitationActionErrors[actionKey]}</small> : null}
+                  </span>
+                  <span className="ui-action-row home-invitation-actions">
+                    <Button size="sm" type="button" disabled={actionPending} onClick={() => respondTeamJoinRequest(invitation.id, "approve")}>승인</Button>
+                    <Button size="sm" type="button" variant="secondary" disabled={actionPending} onClick={() => respondTeamJoinRequest(invitation.id, "decline")}>거절</Button>
                     <Button as={Link} variant="secondary" size="sm" to={`/app/teams/${invitation.teamId}`}>팀 보기</Button>
                   </span>
                 </div>

@@ -40,9 +40,9 @@ export default function NumericStepper({
         pattern="[0-9]*"
         disabled={disabled}
         value={inputValue}
-        onFocus={() => {
+        onFocus={(event) => {
           blurFallbackRef.current = numericValue;
-          if (clearOnFocus || (clearZeroOnFocus && numericValue === 0)) onChange?.("");
+          if (clearOnFocus || (clearZeroOnFocus && numericValue === 0)) event.currentTarget.select();
         }}
         onBlur={(event) => {
           const blurValue = getNumericInputBlurValue(event.currentTarget.value, blurFallbackRef.current);

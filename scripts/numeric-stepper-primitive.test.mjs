@@ -53,8 +53,11 @@ test("empty numeric input restores its valid default on blur", async () => {
     readFile(new URL("../src/components/match/CreateMatchLayout.jsx", import.meta.url), "utf8"),
   ]);
   assert.match(stepperSource, /blurFallbackRef\.current = numericValue/);
+  assert.match(stepperSource, /clearOnFocus[\s\S]*event\.currentTarget\.select\(\)/);
+  assert.doesNotMatch(stepperSource, /onChange\?\.\(0\)/);
   assert.match(stepperSource, /getNumericInputBlurValue\(event\.currentTarget\.value, blurFallbackRef\.current\)/);
   assert.match(inlineInputSource, /if \(inputProps\.value !== ""\) blurFallbackRef\.current = inputProps\.value/);
+  assert.match(inlineInputSource, /onClick=\{\(event\) => \{[\s\S]*?event\.currentTarget\.select\(\)/);
   assert.doesNotMatch(inlineInputSource, /preservePointerFallbackRef/);
   assert.match(inlineInputSource, /getNumericInputBlurValue\(event\.currentTarget\.value, blurFallbackRef\.current\)/);
   assert.match(createValidationSource, /setDraft\(\(current\) => \(\{[\s\S]*?soloStats: \{ \.\.\.\(current\.soloStats/);

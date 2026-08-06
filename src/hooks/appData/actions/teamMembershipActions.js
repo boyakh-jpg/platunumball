@@ -55,6 +55,36 @@ inviteTeamMember: (teamId, targetUserId, role = "regular") => applyTeamInvitatio
     "cancel",
     () => ({ invitationId }),
   ),
+  requestTeamMembership: (teamId) => applyTeamInvitationMutation(
+    "팀 가입 신청",
+    (prev) => prev,
+    "request_join",
+    () => ({ teamId }),
+  ),
+  approveTeamJoinRequest: (invitationId) => applyTeamInvitationMutation(
+    "팀 가입 승인",
+    (prev) => prev,
+    "approve_join",
+    () => ({ invitationId }),
+  ),
+  declineTeamJoinRequest: (invitationId) => applyTeamInvitationMutation(
+    "팀 가입 거절",
+    (prev) => prev,
+    "decline_join",
+    () => ({ invitationId }),
+  ),
+  cancelTeamJoinRequest: (invitationId) => applyTeamInvitationMutation(
+    "팀 가입 신청 취소",
+    (prev) => prev,
+    "cancel_join",
+    () => ({ invitationId }),
+  ),
+  updateTeamDescription: (teamId, description) => applyTeamInvitationMutation(
+    "팀 소개 저장",
+    (prev) => prev,
+    "update_description",
+    () => ({ teamId, description }),
+  ),
   updateTeamMemberRole: (teamId, userId, role) => applyTeamMutation(teamId, (prev) => updateTeamMemberRole({ ...prev, currentUserId }, teamId, userId, role)),
   removeTeamMember: (teamId, userId) => applyTeamMutation(teamId, (prev) => removeTeamMember({ ...prev, currentUserId }, teamId, userId)),
   reset: () => {

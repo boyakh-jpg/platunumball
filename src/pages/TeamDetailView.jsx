@@ -10,7 +10,7 @@ import TeamEmblem from "../components/team/TeamEmblem.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import ProfileEmblem from "../components/profile/ProfileEmblem.jsx";
 import TierEmblem from "../components/rating/TierEmblem.jsx";
-import { MAX_TEAM_MEMBERS, MAX_TEAM_MEMBERSHIPS, TEAM_INVITE_ROLES, getTeamRoleLabel, normalizeTeamRole } from "../lib/constants.js";
+import { MAX_TEAM_DESCRIPTION_LENGTH, MAX_TEAM_DESCRIPTION_LINES, MAX_TEAM_MEMBERS, MAX_TEAM_MEMBERSHIPS, TEAM_INVITE_ROLES, getTeamRoleLabel, normalizeTeamRole } from "../lib/constants.js";
 import { getMatchSideScore as getSideScore } from "../lib/matchUtils.js";
 import { getSideResult, getTeamSide } from "../lib/season.js";
 import {
@@ -34,7 +34,7 @@ function getManagedRoleOptions(member, captainId) {
 }
 
 export default function TeamDetailView({ controller }) {
-  const { addUserId, app, archivedHistory, availableUsers, canAddMember, canManage, cancelPendingTeamInvitation, captain, changeTeamMemberRole, confirmEmblemUpload, confirmedCount, cooldownNextAt, deleteArmed, deleteTeam, detailHistory, directoryPending, emblemAbbreviationCharacterCount, emblemCanRestore, emblemFeedback, emblemFile, emblemInputRef, emblemPending, emblemSource, emblemStatusError, emblemStatusRequestRef, emblemStyleDraft, emblemUploadLocked, excludeTeamMember, favoriteError, favoritePending, favoriteTeamIds, history, historyCount, historyIds, inviteMember, isFavoriteTeam, loadDirectory, loadTeamEmblemStatus, loadTeamRecords, loadedLosses, loadedWins, losses, memberDraft, memberQuery, membershipCounts, moderationBlockedAt, moderationLocked, nextEmblemUploadAt, pendingTargetIds, pendingTeamInvitations, refreshTeamDetail, regularMembers, renderInviteSearchItem, renderMembers, reserveMembers, restorePreviousEmblem, retryTeamEmblemStatus, saveEmblemStyle, selectEmblemSource, selectedCount, selectedHistoryMatchId, selectedInviteProfile, selectedInviteUser, selectedRemoteUser, setDeleteArmed, setEmblemCanRestore, setEmblemFeedback, setEmblemFile, setEmblemPending, setEmblemStyleDraft, setMemberDraft, setMemberQuery, setSelectedHistoryMatchId, setSelectedInviteProfile, setTeamInviteError, team, teamDetailError, teamFull, teamId, teamInviteError, teamInvitePending, teamManagementError, teamManagementPending, teamRecordArchive, teamScoreSummary, toggleTeamFavorite, uploadEmblem, userMap, winRate, wins } = controller;
+  const { addUserId, app, archivedHistory, availableUsers, approveTeamJoinRequest, canAddMember, canManage, canRequestTeamMembership, cancelPendingTeamInvitation, cancelTeamJoinRequest, captain, changeTeamMemberRole, confirmEmblemUpload, confirmedCount, cooldownNextAt, currentUserIsMember, deleteArmed, deleteTeam, detailHistory, directoryPending, declineTeamJoinRequest, emblemAbbreviationCharacterCount, emblemCanRestore, emblemFeedback, emblemFile, emblemInputRef, emblemPending, emblemSource, emblemStatusError, emblemStatusRequestRef, emblemStyleDraft, emblemUploadLocked, excludeTeamMember, favoriteError, favoritePending, favoriteTeamIds, history, historyCount, historyIds, inviteMember, isFavoriteTeam, loadDirectory, loadTeamEmblemStatus, loadTeamRecords, loadedLosses, loadedWins, losses, memberDraft, memberQuery, membershipCounts, moderationBlockedAt, moderationLocked, nextEmblemUploadAt, pendingOwnJoinRequest, pendingOwnTeamInvite, pendingTargetIds, pendingTeamInvitations, refreshTeamDetail, regularMembers, renderInviteSearchItem, renderMembers, requestTeamMembership, reserveMembers, restorePreviousEmblem, retryTeamEmblemStatus, saveEmblemStyle, saveTeamDescription, selectEmblemSource, selectedCount, selectedHistoryMatchId, selectedInviteProfile, selectedInviteUser, selectedRemoteUser, setDeleteArmed, setEmblemCanRestore, setEmblemFeedback, setEmblemFile, setEmblemPending, setEmblemStyleDraft, setMemberDraft, setMemberQuery, setSelectedHistoryMatchId, setSelectedInviteProfile, setTeamDescriptionDraft, setTeamInviteError, team, teamDescriptionDraft, teamDetailError, teamFull, teamId, teamInviteError, teamInvitePending, teamManagementError, teamManagementPending, teamRecordArchive, teamScoreSummary, toggleTeamFavorite, uploadEmblem, userMap, winRate, wins } = controller;
   const teamControlPending = teamInvitePending || teamManagementPending;
   return (
     <div className="page-stack team-detail-page rank-team-page">
@@ -76,6 +76,50 @@ export default function TeamDetailView({ controller }) {
         visual={<div className="team-tier-hero"><TierEmblem mmr={team.mmr} size="hero" showLabel /></div>}
       />
       {favoriteError ? <span role="status" className="form-warning">{favoriteError}</span> : null}
+
+      <Card className="section-card team-description-card">
+        <div className="section-title-row">
+          <div>
+            <p className="eyebrow">Team Intro</p>
+            <h2>팀 소개</h2>
+          </div>
+          <Badge tone="neutral">최대 {MAX_TEAM_DESCRIPTION_LINES}줄</Badge>
+        </div>
+        {canManage ? (
+          <div className="form-stack">
+            <textarea
+              rows={MAX_TEAM_DESCRIPTION_LINES}
+              maxLength={MAX_TEAM_DESCRIPTION_LENGTH}
+              value={teamDescriptionDraft}
+              placeholder="주 활동 시간, 경기 성향, 가입 기준 등을 적어 주세요."
+              onChange={(event) => setTeamDescriptionDraft(event.target.value.replace(/\r\n?/g, "\n").split("\n").slice(0, MAX_TEAM_DESCRIPTION_LINES).join("\n"))}
+            />
+            <div className="ui-action-row">
+              <span className="form-chip">{teamDescriptionDraft.length}/{MAX_TEAM_DESCRIPTION_LENGTH}자</span>
+              <Button type="button" size="sm" disabled={teamManagementPending || teamDescriptionDraft === (team.description ?? "")} onClick={() => { void saveTeamDescription(); }}>소개 저장</Button>
+            </div>
+          </div>
+        ) : (
+          <p className="team-description-copy">{team.description || "아직 등록된 팀 소개가 없습니다."}</p>
+        )}
+        {!canManage && !currentUserIsMember && !app.demoPreview ? (
+          <div className="ui-action-row team-membership-request-actions">
+            {pendingOwnJoinRequest ? (
+              <>
+                <Badge tone="orange">가입 승인 대기</Badge>
+                <Button type="button" size="sm" variant="secondary" disabled={teamManagementPending} onClick={() => { void cancelTeamJoinRequest(pendingOwnJoinRequest.id); }}>신청 취소</Button>
+              </>
+            ) : pendingOwnTeamInvite ? (
+              <Badge tone="green">팀 초대 도착</Badge>
+            ) : (
+              <Button type="button" size="sm" disabled={!canRequestTeamMembership || teamManagementPending} onClick={() => { void requestTeamMembership(); }}>
+                {teamFull ? "팀 정원 마감" : "가입 신청"}
+              </Button>
+            )}
+          </div>
+        ) : null}
+        {teamManagementError ? <span className="form-warning">{teamManagementError}</span> : null}
+      </Card>
 
       <nav className="rank-profile-tabs">
         <Button as="a" href="#team-stats" size="sm">통계</Button>
@@ -296,6 +340,7 @@ export default function TeamDetailView({ controller }) {
                   <div className="member-control-list">
                     {pendingTeamInvitations.map((invitation) => {
                       const user = userMap[invitation.targetUserId];
+                      const joinRequest = invitation.requestKind === "request";
                       return (
                         <div key={invitation.id} className="member-control-row ui-control-surface">
                           <PlayerHoverCard className="member-control-identity" user={user} teams={app.state.teams}>
@@ -307,8 +352,15 @@ export default function TeamDetailView({ controller }) {
                               </small>
                             </span>
                           </PlayerHoverCard>
-                          <span className="member-control-state">초대 대기</span>
-                          <Button type="button" size="sm" variant="secondary" className="danger-button" disabled={teamControlPending} onClick={() => { void cancelPendingTeamInvitation(invitation.id); }}>취소</Button>
+                          <span className="member-control-state">{joinRequest ? "가입 신청" : "초대 대기"}</span>
+                          {joinRequest ? (
+                            <span className="ui-action-row">
+                              <Button type="button" size="sm" disabled={teamControlPending} onClick={() => { void approveTeamJoinRequest(invitation.id); }}>승인</Button>
+                              <Button type="button" size="sm" variant="secondary" disabled={teamControlPending} onClick={() => { void declineTeamJoinRequest(invitation.id); }}>거절</Button>
+                            </span>
+                          ) : (
+                            <Button type="button" size="sm" variant="secondary" className="danger-button" disabled={teamControlPending} onClick={() => { void cancelPendingTeamInvitation(invitation.id); }}>취소</Button>
+                          )}
                         </div>
                       );
                     })}

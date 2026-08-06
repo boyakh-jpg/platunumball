@@ -14,6 +14,7 @@ import { mapRemoteTeamEmblem as mapClientRemoteTeamEmblem } from "../src/lib/tea
 const teamRow = {
   id: "team-1",
   name: "New Court Crew",
+  description: "주말 저녁에 뛰는 팀",
   home_court: "court-1",
   region: "서울특별시 마포구",
   mmr: 1243,
@@ -49,6 +50,7 @@ const memberRows = [
 const commonTeam = {
   id: "team-1",
   name: "New Court Crew",
+  description: "주말 저녁에 뛰는 팀",
   homeCourt: "court-1",
   region: "서울특별시 마포구",
   mmr: 1243,

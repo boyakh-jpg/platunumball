@@ -26,8 +26,8 @@ export function CreateMatchLayout({ context }) {
         <div className="ui-page-hero__copy">
           <p className="eyebrow">{isRecordCreateIntent ? "RecordMatch" : "CreateMatch"}</p>
           <h1>{isRecordCreateIntent ? "기록하기" : "경기/대회 만들기"}</h1>
-          {remakeDraft ? <Badge tone="orange">취소된 방 설정을 불러왔습니다. 새 일정을 확인해 주세요.</Badge> : null}
-          {remakeDraft ? <p className="form-warning">{getRoomRemakeWarningCopy(remakeDraft.remakeExpectedCount)}</p> : null}
+          {remakeDraft ? <Badge tone="orange">{remakeDraft.repeatMatch ? "이전 경기 설정을 불러왔습니다. 새 일정을 확인해 주세요." : "취소된 방 설정을 불러왔습니다. 새 일정을 확인해 주세요."}</Badge> : null}
+          {remakeDraft && !remakeDraft.repeatMatch ? <p className="form-warning">{getRoomRemakeWarningCopy(remakeDraft.remakeExpectedCount)}</p> : null}
           {remakeDraft?.remakeInviteCount ? (
             <label className="room-remake-reinvite">
               <input
@@ -38,7 +38,7 @@ export function CreateMatchLayout({ context }) {
               <span>
                 <strong>
                   {remakeDraft.remakeTeamBId
-                    ? "이전 상대 팀에 새 초대장 보내기"
+                    ? remakeDraft.repeatMatch ? "이전 상대 팀에 재경기 초대 보내기" : "이전 상대 팀에 새 초대장 보내기"
                     : `이전 참가자 ${remakeDraft.remakeInviteCount}명 다시 초대`}
                 </strong>
                 <small>기존 참가 상태는 복사하지 않으며 새 방에서 다시 수락해야 합니다.</small>

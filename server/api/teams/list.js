@@ -25,14 +25,16 @@ import {
 
 const PROFILE_TEAM_MEMBER_COLUMNS = "id,name,handle,hashtag,position,region,trust_score,avatar_color,ratings,age_group,age_group_checked_season,onboarding_complete,updated_at";
 
-async function loadTeamInvitations(supabase, profileId = "", teamId = "") {
+async function loadTeamInvitations(supabase, profileId = "", teamId = "", includeTeamRequests = false) {
   if (!profileId) return [];
   let query = supabase
     .from("team_invitations")
     .select(TEAM_INVITATION_COLUMNS)
-    .or(`from_user_id.eq.${profileId},target_user_id.eq.${profileId}`)
     .order("created_at", { ascending: false });
-  if (teamId) query = query.eq("team_id", teamId);
+  query = teamId && includeTeamRequests
+    ? query.eq("team_id", teamId)
+    : query.or(`from_user_id.eq.${profileId},target_user_id.eq.${profileId}`);
+  if (teamId && !includeTeamRequests) query = query.eq("team_id", teamId);
   const { data, error } = await query;
   if (error) {
     if (isMissingTable(error)) return [];
@@ -69,7 +71,6 @@ export default async function handler(request, response) {
       .is("deleted_at", null)
       .order("mmr", { ascending: false });
     if (teamId) teamQuery = teamQuery.eq("id", teamId);
-    const teamInvitationsPromise = timeStep(debugTiming, "invitationsMs", () => loadTeamInvitations(context.supabase, user.id, teamId));
     const { data: teamRows, error: teamError } = await timeStep(debugTiming, "teamsMs", () => teamQuery);
     if (teamError) throw teamError;
     if (teamId && !(teamRows ?? []).length) {
@@ -85,7 +86,10 @@ export default async function handler(request, response) {
     const teamIdSet = new Set(teamIds);
     const memberRows = (memberRowsRaw ?? []).filter((member) => teamIdSet.has(member.team_id));
 
-    const teamInvitations = await teamInvitationsPromise;
+    const includeTeamRequests = Boolean(teamId && memberRows.some((member) => (
+      member.team_id === teamId && member.user_id === user.id && member.role === "captain"
+    )));
+    const teamInvitations = await timeStep(debugTiming, "invitationsMs", () => loadTeamInvitations(context.supabase, user.id, teamId, includeTeamRequests));
     const invitationProfileIds = teamInvitations.flatMap((invitation) => [
       invitation.fromUserId,
       invitation.targetUserId,

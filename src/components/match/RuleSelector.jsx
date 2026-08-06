@@ -1,3 +1,4 @@
+import { useState } from "react";
 import InlineValidatedInput from "../common/InlineValidatedInput.jsx";
 import {
   MATCH_CLOCK_MODE_OPTIONS,
@@ -12,10 +13,23 @@ import {
 } from "../../lib/matchRules.js";
 import { getMatchClockPresetOptions } from "../../lib/matchCreationPolicies.js";
 
+const PRESET_FIELDS = [
+  "gameClockEnabled", "endCondition", "targetScore", "periodCount", "periodMinutes",
+  "periodBreakMinutes", "halftimeMinutes", "overtimeMinutes", "clockMode", "lastPeriodStopMinutes", "winByTwo",
+];
+
+function getMatchingPresetId(options, rules) {
+  return options.find((option) => PRESET_FIELDS.every((key) => option.patch[key] === rules[key]))?.id ?? "";
+}
+
 export default function RuleSelector({ draft, onChange }) {
   const rules = normalizeMatchRules(draft, { mode: draft.mode });
   const inputValidation = getMatchRuleInputValidation(draft, { mode: draft.mode });
   const clockPresetOptions = getMatchClockPresetOptions(draft.mode);
+  const [selectedPresetId, setSelectedPresetId] = useState(() => getMatchingPresetId(clockPresetOptions, rules) || "custom");
+  const matchingPresetId = getMatchingPresetId(clockPresetOptions, rules);
+  const activePresetId = selectedPresetId === "custom" ? "custom" : matchingPresetId || "custom";
+  const customRules = activePresetId === "custom";
   const updateRules = (patch) => {
     const next = { ...rules, ...patch };
     const payload = getMatchRulesPayload(next, { mode: draft.mode });
@@ -34,6 +48,36 @@ export default function RuleSelector({ draft, onChange }) {
 
   return (
     <div className="match-rule-selector">
+      <div className="match-clock-preset-row match-rule-preset-row">
+        <span>경기 방식 프리셋</span>
+        <div className="ui-segmented-control segmented-control compact-segments" role="radiogroup" aria-label="경기 방식 프리셋">
+          {clockPresetOptions.map((option) => (
+            <button
+              key={option.id}
+              type="button"
+              role="radio"
+              aria-checked={activePresetId === option.id}
+              className={activePresetId === option.id ? "active" : ""}
+              onClick={() => {
+                setSelectedPresetId(option.id);
+                updateRules(option.patch);
+              }}
+            >
+              {option.label}
+            </button>
+          ))}
+          <button
+            type="button"
+            role="radio"
+            aria-checked={customRules}
+            className={customRules ? "active" : ""}
+            onClick={() => setSelectedPresetId("custom")}
+          >
+            커스텀
+          </button>
+        </div>
+      </div>
+      <fieldset className="match-rule-custom-fields" disabled={!customRules}>
       <div className="match-clock-preset-row">
         <span>BOXTIER 경기시계</span>
         <div className="ui-segmented-control segmented-control compact-segments" role="radiogroup" aria-label="BOXTIER 경기시계 사용 여부">
@@ -71,14 +115,6 @@ export default function RuleSelector({ draft, onChange }) {
           <small>5분마다 바뀌는 QR입니다. 일반 공개 매칭과 대회에서 사전 등록 선수만 출석할 수 있습니다.</small>
         </label>
       ) : null}
-      {rules.gameClockEnabled && clockPresetOptions.length > 1 ? <div className="match-clock-preset-row">
-        <span>경기시간 프리셋</span>
-        <div className="ui-segmented-control segmented-control compact-segments">
-          {clockPresetOptions.map((option) => (
-            <button key={option.id} type="button" onClick={() => updateRules(option.patch)}>{option.label}</button>
-          ))}
-        </div>
-      </div> : null}
       <div className="form-grid match-rule-grid">
       <label>
         종료 기준
@@ -207,6 +243,7 @@ export default function RuleSelector({ draft, onChange }) {
       </label>
       ) : null}
       </div>
+      </fieldset>
       <small className={`match-rule-summary${inputValidation.valid ? "" : " is-invalid"}`}>
         {inputValidation.valid ? getMatchRuleSummary(rules, draft.mode) : "빨간 안내가 표시된 값을 확인해 주세요."}
       </small>

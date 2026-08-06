@@ -200,7 +200,7 @@ export async function loadCurrentProfileState(context, options = {}) {
       .eq("id", profile.affiliation_id)
       .maybeSingle()
     : Promise.resolve({ data: null, error: null });
-  const [matchSummary, teamInvitations, ownMembershipsResult, favoriteRows, affiliationResult] = await Promise.all([
+  const [matchSummary, relatedTeamInvitations, ownMembershipsResult, favoriteRows, affiliationResult] = await Promise.all([
     includeMatchSummary ? time("matchSummaryMs", () => loadCurrentUserMatchSummary(context.supabase, profileId)) : Promise.resolve(null),
     includeTeamInvitations ? time("teamInvitationsMs", () => loadCurrentUserTeamInvitations(context.supabase, profileId)) : Promise.resolve([]),
     time("ownMembershipsMs", () => ownMembershipsPromise),
@@ -209,6 +209,19 @@ export async function loadCurrentProfileState(context, options = {}) {
   ]);
   if (ownMembershipsResult.error) throw ownMembershipsResult.error;
   if (affiliationResult.error && !["42P01", "42703", "PGRST205"].includes(affiliationResult.error.code)) throw affiliationResult.error;
+  const captainTeamIds = (ownMembershipsResult.data ?? [])
+    .filter((membership) => membership.role === "captain")
+    .map((membership) => membership.team_id);
+  const { data: captainRequestRows, error: captainRequestError } = includeTeamInvitations && captainTeamIds.length
+    ? await context.supabase
+      .from("team_invitations")
+      .select(TEAM_INVITATION_COLUMNS)
+      .in("team_id", captainTeamIds)
+      .eq("request_kind", "request")
+      .eq("status", "pending")
+    : { data: [], error: null };
+  if (captainRequestError) throw captainRequestError;
+  const teamInvitations = mergeById(relatedTeamInvitations, (captainRequestRows ?? []).map(fromRemoteTeamInvitation));
   const currentAffiliation = affiliationResult.data ? fromRemoteAffiliation(affiliationResult.data) : null;
   const profileSettings = projectProfileSettings(remoteAppSettings, favoriteRows, {
     favoriteRowsAuthoritative: includeFavorites,

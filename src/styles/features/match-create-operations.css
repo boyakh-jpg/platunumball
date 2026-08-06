@@ -301,6 +301,25 @@
   min-width: 0;
 }
 
+.match-rule-preset-row .segmented-control {
+  flex-wrap: wrap;
+}
+
+.match-rule-preset-row .segmented-control > button {
+  flex-basis: 112px;
+}
+
+.match-rule-custom-fields {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.match-rule-custom-fields:disabled {
+  opacity: 0.72;
+}
+
 .form-grid.match-rule-grid {
   grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
 }

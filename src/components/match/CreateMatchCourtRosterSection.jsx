@@ -7,13 +7,13 @@ export function CreateMatchCourtRosterSection({ context }) {
     PLAYER_STAT_FIELDS, REGION_TREE, SearchPicker, ShieldCheck, TeamHoverCard, UsersRound, X,
     activePlayerIds, ageRestrictionBlocked, ageRestrictionOption, app, challengeTeamAId, challengeTeamBId, clearSelectedCourt, courtDetailCourtId, courtMapDirectoryStatus,
     courtMapOpen, courtMapRegion, courtPlayWarning, courtQuery, courtRegion, courtSummary, draft,
-    favoriteCourts, favoriteReferees, favoriteTeams, getCourtAddress, getCourtLayoutLabel, getCourtSearchText, getCourtSurfaceLabel,
+    favoriteCourts, favoriteReferees, getCourtAddress, getCourtLayoutLabel, getCourtSearchText, getCourtSurfaceLabel,
     getTournamentTeamEligibility, hasTeamChallenge, isMatchRecordRoom, isPublicRoom, isSoloRecord, isStandardCreateWizard, isTeamRoom, isTournamentRoom,
     loadedCourtMapRegionsRef, mmrLimitOptions, mmrRangePolicy, recordComposition, refereeQuery, refereeSearchResults, registeredCourts,
     remoteDirectoryEnabled, removeTournamentCourt, removeTournamentReferee, renderCourtSearchItem, renderCreateTeamSearchItem, renderRefereeSearchItem, representativeTournamentTeam,
     requiredTournamentRefereeCount, roomTierRange, selectCourt, selectedCourt, selectedTournamentCourts, selectedTournamentReferees, setCourtDetailCourtId,
-    setCourtMapOpen, setCourtQuery, setCourtRegion, setRefereeQuery, setTeamQuery, setTeamRegion, sortedCourts,
-    sortedTeams, teamOptions, teamQuery, teamRegion, teamSelectableRegions, teamTierBlocked, teamTierWarned,
+    setCourtMapOpen, setCourtQuery, setCourtRegion, setRefereeQuery, setTeamQuery, sortedCourts,
+    sortedTeams, teamQuery, teamTierBlocked, teamTierWarned,
     toggleAgeRestriction, toggleTournamentTeam, tournamentMmrBlocked, tournamentMmrPolicyOptions, tournamentMmrSpread, tournamentRefereeCandidates, tournamentTeams,
     update, updateSoloStat, wizardStep,
   } = context;
@@ -291,22 +291,13 @@ export function CreateMatchCourtRosterSection({ context }) {
             <>
               <div className="search-controls">
                 <label>
-                  지역
-                  <select value={teamRegion} onChange={(event) => setTeamRegion(event.target.value)}>
-                    {teamSelectableRegions.map((region) => <option key={region}>{region}</option>)}
-                  </select>
-                </label>
-                <label>
-                  팀명
+                  초대 팀 검색
                   <SearchPicker
                     value={teamQuery}
                     onChange={setTeamQuery}
-                    placeholder="팀, 지역, 홈코트 검색"
+                    placeholder="팀명, #해시태그, 지역, 홈코트 검색"
                     items={sortedTeams}
                     remoteSearchType={remoteDirectoryEnabled ? "team" : ""}
-                    idleItems={favoriteTeams}
-                    idleTitle="즐겨찾기 팀"
-                    showIdleOnFocus
                     floating
                     renderItem={renderCreateTeamSearchItem}
                   />
@@ -326,19 +317,6 @@ export function CreateMatchCourtRosterSection({ context }) {
                     </button>
                   ))}
                 </div>
-              </div>
-              <div className="tournament-team-grid">
-                {teamOptions.map((team) => {
-                  const invited = (draft.tournamentTeamIds ?? []).includes(team.id);
-                  const eligibility = getTournamentTeamEligibility(team);
-                  return (
-                    <button key={team.id} type="button" className={[invited ? "active" : "", !eligibility.allowed && !invited ? "is-disabled" : ""].filter(Boolean).join(" ")} disabled={!eligibility.allowed && !invited} onClick={() => toggleTournamentTeam(team.id)}>
-                      <TeamHoverCard team={team} as="span"><strong>{team.name}</strong></TeamHoverCard>
-                      <span>{team.region} · {team.homeCourt}</span>
-                      <em>{team.mmr} MMR · {eligibility.allowed ? `가능 ${eligibility.eligibleCount}/${eligibility.capacity}` : eligibility.reason}</em>
-                    </button>
-                  );
-                })}
               </div>
               <div className="search-controls tournament-referee-search">
                 <label>

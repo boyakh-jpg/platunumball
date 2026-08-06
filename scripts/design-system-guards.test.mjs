@@ -1587,7 +1587,7 @@ test("팀원 초대는 해시태그와 공용 선수 hover 및 네모 상태 표
   assert.match(teamDetailSource, /search-picker-player-identity/);
   assert.match(teamDetailSource, /member-invite-selection/);
   assert.match(teamDetailSource, /member-control-identity/);
-  assert.match(teamDetailSource, /member-control-state">초대 대기</);
+  assert.match(teamDetailSource, /member-control-state">\{joinRequest \? "가입 신청" : "초대 대기"\}<\/span>/);
   assert.doesNotMatch(teamDetailSource, /<Badge tone="orange">pending<\/Badge>/);
   assert.match(
     globalSearchStyles,

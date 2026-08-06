@@ -123,7 +123,6 @@ const navigate = useNavigate();
   const [soloTeamBUserQuery, setSoloTeamBUserQuery] = useState("");
   const [teamRegion, setTeamRegion] = useState(currentRegion || "전체");
   const [courtRegion, setCourtRegion] = useState(currentCourtRegion);
-  const teamSelectableRegions = useMemo(() => ["전체", ...new Set([currentRegion, ...REGIONS].filter(Boolean))], [currentRegion]);
   const courtMapRegion = courtRegion;
   const defaultAgeRestriction = getAgeGroupForUser(app.currentUser);
   const favoriteTeamIds = app.state.settings?.favoriteTeamIds ?? [];
@@ -283,10 +282,10 @@ const navigate = useNavigate();
   const sortedTeams = useMemo(() => {
     const hashtagSearch = isHashtagQuery(teamQuery);
     return [...app.state.teams]
-      .filter((team) => hashtagSearch || teamRegion === "전체" || isSameRegion(team.region, teamRegion))
+      .filter((team) => draft.visibility === "tournament" || hashtagSearch || teamRegion === "전체" || isSameRegion(team.region, teamRegion))
       .filter((team) => includesQuery(`${team.name} ${getTeamHashtag(team)} ${team.region} ${team.homeCourt}`, teamQuery))
       .sort((a, b) => Number(isFavoriteTeam(b)) - Number(isFavoriteTeam(a)) || Number(isSameRegion(b.region, currentRegion)) - Number(isSameRegion(a.region, currentRegion)) || b.mmr - a.mmr);
-  }, [app.state.teams, currentRegion, favoriteTeamIds, teamQuery, teamRegion]);
+  }, [app.state.teams, currentRegion, draft.visibility, favoriteTeamIds, teamQuery, teamRegion]);
 
   const sortedCourts = useMemo(() => getCourtPickerResults(registeredCourts, {
     query: courtQuery,
@@ -294,13 +293,6 @@ const navigate = useNavigate();
     currentRegion,
     favoriteCourtIds,
   }), [courtQuery, courtRegion, currentRegion, favoriteCourtIds, registeredCourts]);
-
-  const favoriteTeams = useMemo(() => {
-    return [...app.state.teams]
-      .filter(isFavoriteTeam)
-      .sort((a, b) => Number(isSameRegion(b.region, currentRegion)) - Number(isSameRegion(a.region, currentRegion)) || b.mmr - a.mmr)
-      .slice(0, 10);
-  }, [app.state.teams, currentRegion, favoriteTeamIds]);
 
   const favoriteCourts = useMemo(() => {
     return [...registeredCourts]
@@ -445,11 +437,6 @@ const navigate = useNavigate();
   const representativeTournamentTeamSelected = Boolean(
     representativeTournamentTeam?.id && (draft.tournamentTeamIds ?? []).includes(representativeTournamentTeam.id),
   );
-  const teamOptions = useMemo(() => {
-    const teamMap = new Map();
-    [selectedTeamA, selectedTeamB, ...tournamentTeams, ...sortedTeams].filter(Boolean).forEach((team) => teamMap.set(team.id, team));
-    return Array.from(teamMap.values());
-  }, [selectedTeamA, selectedTeamB, sortedTeams, tournamentTeams]);
   const teamAOptions = myTeams;
   const isInstantRoom = !isTournamentRoom && draft.timingType === "instant";
   const scheduleMaxDate = isSoloRecord || isMatchRecordRoom ? today : isPublicRoom ? maxPublicScheduleDate : isTournamentRoom ? maxScheduleDate : maxPrivateScheduleDate;
@@ -477,16 +464,16 @@ const navigate = useNavigate();
     courtMapDirectoryStatus, setCourtMapDirectoryStatus, registeredCourts, defaultCourt, teamQuery, setTeamQuery, opponentTeamQuery,
     setOpponentTeamQuery, courtQuery, setCourtQuery, courtMapOpen, setCourtMapOpen, courtDetailCourtId, setCourtDetailCourtId,
     refereeQuery, setRefereeQuery, selectedTournamentTeamProfiles, setSelectedTournamentTeamProfiles, selectedTournamentRefereeProfiles, setSelectedTournamentRefereeProfiles, soloTeamAUserQuery, setSoloTeamAUserQuery, soloTeamBUserQuery,
-    setSoloTeamBUserQuery, teamRegion, setTeamRegion, courtRegion, setCourtRegion, teamSelectableRegions, courtMapRegion,
+    setSoloTeamBUserQuery, teamRegion, setTeamRegion, courtRegion, setCourtRegion, courtMapRegion,
     defaultAgeRestriction, favoriteTeamIds, favoriteRefereeIds, isFavoriteTeam, isFavoriteCourt, defaultSchedule, draft,
     setDraft, submitting, setSubmitting, submittingRef, submitFeedback, setSubmitFeedback, wizardStep, setWizardStep,
-    sortedTeams, sortedCourts, favoriteTeams, favoriteCourts, selectedTeamA, selectedTeamB, challengePolicyByMode, challengeModeIds, challengeEligibilityPolicy, isSoloRecord,
+    sortedTeams, sortedCourts, favoriteCourts, selectedTeamA, selectedTeamB, challengePolicyByMode, challengeModeIds, challengeEligibilityPolicy, isSoloRecord,
     isMatchRecordRoom, recordEntryMode, recordComposition, soloRosterError, soloRecordSelectedIdentitySet, isPublicRoom, isTournamentRoom,
     isPickupMatch, isTeamRoom, isStandardCreateWizard, creationWizardType, creationWizardSteps, finalWizardStep, wizardStepIds,
     goToWizardStep, matchCreationValidation, matchCreationPolicy, currentRoomKind, sideCapacity, ageRestrictionOption, getTeamEligibility,
     selectedTeamAEligibility, selectedTeamBEligibility, publicPartyPlayerIds, ownerReservePlayerIds, ownerSidePlayerIds, ownerSidePlayerKey, opponentPartyPlayerIds,
     opponentReservePlayerIds, opponentCaptainId, opponentInviteTargetIds, opponentLeaderId, tournamentTeams, getTournamentTeamEligibility, tournamentMmrSpread,
-    tournamentEligibilityById, ineligibleTournamentTeams, tournamentDirectoryError, tournamentDirectoryPending, representativeTournamentTeamSelected, teamOptions, teamAOptions,
+    tournamentEligibilityById, ineligibleTournamentTeams, tournamentDirectoryError, tournamentDirectoryPending, representativeTournamentTeamSelected, teamAOptions,
     isInstantRoom, scheduleMaxDate, activePlayerIds,
   };
 }

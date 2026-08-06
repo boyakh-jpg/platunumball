@@ -354,7 +354,11 @@ export function createAppActions({
       return next;
     });
     const payload = payloadFactory?.(rollbackState, nextStateSnapshot) ?? {};
-    return rollbackIfServerFailed(syncTeamInvitationServer(action, payload), rollbackState, label, { action, ...payload });
+    return Promise.resolve(syncTeamInvitationServer(action, payload)).then((result) => (
+      result?.state
+        ? result
+        : rollbackIfServerFailed(result, rollbackState, label, { action, ...payload })
+    ));
   };
   const refreshRecruitingRelations = (result = {}, fallbackPostId = "") => {
     const refreshPostId = result?.post?.id ?? result?.postId ?? fallbackPostId;

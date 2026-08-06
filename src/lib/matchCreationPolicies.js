@@ -105,14 +105,27 @@ export function getPickupTeamAssignmentModeOption(source = {}) {
 export function getModeClockPreset(mode = "5v5", presetId = "community") {
   const defaults = getDefaultMatchRules(mode);
   if (mode !== "5v5") {
+    if (presetId === "quick") return { ...defaults, targetScore: 11, periodMinutes: 8, timeLimit: 8, lastPeriodStopMinutes: 0 };
+    if (presetId === "extended") return { ...defaults, periodMinutes: 15, timeLimit: 15, lastPeriodStopMinutes: 0 };
+    if (presetId === "halves") return { ...defaults, periodCount: 2, periodMinutes: 8, halftimeMinutes: 3, timeLimit: 16, lastPeriodStopMinutes: 0 };
+    return { ...defaults, lastPeriodStopMinutes: 0 };
+  }
+  if (presetId === "official") {
     return {
       ...defaults,
       lastPeriodStopMinutes: 0,
     };
   }
-  if (presetId === "official") {
+  if (presetId === "quick" || presetId === "extended") {
+    const periodMinutes = presetId === "quick" ? 10 : 15;
     return {
       ...defaults,
+      periodCount: 2,
+      periodMinutes,
+      halftimeMinutes: 5,
+      overtimeMinutes: 3,
+      clockMode: "running",
+      timeLimit: periodMinutes * 2,
       lastPeriodStopMinutes: 0,
     };
   }
@@ -130,11 +143,18 @@ export function getModeClockPreset(mode = "5v5", presetId = "community") {
 
 export function getMatchClockPresetOptions(mode = "5v5") {
   if (mode !== "5v5") {
-    return [{ id: "small_default", label: `${mode} 기본`, patch: getModeClockPreset(mode) }];
+    return [
+      { id: "quick", label: "빠른 11점", patch: getModeClockPreset(mode, "quick") },
+      { id: "community", label: "기본 21점", patch: getModeClockPreset(mode, "community") },
+      { id: "extended", label: "긴 경기 15분", patch: getModeClockPreset(mode, "extended") },
+      { id: "halves", label: "2하프 8분", patch: getModeClockPreset(mode, "halves") },
+    ];
   }
   return [
-    { id: "community", label: "러닝타임 8분×4", patch: getModeClockPreset(mode, "community") },
-    { id: "official", label: "스톱타임 10분×4", patch: getModeClockPreset(mode, "official") },
+    { id: "quick", label: "빠른 10분×2", patch: getModeClockPreset(mode, "quick") },
+    { id: "community", label: "동호회 8분×4", patch: getModeClockPreset(mode, "community") },
+    { id: "extended", label: "긴 경기 15분×2", patch: getModeClockPreset(mode, "extended") },
+    { id: "official", label: "정규 10분×4", patch: getModeClockPreset(mode, "official") },
   ];
 }
 

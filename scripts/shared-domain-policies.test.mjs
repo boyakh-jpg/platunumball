@@ -28,6 +28,8 @@ import {
   DEFAULT_RATING,
   MATCH_MODES,
   MATCH_SIDES,
+  MAX_TEAM_MEMBERS,
+  MAX_TEAM_MEMBERSHIPS,
   MAX_RECRUITING_RESERVES_PER_SIDE,
   getTestAccountDisplayLabel,
   getModeSize,
@@ -1707,6 +1709,26 @@ test("team invitation reducer preserves authority and terminal states", () => {
   assert.equal(declineTeamInvitation({ ...invited, currentUserId: "member" }, invitationId).teamInvitations[0].status, "declined");
   assert.equal(cancelTeamInvitation(invited, invitationId).teamInvitations[0].status, "cancelled");
   assert.equal(inviteTeamMember(invited, team.id, "member").teamInvitations.length, 1);
+});
+
+test("team invites and join requests share locked membership limits", async () => {
+  assert.equal(MAX_TEAM_MEMBERS, 30);
+  assert.equal(MAX_TEAM_MEMBERSHIPS, 3);
+  const migration = await readSource("supabase/migrations/20260806123000_expand_team_membership_and_profile.sql");
+  assert.match(migration, /team_invitations_one_pending_target/);
+  assert.match(migration, /rankball_request_team_membership/);
+  assert.match(migration, /rankball_respond_team_join_request/);
+  assert.match(migration, /rankball_rpc_contract_registry/);
+  assert.match(migration, /rankball_team_member_user:/);
+  assert.match(migration, /request_kind = 'invite'/);
+  assert.match(migration, /n_team_join_request_/);
+  assert.match(migration, /member_count >= 30/);
+  assert.match(migration, /applicant_team_count >= 3/);
+  const actions = await readSource("src/hooks/appData/actions.js");
+  assert.match(actions, /result\?\.state[\s\S]*?rollbackIfServerFailed\(result, rollbackState, label/);
+  const schemaHealth = await readSource("server/api/system/schemaHealthRequirements.js");
+  assert.match(schemaHealth, /teams:\s*\[[^\]]*"description"/);
+  assert.doesNotMatch(schemaHealth, /public_profiles:\s*\[[^\]]*"description"/);
 });
 
 test("favorite reducers add, remove, and validate current or retired targets", () => {
