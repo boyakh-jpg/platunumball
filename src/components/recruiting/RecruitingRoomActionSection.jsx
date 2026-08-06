@@ -1,4 +1,5 @@
 import RecruitingRoomActionFeedback from "./RecruitingRoomActionFeedback.jsx";
+import RecruitingRoomDisputeCountdown from "./RecruitingRoomDisputeCountdown.jsx";
 import { getLoginPath } from "../../lib/profileSetup.js";
 
 export function RecruitingRoomActionSection({ context }) {
@@ -19,7 +20,7 @@ export function RecruitingRoomActionSection({ context }) {
     ruleAcknowledgementPending, scheduleChangePending, selectedJoinPlayerIds, selectedJoinReserveIds, selectedJoinTeam, selectedJoinTeamEligibility,
     selectedMatchRules, selectedPost, setPaidCourtJoinPrompt, setSourceDisputeDraft, showSourceMatchRecordSummary, sidePartyJoinOptions,
     setSourceMatchDraftScore, sourceDisputeDraft, sourceDisputePending, sourceDisputeStatus, sourceFinalAuthorityLabel, sourceHasOwnOpenDispute, sourceMatch, sourceMatchAction, sourceMatchActionPending, sourceMatchApprovalOpen,
-    sourceMatchCancelActionLabel, sourceMatchIsRecordRoom, sourceMatchRecordBoardFirst, sourceMatchResultSubmitLabel, sourceMatchReviewRefreshing, sourceMatchSideName,
+    sourceMatchCancelActionLabel, sourceMatchIsRecordRoom, sourceMatchRecordBoardFirst, sourceMatchRecordWindow, sourceMatchResultSubmitLabel, sourceMatchReviewRefreshing, sourceMatchSideName,
     sourceMatchResultEntryPermission, sourceMatchStartButtonLabel, sourceMatchStartButtonTitle, sourceOpenDisputes, sourceRoomReadOnly, submitJoin, submitSourceDispute,
     teamOnlyRoom, teamRoomHasJoinableSide, updateJoinDraft, userById, runSourceMatchAction,
   } = context;
@@ -36,6 +37,9 @@ export function RecruitingRoomActionSection({ context }) {
                   <div className="arena-owner-panel">
                     <strong>{sourceMatchAction.label}</strong>
                     <span>{sourceMatchAction.detail}</span>
+                    {sourceMatchApprovalOpen && sourceMatchRecordWindow?.disputeClosesAt ? (
+                      <RecruitingRoomDisputeCountdown closesAt={sourceMatchRecordWindow.disputeClosesAt} />
+                    ) : null}
                     {cancellationReasonText ? (
                       <span className="arena-cancellation-reason"><b>취소 사유</b>{cancellationReasonText}</span>
                     ) : null}

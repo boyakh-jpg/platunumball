@@ -367,6 +367,10 @@
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
 }
 
+.arena-dispute-score-row.arena-dispute-team-score-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 @media (max-width: 640px) {
   .arena-dispute-score-row.arena-dispute-team-score-grid,
   .arena-dispute-score-row.arena-dispute-stat-grid {
