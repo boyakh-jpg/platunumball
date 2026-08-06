@@ -672,7 +672,10 @@ test("KBO는 스포츠 표시, Pretendard는 읽기와 조작 UI에 사용한다
 });
 
 test("공용 CTA는 ui-button-block 하나로 너비만 확장한다", () => {
-  assert.match(pageSources.home, /to="\/app\/guide\/practice" className="ui-button-block"/);
+  assert.match(
+    pageSources.home,
+    /className="ui-action-row"><Button as=\{Link\} to="\/app\/teams"[\s\S]*?to="\/app\/community"[\s\S]*?to="\/app\/guide\/practice" size="sm"/,
+  );
   assert.equal(countClassToken(pageSources.matches, "ui-button-block"), 2);
   assert.equal(countClassToken(pageSources.recruiting, "ui-button-block"), 2);
   assert.equal(countClassToken(pageSources.season, "ui-button-block"), 1);
