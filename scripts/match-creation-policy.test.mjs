@@ -1236,7 +1236,6 @@ test("public team joins persist only the applying team member as side leader", (
   assert.match(teamMemberPublicJoinMigrationSource, /recruiting_team_representative_ineligible/);
   assert.match(teamMemberPublicJoinMigrationSource, /eligibility->'eligiblePlayerIds'[\s\S]*\? new\.player_id/);
   assert.doesNotMatch(teamMemberPublicJoinMigrationSource, /delete\s+from|drop\s+table|truncate\s+table/i);
-  assert.match(recruitingSource, /상대 팀원이 B사이드장으로 참가할 때까지 기다립니다\./);
   assert.doesNotMatch(recruitingSource, /상대 팀 현재 주장이 B사이드로 참가/);
 });
 

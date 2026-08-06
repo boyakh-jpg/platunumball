@@ -221,13 +221,13 @@ export function useDirectoryLoaders(context) {
     const requestedTeamId = String(options.teamId ?? "").trim();
     const endpoint = !demoPreview && (teamDetailMatch || requestedTeamId) ? "/api/teams/detail" : "/api/directory/load";
     const playerDetailMatch = pathname.match(/^\/app\/players\/([^/]+)$/);
-    const kind = options.kind ?? (playerDetailMatch ? "players" : pathname === "/app/teams" ? "teams" : "self");
+    const kind = options.kind ?? (playerDetailMatch ? "players" : (teamDetailMatch || pathname === "/app/teams") ? "teams" : "self");
     const { limit, offset } = getDirectoryPageRequest(options, { kind });
     const filter = String(options.filter ?? options.query ?? "").trim();
     const region = String(options.region ?? "").trim();
     const profileId = String(options.profileId ?? (playerDetailMatch ? decodeURIComponent(playerDetailMatch[1]) : "")).trim();
     const teamId = requestedTeamId || (teamDetailMatch ? decodeURIComponent(teamDetailMatch[1]) : "");
-    const includeTeamMemberProfiles = options.includeTeamMemberProfiles === true;
+    const includeTeamMemberProfiles = options.includeTeamMemberProfiles === true || Boolean(teamDetailMatch);
     const placementCompleteOnly = options.placementCompleteOnly === true;
     const rankingSort = normalizeDirectoryRankingSort(options.rankingSort);
     const cacheKey = [endpoint, kind, limit, offset, filter, region, profileId, teamId, includeTeamMemberProfiles, placementCompleteOnly, rankingSort].join(":");

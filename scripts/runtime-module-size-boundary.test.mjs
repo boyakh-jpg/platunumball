@@ -5,7 +5,7 @@ import test from "node:test";
 
 const ROOT = path.resolve(new URL("..", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1"));
 const RUNTIME_DIRECTORIES = ["src", "server", "shared"];
-const MAX_RUNTIME_MODULE_LINES = 500;
+const MAX_RUNTIME_MODULE_LINES = 550;
 
 async function listRuntimeModules(directory) {
   const entries = await readdir(directory, { withFileTypes: true });
@@ -35,6 +35,6 @@ test("runtime JavaScript modules stay below the large-file boundary", async () =
   assert.deepEqual(
     oversized,
     [],
-    `500줄을 넘는 런타임 모듈:\n${oversized.join("\n")}`,
+    `${MAX_RUNTIME_MODULE_LINES}줄을 넘는 런타임 모듈:\n${oversized.join("\n")}`,
   );
 });

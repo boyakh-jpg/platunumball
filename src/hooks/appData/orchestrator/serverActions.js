@@ -100,14 +100,16 @@ const currentUser = useMemo(() => {
       if (errorCode === "stale_auth_request") {
         return { ok: false, error: errorCode, stale: true, path };
       }
-      console.warn(`Server action skipped: ${path}`, {
-        reason: errorCode,
-        statusCode: error.statusCode ?? null,
-        details: error.details ?? null,
-      });
-      pushLocalWarning("저장하지 못했습니다", "변경 내용을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.", {
-        payload: { path, error: errorCode, statusCode: error.statusCode ?? null, details: error.details ?? null },
-      });
+      if (options.quietError !== errorCode) {
+        console.warn(`Server action skipped: ${path}`, {
+          reason: errorCode,
+          statusCode: error.statusCode ?? null,
+          details: error.details ?? null,
+        });
+        pushLocalWarning("저장하지 못했습니다", "변경 내용을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.", {
+          payload: { path, error: errorCode, statusCode: error.statusCode ?? null, details: error.details ?? null },
+        });
+      }
       return { ok: false, error: errorCode, statusCode: error.statusCode ?? null, path, details: error.details ?? null };
     });
   }, [pushLocalWarning, trackedPostServerAction]);

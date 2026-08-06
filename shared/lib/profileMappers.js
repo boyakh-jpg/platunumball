@@ -64,7 +64,7 @@ export function getProfileShellId(authUserId = "") {
 }
 
 export function createProfileShell(authUserId = "", email = "") {
-  const fallbackName = String(email || "").split("@")[0] || "?좉퇋 ?좎닔";
+  const fallbackName = String(email || "").split("@")[0] || "신규 선수";
   return {
     id: getProfileShellId(authUserId),
     name: fallbackName,

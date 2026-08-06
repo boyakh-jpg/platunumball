@@ -79,6 +79,8 @@ test("shared mapper behavior fixtures preserve profile, team, match, tournament,
   assert.equal(profile.ratings.integrated, 1234);
   assert.equal(profile.avatarBackgroundEnabled, false);
   assert.equal(profile.foundingPlayer, true);
+  assert.equal(sharedProfileMappers.createProfileShell("", "").name, "신규 선수");
+  assert.equal(sharedProfileMappers.createProfileShell("", "player@example.com").name, "player");
 
   const team = sharedTeamMappers.fromRemoteTeam({
     id: "team-1",

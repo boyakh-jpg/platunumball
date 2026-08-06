@@ -38,7 +38,7 @@ export function buildLoaderActions(context) {
   return ({
 loadMatchDetail,
     loadCourtDetail,
-    loadRefereeDetail: (refereeId, limit = 12) => runServerAction("/api/referees/detail", { refereeId, limit }),
+    loadRefereeDetail: (refereeId, limit = 12) => runServerAction("/api/referees/detail", { refereeId, limit }, { quietError: "referee_not_found" }),
     loadMatchRecruitingSchedule,
     loadMatchTeamSchedule,
     refreshCurrentProfile,

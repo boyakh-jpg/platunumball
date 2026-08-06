@@ -1545,7 +1545,7 @@ test("season hub is player-centered while regional MMR stays separate", async ()
   assert.doesNotMatch(seasonPage, /운영 체크|처리할 경기|getOperationsSummary|MatchRoomModal/);
   assert.match(rankingsPage, /\{ id: "region", label: "지역" \}/);
   assert.match(rankingsPage, /\{ id: "2v2", label: "2v2" \}/);
-  assert.match(rankingsPage, /const promotionView = searchParams\.get\("view"\) === "promotion"/);
+  assert.match(rankingsPage, /const promotionView = !readOnly && searchParams\.get\("view"\) === "promotion"/);
   assert.match(rankingsPage, /const canonicalEnabled = isSupabaseConfigured && app\.remoteReady && promotionView/);
   assert.match(rankingsPage, /useCanonicalSeasonRankings\(canonicalEnabled, season\.id\)/);
   assert.match(rankingsPage, /canonicalRankings\.data\.players/);
@@ -1569,6 +1569,9 @@ test("team detail keeps navigation preview and always refreshes authoritative te
   const teamDetailPage = await readSource("src/pages/TeamDetail.jsx");
   const teamDetailView = await readSource("src/pages/TeamDetailView.jsx");
   const teamHoverCard = await readSource("src/components/team/TeamHoverCard.jsx");
+  const directoryLoader = await readSource("src/hooks/appData/orchestrator/directoryLoaders.js");
+  assert.match(directoryLoader, /\(teamDetailMatch \|\| pathname === "\/app\/teams"\) \? "teams" : "self"/);
+  assert.match(directoryLoader, /options\.includeTeamMemberProfiles === true \|\| Boolean\(teamDetailMatch\)/);
   assert.match(teamDetailPage, /location\.state\?\.teamPreview\?\.id === teamId/);
   assert.match(teamDetailPage, /const authoritativeTeam = app\.state\.teams\.find/);
   assert.match(teamDetailPage, /const team = authoritativeTeam \?\? \(!teamDetailReady \? previewTeam : null\)/);
@@ -2172,7 +2175,8 @@ test("referee profiles use canonical grades and public confirmed officiating his
   assert.match(hoverSource, /`\/app\/referees\/\$\{user\.id\}`/);
   assert.match(homeSearchSource, /item\.kind === "referee" \? `\/app\/referees\/\$\{item\.id\}`/);
   assert.match(favoriteSource, /to=\{`\/app\/referees\/\$\{item\.id\}`\}/);
-  assert.match(loaderSource, /loadRefereeDetail: \(refereeId, limit = 12\) => runServerAction\("\/api\/referees\/detail", \{ refereeId, limit \}\)/);
+  assert.match(loaderSource, /loadRefereeDetail: \(refereeId, limit = 12\) => runServerAction\("\/api\/referees\/detail", \{ refereeId, limit \}, \{ quietError: "referee_not_found" \}\)/);
+  assert.match(await readSource("src/hooks/appData/orchestrator/serverActions.js"), /options\.quietError !== errorCode/);
   assert.match(pageSource, /loadRefereeDetail\(refereeId, RECENT_REFEREE_MATCH_LIMIT\)/);
   assert.doesNotMatch(pageSource, /actions\?\.runServerAction/);
   assert.match(apiSource, /referee_appointments/);
