@@ -672,7 +672,7 @@ test("KBO는 스포츠 표시, Pretendard는 읽기와 조작 UI에 사용한다
 });
 
 test("공용 CTA는 ui-button-block 하나로 너비만 확장한다", () => {
-  assert.equal(countClassToken(pageSources.home, "ui-button-block"), 8);
+  assert.match(pageSources.home, /to="\/app\/guide\/practice" className="ui-button-block"/);
   assert.equal(countClassToken(pageSources.matches, "ui-button-block"), 2);
   assert.equal(countClassToken(pageSources.recruiting, "ui-button-block"), 2);
   assert.equal(countClassToken(pageSources.season, "ui-button-block"), 1);
@@ -1045,6 +1045,7 @@ test("알파 온보딩은 기록 중심 무료 핵심 흐름을 안내한다", (
   assert.equal(count(pageSources.home, 'to="/app/guide"'), 2);
   assert.match(pageSources.home, /처음 사용하시나요\?/);
   assert.match(pageSources.home, /13단계 안내/);
+  assert.match(pageSources.home, /to="\/app\/guide\/practice"[\s\S]*연습경기 해보기/);
   assert.match(pageSources.home, /isHomeGuideCardVisible\(app\.state\.settings\)/);
   assert.match(gettingStartedSource, /useSearchParams/);
   assert.match(gettingStartedSource, /aria-label="사용 설명 목차"/);
