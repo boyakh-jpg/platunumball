@@ -239,7 +239,6 @@
     padding: 16px;
   }
 
-  .auth-card-head,
   .auth-session-line {
     align-items: flex-start;
     flex-direction: column;

@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ArrowRight, ArrowUpRight, BookOpenCheck, CalendarDays, ClipboardCheck, PlusCircle } from "lucide-react";
+import { ArrowRight, ArrowUpRight, BookOpenCheck, CalendarDays, ClipboardCheck, MessageSquareText, PlusCircle } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
@@ -33,6 +33,7 @@ export default function HomePageView({
           <p>개인 일정, 경기 기록, 알림은 로그인 후 내 데이터로 표시됩니다.</p>
           <div className="ui-action-row">
             <Button as={Link} to="/app/recruiting">매칭 보기 <ArrowRight size={18} /></Button>
+            <Button as={Link} to="/app/community" variant="secondary"><MessageSquareText size={18} /> 커뮤니티 보기</Button>
             <Button as={Link} to="/app/create" variant="secondary"><PlusCircle size={18} /> 방 만들기</Button>
             <Button as={Link} to="/app/create?intent=record" variant="secondary"><ClipboardCheck size={18} /> 경기 기록하기</Button>
             <Button as={Link} to="/login" variant="secondary">로그인</Button>

@@ -359,8 +359,12 @@ test("referee detail uses the player hero structure and dedicated tier emblems",
 });
 
 test("signed-in login redirects and settings exposes logout", () => {
+  const authStyles = read("src/styles/layout/app-shell-auth.css");
   assert.match(loginSource, /if \(auth\.session\) return <Navigate to=\{from\} replace \/>;/);
-  assert.match(loginSource, /<Button as=\{Link\} to=\{from\}[^>]*className="auth-back-link"/);
+  assert.match(loginSource, /<div className="auth-card-head">[\s\S]*?<Link to="\/" className="brand auth-brand"[\s\S]*?<Button as=\{Link\} to=\{from\}[^>]*className="auth-back-link"/);
+  assert.doesNotMatch(loginSource, /auth-card-primary|로그인 가능/);
+  assert.match(authStyles, /\.auth-card-head\s*\{[^}]*grid-template-columns: minmax\(0, 1fr\) auto;/s);
+  assert.match(authStyles, /\.auth-brand \.brand-letter-wrap\s*\{[^}]*flex: 1 1 0;/s);
   assert.match(settingsSource, /<SettingsPageView controller=\{controller\} auth=\{props\.auth\} \/>/);
   assert.match(settingsSource, /onClick=\{auth\.signOut\}/);
   assert.match(settingsSource, /<LogOut size=\{16\} \/> 로그아웃/);
@@ -382,6 +386,8 @@ test("guest shell replaces the demo identity with login actions", () => {
   assert.match(sidebar, /guestPreview \? \([\s\S]*?<strong>로그인<\/strong>/);
   assert.match(bottomNav, /guestPreview && item\.to === "\/app\/profile"/);
   assert.match(bottomNav, /isGuestProfile \? "로그인" : item\.label/);
+  assert.match(appSource, /"\/app\/community"/);
+  assert.match(homePageSource, /to="\/app\/community"[^>]*>[\s\S]*?커뮤니티 보기/);
   assert.doesNotMatch(read("src/styles/layout/app-shell-auth.css"), /\.guest-preview-bar/);
 });
 

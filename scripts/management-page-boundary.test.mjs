@@ -676,8 +676,8 @@ test("게스트 저장 요청은 원래 경로를 보존해 로그인으로 보�
 
   assert.match(profileSetup, /export function getLoginPath\(redirect = "\/app"\)/u);
   assert.match(serverActions, /window\.location\.assign\(getLoginPath\(redirect\)\)/u);
-  assert.match(serverActions, /if \(!accessToken\) \{[\s\S]*redirectToLogin\(\);[\s\S]*server_action_missing_access_token/u);
-  assert.match(community, /const remote = isSupabaseConfigured && !app\.demoPreview/u);
+  assert.match(serverActions, /if \(!accessToken && options\.allowAnonymous !== true\) \{[\s\S]*redirectToLogin\(\);[\s\S]*server_action_missing_access_token/u);
+  assert.match(community, /const remote = isSupabaseConfigured;/u);
   assert.match(community, /const requireLogin = \(\) => \{[\s\S]*window\.location\.assign\(getLoginPath\(redirect\)\)/u);
   assert.match(communityPage, /controller\.requireLogin\(\) \|\| setComposing\(true\)/u);
   assert.match(rankings, /promotionView && !app\.demoPreview/u);

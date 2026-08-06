@@ -82,12 +82,30 @@ test("커뮤니티 경로와 작성자 프로필카드가 연결되어 있다", 
     readFile(new URL("../src/pages/CommunityPostDialog.jsx", import.meta.url), "utf8"),
   ]);
 
-  assert.match(api, /\["\/community\/posts", route\(communityPosts, \["POST"\], "user"\)\]/);
+  assert.match(api, /\["\/community\/posts", route\(communityPosts, \["POST"\], "publicRead"\)\]/);
   assert.match(app, /path="\/app\/community" element=\{<Community app=\{app\} \/>\}/);
   assert.match(sidebar, /to: "\/app\/community"/);
   assert.match(bottomNav, /to: "\/app\/community"/);
   assert.match(dialog, /<PlayerHoverCard user=\{author\}/);
   assert.doesNotMatch(dialog, /<PlayerHoverCard as="span" user=\{author\}/);
+});
+
+test("게스트 커뮤니티는 실제 공개 글만 읽고 쓰기는 인증을 요구한다", async () => {
+  const [api, handler, controller, serverActions, loaderActions] = await Promise.all([
+    readFile(new URL("../api/index.js", import.meta.url), "utf8"),
+    readFile(new URL("../server/api/community/posts.js", import.meta.url), "utf8"),
+    readFile(new URL("../src/pages/useCommunityController.js", import.meta.url), "utf8"),
+    readFile(new URL("../src/lib/serverActions.js", import.meta.url), "utf8"),
+    readFile(new URL("../src/hooks/appData/actions/loaderActions.js", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(api, /\["\/community\/posts", route\(communityPosts, \["POST"\], "publicRead"\)\]/);
+  assert.match(handler, /PUBLIC_READ_OPERATIONS = new Set\(\["list", "detail", "profileActivity"\]\)/);
+  assert.match(handler, /!PUBLIC_READ_OPERATIONS\.has\(operation\) && !hasBearerToken/);
+  assert.match(handler, /Boolean\(context\.profileId\)/);
+  assert.match(controller, /const remote = isSupabaseConfigured;/);
+  assert.match(serverActions, /options\.allowAnonymous !== true/);
+  assert.match(loaderActions, /allowAnonymous: publicRead/);
 });
 
 test("커뮤니티 입력 버튼은 서버와 같은 최대 길이에서 막힌다", async () => {

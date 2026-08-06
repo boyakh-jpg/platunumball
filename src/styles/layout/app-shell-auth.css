@@ -319,18 +319,19 @@ body.rankball-scroll-locked .app-main {
 }
 
 .auth-card-head {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
   gap: var(--space-7);
 }
 
-.auth-card-primary {
-  display: flex; min-width: 0; align-items: center; gap: var(--space-6);
+.auth-brand {
+  width: 100%; min-width: 0;
+  color: var(--text);
 }
 
-.auth-brand {
-  color: var(--text);
+.auth-brand .brand-letter-wrap {
+  flex: 1 1 0; width: auto;
 }
 
 .auth-form {

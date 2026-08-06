@@ -91,8 +91,8 @@ const currentUser = useMemo(() => {
     }
     return { ok: false, error: errorCode, path };
   }, [pushLocalWarning]);
-  const runServerAction = useCallback((path, payload) => {
-    return trackedPostServerAction(path, payload).then((result) => {
+  const runServerAction = useCallback((path, payload, options = {}) => {
+    return trackedPostServerAction(path, payload, options).then((result) => {
       if (!result) throw new Error("server_action_unavailable");
       return result;
     }).catch((error) => {

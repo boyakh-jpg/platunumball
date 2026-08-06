@@ -192,9 +192,12 @@ loadMatchDetail,
     community: async (operation, payload = {}) => {
       if (!isSupabaseConfigured) return { ok: true, local: true };
       if (!ensureRemoteReady("커뮤니티")) return { ok: false, error: "remote_not_ready" };
-      const serverReady = await ensureServerActionAvailable("/api/community/posts", "커뮤니티");
-      if (serverReady !== true) return serverReady;
-      return runServerAction("/api/community/posts", { operation, ...payload });
+      const publicRead = ["list", "detail", "profileActivity"].includes(operation);
+      if (!publicRead) {
+        const serverReady = await ensureServerActionAvailable("/api/community/posts", "커뮤니티");
+        if (serverReady !== true) return serverReady;
+      }
+      return runServerAction("/api/community/posts", { operation, ...payload }, { allowAnonymous: publicRead });
     },
     loadMoreMatches,
     loadMoreRecruiting,

@@ -57,7 +57,7 @@ export function getCommunityErrorMessage(errorCode = "") {
 }
 
 export default function useCommunityController(app) {
-  const remote = isSupabaseConfigured && !app.demoPreview;
+  const remote = isSupabaseConfigured;
   const communityAction = app.actions.community;
   const demoBoard = useMemo(() => makeDemoBoard(app.currentUser, app.state.users), [app.currentUserId]);
   const [localPosts, setLocalPosts] = useState(demoBoard.posts);

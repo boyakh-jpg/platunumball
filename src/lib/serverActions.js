@@ -84,7 +84,7 @@ async function requestServerAction(path, payload, accessToken) {
   return fetch(path, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${accessToken}`,
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       "Content-Type": "application/json",
     },
     body: JSON.stringify(payload),
@@ -114,7 +114,7 @@ export async function postServerAction(path, payload = {}, options = {}) {
   }
 
   const accessToken = await getClientActionAccessToken();
-  if (!accessToken) {
+  if (!accessToken && options.allowAnonymous !== true) {
     redirectToLogin();
     throw createServerActionError("server_action_missing_access_token", { path });
   }

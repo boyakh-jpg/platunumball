@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { allowRequestMethod, getAdminLevel, getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+import { allowRequestMethod, getAdminLevel, getAuthenticatedContext, getBearerToken, getSupabaseAdminClient, readJsonBody, sendJson } from "../_supabaseAdmin.js";
 import { decodeBase64Image, validateWebpImage } from "../_r2ImageStorage.js";
 import { fromRemoteProfile } from "../../../shared/lib/profileMappers.js";
 import { PROFILE_CARD_COLUMNS, TEAM_COLUMNS, TEAM_MEMBER_COLUMNS } from "../../../shared/lib/repositoryColumns.js";
@@ -26,6 +26,7 @@ const COMMENT_COLUMNS = "id,post_id,author_id,parent_id,body,status,created_at,u
 const COMMUNITY_IMAGE_PATH_PATTERN = /^posts\/[0-9a-f-]{36}\.webp$/;
 const COMMUNITY_IMAGE_BASE64_MAX_LENGTH = Math.ceil(COMMUNITY_POST_IMAGE_MAX_BYTES / 3) * 4 + 8;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const PUBLIC_READ_OPERATIONS = new Set(["list", "detail", "profileActivity"]);
 
 function requestError(code, statusCode = 400) {
   const error = new Error(code);
@@ -116,7 +117,7 @@ async function loadProfileMap(context, ids = []) {
 }
 
 async function loadLikedPostIds(context, postIds = []) {
-  if (!postIds.length) return new Set();
+  if (!context.profileId || !postIds.length) return new Set();
   const { data, error } = await context.supabase
     .from("community_post_likes")
     .select("post_id")
@@ -441,12 +442,16 @@ export default async function handler(request, response) {
   try {
     const body = await readJsonBody(request, { maxStringLength: COMMUNITY_IMAGE_BASE64_MAX_LENGTH });
     const operation = String(body.operation ?? "list");
-    const context = await getAuthenticatedContext(request, { profileSelect: "id,auth_user_id,app_settings" });
-    const adminLevel = await getAdminLevel(context);
+    const hasBearerToken = Boolean(getBearerToken(request));
+    if (!PUBLIC_READ_OPERATIONS.has(operation) && !hasBearerToken) throw requestError("missing_bearer_token", 401);
+    const context = hasBearerToken
+      ? await getAuthenticatedContext(request, { profileSelect: "id,auth_user_id,app_settings" })
+      : { supabase: getSupabaseAdminClient(), profileId: "", profile: null };
+    const adminLevel = context.profileId ? await getAdminLevel(context) : 0;
     let result;
     if (operation === "list") result = await listPosts(context, body, adminLevel);
     else if (operation === "profileActivity") result = await loadProfileActivity(context, body);
-    else if (operation === "detail") result = await loadPostDetail(context, requiredId(body.postId, "community_post_id_invalid"), adminLevel, true);
+    else if (operation === "detail") result = await loadPostDetail(context, requiredId(body.postId, "community_post_id_invalid"), adminLevel, Boolean(context.profileId));
     else if (operation === "createPost") result = await createPost(context, body, adminLevel);
     else if (operation === "updatePost") result = await updatePost(context, body, adminLevel);
     else if (operation === "deletePost") result = await deletePost(context, body, adminLevel);

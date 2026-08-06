@@ -62,6 +62,7 @@ const GUEST_PUBLIC_APP_PATHS = new Set([
   "/app/guide",
   "/app/guide/practice",
   "/app/create",
+  "/app/community",
   "/app/matches",
   "/app/recruiting",
   "/app/referee-rulebook",
