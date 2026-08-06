@@ -322,14 +322,15 @@ test("player detail uses shared record rows and one support rail", () => {
   assert.match(globalSurfaceStyles, /\.profile-detail-page \.profile-hero\s*\{[^}]*--page-hero-bg:\s*var\(--bg-profile\);/);
 });
 
-test("Discord는 ID 문자 없이 해시태그 옆 DM 아이콘으로 표시한다", () => {
+test("Discord는 ID 문자 없이 선수 상세에 DM 보내기 pill로 표시한다", () => {
   const playerHoverCard = read("src/components/profile/PlayerHoverCard.jsx");
   const sidebar = read("src/components/layout/Sidebar.jsx");
   const settingsPrimaryColumn = read("src/pages/SettingsPrimaryColumn.jsx");
 
   assert.doesNotMatch(pageSources.playerDetail, /getDiscordDisplayName|discordDisplayName/);
   assert.doesNotMatch(playerHoverCard, /getDiscordDisplayName|discordDisplayName/);
-  assert.match(pageSources.playerDetail, /getDiscordProfileUrl/);
+  assert.match(pageSources.playerDetail, /getDiscordDmUrl/);
+  assert.match(pageSources.playerDetail, /className="discord-link-badge"[\s\S]*<span>DM 보내기<\/span>/);
   assert.match(playerHoverCard, /hover-hashtag[\s\S]*aria-label="Discord에서 DM 열기"/);
   assert.match(sidebar, /sidebar-profile-handle[\s\S]*aria-label="Discord에서 DM 열기"/);
   assert.match(settingsPrimaryColumn, /<strong>\{app\.currentUser\.name\}<\/strong>/);

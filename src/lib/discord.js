@@ -62,6 +62,11 @@ export function getDiscordProfileUrl(user = {}) {
   return `https://discord.com/users/${encodeURIComponent(connection.userId)}`;
 }
 
+export function getDiscordDmUrl(user = {}) {
+  if (!user?.id || (!isDiscordLinked(user) && !user.discordAvatarUrl)) return "";
+  return `/api/profile/discord-dm?profileId=${encodeURIComponent(user.id)}`;
+}
+
 export function getDiscordAvatarClassName(user = {}, className = "avatar") {
   return [className, getDiscordAvatarUrl(user) ? "image-avatar" : ""].filter(Boolean).join(" ");
 }

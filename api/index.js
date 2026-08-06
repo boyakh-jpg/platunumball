@@ -37,6 +37,7 @@ import notificationDelete from "../server/api/notifications/delete.js";
 import notificationList from "../server/api/notifications/list.js";
 import notificationRead from "../server/api/notifications/read.js";
 import profileEmblem from "../server/api/profile/emblem.js";
+import profileDiscordDm from "../server/api/profile/discord-dm.js";
 import profileAchievements from "../server/api/profile/achievements.js";
 import profileAffiliation from "../server/api/profile/affiliation.js";
 import profileMe from "../server/api/profile/me.js";
@@ -107,6 +108,7 @@ export const API_ROUTES = new Map([
   ["/notifications/list", route(notificationList, ["POST"], "user")],
   ["/notifications/read", route(notificationRead, ["POST"], "user")],
   ["/profile/emblem", route(profileEmblem, ["POST"], "user")],
+  ["/profile/discord-dm", route(profileDiscordDm, ["GET"], "publicRead")],
   ["/profile/achievements", route(profileAchievements, ["POST"], "user")],
   ["/profile/affiliation", route(profileAffiliation, ["POST"], "user")],
   ["/profile/me", route(profileMe, ["POST"], "user")],

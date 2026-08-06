@@ -14,7 +14,7 @@ import ProgressionChecklist from "../components/rating/ProgressionChecklist.jsx"
 import RatingCard from "../components/rating/RatingCard.jsx";
 import TierEmblem from "../components/rating/TierEmblem.jsx";
 import TeamEmblem from "../components/team/TeamEmblem.jsx";
-import { getDiscordProfileUrl } from "../lib/discord.js";
+import { getDiscordDmUrl } from "../lib/discord.js";
 import { getUserHashtag } from "../lib/handles.js";
 import { getTeamRoleLabel } from "../lib/constants.js";
 import { getActualMatchPlayerSideName, getMatchSideScore as getSideScore, getPlayerRecentRecordMatches, isEligibleReferee, isPersonalRecordMatch } from "../lib/matchUtils.js";
@@ -180,7 +180,7 @@ export default function PlayerDetail({ app }) {
   const losses = confirmedHistory.filter((match) => getPlayerOutcome(match, player.id) === "loss").length;
   const winRate = confirmedHistory.length ? Math.round((wins / confirmedHistory.length) * 100) : 0;
   const recentOutcomes = confirmedHistory.slice(0, 10).map((match) => getPlayerOutcome(match, player.id));
-  const discordProfileUrl = getDiscordProfileUrl(player);
+  const discordDmUrl = getDiscordDmUrl(player);
   const placementComplete = isPlacementComplete(player.ratings);
   const placementLabel = getPlacementLabel(player.ratings);
 
@@ -218,9 +218,10 @@ export default function PlayerDetail({ app }) {
         subtitle={(
           <>
             {getUserHashtag(player)}
-            {discordProfileUrl ? (
-              <a className="discord-link-badge discord-icon-link" href={discordProfileUrl} target="_blank" rel="noreferrer" aria-label="Discord에서 DM 열기" title="Discord에서 DM 열기">
+            {discordDmUrl ? (
+              <a className="discord-link-badge" href={discordDmUrl} target="_blank" rel="noreferrer" aria-label="Discord에서 DM 보내기">
                 <MessageCircle size={13} aria-hidden="true" />
+                <span>DM 보내기</span>
               </a>
             ) : null}
             {` · 신뢰도 ${player.trustScore}`}

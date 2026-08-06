@@ -181,6 +181,25 @@ test("React Router stays on SPA APIs and does not enable vulnerable RSC actions"
   );
 });
 
+test("Discord DM 링크는 공개 프로필에 숫자 ID를 싣지 않는다", async () => {
+  const route = API_ROUTES.get("/profile/discord-dm");
+  const source = await readSource("server/api/profile/discord-dm.js");
+
+  assert.equal(route?.auth, "publicRead");
+  assert.deepEqual(route?.methods, ["GET"]);
+  assert.match(source, /isDiscordSnowflake/);
+  assert.match(source, /https:\/\/discord\.com\/users\//);
+  assert.doesNotMatch(source, /sendJson\(response,\s*200/);
+
+  const response = await invokeApi({
+    path: "profile/discord-dm",
+    method: "GET",
+    query: { profileId: "../private" },
+  });
+  assert.equal(response.statusCode, 400);
+  assert.deepEqual(response.payload, { error: "invalid_profile_id" });
+});
+
 test("production schema health cannot seed privileged demo actors", async () => {
   const source = await readSource("server/api/system/schema-health.js");
   assert.doesNotMatch(source, /RANKBALL_ALLOW_PRODUCTION_TEST_SEED/);
