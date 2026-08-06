@@ -77,3 +77,9 @@ After every task, report:
 - Build success alone is not enough for room or UI changes.
 - For flow changes, test at least host, party leader, regular player, reserve player, referee/no-referee paths.
 - For UI changes, check desktop, mobile, dark mode, and light mode.
+
+# Deployment
+
+- Vercel Git integration already creates a preview deployment on every push. Do not run `vercel deploy --prod` after pushing.
+- Verify that the ready preview deployment metadata matches the pushed commit SHA, then promote that existing deployment with `vercel promote`.
+- Run a new CLI deployment only when Git integration did not create a preview. Never create both a Git preview and a duplicate CLI production build for the same commit.
