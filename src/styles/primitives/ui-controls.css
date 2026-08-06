@@ -128,6 +128,69 @@ html[data-theme] .app-main :is(.recent-match-row.result-d, .rank-match-draw) {
   padding-inline: var(--ui-button-padding-x-sm);
 }
 
+.ui-folder-tabs {
+  display: flex;
+  width: 100%;
+  align-items: flex-end;
+  gap: var(--space-5);
+  padding: var(--space-2) var(--space-2) 0;
+  overflow-x: auto;
+  border-bottom: var(--ui-stroke-width) solid var(--ui-control-border);
+  scrollbar-width: none;
+}
+
+.ui-folder-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.ui-folder-tabs button {
+  flex: 1 0 auto;
+  min-height: var(--ui-button-height);
+  padding: 0 var(--ui-button-padding-x);
+  border: var(--ui-button-border-width) solid transparent;
+  border-bottom: 0;
+  border-radius: var(--ui-control-radius) var(--ui-control-radius) 0 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: var(--ui-button-font-size);
+  font-weight: var(--ui-button-font-weight);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.ui-folder-tabs button:hover:not([aria-selected="true"]) {
+  background: var(--ui-control-bg);
+  color: var(--rb-text);
+}
+
+.ui-folder-tabs button[aria-selected="true"] {
+  border-color: var(--ui-control-border);
+  background: var(--ui-card-bg);
+  color: var(--rb-text);
+  box-shadow: inset 0 calc(var(--ui-stroke-width) * 3) 0 var(--rb-orange);
+  transform: translateY(var(--ui-stroke-width));
+}
+
+:is(.ui-folder-tabs button, .ui-segmented-control button, button.ui-choice-tile) {
+  transition:
+    border-color 140ms ease,
+    background-color 140ms ease,
+    color 140ms ease,
+    transform 140ms ease;
+}
+
+.ui-folder-tabs button:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--rb-orange-2) 72%, transparent);
+  outline-offset: 2px;
+  box-shadow: var(--focus-ring);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :is(.ui-button, .ui-folder-tabs button, .ui-segmented-control button, button.ui-choice-tile) {
+    transition: none;
+  }
+}
+
 .ui-button.ui-button-primary {
   color: var(--ui-button-color-active);
   background: var(--ui-button-bg-active);

@@ -6,7 +6,7 @@ import Badge from "../components/common/Badge.jsx";
 import Card from "../components/common/Card.jsx";
 import Pagination from "../components/common/Pagination.jsx";
 import { formatKoreanDateTime } from "../../shared/lib/matchTimeUtils.js";
-import { COMMUNITY_POST_CATEGORIES, COMMUNITY_POST_CATEGORY_LABELS } from "../../shared/lib/communityPolicy.js";
+import { COMMUNITY_POST_CATEGORY_LABELS, COMMUNITY_POST_NAV_CATEGORIES } from "../../shared/lib/communityPolicy.js";
 import CommunityPostEditor from "./CommunityPostEditor.jsx";
 import CommunityPostDialog, { CommunityAuthorLink } from "./CommunityPostDialog.jsx";
 import useCommunityController from "./useCommunityController.js";
@@ -81,7 +81,7 @@ export default function Community({ app }) {
       <Card className="section-card community-board">
         <div className="community-board-toolbar">
           <div className="ui-segmented-control segmented-control" role="tablist" aria-label="게시글 분류">
-            {COMMUNITY_POST_CATEGORIES.map((id) => (
+            {COMMUNITY_POST_NAV_CATEGORIES.map((id) => (
               <button key={id} type="button" role="tab" aria-selected={controller.category === id} className={controller.category === id ? "active" : ""} onClick={() => controller.setCategory(id)}>{COMMUNITY_POST_CATEGORY_LABELS[id]}</button>
             ))}
           </div>

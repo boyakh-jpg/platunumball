@@ -6,6 +6,7 @@ import {
   canViewCommunityActivity,
   COMMUNITY_POST_CATEGORIES,
   COMMUNITY_POST_CATEGORY_LABELS,
+  COMMUNITY_POST_NAV_CATEGORIES,
   COMMUNITY_PAGE_SIZE,
   getCommunityPopularityScore,
   normalizeCommunityPostDraft,
@@ -63,7 +64,8 @@ test("게시판은 공지부터 분류별로 열리고 작성 분류를 현재 �
   assert.deepEqual(COMMUNITY_POST_CATEGORIES, ["notice", "general", "question", "team", "photo"]);
   assert.equal(COMMUNITY_POST_CATEGORY_LABELS.question, "질의");
   assert.equal(COMMUNITY_POST_CATEGORY_LABELS.team, "팀소개");
-  assert.match(page, /COMMUNITY_POST_CATEGORIES\.map/);
+  assert.deepEqual(COMMUNITY_POST_NAV_CATEGORIES, ["notice", "general", "question", "team"]);
+  assert.match(page, /COMMUNITY_POST_NAV_CATEGORIES\.map/);
   assert.match(page, /initialCategory=\{controller\.category\}/);
   assert.doesNotMatch(editor, /<select|<option/);
   assert.match(editor, /type="file"[\s\S]*accept="image\/jpeg,image\/png,image\/webp,image\/avif,image\/heic,image\/heif"/);
@@ -113,6 +115,7 @@ test("게스트 커뮤니티는 실제 공개 글만 읽고 쓰기는 인증을 
   assert.match(handler, /!PUBLIC_READ_OPERATIONS\.has\(operation\) && !hasBearerToken/);
   assert.match(handler, /Boolean\(context\.profileId\)/);
   assert.match(controller, /const remote = isSupabaseConfigured;/);
+  assert.match(controller, /canWriteCategory: !app\.demoPreview/);
   assert.match(serverActions, /options\.allowAnonymous !== true/);
   assert.match(loaderActions, /allowAnonymous: publicRead/);
 });

@@ -318,7 +318,7 @@ export default function useCommunityController(app) {
   return {
     posts, popularPosts, page: currentPage, pageIndex, category, setCategory, selectedPost, comments, commentThreads,
     canModerate,
-    canWriteCategory: canModerate || !COMMUNITY_POST_ADMIN_CATEGORIES.includes(category),
+    canWriteCategory: !app.demoPreview && (canModerate || !COMMUNITY_POST_ADMIN_CATEGORIES.includes(category)),
     loading, detailLoading, pending, error, setError,
     requireLogin,
     openPost, closePost,

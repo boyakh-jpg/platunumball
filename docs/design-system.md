@@ -2,9 +2,9 @@
 
 1. 운영 데이터와 테마 색상은 화면 컴포넌트에 직접 넣지 않는다. DB/API 원본과 공용 helper·디자인 토큰을 사용하고 메뉴별 색상 덮어쓰기는 역할 토큰으로만 표현한다.
 
-## 2026-08-06 커뮤니티 사진 탭
+## 2026-08-06 커뮤니티 분류 control
 
-1. 게시판 분류 control은 `공지 / 자유 / 질의 / 팀소개 / 사진` 탭을 사용한다. 모든 로그인 사용자가 목록과 상세 사진을 볼 수 있지만 공지·사진 글쓰기와 사진 첨부 control은 운영 레벨 `30` 이상에게만 표시한다.
+1. 게시판 분류 control은 `공지 / 자유 / 질의 / 팀소개` 탭을 사용한다. 사진 분류 탭은 표시하지 않으며 기존 사진 글 상세는 유지한다. 글쓰기 버튼은 로그인 사용자에게만 표시하고 공지 글쓰기는 운영 레벨 `30` 이상에게만 표시한다.
 2. 사진 글은 한 장만 첨부한다. 파일 선택, 파일명, 미리보기, 제거를 같은 작성 폼 안에 두고 처리 중에는 등록을 막는다.
 3. 상세 사진은 본문 위에 원본 비율로 표시하고 데스크톱 `560px`, 모바일 `420px` 높이 안에서 `object-fit: contain`을 사용한다. 배경·테두리·상태색은 공용 토큰을 사용한다.
 
@@ -290,7 +290,7 @@
 ## 2026-07-23 CSS primitive와 lint 강제
 
 1. `tokens.css`는 색상, border, radius, shadow, control 높이, modal surface의 유일한 시각 원본이다. 새 UI는 raw 색상·수치 대신 `--ui-*`, `--rb-*`, `--radius-*` token을 사용한다.
-2. 공용 primitive는 `.ui-card`, `.ui-button`, `.ui-badge`, `.ui-panel`, `.ui-control`, `.ui-control-surface`, `.ui-segmented-control`, `.ui-choice-group`, `.ui-choice-tile`, `.ui-compact-action`, `.ui-action-row`, `.ui-modal-shell`, `.ui-modal-section`, `.ui-status-strip`을 기준으로 한다. 새 page selector가 같은 표면·테두리·높이를 다시 정의하지 않는다.
+2. 공용 primitive는 `.ui-card`, `.ui-button`, `.ui-badge`, `.ui-panel`, `.ui-control`, `.ui-control-surface`, `.ui-segmented-control`, `.ui-folder-tabs`, `.ui-choice-group`, `.ui-choice-tile`, `.ui-compact-action`, `.ui-action-row`, `.ui-modal-shell`, `.ui-modal-section`, `.ui-status-strip`을 기준으로 한다. 새 page selector가 같은 표면·테두리·높이를 다시 정의하지 않는다.
 3. feature CSS는 grid, flex, gap, 정렬, 배치, 반응형처럼 해당 화면의 layout만 정의한다. card/control/button/modal의 색상, border, radius, shadow, 높이는 primitive selector에 먼저 반영한다.
 4. 공용 방 모달 skin과 panel은 한 공용 room-modal style layer에서 한 번만 import한다. `globals.css`, 모집, 경기, 플레이 page CSS에 같은 room selector를 중복 추가하거나 뒤쪽 override로 맞추지 않는다.
 5. Stylelint는 `tokens.css` 밖의 hex·rgb·rgba 직접 색상, primitive 밖의 임의 `border-radius`, 공용 control 밖의 고정 button/input 높이, allowlist 밖의 `!important`, 동일 scope의 중복 selector를 오류로 처리한다. 원형의 `50%`, pill의 공용 token, 이미지 overlay, native control·portal 위치 보정은 명시적 allowlist만 허용한다.
@@ -2597,7 +2597,7 @@ UI 수정 전:
 8. 홈 통합 검색의 선수·심판·팀·구장 결과는 hover-only trigger가 아니라 canonical 상세 링크다. 모바일·데스크톱 모두 같은 전체 행 클릭 영역을 사용한다.
 9. 경로 없는 방·지도·프로필 아이콘 팝업은 실패 시 배경 페이지로 튕기거나 빈 화면을 만들지 않는다. 현재 팝업에서 오류와 재시도를 표시하고, 취소는 중립 상태로 닫는다.
 10. 랭킹·소속·프로필 기록은 로딩, 정상 빈 상태, 실패 상태를 구분한다. 이미 표시한 기록이 있으면 실패 때 지우지 않고 아래에 재시도를 둔다.
-11. 프로필 내 기록의 1차 출처 전환은 `종합 / 공식기록 / 무심판 / 사후기록 / 내 기록` 폴더형 탭을 사용한다. 좁은 화면에서는 탭을 축소해 겹치지 않고 가로 스크롤하며, 공식기록의 `일반 / 대회 / 경기장별`과 인원수는 2차 segmented control로 분리한다.
+11. 프로필 내 기록의 1차 출처 전환은 공용 `.ui-folder-tabs`로 `종합 / 공식기록 / 무심판 / 사후기록 / 내 기록`을 표시한다. 탭 사이는 공용 간격을 두고 좁은 화면에서는 겹치지 않고 가로 스크롤하며, 공식기록의 `일반 / 대회 / 경기장별`과 인원수는 2차 segmented control로 분리한다. 폴더 탭·segmented control·choice tile은 같은 짧은 색 전환을 사용하고 동작 감소 설정에서는 전환하지 않는다.
 12. 기록 통계는 출처별 점수 요약, 개인 누적, 개인 경기당 평균을 구분한다. 경기장별 행은 중첩 카드·의미 없는 배경색 없이 공용 구분선만 사용한다.
 
 ## 2026-08-03 구장 현장 증거 UI
@@ -2676,7 +2676,7 @@ UI 수정 전:
 
 ## 2026-08-06 탭·진행 목록 공용 소유권
 
-1. 프로필·팀·심판·관리자·기록·아이콘 탭과 엠블럼 선택은 공용 `Button` 또는 `ui-segmented-control`을 사용한다. 기능 CSS는 배치만 소유하며 버튼의 색·테두리·모서리·높이·padding을 다시 정의하지 않는다.
+1. 프로필 기록의 1차 출처는 공용 `ui-folder-tabs`, 그 밖의 프로필·팀·심판·관리자·기록·아이콘 탭과 엠블럼 선택은 공용 `Button` 또는 `ui-segmented-control`을 사용한다. 기능 CSS는 배치만 소유하며 control의 색·테두리·모서리·높이·padding을 다시 정의하지 않는다.
 2. `.ui-design-borderless-list > *`의 표면과 모서리는 공용 editorial 규칙이 소유한다. 진행 목록 행은 같은 규칙을 사용하고 `.ui-control-surface`를 중복 조합하지 않는다.
 3. 섹션 제목은 정보나 입력 control이 아니다. `section-title-row` 안의 제목 묶음에 `.ui-control-surface`를 적용하지 않는다.
 

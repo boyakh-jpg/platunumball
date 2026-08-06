@@ -26,17 +26,7 @@
   grid-template-columns: 34px minmax(0, 1fr) minmax(54px, auto);
 }
 .profile-record-folder-tabs {
-  display: flex;
-  width: 100%;
-  margin-bottom: var(--space-5);
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-.profile-record-folder-tabs::-webkit-scrollbar {
-  display: none;
-}
-.profile-record-folder-tabs button {
-  flex: 1 0 auto;
+  margin-bottom: var(--space-6);
 }
 .profile-record-section-filter button,
 .profile-record-mode-filter button,
@@ -106,10 +96,6 @@
   white-space: nowrap;
 }
 @media (max-width: 520px) {
-  .profile-record-folder-tabs button {
-    flex-basis: auto;
-  }
-
   .profile-record-mode-filter {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }

@@ -314,7 +314,7 @@ test("player detail uses shared record rows and one support rail", () => {
   assert.match(pageSources.playerDetail, /to=\{`\/app\/referees\/\$\{player\.id\}`\}/);
   assert.match(pageSources.playerDetail, /<ProfileRecordSummaryCard/);
   assert.match(pageSources.profileRecords, /<ProfileRecordSummaryCard/);
-  assert.match(profileRecordSummarySource, /className="profile-record-folder-tabs"/);
+  assert.match(profileRecordSummarySource, /className="ui-folder-tabs profile-record-folder-tabs"/);
   assert.match(pageSources.playerDetail, /match\.visibility \?\? match\.rules\?\.visibility \?\? "private"/);
   assert.doesNotMatch(pageSources.playerDetail, /Career Totals|personal-record-profile-card/);
   assert.doesNotMatch(pageSources.playerDetail, /form-pill/);
@@ -1754,17 +1754,21 @@ test("page tabs and selection groups use the shared Button owner", () => {
     ["src/components/home/HomeRightRail.jsx", "rank-profile-tabs"],
     ["src/pages/AdminPageView.jsx", "admin-section-tabs"],
     ["src/components/profile/ProfileIconDialog.jsx", "profile-icon-group-tabs"],
-    ["src/components/profile/ProfileRecordSummaryCard.jsx", "profile-record-folder-tabs"],
   ]) {
     const source = read(file);
     const branch = source.slice(source.indexOf(`className="${className}`), source.indexOf(`className="${className}`) + 1400);
     assert.match(branch, /<Button\b/, `${file}: ${className} must use Button`);
   }
+  const folderTabsSource = read("src/components/profile/ProfileRecordSummaryCard.jsx");
+  const folderTabsBranch = folderTabsSource.slice(folderTabsSource.indexOf('className="ui-folder-tabs'), folderTabsSource.indexOf('className="ui-folder-tabs') + 900);
+  assert.match(folderTabsBranch, /<button\b/);
+  assert.doesNotMatch(folderTabsBranch, /<Button\b/);
 });
 
 test("shared control families and fixed labels keep canonical ownership", () => {
   const sourceEntries = sourceFiles.map((file) => [file, read(file)]);
   const sharedControlStyles = `${read("src/styles/primitives/shared-controls.css")}\n${read("src/styles/primitives/hover-disclosure.css")}`;
+  const uiControlsStyles = read("src/styles/primitives/ui-controls.css");
   const segmentedOccurrences = sourceEntries.flatMap(([file, source]) => (
     [...source.matchAll(/className="([^"]*\bsegmented-control\b[^"]*)"/g)]
       .map((match) => ({ file, className: match[1] }))
@@ -1776,6 +1780,7 @@ test("shared control families and fixed labels keep canonical ownership", () => 
   }
 
   assert.match(sharedControlStyles, /\.ui-segmented-control button/);
+  assert.match(uiControlsStyles, /\.ui-folder-tabs button/);
   assert.match(sharedControlStyles, /button\.ui-choice-tile/);
   assert.match(sharedControlStyles, /\.ui-compact-action/);
   assert.doesNotMatch(sharedControlStyles, /\.(?:create-mode-grid|favorite-type-grid|referee-exam-choice-grid) button/);
