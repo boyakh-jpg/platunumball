@@ -93,7 +93,7 @@ export function RecruitingRoomPrimarySection({ context }) {
     getMatchPeriodLabel, getPickupParticipantIds, getRecruitingSideCapacity, getRoomRefereeLabel, getRoomScheduleLabel,
     getRoomTeamSelectionEligibility, getTeamCaptainId, getTeamHashtag, individualOnlyRoom, invitations, inviteError,
     lobby, matchRoom, mine, moveCandidate, openInviteSlot, openSelfSlotAction,
-    pickupAssignmentPolicy, pickupPoolMode, referee, remoteDirectoryEnabled, removeCandidate, renderMatchRecordSetupPanels,
+    pickupAssignmentPolicy, pickupPoolMode, publicPreview, referee, remoteDirectoryEnabled, removeCandidate, renderMatchRecordSetupPanels,
     renderMatchSubstitutionPanel, renderPickupParticipantPool, renderPickupRotation, renderRoomReserveLine, renderRoomTeamResult, renderSelfSlotCommand,
     renderSlotCommand, renderSourceMatchRecordBoard, requiresPaidCourtNotice, roomCompetitionLabel, roomDisplayTitle, roomMatchTypeLabel,
     roomOwnerId, roomPhaseBadge, roomPhaseSectionsAfterVersus, roomPhaseSectionsBeforeVersus, roomPhaseViewModel, roomReadyLabel,
@@ -147,6 +147,13 @@ export function RecruitingRoomPrimarySection({ context }) {
 
                 {contextPanel}
 
+                {publicPreview ? (
+                  <section className="ui-empty-state-compact ui-modal-section">
+                    <strong>참가 현황은 로그인 후 확인할 수 있습니다</strong>
+                    <span>방 설정은 지금 볼 수 있고 로그인하면 실제 참가자와 채팅을 불러옵니다.</span>
+                  </section>
+                ) : null}
+
                 {attendanceScanState ? (
                   <div className="ui-status-strip" role="status" aria-live="polite">
                     <Badge tone={attendanceScanState.tone}>{attendanceScanState.pending ? "출석 처리 중" : "출석 처리 결과"}</Badge>
@@ -159,7 +166,7 @@ export function RecruitingRoomPrimarySection({ context }) {
                   sections={{
                     recordBoard: renderSourceMatchRecordBoard,
                     recordSetup: renderMatchRecordSetupPanels,
-                    participantPool: renderPickupParticipantPool,
+                    participantPool: publicPreview ? null : renderPickupParticipantPool,
                     rotation: renderPickupRotation,
                   }}
                 />
@@ -228,7 +235,7 @@ export function RecruitingRoomPrimarySection({ context }) {
 
                 {entryPoint === "recorder" ? renderMatchSubstitutionPanel() : null}
 
-                {roomPhaseViewModel.showVersusStage ? <div className="arena-lobby-versus-stage">
+                {!publicPreview && roomPhaseViewModel.showVersusStage ? <div className="arena-lobby-versus-stage">
                   <RecruitingRoomVersusSide context={context} sideName="teamA" meta={teamAMeta} />
 
                   <div className="arena-lobby-score-core">
@@ -249,19 +256,19 @@ export function RecruitingRoomPrimarySection({ context }) {
                   sections={{
                     recordBoard: renderSourceMatchRecordBoard,
                     recordSetup: renderMatchRecordSetupPanels,
-                    participantPool: renderPickupParticipantPool,
+                    participantPool: publicPreview ? null : renderPickupParticipantPool,
                     rotation: renderPickupRotation,
                   }}
                 />
 
-                {roomPhaseViewModel.showSideReserves && benchCapacity > 0 ? <div className="arena-reserve-panel">
+                {!publicPreview && roomPhaseViewModel.showSideReserves && benchCapacity > 0 ? <div className="arena-reserve-panel">
                   {renderRoomReserveLine("teamA")}
                   {renderRoomReserveLine("teamB")}
                 </div> : null}
 
                 <div className="arena-lobby-actions">
                   <div><Clock3 size={17} /><span>{getRoomScheduleLabel(selectedPost)}</span></div>
-                  <div><UsersRound size={17} /><span>{roomPhaseViewModel.mode === ROOM_BODY_MODES.pickupPool
+                  <div><UsersRound size={17} /><span>{publicPreview ? "참가 현황 로그인 후" : roomPhaseViewModel.mode === ROOM_BODY_MODES.pickupPool
                     ? `참가 ${getPickupParticipantIds(lobby).length}/${(getRecruitingSideCapacity(selectedPost) + benchCapacity) * 2}`
                     : `${getRecruitingSideCapacity(selectedPost)} vs ${getRecruitingSideCapacity(selectedPost)}`}</span></div>
                   <div><ShieldCheck size={17} /><span>{selectedPost.ranked === false ? "티어 자유" : "MMR 서버 검증"}</span></div>

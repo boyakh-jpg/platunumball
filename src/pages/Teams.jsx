@@ -107,6 +107,7 @@ export default function Teams({ app }) {
       .sort((a, b) => Number(b.myRole === "captain") - Number(a.myRole === "captain") || a.rank - b.rank);
   }, [app.currentUser.id, rankingTeams]);
   const representativeTeam = useMemo(() => getRepresentativeTeam(app.currentUser.id, myTeams, representativeTeamId), [app.currentUser.id, myTeams, representativeTeamId]);
+  const heroTeam = readOnly ? rankingTeams[0] : representativeTeam;
   const teamDiscoveryGroups = useMemo(() => getTeamDiscoveryGroups({
     teams: rankingTeams,
     users: app.state.users,
@@ -240,24 +241,24 @@ export default function Teams({ app }) {
           <p className="eyebrow">Team Hub</p>
           <h1>팀</h1>
         </div>
-        {representativeTeam ? (
+        {heroTeam ? (
           <div className="team-hub-board ui-liquid-glass">
             <div className="team-hub-board-head">
-              <span>대표팀</span>
-              <b>#{representativeTeam.rank}</b>
+              <span>{readOnly ? "1위 팀" : "대표팀"}</span>
+              <b>#{heroTeam.rank}</b>
             </div>
             <div className="team-hub-board-identity">
               <div>
-                <TeamHoverCard team={representativeTeam} as="span" className="team-hub-board-name">
-                  <strong>{representativeTeam.name}</strong>
+                <TeamHoverCard team={heroTeam} as="span" className="team-hub-board-name">
+                  <strong>{heroTeam.name}</strong>
                 </TeamHoverCard>
-                <em>{representativeTeam.region} · {representativeTeam.homeCourt}</em>
+                <em>{heroTeam.region} · {heroTeam.homeCourt}</em>
               </div>
             </div>
             <div className="team-hub-board-stats">
-              <span><b>{representativeTeam.mmr}</b><em>MMR</em></span>
-              <span><b>{representativeTeam.wins}승 {representativeTeam.losses}패</b><em>전적</em></span>
-              <span><b>{representativeTeam.members.length}명</b><em>팀원</em></span>
+              <span><b>{heroTeam.mmr}</b><em>MMR</em></span>
+              <span><b>{heroTeam.wins}승 {heroTeam.losses}패</b><em>전적</em></span>
+              <span><b>{heroTeam.members.length}명</b><em>팀원</em></span>
             </div>
           </div>
         ) : null}

@@ -39,6 +39,7 @@ const roomQueueStatus = getRecruitingRoomStatus(lobby, { post: selectedPost, myE
           sourceMatch
           && isMatchReferee(sourceMatch, app.currentUser.id)
         );
+        const publicPreview = Boolean(readOnly && app.demoPreview);
         const sourceRoomReadOnly = Boolean(
           readOnly ||
           recruitingRoomTerminalStatus ||
@@ -293,7 +294,7 @@ const roomQueueStatus = getRecruitingRoomStatus(lobby, { post: selectedPost, myE
   return {
     roomQueueStatus, roomReadyLabel, sourceMatchPhase, roomPhaseVersusIndex, roomPhaseSectionsBeforeVersus, roomPhaseSectionsAfterVersus,
     recruitingRoomTerminalStatus, sourceMatchIsRecordRoom, sourceMatchIsPersonalRecord, sourceMatchRecordVerification, sourceMatchIsTournamentPregame, sourceMatchRecordEditable,
-    sourceMatchRecordSetupOpen, canManageMatchRecordParticipants, sourceRoomReadOnly, sourceMatchStarted, sourceMatchSlotManagementOpen, activeInviteDraft,
+    sourceMatchRecordSetupOpen, canManageMatchRecordParticipants, publicPreview, sourceRoomReadOnly, sourceMatchStarted, sourceMatchSlotManagementOpen, activeInviteDraft,
     activeSelfSlotDraft, canUseChat, currentUserIsSourceReferee, currentUserCanOperateStartedSourceMatch, currentUserCanStartSourceMatch, canResolveSourceMatchDispute,
     sourceFinalAuthorityLabel, sourceMatchHostSideName, sourceMatchOpponentSideName, sourceTournament, sourceMatchRequiresTournamentReferee, sourceMatchRecordTeams,
     sourceMatchSideLeaderIds, canEditMatchRecordRoster, showMatchRecordRosterPanel, sourceMatchOpponentLeaderId, sourceMatchAttendance, sourceMatchCheckedInIds,

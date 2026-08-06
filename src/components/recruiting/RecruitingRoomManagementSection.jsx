@@ -7,7 +7,7 @@ export function RecruitingRoomManagementSection({ context }) {
     closeRoomEdit, currentRuleRevision, currentUserCanRespondSchedule, currentUserNeedsRuleAcknowledgement, disabledRefereeIds, favoriteRefereeIds,
     getChatDraft, getCourtLayoutLabel, getCourtSurfaceLabel, getMeetingPointSummary, getRefereeInviteQuery, handleChatVisibleChange,
     matchRoom, maxSideFilled, maxSideReserveFilled, mine, openRoomEdit, pendingRefereeInvitations,
-    pickupAssignmentPolicy, pickupResize, pickupRoom, referee, refereeInviteCandidates, remoteDirectoryEnabled,
+    pickupAssignmentPolicy, pickupResize, pickupRoom, publicPreview, referee, refereeInviteCandidates, remoteDirectoryEnabled,
     roomChatLocked, roomEditAvailability, roomEditAvailable, roomEditBenchCapacityValid, roomEditCapacityValid, roomEditCourt,
     roomEditCourtOptions, roomEditCourtWarning, roomEditDraft, roomEditMeetingValid, roomEditPickupCapacityValid, roomEditRange,
     roomEditRulesValid, roomEditScheduleValid, roomEditStatus, roomPhaseViewModel, ruleAcknowledgedIds, ruleAcknowledgementPending,
@@ -338,6 +338,7 @@ export function RecruitingRoomManagementSection({ context }) {
                 currentUserId={app.currentUser.id}
                 value={getChatDraft(selectedPost)}
                 canChat={canUseChat}
+                publicPreview={publicPreview}
                 readOnly={sourceRoomReadOnly}
                 locked={roomChatLocked}
                 sending={chatSendingPostId === selectedPost.id}
@@ -345,7 +346,7 @@ export function RecruitingRoomManagementSection({ context }) {
                 error={chatErrorByPost[selectedPost.id] ?? ""}
                 onChange={(value) => updateChatDraft(selectedPost, value)}
                 onSubmit={(event) => submitChat(event, selectedPost)}
-                onVisibleChange={handleChatVisibleChange}
+                onVisibleChange={publicPreview ? null : handleChatVisibleChange}
               />
 
               {matchRoom && sourceMatchPhase?.phase === "live" && !sourceMatchIsRecordRoom && selectedMatchRules.gameClockEnabled ? (

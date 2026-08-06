@@ -256,6 +256,7 @@ export function RoomChat({
   currentUserId = "",
   value,
   canChat,
+  publicPreview = false,
   readOnly = false,
   locked = false,
   sending = false,
@@ -301,10 +302,12 @@ export function RoomChat({
     <div className="arena-room-chat" ref={rootRef}>
       <header>
         <span><MessageSquare size={16} /> 방 채팅</span>
-        <strong>{locked ? "경기 종료됨" : messages.length}</strong>
+        <strong>{publicPreview ? "로그인 필요" : locked ? "경기 종료됨" : messages.length}</strong>
       </header>
       <div className="arena-chat-list" ref={listRef}>
-        {messages.length ? messages.map((message) => {
+        {publicPreview ? (
+          <div className="arena-chat-empty">채팅은 로그인 후 확인할 수 있습니다</div>
+        ) : messages.length ? messages.map((message) => {
           const user = userById[message.userId];
           return (
             <div
