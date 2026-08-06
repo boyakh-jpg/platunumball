@@ -252,11 +252,11 @@ export default function PlayerDetail({ app }) {
       {canViewStatSummary || canViewTeamHistory || canViewCommunity || hasRefereeProfile ? (
         <div className="profile-page-navigation">
           {canViewStatSummary || canViewTeamHistory || canViewCommunity ? <nav className="rank-profile-tabs">
-            {canViewStatSummary ? <a href="#summary">종합</a> : null}
-            {canViewTeamHistory ? <a href="#history">전적</a> : null}
-            {canViewTeamHistory ? <a href="#teams">팀</a> : null}
-            {canViewTeamHistory ? <a href="#links">상대</a> : null}
-            {canViewCommunity ? <a href="#community">커뮤니티</a> : null}
+            {canViewStatSummary ? <Button as="a" href="#summary" size="sm">종합</Button> : null}
+            {canViewTeamHistory ? <Button as="a" href="#history" size="sm" variant="secondary">전적</Button> : null}
+            {canViewTeamHistory ? <Button as="a" href="#teams" size="sm" variant="secondary">팀</Button> : null}
+            {canViewTeamHistory ? <Button as="a" href="#links" size="sm" variant="secondary">상대</Button> : null}
+            {canViewCommunity ? <Button as="a" href="#community" size="sm" variant="secondary">커뮤니티</Button> : null}
           </nav> : null}
           {hasRefereeProfile ? (
             <Button as={Link} size="sm" variant="secondary" className="profile-role-link" to={`/app/referees/${player.id}`}>

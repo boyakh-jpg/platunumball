@@ -32,7 +32,6 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .profile-icon-group-tabs button,
   .profile-emblem-card .emblem-style-controls .button {
     min-height: var(--ui-button-height);
   }

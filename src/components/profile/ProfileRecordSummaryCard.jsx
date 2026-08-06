@@ -1,4 +1,5 @@
 import Badge from "../common/Badge.jsx";
+import Button from "../common/Button.jsx";
 import Card from "../common/Card.jsx";
 import { PLAYER_STAT_FIELDS } from "../../lib/constants.js";
 import { filterProfileRecords, groupProfileRecordsByCourt, summarizeProfileRecords } from "../../lib/matchUtils.js";
@@ -111,9 +112,9 @@ export default function ProfileRecordSummaryCard({
       </div>
       <div className="profile-record-folder-tabs" role="tablist" aria-label="경기 기록 폴더">
         {PROFILE_RECORD_FOLDERS.map((item) => (
-          <button key={item.id} type="button" role="tab" className={recordFolder === item.id ? "active" : ""} aria-selected={recordFolder === item.id} onClick={() => setRecordFolder(item.id)}>
+          <Button key={item.id} type="button" size="sm" variant={recordFolder === item.id ? "primary" : "secondary"} role="tab" aria-selected={recordFolder === item.id} onClick={() => setRecordFolder(item.id)}>
             {item.label}
-          </button>
+          </Button>
         ))}
       </div>
       {recordFolder === "official" ? (

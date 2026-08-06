@@ -180,24 +180,24 @@ export default function ProfileIconDialog({ user, actions, onClose, onSaved }) {
         </div>
 
         <div className="emblem-source-grid profile-icon-source-grid">
-          <button type="button" className={draft.avatarSource === "initial" ? "active" : ""} aria-pressed={draft.avatarSource === "initial"} disabled={pending} onClick={() => selectSource("initial")}>
+          <Button type="button" variant={draft.avatarSource === "initial" ? "primary" : "secondary"} aria-pressed={draft.avatarSource === "initial"} disabled={pending} onClick={() => selectSource("initial")}>
             <strong>기본값</strong>
-          </button>
-          <button type="button" className={draft.avatarSource === "discord" ? "active" : ""} aria-pressed={draft.avatarSource === "discord"} disabled={pending || !hasDiscordAvatar} onClick={() => selectSource("discord")}>
+          </Button>
+          <Button type="button" variant={draft.avatarSource === "discord" ? "primary" : "secondary"} aria-pressed={draft.avatarSource === "discord"} disabled={pending || !hasDiscordAvatar} onClick={() => selectSource("discord")}>
             <strong>Discord</strong>
-          </button>
-          <button type="button" className={draft.avatarSource === "icon" ? "active" : ""} aria-pressed={draft.avatarSource === "icon"} disabled={pending || loading || !unlockedGroups.length} onClick={() => selectSource("icon")}>
+          </Button>
+          <Button type="button" variant={draft.avatarSource === "icon" ? "primary" : "secondary"} aria-pressed={draft.avatarSource === "icon"} disabled={pending || loading || !unlockedGroups.length} onClick={() => selectSource("icon")}>
             <strong>아이콘</strong>
-          </button>
+          </Button>
         </div>
 
         {draft.avatarSource === "icon" ? (
           <div className="profile-icon-picker">
             <div className="profile-icon-group-tabs" role="tablist" aria-label="프로필 아이콘 분류">
               {unlockedGroups.map((group) => (
-                <button key={group.id} type="button" role="tab" className={selectedGroup?.id === group.id ? "active" : ""} aria-selected={selectedGroup?.id === group.id} onClick={() => setSelectedGroupId(group.id)}>
+                <Button key={group.id} type="button" size="sm" variant={selectedGroup?.id === group.id ? "primary" : "secondary"} role="tab" aria-selected={selectedGroup?.id === group.id} onClick={() => setSelectedGroupId(group.id)}>
                   {group.name} <small>{group.icons.length}</small>
-                </button>
+                </Button>
               ))}
             </div>
             <div className="profile-icon-catalog" role="list" aria-label={`${selectedGroup?.name ?? "보유"} 프로필 아이콘`}>

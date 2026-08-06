@@ -142,10 +142,10 @@ if (!canAdmin && (!app.adminStatus?.loaded || app.adminStatus?.loading)) {
         {sectionOptions.map((option) => {
           const Icon = option.icon;
           return (
-            <button
+            <Button
               key={option.id}
               type="button"
-              className={section === option.id ? "active" : ""}
+              variant={section === option.id ? "primary" : "secondary"}
               aria-current={section === option.id ? "page" : undefined}
               disabled={reviewActionPending || appointmentActionPending}
               onClick={() => changeSection(option.id)}
@@ -156,7 +156,7 @@ if (!canAdmin && (!app.adminStatus?.loaded || app.adminStatus?.loading)) {
                 <em>{option.caption}</em>
               </span>
               {sectionCounts[option.id] === "" ? null : <b>{sectionCounts[option.id] ?? 0}</b>}
-            </button>
+            </Button>
           );
         })}
       </nav>

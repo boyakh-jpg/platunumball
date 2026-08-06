@@ -57,9 +57,9 @@ export default function HomeRightRail({
                 </div>
               </div>
               <div className="rank-profile-tabs rank-spotlight-links">
-                <Link to={`/app/players/${user.id}`}>프로필</Link>
-                <Link to="/app/season">시즌</Link>
-                <Link to="/app/settings">설정</Link>
+                <Button as={Link} to={`/app/players/${user.id}`} size="sm" variant="secondary">프로필</Button>
+                <Button as={Link} to="/app/season" size="sm" variant="secondary">시즌</Button>
+                <Button as={Link} to="/app/settings" size="sm" variant="secondary">설정</Button>
               </div>
             </div>
           </Card>

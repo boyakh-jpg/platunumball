@@ -2554,7 +2554,7 @@ UI 수정 전:
 6. 일반 선 두께는 `--ui-stroke-width`, 강조 선 두께는 `--ui-stroke-width-strong`을 사용한다. CSS의 `border`, `border-width`, `border-inline-*`, `border-block-*`에 `1px` 또는 `2px`를 직접 쓰지 않는다.
 7. `!important`는 JS inline 위치를 덮어야 하는 hover card 좌표와 Naver 지도 inline footer 정렬에만 허용한다. 일반 cascade 충돌 해결에 사용하지 않는다.
 8. 중복 제거 기준선은 같은 파일 부분 중복 `89개`, feature/global 같은 값 중복 `111개`, 다른 값 충돌 `46개`, 전체 로드 순서 같은 값 중복 `20개`, `!important` `27개`, literal 선 두께 `336개`였다. 정리 후 각각 `0개`, `0개`, `0개`, `0개`, `7개`, `0개`이며 `scripts/css-cascade-guards.test.mjs`와 `scripts/css-refactor-metrics.mjs`가 회귀를 감시한다.
-9. production CSS 파일은 import-only manifest 또는 500줄 이하 leaf여야 한다. 현재 25개 대형 파일을 79개 책임 leaf로 분리했고, 분할 전후 cascade 순서와 선언 SHA-256이 같아야 한다.
+9. production CSS 파일은 import-only manifest 또는 800줄 이하 leaf여야 한다. 줄 수보다 책임 분리와 공용 소유권을 우선하며, 분할 전후 cascade 순서와 선언 SHA-256이 같아야 한다.
 10. `scripts/css-source-tree.mjs`가 중첩 manifest를 재귀 해석한다. 테스트·측정 도구가 top-level import만 읽어 leaf를 누락하면 안 된다.
 
 ## 2026-08-03 팀·프로필 통계와 방 만들기
@@ -2673,6 +2673,12 @@ UI 수정 전:
 ## 2026-08-06 공용 보조 버튼 대비
 
 1. 공용 보조 버튼은 기존 테마별 `--button-secondary-bg`를 `--ui-button-bg`로 재사용한다. 글자색과 페이지 배경을 다시 혼합하거나 화면별 배경색을 덧씌우지 않는다.
+
+## 2026-08-06 탭·진행 목록 공용 소유권
+
+1. 프로필·팀·심판·관리자·기록·아이콘 탭과 엠블럼 선택은 공용 `Button` 또는 `ui-segmented-control`을 사용한다. 기능 CSS는 배치만 소유하며 버튼의 색·테두리·모서리·높이·padding을 다시 정의하지 않는다.
+2. `.ui-design-borderless-list > *`의 표면과 모서리는 공용 editorial 규칙이 소유한다. 진행 목록 행은 같은 규칙을 사용하고 `.ui-control-surface`를 중복 조합하지 않는다.
+3. 섹션 제목은 정보나 입력 control이 아니다. `section-title-row` 안의 제목 묶음에 `.ui-control-surface`를 적용하지 않는다.
 
 ## 2026-08-06 히어로 색상 역할과 즐겨찾기 위치
 

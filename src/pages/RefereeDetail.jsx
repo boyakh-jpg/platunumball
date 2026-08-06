@@ -144,8 +144,8 @@ export default function RefereeDetail({ app }) {
 
       <div className="profile-page-navigation">
         <nav className="rank-profile-tabs">
-          <a href="#referee-stats">통계</a>
-          <a href="#referee-history">최근 경기</a>
+          <Button as="a" href="#referee-stats" size="sm">통계</Button>
+          <Button as="a" href="#referee-history" size="sm" variant="secondary">최근 경기</Button>
         </nav>
         <Button as={Link} size="sm" variant="secondary" className="profile-role-link" to={`/app/players/${referee.id}`}>
           선수 프로필

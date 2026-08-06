@@ -166,6 +166,7 @@ html[data-theme] [data-design="editorial"] .ui-design-app .ui-design-borderless-
   border-width: var(--ui-design-surface-border-width);
   border-style: solid;
   border-color: var(--ui-card-border);
+  border-radius: var(--ui-card-radius);
   background-color: var(--ui-design-soft-surface-bg);
   box-shadow: none;
 }

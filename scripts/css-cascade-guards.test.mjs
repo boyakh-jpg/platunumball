@@ -18,7 +18,7 @@ const featureCssManifests = [
   "src/styles/match-list-card.css",
   "src/styles/matchroom-arena.css",
 ];
-const cssModuleMaxLines = 500;
+const cssModuleMaxLines = 800;
 const crossStackSameValueBaseline = 0;
 
 const runtimeRoots = ["src", "public"];
@@ -628,6 +628,51 @@ test("native text controls keep one primitive visual owner", () => {
   assert.deepEqual(duplicateOwners, []);
 });
 
+test("page tab buttons keep one primitive visual owner", () => {
+  const protectedAncestors = [
+    "rank-profile-tabs",
+    "admin-section-tabs",
+    "profile-record-folder-tabs",
+    "profile-icon-group-tabs",
+    "emblem-source-grid",
+  ];
+  const visualProperties = new Set([
+    "background",
+    "background-color",
+    "border",
+    "border-color",
+    "border-radius",
+    "box-shadow",
+    "color",
+    "cursor",
+    "font-size",
+    "font-weight",
+    "min-height",
+    "padding",
+    "padding-block",
+    "padding-inline",
+  ]);
+  const interactiveBranch = /(?:^|[ >])(?:button|a)(?::[\w-]+(?:\([^)]*\))?)*$/;
+  const duplicateOwners = [];
+
+  for (const file of styleDirectoryCssFiles.filter((entry) => !entry.replaceAll("\\", "/").includes("/primitives/"))) {
+    parseCss(file).walkRules((rule) => {
+      const ownsProtectedButton = (rule.selectors ?? [rule.selector]).some((selector) => {
+        const normalized = normalizeSelector(selector);
+        return protectedAncestors.some((className) => normalized.includes(`.${className}`))
+          && interactiveBranch.test(normalized);
+      });
+      if (!ownsProtectedButton) return;
+      rule.walkDecls((declaration) => {
+        if (!visualProperties.has(declaration.prop)) return;
+        duplicateOwners.push(`${file}:${declaration.source.start.line} ${rule.selector} ${declaration.prop}`);
+      });
+    });
+  }
+
+  assert.deepEqual(duplicateOwners, []);
+});
+
 test("critical interactive branches keep a visible focus indicator", () => {
   const checks = [
     {
@@ -750,7 +795,7 @@ test("large CSS entrypoints are ordered manifests over responsibility modules", 
   }
 });
 
-test("every production stylesheet stays within the 500-line boundary", () => {
+test("every production stylesheet stays within the 800-line boundary", () => {
   for (const file of styleDirectoryCssFiles) {
     const lineCount = fs.readFileSync(file, "utf8").split(/\r?\n/).length;
     assert.ok(

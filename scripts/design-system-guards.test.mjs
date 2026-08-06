@@ -215,7 +215,7 @@ assert.match(editorialDesignStyles, /\.ui-design-spotlight__stats > div\s*\{[^}]
   assert.match(editorialAppStyles, /--ui-design-section-rule-space:\s*calc\(var\(--card-padding\) \* 2\);/);
   assert.match(editorialAppStyles, /--ui-design-soft-surface-bg:\s*color-mix\(in srgb,\s*var\(--rb-bg-2\) 86%,\s*var\(--rb-bg\)\);/);
   assert.match(editorialAppStyles, /--ui-design-record-surface-bg:\s*color-mix/);
-  assert.match(editorialAppStyles, /\.ui-design-info-surface,[\s\S]*?html\[data-theme\][\s\S]*?\.ui-design-borderless-list > \*\s*\{[\s\S]*?border-width:\s*var\(--ui-design-surface-border-width\);[\s\S]*?background-color:\s*var\(--ui-design-soft-surface-bg\);/);
+  assert.match(editorialAppStyles, /\.ui-design-info-surface,[\s\S]*?html\[data-theme\][\s\S]*?\.ui-design-borderless-list > \*\s*\{[\s\S]*?border-width:\s*var\(--ui-design-surface-border-width\);[\s\S]*?border-radius:\s*var\(--ui-card-radius\);[\s\S]*?background-color:\s*var\(--ui-design-soft-surface-bg\);/);
   assert.match(editorialAppStyles, /\.ui-design-info-surface\.ui-design-info-accent\s*\{[\s\S]*?border-inline-start:\s*4px solid var\(--ui-info-accent, transparent\);/);
   assert.match(editorialAppStyles, /\.ui-design-record-surface\.ui-design-info-surface\s*\{[\s\S]*?background:\s*color-mix/);
   assert.match(editorialAppStyles, /html\[data-theme\][\s\S]*?\.ui-design-soft-surface\s*\{[\s\S]*?border-width:\s*var\(--ui-card-border-width\);[\s\S]*?background:\s*var\(--ui-design-soft-surface-bg\);/);
@@ -1727,7 +1727,6 @@ test("control-like surfaces use one primitive visual owner", () => {
   for (const file of [
     "src/components/admin/UserOperationsPanel.jsx",
     "src/components/match/MatchDisputeQueue.jsx",
-    "src/components/rating/ProgressionChecklist.jsx",
     "src/components/recruiting/RecruitingRoomManagementSection.jsx",
     "src/pages/AdminAppointmentSection.jsx",
     "src/pages/AdminDetailPanel.jsx",
@@ -1736,6 +1735,26 @@ test("control-like surfaces use one primitive visual owner", () => {
     "src/pages/TeamDetailView.jsx",
   ]) {
     assert.match(read(file), /ui-control-surface/, `${file}: ui-control-surface required`);
+  }
+
+  const progressionSource = read("src/components/rating/ProgressionChecklist.jsx");
+  assert.doesNotMatch(progressionSource, /section-title-row[\s\S]{0,120}ui-control-surface/);
+  assert.doesNotMatch(progressionSource, /progression-list[\s\S]{0,240}ui-control-surface/);
+});
+
+test("page tabs and selection groups use the shared Button owner", () => {
+  for (const [file, className] of [
+    ["src/pages/PlayerDetail.jsx", "rank-profile-tabs"],
+    ["src/pages/RefereeDetail.jsx", "rank-profile-tabs"],
+    ["src/pages/TeamDetailView.jsx", "rank-profile-tabs"],
+    ["src/components/home/HomeRightRail.jsx", "rank-profile-tabs"],
+    ["src/pages/AdminPageView.jsx", "admin-section-tabs"],
+    ["src/components/profile/ProfileIconDialog.jsx", "profile-icon-group-tabs"],
+    ["src/components/profile/ProfileRecordSummaryCard.jsx", "profile-record-folder-tabs"],
+  ]) {
+    const source = read(file);
+    const branch = source.slice(source.indexOf(`className="${className}`), source.indexOf(`className="${className}`) + 1400);
+    assert.match(branch, /<Button\b/, `${file}: ${className} must use Button`);
   }
 });
 

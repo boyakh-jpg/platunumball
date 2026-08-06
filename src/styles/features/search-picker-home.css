@@ -360,8 +360,7 @@ html[data-theme="light"] .search-picker-result-row.selected {
   flex-wrap: wrap;
   gap: var(--space-4);
 }
-.rank-quick-links a,
-.rank-profile-tabs a {
+.rank-quick-links a {
   display: inline-flex;
   align-items: center;
   justify-content: center;

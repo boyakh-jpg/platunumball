@@ -78,10 +78,10 @@ export default function TeamDetailView({ controller }) {
       {favoriteError ? <span role="status" className="form-warning">{favoriteError}</span> : null}
 
       <nav className="rank-profile-tabs">
-        <a href="#team-stats">통계</a>
-        <a href="#team-history">전적</a>
-        <a href="#team-roster">로스터</a>
-        <a href="#team-control">관리</a>
+        <Button as="a" href="#team-stats" size="sm">통계</Button>
+        <Button as="a" href="#team-history" size="sm" variant="secondary">전적</Button>
+        <Button as="a" href="#team-roster" size="sm" variant="secondary">로스터</Button>
+        <Button as="a" href="#team-control" size="sm" variant="secondary">관리</Button>
       </nav>
 
       <section className="rank-profile-summary">
@@ -377,13 +377,13 @@ export default function TeamDetailView({ controller }) {
                 </span>
               </div>
               <div className="emblem-source-grid two-options">
-                <button type="button" className={emblemSource === "initial" ? "active" : ""} aria-pressed={emblemSource === "initial"} disabled={emblemPending} onClick={() => selectEmblemSource("initial")}>
+                <Button type="button" variant={emblemSource === "initial" ? "primary" : "secondary"} aria-pressed={emblemSource === "initial"} disabled={emblemPending} onClick={() => selectEmblemSource("initial")}>
                   <strong>기본값</strong>
-                </button>
-                <button type="button" className={emblemSource === "upload" ? "active" : ""} aria-pressed={emblemSource === "upload"} disabled={emblemPending || (!team.emblemKey && emblemUploadLocked)} onClick={() => selectEmblemSource("upload")}>
+                </Button>
+                <Button type="button" variant={emblemSource === "upload" ? "primary" : "secondary"} aria-pressed={emblemSource === "upload"} disabled={emblemPending || (!team.emblemKey && emblemUploadLocked)} onClick={() => selectEmblemSource("upload")}>
                   <strong>사진 사용</strong>
                   {!team.emblemKey ? <span>사진 선택 필요</span> : null}
-                </button>
+                </Button>
               </div>
               <input
                 ref={emblemInputRef}

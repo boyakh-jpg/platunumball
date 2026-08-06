@@ -16,7 +16,7 @@ export default function ProgressionChecklist({ user, matches }) {
     return (
       <Card className="section-card progression-card">
         <div className="section-title-row">
-          <div className="ui-control-surface">
+          <div>
             <p className="eyebrow">Placement</p>
             <h2>배치 진행 중</h2>
           </div>
@@ -66,7 +66,7 @@ export default function ProgressionChecklist({ user, matches }) {
       </div>
       <div className="progression-list ui-design-borderless-list">
         {checks.map((check) => (
-          <div key={check.label} className={check.done ? "ui-control-surface done" : "ui-control-surface"}>
+          <div key={check.label} className={check.done ? "done" : undefined}>
             <span>{check.done ? "✓" : "·"}</span>
             <strong>{check.label}</strong>
             {check.value !== undefined ? <em>{check.value}</em> : null}
