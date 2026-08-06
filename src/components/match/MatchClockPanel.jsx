@@ -393,6 +393,7 @@ export default function MatchClockPanel({
   };
 
   const openFocusMode = async () => {
+    if (isPending) return;
     flushSync(() => setFocusMode(true));
     setDeviceNotice("");
     const fullscreenTarget = document.querySelector(".ui-match-clock-focus-backdrop");

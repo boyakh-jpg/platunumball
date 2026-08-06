@@ -35,6 +35,8 @@ test("match clock panel delegates score controls and audio without growing back"
   assert.match(panel, /export \{ default as MatchScoreControls \}/u);
   assert.doesNotMatch(panel, /\b(?:AudioContext|webkitAudioContext)\b/u);
   assert.doesNotMatch(panel, /브라우저 전체화면/u);
+  assert.match(sources["src/components/match/MatchClockPanel.jsx"], /const openFocusMode = async \(\) => \{\s*if \(isPending\) return;/u);
+  assert.match(sources["src/components/match/MatchClockPanelView.jsx"], /aria-pressed=\{focusMode\}\s+disabled=\{isPending\}/u);
   assert.doesNotMatch(
     sources["src/components/match/MatchScoreControls.jsx"],
     /from "\.\/MatchClockPanel\.jsx"/u,

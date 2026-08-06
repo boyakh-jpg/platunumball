@@ -347,6 +347,8 @@ export default function MatchClockPanelView({ context }) {
           size="sm"
           variant="primary"
           aria-pressed={focusMode}
+          disabled={isPending}
+          title={isPending ? "경기시계를 시작하면 전체화면을 사용할 수 있습니다." : undefined}
           onClick={() => void (focusMode ? closeFocusMode() : openFocusMode())}
         >
           {focusMode ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
