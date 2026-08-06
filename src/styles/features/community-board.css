@@ -117,6 +117,7 @@
 }
 
 .community-post-labels,
+.community-post-title-cell,
 .community-post-metrics,
 .community-author,
 .community-post-actions > span {
@@ -134,7 +135,9 @@
   color: var(--orange);
 }
 
+.community-post-title-cell > svg { flex: 0 0 auto; color: var(--muted); }
 .community-post-title {
+  flex: 1 1 auto;
   min-height: 40px;
   border: 0;
   background: transparent;
@@ -381,23 +384,20 @@
   .community-post-row {
     grid-template-columns: auto minmax(0, 1fr) auto;
     grid-template-areas:
-      "labels title comments"
+      "title title comments"
       "likes date author";
-    column-gap: var(--space-3);
-    row-gap: var(--space-4);
-    min-height: 76px;
-    padding: var(--space-5) 0;
+    column-gap: var(--space-3); row-gap: var(--space-3);
+    min-height: 68px; padding: var(--space-4) 0;
   }
 
-  .community-post-labels {
-    grid-area: labels;
-  }
+  .community-post-labels { display: none; }
+  .community-post-title-cell { grid-area: title; }
 
   .community-post-title {
-    grid-area: title;
     min-height: 0;
     padding: 0;
-    font-size: var(--font-size-title-sm);
+    font-size: var(--font-size-body-sm);
+    font-weight: 800;
   }
 
   .community-post-author-cell {
@@ -428,6 +428,7 @@
 
   .community-post-date {
     grid-area: date;
+    justify-self: start; text-align: left;
   }
 
   .community-post-views {

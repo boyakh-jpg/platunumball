@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Eye, Flame, MessageCircle, PenLine, Pin, ThumbsUp } from "lucide-react";
+import { Eye, Flame, Image as ImageIcon, MessageCircle, PenLine, Pin, ThumbsUp } from "lucide-react";
 import Button from "../components/common/Button.jsx";
 import Badge from "../components/common/Badge.jsx";
 import Card from "../components/common/Card.jsx";
@@ -123,9 +123,12 @@ export default function Community({ app }) {
             <article key={post.id} className="community-post-row">
               <span className="community-post-labels">
                 <Badge tone={post.category === "notice" ? "orange" : post.category === "question" ? "blue" : "neutral"}>{COMMUNITY_POST_CATEGORY_LABELS[post.category] ?? "자유"}</Badge>
-                {post.pinned ? <Pin size={14} aria-label="상단 고정" /> : null}
               </span>
-              <button type="button" className="community-post-title" onClick={() => controller.openPost(post)}>{post.title}</button>
+              <span className="community-post-title-cell">
+                {post.pinned ? <Pin size={14} aria-label="상단 고정" /> : null}
+                <button type="button" className="community-post-title" onClick={() => controller.openPost(post)}>{post.title}</button>
+                {post.imageUrl ? <ImageIcon size={15} aria-label="사진 첨부" /> : null}
+              </span>
               <div className="community-post-author-cell"><CommunityAuthorLink author={post.author} teams={app.state.teams} /></div>
               <time className="community-post-date" dateTime={post.createdAt} title={formatKoreanDateTime(post.createdAt)}>
                 {formatKoreanDateTime(post.createdAt, { month: "2-digit", day: "2-digit" })}

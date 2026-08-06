@@ -131,8 +131,11 @@ test("게시글 목록은 제목 중심 열과 모바일 두 줄 구조를 사�
   assert.match(page, /community-post-views/);
   assert.doesNotMatch(page, /controller\.page\.total\}개/);
   assert.doesNotMatch(page, /community-post-open|ChevronRight/);
-  assert.match(styles, /"labels title comments"\s*"likes date author"/);
-  assert.match(styles, /\.community-post-title\s*\{[\s\S]*font-size: var\(--font-size-title-sm\)/);
+  assert.match(page, /post\.imageUrl \? <ImageIcon size=\{15\} aria-label="사진 첨부"/);
+  assert.match(styles, /"title title comments"\s*"likes date author"/);
+  assert.match(styles, /\.community-post-labels \{\s*display: none/);
+  assert.match(styles, /\.community-post-title\s*\{[\s\S]*font-size: var\(--font-size-body-sm\)/);
+  assert.match(styles, /\.community-post-date \{[\s\S]*justify-self: start/);
   assert.match(styles, /\.community-post-author-cell \.community-author > \.avatar\s*\{[\s\S]*width: var\(--space-10\)/);
   assert.match(styles, /\.community-post-views\s*\{\s*display: none/);
   assert.match(styles, /\.community-post-comments > svg\s*\{\s*display: none/);
