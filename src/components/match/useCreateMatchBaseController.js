@@ -12,7 +12,7 @@ export function useCreateMatchBaseController({
   const {
     COURT_MAP_SEARCH_LIMIT, COURT_MAP_SEARCH_PURPOSE, DEFAULT_MATCH_MEMO, DEFAULT_TOURNAMENT_MMR_GAP, DIRECTORY_PICKER_PAGE_LIMIT, DISPUTE_WINDOW_MINUTES, MATCH_MODES, MAX_PARTY_RESERVES,
     RECORD_TYPES, REGIONS, ROOM_SCHEDULE_MAX_DAYS, SCHEDULE_MAX_DAYS, addDateDays, getAgeGroupForUser, getAgeRestrictionOption,
-    getCanonicalRegion, getCourtPickerResults, getCourtRecommendationScore, getCreateStepFromSearch, getCreateStepSearch, getDefaultCreateMode, getDefaultCreateTitle,
+    getCanonicalRegion, getCourtPickerResults, getCourtRecommendationScore, getCreateMatchGuestDraft, getCreateStepFromSearch, getCreateStepSearch, getDefaultCreateMode, getDefaultCreateTitle,
     getDefaultMatchCreationPolicy, getDefaultMmrLimitMode, getDefaultTeamPlayerIds, getLocalDateInputValue, getMatchCreationSteps, getMatchCreationValidation, getMatchCreationWizardType,
     getMatchFormationMode, getMatchModeChangePatch, getMmrSpread, getNextQueueSchedule, getOpponentTeam, getPartyPlayerIds, getPartyReserveIds,
     getPublicRoomMaxDateInput, getRecordComposition, getRecordEntryMode, getRecruitingSideCapacity, getRegisteredCourts, getRepresentativePlayerIds, getRepresentativeTeam,
@@ -47,16 +47,16 @@ const navigate = useNavigate();
     [location.search, practiceMode],
   );
   const loadDirectory = app.actions.loadDirectory;
-  const remoteDirectoryEnabled = app.capabilities?.remoteDirectory !== false;
+  const remoteDirectoryEnabled = !app.demoPreview && app.capabilities?.remoteDirectory !== false;
   const requestedTournamentDirectoryRef = useRef(false);
   const modeManuallyChangedRef = useRef(Boolean(remakeDraft || hasTeamChallenge));
   const loadedCourtMapRegionsRef = useRef(new Set());
   const courtMapRequestIdRef = useRef(0);
   useEffect(() => {
-    if (requestedTournamentDirectoryRef.current) return;
+    if (!remoteDirectoryEnabled || requestedTournamentDirectoryRef.current) return;
     requestedTournamentDirectoryRef.current = true;
     loadDirectory?.({ kind: "teams", limit: DIRECTORY_PICKER_PAGE_LIMIT, offset: 0, includeTeamMemberProfiles: true });
-  }, [loadDirectory]);
+  }, [loadDirectory, remoteDirectoryEnabled]);
   const myTeams = useMemo(
     () => app.state.teams.filter((team) => team.members.some((member) => member.userId === app.currentUser.id)),
     [app.currentUser.id, app.state.teams],
@@ -131,6 +131,8 @@ const navigate = useNavigate();
   const isFavoriteTeam = (team) => favoriteTeamIds.includes(team.id);
   const isFavoriteCourt = (court) => favoriteCourtIds.includes(court.id);
   const defaultSchedule = getNextQueueSchedule(app.state.recruitingPosts ?? []);
+  const createReturnTo = `${location.pathname}${location.search}${location.hash}`;
+  const restoredGuestDraft = practiceMode ? null : getCreateMatchGuestDraft(createReturnTo);
   const [draft, setDraft] = useState({
     recordType: RECORD_TYPES.match,
     visibility: "private",
@@ -196,6 +198,7 @@ const navigate = useNavigate();
       teamAId: challengeTeamAId,
       teamBId: challengeTeamBId,
     } : {}),
+    ...(restoredGuestDraft ?? {}),
     ...(initialDraft ?? {}),
   });
   const [submitting, setSubmitting] = useState(false);
@@ -464,7 +467,7 @@ const navigate = useNavigate();
 
   return {
     ...CREATE_MATCH_DEPENDENCIES,
-    app, initialDraft, onRecruitingCreated, onCancel, embedded, practiceMode, syncStepToUrl,
+    app, initialDraft, onRecruitingCreated, onCancel, embedded, practiceMode, syncStepToUrl, createReturnTo,
     navigate, location, remakeDraft, remakeSourceId, remakeSourceMatchId, challengeTeamAId, challengeTeamBId, hasTeamChallenge, today, minSoloRecordDate,
     nextWeek, maxScheduleDate, maxPrivateScheduleDate, maxPublicScheduleDate, isRecordCreateIntent, loadDirectory, remoteDirectoryEnabled,
     requestedTournamentDirectoryRef, modeManuallyChangedRef, loadedCourtMapRegionsRef, courtMapRequestIdRef, myTeams, captainTeams, representativeTeamId,

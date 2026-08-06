@@ -6,7 +6,7 @@ import { CreateMatchPolicyReviewSection } from "./CreateMatchPolicyReviewSection
 export function CreateMatchLayout({ context }) {
   const {
     Badge, MatchCreationWizardActions, MatchCreationWizardNav, creationWizardSteps, draft, embedded, finalWizardStep,
-    getRoomRemakeWarningCopy, goToWizardStep, isMatchRecordRoom, isRecordCreateIntent, isSoloRecord, isTournamentRoom, navigate,
+    app, getRoomRemakeWarningCopy, goToWizardStep, isMatchRecordRoom, isRecordCreateIntent, isSoloRecord, isTournamentRoom, navigate,
     onCancel, remakeDraft, setDraft, submit, submitDisabled, submitFeedback, submitting,
     wizardStep,
   } = context;
@@ -64,7 +64,9 @@ export function CreateMatchLayout({ context }) {
         steps={creationWizardSteps}
         onStepChange={goToWizardStep}
         submitLabel={wizardStep === finalWizardStep
-          ? isSoloRecord
+          ? app.demoPreview
+            ? "로그인하고 이어서 만들기"
+            : isSoloRecord
             ? "기록 저장"
             : isMatchRecordRoom
               ? "경기 기록 만들기"
@@ -72,7 +74,7 @@ export function CreateMatchLayout({ context }) {
                 ? "대회 생성"
                 : "경기 생성"
           : ""}
-        submitDisabled={submitDisabled || submitting}
+        submitDisabled={app.demoPreview ? submitting : submitDisabled || submitting}
         submitFeedback={wizardStep === finalWizardStep ? submitFeedback : ""}
         onSubmit={submit}
         onCancel={() => {

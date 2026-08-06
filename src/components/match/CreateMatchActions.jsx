@@ -1,13 +1,13 @@
 export function createCreateMatchActions(context) {
   const {
-    RECORD_TYPES, Star, ageRestrictionOption, app, appendSoloRecordUser, challengeTeamAId, challengeTeamBId, currentRegion, draft, hasTeamChallenge,
+    RECORD_TYPES, Star, ageRestrictionOption, app, appendSoloRecordUser, challengeTeamAId, challengeTeamBId, clearCreateMatchGuestDraft, createReturnTo, currentRegion, draft, hasTeamChallenge,
     favoriteRefereeIds, favoriteTeamIds, formatCreateSaveError, getAvailableTeamPlayerIds, getCourtAddress, getCourtHashtag, getCourtLayoutLabel,
-    getCourtSurfaceLabel, getMatchCreationPolicyPayload, getMatchRulesPayload, getOpponentTeam, getPersonalRecordDraftPayload, getRepresentativePlayerIds, getScopedMatchCreationPolicyPayload,
+    getClientActionAccessToken, getCourtSurfaceLabel, getLoginPath, getMatchCreationPolicyPayload, getMatchRulesPayload, getOpponentTeam, getPersonalRecordDraftPayload, getRepresentativePlayerIds, getScopedMatchCreationPolicyPayload,
     getTeamEligibility, getTeamHashtag, getTournamentTeamEligibility, getUserHashtag, isFavoriteCourt, isInstantRoom, isMatchRecordRoom,
-    isMmrInRecruitingRange, isPublicRoom, isSoloRecord, isTeamRoom, isTournamentRoom, myTeams, navigate,
+    isMmrInRecruitingRange, isPublicRoom, isSoloRecord, isSupabaseConfigured, isTeamRoom, isTournamentRoom, myTeams, navigate,
     normalizeSoloRecordRosterInput, onRecruitingCreated, practiceMode, recordComposition, remakeDraft, remakeSourceId, remakeSourceMatchId,
     representativeTournamentTeam, selectCourt, selectedCourt, selectedTeamA, selectedTournamentCourts, setDraft, setOpponentTeamQuery,
-    setRefereeQuery, setSelectedTournamentTeamProfiles, setSelectedTournamentRefereeProfiles, setSubmitFeedback, setSubmitting, sideCapacity, sortedTeams, submitDisabled,
+    saveCreateMatchGuestDraft, setRefereeQuery, setSelectedTournamentTeamProfiles, setSelectedTournamentRefereeProfiles, setSubmitFeedback, setSubmitting, sideCapacity, sortedTeams, submitDisabled,
     submitDisabledReason, submitting, submittingRef, update, finalWizardStep, wizardStep,
   } = context;
   const selectTeamA = (teamAId) => {
@@ -251,6 +251,17 @@ export function createCreateMatchActions(context) {
       setSubmitFeedback("연습 경기는 비공개 경기방으로만 만들 수 있습니다.");
       return;
     }
+    const accessToken = !practiceMode && isSupabaseConfigured && !app.demoPreview
+      ? await getClientActionAccessToken()
+      : "";
+    if (!practiceMode && isSupabaseConfigured && (app.demoPreview || !accessToken)) {
+      if (!saveCreateMatchGuestDraft(draft, createReturnTo)) {
+        setSubmitFeedback("입력 내용을 보관하지 못했습니다. 브라우저 저장 공간을 확인한 뒤 다시 시도해 주세요.");
+        return;
+      }
+      navigate(getLoginPath(createReturnTo));
+      return;
+    }
     if (submitDisabled) {
       setSubmitFeedback(submitDisabledReason || "경기 생성 조건을 확인해 주세요.");
       return;
@@ -291,7 +302,10 @@ export function createCreateMatchActions(context) {
         scheduledDate: draft.scheduledDate,
         scheduledTime: draft.scheduledTime,
       });
-      if (typeof matchId === "string" && matchId) navigate("/app/profile/records");
+      if (typeof matchId === "string" && matchId) {
+        clearCreateMatchGuestDraft();
+        navigate("/app/profile/records");
+      }
       else {
         setSubmitFeedback(formatCreateSaveError(matchId, "개인 기록을 저장하지 못했습니다."));
       }
@@ -335,7 +349,10 @@ export function createCreateMatchActions(context) {
         scheduledDate: draft.scheduledDate,
         scheduledTime: draft.scheduledTime,
       });
-      if (typeof matchId === "string" && matchId) navigate(`/app/recorder?match=${encodeURIComponent(matchId)}`);
+      if (typeof matchId === "string" && matchId) {
+        clearCreateMatchGuestDraft();
+        navigate(`/app/recorder?match=${encodeURIComponent(matchId)}`);
+      }
       else {
         setSubmitFeedback(formatCreateSaveError(matchId, "경기 기록을 만들지 못했습니다."));
       }
@@ -368,6 +385,7 @@ export function createCreateMatchActions(context) {
         },
       });
       if (typeof tournamentResult === "string" && tournamentResult) {
+        clearCreateMatchGuestDraft();
         navigate(`/app/tournaments/${encodeURIComponent(tournamentResult)}`, {
           state: { from: "/app/matches?panel=tournament" },
         });
@@ -478,6 +496,7 @@ export function createCreateMatchActions(context) {
           return;
         }
       }
+      clearCreateMatchGuestDraft();
       if (onRecruitingCreated) onRecruitingCreated(postId);
       else navigate(`/app/recruiting?post=${encodeURIComponent(postId)}`);
     }

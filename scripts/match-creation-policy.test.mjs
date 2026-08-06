@@ -70,9 +70,40 @@ import {
   isIndividualOnlyRecruitingRoom,
   normalizeRecruitingMmrRangeMode,
 } from "../src/lib/recruiting.js";
-import { getTeamChallengeEligibilityPolicy } from "../src/lib/createMatchPage.js";
+import {
+  clearCreateMatchGuestDraft,
+  getCreateMatchGuestDraft,
+  getTeamChallengeEligibilityPolicy,
+  saveCreateMatchGuestDraft,
+} from "../src/lib/createMatchPage.js";
 
 configureServerRatingAuthority(SERVER_RATING_AUTHORITY);
+
+test("게스트 생성 draft는 같은 생성 URL에서만 복원하고 실제 생성 전 로그인을 확인한다", () => {
+  const values = new Map();
+  const storage = {
+    getItem: (key) => values.get(key) ?? null,
+    removeItem: (key) => values.delete(key),
+    setItem: (key, value) => values.set(key, value),
+  };
+  const draft = { title: "금요일 3v3", mode: "3v3" };
+
+  assert.equal(saveCreateMatchGuestDraft(draft, "/app/create?step=4", storage), true);
+  assert.deepEqual(getCreateMatchGuestDraft("/app/create?step=4", storage), draft);
+  assert.equal(getCreateMatchGuestDraft("/app/create?intent=record&step=5", storage), null);
+  clearCreateMatchGuestDraft(storage);
+  assert.equal(getCreateMatchGuestDraft("/app/create?step=4", storage), null);
+
+  const actionSource = fs.readFileSync(new URL("../src/components/match/CreateMatchActions.jsx", import.meta.url), "utf8");
+  const baseSource = fs.readFileSync(new URL("../src/components/match/useCreateMatchBaseController.js", import.meta.url), "utf8");
+  const layoutSource = fs.readFileSync(new URL("../src/components/match/CreateMatchLayout.jsx", import.meta.url), "utf8");
+  const appSource = fs.readFileSync(new URL("../src/App.jsx", import.meta.url), "utf8");
+  assert.ok(actionSource.indexOf("getClientActionAccessToken()") < actionSource.indexOf("if (submitDisabled)"));
+  assert.match(actionSource, /saveCreateMatchGuestDraft\(draft, createReturnTo\)[\s\S]*navigate\(getLoginPath\(createReturnTo\)\)/u);
+  assert.match(baseSource, /remoteDirectoryEnabled = !app\.demoPreview[\s\S]*getCreateMatchGuestDraft\(createReturnTo\)/u);
+  assert.match(layoutSource, /app\.demoPreview[\s\S]*로그인하고 이어서 만들기/u);
+  assert.match(appSource, /GUEST_PUBLIC_APP_PATHS[\s\S]*"\/app\/create"/u);
+});
 
 test("공개 개인 경쟁전은 평균과 사이드 내부 MMR 폭을 함께 제한한다", () => {
   const users = Object.fromEntries([

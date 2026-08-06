@@ -11,6 +11,39 @@ import {
   getTeamEventEligibility,
 } from "./recruiting.js";
 
+export const CREATE_MATCH_GUEST_DRAFT_STORAGE_KEY = "boxtier.create-match.guest-draft.v1";
+
+export function saveCreateMatchGuestDraft(draft, returnTo, storageOverride) {
+  try {
+    const storage = storageOverride ?? window.sessionStorage;
+    if (!draft || typeof draft !== "object" || Array.isArray(draft) || !String(returnTo).startsWith("/app/create")) return false;
+    storage.setItem(CREATE_MATCH_GUEST_DRAFT_STORAGE_KEY, JSON.stringify({ draft, returnTo }));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function getCreateMatchGuestDraft(returnTo, storageOverride) {
+  try {
+    const storage = storageOverride ?? window.sessionStorage;
+    const saved = JSON.parse(storage.getItem(CREATE_MATCH_GUEST_DRAFT_STORAGE_KEY) ?? "null");
+    if (saved?.returnTo !== returnTo || !saved.draft || typeof saved.draft !== "object" || Array.isArray(saved.draft)) return null;
+    return saved.draft;
+  } catch {
+    return null;
+  }
+}
+
+export function clearCreateMatchGuestDraft(storageOverride) {
+  try {
+    const storage = storageOverride ?? window.sessionStorage;
+    storage.removeItem(CREATE_MATCH_GUEST_DRAFT_STORAGE_KEY);
+  } catch {
+    // Private browsing can deny session storage access.
+  }
+}
+
 export const mmrLimitOptions = [
   { id: "off", label: "제한 없음" },
   { id: "warn", label: "경고만" },

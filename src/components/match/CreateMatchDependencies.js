@@ -58,10 +58,11 @@ import {
   getRoomRemakeWarningCopy,
   getScopedMatchCreationPolicyPayload,
 } from "../../lib/matchCreationPolicies.js";
-import { AGE_GROUPS, REGION_TREE, getAgeGroupForUser, getRepresentativeTeam, inferRegionSelection } from "../../lib/profileSetup.js";
+import { AGE_GROUPS, REGION_TREE, getAgeGroupForUser, getLoginPath, getRepresentativeTeam, inferRegionSelection } from "../../lib/profileSetup.js";
 import { COURT_MAP_SEARCH_LIMIT, COURT_MAP_SEARCH_PURPOSE, DIRECTORY_PICKER_PAGE_LIMIT } from "../../lib/queryPolicy.js";
 import { MMR_RANGE_POLICIES, getRecruitingSideCapacity, getRecruitingTierRange, getSelectableTeamPlayerIds, getTeamEventEligibility, isMmrInRecruitingRange, normalizeRecruitingMmrRangeMode } from "../../lib/recruiting.js";
-import { postServerAction } from "../../lib/serverActions.js";
+import { getClientActionAccessToken, postServerAction } from "../../lib/serverActions.js";
+import { isSupabaseConfigured } from "../../lib/supabase.js";
 import {
   getCreateDefaultTeamPlayerIds as getDefaultTeamPlayerIds,
   getCreatePartyPlayerIds as getPartyPlayerIds,
@@ -89,11 +90,14 @@ import {
   getOpponentTeam,
   getRepresentativePlayerIds,
   getTeamChallengeEligibilityPolicy,
+  clearCreateMatchGuestDraft,
+  getCreateMatchGuestDraft,
   includesQuery,
   isDefaultCreateTitle,
   isDefaultTournamentTitle,
   isHashtagQuery,
   makeEmptySoloStats,
+  saveCreateMatchGuestDraft,
   mmrLimitOptions,
   toggleAgeRestriction,
   tournamentFormatOptions,
@@ -123,10 +127,12 @@ export const CREATE_MATCH_DEPENDENCIES = {
   getPersonalRecordDraftPayload, getRoomRemakeDraft, getRoomRemakeWarningCopy, getScopedMatchCreationPolicyPayload, AGE_GROUPS, REGION_TREE,
   getAgeGroupForUser, getRepresentativeTeam, inferRegionSelection, COURT_MAP_SEARCH_LIMIT, COURT_MAP_SEARCH_PURPOSE, DIRECTORY_PICKER_PAGE_LIMIT,
   MMR_RANGE_POLICIES, getRecruitingSideCapacity, getRecruitingTierRange, getSelectableTeamPlayerIds, getTeamEventEligibility, isMmrInRecruitingRange,
-  normalizeRecruitingMmrRangeMode, postServerAction, getDefaultTeamPlayerIds, getPartyPlayerIds, getPartyReserveIds, getRequiredTournamentRefereeCount,
+  normalizeRecruitingMmrRangeMode, postServerAction, getClientActionAccessToken, getLoginPath, isSupabaseConfigured,
+  getDefaultTeamPlayerIds, getPartyPlayerIds, getPartyReserveIds, getRequiredTournamentRefereeCount,
   getTournamentRefereePoolValidation, DEFAULT_MATCH_MEMO, MATCH_MODE_IDS, formatCreateSaveError, getAgeRestrictionOption, getAvailableTeamPlayerIds,
   getCreateStepFromSearch, getCreateStepSearch, getDefaultCreateMode, getDefaultCreateTitle, getDefaultMmrLimitMode, getDefaultTournamentTitle,
-  getMatchModeOrDefault, getMatchRecordMemo, getMmrSpread, getOpponentTeam, getRepresentativePlayerIds, getTeamChallengeEligibilityPolicy, includesQuery,
-  isDefaultCreateTitle, isDefaultTournamentTitle, isHashtagQuery, makeEmptySoloStats, mmrLimitOptions, toggleAgeRestriction,
+  getMatchModeOrDefault, getMatchRecordMemo, getMmrSpread, getOpponentTeam, getRepresentativePlayerIds, getTeamChallengeEligibilityPolicy,
+  clearCreateMatchGuestDraft, getCreateMatchGuestDraft, includesQuery, isDefaultCreateTitle, isDefaultTournamentTitle, isHashtagQuery,
+  makeEmptySoloStats, saveCreateMatchGuestDraft, mmrLimitOptions, toggleAgeRestriction,
   tournamentFormatOptions, tournamentMmrPolicyOptions, tournamentScheduleOptions, SOLO_RECORD_MODES,
 };

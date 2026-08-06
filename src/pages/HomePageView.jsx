@@ -33,6 +33,8 @@ export default function HomePageView({
           <p>개인 일정, 경기 기록, 알림은 로그인 후 내 데이터로 표시됩니다.</p>
           <div className="ui-action-row">
             <Button as={Link} to="/app/recruiting">매칭 보기 <ArrowRight size={18} /></Button>
+            <Button as={Link} to="/app/create" variant="secondary"><PlusCircle size={18} /> 방 만들기</Button>
+            <Button as={Link} to="/app/create?intent=record" variant="secondary"><ClipboardCheck size={18} /> 경기 기록하기</Button>
             <Button as={Link} to="/login" variant="secondary">로그인</Button>
           </div>
         </Card>
