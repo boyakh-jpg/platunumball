@@ -27,9 +27,10 @@ function resolveCourt(court, courtName = "") {
   };
 }
 
-export default function CourtHoverCard({ court, courtName = "", children, className = "" }) {
+export default function CourtHoverCard({ court, courtId = "", courtName = "", children, className = "" }) {
   const resolvedCourt = resolveCourt(court, courtName);
-  const cardKey = resolvedCourt?.id ? `court:${resolvedCourt.id}` : "";
+  const resolvedCourtId = courtId || resolvedCourt?.id || "";
+  const cardKey = resolvedCourtId ? `court:${resolvedCourtId}` : "";
   const {
     anchorRef,
     cardRef,
@@ -41,8 +42,8 @@ export default function CourtHoverCard({ court, courtName = "", children, classN
     triggerProps,
   } = useHoverCardInteraction({ cardKey });
   const mapUrl = getCourtMapUrl(resolvedCourt);
-  const hasDetailPage = Boolean(court?.id || COURTS.some((item) => item.id === resolvedCourt.id));
-  const courtPath = hasDetailPage ? `/app/courts/${encodeURIComponent(resolvedCourt.id)}` : "";
+  const hasDetailPage = Boolean(courtId || court?.id || COURTS.some((item) => item.id === resolvedCourt.id));
+  const courtPath = hasDetailPage ? `/app/courts/${encodeURIComponent(resolvedCourtId)}` : "";
   const reviewSummary = resolvedCourt.reviewSummary ?? {};
   const reviewCount = Number(reviewSummary.reviewCount ?? resolvedCourt.reviewCount ?? 0);
   const averageRating = Number(reviewSummary.adjustedRating ?? reviewSummary.averageRating ?? resolvedCourt.adjustedRating ?? resolvedCourt.rating ?? 0);
@@ -112,7 +113,7 @@ export default function CourtHoverCard({ court, courtName = "", children, classN
               event.stopPropagation();
               closePinned();
             }}>
-              <MapPin size={16} /> 구장 정보 보기
+              <MapPin size={16} /> 상세 프로필 보기
             </Link>
           ) : null}
           <a className="ui-compact-action hover-card-action hover-card-action-secondary" href={mapUrl} target="_blank" rel="noreferrer" onClick={(event) => {

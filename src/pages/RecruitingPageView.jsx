@@ -166,13 +166,13 @@ export default function RecruitingPageView({
               meta={(
                 <>
                   <CalendarDays size={15} />
-                  {getRoomScheduleLabel(post)} · <CourtHoverCard court={postCourt} courtName={post.court}>{post.court}</CourtHoverCard> ·{" "}
+                  {getRoomScheduleLabel(post)} · <CourtHoverCard court={postCourt} courtId={post.courtId} courtName={post.court}>{post.court}</CourtHoverCard> ·{" "}
                   {hostTeam ? (
                     <TeamHoverCard team={hostTeam} as="span">{hostTeam.name}</TeamHoverCard>
                   ) : post.teamId && hostTeamName ? (
                     <span>{hostTeamName}</span>
                   ) : (
-                    <PlayerHoverCard user={host} teams={app.state.teams} as="span">{hostName}</PlayerHoverCard>
+                    <PlayerHoverCard user={host} teams={app.state.teams}>{hostName}</PlayerHoverCard>
                   )}
                 </>
               )}

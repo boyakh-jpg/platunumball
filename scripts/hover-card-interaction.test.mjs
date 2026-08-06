@@ -67,3 +67,21 @@ test("player and team keep long press while court and referee keep tap toggle", 
   assert.match(court, /onActivate=\{togglePinned\}/);
   assert.match(referee, /onActivate=\{togglePinned\}/);
 });
+
+test("matching host and court actions do not fall through to the room card", async () => {
+  const [recruiting, room, court, disclosure] = await Promise.all([
+    readSource("src/pages/RecruitingPageView.jsx"),
+    readSource("src/components/recruiting/RecruitingRoomPrimarySection.jsx"),
+    readSource("src/components/court/CourtHoverCard.jsx"),
+    readSource("src/styles/primitives/hover-disclosure.css"),
+  ]);
+
+  assert.match(recruiting, /<PlayerHoverCard user=\{host\} teams=\{app\.state\.teams\}>/);
+  assert.doesNotMatch(recruiting, /<PlayerHoverCard user=\{host\} teams=\{app\.state\.teams\} as="span">/);
+  assert.match(recruiting, /courtId=\{post\.courtId\}/);
+  assert.match(room, /courtId=\{selectedPost\.courtId\}/);
+  assert.match(court, /상세 프로필 보기/);
+  assert.match(court, /지도 보기/);
+  assert.match(disclosure, /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/);
+  assert.match(disclosure, /\.hover-card-action:only-child \{\s*grid-column: 1 \/ -1;/);
+});

@@ -103,7 +103,7 @@ button.ui-choice-tile,
 }
 .court-hover-card.touch-open .court-hover-actions {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--ui-control-group-gap);
 }
 .court-hover-card.touch-open .court-hover-actions .hover-card-action {
@@ -114,6 +114,9 @@ button.ui-choice-tile,
 .court-hover-card.touch-open .court-hover-actions .hover-card-action-secondary {
   background: var(--ui-button-bg);
   color: var(--ui-button-color);
+}
+.court-hover-card.touch-open .court-hover-actions .hover-card-action:only-child {
+  grid-column: 1 / -1;
 }
 .rank-home .home-rank-board-head .button,
 .provider-test,

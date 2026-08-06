@@ -142,7 +142,7 @@ export function RecruitingRoomPrimarySection({ context }) {
 
                 <div className="arena-lobby-title">
                   <h2 className={roomTitleSizeClass}>{roomDisplayTitle}</h2>
-                  <p><MapPin size={16} /><CourtHoverCard court={courtByName[selectedPost.court]} courtName={selectedPost.court}>{selectedPost.court}</CourtHoverCard> · {getRoomScheduleLabel(selectedPost)}</p>
+                  <p><MapPin size={16} /><CourtHoverCard court={courtByName[selectedPost.court]} courtId={selectedPost.courtId} courtName={selectedPost.court}>{selectedPost.court}</CourtHoverCard> · {getRoomScheduleLabel(selectedPost)}</p>
                 </div>
 
                 {contextPanel}
