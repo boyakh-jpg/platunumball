@@ -37,11 +37,12 @@ const rankingTitles = {
 
 export default function Rankings({ app }) {
   const [searchParams, setSearchParams] = useSearchParams();
-  const promotionView = searchParams.get("view") === "promotion";
+  const readOnly = app.demoPreview === true;
+  const promotionView = !readOnly && searchParams.get("view") === "promotion";
   const requestedTab = searchParams.get("tab");
   const tab = promotionView
     ? requestedTab === "teams" ? "teams" : "integrated"
-    : tabIds.has(requestedTab) ? requestedTab : "integrated";
+    : tabIds.has(requestedTab) && !(readOnly && requestedTab === "region") ? requestedTab : "integrated";
   const setTab = (nextTab) => {
     if (!tabIds.has(nextTab)) return;
     const nextSearchParams = new URLSearchParams(searchParams);
@@ -51,7 +52,7 @@ export default function Rankings({ app }) {
   };
   const myRegion = app.currentUser.region;
   const season = getCurrentSeason(app.state);
-  const canonicalEnabled = isSupabaseConfigured && app.remoteReady && promotionView && !app.demoPreview;
+  const canonicalEnabled = isSupabaseConfigured && app.remoteReady && promotionView && !readOnly;
   const canonicalRankings = useCanonicalSeasonRankings(canonicalEnabled, season.id);
   const loadDirectory = app.actions.loadDirectory;
   const directoryKind = tab === "teams" ? "teams" : tab === "affiliations" ? "affiliations" : tab === "region" ? "all" : "players";
@@ -105,7 +106,7 @@ export default function Rankings({ app }) {
     && app.directoryStatus?.page?.placementCompleteOnly === placementCompleteOnly
     && app.directoryStatus?.page?.rankingSort === rankingSort;
   const directoryLoadError = !promotionView && directoryStatusMatches ? app.directoryStatus?.error : "";
-  const directoryLoading = !app.demoPreview && !promotionView && !directoryLoadError && isSupabaseConfigured && (
+  const directoryLoading = !promotionView && !directoryLoadError && isSupabaseConfigured && (
     !directoryStatusMatches
     ||
     app.remoteReady === false
@@ -126,7 +127,7 @@ export default function Rankings({ app }) {
         </Badge>
       </header>
       <Card className="section-card ranking-filter-card">
-        <RankingTabs value={tab} options={promotionView ? promotionTabs : tabs} onChange={setTab} />
+        <RankingTabs value={tab} options={promotionView ? promotionTabs : readOnly ? tabs.filter((item) => item.id !== "region") : tabs} onChange={setTab} />
       </Card>
       {promotionView && canonicalRankings.error ? (
         <Card className="section-card">

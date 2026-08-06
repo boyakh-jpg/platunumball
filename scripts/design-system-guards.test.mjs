@@ -361,10 +361,12 @@ test("referee detail uses the player hero structure and dedicated tier emblems",
 test("signed-in login redirects and settings exposes logout", () => {
   const authStyles = read("src/styles/layout/app-shell-auth.css");
   assert.match(loginSource, /if \(auth\.session\) return <Navigate to=\{from\} replace \/>;/);
-  assert.match(loginSource, /<div className="auth-card-head">[\s\S]*?<Link to="\/" className="brand auth-brand"[\s\S]*?<Button as=\{Link\} to=\{from\}[^>]*className="auth-back-link"/);
+  assert.match(loginSource, /const goBack = \(\) => location\.key === "default" \? navigate\("\/app", \{ replace: true \}\) : navigate\(-1\)/);
+  assert.match(loginSource, /<div className="auth-card-head">[\s\S]*?<Link to="\/" className="brand auth-brand"[\s\S]*?<Button type="button"[^>]*className="auth-back-link" onClick=\{goBack\}/);
   assert.doesNotMatch(loginSource, /auth-card-primary|로그인 가능/);
   assert.match(authStyles, /\.auth-card-head\s*\{[^}]*grid-template-columns: minmax\(0, 1fr\) auto;/s);
   assert.match(authStyles, /\.auth-brand \.brand-letter-wrap\s*\{[^}]*flex: 1 1 0;/s);
+  assert.match(authStyles, /\.auth-card-head \.auth-back-link\s*\{[^}]*border-width:\s*0;/s);
   assert.match(settingsSource, /<SettingsPageView controller=\{controller\} auth=\{props\.auth\} \/>/);
   assert.match(settingsSource, /onClick=\{auth\.signOut\}/);
   assert.match(settingsSource, /<LogOut size=\{16\} \/> 로그아웃/);
@@ -387,7 +389,8 @@ test("guest shell replaces the demo identity with login actions", () => {
   assert.match(bottomNav, /guestPreview && item\.to === "\/app\/profile"/);
   assert.match(bottomNav, /isGuestProfile \? "로그인" : item\.label/);
   assert.match(appSource, /"\/app\/community"/);
-  assert.match(homePageSource, /to="\/app\/community"[^>]*>[\s\S]*?커뮤니티 보기/);
+  assert.match(homePageSource, /to="\/app\/community"[^>]*>[\s\S]*?커뮤니티/);
+  assert.match(homePageSource, /function GuestHomePage[\s\S]*home-search-panel[\s\S]*home-left-rail[\s\S]*home-right-rail/);
   assert.doesNotMatch(read("src/styles/layout/app-shell-auth.css"), /\.guest-preview-bar/);
 });
 
@@ -655,7 +658,7 @@ test("KBO는 스포츠 표시, Pretendard는 읽기와 조작 UI에 사용한다
 });
 
 test("공용 CTA는 ui-button-block 하나로 너비만 확장한다", () => {
-  assert.equal(countClassToken(pageSources.home, "ui-button-block"), 5);
+  assert.equal(countClassToken(pageSources.home, "ui-button-block"), 8);
   assert.equal(countClassToken(pageSources.matches, "ui-button-block"), 2);
   assert.equal(countClassToken(pageSources.recruiting, "ui-button-block"), 2);
   assert.equal(countClassToken(pageSources.season, "ui-button-block"), 1);
@@ -1027,7 +1030,7 @@ test("알파 온보딩은 기록 중심 무료 핵심 흐름을 안내한다", (
   assert.match(appSource, /const PracticeMatch = lazy\(\(\) => import\("\.\/pages\/PracticeMatch\.jsx"\)\);/);
   assert.match(appSource, /path="\/app\/guide" element=\{<GettingStarted app=\{app\} \/>\}/);
   assert.match(appSource, /path="\/app\/guide\/practice" element=\{<PracticeMatch app=\{app\} \/>\}/);
-  assert.equal(count(pageSources.home, 'to="/app/guide"'), 1);
+  assert.equal(count(pageSources.home, 'to="/app/guide"'), 2);
   assert.match(pageSources.home, /처음 사용하시나요\?/);
   assert.match(pageSources.home, /13단계 안내/);
   assert.match(pageSources.home, /isHomeGuideCardVisible\(app\.state\.settings\)/);

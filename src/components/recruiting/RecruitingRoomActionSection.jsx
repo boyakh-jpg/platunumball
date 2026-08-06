@@ -28,8 +28,8 @@ export function RecruitingRoomActionSection({ context }) {
 <div className="arena-join-panel">
                 {readOnly ? (
                   <div className="arena-owner-panel">
-                    <strong>로그인 후 참가</strong>
-                    <span>방 정보는 볼 수 있고 참가·채팅·수정은 로그인 후 사용할 수 있습니다.</span>
+                    <strong>방 정보는 지금 확인할 수 있습니다</strong>
+                    <span>로그인하면 이 방에 참가하고 채팅과 참가 관리를 사용할 수 있습니다.</span>
                     <Button type="button" onClick={() => navigate(getLoginPath(`${window.location.pathname}${window.location.search}${window.location.hash}`))}>로그인</Button>
                   </div>
                 ) : matchRoom ? (

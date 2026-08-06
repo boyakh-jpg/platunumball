@@ -5,6 +5,7 @@ export function useDirectoryLoaders(context) {
     REMOTE_CLIENT_RECRUITING_LIMIT,
     authEmail,
     authUserId,
+    demoPreview,
     directoryCacheRef,
     directoryPromiseRef,
     filterPendingRecruitingPosts,
@@ -212,13 +213,13 @@ export function useDirectoryLoaders(context) {
   }, [authEmail, authUserId, setState, trackedPostServerAction]);
 
   const loadDirectory = useCallback(async (forceOrOptions = false) => {
-    if (!isSupabaseConfigured || !authUserId) return false;
+    if (!isSupabaseConfigured || (!authUserId && !demoPreview)) return false;
     const options = forceOrOptions && typeof forceOrOptions === "object" ? forceOrOptions : {};
     const force = forceOrOptions === true || options.force === true;
     const pathname = typeof window !== "undefined" ? window.location.pathname.replace(/\/$/, "") : "";
     const teamDetailMatch = pathname.match(/^\/app\/teams\/([^/]+)$/);
     const requestedTeamId = String(options.teamId ?? "").trim();
-    const endpoint = teamDetailMatch || requestedTeamId ? "/api/teams/detail" : "/api/directory/load";
+    const endpoint = !demoPreview && (teamDetailMatch || requestedTeamId) ? "/api/teams/detail" : "/api/directory/load";
     const playerDetailMatch = pathname.match(/^\/app\/players\/([^/]+)$/);
     const kind = options.kind ?? (playerDetailMatch ? "players" : pathname === "/app/teams" ? "teams" : "self");
     const { limit, offset } = getDirectoryPageRequest(options, { kind });
@@ -261,8 +262,8 @@ export function useDirectoryLoaders(context) {
       endpoint,
       endpoint === "/api/teams/detail"
         ? { authUserId, authEmail, teamId }
-        : { authUserId, authEmail, scope: "directory", kind, limit, offset, filter, region, profileId, includeTeamMemberProfiles, placementCompleteOnly, rankingSort },
-      { allowWhenDisabled: true },
+        : { authUserId, authEmail, scope: "directory", kind, limit, offset, filter, region, profileId, teamId, includeTeamMemberProfiles, placementCompleteOnly, rankingSort },
+      { allowWhenDisabled: true, allowAnonymous: demoPreview },
     ).then((result) => {
       const remoteState = result?.state ?? {};
       setState((prev) => mergeRemoteDirectory(prev, remoteState, {
@@ -284,7 +285,7 @@ export function useDirectoryLoaders(context) {
     });
     directoryPromiseRef.current.set(cacheKey, promise);
     return promise;
-  }, [authEmail, authUserId, setState, trackedPostServerAction]);
+  }, [authEmail, authUserId, demoPreview, setState, trackedPostServerAction]);
 
   const loadCourtDetail = useCallback(async (courtId) => {
     if (!isSupabaseConfigured || !authUserId || !courtId) {

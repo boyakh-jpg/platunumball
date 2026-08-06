@@ -66,9 +66,13 @@ const GUEST_PUBLIC_APP_PATHS = new Set([
   "/app/matches",
   "/app/recruiting",
   "/app/referee-rulebook",
+  "/app/rankings",
+  "/app/teams",
 ]);
 const GUEST_PUBLIC_APP_PREFIXES = [
   "/app/matches/",
+  "/app/players/",
+  "/app/teams/",
 ];
 
 export function isGuestPublicAppPath(pathname = "") {

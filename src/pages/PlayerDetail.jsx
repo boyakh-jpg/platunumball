@@ -83,9 +83,9 @@ export default function PlayerDetail({ app }) {
     return () => { cancelled = true; };
   }, [app.remoteReady, loadDirectory, playerId, profileLoadAttempt]);
   useEffect(() => {
-    if (!app.remoteReady || !playerId || !loadPublicProfileRecords) return;
+    if (app.demoPreview || !app.remoteReady || !playerId || !loadPublicProfileRecords) return;
     void loadPublicProfileRecords(playerId);
-  }, [app.remoteReady, loadPublicProfileRecords, playerId]);
+  }, [app.demoPreview, app.remoteReady, loadPublicProfileRecords, playerId]);
   const previewPlayer = location.state?.playerPreview?.id === playerId
     ? location.state.playerPreview
     : null;
@@ -97,7 +97,7 @@ export default function PlayerDetail({ app }) {
   ));
   const playerAvailable = Boolean(player);
   useEffect(() => {
-    if (!playerId || !playerAvailable || app.remoteReady === false) return undefined;
+    if (app.demoPreview || !playerId || !playerAvailable || app.remoteReady === false) return undefined;
     let cancelled = false;
     if (hasKnownRefereeProfile || !isSupabaseConfigured || !loadRefereeDetail) {
       setRefereeProfileState({ playerId, available: hasKnownRefereeProfile });
@@ -112,7 +112,7 @@ export default function PlayerDetail({ app }) {
         if (!cancelled) setRefereeProfileState({ playerId, available: false });
       });
     return () => { cancelled = true; };
-  }, [app.remoteReady, hasKnownRefereeProfile, loadRefereeDetail, playerAvailable, playerId]);
+  }, [app.demoPreview, app.remoteReady, hasKnownRefereeProfile, loadRefereeDetail, playerAvailable, playerId]);
 
   const directoryPending = app.remoteReady === false
     || profileLoadState.playerId !== playerId

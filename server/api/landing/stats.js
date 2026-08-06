@@ -72,7 +72,7 @@ export async function loadLandingFeed(supabase, recruitingLimit = LANDING_RECRUI
     readRows(
       supabase
         .from("recruiting_posts")
-        .select("id,title,mode,court_name,region,scheduled_date,scheduled_time,scheduled_at,ranked")
+        .select("id,type,title,mode,court_id,court_name,region,scheduled_date,scheduled_time,scheduled_at,timing_type,ranked,official,pre_registered,rating_scale,age_restriction,allowed_age_groups,rules,stakes,court_reserved,court_fee,spots,referee_wanted,referee_trust_min,stat_entry_minutes,dispute_minutes,host_join_mode,side_capacity,bench_capacity")
         .eq("status", "open")
         .eq("visibility", "public")
         .order("updated_at", { ascending: false })
@@ -97,14 +97,34 @@ export async function loadLandingFeed(supabase, recruitingLimit = LANDING_RECRUI
   return {
     openRecruiting: recruitingRows.map((row) => ({
       id: row.id,
+      type: row.type,
       title: row.title,
       mode: row.mode,
+      courtId: row.court_id,
       court: row.court_name,
       region: row.region,
       scheduledDate: row.scheduled_date,
       scheduledTime: row.scheduled_time ? String(row.scheduled_time).slice(0, 5) : "",
       scheduledAt: row.scheduled_at,
+      timingType: row.timing_type,
       ranked: row.ranked !== false,
+      official: row.official === true,
+      preRegistered: row.pre_registered === true,
+      ratingScale: Number(row.rating_scale) || 1,
+      ageRestriction: row.age_restriction ?? "any",
+      allowedAgeGroups: row.allowed_age_groups ?? [],
+      rules: row.rules ?? {},
+      stakes: row.stakes ?? "",
+      courtReserved: row.court_reserved === true,
+      courtFee: row.court_fee ?? "",
+      spots: Number(row.spots) || 0,
+      refereeWanted: row.referee_wanted === true,
+      refereeTrustMin: Number(row.referee_trust_min) || 0,
+      statEntryMinutes: Number(row.stat_entry_minutes) || 0,
+      disputeMinutes: Number(row.dispute_minutes) || 0,
+      hostJoinMode: row.host_join_mode ?? "player",
+      sideCapacity: Number(row.side_capacity) || 0,
+      benchCapacity: Number(row.bench_capacity) || 0,
       status: "open",
       visibility: "public",
     })),

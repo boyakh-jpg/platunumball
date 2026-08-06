@@ -1,7 +1,9 @@
 import {
   allowRequestMethod,
   getAuthenticatedContext,
+  getBearerToken,
   getRowsMaxUpdatedAt,
+  getSupabaseAdminClient,
   groupRowsBy,
   readJsonBody,
   requireAdminContext,
@@ -124,14 +126,16 @@ async function loadDirectoryPage(context, body = {}) {
   const filter = normalizeFilter(body.filter ?? body.query ?? body.q);
   const region = normalizeFilter(body.region);
   const profileId = String(body.profileId ?? "").trim();
+  const teamId = String(body.teamId ?? "").trim();
   const kind = normalizeDirectoryKind(body.kind, "all");
   const pageRequest = getPageRequest(body, { kind });
   const includeSelfDetails = kind === "self";
   const includeTeamMemberProfiles = body.includeTeamMemberProfiles === true;
   const placementCompleteOnly = body.placementCompleteOnly === true;
   const rankingSort = normalizeDirectoryRankingSort(body.rankingSort);
+  const publicRead = context.publicRead === true;
   const currentUser = getCurrentUser(context);
-  const currentProfileId = context.profileId ?? currentUser.id;
+  const currentProfileId = publicRead ? "" : context.profileId ?? currentUser.id;
 
   if (kind === "affiliations") {
     let query = context.supabase
@@ -228,9 +232,12 @@ async function loadDirectoryPage(context, body = {}) {
       .is("deleted_at", null)
       .order("mmr", { ascending: false, nullsFirst: false })
       .order("id", { ascending: true });
-    if (region) query = query.eq("region", region);
-    query = applyDirectoryTextFilter(query, ["name", "home_court", "region"], filter);
-    teamPage = await readPage(query, pageRequest, "teams");
+    if (teamId) query = query.eq("id", teamId);
+    else {
+      if (region) query = query.eq("region", region);
+      query = applyDirectoryTextFilter(query, ["name", "home_court", "region"], filter);
+    }
+    teamPage = await readPage(query, teamId ? { limit: 1, offset: 0 } : pageRequest, "teams");
   }
 
   const favoriteProfileIds = favoriteRows
@@ -361,9 +368,16 @@ export default async function handler(request, response) {
 
   try {
     const body = await readJsonBody(request);
+    const hasToken = Boolean(getBearerToken(request));
     const context = body.scope === "admin"
       ? await requireAdminContext(request, { profileSelect: PROFILE_ME_COLUMNS })
-      : await getAuthenticatedContext(request, { allowMissingProfile: true, profileSelect: PROFILE_ME_COLUMNS });
+      : hasToken
+        ? await getAuthenticatedContext(request, { allowMissingProfile: true, profileSelect: PROFILE_ME_COLUMNS })
+        : { supabase: getSupabaseAdminClient(), authUser: null, authUserId: "", profileId: "", profile: null, publicRead: true };
+    if (!hasToken && !["all", "players", "teams", "affiliations"].includes(normalizeDirectoryKind(body.kind, "all"))) {
+      sendJson(response, 403, { error: "public_directory_scope_forbidden" });
+      return;
+    }
     const result = body.scope === "admin"
       ? await loadAdminSection(context, body)
       : await loadDirectoryPage(context, body);

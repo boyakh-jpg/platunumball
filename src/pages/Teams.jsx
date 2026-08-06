@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { PlusCircle, Search } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import BasketballLoader from "../components/common/BasketballLoader.jsx";
@@ -13,7 +14,7 @@ import { getTeamDiscoveryGroups } from "../data/teamMappers.js";
 import { MAX_TEAM_MEMBERSHIPS, MAX_TEAM_NAME_LENGTH, getTeamRoleLabel, isSameRegion } from "../lib/constants.js";
 import { getCourtAddress, getCourtLayoutLabel, getCourtPickerResults, getCourtSearchText, getCourtSurfaceLabel, getRegisteredCourts, mergeCourtSearchCourts } from "../lib/courts.js";
 import { getCourtHashtag, getTeamHashtag } from "../lib/handles.js";
-import { getProfileRegionSelection, getRepresentativeTeam, inferRegionSelection, REGION_TREE } from "../lib/profileSetup.js";
+import { getLoginPath, getProfileRegionSelection, getRepresentativeTeam, inferRegionSelection, REGION_TREE } from "../lib/profileSetup.js";
 import { DIRECTORY_TEAM_PAGE_LIMIT } from "../lib/queryPolicy.js";
 import { getTierDivision } from "../lib/tier.js";
 
@@ -38,6 +39,7 @@ function isHashtagQuery(query = "") {
 }
 
 export default function Teams({ app }) {
+  const readOnly = app.demoPreview === true;
   const loadDirectory = app.actions.loadDirectory;
   const directoryCourts = useMemo(() => getRegisteredCourts(app.state), [app.state]);
   const [discoveredCourts, setDiscoveredCourts] = useState([]);
@@ -146,11 +148,13 @@ export default function Teams({ app }) {
   const searchViewActive = Boolean(query.trim()) || regionSido !== TEAM_DISCOVERY_VIEW;
   const searchResultTeams = visibleTeams.slice(0, TEAM_SEARCH_RESULT_LIMIT);
   const currentRegionLabel = defaultTeamRegion || "내 지역";
-  const discoverySections = [
+  const discoverySections = (readOnly ? [
+    { id: "public", title: "공개 팀", teams: rankingTeams.slice(0, DIRECTORY_TEAM_PAGE_LIMIT) },
+  ] : [
     { id: "nearby", title: `${currentRegionLabel} 주변 팀`, teams: teamDiscoveryGroups.nearby },
     { id: "rivals", title: "라이벌 팀", teams: teamDiscoveryGroups.rivals },
     { id: "affiliation", title: "같은 소속 팀", teams: teamDiscoveryGroups.affiliation },
-  ].filter((section) => section.teams.length);
+  ]).filter((section) => section.teams.length);
   const renderTeamSearchItem = (team) => (
     <button
       key={team.id}
@@ -267,10 +271,16 @@ export default function Teams({ app }) {
               <p className="eyebrow">My Teams</p>
               <h2>내 팀 관리</h2>
             </div>
-            <Badge tone={myTeamCountTone}>{myTeamCountLabel}</Badge>
+            <Badge tone={readOnly ? "neutral" : myTeamCountTone}>{readOnly ? "로그인" : myTeamCountLabel}</Badge>
           </div>
           <div className="my-team-list ui-design-borderless-list">
-            {myTeams.length ? myTeams.map((team) => {
+            {readOnly ? (
+              <div className="ui-empty-state-compact">
+                <strong>내 팀은 로그인 후 확인할 수 있습니다</strong>
+                <span>공개 팀 검색과 랭킹은 지금 둘러볼 수 있습니다. 로그인하면 내 소속 팀과 초대를 불러옵니다.</span>
+                <Button as={Link} to={getLoginPath("/app/teams")} size="sm">로그인</Button>
+              </div>
+            ) : myTeams.length ? myTeams.map((team) => {
               const winRate = team.played ? Math.round((team.wins / team.played) * 100) : 0;
               const isCaptain = team.myRole === "captain";
               const isRepresentative = representativeTeam?.id === team.id;
@@ -357,6 +367,7 @@ export default function Teams({ app }) {
                 placeholder="팀명, 홈코트, 해시태그"
                 items={visibleTeams}
                 remoteSearchType="team"
+                remoteSearchPublic={readOnly}
                 remoteSearchContext={selectedRegion && !isHashtagQuery(query) ? { region: selectedRegion } : null}
                 idleItems={favoriteTeams}
                 idleTitle="즐겨찾기 팀"
@@ -416,7 +427,19 @@ export default function Teams({ app }) {
             <div className="ui-empty-state-compact">추천할 팀이 아직 없습니다.</div>
           )}
         </div>
-        <Card className="section-card team-create-panel">
+        {readOnly ? (
+          <Card className="section-card team-create-panel">
+            <div className="section-title-row">
+              <div><p className="eyebrow">Create Squad</p><h2>팀 만들기</h2></div>
+              <PlusCircle size={22} />
+            </div>
+            <div className="ui-empty-state-compact">
+              <strong>팀 생성은 로그인 후 사용할 수 있습니다</strong>
+              <span>먼저 공개 팀을 검색해 분위기와 활동 지역을 확인할 수 있습니다. 로그인하면 팀 정보를 입력해 바로 만들 수 있습니다.</span>
+              <Button as={Link} to={getLoginPath("/app/teams")} size="sm">로그인</Button>
+            </div>
+          </Card>
+        ) : <Card className="section-card team-create-panel">
           <div className="section-title-row">
             <div>
               <p className="eyebrow">Create Squad</p>
@@ -492,7 +515,7 @@ export default function Teams({ app }) {
             {teamCreateError ? <span className="form-warning">{teamCreateError}</span> : null}
             <Button type="submit" disabled={captainLimitReached || teamNameInvalid || homeCourtInvalid || teamCreatePending}><PlusCircle size={18} /> {teamCreatePending ? "저장 중" : "팀 만들기"}</Button>
           </form>
-        </Card>
+        </Card>}
       </div>
     </div>
   );

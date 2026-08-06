@@ -52,7 +52,7 @@ export default function TeamDetailView({ controller }) {
         eyebrow="Team Profile"
         title={team.name}
         subtitle={`${team.region} · ${team.homeCourt}`}
-        action={(
+        action={app.demoPreview ? null : (
           <Button
               type="button"
               size="sm"

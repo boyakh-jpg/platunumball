@@ -101,6 +101,7 @@ export default function SearchPicker({
   minSearchLength = 2,
   getSearchText = getDefaultSearchText,
   remoteSearchType = "",
+  remoteSearchPublic = false,
   remoteSearchContext = null,
   remoteSearchOnFocus = false,
   mapRemoteItem = (item) => item,
@@ -212,7 +213,7 @@ export default function SearchPicker({
           limit: Math.max(baseLimit, Number(remoteLimit) || baseLimit),
           context: remoteSearchContext,
           force: forceSearch || (remoteSearchOnFocus && !query),
-        });
+        }, { allowAnonymous: remoteSearchPublic });
         if (remoteRequestIdRef.current !== requestId) return;
         setRemoteItems(Array.isArray(result?.items) ? result.items : []);
       } catch {
@@ -226,7 +227,7 @@ export default function SearchPicker({
     }, 300);
 
     return () => window.clearTimeout(timer);
-  }, [baseLimit, canRemoteSearch, forceSearch, query, remoteLimit, remoteRetrySequence, remoteSearchContextKey, remoteSearchKey, remoteSearchOnFocus]);
+  }, [baseLimit, canRemoteSearch, forceSearch, query, remoteLimit, remoteRetrySequence, remoteSearchContextKey, remoteSearchKey, remoteSearchOnFocus, remoteSearchPublic]);
 
   useEffect(() => {
     setExpanded(false);

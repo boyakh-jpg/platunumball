@@ -22,6 +22,7 @@ import {
   REMOTE_CLIENT_RECRUITING_LIMIT,
 } from "../lib/constants.js";
 import {
+  getLoginPath,
   getProfileRegionSelection,
   REGION_TREE,
 } from "../lib/profileSetup.js";
@@ -67,13 +68,17 @@ const PUBLIC_RECRUITING_TIMEOUT_MS = 10_000;
 const REGION_FILTER_ALL = "__all__";
 const REGION_FILTER_MINE = "__mine__";
 
-function GuestRecruiting() {
+function GuestRecruiting({ app }) {
   const location = useLocation();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [reloadKey, setReloadKey] = useState(0);
   const [regionFilterSido, setRegionFilterSido] = useState(REGION_FILTER_ALL);
   const [regionFilterDistrict, setRegionFilterDistrict] = useState("");
   const [feed, setFeed] = useState({ loading: true, error: false, openCount: 0, posts: [] });
+  const targetPostId = searchParams.get("post") ?? "";
+  const selectedPost = feed.posts.find((post) => post.id === targetPostId) ?? null;
+  useBodyScrollLock(Boolean(selectedPost));
 
   useEffect(() => {
     let active = true;
@@ -115,7 +120,18 @@ function GuestRecruiting() {
     };
   }, [reloadKey]);
 
-  const openLogin = () => navigate("/login", { state: { from: location } });
+  const loginPath = getLoginPath(`${location.pathname}${location.search}${location.hash}`);
+  const openLogin = () => navigate(loginPath);
+  const openRoom = (post) => {
+    const next = new URLSearchParams(searchParams);
+    next.set("post", post.id);
+    setSearchParams(next);
+  };
+  const closeRoom = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete("post");
+    setSearchParams(next, { replace: true });
+  };
   const selectedRegionGroup = REGION_TREE.find((region) => region.sido === regionFilterSido) ?? REGION_TREE[0] ?? { districts: [] };
   const regionDistrictOptions = regionFilterSido === REGION_FILTER_ALL ? [] : selectedRegionGroup.districts ?? [];
   const selectedRegionDistrict = regionDistrictOptions.includes(regionFilterDistrict) ? regionFilterDistrict : regionDistrictOptions[0] ?? "";
@@ -144,7 +160,7 @@ function GuestRecruiting() {
             <span><strong>{rankedCount}</strong>RANKED</span>
             <span><strong>{posts.length - rankedCount}</strong>FRIENDLY</span>
           </div>
-          <Button as={Link} to="/login">로그인 후 참가</Button>
+          <Button as={Link} to={loginPath}>로그인하면 참가 가능</Button>
         </div>
       </section>
 
@@ -178,8 +194,8 @@ function GuestRecruiting() {
             visibility={getRoomVisibilityLabel(post)}
             title={getRecruitingDisplayTitle(post)}
             meta={<><CalendarDays size={15} /> {getRoomScheduleLabel(post)} · {[post.region, post.court].filter(Boolean).join(" · ") || "장소 미정"}</>}
-            actionLabel="로그인 후 참가"
-            onOpen={openLogin}
+            actionLabel="참가 기능 안내"
+            onOpen={() => openRoom(post)}
             onAction={openLogin}
           />
         )) : feed.loading ? (
@@ -195,6 +211,9 @@ function GuestRecruiting() {
           <EmptyState title="현재 열린 공개 매칭이 없습니다" />
         )}
       </section>
+      {selectedPost ? (
+        <RecruitingRoomModal app={app} post={selectedPost} readOnly skipInitialDetailLoad onClose={closeRoom} />
+      ) : null}
     </div>
   );
 }
@@ -475,7 +494,7 @@ function RecruitingReady({ app, readOnly = false }) {
 }
 
 export default function Recruiting({ app, readOnly = false }) {
-  if (readOnly) return <GuestRecruiting />;
+  if (readOnly) return <GuestRecruiting app={app} />;
   if (!app?.currentUser?.id) {
     return <BasketballLoader overlay label="프로필 불러오는 중" />;
   }

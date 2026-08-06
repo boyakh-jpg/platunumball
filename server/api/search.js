@@ -1,4 +1,4 @@
-import { allowRequestMethod, getAuthenticatedContext, readJsonBody, sendJson } from "./_supabaseAdmin.js";
+import { allowRequestMethod, getAuthenticatedContext, getBearerToken, getSupabaseAdminClient, readJsonBody, sendJson } from "./_supabaseAdmin.js";
 import { projectTeamRow } from "../../shared/lib/teamRowProjection.js";
 import {
   AFFILIATION_COLUMNS,
@@ -395,7 +395,9 @@ export default async function handler(request, response) {
     const minLength = getQueryMinLength(query);
     const forceSearch = body.force === true;
     const queryLength = query.replace(/\s+/g, "").length;
-    const types = getRequestedTypes(body.type ?? body.types ?? "all");
+    const hasToken = Boolean(getBearerToken(request));
+    const types = getRequestedTypes(body.type ?? body.types ?? "all")
+      .filter((type) => hasToken || ["profile", "team", "court", "referee", "affiliation"].includes(type));
     const refereeDiscovery = forceSearch && queryLength === 0 && types.length === 1 && types[0] === "referee";
     if ((!forceSearch && queryLength < minLength) || (forceSearch && queryLength < 1 && !refereeDiscovery)) {
       sendJson(response, 200, { ok: true, items: [] });
@@ -405,7 +407,9 @@ export default async function handler(request, response) {
     const searchContext = body.context && typeof body.context === "object" ? body.context : {};
     const courtMapSearch = types.length === 1 && types[0] === "court" && searchContext.purpose === COURT_MAP_SEARCH_PURPOSE;
     const limit = clampLimit(body.limit, courtMapSearch ? COURT_MAP_SEARCH_LIMIT : 25);
-    const context = await getAuthenticatedContext(request, { allowMissingProfile: true });
+    const context = hasToken
+      ? await getAuthenticatedContext(request, { allowMissingProfile: true })
+      : { supabase: getSupabaseAdminClient(), profileId: "" };
     const loaders = {
       profile: () => searchProfiles(context.supabase, query, limit, searchContext),
       team: () => searchTeams(context.supabase, query, limit, searchContext),

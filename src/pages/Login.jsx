@@ -31,6 +31,7 @@ export default function Login({ auth, app }) {
 
   if (auth.session) return <Navigate to={from} replace />;
 
+  const goBack = () => location.key === "default" ? navigate("/app", { replace: true }) : navigate(-1);
   const enterApp = () => navigate(from, { replace: true });
   const signIn = async (providerId) => {
     if (providerId === "google" && embeddedOAuthBrowser) {
@@ -65,7 +66,7 @@ export default function Login({ auth, app }) {
           <Link to="/" className="brand auth-brand" aria-label={BRAND_NAME}>
             <BrandLockup />
           </Link>
-          <Button as={Link} to={from} variant="secondary" size="sm" className="auth-back-link" aria-label="이전 화면으로 돌아가기">
+          <Button type="button" variant="secondary" size="sm" className="auth-back-link" onClick={goBack} aria-label="이전 화면으로 돌아가기">
             <ArrowLeft size={18} />
             <span>뒤로</span>
           </Button>

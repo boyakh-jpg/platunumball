@@ -197,6 +197,7 @@ export function useAppData(authUser = null, appLocation = null, options = {}) {
     authEmail,
     authGenerationRef,
     authUserId,
+    demoPreview,
     currentUserId,
     directoryCacheRef,
     directoryPromiseRef,

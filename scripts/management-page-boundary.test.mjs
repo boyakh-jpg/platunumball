@@ -704,8 +704,8 @@ test("게스트 저장 요청은 원래 경로를 보존해 로그인으로 보�
   assert.match(community, /const remote = isSupabaseConfigured;/u);
   assert.match(community, /const requireLogin = \(\) => \{[\s\S]*window\.location\.assign\(getLoginPath\(redirect\)\)/u);
   assert.match(communityPage, /controller\.requireLogin\(\) \|\| setComposing\(true\)/u);
-  assert.match(rankings, /promotionView && !app\.demoPreview/u);
-  assert.match(rankings, /const directoryLoading = !app\.demoPreview/u);
+  assert.match(rankings, /const readOnly = app\.demoPreview === true/u);
+  assert.match(rankings, /const directoryLoading = !promotionView/u);
 });
 
 test("게스트는 실제 공개 매칭만 보고 개인 화면은 로그인 상태로 끝난다", async () => {
@@ -721,11 +721,13 @@ test("게스트는 실제 공개 매칭만 보고 개인 화면은 로그인 상
   assert.match(app, /\/app\/recruiting/u);
   assert.match(app, /<Recruiting app=\{app\} readOnly=\{guestPreview\} \/>/u);
   assert.match(recruiting, /fetch\(`\/api\/landing\/stats\?recruitingLimit=\$\{REMOTE_CLIENT_RECRUITING_LIMIT\}`/u);
-  assert.match(recruiting, /if \(readOnly\) return <GuestRecruiting \/>/u);
+  assert.match(recruiting, /if \(readOnly\) return <GuestRecruiting app=\{app\} \/>/u);
+  assert.match(recruiting, /<RecruitingRoomModal app=\{app\} post=\{selectedPost\} readOnly skipInitialDetailLoad/u);
   assert.match(recruiting, /useState\(REGION_FILTER_ALL\)/u);
   assert.match(recruitingView, /<option value="__mine__">\{`내 지역/u);
   assert.match(recruitingView, /<option value="__all__">전체<\/option>/u);
-  assert.match(home, /app\?\.demoPreview[\s\S]*개인 일정, 경기 기록, 알림은 로그인 후/u);
+  assert.match(home, /app\?\.demoPreview[\s\S]*<GuestHomePage/u);
+  assert.match(home, /일정은 로그인 후 확인할 수 있습니다[\s\S]*공개 매칭 보기/u);
   assert.match(matches, /일정은 로그인 후 확인할 수 있습니다/u);
   assert.match(bootstrap, /regionScope: "all", startFilter: "all"/u);
 });
