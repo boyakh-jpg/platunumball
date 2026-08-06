@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 import { getLoginPath } from "../lib/profileSetup.js";
 import {
+  COMMUNITY_POST_ADMIN_CATEGORIES,
+  COMMUNITY_POST_CATEGORIES,
   COMMUNITY_PAGE_SIZE,
   normalizeCommunityCommentBody,
   normalizeCommunityPostDraft,
@@ -19,7 +21,7 @@ function makeLocalId(prefix) {
 function makeDemoBoard(currentUser, users = []) {
   const secondUser = users.find((user) => user.id !== currentUser?.id) ?? currentUser;
   const posts = [
-    { id: "community_demo_notice", authorId: secondUser?.id, author: secondUser, category: "notice", title: "커뮤니티 이용 안내", body: "경기 모집은 매칭 메뉴를 이용하고, 이곳에는 농구 이야기와 구장 정보를 남겨 주세요.", pinned: true, viewCount: 42, likeCount: 4, commentCount: 0, liked: false, createdAt: hoursAgo(8), updatedAt: hoursAgo(8) },
+    { id: "community_demo_notice", authorId: secondUser?.id, author: secondUser, category: "notice", title: "게시판 이용 안내", body: "경기 모집은 매칭 메뉴를 이용하고, 이곳에는 농구 이야기와 구장 정보를 남겨 주세요.", pinned: true, viewCount: 42, likeCount: 4, commentCount: 0, liked: false, createdAt: hoursAgo(8), updatedAt: hoursAgo(8) },
     { id: "community_demo_1", authorId: secondUser?.id, author: secondUser, category: "question", title: "오늘 저녁 야외 코트 상태 어떤가요?", body: "비가 그친 뒤 바닥이 말랐는지 궁금합니다. 다녀온 분 있으면 알려 주세요.", pinned: false, viewCount: 31, likeCount: 8, commentCount: 2, liked: false, createdAt: hoursAgo(3), updatedAt: hoursAgo(3) },
     { id: "community_demo_2", authorId: currentUser?.id, author: currentUser, category: "general", title: "처음 3대3 할 때 지키면 좋은 것", body: "공격 전 체크볼과 파울 콜을 먼저 합의하면 경기가 훨씬 매끄럽습니다.", pinned: false, viewCount: 24, likeCount: 5, commentCount: 1, liked: true, createdAt: hoursAgo(10), updatedAt: hoursAgo(10) },
     { id: "community_demo_3", authorId: secondUser?.id, author: secondUser, category: "general", title: "주말 오전 슛 연습", body: "혼자 연습하기 좋은 시간대와 구장을 공유해 봐요.", pinned: false, viewCount: 17, likeCount: 3, commentCount: 0, liked: false, createdAt: hoursAgo(28), updatedAt: hoursAgo(28) },
@@ -53,7 +55,7 @@ export function getCommunityErrorMessage(errorCode = "") {
   if (errorCode.includes("title")) return "제목은 2자 이상 100자 이하로 입력해 주세요.";
   if (errorCode.includes("comment")) return "댓글 내용을 확인해 주세요.";
   if (errorCode.includes("body")) return "본문은 2자 이상 5,000자 이하로 입력해 주세요.";
-  return "커뮤니티 요청을 처리하지 못했습니다.";
+  return "게시판 요청을 처리하지 못했습니다.";
 }
 
 export default function useCommunityController(app) {
@@ -66,7 +68,7 @@ export default function useCommunityController(app) {
   const [remotePopularPosts, setRemotePopularPosts] = useState([]);
   const [page, setPage] = useState({ offset: 0, limit: COMMUNITY_PAGE_SIZE, total: 0, hasMore: false });
   const [pageIndex, setPageIndex] = useState(0);
-  const [category, setCategory] = useState("all");
+  const [category, setCategory] = useState(COMMUNITY_POST_CATEGORIES[0]);
   const [selectedPost, setSelectedPost] = useState(null);
   const [comments, setComments] = useState([]);
   const [canModerate, setCanModerate] = useState(false);
@@ -122,7 +124,7 @@ export default function useCommunityController(app) {
     }
   }, [app.remoteReady, category, remote]);
 
-  const filteredLocalPosts = localPosts.filter((post) => category === "all" || post.category === category);
+  const filteredLocalPosts = localPosts.filter((post) => post.category === category);
   const posts = remote ? remotePosts : filteredLocalPosts.slice(pageIndex * COMMUNITY_PAGE_SIZE, (pageIndex + 1) * COMMUNITY_PAGE_SIZE);
   const currentPage = remote ? page : {
     offset: pageIndex * COMMUNITY_PAGE_SIZE,
@@ -315,7 +317,9 @@ export default function useCommunityController(app) {
 
   return {
     posts, popularPosts, page: currentPage, pageIndex, category, setCategory, selectedPost, comments, commentThreads,
-    canModerate, loading, detailLoading, pending, error, setError,
+    canModerate,
+    canWriteCategory: canModerate || !COMMUNITY_POST_ADMIN_CATEGORIES.includes(category),
+    loading, detailLoading, pending, error, setError,
     requireLogin,
     openPost, closePost,
     goToPage: (targetPage) => {

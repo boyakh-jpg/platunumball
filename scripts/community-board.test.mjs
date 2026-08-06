@@ -4,6 +4,8 @@ import test from "node:test";
 import {
   assertCommunityReplyParent,
   canViewCommunityActivity,
+  COMMUNITY_POST_CATEGORIES,
+  COMMUNITY_POST_CATEGORY_LABELS,
   COMMUNITY_PAGE_SIZE,
   getCommunityPopularityScore,
   normalizeCommunityPostDraft,
@@ -43,27 +45,34 @@ test("공지는 운영자만 작성하고 답글은 같은 글의 원댓글에�
   assert.equal(normalizeCommunityPostDraft({ category: "notice", title: "공지", body: "내용", pinned: true }, 30).pinned, true);
   assert.equal(normalizeCommunityPostDraft({ category: "photo", title: "사진", body: "내용" }, 30).category, "photo");
   assert.equal(normalizeCommunityPostDraft({ category: "question", title: "질문", body: "내용" }, 0).category, "question");
+  assert.equal(normalizeCommunityPostDraft({ category: "team", title: "팀소개", body: "내용" }, 0).category, "team");
   assert.equal(assertCommunityReplyParent({ id: "root", post_id: "post", parent_id: null, status: "published" }, "post"), "root");
   assert.throws(() => assertCommunityReplyParent({ id: "reply", post_id: "post", parent_id: "root", status: "published" }, "post"), /community_reply_parent_invalid/);
 });
 
-test("사진 탭은 운영자 전용 WebP 한 장을 서버 검증 뒤 저장한다", async () => {
-  const [page, editor, dialog, api, migration] = await Promise.all([
+test("게시판은 공지부터 분류별로 열리고 작성 분류를 현재 탭에 고정한다", async () => {
+  const [page, editor, dialog, api, photoMigration, teamMigration] = await Promise.all([
     readFile(new URL("../src/pages/Community.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/pages/CommunityPostEditor.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/pages/CommunityPostDialog.jsx", import.meta.url), "utf8"),
     readFile(new URL("../server/api/community/posts.js", import.meta.url), "utf8"),
     readFile(new URL("../supabase/migrations/20260806100000_community_photo_posts.sql", import.meta.url), "utf8"),
+    readFile(new URL("../supabase/migrations/20260806120000_community_team_posts.sql", import.meta.url), "utf8"),
   ]);
 
-  assert.match(page, /\["photo", "사진"\]/);
-  assert.match(editor, /canModerate \? <option value="photo">사진/);
+  assert.deepEqual(COMMUNITY_POST_CATEGORIES, ["notice", "general", "question", "team", "photo"]);
+  assert.equal(COMMUNITY_POST_CATEGORY_LABELS.question, "질의");
+  assert.equal(COMMUNITY_POST_CATEGORY_LABELS.team, "팀소개");
+  assert.match(page, /COMMUNITY_POST_CATEGORIES\.map/);
+  assert.match(page, /initialCategory=\{controller\.category\}/);
+  assert.doesNotMatch(editor, /<select|<option/);
   assert.match(editor, /type="file"[\s\S]*accept="image\/jpeg,image\/png,image\/webp,image\/avif,image\/heic,image\/heif"/);
   assert.match(dialog, /className="community-post-image"/);
   assert.match(api, /validateWebpImage\(bytes/);
   assert.match(api, /\.from\(COMMUNITY_POST_IMAGE_BUCKET\)[\s\S]*\.upload\(imagePath/);
-  assert.match(migration, /category in \('general', 'question', 'photo', 'notice'\)/);
-  assert.match(migration, /'community-post-images'[\s\S]*array\['image\/webp'\]/);
+  assert.match(photoMigration, /category in \('general', 'question', 'photo', 'notice'\)/);
+  assert.match(photoMigration, /'community-post-images'[\s\S]*array\['image\/webp'\]/);
+  assert.match(teamMigration, /category in \('general', 'question', 'team', 'photo', 'notice'\)/);
 });
 
 test("프로필 활동은 30개씩 조회하고 공개 설정을 본인에게는 적용하지 않는다", () => {
@@ -116,6 +125,7 @@ test("커뮤니티 입력 버튼은 서버와 같은 최대 길이에서 막힌�
 
   assert.match(editor, /titleLength <= COMMUNITY_POST_TITLE_MAX/);
   assert.match(editor, /bodyLength <= COMMUNITY_POST_BODY_MAX/);
+  assert.doesNotMatch(editor, /<select|<option/);
   assert.match(dialog, /commentLength > COMMUNITY_COMMENT_BODY_MAX/);
 });
 
@@ -127,15 +137,17 @@ test("게시글 목록은 제목 중심 열과 모바일 두 줄 구조를 사�
 
   assert.match(page, /community-post-list-head/);
   assert.match(page, /<span>작성자<\/span>[\s\S]*<span>날짜<\/span>[\s\S]*<span>조회<\/span>[\s\S]*<span>추천<\/span>[\s\S]*<span>댓글<\/span>/);
-  assert.match(page, /\["question", "질문"\]/);
+  assert.match(page, /<h1>게시판<\/h1>/);
   assert.match(page, /community-post-views/);
   assert.doesNotMatch(page, /controller\.page\.total\}개/);
   assert.doesNotMatch(page, /community-post-open|ChevronRight/);
   assert.match(page, /post\.imageUrl \? <ImageIcon size=\{15\} aria-label="사진 첨부"/);
-  assert.match(styles, /"title title comments"\s*"likes date author"/);
+  assert.match(page, /community-post-title-line[\s\S]*community-post-comments/);
+  assert.match(page, /community-post-meta-line[\s\S]*community-post-likes[\s\S]*community-post-date/);
+  assert.match(styles, /"title author"\s*"meta author"/);
   assert.match(styles, /\.community-post-labels \{\s*display: none/);
   assert.match(styles, /\.community-post-title\s*\{[\s\S]*font-size: var\(--font-size-body-sm\)/);
-  assert.match(styles, /\.community-post-date \{[\s\S]*justify-self: start/);
+  assert.match(styles, /\.community-post-author-cell \{[\s\S]*grid-area: author;[\s\S]*align-self: center/);
   assert.match(styles, /\.community-post-author-cell \.community-author > \.avatar\s*\{[\s\S]*width: var\(--space-10\)/);
   assert.match(styles, /\.community-post-views\s*\{\s*display: none/);
   assert.match(styles, /\.community-post-comments > svg\s*\{\s*display: none/);
@@ -159,7 +171,7 @@ test("조회수는 계정당 글별 한 번만 저장하고 모든 페이지에 
   assert.match(migration, /community_post_views_increment_count/);
   assert.match(migration, /category in \('general', 'question', 'notice'\)/);
   assert.doesNotMatch(pagination, /totalPages <= 1/);
-  assert.match(editor, /option value="question">질문/);
+  assert.match(editor, /COMMUNITY_POST_CATEGORIES\.includes\(initialCategory\)/);
 });
 
 test("게시판 페이지와 프로필 활동은 같은 30개 페이지 규칙을 사용한다", async () => {

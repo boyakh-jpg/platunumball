@@ -9,8 +9,9 @@ export const COMMUNITY_POST_DAILY_LIMIT = 5;
 export const COMMUNITY_COMMENT_DAILY_LIMIT = 50;
 export const COMMUNITY_PAGE_SIZE = 30;
 export const COMMUNITY_POPULAR_WINDOW_MS = 3 * 24 * 60 * 60 * 1000;
-export const COMMUNITY_POST_CATEGORIES = Object.freeze(["general", "question", "photo", "notice"]);
-export const COMMUNITY_POST_CATEGORY_LABELS = Object.freeze({ general: "자유", question: "질문", photo: "사진", notice: "공지" });
+export const COMMUNITY_POST_CATEGORIES = Object.freeze(["notice", "general", "question", "team", "photo"]);
+export const COMMUNITY_POST_CATEGORY_LABELS = Object.freeze({ notice: "공지", general: "자유", question: "질의", team: "팀소개", photo: "사진" });
+export const COMMUNITY_POST_ADMIN_CATEGORIES = Object.freeze(["notice", "photo"]);
 
 export function canViewCommunityActivity(privacy = {}, kind = "posts", isOwnProfile = false) {
   const key = kind === "comments" ? "communityComments" : "communityPosts";

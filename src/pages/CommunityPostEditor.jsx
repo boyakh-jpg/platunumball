@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import { ImagePlus, Send, Trash2, X } from "lucide-react";
 import Button from "../components/common/Button.jsx";
-import { COMMUNITY_POST_BODY_MAX, COMMUNITY_POST_TITLE_MAX } from "../../shared/lib/communityPolicy.js";
+import { COMMUNITY_POST_BODY_MAX, COMMUNITY_POST_CATEGORIES, COMMUNITY_POST_TITLE_MAX } from "../../shared/lib/communityPolicy.js";
 import { getCommunityPostImageErrorMessage, prepareCommunityPostImage } from "../lib/communityPostImage.js";
 
 function getInitialDraft(initialPost, initialCategory) {
-  const category = ["notice", "question", "photo"].includes(initialPost?.category)
+  const category = COMMUNITY_POST_CATEGORIES.includes(initialPost?.category)
     ? initialPost.category
-    : initialCategory === "photo" ? "photo" : "general";
+    : COMMUNITY_POST_CATEGORIES.includes(initialCategory) ? initialCategory : "general";
   return {
     category,
     title: initialPost?.title ?? "",
@@ -44,20 +44,6 @@ export default function CommunityPostEditor({ initialPost = null, initialCategor
         await onSave(payload);
       }
     }}>
-      <label>
-        분류
-        <select value={draft.category} onChange={(event) => setDraft((current) => ({
-          ...current,
-          category: event.target.value,
-          pinned: event.target.value === "notice" && current.pinned,
-          ...(event.target.value === "photo" ? {} : { imageBase64: "", imagePreviewUrl: "", imageName: "" }),
-        }))}>
-          <option value="general">자유</option>
-          <option value="question">질문</option>
-          {canModerate ? <option value="photo">사진</option> : null}
-          {canModerate ? <option value="notice">공지</option> : null}
-        </select>
-      </label>
       <label>
         제목
         <input autoFocus maxLength={COMMUNITY_POST_TITLE_MAX} value={draft.title} onChange={(event) => setDraft((current) => ({ ...current, title: event.target.value }))} />

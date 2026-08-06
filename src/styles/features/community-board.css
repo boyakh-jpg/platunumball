@@ -116,6 +116,7 @@
   padding: 8px 0;
 }
 
+.community-post-title-line, .community-post-meta-line { display: contents; } .community-post-labels { grid-column: 1; } .community-post-title-cell { grid-column: 2; } .community-post-author-cell { grid-column: 3; } .community-post-date { grid-column: 4; } .community-post-views { grid-column: 5; } .community-post-likes { grid-column: 6; } .community-post-comments { grid-column: 7; } .community-post-labels, .community-post-title-cell, .community-post-author-cell, .community-post-date, .community-post-views, .community-post-likes, .community-post-comments { grid-row: 1; }
 .community-post-labels,
 .community-post-title-cell,
 .community-post-metrics,
@@ -382,16 +383,20 @@
   }
 
   .community-post-row {
-    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas:
-      "title title comments"
-      "likes date author";
+      "title author"
+      "meta author";
     column-gap: var(--space-3); row-gap: var(--space-3);
     min-height: 68px; padding: var(--space-4) 0;
   }
 
   .community-post-labels { display: none; }
-  .community-post-title-cell { grid-area: title; }
+  .community-post-title-line, .community-post-meta-line {
+    display: flex; align-items: center; min-width: 0; gap: var(--space-4);
+  }
+  .community-post-title-line { grid-area: title; } .community-post-meta-line { grid-area: meta; }
+  .community-post-title-cell { flex: 1 1 auto; }
 
   .community-post-title {
     min-height: 0;
@@ -401,8 +406,8 @@
   }
 
   .community-post-author-cell {
-    grid-area: author;
-    justify-self: end;
+    grid-area: author; align-self: center;
+    justify-self: end; max-width: calc(var(--space-24) * 2);
   }
 
   .community-post-author-cell .community-author small {
@@ -426,22 +431,17 @@
     font-size: var(--font-size-meta);
   }
 
-  .community-post-date {
-    grid-area: date;
-    justify-self: start; text-align: left;
-  }
+  .community-post-date { text-align: left; }
 
   .community-post-views {
     display: none;
   }
 
   .community-post-likes {
-    grid-area: likes;
     color: var(--blue);
   }
 
   .community-post-comments {
-    grid-area: comments;
     color: var(--blue);
   }
 
