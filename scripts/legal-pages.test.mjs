@@ -33,6 +33,8 @@ test("public footer and login expose both legal documents", async () => {
     assert.match(footer, new RegExp(`to="${path}"`));
     assert.match(login, new RegExp(`to="${path}"`));
   }
+  assert.match(footer, /https:\/\/www\.instagram\.com\/box_tier\//);
+  assert.match(footer, /href=\{INSTAGRAM_URL\}[\s\S]*Instagram @box_tier/);
 });
 
 test("OAuth homepage identifies BOXTIER and links the privacy policy", async () => {
