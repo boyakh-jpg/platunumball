@@ -197,13 +197,13 @@ test("public landing exposes aggregate counts and bounded public feed fields", a
   assert.match(source, /\.eq\("status", "open"\)[\s\S]*?\.eq\("visibility", "public"\)/);
   assert.match(source, /\.eq\("status", "confirmed"\)[\s\S]*?\.eq\("visibility", "public"\)/);
   assert.match(source, /\.is\("deleted_at", null\)/);
-  assert.match(source, /select\("id,type,title,mode,court_id,court_name,region,scheduled_date,scheduled_time,scheduled_at,timing_type,ranked,official,pre_registered,rating_scale,age_restriction,allowed_age_groups,rules,stakes,court_reserved,court_fee,spots,referee_wanted,referee_trust_min,stat_entry_minutes,dispute_minutes,host_join_mode,side_capacity,bench_capacity"\)[\s\S]*?\.limit\(recruitingLimit\)/);
+  assert.match(source, /select\("id,type,title,mode,court_id,court_name,region,scheduled_date,scheduled_time,scheduled_at,timing_type:room_state->>timingType,ranked,official,pre_registered,rating_scale,age_restriction,allowed_age_groups,rules,stakes,court_reserved,court_fee,spots,referee_wanted,referee_trust_min,stat_entry_minutes,dispute_minutes,host_join_mode,side_capacity,bench_capacity"\)[\s\S]*?\.limit\(recruitingLimit\)/);
   assert.match(source, /Math\.min\(limit, REMOTE_CLIENT_RECRUITING_LIMIT\)/);
   assert.match(source, /select\("id,title,team_a_id,team_b_id,score_a,score_b"\)[\s\S]*?\.limit\(3\)/);
   assert.match(source, /select\("id,name"\)/);
   assert.match(source, /sendJson\(response, 200, \{ ok: true, stats, feed \}\)/);
   assert.doesNotMatch(source, /getAuthenticatedContext|select\("\*"\)/);
-  assert.doesNotMatch(source, /player_ids|room_state|created_by|referee_id|memo|evidence/);
+  assert.doesNotMatch(source, /player_ids|room_state(?!->>timingType)|created_by|referee_id|memo|evidence/);
 });
 
 test("Discord delivery cron uses Vault and stays separate from system maintenance", async () => {

@@ -72,7 +72,7 @@ export async function loadLandingFeed(supabase, recruitingLimit = LANDING_RECRUI
     readRows(
       supabase
         .from("recruiting_posts")
-        .select("id,type,title,mode,court_id,court_name,region,scheduled_date,scheduled_time,scheduled_at,timing_type,ranked,official,pre_registered,rating_scale,age_restriction,allowed_age_groups,rules,stakes,court_reserved,court_fee,spots,referee_wanted,referee_trust_min,stat_entry_minutes,dispute_minutes,host_join_mode,side_capacity,bench_capacity")
+        .select("id,type,title,mode,court_id,court_name,region,scheduled_date,scheduled_time,scheduled_at,timing_type:room_state->>timingType,ranked,official,pre_registered,rating_scale,age_restriction,allowed_age_groups,rules,stakes,court_reserved,court_fee,spots,referee_wanted,referee_trust_min,stat_entry_minutes,dispute_minutes,host_join_mode,side_capacity,bench_capacity")
         .eq("status", "open")
         .eq("visibility", "public")
         .order("updated_at", { ascending: false })
