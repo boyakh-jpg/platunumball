@@ -226,11 +226,14 @@ const roomQueueStatus = getRecruitingRoomStatus(lobby, { post: selectedPost, myE
         const canConfirmRefereeAbsence = Boolean(!sourceMatchRequiresTournamentReferee && matchRoom && sourceMatchOpponentLeaderId === app.currentUser.id && sourceMatch?.refereeId && sourceMatch?.refereeAbsenceRequest?.status === "pending" && !sourceMatch.refereeAbsenceRequest.confirmedAt && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.startedAt && !sourceMatch?.endedAt && !sourceMatch?.result && sourceMatchSideName);
         const canEndSourceMatch = Boolean(matchRoom && currentUserCanOperateStartedSourceMatch && sourceMatchPhase?.phase === "live" && !sourceMatch?.endedAt && sourceMatchStarted);
         const sourceManualFinalizationStatus = getMatchManualFinalizationStatus(sourceMatch);
-        const canFinalizeSourceMatch = Boolean(
+        const canManageSourceMatchFinalization = Boolean(
           matchRoom && !sourceMatchIsRecordRoom
-          && sourceMatch?.endedAt && sourceMatch.result && sourceManualFinalizationStatus.ready && !sourceMatch?.confirmedAt
-          && sourceMatch.status !== "disputed"
+          && sourceMatch?.endedAt && sourceMatch.result && !sourceMatch?.confirmedAt
           && (sourceMatch.refereeId ? currentUserIsSourceReferee : mine)
+        );
+        const canFinalizeSourceMatch = Boolean(
+          canManageSourceMatchFinalization && sourceManualFinalizationStatus.ready
+          && sourceMatch.status !== "disputed"
         );
         const sourceMatchResultEntryPermission = sourceMatch
           ? getMatchResultEntryPermission(sourceMatch, app.currentUser.id, {
@@ -304,7 +307,7 @@ const roomQueueStatus = getRecruitingRoomStatus(lobby, { post: selectedPost, myE
     sourceMatchPlacementByPlayerId, sourceMatchUsesQrAttendance, sourceMatchServerStartStatus, canInspectMatchAttendance, canManageMatchCheckin, canShowStartSourceMatch,
     sourceMatchMissingStartAttendanceIds, pickupAssignmentSideCapacity, pickupAssignmentBenchCapacity, pickupAssignmentAttendanceReady, pickupAssignmentSidesComplete, pickupRerollState,
     currentUserCheckedInForPickup, canRequestPickupReroll, pickupRerollTrustReady, canStartSourceMatch, sourceMatchStartButtonLabel, sourceMatchStartButtonTitle,
-    canRequestRefereeAbsence, canConfirmRefereeAbsence, canEndSourceMatch, sourceManualFinalizationStatus, canFinalizeSourceMatch, sourceMatchResultEntryPermission,
+    canRequestRefereeAbsence, canConfirmRefereeAbsence, canEndSourceMatch, sourceManualFinalizationStatus, canManageSourceMatchFinalization, canFinalizeSourceMatch, sourceMatchResultEntryPermission,
     canReviewSourceMatch, canSubmitSourceMatchLiveResult, canSubmitSourceMatchPostgameResult, getEditableSourceMatchStatFields, sourceMatchResultSubmitLabel, canCancelSourceMatch, sourceParticipationCancellation,
     canDeleteSourceSoloRecord, sourceMatchRecordWindow, sourceOpenDisputes, sourceHasOwnOpenDispute, canManageSourceMatchSubstitutionSide, sourceMatchApprovalOpen,
     canRefreshSourceMatchReview, canRequestSourceMatchPointDispute, showSourceMatchRecordSummary, canShowSourceMatchRecordEditor, sourceMatchRecordBoardFirst,

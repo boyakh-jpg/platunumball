@@ -8,7 +8,7 @@ export function RecruitingRoomActionSection({ context }) {
     PLAYER_STAT_FIELDS, RefreshCw, RotateCcw, SIDE_LABELS, ShieldCheck, SourceMatchDisputeReviewPanel,
     SourceMatchDisputeEditor, SourceMatchRecordSummary, Swords, TeamMemberPicker, TierBadge, UserRound,
     UsersRound, XCircle, alreadyApplied, app, autoBalancedIndividualRoom, benchCapacity, canCancelSourceMatch,
-    canConfirmRefereeAbsence, canDeleteSourceSoloRecord, canEndSourceMatch, canFinalizeSourceMatch, canJoin, canRefreshSourceMatchReview,
+    canConfirmRefereeAbsence, canDeleteSourceSoloRecord, canEndSourceMatch, canFinalizeSourceMatch, canJoin, canManageSourceMatchFinalization, canRefreshSourceMatchReview,
     canRemakeRoom, canRequestRefereeAbsence, canRequestSourceMatchPointDispute, canResolveSourceMatchDispute, canShowStartSourceMatch, canStartSourceMatch,
     canSubmitSourceMatchLiveResult, canSubmitSourceMatchPostgameResult, cancellationReasonText, candidateMmr, confirmPaidCourtJoin, confirmQueueRoom,
     confirmingMatchId, createPortal, currentUserIsRoomReferee, deleteSourceSoloRecord, fit, getDefaultApplyTeamId,
@@ -20,7 +20,7 @@ export function RecruitingRoomActionSection({ context }) {
     ruleAcknowledgementPending, scheduleChangePending, selectedJoinPlayerIds, selectedJoinReserveIds, selectedJoinTeam, selectedJoinTeamEligibility,
     selectedMatchRules, selectedPost, setPaidCourtJoinPrompt, setRoomHelpOpen, setSourceDisputeDraft, showSourceMatchRecordSummary, sidePartyJoinOptions,
     setSourceMatchDraftScore, sourceDisputeDraft, sourceDisputePending, sourceDisputeStatus, sourceFinalAuthorityLabel, sourceHasOwnOpenDispute, sourceMatch, sourceMatchAction, sourceMatchActionPending, sourceMatchApprovalOpen,
-    sourceMatchCancelActionLabel, sourceMatchIsRecordRoom, sourceMatchRecordBoardFirst, sourceMatchRecordWindow, sourceMatchResultSubmitLabel, sourceMatchReviewRefreshing, sourceMatchSideName,
+    sourceManualFinalizationStatus, sourceMatchCancelActionLabel, sourceMatchIsRecordRoom, sourceMatchRecordBoardFirst, sourceMatchRecordWindow, sourceMatchResultSubmitLabel, sourceMatchReviewRefreshing, sourceMatchSideName,
     sourceParticipationCancellation,
     sourceMatchResultEntryPermission, sourceMatchStartButtonLabel, sourceMatchStartButtonTitle, sourceOpenDisputes, sourceRoomReadOnly, submitJoin, submitSourceDispute,
     teamOnlyRoom, teamRoomHasJoinableSide, updateJoinDraft, userById, runSourceMatchAction,
@@ -45,6 +45,9 @@ export function RecruitingRoomActionSection({ context }) {
                     <span>{sourceMatchAction.detail}</span>
                     {sourceMatchApprovalOpen && sourceMatchRecordWindow?.disputeClosesAt ? (
                       <RecruitingRoomDisputeCountdown closesAt={sourceMatchRecordWindow.disputeClosesAt} />
+                    ) : null}
+                    {canManageSourceMatchFinalization && sourceMatchApprovalOpen && !sourceMatchAction.disputed ? (
+                      <span>결과 제출과 경기 종료가 모두 끝난 뒤 {sourceManualFinalizationStatus.delayMinutes}분부터 이의신청 종료가 가능합니다.</span>
                     ) : null}
                     {cancellationReasonText ? (
                       <span className="arena-cancellation-reason"><b>취소 사유</b>{cancellationReasonText}</span>

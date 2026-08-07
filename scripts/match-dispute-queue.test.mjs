@@ -434,3 +434,10 @@ test("기록완료 뒤 현재 사용자 기록 목록을 강제 갱신한다", a
   assert.match(controller, /loadProfileRecords\?\.\(\{ force: true \}\)/);
   assert.match(actions, />\s*기록완료\s*</);
 });
+
+test("방장과 배정 심판에게 이의신청 종료 가능 시점을 안내한다", async () => {
+  const model = await readSource("src/components/recruiting/RecruitingRoomMatchModel.jsx");
+  const actions = await readSource("src/components/recruiting/RecruitingRoomActionSection.jsx");
+  assert.match(model, /const canManageSourceMatchFinalization = Boolean\(/);
+  assert.match(actions, /sourceManualFinalizationStatus\.delayMinutes\}분부터 이의신청 종료가 가능합니다/);
+});

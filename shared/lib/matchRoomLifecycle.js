@@ -217,6 +217,7 @@ export function getMatchManualFinalizationStatus(match = {}, now = Date.now()) {
   const readyAtMs = availableAt?.getTime() ?? NaN;
   return {
     submittedAt,
+    delayMinutes: MATCH_MANUAL_FINALIZATION_DELAY_MINUTES,
     ready,
     readyAt: availableAt,
     remainingMs: Number.isFinite(nowMs) && Number.isFinite(readyAtMs)
