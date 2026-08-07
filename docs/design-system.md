@@ -2691,7 +2691,7 @@ UI 수정 전:
 ## 2026-08-07 공용 보조 버튼 대비
 
 1. 공용 보조 버튼은 기존 테마별 반투명 `--button-secondary-bg`를 `--ui-button-bg`로 재사용한다.
-2. `.ui-liquid-glass` 내부 보조 버튼만 공용 `--ui-liquid-glass-button-bg`, `--ui-liquid-glass-button-color`를 사용한다. 배경은 불투명, 글자는 테마별 대비색이며 화면별 덮어쓰기를 두지 않는다.
+2. `.ui-liquid-glass` 내부 보조 버튼만 공용 `--ui-liquid-glass-button-bg`, `--ui-liquid-glass-button-color`를 사용한다. 홈 보조 버튼과 같은 중립 계열을 유지하고, 다크는 불투명 중립 표면과 밝은 글자, 라이트는 흰 표면과 짙은 글자를 사용한다. 파란 강조색과 화면별 덮어쓰기는 두지 않는다.
 
 ## 2026-08-06 탭·진행 목록 공용 소유권
 
