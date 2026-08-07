@@ -176,6 +176,7 @@ export const OPERATOR_MATCH_ACTIONS = new Set([
 export const MATCH_RECORD_ROSTER_ACTION = "setMatchRecordTeamRoster";
 
 export const PARTICIPANT_MATCH_ACTIONS = new Set([
+  "acknowledgeMatchNoDispute",
   "acknowledgeMatchRoomRules",
   "agreeMatch",
   "approveMatch",
@@ -382,6 +383,7 @@ export function canCommitRatingResult(action, existingResult, nextMatch) {
 }
 
 export const SQL_REDUCER_MATCH_ACTIONS = new Set([
+  "acknowledgeMatchNoDispute",
   "finalizeMatch",
   "incrementMatchScore",
   "acknowledgeMatchRoomRules",
@@ -429,6 +431,7 @@ export function isMissingSqlMatchReducer(error = {}) {
     message.includes("rankball_match_confirm_pickup_assignment") ||
     message.includes("rankball_match_generate_pickup_assignment") ||
     message.includes("rankball_match_finalize_locked") ||
+    message.includes("rankball_match_no_dispute_action") ||
     message.includes("rankball_match_rule_ack_action") ||
     message.includes("rankball_match_schedule_response_action") ||
     message.includes("rankball_match_dispute_action") ||
@@ -465,6 +468,7 @@ export function shouldUseSqlMatchAction(operation = {}) {
 
 export function canUseSqlMatchActionWithoutSnapshot(operation = {}) {
   return [
+    "acknowledgeMatchNoDispute",
     "agreeMatch",
     "approveMatch",
     "cancelMatch",

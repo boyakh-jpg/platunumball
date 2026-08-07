@@ -1,4 +1,5 @@
 export {
+  acknowledgeMatchNoDispute,
   agreeMatch,
   approveMatch,
   disputeMatch,

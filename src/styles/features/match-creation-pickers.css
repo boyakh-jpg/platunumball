@@ -66,11 +66,6 @@ label {
 .field-label {
   display: block;
 }
-.switch-line {
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
-}
 .signup-setup-grid {
   align-items: start;
 }

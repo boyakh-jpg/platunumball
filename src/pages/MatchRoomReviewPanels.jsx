@@ -19,10 +19,26 @@ import {
 
 export function MatchRoomReviewPanels({ controller }) {
   const { app, match, score, disputeReason, setDisputeReason, disputeCustomReason, setDisputeCustomReason, disputeRequestedStats, setDisputeRequestedStats, disputeRequestedScoreA, setDisputeRequestedScoreA, disputeRequestedScoreB, setDisputeRequestedScoreB, reportReason, setReportReason, statEditorPlayerId, setStatEditorPlayerId, reviewControlsOpen, setReviewControlsOpen, resultSaveFeedback, courtReviewSaveFeedback, courtReviewSaving, matchDetailRefreshing, soloRecordDeleteOpen, setSoloRecordDeleteOpen, managementActionPending, managementActionFeedback, voidDialogOpen, setVoidDialogOpen, voidActionPending, finalizeDialogOpen, setFinalizeDialogOpen, finalizeActionPending, voidRestoreDetail, setVoidRestoreDetail, voidRestoreStatus, existingCourtReview, courtReviewDraft, userMap, statEditorPlayer, isSharedRecord, status, cancelCopy, cancelActionLabel, teamAAgreement, teamBAgreement, currentUserSideName, recordWindow, referee, hasReferee, isSoloRecord, currentUserIsEligibleReferee, currentUserSubmitted, benchCapacity, isMatchHost, matchPhase, startedAuthorityPhase, currentUserCanEndMatch, currentUserCanResolveDispute, currentUserCanRefreshReview, resultEntryPermission, canEditDisputeDraft, canSubmitLiveResult, canSubmitResult, canCancel, requestCancelMatch, canFinalizeMatch, finalAuthorityLabel, openDisputes, hasOwnOpenDispute, canDispute, canRequestMatchDispute, canRequestOwnPointDispute, canRequestScoreDispute, canVoid, canRequestVoidRestore, canDeleteSoloRecord, requestFinalizeMatch, submitFinalizeMatch, canReport, isContractStage, shouldShowResultEntry, shouldShowWaitingPanel, scoreA, scoreB, draftScoreA, draftScoreB, teamASide, teamBSide, teamA, teamB, teamAMmr, teamBMmr, winnerName, matchKind, recordLockReason, renderHeroRoster, renderHeroReserves, updatePlayerStat, submitResult, submitDispute, submitVoidMatch, submitVoidRestoreRequest, refreshMatchDetail, canEditPlayerStat, editableStatFields, getPlayerStatState, permissionTitle, permissionDetail, nextAction, statTrustSteps, statTrustPercent, canSubmitCourtReview, courtReviewRatingReady, updateCourtReviewDraft, submitCourtReview, deleteSoloRecord, confirmDeleteSoloRecord, normalizedRules, ruleItems } = controller;
+  const { noDisputeStatus, showNoDisputeAction, canAcknowledgeNoDispute } = controller;
+  const [noDisputePending, setNoDisputePending] = useState(false);
+  const [noDisputeFeedback, setNoDisputeFeedback] = useState("");
   const [reportPending, setReportPending] = useState(false);
   const [reportFeedback, setReportFeedback] = useState({ message: "", failed: false });
   const [disputePending, setDisputePending] = useState(false);
   const [disputeFeedback, setDisputeFeedback] = useState({ message: "", failed: false });
+  const acknowledgeNoDispute = async () => {
+    if (!canAcknowledgeNoDispute || noDisputePending) return;
+    setNoDisputePending(true);
+    setNoDisputeFeedback("");
+    try {
+      const result = await app.actions.acknowledgeMatchNoDispute(match.id);
+      if (!result || result.ok === false) setNoDisputeFeedback("이의 없음 처리에 실패했습니다.");
+    } catch {
+      setNoDisputeFeedback("이의 없음 처리에 실패했습니다.");
+    } finally {
+      setNoDisputePending(false);
+    }
+  };
   const submitMatchDispute = async () => {
     if (!canRequestMatchDispute || disputePending) return;
     setDisputePending(true);
@@ -97,6 +113,15 @@ export function MatchRoomReviewPanels({ controller }) {
               </div>
             ) : null}
             <p className="muted">이의제기 마감: {formatMatchWindowTime(recordWindow.disputeClosesAt)}</p>
+            {showNoDisputeAction ? (
+              <div className="match-action-row">
+                <span>이의 없음 {noDisputeStatus.count}/{noDisputeStatus.requiredCount}</span>
+                <Button type="button" variant="secondary" disabled={!canAcknowledgeNoDispute || noDisputePending} onClick={acknowledgeNoDispute}>
+                  {noDisputeStatus.acknowledged ? "확인 완료" : noDisputePending ? "처리 중" : "이의 없음"}
+                </Button>
+                {noDisputeFeedback ? <small role="status" className="form-warning">{noDisputeFeedback}</small> : null}
+              </div>
+            ) : null}
             <Button type="button" variant="secondary" onClick={() => setReviewControlsOpen((current) => !current)}>
               {reviewControlsOpen ? "보조 메뉴 닫기" : "취소/이의/신고 열기"}
             </Button>

@@ -170,6 +170,7 @@ export function RecruitingRoomDialogSection({ context }) {
                 open={Boolean(finalizeMatchTarget)}
                 pending={finalizeMatchPending}
                 openDisputeCount={finalizeMatchTarget?.openDisputeCount ?? 0}
+                eligible={finalizeMatchTarget?.eligible === true}
                 authorityLabel={finalizeMatchTarget?.authorityLabel ?? "방장"}
                 onClose={() => setFinalizeMatchTarget(null)}
                 onConfirm={confirmSourceMatchFinalization}

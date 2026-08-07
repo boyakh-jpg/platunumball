@@ -25,6 +25,7 @@ export function RecruitingRoomActionSection({ context }) {
     sourceMatchResultEntryPermission, sourceMatchStartButtonLabel, sourceMatchStartButtonTitle, sourceOpenDisputes, sourceRoomReadOnly, submitJoin, submitSourceDispute,
     teamOnlyRoom, teamRoomHasJoinableSide, updateJoinDraft, userById, runSourceMatchAction,
   } = context;
+  const { sourceNoDisputeStatus, showSourceNoDisputeAction, canAcknowledgeSourceNoDispute } = context;
   return (
     <>
 <div className="arena-join-panel">
@@ -47,7 +48,7 @@ export function RecruitingRoomActionSection({ context }) {
                       <RecruitingRoomDisputeCountdown closesAt={sourceMatchRecordWindow.disputeClosesAt} />
                     ) : null}
                     {canManageSourceMatchFinalization && sourceMatchApprovalOpen && !sourceMatchAction.disputed ? (
-                      <span>결과 제출과 경기 종료가 모두 끝난 뒤 {sourceManualFinalizationStatus.delayMinutes}분부터 이의신청 종료가 가능합니다.</span>
+                      <span>{sourceManualFinalizationStatus.delayMinutes}분 경과 또는 실제 출전자 2/3의 이의 없음 확인 시 종료할 수 있습니다.</span>
                     ) : null}
                     {cancellationReasonText ? (
                       <span className="arena-cancellation-reason"><b>취소 사유</b>{cancellationReasonText}</span>
@@ -171,6 +172,19 @@ export function RecruitingRoomActionSection({ context }) {
                         onSave={(draft) => app.actions.submitMatchResult(sourceMatch.id, draft)}
                       />
                     ) : null}
+                    {showSourceNoDisputeAction ? (
+                      <div className="match-action-row">
+                        <span>이의 없음 {sourceNoDisputeStatus.count}/{sourceNoDisputeStatus.requiredCount}</span>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          disabled={!canAcknowledgeSourceNoDispute || Boolean(sourceMatchActionPending)}
+                          onClick={() => { void runSourceMatchAction("no-dispute", () => app.actions.acknowledgeMatchNoDispute(sourceMatch.id)); }}
+                        >
+                          {sourceNoDisputeStatus.acknowledged ? "확인 완료" : sourceMatchActionPending === "no-dispute" ? "처리 중" : "이의 없음"}
+                        </Button>
+                      </div>
+                    ) : null}
                     {!sourceRoomReadOnly && canFinalizeSourceMatch ? (
                       <Button
                         type="button"
@@ -178,6 +192,7 @@ export function RecruitingRoomActionSection({ context }) {
                           sourceMatch.id,
                           sourceOpenDisputes.length,
                           sourceFinalAuthorityLabel,
+                          sourceManualFinalizationStatus.ready,
                         )}
                       >
                         기록완료

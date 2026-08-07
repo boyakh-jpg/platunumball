@@ -1,7 +1,8 @@
 import { MATCH_SIDES } from "../../../lib/constants.js";
 import { SIDE_LABEL_TEXT } from "../../../lib/constants.js";
 import { getMatchOverlapConflict } from "../../../lib/matchUtils.js";
-import { getMatchFinalizationWindow } from "../../../lib/matchUtils.js";
+import { getMatchManualFinalizationStatus } from "../../../lib/matchUtils.js";
+import { getActualMatchPlayerIds } from "../../../lib/matchUtils.js";
 import { getMatchReservePlayerIds } from "../../../lib/matchUtils.js";
 import { getMatchRoomPhase } from "../../../lib/matchUtils.js";
 import { getMatchRosterSwapPatch } from "../../../lib/matchUtils.js";
@@ -137,10 +138,11 @@ export function incrementMatchScore(state, matchId, deltaA = 0, deltaB = 0, revi
 export function finalizeMatchByAuthority(state, matchId, options = {}) {
   const match = state.matches.find((item) => item.id === matchId);
   if (isMatchRecordMatch(match)) return state;
-  if (!match?.endedAt || !match.result || match.confirmedAt || match.status === "disputed") return state;
+  if (!match?.endedAt || !match.result || match.confirmedAt) return state;
+  if ((match.disputes ?? []).some((dispute) => dispute.status === "open")) return state;
   if (options.disputesAcknowledged !== true) return state;
   const nowMs = new Date(options.now ?? Date.now()).getTime();
-  if (!getMatchFinalizationWindow(match, nowMs).ready) return state;
+  if (!getMatchManualFinalizationStatus(match, nowMs).ready) return state;
   const canFinalize = match.refereeId
     ? currentUserIsEligibleMatchReferee(state, match)
     : currentUserIsMatchHost(state, match);
@@ -169,4 +171,22 @@ export function finalizeMatchByAuthority(state, matchId, options = {}) {
       },
     },
   });
+}
+
+export function acknowledgeMatchNoDispute(state, matchId) {
+  const match = state.matches.find((item) => item.id === matchId);
+  const userId = state.currentUserId;
+  if (isMatchRecordMatch(match) || !match?.endedAt || !match.result || match.confirmedAt) return state;
+  if (!getActualMatchPlayerIds(match).includes(userId)) return state;
+  if ((match.disputes ?? []).some((dispute) => dispute.by === userId)) return state;
+  const current = Array.isArray(match.rules?.noDisputeUserIds) ? match.rules.noDisputeUserIds : [];
+  if (current.includes(userId)) return state;
+  return {
+    ...state,
+    matches: state.matches.map((item) => item.id === matchId ? {
+      ...item,
+      rules: { ...(item.rules ?? {}), noDisputeUserIds: [...current, userId] },
+      updatedAt: new Date().toISOString(),
+    } : item),
+  };
 }

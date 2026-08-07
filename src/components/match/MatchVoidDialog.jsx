@@ -10,6 +10,7 @@ export function MatchFinalizeDialog({
   pending = false,
   error = "",
   openDisputeCount = 0,
+  eligible = true,
   authorityLabel = "방장",
   onClose,
   onConfirm,
@@ -21,7 +22,7 @@ export function MatchFinalizeDialog({
   }, [open]);
 
   if (!open || typeof document === "undefined") return null;
-  const blocked = openDisputeCount > 0 || !acknowledged;
+  const blocked = !eligible || openDisputeCount > 0 || !acknowledged;
 
   return createPortal(
     <div className="app-confirm-backdrop" role="presentation" onMouseDown={() => !pending && onClose?.()}>
@@ -42,10 +43,11 @@ export function MatchFinalizeDialog({
             ? `열린 이의신청 ${openDisputeCount}건을 먼저 처리해 주세요.`
             : `${authorityLabel}이 현장 참가자들과 최종 점수를 확인한 뒤 승인합니다.`}
         </p>
-        <label className="match-void-acknowledgement">
+        {!eligible ? <p className="form-warning">3분이 지나지 않았거나 이의 없음 인원이 충족되지 않았습니다.</p> : null}
+        {eligible ? <label className="match-void-acknowledgement">
           <input type="checkbox" checked={acknowledged} onChange={(event) => setAcknowledged(event.target.checked)} />
           <span>열린 이의가 없고 현장 최종 점수를 확인했습니다.</span>
-        </label>
+        </label> : null}
         {error ? <small role="status" className="form-warning">{error}</small> : null}
         <div className="ui-action-row app-confirm-actions">
           <Button type="button" variant="secondary" disabled={pending} onClick={onClose}>취소</Button>

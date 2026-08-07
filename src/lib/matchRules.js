@@ -183,18 +183,7 @@ export function getDefaultMatchRules(mode = "3v3") {
 export function normalizeMatchRules(source = {}, { mode = "3v3" } = {}) {
   const defaults = getDefaultMatchRules(mode);
   const gameClockEnabled = source.gameClockEnabled !== false && source.gameClockEnabled !== "false";
-  const qrAttendanceExplicit = source.qrAttendanceEnabled === true
-    || source.qrAttendanceEnabled === false
-    || source.qrAttendanceEnabled === "true"
-    || source.qrAttendanceEnabled === "false";
-  const qrAttendanceEligible = source.recordType !== "match_record";
-  const qrAttendanceDefault = source.visibility === "tournament"
-    || (["public", "private"].includes(source.visibility) && source.matchPurpose === "competitive");
-  const qrAttendanceEnabled = gameClockEnabled
-    && qrAttendanceEligible
-    && (qrAttendanceExplicit
-      ? source.qrAttendanceEnabled === true || source.qrAttendanceEnabled === "true"
-      : qrAttendanceDefault);
+  const qrAttendanceEnabled = !["match_record", "solo", "personal_record"].includes(String(source.recordType ?? "").trim().toLowerCase());
   const hasPeriodModel = PERIOD_COUNTS.has(Number(source.periodCount));
   const periodCount = hasPeriodModel ? Number(source.periodCount) : 1;
   const legacyPeriodMinutes = hasPeriodModel ? defaults.periodMinutes : source.timeLimit;

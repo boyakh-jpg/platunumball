@@ -161,7 +161,7 @@ test("QR 출석 기본값은 사후 경기기록을 제외한 경기시계 방�
     visibility: "public",
     matchPurpose: "friendly",
     formationMode: "prearranged",
-  }).qrAttendanceEnabled, false);
+  }).qrAttendanceEnabled, true);
   assert.equal(normalizeMatchRules({
     visibility: "public",
     matchPurpose: "competitive",
@@ -186,7 +186,7 @@ test("QR 출석 기본값은 사후 경기기록을 제외한 경기시계 방�
     visibility: "private",
     recordType: "solo",
     qrAttendanceEnabled: true,
-  }).qrAttendanceEnabled, true);
+  }).qrAttendanceEnabled, false);
   assert.equal(normalizeMatchRules({
     visibility: "public",
     matchPurpose: "friendly",
@@ -197,7 +197,7 @@ test("QR 출석 기본값은 사후 경기기록을 제외한 경기시계 방�
     matchPurpose: "competitive",
     gameClockEnabled: false,
     qrAttendanceEnabled: true,
-  }).qrAttendanceEnabled, false);
+  }).qrAttendanceEnabled, true);
   assert.equal(isQrMatchEligible({
     visibility: "private",
     rules: { qrAttendanceEnabled: true },
@@ -205,7 +205,7 @@ test("QR 출석 기본값은 사후 경기기록을 제외한 경기시계 방�
   assert.equal(isQrMatchEligible({
     visibility: "public",
     rules: { qrAttendanceEnabled: true, recordType: "solo" },
-  }), true);
+  }), false);
   assert.equal(isQrMatchEligible({
     visibility: "private",
     rules: { qrAttendanceEnabled: true, recordType: "match_record" },
@@ -878,7 +878,7 @@ test("DB 마이그레이션은 지각 후보, 무수정 정리, 최소 출전, �
   assert.doesNotMatch(tournamentQrDefaultsSql, /delete\s+from|drop\s+table|truncate\s+table/iu);
   assert.match(attendanceApiSource, /export function isQrMatchEligible/u);
   assert.match(attendanceApiSource, /\["public", "private"\]\.includes\(match\.visibility\) \|\| isTournamentMatch\(match\)/u);
-  assert.match(attendanceApiSource, /String\(match\.rules\?\.recordType \|\| ""\) !== "match_record"/u);
+  assert.match(attendanceApiSource, /!\["match_record", "personal_record", "solo"\]\.includes\(String\(match\.rules\?\.recordType \|\| ""\)\)/u);
   assert.match(attendanceApiSource, /isTournamentMatch\(match\)[\s\S]*?\[match\.referee_id\]/u);
   assert.match(attendanceApiSource, /canResize: !match\.started_at[\s\S]*?!isTournamentMatch\(match\)/u);
   assert.match(attendanceApiSource, /queueMatchDiscordDeliveries\([\s\S]*?notificationMatch,[\s\S]*?"attendanceRefresh"/u);

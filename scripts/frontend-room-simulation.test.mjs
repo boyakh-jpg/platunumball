@@ -51,6 +51,7 @@ import {
   buildMatchResultSubmission,
   getActualMatchPlayerIds,
   getMatchManualFinalizationStatus,
+  getMatchNoDisputeStatus,
   getMatchResultRevision,
   getOpenMatchDisputes,
   normalizeTeamScoresDisputeRequest,
@@ -217,7 +218,7 @@ function runActualMatchLifecycle({
   assert.ok(match?.id, `${postId}: 경기 확정`);
   assert.equal(match.refereeId ?? "", hasReferee ? refereeId : "", `${postId}: 심판 배정`);
   assert.equal(match.rules?.timingType, timingType, `${postId}: 일정 방식 저장`);
-  assert.equal(match.rules?.qrAttendanceEnabled, qrAttendanceEnabled, `${postId}: QR 출석 저장`);
+  assert.equal(match.rules?.qrAttendanceEnabled, true, `${postId}: QR 출석 강제 저장`);
   assert.equal(match.teamA.teamId, teamOnly ? "t1" : null, `${postId}: A사이드 팀 정체성`);
   assert.equal(match.teamB.teamId, teamOnly ? "t2" : null, `${postId}: B사이드 팀 정체성`);
   if (benchCapacity) {
@@ -1146,6 +1147,21 @@ test("최종 승인은 결과 제출과 경기 종료 중 늦은 시각부터 3�
   };
   assert.equal(getMatchManualFinalizationStatus(match, "2026-07-31T12:12:59.999Z").ready, false);
   assert.equal(getMatchManualFinalizationStatus(match, "2026-07-31T12:13:00.000Z").ready, true);
+});
+
+test("실제 출전자 2/3가 이의 없음을 누르면 3분 전에도 최종 승인할 수 있다", () => {
+  const match = {
+    teamA: { players: ["a", "b"] },
+    teamB: { players: ["c"] },
+    reservePlayers: { teamA: ["reserve"], teamB: [] },
+    endedAt: "2026-07-31T12:10:00.000Z",
+    result: { submittedAt: "2026-07-31T12:10:00.000Z" },
+    rules: { noDisputeUserIds: ["a", "b"] },
+  };
+  assert.deepEqual(getMatchNoDisputeStatus(match).participantIds.sort(), ["a", "b", "c"]);
+  assert.equal(getMatchManualFinalizationStatus(match, "2026-07-31T12:10:01.000Z").ready, true);
+  match.disputes = [{ by: "b", status: "resolved" }];
+  assert.equal(getMatchManualFinalizationStatus(match, "2026-07-31T12:10:01.000Z").ready, false);
 });
 
 test("최종 승인 버튼은 방에 머물러도 3분 경계에서 다시 계산된다", async () => {

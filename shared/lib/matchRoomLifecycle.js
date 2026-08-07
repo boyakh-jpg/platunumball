@@ -8,6 +8,7 @@ import {
 import { getOpenMatchDisputes } from "./matchDisputeRequests.js";
 import { isTerminalMatchStatus } from "./notifications.js";
 import { isRecordKindMatch } from "./matchRecordTypes.js";
+import { getActualMatchPlayerIds } from "./matchParticipation.js";
 import {
   getMatchEndDate,
   getMatchScheduledDate,
@@ -209,16 +210,36 @@ export function getMatchFinalizationWindow(match = {}, now = Date.now()) {
   };
 }
 
-export function getMatchManualFinalizationStatus(match = {}, now = Date.now()) {
+export function getMatchNoDisputeStatus(match = {}, userId = "") {
+  const participantIds = getActualMatchPlayerIds(match);
+  const participantSet = new Set(participantIds);
+  const disputeUserIds = new Set((match?.disputes ?? []).map((dispute) => dispute.by).filter(Boolean));
+  const acknowledgedUserIds = [...new Set(Array.isArray(match?.rules?.noDisputeUserIds) ? match.rules.noDisputeUserIds : [])]
+    .filter((id) => participantSet.has(id) && !disputeUserIds.has(id));
+  const requiredCount = Math.ceil(participantIds.length * 2 / 3);
+  return {
+    participantIds,
+    acknowledgedUserIds,
+    count: acknowledgedUserIds.length,
+    requiredCount,
+    ready: requiredCount > 0 && acknowledgedUserIds.length >= requiredCount,
+    acknowledged: acknowledgedUserIds.includes(userId),
+  };
+}
+
+export function getMatchManualFinalizationStatus(match = {}, now = Date.now(), userId = "") {
   const sourceMatch = match ?? {};
   const submittedAt = sourceMatch.result?.submittedAt ?? sourceMatch.result?.submitted_at ?? null;
   const nowMs = typeof now === "number" ? now : new Date(now).getTime();
-  const { availableAt, ready } = getMatchFinalizationWindow(sourceMatch, nowMs);
+  const { availableAt, ready: timeReady } = getMatchFinalizationWindow(sourceMatch, nowMs);
+  const noDispute = getMatchNoDisputeStatus(sourceMatch, userId);
   const readyAtMs = availableAt?.getTime() ?? NaN;
   return {
     submittedAt,
     delayMinutes: MATCH_MANUAL_FINALIZATION_DELAY_MINUTES,
-    ready,
+    ready: timeReady || noDispute.ready,
+    timeReady,
+    noDispute,
     readyAt: availableAt,
     remainingMs: Number.isFinite(nowMs) && Number.isFinite(readyAtMs)
       ? Math.max(0, readyAtMs - nowMs)

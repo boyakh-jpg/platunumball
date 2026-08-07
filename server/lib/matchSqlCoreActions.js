@@ -62,6 +62,18 @@ if (operation.action === "finalizeMatch" && operation.matchId) {
     return { ok: true, ...(data && typeof data === "object" ? data : {}), matchId: operation.matchId };
   }
 
+if (operation.action === "acknowledgeMatchNoDispute" && operation.matchId) {
+    const { data, error } = await context.supabase.rpc("rankball_match_no_dispute_action", {
+      p_actor_profile_id: context.profileId,
+      p_match_id: operation.matchId,
+    });
+    if (error) {
+      if (isMissingSqlMatchReducer(error)) reject(503, "match_no_dispute_rpc_required");
+      throw error;
+    }
+    return { ok: true, ...(data && typeof data === "object" ? data : {}), matchId: operation.matchId };
+  }
+
 if (operation.action === "acknowledgeMatchRoomRules" && operation.matchId) {
     const { data, error } = await context.supabase.rpc("rankball_match_rule_ack_action", {
       p_actor_profile_id: context.profileId,

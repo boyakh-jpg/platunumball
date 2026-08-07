@@ -106,17 +106,6 @@ export default function RuleSelector({ draft, onChange }) {
       {!rules.gameClockEnabled ? (
         <small className="match-rule-summary">경기 진행과 점수 기록은 가능합니다. 경쟁전은 모바일 전광판의 경기시계 사용 여부를 서버에서 검증합니다.</small>
       ) : null}
-      {["public", "tournament"].includes(draft.visibility) && rules.gameClockEnabled ? (
-        <label className="switch-line">
-          <input
-            type="checkbox"
-            checked={rules.qrAttendanceEnabled}
-            onChange={(event) => updateRules({ qrAttendanceEnabled: event.target.checked })}
-          />
-          QR 출석 사용
-          <small>5분마다 바뀌는 QR입니다. 일반 공개 매칭과 대회에서 사전 등록 선수만 출석할 수 있습니다.</small>
-        </label>
-      ) : null}
       <div className="form-grid match-rule-grid">
       <div className="field-block">
         <span className="field-label">종료 기준</span>

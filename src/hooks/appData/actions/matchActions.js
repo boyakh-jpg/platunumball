@@ -22,6 +22,7 @@ export function buildMatchActions(context) {
     ensureRemoteReady,
     ensureServerActionAvailable,
     finalizeMatchByAuthority,
+    acknowledgeMatchNoDispute,
     forfeitTournamentMatch,
     generatePickupSideAssignment,
     getActionActorDebug,
@@ -288,6 +289,11 @@ switchUser: (userId) => {
     matchId,
     (prev) => finalizeMatchByAuthority({ ...prev, currentUserId }, matchId, options),
     { action: "finalizeMatch", disputesAcknowledged: options.disputesAcknowledged === true },
+  ),
+  acknowledgeMatchNoDispute: (matchId) => applyMatchMutation(
+    matchId,
+    (prev) => acknowledgeMatchNoDispute({ ...prev, currentUserId }, matchId),
+    { action: "acknowledgeMatchNoDispute" },
   ),
   substituteMatchPlayer: (matchId, sideName, activePlayerId, reservePlayerId, reason = "operator") => {
     return applyMatchMutation(matchId, (prev) => substituteMatchPlayer({ ...prev, currentUserId }, matchId, sideName, activePlayerId, reservePlayerId, reason), { action: "substituteMatchPlayer", sideName, activePlayerId, reservePlayerId, reason });

@@ -34,7 +34,7 @@ function isTournamentMatch(match = {}) {
 export function isQrMatchEligible(match = {}) {
   return (
     (["public", "private"].includes(match.visibility) || isTournamentMatch(match))
-    && String(match.rules?.recordType || "") !== "match_record"
+    && !["match_record", "personal_record", "solo"].includes(String(match.rules?.recordType || ""))
     && isTrue(match.rules?.qrAttendanceEnabled)
   );
 }

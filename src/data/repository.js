@@ -74,6 +74,7 @@ export {
   approveMatch,
   cancelMatchParticipation,
   cancelMatch,
+  acknowledgeMatchNoDispute,
   checkInMatchPlayer,
   confirmMatchRefereeAbsence,
   confirmPickupSideAssignment,

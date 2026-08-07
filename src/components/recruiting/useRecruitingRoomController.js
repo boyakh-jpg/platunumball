@@ -176,8 +176,8 @@ export function useRecruitingRoomController({
       setFinalizeMatchPending(false);
     }
   };
-  const requestSourceMatchFinalization = (matchId, openDisputeCount, authorityLabel) => {
-    setFinalizeMatchTarget({ matchId, openDisputeCount, authorityLabel });
+  const requestSourceMatchFinalization = (matchId, openDisputeCount, authorityLabel, eligible) => {
+    setFinalizeMatchTarget({ matchId, openDisputeCount, authorityLabel, eligible });
   };
   const roomPostId = selectedPost?.id ?? "";
   const roomPostIsSynthetic = isSyntheticMatchRoomId(roomPostId);
@@ -320,15 +320,15 @@ export function useRecruitingRoomController({
     ));
   }, [app.currentUser.id, sourceMatch?.id, sourceMatch?.result?.scoreA, sourceMatch?.result?.scoreB, sourceMatch?.result?.updatedAt, sourceMatch?.teamA?.score, sourceMatch?.teamB?.score]);
 
-  const sourceFinalizationStatus = sourceMatch ? getMatchManualFinalizationStatus(sourceMatch) : null;
+  const sourceFinalizationStatus = sourceMatch ? getMatchManualFinalizationStatus(sourceMatch, Date.now(), app.currentUser.id) : null;
   useEffect(() => {
-    if (!sourceFinalizationStatus || sourceFinalizationStatus.ready || sourceFinalizationStatus.remainingMs <= 0) return undefined;
+    if (!sourceFinalizationStatus || sourceFinalizationStatus.timeReady || sourceFinalizationStatus.remainingMs <= 0) return undefined;
     const timerId = window.setTimeout(
       () => setFinalizationTick((current) => current + 1),
       sourceFinalizationStatus.remainingMs + 50,
     );
     return () => window.clearTimeout(timerId);
-  }, [sourceFinalizationStatus?.ready, sourceFinalizationStatus?.remainingMs]);
+  }, [sourceFinalizationStatus?.timeReady, sourceFinalizationStatus?.remainingMs]);
 
   useEffect(() => {
     if (
