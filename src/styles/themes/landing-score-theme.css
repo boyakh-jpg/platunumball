@@ -141,7 +141,7 @@
     left: 12px;
     z-index: 20;
     display: grid;
-    grid-template-columns: repeat(8, minmax(0, 1fr));
+    grid-template-columns: repeat(6, minmax(0, 1fr));
     gap: var(--space-2);
     min-height: var(--bottom-nav-height);
     border: var(--ui-stroke-width) solid var(--line);

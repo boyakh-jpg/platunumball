@@ -1,4 +1,4 @@
-import { CalendarDays, ClipboardList, Handshake, House, MessageSquareText, Settings, UserRound, UsersRound } from "lucide-react";
+import { CalendarDays, ClipboardList, Handshake, House, MessageSquareText, UsersRound } from "lucide-react";
 import { NavLink } from "react-router-dom";
 
 const items = [
@@ -8,8 +8,6 @@ const items = [
   { to: "/app/recorder", label: "플레이", icon: ClipboardList },
   { to: "/app/teams", label: "팀", icon: UsersRound },
   { to: "/app/community", label: "게시판", icon: MessageSquareText },
-  { to: "/app/profile", label: "나", icon: UserRound },
-  { to: "/app/settings", label: "설정", icon: Settings },
 ];
 
 export default function BottomNav() {
