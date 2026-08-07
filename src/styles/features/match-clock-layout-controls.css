@@ -218,11 +218,11 @@
 }
 
 .ui-match-clock-panel-focus .ui-match-clock-team-score {
-  font-size: clamp(2.25rem, 11vmin, 5rem);
+  font-size: max(2.25rem, min(11vmin, 8cqi));
 }
 
 .ui-match-clock-panel-focus .ui-match-clock-main-time time {
-  font-size: clamp(3rem, 16vmin, 8rem);
+  font-size: max(3rem, min(16vmin, 12cqi));
 }
 
 .ui-match-clock-panel-focus .ui-match-clock-period {
@@ -230,7 +230,7 @@
 }
 
 .ui-match-clock-panel-focus .ui-match-clock-scoreboard-time-only .ui-match-clock-main-time time {
-  font-size: clamp(3.5rem, 20vmin, 10rem);
+  font-size: max(3.5rem, min(20vmin, 16cqi));
 }
 
 .ui-match-clock-panel-focus .ui-match-shot-clock {
@@ -239,7 +239,7 @@
 
 .ui-match-clock-panel-focus .ui-match-shot-clock-value {
   color: var(--rb-orange-2);
-  font-size: clamp(2rem, 8vmin, 3.5rem);
+  font-size: max(2rem, min(8vmin, 6cqi));
 }
 
 .ui-match-clock-panel-focus .ui-match-shot-clock-label {
@@ -348,6 +348,12 @@
   overflow: hidden;
   font-size: var(--font-size-caption);
   text-overflow: ellipsis;
+}
+
+.ui-match-clock-panel-focus .ui-match-clock-device-tools .ui-button > svg {
+  flex: 0 0 1em;
+  width: 1em;
+  height: 1em;
 }
 
 .ui-match-clock-panel-focus .ui-match-clock-volume {
