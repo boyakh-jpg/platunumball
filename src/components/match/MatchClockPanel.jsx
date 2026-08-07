@@ -481,7 +481,9 @@ export default function MatchClockPanel({
       void activateMatchClockMediaSession();
     }
     if (!(action === "start" && match.practiceMode) && !window.confirm(message)) return;
+    if (action === "start") void openFocusMode();
     void runAction(action, payload).then((succeeded) => {
+      if (!succeeded && action === "start") void closeFocusMode();
       if (
         succeeded
         && (action === "endPeriod" || action === "endClock")
