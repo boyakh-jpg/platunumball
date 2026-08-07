@@ -143,10 +143,13 @@
 .ui-match-shot-clock {
   box-sizing: border-box;
   align-self: center;
-  width: 100%;
-  height: var(--match-clock-secondary-panel-height);
   min-height: 0;
   max-height: none;
+}
+
+.ui-match-shot-clock {
+  width: 100%;
+  height: var(--match-clock-secondary-panel-height);
 }
 
 .ui-match-clock-scoreboard {
@@ -182,7 +185,10 @@
   display: grid;
   grid-area: attendance;
   place-items: center;
-  padding: 12px;
+  justify-self: center;
+  width: min(100%, var(--match-clock-secondary-panel-height));
+  height: auto;
+  padding: var(--space-3);
   color: black;
   background: white;
   border: 0;
@@ -192,7 +198,7 @@
 
 .ui-match-clock-attendance-qr svg {
   display: block;
-  width: min(100%, calc(var(--match-clock-secondary-panel-height) - 48px));
+  width: 100%;
   aspect-ratio: 1;
 }
 
