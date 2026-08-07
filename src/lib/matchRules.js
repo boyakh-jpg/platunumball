@@ -32,6 +32,17 @@ export const MATCH_CLOCK_MODE_OPTIONS = Object.freeze([
   { value: "stopped", label: "스톱타임" },
 ]);
 
+export const MATCH_BALL_OPTIONS = Object.freeze([
+  { value: "7호 공", label: "7호 공" },
+  { value: "6호 공", label: "6호 공" },
+  { value: "코트 공", label: "코트 공" },
+]);
+
+export const MATCH_WIN_BY_TWO_OPTIONS = Object.freeze([
+  { value: true, label: "적용" },
+  { value: false, label: "미적용" },
+]);
+
 export const MEET_BEFORE_MINUTE_OPTIONS = Object.freeze([10, 15, 20, 30]);
 
 function clampInteger(value, fallback, min, max) {

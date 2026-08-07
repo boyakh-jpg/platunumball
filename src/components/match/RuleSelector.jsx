@@ -1,6 +1,7 @@
 import { useState } from "react";
 import InlineValidatedInput from "../common/InlineValidatedInput.jsx";
 import {
+  MATCH_BALL_OPTIONS,
   MATCH_CLOCK_MODE_OPTIONS,
   MATCH_END_CONDITION_OPTIONS,
   MATCH_PERIOD_OPTIONS,
@@ -9,6 +10,7 @@ import {
   getMatchRuleInputValidation,
   getMatchPeriodMinutesMax,
   getMatchRulesPayload,
+  MATCH_WIN_BY_TWO_OPTIONS,
   normalizeMatchRules,
 } from "../../lib/matchRules.js";
 import { getMatchClockPresetOptions } from "../../lib/matchCreationPolicies.js";
@@ -116,12 +118,16 @@ export default function RuleSelector({ draft, onChange }) {
         </label>
       ) : null}
       <div className="form-grid match-rule-grid">
-      <label>
-        종료 기준
-        <select value={rules.endCondition} onChange={(event) => updateRules({ endCondition: event.target.value })}>
-          {MATCH_END_CONDITION_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-        </select>
-      </label>
+      <div className="field-block">
+        <span className="field-label">종료 기준</span>
+        <div className="ui-segmented-control segmented-control create-choice-segments" role="radiogroup" aria-label="종료 기준">
+          {MATCH_END_CONDITION_OPTIONS.map((option) => (
+            <button key={option.value} type="button" role="radio" aria-checked={rules.endCondition === option.value} className={rules.endCondition === option.value ? "active" : ""} onClick={() => updateRules({ endCondition: option.value })}>
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </div>
       {rules.endCondition === "target_or_time" ? (
       <label>
         목표 점수
@@ -137,12 +143,16 @@ export default function RuleSelector({ draft, onChange }) {
         />
       </label>
       ) : null}
-      <label>
-        경기 구성
-        <select value={rules.periodCount} onChange={(event) => updateRules({ periodCount: Number(event.target.value) })}>
-          {MATCH_PERIOD_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-        </select>
-      </label>
+      <div className="field-block">
+        <span className="field-label">경기 구성</span>
+        <div className="ui-segmented-control segmented-control create-choice-segments is-three" role="radiogroup" aria-label="경기 구성">
+          {MATCH_PERIOD_OPTIONS.map((option) => (
+            <button key={option.value} type="button" role="radio" aria-checked={rules.periodCount === option.value} className={rules.periodCount === option.value ? "active" : ""} onClick={() => updateRules({ periodCount: option.value })}>
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </div>
       <label>
         {periodUnitLabel}
         <InlineValidatedInput
@@ -157,12 +167,16 @@ export default function RuleSelector({ draft, onChange }) {
         />
       </label>
       {rules.gameClockEnabled ? (
-        <label>
-          시간 운영 방식
-          <select value={rules.clockMode} onChange={(event) => updateRules({ clockMode: event.target.value })}>
-            {MATCH_CLOCK_MODE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-          </select>
-        </label>
+        <div className="field-block">
+          <span className="field-label">시간 운영 방식</span>
+          <div className="ui-segmented-control segmented-control create-choice-segments" role="radiogroup" aria-label="시간 운영 방식">
+            {MATCH_CLOCK_MODE_OPTIONS.map((option) => (
+              <button key={option.value} type="button" role="radio" aria-checked={rules.clockMode === option.value} className={rules.clockMode === option.value ? "active" : ""} onClick={() => updateRules({ clockMode: option.value })}>
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
       ) : null}
       {rules.gameClockEnabled && rules.clockMode === "running" ? (
         <label>
@@ -222,25 +236,27 @@ export default function RuleSelector({ draft, onChange }) {
           onChange={(event) => updateNumber("overtimeMinutes", event.target.value)}
         />
       </label>
-      <label>
-        사용 공
-        <select value={rules.ball} onChange={(event) => updateRules({ ball: event.target.value })}>
-          <option>7호 공</option>
-          <option>6호 공</option>
-          <option>코트 공</option>
-        </select>
-      </label>
+      <div className="field-block">
+        <span className="field-label">사용 공</span>
+        <div className="ui-segmented-control segmented-control create-choice-segments is-three" role="radiogroup" aria-label="사용 공">
+          {MATCH_BALL_OPTIONS.map((option) => (
+            <button key={option.value} type="button" role="radio" aria-checked={rules.ball === option.value} className={rules.ball === option.value ? "active" : ""} onClick={() => updateRules({ ball: option.value })}>
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </div>
       {rules.endCondition === "target_or_time" ? (
-      <label>
-        2점 차 승리
-        <select
-          value={rules.winByTwo ? "enabled" : "disabled"}
-          onChange={(event) => updateRules({ winByTwo: event.target.value === "enabled" })}
-        >
-          <option value="enabled">적용</option>
-          <option value="disabled">미적용</option>
-        </select>
-      </label>
+      <div className="field-block">
+        <span className="field-label">2점 차 승리</span>
+        <div className="ui-segmented-control segmented-control create-choice-segments" role="radiogroup" aria-label="2점 차 승리">
+          {MATCH_WIN_BY_TWO_OPTIONS.map((option) => (
+            <button key={String(option.value)} type="button" role="radio" aria-checked={rules.winByTwo === option.value} className={rules.winByTwo === option.value ? "active" : ""} onClick={() => updateRules({ winByTwo: option.value })}>
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </div>
       ) : null}
       </div>
       </fieldset>

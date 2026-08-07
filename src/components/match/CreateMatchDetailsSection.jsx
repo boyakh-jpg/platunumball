@@ -1,3 +1,5 @@
+import { HOST_JOIN_MODE_OPTIONS } from "../../lib/matchCreationPolicyOptions.js";
+
 export function CreateMatchDetailsSection({ context }) {
   const {
     Card, MATCH_MODES, MatchRosterPolicyFields, NumericStepper, SOLO_RECORD_MODES,
@@ -9,6 +11,67 @@ export function CreateMatchDetailsSection({ context }) {
     setSoloTeamAUserQuery, setSoloTeamBUserQuery, soloRecordUserCandidates, soloTeamAUserQuery, soloTeamBUserQuery,
     today, tournamentFormatOptions, tournamentScheduleOptions, update, wizardStep,
   } = context;
+
+  const selectHostJoinMode = (requestedMode) => {
+    const hostJoinMode = isPickupMatch || (requestedMode === "team" && !canCreateTeamRoom) ? "player" : requestedMode;
+    update({
+      hostJoinMode,
+      teamOnly: hostJoinMode === "team",
+      teamAId: undefined,
+      teamBId: undefined,
+      playerIds: [],
+      reservePlayerIds: [],
+      opponentPlayerIds: [],
+      opponentReservePlayerIds: [],
+      opponentLeaderId: "",
+    });
+  };
+
+  const selectMode = (mode) => {
+    modeManuallyChangedRef.current = true;
+    if (hasTeamChallenge && !challengeModeIds.has(mode)) return;
+    if (isTournamentRoom) {
+      update({
+        ...getMatchModeChangePatch(draft, mode),
+        title: isDefaultCreateTitle(draft.title) ? getDefaultCreateTitle(mode) : draft.title,
+      });
+      return;
+    }
+    if (isSoloRecord) {
+      update({ mode });
+      return;
+    }
+    if (isMatchRecordRoom) {
+      update({
+        ...getMatchModeChangePatch(draft, mode),
+        hostJoinMode: recordComposition === "team" ? "team" : "player",
+        teamOnly: recordComposition === "team",
+        teamAId: undefined,
+        teamBId: undefined,
+        playerIds: [app.currentUser.id],
+        reservePlayerIds: [],
+        opponentPlayerIds: [],
+        opponentReservePlayerIds: [],
+        opponentLeaderId: "",
+      });
+      return;
+    }
+    const hostJoinMode = hasTeamChallenge ? "team" : getMatchFormationMode(draft) === "pickup" || mode === "1v1" || !canCreateTeamRoom ? "player" : draft.hostJoinMode;
+    const nextIsTeamRoom = !isTournamentRoom && hostJoinMode === "team";
+    update({
+      ...getMatchModeChangePatch(draft, mode),
+      hostJoinMode,
+      teamOnly: nextIsTeamRoom,
+      teamAId: hasTeamChallenge ? draft.teamAId : undefined,
+      teamBId: hasTeamChallenge ? draft.teamBId : undefined,
+      title: isDefaultCreateTitle(draft.title) ? getDefaultCreateTitle(mode, draft.matchIntent) : draft.title,
+      playerIds: [],
+      reservePlayerIds: [],
+      opponentPlayerIds: [],
+      opponentReservePlayerIds: [],
+      opponentLeaderId: "",
+    });
+  };
 
   return (
     <>
@@ -26,34 +89,30 @@ export function CreateMatchDetailsSection({ context }) {
               <input value={draft.title} onChange={(event) => update({ title: event.target.value })} />
             </label>
             {!isTournamentRoom && !isSoloRecord && !isMatchRecordRoom ? (
-              <label className="create-format-field">
-                참가 방식
-                <select
-                  value={draft.hostJoinMode}
-                  disabled={hasTeamChallenge}
-                  onChange={(event) => {
-                    const hostJoinMode = isPickupMatch || (event.target.value === "team" && !canCreateTeamRoom) ? "player" : event.target.value;
-                    const opponentLeaderId = "";
-                    update({
-                      hostJoinMode,
-                      teamOnly: hostJoinMode === "team",
-                      teamAId: undefined,
-                      teamBId: undefined,
-                      playerIds: [],
-                      reservePlayerIds: [],
-                      opponentPlayerIds: [],
-                      opponentReservePlayerIds: [],
-                      opponentLeaderId,
-                    });
-                  }}
-                >
-                  <option value="team" disabled={!canCreateTeamRoom || isPickupMatch}>팀전</option>
-                  <option value="player">개인전</option>
-                </select>
+              <div className="field-block create-format-field">
+                <span className="field-label">참가 방식</span>
+                <div className="ui-segmented-control segmented-control create-choice-segments" role="radiogroup" aria-label="참가 방식">
+                  {HOST_JOIN_MODE_OPTIONS.map((option) => {
+                    const disabled = hasTeamChallenge || (option.id === "team" && (!canCreateTeamRoom || isPickupMatch));
+                    return (
+                      <button
+                        key={option.id}
+                        type="button"
+                        role="radio"
+                        aria-checked={draft.hostJoinMode === option.id}
+                        className={draft.hostJoinMode === option.id ? "active" : ""}
+                        disabled={disabled}
+                        onClick={() => selectHostJoinMode(option.id)}
+                      >
+                        {option.label}
+                      </button>
+                    );
+                  })}
+                </div>
                 {isPickupMatch
                   ? <span className="form-warning">픽업은 개인 참가자를 모집해 현장에서 팀을 나눕니다.</span>
                   : !canCreateTeamRoom ? <span className="form-warning">팀이 있어야 팀전을 만들 수 있습니다.</span> : null}
-              </label>
+              </div>
             ) : null}
             {isTournamentRoom ? (
               <label className="create-format-field">
@@ -79,70 +138,24 @@ export function CreateMatchDetailsSection({ context }) {
                 <small>{practiceMode ? "연습에서는 즉시 경기만 사용합니다." : isInstantRoom ? "날짜와 시간 없이 바로 경기 준비방을 만듭니다." : isPublicRoom ? "공개 예약방은 5일 이내이면서 시작까지 4시간 이상 남은 일정만 만들 수 있습니다." : "비공개 예약방은 1개월 이내 일정으로 만들 수 있습니다."}</small>
               </div>
             ) : null}
-            <label className="create-capacity-field">
-              경기 인원
-              <select value={draft.mode} onChange={(event) => {
-                modeManuallyChangedRef.current = true;
-                const mode = event.target.value;
-                if (hasTeamChallenge && !challengeModeIds.has(mode)) return;
-                if (isTournamentRoom) {
-                  update({
-                    ...getMatchModeChangePatch(draft, mode),
-                    title: isDefaultCreateTitle(draft.title) ? getDefaultCreateTitle(mode) : draft.title,
-                  });
-                  return;
-                }
-                if (isSoloRecord) {
-                  update({ mode });
-                  return;
-                }
-                if (isMatchRecordRoom) {
-                  update({
-                    ...getMatchModeChangePatch(draft, mode),
-                    hostJoinMode: recordComposition === "team" ? "team" : "player",
-                    teamOnly: recordComposition === "team",
-                    teamAId: undefined,
-                    teamBId: undefined,
-                    playerIds: [app.currentUser.id],
-                    reservePlayerIds: [],
-                    opponentPlayerIds: [],
-                    opponentReservePlayerIds: [],
-                    opponentLeaderId: "",
-                  });
-                  return;
-                }
-                const hostJoinMode = hasTeamChallenge ? "team" : getMatchFormationMode(draft) === "pickup" || mode === "1v1" || !canCreateTeamRoom ? "player" : draft.hostJoinMode;
-                const nextIsTeamRoom = !isTournamentRoom && hostJoinMode === "team";
-                const opponentLeaderId = "";
-                update({
-                  ...getMatchModeChangePatch(draft, mode),
-                  hostJoinMode,
-                  teamOnly: nextIsTeamRoom,
-                  teamAId: hasTeamChallenge ? draft.teamAId : undefined,
-                  teamBId: hasTeamChallenge ? draft.teamBId : undefined,
-                  title: isDefaultCreateTitle(draft.title) ? getDefaultCreateTitle(mode, draft.matchIntent) : draft.title,
-                  ...(nextIsTeamRoom ? {
-                    playerIds: [],
-                    reservePlayerIds: [],
-                    opponentPlayerIds: [],
-                    opponentReservePlayerIds: [],
-                    opponentLeaderId,
-                  } : {
-                    playerIds: [],
-                    reservePlayerIds: [],
-                    opponentPlayerIds: [],
-                    opponentReservePlayerIds: [],
-                    opponentLeaderId: "",
-                  }),
-                });
-              }}>
+            <div className="field-block create-capacity-field">
+              <span className="field-label">경기 인원</span>
+              <div className="ui-segmented-control segmented-control create-choice-segments is-four" role="radiogroup" aria-label="경기 인원">
                 {(isSoloRecord ? SOLO_RECORD_MODES : MATCH_MODES).map((mode) => (
-                  <option key={mode.id} value={mode.id} disabled={hasTeamChallenge && !challengeModeIds.has(mode.id)}>
+                  <button
+                    key={mode.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={draft.mode === mode.id}
+                    className={draft.mode === mode.id ? "active" : ""}
+                    disabled={hasTeamChallenge && !challengeModeIds.has(mode.id)}
+                    onClick={() => selectMode(mode.id)}
+                  >
                     {mode.label}
-                  </option>
+                  </button>
                 ))}
-              </select>
-            </label>
+              </div>
+            </div>
             {!isInstantRoom ? (
               <>
                 <label className="create-date-field">

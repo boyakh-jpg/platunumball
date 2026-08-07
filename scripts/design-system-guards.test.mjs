@@ -806,12 +806,12 @@ test("고정 설명은 제목·상태·조작 문구를 반복하지 않는다",
 
 test("같은 정책 행은 명시형 선택 필드와 중앙 control 정렬을 사용한다", () => {
   assert.match(matchOperationsFieldsSource, /조끼 준비/);
-  assert.match(matchOperationsFieldsSource, /value=\{policy\.vestsProvided \? "provided" : "not_provided"\}/);
-  assert.match(matchOperationsFieldsSource, /vestsProvided:\s*event\.target\.value === "provided"/);
+  assert.match(matchOperationsFieldsSource, /VESTS_PROVIDED_OPTIONS\.map/);
+  assert.match(matchOperationsFieldsSource, /vestsProvided:\s*option\.value/);
   assert.doesNotMatch(matchOperationsFieldsSource, /type="checkbox"/);
 
-  assert.match(ruleSelectorSource, /2점 차 승리[\s\S]*?value=\{rules\.winByTwo \? "enabled" : "disabled"\}/);
-  assert.match(ruleSelectorSource, /winByTwo:\s*event\.target\.value === "enabled"/);
+  assert.match(ruleSelectorSource, /2점 차 승리[\s\S]*?MATCH_WIN_BY_TWO_OPTIONS\.map/);
+  assert.match(ruleSelectorSource, /winByTwo:\s*option\.value/);
   assert.doesNotMatch(ruleSelectorSource, /type="checkbox" checked=\{rules\.winByTwo\}/);
 
   assert.match(pageSources.recruiting, /참가 상태[\s\S]*?value=\{joinDraft\.reserve \? "reserve" : "starter"\}/);

@@ -3,13 +3,16 @@ import Button from "../common/Button.jsx";
 import InlineValidatedInput from "../common/InlineValidatedInput.jsx";
 import { BENCH_CAPACITY_OPTIONS } from "../../lib/constants.js";
 import {
+  COST_ROUND_UNIT_OPTIONS,
   MATCH_FORMATION_OPTIONS,
   MATCH_PURPOSE_OPTIONS,
   PAYMENT_POLICY_OPTIONS,
   PICKUP_ROTATION_MODE_OPTIONS,
   PLAYING_TIME_POLICY_OPTIONS,
+  REFUND_POLICY_OPTIONS,
   VENUE_PAYMENT_TYPE_OPTIONS,
   VENUE_SECURED_OPTIONS,
+  VESTS_PROVIDED_OPTIONS,
   getMatchCreationPolicyPayload,
   getMatchCreationSummary,
 } from "../../lib/matchCreationPolicies.js";
@@ -189,12 +192,16 @@ export function MatchRosterPolicyFields({ draft, onChange }) {
             <strong>출석 후 현장 결정</strong>
             <small>출석자끼리 현장 직접, 완전 랜덤, MMR 균형 중 하나를 정합니다.</small>
           </div>
-          <label>
-            균등 교대 기준
-            <select value={policy.rotationMode} onChange={(event) => onChange({ rotationMode: event.target.value })}>
-              {PICKUP_ROTATION_MODE_OPTIONS.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
-            </select>
-          </label>
+          <div className="field-block">
+            <span className="field-label">균등 교대 기준</span>
+            <div className="ui-segmented-control segmented-control create-choice-segments is-three" role="radiogroup" aria-label="균등 교대 기준">
+              {PICKUP_ROTATION_MODE_OPTIONS.map((option) => (
+                <button key={option.id} type="button" role="radio" aria-checked={policy.rotationMode === option.id} className={policy.rotationMode === option.id ? "active" : ""} onClick={() => onChange({ rotationMode: option.id })}>
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
           {policy.rotationMode === "interval" ? (
             <label>
               교대 간격
@@ -206,18 +213,16 @@ export function MatchRosterPolicyFields({ draft, onChange }) {
           <small>최종 배치는 방장 또는 심판이 확정합니다.</small>
         </div>
       ) : policy.benchCapacity > 0 ? (
-        <label className="field-block">
-          후보 출전 정책
-          <select
-            value={policy.playingTimePolicy}
-            onChange={(event) => onChange({
-              playingTimePolicy: event.target.value,
-              benchPaymentAcknowledged: event.target.value !== "none",
-            })}
-          >
-            {PLAYING_TIME_POLICY_OPTIONS.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
-          </select>
-        </label>
+        <div className="field-block">
+          <span className="field-label">후보 출전 정책</span>
+          <div className="ui-segmented-control segmented-control create-choice-segments is-three" role="radiogroup" aria-label="후보 출전 정책">
+            {PLAYING_TIME_POLICY_OPTIONS.map((option) => (
+              <button key={option.id} type="button" role="radio" aria-checked={policy.playingTimePolicy === option.id} className={policy.playingTimePolicy === option.id ? "active" : ""} onClick={() => onChange({ playingTimePolicy: option.id, benchPaymentAcknowledged: option.id !== "none" })}>
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
       ) : null}
     </div>
   );
@@ -244,12 +249,16 @@ export function MatchCostPolicyFields({ draft, onChange }) {
             {VENUE_PAYMENT_TYPE_OPTIONS.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
           </select>
         </label>
-        <label>
-          구장 확보 상태
-          <select value={policy.venueSecured} onChange={(event) => onChange({ venueSecured: event.target.value })}>
-            {VENUE_SECURED_OPTIONS.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
-          </select>
-        </label>
+        <div className="field-block">
+          <span className="field-label">구장 확보 상태</span>
+          <div className="ui-segmented-control segmented-control create-choice-segments is-three" role="radiogroup" aria-label="구장 확보 상태">
+            {VENUE_SECURED_OPTIONS.map((option) => (
+              <button key={option.id} type="button" role="radio" aria-checked={policy.venueSecured === option.id} className={policy.venueSecured === option.id ? "active" : ""} onClick={() => onChange({ venueSecured: option.id })}>
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
       <div className="match-cost-components-grid">
         <label>대관료<InlineValidatedInput clearOnDirectEntry type="number" min="0" step="100" value={freeVenue ? policy.venueFee : getMoneyInputValue("venueFee")} disabled={freeVenue} onChange={(event) => onChange({ venueFee: event.target.value, courtFee: event.target.value })} /></label>
@@ -265,13 +274,16 @@ export function MatchCostPolicyFields({ draft, onChange }) {
             {PAYMENT_POLICY_OPTIONS.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
           </select>
         </label>
-        <label>
-          1인 금액 반올림
-          <select value={policy.costRoundUnit} onChange={(event) => onChange({ costRoundUnit: Number(event.target.value) })}>
-            <option value={100}>100원 단위</option>
-            <option value={500}>500원 단위</option>
-          </select>
-        </label>
+        <div className="field-block">
+          <span className="field-label">1인 금액 반올림</span>
+          <div className="ui-segmented-control segmented-control create-choice-segments" role="radiogroup" aria-label="1인 금액 반올림">
+            {COST_ROUND_UNIT_OPTIONS.map((option) => (
+              <button key={option.id} type="button" role="radio" aria-checked={policy.costRoundUnit === option.id} className={policy.costRoundUnit === option.id ? "active" : ""} onClick={() => onChange({ costRoundUnit: option.id })}>
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
         {paidVenue ? (
           <label>
             무료 취소 마감
@@ -284,14 +296,16 @@ export function MatchCostPolicyFields({ draft, onChange }) {
           </label>
         ) : null}
         {paidVenue ? (
-          <label>
-            환불 기준
-            <select value={policy.refundPolicy} onChange={(event) => onChange({ refundPolicy: event.target.value })}>
-              <option value="full_before_deadline">마감 전 전액 환불</option>
-              <option value="no_refund">환불 없음</option>
-              <option value="custom">별도 협의</option>
-            </select>
-          </label>
+          <div className="field-block">
+            <span className="field-label">환불 기준</span>
+            <div className="ui-segmented-control segmented-control create-choice-segments is-three" role="radiogroup" aria-label="환불 기준">
+              {REFUND_POLICY_OPTIONS.map((option) => (
+                <button key={option.id} type="button" role="radio" aria-checked={policy.refundPolicy === option.id} className={policy.refundPolicy === option.id ? "active" : ""} onClick={() => onChange({ refundPolicy: option.id })}>
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
         ) : null}
       </div>
       <div className="match-cost-summary" aria-live="polite">
@@ -324,16 +338,16 @@ export function MatchOperationsPolicyFields({ draft, onChange }) {
           </select>
         </label>
         {policy.onCourtCount > 1 ? (
-          <label>
-            조끼 준비
-            <select
-              value={policy.vestsProvided ? "provided" : "not_provided"}
-              onChange={(event) => onChange({ vestsProvided: event.target.value === "provided" })}
-            >
-              <option value="provided">제공</option>
-              <option value="not_provided">미제공</option>
-            </select>
-          </label>
+          <div className="field-block">
+            <span className="field-label">조끼 준비</span>
+            <div className="ui-segmented-control segmented-control create-choice-segments" role="radiogroup" aria-label="조끼 준비">
+              {VESTS_PROVIDED_OPTIONS.map((option) => (
+                <button key={option.id} type="button" role="radio" aria-checked={policy.vestsProvided === option.value} className={policy.vestsProvided === option.value ? "active" : ""} onClick={() => onChange({ vestsProvided: option.value })}>
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
         ) : null}
       </div>
     </div>

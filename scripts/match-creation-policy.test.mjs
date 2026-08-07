@@ -1342,12 +1342,14 @@ test("CreateMatch persists bench capacity at top level and inside rules", () => 
   assert.doesNotMatch(wizardSource, /점수판 있음|샷클락 있음|기록원 있음/);
   assert.match(wizardSource, /policy\.onCourtCount > 1/);
   assert.match(wizardSource, /조끼 준비/);
-  assert.match(wizardSource, /vestsProvided:\s*event\.target\.value === "provided"/);
+  assert.match(wizardSource, /VESTS_PROVIDED_OPTIONS\.map/);
+  assert.match(wizardSource, /vestsProvided:\s*option\.value/);
   assert.doesNotMatch(wizardSource, /type="checkbox" checked=\{policy\.vestsProvided\}/);
   const ruleSelectorSource = fs.readFileSync(path.join(root, "src/components/match/RuleSelector.jsx"), "utf8");
   assert.match(ruleSelectorSource, /BOXTIER 모바일 전광판 사용 여부/);
   assert.match(ruleSelectorSource, /rules\.gameClockEnabled && rules\.clockMode === "running"/);
-  assert.match(ruleSelectorSource, /winByTwo:\s*event\.target\.value === "enabled"/);
+  assert.match(ruleSelectorSource, /MATCH_BALL_OPTIONS\.map/);
+  assert.match(ruleSelectorSource, /winByTwo:\s*option\.value/);
   assert.doesNotMatch(ruleSelectorSource, /type="checkbox" checked=\{rules\.winByTwo\}/);
   const createRosterSource = fs.readFileSync(path.join(root, "src/components/match/CreateMatchCourtRosterSection.jsx"), "utf8");
   assert.match(createRosterSource, /isTournamentRoom[\s\S]*?<SearchPicker[\s\S]*?value=\{teamQuery\}/);

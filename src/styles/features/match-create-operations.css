@@ -265,8 +265,29 @@
 
 .match-roster-policy-fields .field-block {
   display: grid;
+  min-width: 0;
   gap: var(--space-3);
   align-self: start;
+}
+
+.create-match-page .ui-segmented-control.create-choice-segments {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: 100%;
+  max-width: 100%;
+}
+
+.create-match-page .ui-segmented-control.create-choice-segments.is-three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.create-match-page .ui-segmented-control.create-choice-segments.is-four {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.create-match-page .ui-segmented-control.create-choice-segments > button {
+  min-width: 0;
+  white-space: normal;
 }
 
 .match-bench-capacity-control {

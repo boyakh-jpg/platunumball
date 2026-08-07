@@ -36,6 +36,11 @@ export const MATCH_FORMATION_OPTIONS = Object.freeze([
   },
 ]);
 
+export const HOST_JOIN_MODE_OPTIONS = Object.freeze([
+  { id: "team", label: "팀전" },
+  { id: "player", label: "개인전" },
+]);
+
 export const PLAYING_TIME_POLICY_OPTIONS = Object.freeze([
   { id: "appearance_guaranteed", label: "최소 1회 출전" },
   { id: "equal_rotation", label: "균등 순환" },
@@ -85,6 +90,22 @@ export const VENUE_SECURED_OPTIONS = Object.freeze([
   { id: "confirmed", label: "확보 완료" },
   { id: "first_come", label: "현장 선점" },
   { id: "unconfirmed", label: "미확정" },
+]);
+
+export const COST_ROUND_UNIT_OPTIONS = Object.freeze([
+  { id: 100, label: "100원 단위" },
+  { id: 500, label: "500원 단위" },
+]);
+
+export const REFUND_POLICY_OPTIONS = Object.freeze([
+  { id: "full_before_deadline", label: "마감 전 전액 환불" },
+  { id: "no_refund", label: "환불 없음" },
+  { id: "custom", label: "별도 협의" },
+]);
+
+export const VESTS_PROVIDED_OPTIONS = Object.freeze([
+  { id: "provided", label: "제공", value: true },
+  { id: "not_provided", label: "미제공", value: false },
 ]);
 
 export const RECORD_ENTRY_MODE_OPTIONS = Object.freeze([
