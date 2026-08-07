@@ -1,4 +1,5 @@
 import { MATCH_SYNC_DEPENDENCIES } from "./matchSyncDependencies.js";
+import { isValidParticipantRemovalReason, normalizeParticipantRemovalReason } from "../../shared/lib/constants.js";
 
 import * as MATCH_SYNC_POLICY from "./matchSyncPolicy.js";
 import { applySqlMatchCoreAction, loadSyncedMatch } from "./matchSqlCoreActions.js";
@@ -83,6 +84,10 @@ export async function loadSyncedMatchAfterWrite(context, matchId = "", fallbackM
 }
 
 export async function applySqlMatchAction(context, operation = {}, match = {}) {
+  if (operation.action === "removeMatchRoomPlayer") {
+    operation = { ...operation, reason: normalizeParticipantRemovalReason(operation.reason) };
+    if (!isValidParticipantRemovalReason(operation.reason)) reject(400, "participant_removal_reason_invalid");
+  }
   const coreResult = await applySqlMatchCoreAction(context, operation, match);
   if (coreResult) return coreResult;
 

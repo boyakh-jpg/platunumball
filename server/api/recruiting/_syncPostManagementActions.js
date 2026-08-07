@@ -1,6 +1,6 @@
 import { DEFAULT_RATING } from "../../../shared/lib/matchConstants.js";
 import { toArray } from "../_supabaseAdmin.js";
-import { MATCH_SIDES } from "../../../shared/lib/constants.js";
+import { MATCH_SIDES, isValidParticipantRemovalReason, normalizeParticipantRemovalReason } from "../../../shared/lib/constants.js";
 import { isPendingInvitation, normalizeAllowedAgeGroups } from "./_syncPostPolicy.js";
 import { isTrue, reject } from "./_syncPostCommon.js";
 import { getCanonicalBenchCapacity, normalizeRoomState } from "./_syncPostProjection.js";
@@ -194,10 +194,16 @@ export async function assertRecruitingPartyManagementGuard(context, operation = 
 }
 
 export async function applyRecruitingManagementAction(context, operation = {}) {
-  await assertRecruitingPartyManagementGuard(context, operation);
+  const normalizedOperation = ["kickRecruitingApplicant", "removeRecruitingPartyPlayer"].includes(operation.action)
+    ? { ...operation, reason: normalizeParticipantRemovalReason(operation.reason) }
+    : operation;
+  if (normalizedOperation !== operation && !isValidParticipantRemovalReason(normalizedOperation.reason)) {
+    reject(400, "participant_removal_reason_invalid");
+  }
+  await assertRecruitingPartyManagementGuard(context, normalizedOperation);
   const { data, error } = await context.supabase.rpc("rankball_recruiting_management_action", {
     p_actor_profile_id: context.profileId,
-    p_operation: operation,
+    p_operation: normalizedOperation,
   });
   if (error) {
     if (isMissingSqlReducer(error)) reject(503, "recruiting_management_rpc_unavailable");
@@ -221,6 +227,6 @@ export async function applyRecruitingManagementAction(context, operation = {}) {
           : "방이 마감됐습니다. 먼저 수락한 선수만 참가합니다."
       ),
     } : {}),
-    postId: data?.postId ?? operation.postId ?? operation.preferredPostId ?? operation.draft?.id,
+    postId: data?.postId ?? normalizedOperation.postId ?? normalizedOperation.preferredPostId ?? normalizedOperation.draft?.id,
   };
 }

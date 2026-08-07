@@ -71,7 +71,7 @@ export default function Sidebar({ user, teams = [], auth, guestPreview = false }
             <TierBadge mmr={integratedRating} ratings={safeUser.ratings} compact />
           </div>
           {auth?.session ? (
-            <button type="button" className="sidebar-signout" onClick={auth.signOut} aria-label="로그아웃" disabled={auth.authActionPending}>
+            <button type="button" className="sidebar-signout" onClick={() => window.confirm("로그아웃하시겠습니까?") && void auth.signOut()} aria-label="로그아웃" disabled={auth.authActionPending}>
               <LogOut size={17} />
             </button>
           ) : null}

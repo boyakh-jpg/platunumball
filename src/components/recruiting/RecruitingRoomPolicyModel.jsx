@@ -326,14 +326,6 @@ const lobby = getRecruitingLobby(selectedPost, roomDataState);
           }
           app.actions.setRecruitingApplicantPlacement(selectedPost.id, candidate.playerId, placement);
         };
-        const removeCandidate = (candidate) => {
-          const candidateEntry = lobby.entries.find((entry) => entry.id === candidate.entryId);
-          if (isPartyEntry(candidateEntry)) {
-            app.actions.removeRecruitingPartyPlayer(selectedPost.id, candidate.entryId, candidate.playerId);
-            return;
-          }
-          app.actions.kickRecruitingApplicant(selectedPost.id, candidate.playerId);
-        };
         const disabledInvitePlayerIds = [
           app.currentUser.id,
           roomOwnerId,
@@ -393,7 +385,7 @@ const lobby = getRecruitingLobby(selectedPost, roomDataState);
     currentUserCanRespondSchedule, maxSideFilled, maxSideReserveFilled, pickupResize, roomEditPickupCapacityValid, roomEditCapacityValid,
     roomEditBenchCapacityValid, roomEditMeetingValid, roomEditRulesValid, roomEditScheduleValid, playingIds, partyJoinOptions,
     sidePartyJoinOptions, roomState, chatMessages, invitations, pendingInvitations, pendingRefereeInvitations,
-    getEntryPartyLeaderId, canManageEntry, getInviteAllowedTeamId, canInviteSideFromRoom, moveCandidate, removeCandidate,
+    getEntryPartyLeaderId, canManageEntry, getInviteAllowedTeamId, canInviteSideFromRoom, moveCandidate,
     disabledInvitePlayerIds, canInvitePlayerByRoom, disabledRefereeIds, refereeInviteCandidates, showRefereeInviteSlot, canInviteRefereeFromRoom,
     activeInviteDraftRaw, activeSelfSlotDraftRaw, favoritePlayerIds, favoriteTeamIds, favoriteRefereeIds, useSideNameHeader,
     teamAMeta, teamBMeta, tournamentRoomOwnerName, sourceMatchStatus, sourceMatchAction, sourceMatchSideName,

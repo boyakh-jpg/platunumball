@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { API_ROUTES } from "../api/index.js";
 import { getAccountWithdrawalIdentity } from "../server/api/profile/_accountWithdrawal.js";
+import { isValidParticipantRemovalReason, normalizeParticipantRemovalReason } from "../shared/lib/constants.js";
 import { makeSuggestedHashtagBody } from "../shared/lib/handles.js";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
@@ -42,8 +43,16 @@ test("withdrawal route, cooldown, destructive warning, and hashtag floor stay en
   assert.match(migration, /where withdrawn_at is null/);
   assert.match(settings, /프로필과 개인 기록은 복구할 수 없습니다/);
   assert.match(settings, /Google 계정은 7일 동안 다시 가입할 수 없습니다/);
-  assert.match(settings, /withdrawalConfirmation !== "탈퇴"/);
+  assert.match(settings, /withdrawalAcknowledged/);
+  assert.match(settings, /type="checkbox"/);
   assert.match(signup, /PROFILE_HASHTAG_MIN_LENGTH/);
   assert.match(upsert, /hashtag_too_short/);
   assert.match(upsert, /assertAccountRejoinAllowed/);
+});
+
+test("participant removal reason is trimmed and constrained", () => {
+  assert.equal(normalizeParticipantRemovalReason("  출석 명단 정리  "), "출석 명단 정리");
+  assert.equal(isValidParticipantRemovalReason("짧음"), false);
+  assert.equal(isValidParticipantRemovalReason("출석 명단 정리"), true);
+  assert.equal(isValidParticipantRemovalReason("가".repeat(201)), false);
 });

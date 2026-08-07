@@ -1,4 +1,4 @@
-import { MATCH_SIDES } from "../../../lib/constants.js";
+import { MATCH_SIDES, isValidParticipantRemovalReason, normalizeParticipantRemovalReason } from "../../../lib/constants.js";
 import { MAX_BENCH_CAPACITY } from "../../../lib/constants.js";
 import { SIDE_LABEL_TEXT } from "../../../lib/constants.js";
 import { clearMatchPlayerDecision } from "../../../lib/matchUtils.js";
@@ -433,7 +433,9 @@ export function setMatchRoomPlayerPlacement(state, matchId, playerId, placement 
   };
 }
 
-export function removeMatchRoomPlayer(state, matchId, playerId) {
+export function removeMatchRoomPlayer(state, matchId, playerId, reason) {
+  const normalizedReason = normalizeParticipantRemovalReason(reason);
+  if (!isValidParticipantRemovalReason(normalizedReason)) return state;
   const match = state.matches.find((item) => item.id === matchId);
   if (!canEditMatchPreparation(state, match) || !playerId || playerId === state.currentUserId) return state;
   const placement = getMatchPlayerPlacement(match, playerId);

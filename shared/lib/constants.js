@@ -249,6 +249,18 @@ export const EVIDENCE_OPTIONS = [
 ];
 
 export const MATCH_SIDES = Object.freeze(["teamA", "teamB"]);
+export const PARTICIPANT_REMOVAL_REASON_MIN_LENGTH = 5;
+export const PARTICIPANT_REMOVAL_REASON_MAX_LENGTH = 200;
+
+export function normalizeParticipantRemovalReason(value = "") {
+  return String(value ?? "").trim();
+}
+
+export function isValidParticipantRemovalReason(value = "") {
+  const length = normalizeParticipantRemovalReason(value).length;
+  return length >= PARTICIPANT_REMOVAL_REASON_MIN_LENGTH && length <= PARTICIPANT_REMOVAL_REASON_MAX_LENGTH;
+}
+
 export const CREDIBILITY_LEVELS = {
   self_record: { label: "친선 기록" },
   street_majority: { label: "길농 과반 승인" },

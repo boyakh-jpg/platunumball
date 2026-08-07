@@ -1218,7 +1218,7 @@ assertFlow(
 const checkinReserveId = promoteMatch.reservePlayers.teamA[0];
 const absentActiveId = promoteMatch.teamA.players.find((playerId) => playerId !== "u12");
 state = withUser(state, "u12", (scoped) => checkInMatchPlayer(scoped, promoteMatchId, "teamA", checkinReserveId));
-state = withUser(state, "u12", (scoped) => removeMatchRoomPlayer(scoped, promoteMatchId, absentActiveId));
+state = withUser(state, "u12", (scoped) => removeMatchRoomPlayer(scoped, promoteMatchId, absentActiveId, "출석 명단 정리"));
 const promoteCheckinMatch = getMatch(state, promoteMatchId);
 assertFlow(
   promoteCheckinMatch.teamA.players.includes(checkinReserveId) &&
@@ -1234,7 +1234,7 @@ assertFlow(
   },
 );
 const personalRoomLeaderBeforeKick = getMatchSideLeaderId(getMatch(state, promoteMatchId), state.teams, "teamB");
-state = withUser(state, "u12", (scoped) => removeMatchRoomPlayer(scoped, promoteMatchId, personalRoomLeaderBeforeKick));
+state = withUser(state, "u12", (scoped) => removeMatchRoomPlayer(scoped, promoteMatchId, personalRoomLeaderBeforeKick, "출석 명단 정리"));
 const personalRoomLeaderAfterKickMatch = getMatch(state, promoteMatchId);
 const personalRoomLeaderAfterKick = getMatchSideLeaderId(personalRoomLeaderAfterKickMatch, state.teams, "teamB");
 assertFlow(

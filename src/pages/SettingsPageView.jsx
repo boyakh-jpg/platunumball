@@ -17,7 +17,7 @@ export default function SettingsPageView({ controller, auth }) {
   const [testLoginId, setTestLoginId] = useState(() => controller.currentTestLoginId || auth?.testAccounts?.[0]?.id || "");
   const [testSwitchStatus, setTestSwitchStatus] = useState("");
   const [withdrawalOpen, setWithdrawalOpen] = useState(false);
-  const [withdrawalConfirmation, setWithdrawalConfirmation] = useState("");
+  const [withdrawalAcknowledged, setWithdrawalAcknowledged] = useState(false);
   const [withdrawalStatus, setWithdrawalStatus] = useState("");
   useBodyScrollLock(withdrawalOpen);
 
@@ -34,7 +34,7 @@ export default function SettingsPageView({ controller, auth }) {
 
   const withdrawAccount = async () => {
     setWithdrawalStatus("");
-    const result = await auth.withdrawAccount(withdrawalConfirmation);
+    const result = await auth.withdrawAccount(withdrawalAcknowledged ? "탈퇴" : "");
     if (result?.ok) {
       window.location.assign("/login?withdrawn=1");
       return;
@@ -87,11 +87,11 @@ export default function SettingsPageView({ controller, auth }) {
       ) : null}
       {settingsSection === "main" && auth ? (
         <div className="ui-action-row settings-signout-row">
-          <Button type="button" variant="danger" onClick={auth.signOut} disabled={auth.authActionPending}>
+          <Button type="button" variant="danger" onClick={() => window.confirm("로그아웃하시겠습니까?") && void auth.signOut()} disabled={auth.authActionPending}>
             <LogOut size={16} /> 로그아웃
           </Button>
           {!controller.currentTestLoginId ? (
-            <Button type="button" variant="secondary" onClick={() => setWithdrawalOpen(true)} disabled={auth.authActionPending}>
+            <Button type="button" variant="secondary" onClick={() => { setWithdrawalAcknowledged(false); setWithdrawalStatus(""); setWithdrawalOpen(true); }} disabled={auth.authActionPending}>
               <Trash2 size={16} /> 회원 탈퇴
             </Button>
           ) : null}
@@ -104,19 +104,14 @@ export default function SettingsPageView({ controller, auth }) {
             <p>탈퇴하면 프로필과 개인 기록은 복구할 수 없습니다.</p>
             <p>다른 참가자의 경기 결과 정합성에 필요한 기록은 익명 처리 후 남을 수 있습니다.</p>
             <p><strong>탈퇴한 Google 계정은 7일 동안 다시 가입할 수 없습니다.</strong></p>
-            <label className="settings-withdrawal-confirmation">
-              계속하려면 <strong>탈퇴</strong>를 입력하세요.
-              <input
-                value={withdrawalConfirmation}
-                onChange={(event) => setWithdrawalConfirmation(event.target.value)}
-                autoComplete="off"
-                disabled={auth.authActionPending}
-              />
+            <label className="app-confirm-acknowledgement">
+              <input type="checkbox" checked={withdrawalAcknowledged} onChange={(event) => setWithdrawalAcknowledged(event.target.checked)} disabled={auth.authActionPending} />
+              기록 삭제와 7일 재가입 제한을 확인했습니다.
             </label>
             {withdrawalStatus ? <p className="form-warning" role="alert">{withdrawalStatus}</p> : null}
             <div className="ui-action-row app-confirm-actions">
               <Button type="button" variant="secondary" onClick={() => setWithdrawalOpen(false)} disabled={auth.authActionPending}>취소</Button>
-              <Button type="button" variant="danger" onClick={withdrawAccount} disabled={auth.authActionPending || withdrawalConfirmation !== "탈퇴"}>
+              <Button type="button" variant="danger" onClick={withdrawAccount} disabled={auth.authActionPending || !withdrawalAcknowledged}>
                 {auth.authActionPending ? "처리 중" : "영구 탈퇴"}
               </Button>
             </div>

@@ -1,4 +1,4 @@
-import { MATCH_SIDES } from "../../../lib/constants.js";
+import { MATCH_SIDES, isValidParticipantRemovalReason, normalizeParticipantRemovalReason } from "../../../lib/constants.js";
 import { adjustUserTrust } from "../../trustUtils.js";
 import { getRecruitingApplicantKey } from "../../../lib/recruiting.js";
 import { getRecruitingEntryPlayerIds } from "../../../lib/recruiting.js";
@@ -141,9 +141,11 @@ export function detachRecruitingPartyPlayer(state, postId, entryId, playerId, pl
   };
 }
 
-export function removeRecruitingPartyPlayer(state, postId, entryId, playerId) {
+export function removeRecruitingPartyPlayer(state, postId, entryId, playerId, reason) {
   const disciplineBlock = getDisciplineBlockedState(state, "파티 인원 제거");
   if (disciplineBlock) return disciplineBlock;
+  const normalizedReason = normalizeParticipantRemovalReason(reason);
+  if (!isValidParticipantRemovalReason(normalizedReason)) return state;
   const post = state.recruitingPosts?.find((item) => item.id === postId);
   if (!post || post.status !== "open" || !isRecruitingRoomOwner(post, state.currentUserId) || !entryId || !playerId) return state;
 
@@ -191,7 +193,7 @@ export function removeRecruitingPartyPlayer(state, postId, entryId, playerId) {
   const hostPenalty = hostKickCount >= 3 ? 1 : 0;
   const kickLog = [
     ...roomState.kickLog,
-    { id: makeId("kick"), targetUserId: playerId, by: state.currentUserId, penalty: hostPenalty, createdAt: updatedAt },
+    { id: makeId("kick"), targetUserId: playerId, by: state.currentUserId, reason: normalizedReason, penalty: hostPenalty, createdAt: updatedAt },
   ];
   const nextPost = entry.fixed
     ? {
@@ -227,7 +229,9 @@ export function removeRecruitingPartyPlayer(state, postId, entryId, playerId) {
   };
 }
 
-export function kickRecruitingApplicant(state, postId, playerId) {
+export function kickRecruitingApplicant(state, postId, playerId, reason) {
+  const normalizedReason = normalizeParticipantRemovalReason(reason);
+  if (!isValidParticipantRemovalReason(normalizedReason)) return state;
   const post = state.recruitingPosts?.find((item) => item.id === postId);
   if (!post || post.status !== "open" || !isRecruitingRoomOwner(post, state.currentUserId) || playerId === state.currentUserId) return state;
   const applicants = normalizeRecruitingApplicants(post.applicants ?? []);
@@ -241,7 +245,7 @@ export function kickRecruitingApplicant(state, postId, playerId) {
   const now = new Date().toISOString();
   const kickLog = [
     ...roomState.kickLog,
-    { id: makeId("kick"), targetUserId: playerId, by: state.currentUserId, penalty: hostPenalty, createdAt: now },
+    { id: makeId("kick"), targetUserId: playerId, by: state.currentUserId, reason: normalizedReason, penalty: hostPenalty, createdAt: now },
   ];
 
   return {

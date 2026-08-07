@@ -7,7 +7,11 @@ import ProfileEmblem from "../profile/ProfileEmblem.jsx";
 import {
   MATCH_SIDES,
   MAX_RECRUITING_RESERVES_PER_SIDE as MAX_RESERVE_PLAYERS_PER_SIDE,
+  PARTICIPANT_REMOVAL_REASON_MAX_LENGTH,
+  PARTICIPANT_REMOVAL_REASON_MIN_LENGTH,
   SIDE_LABEL_TEXT as SIDE_LABELS,
+  isValidParticipantRemovalReason,
+  normalizeParticipantRemovalReason,
 } from "../../lib/constants.js";
 import { getRecruitingEntryPlacementIds, isRecruitingPartyEntry } from "../../lib/recruiting.js";
 import {
@@ -62,6 +66,8 @@ export function RoomKickPanel({
   onRefresh = null,
 }) {
   const [pendingKick, setPendingKick] = useState(null);
+  const [kickAcknowledged, setKickAcknowledged] = useState(false);
+  const [kickReason, setKickReason] = useState("");
   const [pendingSwap, setPendingSwap] = useState(null);
   const { actionError, pendingAction, runAction } = useRoomPanelAction();
   const pickupAssignmentMode = Array.isArray(placementPlayerIds);
@@ -91,14 +97,20 @@ export function RoomKickPanel({
     });
   });
   if (!rows.length) return null;
-  const closeKickConfirm = () => !pendingAction && setPendingKick(null);
+  const closeKickConfirm = () => {
+    if (pendingAction) return;
+    setPendingKick(null);
+    setKickAcknowledged(false);
+    setKickReason("");
+  };
   const confirmKick = async () => {
     const target = pendingKick;
-    if (!target) return;
+    const reason = normalizeParticipantRemovalReason(kickReason);
+    if (!target || !kickAcknowledged || !isValidParticipantRemovalReason(reason)) return;
     const kicked = await runAction(`kick:${target.playerId}`, () => (target.partyEntry
-      ? onRemovePartyPlayer(target.entryId, target.playerId)
-      : onKickApplicant(target.playerId)));
-    if (kicked) setPendingKick(null);
+      ? onRemovePartyPlayer(target.entryId, target.playerId, reason)
+      : onKickApplicant(target.playerId, reason)));
+    if (kicked) closeKickConfirm();
   };
 
   return (
@@ -150,12 +162,11 @@ export function RoomKickPanel({
                   variant="secondary"
                   className="danger-button"
                   disabled={kickDisabled || Boolean(pendingAction)}
-                  onClick={() => setPendingKick({
-                    entryId: entry.id,
-                    partyEntry,
-                    playerId,
-                    playerName: user.name,
-                  })}
+                  onClick={() => {
+                    setKickAcknowledged(false);
+                    setKickReason("");
+                    setPendingKick({ entryId: entry.id, partyEntry, playerId, playerName: user.name });
+                  }}
                 >
                   강퇴
                 </Button>
@@ -219,10 +230,26 @@ export function RoomKickPanel({
           <div className="arena-kick-confirm-dialog" role="dialog" aria-modal="true" aria-label="강퇴 확인" onMouseDown={(event) => event.stopPropagation()}>
             <strong>{pendingKick.playerName} 강퇴</strong>
             <p>강퇴하면 즉시 방에서 제외됩니다. 반복 강퇴는 방장 신뢰도를 줄일 수 있습니다.</p>
+            <label className="arena-kick-reason-field">
+              <span>강퇴 사유</span>
+              <textarea
+                required
+                minLength={PARTICIPANT_REMOVAL_REASON_MIN_LENGTH}
+                maxLength={PARTICIPANT_REMOVAL_REASON_MAX_LENGTH}
+                value={kickReason}
+                onChange={(event) => setKickReason(event.target.value)}
+                placeholder={`${PARTICIPANT_REMOVAL_REASON_MIN_LENGTH}자 이상 입력`}
+              />
+              <small>{kickReason.length}/{PARTICIPANT_REMOVAL_REASON_MAX_LENGTH}</small>
+            </label>
+            <label className="arena-kick-confirm-check">
+              <input type="checkbox" checked={kickAcknowledged} onChange={(event) => setKickAcknowledged(event.target.checked)} />
+              <span>해당 참가자를 경기에서 제외하는 것을 확인했습니다.</span>
+            </label>
             {actionError ? <p className="form-warning" role="alert">{actionError}</p> : null}
-            <div>
+            <div className="arena-kick-confirm-actions">
               <Button type="button" variant="secondary" disabled={Boolean(pendingAction)} onClick={closeKickConfirm}>취소하기</Button>
-              <Button type="button" variant="primary" className="danger-button" disabled={Boolean(pendingAction)} onClick={() => void confirmKick()}>{pendingAction ? "처리 중" : "강퇴하기"}</Button>
+              <Button type="button" variant="primary" className="danger-button" disabled={Boolean(pendingAction) || !kickAcknowledged || !isValidParticipantRemovalReason(kickReason)} onClick={() => void confirmKick()}>{pendingAction ? "처리 중" : "강퇴하기"}</Button>
             </div>
           </div>
         </div>,

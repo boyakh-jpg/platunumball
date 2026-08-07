@@ -107,7 +107,7 @@ createRecruitingPost: async (draft) => {
   swapPickupMatchPlayers: (matchId, firstPlayerId, secondPlayerId) => applyMatchMutation(matchId, (prev) => swapPickupMatchPlayers({ ...prev, currentUserId }, matchId, firstPlayerId, secondPlayerId), { action: "swapPickupMatchPlayers", firstPlayerId, secondPlayerId }),
   setMatchRecordParticipants: (matchId, setup) => applyMatchMutation(matchId, (prev) => setMatchRecordParticipants({ ...prev, currentUserId }, matchId, setup), { action: "setMatchRecordParticipants", setup }),
   setMatchRecordTeamRoster: (matchId, sideName, roster) => applyMatchMutation(matchId, (prev) => setMatchRecordTeamRoster({ ...prev, currentUserId }, matchId, sideName, roster), { action: "setMatchRecordTeamRoster", sideName, roster }),
-  removeMatchRoomPlayer: (matchId, playerId) => applyMatchMutation(matchId, (prev) => removeMatchRoomPlayer({ ...prev, currentUserId }, matchId, playerId), { action: "removeMatchRoomPlayer", playerId }),
+  removeMatchRoomPlayer: (matchId, playerId, reason) => applyMatchMutation(matchId, (prev) => removeMatchRoomPlayer({ ...prev, currentUserId }, matchId, playerId, reason), { action: "removeMatchRoomPlayer", playerId, reason }),
   sendRecruitingChat: (postId, body) => applyRecruitingPostMutation(postId, (prev) => sendRecruitingChat({ ...prev, currentUserId }, postId, body), { action: "sendRecruitingChat", body, optimisticBeforeServerCheck: true }),
   pollRecruitingChat: (postId) => {
     const roomId = String(postId ?? "").trim();
@@ -176,8 +176,8 @@ createRecruitingPost: async (draft) => {
   setRecruitingPartyPlayerPlacement: (postId, entryId, playerId, placement) => applyRecruitingPostMutation(postId, (prev) => setRecruitingPartyPlayerPlacement({ ...prev, currentUserId }, postId, entryId, playerId, placement), { action: "setRecruitingPartyPlayerPlacement", entryId, playerId, placement }),
   setRecruitingTeamPartyRoster: (postId, entryId, roster) => applyRecruitingPostMutation(postId, (prev) => setRecruitingTeamPartyRoster({ ...prev, currentUserId }, postId, entryId, roster), { action: "setRecruitingTeamPartyRoster", entryId, roster }),
   detachRecruitingPartyPlayer: (postId, entryId, playerId, placement) => applyRecruitingPostMutation(postId, (prev) => detachRecruitingPartyPlayer({ ...prev, currentUserId }, postId, entryId, playerId, placement), { action: "detachRecruitingPartyPlayer", entryId, playerId, placement }),
-  removeRecruitingPartyPlayer: (postId, entryId, playerId) => applyRecruitingPostMutation(postId, (prev) => removeRecruitingPartyPlayer({ ...prev, currentUserId }, postId, entryId, playerId), { action: "removeRecruitingPartyPlayer", entryId, playerId }),
-  kickRecruitingApplicant: (postId, playerId) => applyRecruitingPostMutation(postId, (prev) => kickRecruitingApplicant({ ...prev, currentUserId }, postId, playerId), { action: "kickRecruitingApplicant", playerId }),
+  removeRecruitingPartyPlayer: (postId, entryId, playerId, reason) => applyRecruitingPostMutation(postId, (prev) => removeRecruitingPartyPlayer({ ...prev, currentUserId }, postId, entryId, playerId, reason), { action: "removeRecruitingPartyPlayer", entryId, playerId, reason }),
+  kickRecruitingApplicant: (postId, playerId, reason) => applyRecruitingPostMutation(postId, (prev) => kickRecruitingApplicant({ ...prev, currentUserId }, postId, playerId, reason), { action: "kickRecruitingApplicant", playerId, reason }),
   confirmRecruitingMatch: async (postId) => {
     const serverReady = await ensureServerActionAvailable("/api/recruiting/sync-post", "방 확정");
     if (serverReady !== true) return null;

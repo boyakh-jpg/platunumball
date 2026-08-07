@@ -369,7 +369,7 @@ test("signed-in login redirects and settings exposes logout", () => {
   assert.match(authStyles, /\.auth-brand \.brand-letter-wrap\s*\{[^}]*flex: 1 1 0;/s);
   assert.match(authStyles, /\.auth-card-head \.auth-back-link\s*\{[^}]*border-width:\s*0;/s);
   assert.match(settingsSource, /<SettingsPageView controller=\{controller\} auth=\{props\.auth\} \/>/);
-  assert.match(settingsSource, /onClick=\{auth\.signOut\}/);
+  assert.match(settingsSource, /window\.confirm\("로그아웃하시겠습니까\?"\)/);
   assert.match(settingsSource, /<LogOut size=\{16\} \/> 로그아웃/);
   assert.doesNotMatch(settingsSource, /<header[^>]*>[\s\S]*?auth\.signOut[\s\S]*?<\/header>/);
   assert.match(settingsSource, /<SettingsRefereeSection controller=\{controller\} \/>[\s\S]*?settings-signout-row/);

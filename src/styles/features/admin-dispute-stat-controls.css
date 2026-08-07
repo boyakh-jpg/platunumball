@@ -282,14 +282,16 @@
   resize: vertical;
 }
 
-.match-void-acknowledgement {
+.match-void-acknowledgement,
+.app-confirm-acknowledgement {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: start;
   gap: var(--space-5);
 }
 
-.match-void-acknowledgement input {
+.match-void-acknowledgement input,
+.app-confirm-acknowledgement input {
   margin-top: 3px;
 }
 

@@ -149,7 +149,31 @@
   line-height: 1.45;
 }
 
-.arena-kick-confirm-dialog > div {
+.arena-kick-reason-field,
+.arena-kick-confirm-check {
+  display: grid;
+  gap: 6px;
+  color: var(--rb-text);
+  font-size: 0.82rem;
+  font-weight: 850;
+}
+
+.arena-kick-reason-field textarea {
+  min-height: 88px;
+  resize: vertical;
+}
+
+.arena-kick-reason-field small {
+  justify-self: end;
+  color: var(--rb-muted);
+}
+
+.arena-kick-confirm-check {
+  grid-template-columns: auto 1fr;
+  align-items: start;
+}
+
+.arena-kick-confirm-actions {
   display: flex;
   justify-content: flex-end;
   gap: 8px;

@@ -9,7 +9,6 @@ export function getRecruitingRoomRosterProps(context, sideName) {
     moveCandidate,
     openInviteSlot,
     openSelfSlotAction,
-    removeCandidate,
     roomOwnerId,
     roomState,
     selectedPost,
@@ -44,6 +43,5 @@ export function getRecruitingRoomRosterProps(context, sideName) {
       ? (targetSide, reserve, playerId, entryId, event) => openSelfSlotAction(selectedPost, targetSide, reserve, playerId, entryId, event)
       : null,
     onMoveCandidate: moveCandidate,
-    onRemoveCandidate: removeCandidate,
   };
 }

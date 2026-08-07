@@ -9,7 +9,7 @@ export function createRecruitingRoomMatchRenderers(context) {
     getRoomCompetitionLabel, getRoomEditAvailability, getRoomRemakeDraft, getRoomTitleSizeClass, getRoomVisibilityLabel, getTournamentMatchDisplayTitle,
     individualOnlyRoom, isMatchSideTeamParty, isPartyEntry, lobby, matchRoom, mine,
     moveCandidate, navigate, onRemake, openInviteSlot, openSelfSlotAction, playingIds,
-    recruitingRoomTerminalStatus, refreshSourceMatchReview, removeCandidate, roomCancellationPending, roomCancellationTarget, roomOwnerId,
+    recruitingRoomTerminalStatus, refreshSourceMatchReview, roomCancellationPending, roomCancellationTarget, roomOwnerId,
     roomState, selectedPost, setRoomCancellationPending, setRoomCancellationTarget, setSourceMatchDraftScore, showCaptainBadge, showSourceMatchRecordSummary,
     slotPositions, sourceMatch, sourceMatchAction, sourceMatchIsPersonalRecord, sourceMatchIsRecordRoom, sourceMatchPhase,
     sourceMatchRecordBoardFirst, sourceMatchRecordWindow, sourceMatchResultSubmitLabel, sourceMatchReviewRefreshing, sourceMatchSideLeaderIds, sourceMatchSlotManagementOpen,

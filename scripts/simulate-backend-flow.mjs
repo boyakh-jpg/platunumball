@@ -5516,6 +5516,7 @@ async function runLiveSubstitutionScenario({
     action: "removeMatchRoomPlayer",
     matchId: ids.matchId,
     playerId: removableReserveId,
+    reason: "출석 명단 정리",
   }));
   assertFlow(removeResult?.sqlReducer === true && removeResult?.advisoryLocked === true, "match room player removal SQL reducer not used", removeResult);
   match = await getMatchAfterResult(removeResult, hostLogin, `${ids.label}:loadAfterRoomPlayerRemoval`);
@@ -6484,6 +6485,7 @@ async function runBulkHomeInviteAcceptScenario({
       action: "kickRecruitingApplicant",
       postId: ids.postId,
       playerId: kickedReserveId,
+      reason: "출석 명단 정리",
     }));
     assertFlow(kickReserveResult?.sqlReducer === true, "reserve kick SQL reducer not used", kickReserveResult);
     post = await getRecruitingPostAfterResult(kickReserveResult, hostLogin, `${ids.label}:loadAfterReserveKick`);

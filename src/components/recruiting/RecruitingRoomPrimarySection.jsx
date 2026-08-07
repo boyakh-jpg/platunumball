@@ -14,7 +14,6 @@ function RecruitingRoomVersusSide({ context, sideName, meta }) {
     moveCandidate,
     openInviteSlot,
     openSelfSlotAction,
-    removeCandidate,
     renderRoomReserveLine,
     roomOwnerId,
     roomPhaseViewModel,
@@ -69,8 +68,6 @@ function RecruitingRoomVersusSide({ context, sideName, meta }) {
         onSetPlacement={(playerId, placement) => app.actions.setRecruitingApplicantPlacement(selectedPost.id, playerId, placement)}
         onSetMemberReserve={(entryId, playerId, reserve) => app.actions.setRecruitingPartyPlayerReserve(selectedPost.id, entryId, playerId, reserve)}
         onDetachMember={(entryId, playerId) => app.actions.detachRecruitingPartyPlayer(selectedPost.id, entryId, playerId)}
-        onRemoveMember={(entryId, playerId) => app.actions.removeRecruitingPartyPlayer(selectedPost.id, entryId, playerId)}
-        onKick={(playerId) => app.actions.kickRecruitingApplicant(selectedPost.id, playerId)}
       />
       {roomPhaseViewModel.showSideReserves && benchCapacity > 0 ? (
         <div className="arena-side-inline-reserve">
@@ -93,7 +90,7 @@ export function RecruitingRoomPrimarySection({ context }) {
     getMatchPeriodLabel, getPickupParticipantIds, getRecruitingSideCapacity, getRoomRefereeLabel, getRoomScheduleLabel,
     getRoomTeamSelectionEligibility, getTeamCaptainId, getTeamHashtag, individualOnlyRoom, invitations, inviteError,
     lobby, matchRoom, mine, moveCandidate, openInviteSlot, openSelfSlotAction,
-    pickupAssignmentPolicy, pickupPoolMode, referee, remoteDirectoryEnabled, removeCandidate, renderMatchRecordSetupPanels,
+    pickupAssignmentPolicy, pickupPoolMode, referee, remoteDirectoryEnabled, renderMatchRecordSetupPanels,
     renderMatchSubstitutionPanel, renderPickupParticipantPool, renderPickupRotation, renderRoomReserveLine, renderRoomTeamResult, renderSelfSlotCommand,
     renderSlotCommand, renderSourceMatchRecordBoard, requiresPaidCourtNotice, roomCompetitionLabel, roomDisplayTitle, roomMatchTypeLabel,
     roomOwnerId, roomPhaseBadge, roomPhaseSectionsAfterVersus, roomPhaseSectionsBeforeVersus, roomPhaseViewModel, roomReadyLabel,
@@ -314,11 +311,11 @@ export function RecruitingRoomPrimarySection({ context }) {
                   lobby={lobby}
                   userById={userById}
                   teams={app.state.teams}
-                  onKickApplicant={(playerId) => (
-                    matchRoom ? app.actions.removeMatchRoomPlayer(sourceMatch.id, playerId) : app.actions.kickRecruitingApplicant(selectedPost.id, playerId)
+                  onKickApplicant={(playerId, reason) => (
+                    matchRoom ? app.actions.removeMatchRoomPlayer(sourceMatch.id, playerId, reason) : app.actions.kickRecruitingApplicant(selectedPost.id, playerId, reason)
                   )}
-                  onRemovePartyPlayer={(entryId, playerId) => (
-                    matchRoom ? app.actions.removeMatchRoomPlayer(sourceMatch.id, playerId) : app.actions.removeRecruitingPartyPlayer(selectedPost.id, entryId, playerId)
+                  onRemovePartyPlayer={(entryId, playerId, reason) => (
+                    matchRoom ? app.actions.removeMatchRoomPlayer(sourceMatch.id, playerId, reason) : app.actions.removeRecruitingPartyPlayer(selectedPost.id, entryId, playerId, reason)
                   )}
                   onCheckInPlayer={matchRoom ? ((sideName, playerId) => app.actions.checkInMatchPlayer(sourceMatch.id, sideName, playerId)) : null}
                   onSetReserve={!matchRoom && autoBalancedIndividualRoom

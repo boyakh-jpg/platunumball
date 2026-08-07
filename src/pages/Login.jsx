@@ -82,7 +82,7 @@ export default function Login({ auth, app }) {
             <div className="auth-session-line">
               <ShieldCheck size={18} />
               <span>{getTestAccountDisplayLabel(auth.user.user_metadata?.providerName ?? auth.user.email)} 로그인됨</span>
-              <button type="button" onClick={auth.signOut} disabled={auth.authActionPending}><LogOut size={16} /> 로그아웃</button>
+              <button type="button" onClick={() => window.confirm("로그아웃하시겠습니까?") && void auth.signOut()} disabled={auth.authActionPending}><LogOut size={16} /> 로그아웃</button>
             </div>
           ) : null}
 

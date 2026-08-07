@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { ImageUp, RotateCcw, Star, Trash2 } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
@@ -22,6 +23,7 @@ import {
 import { formatEmblemDate, getEmblemUploadWarning } from "../lib/emblemPolicy.js";
 import { getUserHashtag } from "../lib/handles.js";
 import { MatchRoomModal } from "./Matches.jsx";
+import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 
 function myTeamCountLabel(canManage) {
   return canManage ? "관리" : "조회";
@@ -35,8 +37,22 @@ function getManagedRoleOptions(member, captainId) {
 }
 
 export default function TeamDetailView({ controller }) {
-  const { addUserId, app, archivedHistory, availableUsers, approveTeamJoinRequest, canAddMember, canManage, cancelPendingTeamInvitation, cancelTeamJoinRequest, captain, changeTeamMemberRole, confirmEmblemUpload, confirmedCount, cooldownNextAt, currentUserIsMember, deleteArmed, deleteTeam, detailHistory, directoryPending, declineTeamJoinRequest, emblemAbbreviationCharacterCount, emblemCanRestore, emblemFeedback, emblemFile, emblemInputRef, emblemPending, emblemSource, emblemStatusError, emblemStatusRequestRef, emblemStyleDraft, emblemUploadLocked, excludeTeamMember, favoriteError, favoritePending, favoriteTeamIds, history, historyCount, historyIds, inviteMember, isFavoriteTeam, joinApplicationOpen, loadDirectory, loadTeamEmblemStatus, loadTeamRecords, loadedLosses, loadedWins, losses, memberDraft, memberQuery, membershipCounts, moderationBlockedAt, moderationLocked, nextEmblemUploadAt, openTeamJoinApplication, pendingOwnJoinRequest, pendingOwnTeamInvite, pendingTargetIds, pendingTeamInvitations, refreshTeamDetail, regularMembers, renderInviteSearchItem, renderMembers, requestTeamMembership, reserveMembers, restorePreviousEmblem, retryTeamEmblemStatus, reviewedJoinApplication, saveEmblemStyle, saveTeamDescription, selectEmblemSource, selectedCount, selectedHistoryMatchId, selectedInviteProfile, selectedInviteUser, selectedRemoteUser, setDeleteArmed, setEmblemCanRestore, setEmblemFeedback, setEmblemFile, setEmblemPending, setEmblemStyleDraft, setJoinApplicationOpen, setMemberDraft, setMemberQuery, setReviewedJoinApplication, setSelectedHistoryMatchId, setSelectedInviteProfile, setTeamDescriptionDraft, setTeamInviteError, team, teamDescriptionDraft, teamDetailError, teamFull, teamId, teamInviteError, teamInvitePending, teamManagementError, teamManagementPending, teamRecordArchive, teamScoreSummary, toggleTeamFavorite, uploadEmblem, userMap, winRate, wins } = controller;
+  const { addUserId, app, archivedHistory, availableUsers, approveTeamJoinRequest, canAddMember, canManage, cancelPendingTeamInvitation, cancelTeamJoinRequest, captain, changeTeamMemberRole, confirmEmblemUpload, confirmedCount, cooldownNextAt, currentUserIsMember, deleteTeam, detailHistory, directoryPending, declineTeamJoinRequest, emblemAbbreviationCharacterCount, emblemCanRestore, emblemFeedback, emblemFile, emblemInputRef, emblemPending, emblemSource, emblemStatusError, emblemStatusRequestRef, emblemStyleDraft, emblemUploadLocked, excludeTeamMember, favoriteError, favoritePending, favoriteTeamIds, history, historyCount, historyIds, inviteMember, isFavoriteTeam, joinApplicationOpen, loadDirectory, loadTeamEmblemStatus, loadTeamRecords, loadedLosses, loadedWins, losses, memberDraft, memberQuery, membershipCounts, moderationBlockedAt, moderationLocked, nextEmblemUploadAt, openTeamJoinApplication, pendingOwnJoinRequest, pendingOwnTeamInvite, pendingTargetIds, pendingTeamInvitations, refreshTeamDetail, regularMembers, renderInviteSearchItem, renderMembers, requestTeamMembership, reserveMembers, restorePreviousEmblem, retryTeamEmblemStatus, reviewedJoinApplication, saveEmblemStyle, saveTeamDescription, selectEmblemSource, selectedCount, selectedHistoryMatchId, selectedInviteProfile, selectedInviteUser, selectedRemoteUser, setEmblemCanRestore, setEmblemFeedback, setEmblemFile, setEmblemPending, setEmblemStyleDraft, setJoinApplicationOpen, setMemberDraft, setMemberQuery, setReviewedJoinApplication, setSelectedHistoryMatchId, setSelectedInviteProfile, setTeamDescriptionDraft, setTeamInviteError, team, teamDescriptionDraft, teamDetailError, teamFull, teamId, teamInviteError, teamInvitePending, teamManagementError, teamManagementPending, teamRecordArchive, teamScoreSummary, toggleTeamFavorite, uploadEmblem, userMap, winRate, wins } = controller;
   const teamControlPending = teamInvitePending || teamManagementPending;
+  const [dangerAction, setDangerAction] = useState(null);
+  const [dangerAcknowledged, setDangerAcknowledged] = useState(false);
+  useBodyScrollLock(Boolean(dangerAction));
+  const closeDangerAction = () => {
+    setDangerAction(null);
+    setDangerAcknowledged(false);
+  };
+  const confirmDangerAction = async () => {
+    if (!dangerAction || !dangerAcknowledged) return;
+    const completed = dangerAction.type === "delete-team"
+      ? await deleteTeam()
+      : await excludeTeamMember(dangerAction.userId);
+    if (completed !== false) closeDangerAction();
+  };
   return (
     <div className="page-stack team-detail-page rank-team-page">
       {teamDetailError ? (
@@ -383,7 +399,11 @@ export default function TeamDetailView({ controller }) {
                         <select value={normalizeTeamRole(member.role)} disabled={isCaptainMember || teamControlPending} onChange={(event) => { void changeTeamMemberRole(member.userId, event.target.value); }}>
                           {roleOptions.map(([role, label]) => <option key={role} value={role}>{label}</option>)}
                         </select>
-                        <button type="button" disabled={isCaptainMember || team.members.length <= 1 || teamControlPending} onClick={() => { void excludeTeamMember(member.userId); }}>제외</button>
+                        <button
+                          type="button"
+                          disabled={isCaptainMember || team.members.length <= 1 || teamControlPending}
+                          onClick={() => setDangerAction({ type: "exclude-member", userId: member.userId, label: user.name })}
+                        >제외</button>
                       </div>
                     );
                   })}
@@ -394,9 +414,9 @@ export default function TeamDetailView({ controller }) {
                     <strong>팀 삭제</strong>
                     <span>팀 프로필과 로스터를 삭제합니다. 기존 경기 기록은 유지됩니다.</span>
                   </div>
-                  <Button type="button" variant="secondary" className="danger-button" disabled={teamControlPending} onClick={deleteTeam}>
+                  <Button type="button" variant="secondary" className="danger-button" disabled={teamControlPending} onClick={() => setDangerAction({ type: "delete-team" })}>
                     <Trash2 size={16} />
-                    {deleteArmed ? "한 번 더 눌러 삭제" : "팀 삭제"}
+                    팀 삭제
                   </Button>
                 </div>
               </>
@@ -522,6 +542,26 @@ export default function TeamDetailView({ controller }) {
           ) : null}
         </aside>
       </div>
+      {dangerAction ? (
+        <div className="app-confirm-backdrop" role="presentation" onMouseDown={() => !teamControlPending && closeDangerAction()}>
+          <div className="app-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="team-danger-action-title" onMouseDown={(event) => event.stopPropagation()}>
+            <h2 id="team-danger-action-title">{dangerAction.type === "delete-team" ? "팀 삭제" : "팀원 제외"}</h2>
+            <p>{dangerAction.type === "delete-team"
+              ? "팀을 삭제하면 팀 정보와 운영 기록을 복구할 수 없습니다."
+              : `${dangerAction.label} 님을 팀에서 제외합니다.`}</p>
+            <label className="app-confirm-acknowledgement">
+              <input type="checkbox" checked={dangerAcknowledged} onChange={(event) => setDangerAcknowledged(event.target.checked)} disabled={teamControlPending} />
+              내용을 확인했습니다.
+            </label>
+            <div className="ui-action-row app-confirm-actions">
+              <Button type="button" variant="secondary" onClick={closeDangerAction} disabled={teamControlPending}>취소</Button>
+              <Button type="button" variant="danger" onClick={() => { void confirmDangerAction(); }} disabled={teamControlPending || !dangerAcknowledged}>
+                {teamControlPending ? "처리 중" : dangerAction.type === "delete-team" ? "팀 삭제" : "팀원 제외"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
       {selectedHistoryMatchId ? (
         <MatchRoomModal
           app={app}
