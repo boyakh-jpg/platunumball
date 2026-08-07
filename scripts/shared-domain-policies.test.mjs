@@ -790,8 +790,10 @@ test("match clock keeps shot settings stable and fullscreen compact", async () =
     /\.ui-match-clock-panel-focus \.ui-match-clock-score-actions \{[^}]*grid-template-columns: repeat\(4, minmax\(34px, 1fr\)\);/,
   );
   assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-score-control-side \{[^}]*background: transparent;[^}]*border: 0;/);
-  assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-main-time time \{[^}]*font-size: clamp\(3rem, 16vmin, 8rem\);/);
-  assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-shot-clock-value \{[^}]*font-size: clamp\(2rem, 8vmin, 3\.5rem\);/);
+  assert.match(clockStyles, /\.ui-match-clock-main-time time \{[^}]*font-size: clamp\(3\.25rem, 8cqi, 6\.5rem\);/);
+  assert.match(clockStyles, /\.ui-match-clock-panel-focus \{[^}]*--match-clock-focus-time-size: max\(3\.25rem, min\(18vmin, 13cqi\)\);[^}]*--match-clock-focus-scoreboard-height: max\(9\.75rem, min\(54vmin, 39cqi\)\);/);
+  assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-scoreboard \{[^}]*max-height: var\(--match-clock-focus-scoreboard-height\);/);
+  assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-shot-clock-value \{[^}]*font-size: max\(2rem, min\(8vmin, 6cqi\)\);/);
   assert.match(clockStyles, /\.ui-match-shot-clock-action \{[^}]*background: var\(--rb-orange\);/);
   assert.match(clockStyles, /::-webkit-slider-thumb \{[^}]*margin-top: -6px;/);
   assert.match(clockStyles, /::-moz-range-progress/);

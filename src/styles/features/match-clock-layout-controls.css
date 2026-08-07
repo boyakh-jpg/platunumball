@@ -144,6 +144,9 @@
 }
 
 .ui-match-clock-panel-focus {
+  --match-clock-focus-time-size: max(3.25rem, min(18vmin, 13cqi));
+  --match-clock-focus-scoreboard-height: max(9.75rem, min(54vmin, 39cqi));
+
   position: relative;
   box-sizing: border-box;
   width: 100%;
@@ -179,7 +182,9 @@
 .ui-match-clock-panel-focus .ui-match-clock-scoreboard {
   grid-column: 1 / -1;
   grid-row: 1;
+  align-self: center;
   height: 100%;
+  max-height: var(--match-clock-focus-scoreboard-height);
   min-height: 0;
 }
 
@@ -220,19 +225,24 @@
 }
 
 .ui-match-clock-panel-focus .ui-match-clock-team-score {
-  font-size: max(2.25rem, min(11vmin, 8cqi));
+  font-size: max(2.5rem, min(13vmin, 9cqi));
 }
 
 .ui-match-clock-panel-focus .ui-match-clock-main-time time {
-  font-size: max(3rem, min(16vmin, 12cqi));
+  font-size: var(--match-clock-focus-time-size);
+}
+
+.ui-match-clock-panel-focus .ui-match-clock-team-label {
+  font-size: clamp(var(--font-size-body), 5vmin, var(--font-size-section-title));
 }
 
 .ui-match-clock-panel-focus .ui-match-clock-period {
-  font-size: clamp(var(--font-size-title-sm), 4vmin, var(--font-size-section-title));
+  font-size: clamp(var(--font-size-title-sm), 5vmin, var(--font-size-section-title));
 }
 
-.ui-match-clock-panel-focus .ui-match-clock-scoreboard-time-only .ui-match-clock-main-time time {
-  font-size: max(3.5rem, min(20vmin, 16cqi));
+.ui-match-clock-panel-focus .ui-match-clock-scoreboard-time-only {
+  --match-clock-focus-time-size: max(3.75rem, min(22vmin, 17cqi));
+  --match-clock-focus-scoreboard-height: max(11.25rem, min(66vmin, 51cqi));
 }
 
 .ui-match-clock-panel-focus .ui-match-shot-clock {
@@ -441,11 +451,11 @@
   }
 
   .ui-match-clock-main-time time {
-    font-size: clamp(1.85rem, 10vw, 3.2rem);
+    font-size: clamp(1.85rem, 10cqi, 3.2rem);
   }
 
   .ui-match-clock-period {
-    font-size: clamp(1.1rem, 5vw, 1.5rem);
+    font-size: clamp(1.1rem, 5cqi, 1.5rem);
   }
 
   .ui-match-clock-option-grid,

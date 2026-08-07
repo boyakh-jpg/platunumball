@@ -231,14 +231,14 @@
 
 .ui-match-clock-team-label {
   font-family: var(--sports-display-font);
-  font-size: clamp(0.9rem, 2vw, 1.15rem);
+  font-size: clamp(0.9rem, 2cqi, 1.15rem);
   font-weight: 900;
   letter-spacing: 0.04em;
 }
 
 .ui-match-clock-team-score {
   font-family: var(--sports-display-font);
-  font-size: clamp(2.7rem, 8vw, 5.2rem);
+  font-size: clamp(2.7rem, 8cqi, 5.2rem);
   line-height: 1;
 }
 
@@ -398,7 +398,7 @@
 
 .ui-match-clock-main-time time {
   font-family: var(--sports-display-font);
-  font-size: clamp(3.6rem, 9vw, 6.5rem);
+  font-size: clamp(3.25rem, 8cqi, 6.5rem);
   font-variant-numeric: tabular-nums;
   line-height: 1;
 }
