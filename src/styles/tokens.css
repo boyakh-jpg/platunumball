@@ -126,7 +126,7 @@
   --button-primary-bg: var(--rb-orange);
   --button-primary-hover-bg: var(--rb-orange-2);
   --button-primary-pressed-bg: var(--rb-orange-pressed);
-  --button-secondary-bg: rgba(255, 255, 255, 0.06);
+  --button-secondary-bg: color-mix(in srgb, var(--rb-text) 14%, var(--rb-bg));
   --input-bg: rgba(255, 255, 255, 0.06);
   --input-border: var(--rb-line);
   --focus-ring: 0 0 0 3px rgba(255, 118, 88, 0.2);
@@ -324,7 +324,6 @@ html[data-theme="light"] {
   --button-primary-bg: var(--rb-orange);
   --button-primary-hover-bg: var(--rb-orange-2);
   --button-primary-pressed-bg: var(--rb-orange-pressed);
-  --button-secondary-bg: rgba(255, 250, 241, 0.72);
   --input-bg: rgba(255, 250, 241, 0.78);
   --input-border: rgba(30, 24, 18, 0.14);
   --focus-ring: 0 0 0 3px rgba(229, 85, 63, 0.16);
