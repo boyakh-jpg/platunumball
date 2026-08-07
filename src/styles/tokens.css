@@ -126,7 +126,7 @@
   --button-primary-bg: var(--rb-orange);
   --button-primary-hover-bg: var(--rb-orange-2);
   --button-primary-pressed-bg: var(--rb-orange-pressed);
-  --button-secondary-bg: color-mix(in srgb, var(--rb-text) 14%, var(--rb-bg));
+  --button-secondary-bg: rgba(255, 255, 255, 0.06);
   --input-bg: rgba(255, 255, 255, 0.06);
   --input-border: var(--rb-line);
   --focus-ring: 0 0 0 3px rgba(255, 118, 88, 0.2);
@@ -144,6 +144,8 @@
   --ui-liquid-glass-bg:
     linear-gradient(145deg, rgba(255, 255, 255, 0.018), transparent 46%),
     rgba(8, 11, 16, 0.008);
+  --ui-liquid-glass-button-bg: var(--rb-blue);
+  --ui-liquid-glass-button-color: var(--rb-bg-3);
   --ui-liquid-glass-border: transparent;
   --ui-liquid-glass-divider: rgba(255, 255, 255, 0.11);
   --ui-liquid-glass-edge:
@@ -324,6 +326,7 @@ html[data-theme="light"] {
   --button-primary-bg: var(--rb-orange);
   --button-primary-hover-bg: var(--rb-orange-2);
   --button-primary-pressed-bg: var(--rb-orange-pressed);
+  --button-secondary-bg: rgba(255, 250, 241, 0.72);
   --input-bg: rgba(255, 250, 241, 0.78);
   --input-border: rgba(30, 24, 18, 0.14);
   --focus-ring: 0 0 0 3px rgba(229, 85, 63, 0.16);
@@ -338,6 +341,7 @@ html[data-theme="light"] {
   --ui-liquid-glass-bg:
     linear-gradient(145deg, rgba(255, 255, 255, 0.026), transparent 46%),
     rgba(248, 248, 246, 0.006);
+  --ui-liquid-glass-button-color: var(--rb-cream);
   --ui-liquid-glass-border: transparent;
   --ui-liquid-glass-divider: rgba(35, 50, 59, 0.12);
   --ui-liquid-glass-edge:

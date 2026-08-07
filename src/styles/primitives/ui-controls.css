@@ -31,6 +31,12 @@ html[data-theme] .app-main .ui-liquid-glass :where(*) {
   text-shadow: none;
 }
 
+html[data-theme] .app-main .ui-liquid-glass .ui-button.ui-button-secondary {
+  color: var(--ui-liquid-glass-button-color);
+  background: var(--ui-liquid-glass-button-bg);
+  border-color: transparent;
+}
+
 html[data-theme] .app-main :is(.ui-liquid-glass, .page-header > .ui-button)::before {
   content: "";
   position: absolute;
