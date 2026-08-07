@@ -83,12 +83,12 @@ function RecruitingRoomVersusSide({ context, sideName, meta }) {
 
 export function RecruitingRoomPrimarySection({ context }) {
   const {
-    Badge, Button, CircleHelp, Clock3, Copy, CourtHoverCard, Crown,
+    Badge, Button, CircleHelp, Clock3, CourtHoverCard, Crown,
     InvitationPanel, InvitePanel, MapPin, MatchAttendanceQrPanel, ROOM_BODY_MODES, RoomKickPanel,
     RoomPhaseRenderer, SearchPicker, Share2, ShieldCheck, SideRoster, Swords,
     TeamEmblem, UsersRound, X, acceptRoomInvitation, activeInviteDraft, alreadyApplied,
     app, attendanceScanState, autoBalancedIndividualRoom, benchCapacity, canInspectMatchAttendance, canInvitePlayerByRoom, canInviteSideFromRoom,
-    canManageEntry, canManageMatchCheckin, canMoveMatchSides, closeModal, contextPanel, copyRoomShareUrl,
+    canManageEntry, canManageMatchCheckin, canMoveMatchSides, closeModal, contextPanel,
     courtByName, disabledInvitePlayerIds, entryPoint, favoritePlayerIds, favoriteTeamIds, getInviteAllowedTeamId,
     getMatchPeriodLabel, getPickupParticipantIds, getRecruitingSideCapacity, getRoomRefereeLabel, getRoomScheduleLabel,
     getRoomTeamSelectionEligibility, getTeamCaptainId, getTeamHashtag, individualOnlyRoom, invitations, inviteError,
@@ -127,14 +127,9 @@ export function RecruitingRoomPrimarySection({ context }) {
                       <CircleHelp size={15} /> 진행 도움말
                     </Button>
                     {roomShareEnabled ? (
-                      <>
-                        <Button type="button" size="sm" variant="secondary" onClick={copyRoomShareUrl}>
-                          <Copy size={15} /> URL 복사
-                        </Button>
-                        <Button type="button" size="sm" variant="secondary" onClick={shareRoom}>
-                          <Share2 size={15} /> 공유하기
-                        </Button>
-                      </>
+                      <Button type="button" size="sm" variant="secondary" onClick={shareRoom}>
+                        <Share2 size={15} /> 공유하기
+                      </Button>
                     ) : null}
                     <Button type="button" size="sm" variant="secondary" onClick={() => { setInviteDraft(null); setSlotActionDraft(null); closeModal(); }}>
                       <X size={15} /> 방 닫기
