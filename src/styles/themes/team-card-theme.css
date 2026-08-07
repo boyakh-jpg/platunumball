@@ -233,6 +233,54 @@
   gap: var(--page-column-gap);
 }
 
+.team-workspace-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(300px, 0.7fr);
+  grid-template-areas:
+    "my-team team-search"
+    "team-create team-directory";
+  align-items: start;
+  gap: var(--page-section-gap) var(--page-column-gap);
+}
+
+.team-workspace-grid > .team-overview-grid,
+.team-workspace-grid > .content-grid {
+  display: contents;
+}
+
+.team-workspace-grid .my-team-management-card {
+  grid-area: my-team;
+}
+
+.team-workspace-grid .team-search-card {
+  grid-area: team-search;
+}
+
+.team-workspace-grid .team-discovery-stack {
+  grid-area: team-directory;
+}
+
+.team-workspace-grid .team-create-panel {
+  grid-area: team-create;
+}
+
+@media (max-width: 1180px) {
+  .team-workspace-grid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "my-team"
+      "team-search"
+      "team-directory"
+      "team-create";
+  }
+}
+
+@media (max-width: 1079px) {
+  .team-workspace-grid {
+    gap: var(--page-section-gap-mobile);
+  }
+}
+
 .my-team-management-card,
 .team-search-card {
   border-color: rgba(70, 224, 182, 0.2);
