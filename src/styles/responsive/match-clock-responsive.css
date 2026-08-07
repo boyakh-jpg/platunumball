@@ -23,6 +23,18 @@
   }
 }
 
+.ui-match-clock-focus-backdrop {
+  --match-clock-focus-content-max-height: 40rem;
+
+  display: grid;
+  place-items: center;
+}
+
+.ui-match-clock-panel-focus {
+  width: min(100%, var(--page-content-max));
+  height: min(100%, var(--match-clock-focus-content-max-height));
+}
+
 @media (orientation: portrait) and (width <= 720px) {
   .ui-match-clock-focus-backdrop {
     inset: 0 auto auto 0;
@@ -39,7 +51,11 @@
   }
 }
 
-@media (height <= 560px) {
+@media (height <= 560px), (orientation: portrait) and (width <= 720px) {
+  .ui-match-clock-panel-focus {
+    height: 100%;
+  }
+
   .ui-match-clock-panel-focus .ui-match-clock-device-tools .ui-button,
   .ui-match-clock-panel-focus .ui-match-clock-volume {
     height: 30px;
