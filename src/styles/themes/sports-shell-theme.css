@@ -276,6 +276,7 @@ button:disabled,
 }
 .provider-button:focus-visible,
 .bottom-nav a:focus-visible,
+.bottom-nav-more summary:focus-visible,
 .nav-item:focus-visible,
 button:focus-visible,
 a:focus-visible {
@@ -305,11 +306,12 @@ a:focus-visible {
 }
 @media (max-width: 1020px) {
   .bottom-nav {
+    --bottom-nav-surface: rgba(29, 30, 31, 0.94);
     min-height: calc(74px + env(safe-area-inset-bottom, 0px));
     border: 0;
     border-top: var(--ui-stroke-width) solid var(--rb-line);
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-    background: rgba(29, 30, 31, 0.94);
+    background: var(--bottom-nav-surface);
     backdrop-filter: blur(18px);
     padding: 8px 8px max(12px, env(safe-area-inset-bottom, 0px));
   }
@@ -322,7 +324,43 @@ a:focus-visible {
     font-weight: 850;
   }
 
-  .bottom-nav a::before {
+  html[data-theme="light"] .bottom-nav {
+    --bottom-nav-surface: rgba(255, 250, 241, 0.94);
+  }
+
+  html[data-theme="light"] .bottom-nav-more summary {
+    color: var(--rb-soft);
+  }
+
+  .bottom-nav-more {
+    position: relative;
+    min-width: 0;
+  }
+
+  .bottom-nav-more summary {
+    display: flex;
+    position: relative;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    min-height: 44px;
+    gap: var(--space-2);
+    border-radius: var(--radius-sm);
+    color: rgba(255, 255, 255, 0.54);
+    padding: 6px 1px;
+    font-size: 10px;
+    font-weight: 850;
+    line-height: 1;
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .bottom-nav-more summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .bottom-nav a::before,
+  .bottom-nav-more summary::before {
     content: "";
     display: block;
     width: 22px;
@@ -331,14 +369,51 @@ a:focus-visible {
     background: transparent;
   }
 
-  .bottom-nav a.active {
+  .bottom-nav a.active,
+  .bottom-nav-more[open] summary,
+  .bottom-nav-more:has(a.active) summary {
     background: transparent;
     color: #fff;
     box-shadow: none;
   }
 
-  .bottom-nav a.active::before {
+  html[data-theme="light"] .bottom-nav-more[open] summary,
+  html[data-theme="light"] .bottom-nav-more:has(a.active) summary {
+    color: var(--rb-text);
+  }
+
+  .bottom-nav a.active::before,
+  .bottom-nav-more[open] summary::before,
+  .bottom-nav-more:has(a.active) summary::before {
     background: var(--rb-orange);
+  }
+
+  .bottom-nav-more-menu {
+    position: absolute;
+    right: 0;
+    bottom: calc(100% + var(--space-4));
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    width: min(180px, calc(100vw - 16px));
+    gap: var(--space-2);
+    border: var(--ui-stroke-width) solid var(--rb-line);
+    border-radius: var(--radius-lg);
+    background: var(--bottom-nav-surface);
+    box-shadow: 0 -12px 34px rgba(0, 0, 0, 0.28);
+    backdrop-filter: blur(18px);
+    padding: var(--space-2);
+  }
+
+  .bottom-nav .bottom-nav-more-menu a {
+    flex-direction: row;
+    justify-content: flex-start;
+    min-height: 48px;
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+  }
+
+  .bottom-nav .bottom-nav-more-menu a::before {
+    display: none;
   }
 
   .rank-home .rank-summary-grid .home-rank-board-head h1,
@@ -354,6 +429,12 @@ a:focus-visible {
 
   .bottom-nav a::before {
     width: 20px;
+  }
+}
+
+@media (max-width: 360px) {
+  .bottom-nav-more-menu a span {
+    display: block;
   }
 }
 html[data-theme="light"] body {

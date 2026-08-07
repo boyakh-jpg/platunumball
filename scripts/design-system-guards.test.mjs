@@ -389,6 +389,12 @@ test("guest shell replaces the demo identity with login actions", () => {
   assert.doesNotMatch(appShellSource, /guest-preview-bar/);
   assert.match(sidebar, /guestPreview \? \([\s\S]*?<strong>로그인<\/strong>/);
   assert.match(bottomNav, /<NavLink key=\{item\.to\} to=\{item\.to\}/);
+  assert.match(bottomNav, /<details className="bottom-nav-more">/);
+  assert.match(bottomNav, /<Ellipsis size=\{20\} \/>[\s\S]*?<span>더보기<\/span>/);
+  assert.match(bottomNav, /to: "\/app\/profile", label: "나"/);
+  assert.match(bottomNav, /to: "\/app\/teams", label: "팀"/);
+  assert.match(bottomNav, /to: "\/app\/settings", label: "설정"/);
+  assert.match(bottomNav, /closest\("details"\)\?\.removeAttribute\("open"\)/);
   assert.doesNotMatch(bottomNav, /isGuestProfile|getLoginPath|LogIn/);
   assert.match(appSource, /"\/app\/community"/);
   assert.match(appSource, /<GuestAccessNotice title="플레이는 로그인 후 확인할 수 있습니다"/);
