@@ -211,7 +211,7 @@ export function ReserveLine({
     );
   };
   return (
-    <div className="arena-reserve-line">
+    <div className={`arena-reserve-line ${sideName === "teamB" ? "team-b" : "team-a"}`}>
       <strong>{SIDE_LABELS[sideName]} 후보 {Math.min(candidates.length, capacity)}/{capacity}</strong>
       <div className="arena-room-reserve-row" style={{ "--slot-count": slotTrackCount }}>
         {reserveSlotGroups.map((group) => (

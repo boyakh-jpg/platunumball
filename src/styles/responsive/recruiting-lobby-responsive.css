@@ -361,7 +361,7 @@ html[data-theme="light"] .arena-lobby-modal .arena-reserve-panel {
 
   .arena-lobby-modal .arena-lobby-team-panel.team-b .arena-side-inline-reserve .arena-room-reserve-row,
   html[data-theme="light"] .arena-lobby-modal .arena-lobby-team-panel.team-b .arena-side-inline-reserve .arena-room-reserve-row {
-    justify-content: end;
+    justify-content: start;
   }
 }
 @media (max-width: 720px) {

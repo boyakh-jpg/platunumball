@@ -923,7 +923,7 @@ test("공용 방의 A/B 출전·후보 슬롯은 같은 간격과 반응형 정�
   );
   assert.match(
     recruitingStyles,
-    /\.arena-lobby-modal \.arena-reserve-panel > \.arena-reserve-line:nth-child\(2\) > \.arena-room-reserve-row\s*\{[^}]*justify-content:\s*end;/,
+    /\.arena-lobby-modal \.arena-reserve-line\.team-b > \.arena-room-reserve-row,[\s\S]*?\{[^}]*justify-content:\s*start;[^}]*direction:\s*rtl;/,
   );
   assert.match(
     recruitingStyles,
@@ -931,7 +931,7 @@ test("공용 방의 A/B 출전·후보 슬롯은 같은 간격과 반응형 정�
   );
   assert.match(
     recruitingStyles,
-    /\.arena-lobby-modal \.arena-lobby-team-panel\.team-b \.arena-side-inline-reserve \.arena-room-reserve-row,[\s\S]*?\{[^}]*justify-content:\s*end;/,
+    /\.arena-lobby-modal \.arena-lobby-team-panel\.team-b \.arena-side-inline-reserve \.arena-room-reserve-row,[\s\S]*?\{[^}]*justify-content:\s*start;/,
   );
   assert.match(
     recruitingStyles,
