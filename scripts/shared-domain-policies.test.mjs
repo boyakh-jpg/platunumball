@@ -815,7 +815,7 @@ test("match clock keeps shot settings stable and fullscreen compact", async () =
   assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-actions \{[^}]*grid-column: 2;[^}]*grid-row: 4;[^}]*width: 100%;/);
   assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-attendance-qr \{[^}]*grid-template-rows: auto auto;[^}]*align-content: center;/);
   assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-attendance-qr svg \{[^}]*margin-inline: auto;/);
-  assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-device-tools \{[^}]*grid-template-columns: repeat\(3, minmax\(0, 0\.72fr\)\) minmax\(0, 2fr\);[^}]*grid-column: 2;[^}]*grid-row: 5;/);
+  assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-device-tools \{[^}]*grid-template-columns: repeat\(2, minmax\(0, 0\.72fr\)\) minmax\(0, 2fr\);[^}]*grid-column: 2;[^}]*grid-row: 5;/);
   assert.doesNotMatch(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-device-tools \.ui-button:nth-child/);
   assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-volume \{[^}]*flex: 0 1 clamp\(160px, 22vw, 240px\);/);
   assert.doesNotMatch(clockStyles, /@media \(width >= 721px\)[\s\S]*?\.ui-match-clock-panel-focus \.ui-match-clock-display-grid/);

@@ -1925,7 +1925,7 @@ createRoot(document.getElementById("root")).render(<App />);
   }
 });
 
-test("wake lock races and player activity route changes are isolated in Chromium", async (t) => {
+test("mobile scoreboard hides wake lock control and player activity route changes are isolated in Chromium", async (t) => {
   const chromePath = [
     process.env.CHROME_PATH,
     process.env.PROGRAMFILES && join(process.env.PROGRAMFILES, "Google", "Chrome", "Application", "chrome.exe"),
@@ -1964,33 +1964,6 @@ const waitFor = async (predicate, message) => {
     await waitFrames();
   }
   throw new Error(message);
-};
-
-const wakeRequests = [];
-Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
-Object.defineProperty(navigator, "wakeLock", {
-  configurable: true,
-  value: {
-    request() {
-      return new Promise((resolve) => wakeRequests.push({ resolve }));
-    },
-  },
-});
-const createWakeLock = () => {
-  let releaseListener = null;
-  return {
-    releaseCalls: 0,
-    addEventListener(type, listener) {
-      if (type === "release") releaseListener = listener;
-    },
-    release() {
-      this.releaseCalls += 1;
-      return Promise.resolve();
-    },
-    emitRelease() {
-      releaseListener?.();
-    },
-  };
 };
 
 const match = {
@@ -2045,48 +2018,16 @@ const renderActivity = (player) => activityRoot.render(
 );
 
 (async () => {
-  await waitFor(() => document.querySelectorAll(".ui-match-clock-device-tools button").length >= 2, "wake lock button missing");
-  const getWakeButton = () => document.querySelectorAll(".ui-match-clock-device-tools button")[1];
-
-  getWakeButton().click();
-  await waitFor(() => wakeRequests.length === 1, "first wake lock request missing");
-  document.dispatchEvent(new Event("visibilitychange"));
-  await waitFrames(3);
-  const noDuplicateDuringVisibility = wakeRequests.length === 1;
-  getWakeButton().click();
-  const staleToggleLock = createWakeLock();
-  wakeRequests[0].resolve(staleToggleLock);
-  await waitFrames(4);
-  const toggleOff = {
-    released: staleToggleLock.releaseCalls === 1,
-    requested: getWakeButton().getAttribute("aria-pressed"),
+  await waitFor(() => document.querySelector(".ui-match-clock-device-tools"), "device tools missing");
+  const deviceToolText = document.querySelector(".ui-match-clock-device-tools").textContent;
+  const scoreboard = {
+    wakeControlHidden: !deviceToolText.includes("화면 유지")
+      && !deviceToolText.includes("유지 켜짐")
+      && !deviceToolText.includes("유지 재연결"),
+    fullscreenVisible: deviceToolText.includes("전체화면"),
+    buzzerVisible: deviceToolText.includes("부저"),
   };
-
-  getWakeButton().click();
-  await waitFor(() => wakeRequests.length === 2, "active wake lock request missing");
-  const olderActiveLock = createWakeLock();
-  wakeRequests[1].resolve(olderActiveLock);
-  await waitFrames(4);
-  getWakeButton().click();
-  await waitFrames();
-  getWakeButton().click();
-  await waitFor(() => wakeRequests.length === 3, "replacement wake lock request missing");
-  const newerActiveLock = createWakeLock();
-  wakeRequests[2].resolve(newerActiveLock);
-  await waitFrames(4);
-  const activeLabel = getWakeButton().textContent;
-  olderActiveLock.emitRelease();
-  await waitFrames(3);
-  const oldReleasePreservedNewLock = getWakeButton().textContent === activeLabel;
-
-  getWakeButton().click();
-  await waitFrames();
-  getWakeButton().click();
-  await waitFor(() => wakeRequests.length === 4, "unmount wake lock request missing");
   clockRoot.unmount();
-  const staleUnmountLock = createWakeLock();
-  wakeRequests[3].resolve(staleUnmountLock);
-  await waitFrames(4);
 
   renderActivity(playerA);
   await waitFor(() => activityRequests.length === 1, "player A first page request missing");
@@ -2126,12 +2067,7 @@ const renderActivity = (player) => activityRoot.render(
   await waitFrames(4);
 
   window.parent.postMessage({
-    wake: {
-      noDuplicateDuringVisibility,
-      toggleOff,
-      oldReleasePreservedNewLock,
-      unmountReleased: staleUnmountLock.releaseCalls === 1,
-    },
+    scoreboard,
     activity: {
       oldContentHiddenBeforeBResponse,
       playerBRequest,
@@ -2144,7 +2080,7 @@ const renderActivity = (player) => activityRoot.render(
 
   try {
     await Promise.all([
-      writeFile(join(fixtureDirectory, "index.html"), `<!doctype html><html><body><iframe src="./fixture.html" style="width:1200px;height:900px;border:0"></iframe><script>addEventListener("message",(event)=>{document.body.dataset.result=btoa(unescape(encodeURIComponent(JSON.stringify(event.data))))})</script></body></html>`, "utf8"),
+      writeFile(join(fixtureDirectory, "index.html"), `<!doctype html><html><body><iframe src="./fixture.html" style="width:390px;height:844px;border:0"></iframe><script>addEventListener("message",(event)=>{document.body.dataset.result=btoa(unescape(encodeURIComponent(JSON.stringify(event.data))))})</script></body></html>`, "utf8"),
       writeFile(join(fixtureDirectory, "fixture.html"), `<!doctype html><html><body><div id="clock-root"></div><div id="activity-root"></div><script>addEventListener("error",(event)=>parent.postMessage({error:event.message||"module error"},"*"));addEventListener("unhandledrejection",(event)=>parent.postMessage({error:String(event.reason)},"*"))</script><script type="module" src="./async-browser-fixture.jsx" onerror="parent.postMessage({error:'module load failed'},'*')"></script></body></html>`, "utf8"),
       writeFile(join(fixtureDirectory, "async-browser-fixture.jsx"), fixtureSource, "utf8"),
     ]);
@@ -2167,11 +2103,10 @@ const renderActivity = (player) => activityRoot.render(
     assert.ok(encodedResult, `browser fixture must publish a result\n${stderr}\n${stdout.slice(-3000)}`);
     const result = JSON.parse(Buffer.from(encodedResult, "base64").toString("utf8"));
     assert.equal(result.error, undefined, result.error);
-    assert.deepEqual(result.wake, {
-      noDuplicateDuringVisibility: true,
-      toggleOff: { released: true, requested: "false" },
-      oldReleasePreservedNewLock: true,
-      unmountReleased: true,
+    assert.deepEqual(result.scoreboard, {
+      wakeControlHidden: true,
+      fullscreenVisible: true,
+      buzzerVisible: true,
     });
     assert.deepEqual(result.activity, {
       oldContentHiddenBeforeBResponse: true,

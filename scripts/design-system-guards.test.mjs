@@ -753,7 +753,7 @@ test("guide screenshots ship with the app and the shot clock has one separated o
     /\.ui-match-shot-clock(?::[^{]+)?\s*\{[^}]*box-shadow:[^}]*(?:0 5px 0|0 2px 0)/,
   );
   assert.match(matchClockStyles, /\.ui-match-clock-panel-focus:not\(\.ui-match-clock-panel-pending\)\s*\{[^}]*grid-template-columns:\s*minmax\(0, 0\.72fr\)\s*minmax\(280px, 1\.56fr\)\s*minmax\(0, 0\.72fr\);/);
-  assert.match(matchClockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-device-tools\s*\{[^}]*grid-template-columns:\s*repeat\(3, minmax\(0, 0\.72fr\)\) minmax\(0, 2fr\);/);
+  assert.match(matchClockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-device-tools\s*\{[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 0\.72fr\)\) minmax\(0, 2fr\);/);
   assert.match(matchClockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-volume input\[type="range"\]\s*\{[^}]*min-width:\s*0;/);
   assert.match(matchClockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-score-actions \.ui-button\s*\{[^}]*min-height:\s*calc\(var\(--ui-button-height\) \+ var\(--space-4\)\);/);
   assert.match(matchClockStyles, /\.ui-match-clock-attendance-qr\s*\{[^}]*border:\s*0;/);

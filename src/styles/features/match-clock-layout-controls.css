@@ -338,7 +338,7 @@
 
 .ui-match-clock-panel-focus .ui-match-clock-device-tools {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 0.72fr)) minmax(0, 2fr);
+  grid-template-columns: repeat(2, minmax(0, 0.72fr)) minmax(0, 2fr);
   grid-column: 2;
   grid-row: 5;
   gap: var(--match-clock-focus-gap);
