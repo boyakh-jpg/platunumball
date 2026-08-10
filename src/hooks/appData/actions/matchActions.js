@@ -12,6 +12,7 @@ export function buildMatchActions(context) {
     checkInMatchPlayer,
     confirmMatchRefereeAbsence,
     confirmPickupSideAssignment,
+    captureServerMutation,
     createMatch,
     createTournament,
     currentUserId,
@@ -126,10 +127,10 @@ switchUser: (userId) => {
     let localBlockNotification = null;
     let localBlockDebug = {};
     setState((prev) => {
-      rollbackState = prev;
       const existingIds = new Set((prev.tournaments ?? []).map((tournament) => tournament.id));
       const existingMatchIds = new Set((prev.matches ?? []).map((match) => match.id));
       const next = createTournament({ ...prev, currentUserId }, draft);
+      rollbackState = captureServerMutation(prev, next);
       createdTournament = (next.tournaments ?? []).find((tournament) => !existingIds.has(tournament.id)) ?? null;
       createdId = createdTournament?.id ?? null;
       createdMatches = (next.matches ?? []).filter((match) => !existingMatchIds.has(match.id));
@@ -183,9 +184,9 @@ switchUser: (userId) => {
     let createdMatches = [];
     let syncedNotifications = [];
     setState((prev) => {
-      rollbackState = prev;
       const existingMatchIds = new Set((prev.matches ?? []).map((match) => match.id));
       const next = approveTournamentTeam({ ...prev, currentUserId }, tournamentId, teamId);
+      rollbackState = captureServerMutation(prev, next);
       syncedTournament = (next.tournaments ?? []).find((tournament) => tournament.id === tournamentId) ?? null;
       createdMatches = (next.matches ?? []).filter((match) => !existingMatchIds.has(match.id));
       syncedNotifications = syncedTournament ? getNewTournamentNotifications(prev, next) : [];

@@ -6,6 +6,7 @@ export function buildProfileTeamActions(context) {
   const {
     authUserId,
     cacheCurrentProfileState,
+    captureServerMutation,
     createTeam,
     currentUserId,
     deleteTeam,
@@ -25,6 +26,7 @@ export function buildProfileTeamActions(context) {
     prepareTeamEmblemUpload,
     profileLocked,
     refreshCurrentProfile,
+    restoreServerMutation,
     rollbackIfServerFailed,
     rollbackServerMutation,
     runServerAction,
@@ -106,9 +108,9 @@ setProfileAffiliation: async ({ affiliationId = "", name = "" } = {}) => {
     let rollbackState = null;
     let syncedNotifications = [];
     setState((prev) => {
-      rollbackState = prev;
       const existingIds = new Set((prev.settings?.refereeRequests ?? []).map((request) => request.id));
       const next = submitRefereeRequest({ ...prev, currentUserId }, draft);
+      rollbackState = captureServerMutation(prev, next);
       createdRequest = (next.settings?.refereeRequests ?? []).find((request) => !existingIds.has(request.id)) ?? null;
       syncedNotifications = createdRequest ? getNewRefereeNotifications(prev, next) : [];
       return next;
@@ -122,18 +124,7 @@ setProfileAffiliation: async ({ affiliationId = "", name = "" } = {}) => {
       { requestId: createdRequest.id },
     ).then(async (result) => {
       if (result?.duplicate !== true) return result;
-      const optimisticNotificationIds = new Set(syncedNotifications.map((notification) => notification.id));
-      setState((prev) => {
-        if (prev.currentUserId !== currentUserId) return prev;
-        return {
-          ...prev,
-          settings: {
-            ...(prev.settings ?? {}),
-            refereeRequests: rollbackState.settings?.refereeRequests ?? [],
-          },
-          notifications: (prev.notifications ?? []).filter((notification) => !optimisticNotificationIds.has(notification.id)),
-        };
-      });
+      restoreServerMutation(rollbackState);
       if (stateRef.current.currentUserId === currentUserId && typeof refreshCurrentProfile === "function") {
         await refreshCurrentProfile();
       }
@@ -146,10 +137,14 @@ setProfileAffiliation: async ({ affiliationId = "", name = "" } = {}) => {
     }
     const safeTargetUserId = serverProfileBound ? currentUserId : targetUserId;
     const safePatch = profileLocked ? { ...patch, authUserId } : patch;
-    const rollbackState = stateRef.current;
-    const optimisticState = updateProfile({ ...rollbackState, currentUserId }, safePatch, safeTargetUserId);
-    const nextProfile = optimisticState.users.find((user) => user.id === safeTargetUserId) ?? null;
-    setState((prev) => updateProfile({ ...prev, currentUserId }, safePatch, safeTargetUserId));
+    let rollbackState = null;
+    let nextProfile = null;
+    setState((prev) => {
+      const next = updateProfile({ ...prev, currentUserId }, safePatch, safeTargetUserId);
+      rollbackState = captureServerMutation(prev, next);
+      nextProfile = next.users.find((user) => user.id === safeTargetUserId) ?? null;
+      return next;
+    });
     if (!serverProfileBound) return Promise.resolve({ ok: true });
     if (!nextProfile) return Promise.resolve({ ok: false, error: "profile_not_ready" });
     return persistProfileServer(nextProfile).then(async (result) => {
@@ -192,9 +187,9 @@ setProfileAffiliation: async ({ affiliationId = "", name = "" } = {}) => {
     let syncedNotifications = [];
     let localBlockNotification = null;
     setState((prev) => {
-      rollbackState = prev;
       const existingIds = new Set((prev.teams ?? []).map((team) => team.id));
       const next = createTeam({ ...prev, currentUserId }, draft);
+      rollbackState = captureServerMutation(prev, next);
       createdTeam = (next.teams ?? []).find((team) => !existingIds.has(team.id)) ?? null;
       syncedNotifications = createdTeam ? getNewTeamNotifications(prev, next) : [];
       localBlockNotification = createdTeam ? null : getNewItems(prev.notifications ?? [], next.notifications ?? [])[0] ?? null;

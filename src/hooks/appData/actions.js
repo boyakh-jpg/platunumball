@@ -16,6 +16,142 @@ const {
   unblockUser,
 } = APP_ACTION_DEPENDENCIES;
 
+const isPlainObject = (value) => (
+  Boolean(value) &&
+  typeof value === "object" &&
+  !Array.isArray(value) &&
+  (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null)
+);
+
+const rollbackValuesEqual = (left, right) => {
+  if (Object.is(left, right)) return true;
+  if (Array.isArray(left) && Array.isArray(right)) {
+    return left.length === right.length && left.every((value, index) => rollbackValuesEqual(value, right[index]));
+  }
+  if (!isPlainObject(left) || !isPlainObject(right)) return false;
+  const leftKeys = Object.keys(left);
+  const rightKeys = Object.keys(right);
+  return leftKeys.length === rightKeys.length && leftKeys.every((key) => (
+    Object.hasOwn(right, key) && rollbackValuesEqual(left[key], right[key])
+  ));
+};
+
+const isEntityListPair = (before, optimistic) => {
+  if (!Array.isArray(before) || !Array.isArray(optimistic)) return false;
+  const values = [...before, ...optimistic];
+  return values.length > 0 && values.every((value) => isPlainObject(value) && value.id != null);
+};
+
+const collectRollbackChanges = (before, beforeExists, optimistic, optimisticExists, path, changes) => {
+  if (beforeExists === optimisticExists && (!beforeExists || rollbackValuesEqual(before, optimistic))) return;
+  if (beforeExists && optimisticExists && isEntityListPair(before, optimistic)) {
+    const beforeById = new Map(before.map((value, index) => [String(value.id), { value, index }]));
+    const optimisticById = new Map(optimistic.map((value, index) => [String(value.id), { value, index }]));
+    for (const id of new Set([...beforeById.keys(), ...optimisticById.keys()])) {
+      const beforeEntry = beforeById.get(id);
+      const optimisticEntry = optimisticById.get(id);
+      collectRollbackChanges(
+        beforeEntry?.value,
+        Boolean(beforeEntry),
+        optimisticEntry?.value,
+        Boolean(optimisticEntry),
+        [...path, { id }],
+        changes,
+      );
+      if (!optimisticEntry && beforeEntry) changes.at(-1).beforeIndex = beforeEntry.index;
+    }
+    return;
+  }
+  if (beforeExists && optimisticExists && isPlainObject(before) && isPlainObject(optimistic)) {
+    for (const key of new Set([...Object.keys(before), ...Object.keys(optimistic)])) {
+      collectRollbackChanges(
+        before[key],
+        Object.hasOwn(before, key),
+        optimistic[key],
+        Object.hasOwn(optimistic, key),
+        [...path, { key }],
+        changes,
+      );
+    }
+    return;
+  }
+  changes.push({ before, beforeExists, optimistic, optimisticExists, path });
+};
+
+const readRollbackPath = (state, path) => {
+  let value = state;
+  for (const segment of path) {
+    if (Object.hasOwn(segment, "key")) {
+      if (!isPlainObject(value) || !Object.hasOwn(value, segment.key)) return { exists: false, value: undefined };
+      value = value[segment.key];
+      continue;
+    }
+    if (!Array.isArray(value)) return { exists: false, value: undefined };
+    const index = value.findIndex((item) => String(item?.id) === segment.id);
+    if (index < 0) return { exists: false, value: undefined };
+    value = value[index];
+  }
+  return { exists: true, value };
+};
+
+const writeRollbackPath = (state, path, change, depth = 0) => {
+  const segment = path[depth];
+  const isLast = depth === path.length - 1;
+  if (Object.hasOwn(segment, "key")) {
+    const next = { ...(isPlainObject(state) ? state : {}) };
+    if (isLast) {
+      if (change.beforeExists) next[segment.key] = change.before;
+      else delete next[segment.key];
+      return next;
+    }
+    next[segment.key] = writeRollbackPath(next[segment.key], path, change, depth + 1);
+    return next;
+  }
+  const next = Array.isArray(state) ? [...state] : [];
+  const index = next.findIndex((item) => String(item?.id) === segment.id);
+  if (isLast) {
+    if (!change.beforeExists) {
+      if (index >= 0) next.splice(index, 1);
+      return next;
+    }
+    if (index >= 0) next[index] = change.before;
+    else next.splice(Math.min(change.beforeIndex ?? next.length, next.length), 0, change.before);
+    return next;
+  }
+  if (index < 0) return next;
+  next[index] = writeRollbackPath(next[index], path, change, depth + 1);
+  return next;
+};
+
+export function createServerMutationRollbackStore() {
+  const versions = new Map();
+  return {
+    capture(before, optimistic) {
+      const changes = [];
+      collectRollbackChanges(before, true, optimistic, true, [], changes);
+      return {
+        changes: changes.map((change) => {
+          const key = JSON.stringify(change.path);
+          const version = (versions.get(key) ?? 0) + 1;
+          versions.set(key, version);
+          return { ...change, key, version };
+        }),
+      };
+    },
+    restore(current, rollback) {
+      return (rollback?.changes ?? []).reduce((next, change) => {
+        if (versions.get(change.key) !== change.version) return next;
+        const currentValue = readRollbackPath(next, change.path);
+        if (
+          currentValue.exists !== change.optimisticExists ||
+          (currentValue.exists && !rollbackValuesEqual(currentValue.value, change.optimistic))
+        ) return next;
+        return writeRollbackPath(next, change.path, change);
+      }, current);
+    },
+  };
+}
+
 export function createAppActions({
   adminStatusRef,
   applyFavoriteToggle,
@@ -82,6 +218,12 @@ export function createAppActions({
   themeCommittedValueRef,
   themeMutationVersionRef,
 }) {
+  const serverMutationRollbackStore = createServerMutationRollbackStore();
+  const captureServerMutation = (before, optimistic) => serverMutationRollbackStore.capture(before, optimistic);
+  const restoreServerMutation = (rollback) => {
+    if (!rollback) return;
+    setState((current) => serverMutationRollbackStore.restore(current, rollback));
+  };
   const getNewRecruitingNotifications = (prev, next, postId) => {
     const beforeIds = new Set((prev.notifications ?? []).map((notification) => notification.id));
     return (next.notifications ?? []).filter((notification) => (
@@ -135,30 +277,33 @@ export function createAppActions({
       };
     });
   };
-  const rollbackServerMutation = (snapshot, label, payload = {}) => {
-    if (!snapshot) return;
+  const rollbackServerMutation = (rollback, label, payload = {}) => {
+    if (!rollback) return;
     const mmrImbalance = String(payload.error ?? payload.details?.reason ?? "").includes("side_mmr_imbalance");
-    setState({
-      ...snapshot,
-      notifications: [
-        {
-          id: makeClientNotificationId("n"),
-          title: "저장하지 못했습니다",
-          body: mmrImbalance
-            ? "사이드 평균 차이 또는 내부 MMR 폭이 허용 범위를 넘습니다."
-            : "변경 내용을 저장하지 못해 화면을 이전 상태로 되돌렸습니다. 잠시 후 다시 시도해 주세요.",
-          tone: "orange",
-          createdAt: new Date().toISOString(),
-          payload,
-        },
-        ...(snapshot.notifications ?? []),
-      ],
+    setState((current) => {
+      const restored = serverMutationRollbackStore.restore(current, rollback);
+      return {
+        ...restored,
+        notifications: [
+          {
+            id: makeClientNotificationId("n"),
+            title: "저장하지 못했습니다",
+            body: mmrImbalance
+              ? "사이드 평균 차이 또는 내부 MMR 폭이 허용 범위를 넘습니다."
+              : "변경 내용을 저장하지 못해 화면을 이전 상태로 되돌렸습니다. 잠시 후 다시 시도해 주세요.",
+            tone: "orange",
+            createdAt: new Date().toISOString(),
+            payload,
+          },
+          ...(restored.notifications ?? []),
+        ],
+      };
     });
   };
-  const rollbackIfServerFailed = (promise, snapshot, label, payload = {}) => {
+  const rollbackIfServerFailed = (promise, rollback, label, payload = {}) => {
     return Promise.resolve(promise).then((result) => {
       if (!result || result.ok === false) {
-        rollbackServerMutation(snapshot, label, {
+        rollbackServerMutation(rollback, label, {
           ...payload,
           error: result?.error ?? payload.error,
           statusCode: result?.statusCode ?? payload.statusCode,
@@ -255,13 +400,14 @@ export function createAppActions({
     let syncedNotifications = [];
     const directServerOperation = isSupabaseConfigured && operation && RECRUITING_OPERATION_ONLY_ACTIONS.has(operation.action);
     const applyLocalMutation = () => setState((prev) => {
-      rollbackState = prev;
       const beforePost = (prev.recruitingPosts ?? []).find((post) => post.id === postId) ?? null;
       const next = reducer(prev);
       const nextPost = (next.recruitingPosts ?? []).find((post) => post.id === postId) ?? null;
       syncedPost = nextPost && nextPost !== beforePost ? nextPost : null;
       syncedNotifications = syncedPost ? getNewRecruitingNotifications(prev, next, postId) : [];
-      return !syncedPost && operation && isSupabaseConfigured ? prev : next;
+      const appliedNext = !syncedPost && operation && isSupabaseConfigured ? prev : next;
+      rollbackState = captureServerMutation(prev, appliedNext);
+      return appliedNext;
     });
     if (optimisticBeforeServerCheck && !directServerOperation) applyLocalMutation();
     const serverReady = await ensureServerActionAvailable("/api/recruiting/sync-post", "방 변경", { quiet: optimisticBeforeServerCheck });
@@ -306,14 +452,15 @@ export function createAppActions({
     let syncedMatch = null;
     let syncedNotifications = [];
     setState((prev) => {
-      rollbackState = prev;
       const beforeMatch = (prev.matches ?? []).find((match) => match.id === matchId) ?? null;
       baseUpdatedAt = beforeMatch?.updatedAt ?? beforeMatch?.createdAt ?? null;
       const next = reducer(prev);
       const nextMatch = (next.matches ?? []).find((match) => match.id === matchId) ?? null;
       syncedMatch = nextMatch && nextMatch !== beforeMatch ? nextMatch : null;
       syncedNotifications = syncedMatch ? getNewMatchNotifications(prev, next, matchId) : [];
-      return !syncedMatch && operation && isSupabaseConfigured ? prev : next;
+      const appliedNext = !syncedMatch && operation && isSupabaseConfigured ? prev : next;
+      rollbackState = captureServerMutation(prev, appliedNext);
+      return appliedNext;
     });
     const syncMeta = { ...meta, matchId, baseUpdatedAt };
     if (operation && MATCH_OPERATION_ONLY_ACTIONS.has(operation.action)) {
@@ -331,9 +478,9 @@ export function createAppActions({
     let syncedTeam = null;
     let syncedNotifications = [];
     setState((prev) => {
-      rollbackState = prev;
       const beforeTeam = (prev.teams ?? []).find((team) => team.id === teamId) ?? null;
       const next = reducer(prev);
+      rollbackState = captureServerMutation(prev, next);
       const nextTeam = (next.teams ?? []).find((team) => team.id === teamId) ?? null;
       syncedTeam = nextTeam && nextTeam !== beforeTeam ? nextTeam : null;
       syncedNotifications = syncedTeam ? getNewTeamNotifications(prev, next) : [];
@@ -347,14 +494,16 @@ export function createAppActions({
     if (serverReady !== true) return serverReady;
     if (!ensureRemoteReady(label)) return false;
     let rollbackState = null;
+    let previousStateSnapshot = null;
     let nextStateSnapshot = null;
     setState((prev) => {
-      rollbackState = prev;
+      previousStateSnapshot = prev;
       const next = reducer(prev);
+      rollbackState = captureServerMutation(prev, next);
       nextStateSnapshot = next;
       return next;
     });
-    const payload = payloadFactory?.(rollbackState, nextStateSnapshot) ?? {};
+    const payload = payloadFactory?.(previousStateSnapshot, nextStateSnapshot) ?? {};
     return Promise.resolve(syncTeamInvitationServer(action, payload)).then((result) => (
       result?.state
         ? result
@@ -371,6 +520,7 @@ export function createAppActions({
     ...APP_ACTION_DEPENDENCIES,
     adminStatusRef,
     applyBlockedUserMutation,
+    captureServerMutation,
     applyFavoriteToggle,
     applyMatchMutation,
     applyRecruitingPostMutation,
@@ -418,6 +568,7 @@ export function createAppActions({
     refreshAdminState,
     refreshCurrentProfile,
     refreshRecruitingRelations,
+    restoreServerMutation,
     rollbackIfServerFailed,
     rollbackServerMutation,
     runServerAction,

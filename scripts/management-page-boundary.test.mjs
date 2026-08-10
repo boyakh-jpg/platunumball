@@ -12,6 +12,7 @@ import { submitRefereeRequest } from "../src/data/repository/courts.js";
 import { updateSettings } from "../src/data/repository/settings.js";
 import { buildProfileTeamActions } from "../src/hooks/appData/actions/profileTeamActions.js";
 import { buildSettingsActions } from "../src/hooks/appData/actions/settingsActions.js";
+import { createServerMutationRollbackStore } from "../src/hooks/appData/actions.js";
 import { hasReservedOperatorIdentity, makeSuggestedHashtagBody, toHashtag } from "../src/lib/handles.js";
 import { isProfileGateReady, normalizeProfileName, PROFILE_NAME_MAX_LENGTH, shouldSetupProfile } from "../src/lib/profileSetup.js";
 
@@ -25,6 +26,93 @@ function createStateHarness(initialState) {
   };
   return { stateRef, setState };
 }
+
+function createRollbackHarness(stateHarness) {
+  const store = createServerMutationRollbackStore();
+  const restoreServerMutation = (rollback) => {
+    stateHarness.setState((current) => store.restore(current, rollback));
+  };
+  return {
+    captureServerMutation: (before, optimistic) => store.capture(before, optimistic),
+    restoreServerMutation,
+    rollbackServerMutation: restoreServerMutation,
+    rollbackIfServerFailed: async (promise, rollback) => {
+      const result = await promise;
+      if (!result || result.ok === false) restoreServerMutation(rollback);
+      return result;
+    },
+  };
+}
+
+test("공용 rollback은 실패한 변경만 되돌리고 이후 성공 상태를 보존한다", () => {
+  const representativeStore = createServerMutationRollbackStore();
+  const representativeBefore = {
+    settings: { representativeTeamId: "team-a", favoriteTeamIds: [] },
+    notifications: [],
+  };
+  const representativeOptimistic = {
+    ...representativeBefore,
+    settings: { ...representativeBefore.settings, representativeTeamId: "team-b" },
+  };
+  const representativeRollback = representativeStore.capture(representativeBefore, representativeOptimistic);
+  const favoriteSucceeded = {
+    ...representativeOptimistic,
+    settings: { ...representativeOptimistic.settings, favoriteTeamIds: ["team-c"] },
+  };
+  assert.deepEqual(representativeStore.restore(favoriteSucceeded, representativeRollback), {
+    settings: { representativeTeamId: "team-a", favoriteTeamIds: ["team-c"] },
+    notifications: [],
+  });
+
+  const profileStore = createServerMutationRollbackStore();
+  const profileBefore = {
+    users: [{ id: "u1", name: "이전 이름", mmr: 1200 }],
+    settings: { notificationChannels: { discord: false } },
+    notifications: [{ id: "n1", readAt: null }],
+  };
+  const profileOptimistic = {
+    ...profileBefore,
+    users: [{ ...profileBefore.users[0], name: "새 이름" }],
+  };
+  const profileRollback = profileStore.capture(profileBefore, profileOptimistic);
+  const settingsAndNotificationSucceeded = {
+    ...profileOptimistic,
+    settings: { notificationChannels: { discord: true } },
+    notifications: [...profileOptimistic.notifications, { id: "n2", readAt: null }],
+  };
+  assert.deepEqual(profileStore.restore(settingsAndNotificationSucceeded, profileRollback), {
+    users: [{ id: "u1", name: "이전 이름", mmr: 1200 }],
+    settings: { notificationChannels: { discord: true } },
+    notifications: [{ id: "n1", readAt: null }, { id: "n2", readAt: null }],
+  });
+
+  const courtStore = createServerMutationRollbackStore();
+  const courtBefore = { settings: { courtRequests: [] }, notifications: [] };
+  const courtOptimistic = {
+    ...courtBefore,
+    settings: { courtRequests: [{ id: "court-request-1", status: "pending" }] },
+  };
+  const courtRollback = courtStore.capture(courtBefore, courtOptimistic);
+  const notificationReceived = {
+    ...courtOptimistic,
+    notifications: [{ id: "n-new", title: "새 알림" }],
+  };
+  assert.deepEqual(courtStore.restore(notificationReceived, courtRollback), {
+    settings: { courtRequests: [] },
+    notifications: [{ id: "n-new", title: "새 알림" }],
+  });
+});
+
+test("같은 entity의 늦은 실패는 이후 mutation을 덮지 않는다", () => {
+  const store = createServerMutationRollbackStore();
+  const before = { users: [{ id: "u1", name: "원본", mmr: 1200 }] };
+  const firstOptimistic = { users: [{ id: "u1", name: "A", mmr: 1200 }] };
+  const firstRollback = store.capture(before, firstOptimistic);
+  const secondOptimistic = { users: [{ id: "u1", name: "B", mmr: 1200 }] };
+  store.capture(firstOptimistic, secondOptimistic);
+
+  assert.deepEqual(store.restore(secondOptimistic, firstRollback), secondOptimistic);
+});
 
 test("프로필 운영자 예약어는 표기 변형을 막고 빈 추천값은 일반 사용자용이다", async () => {
   assert.equal(hasReservedOperatorIdentity({ name: "MyBOXTIER" }), true);
@@ -120,14 +208,14 @@ test("프로필과 심판 등록의 서버 실패는 낙관 상태를 원래 값
     },
   };
   const profileHarness = createStateHarness(initialState);
-  const rollbackServerMutation = (snapshot) => profileHarness.setState(snapshot);
+  const profileRollback = createRollbackHarness(profileHarness);
   const profileActions = buildProfileTeamActions({
+    ...profileRollback,
     authUserId: "auth-1",
     currentUserId: "u1",
     getServerActionErrorText: (error) => error?.message ?? "profile_save_failed",
     persistProfileServer: async () => ({ ok: false, error: "offline" }),
     profileLocked: true,
-    rollbackServerMutation,
     serverProfileBound: true,
     setState: profileHarness.setState,
     stateRef: profileHarness.stateRef,
@@ -139,18 +227,15 @@ test("프로필과 심판 등록의 서버 실패는 낙관 상태를 원래 값
   assert.equal(profileHarness.stateRef.current.users[0].name, "기존 이름");
 
   const refereeHarness = createStateHarness(initialState);
+  const refereeRollback = createRollbackHarness(refereeHarness);
   let optimisticRequestCount = 0;
   const refereeActions = buildProfileTeamActions({
+    ...refereeRollback,
     currentUserId: "u1",
     getNewRefereeNotifications: (previous, next) => next.notifications.filter(
       (notification) => !previous.notifications.some((item) => item.id === notification.id),
     ),
     isSupabaseConfigured: true,
-    rollbackIfServerFailed: async (promise, snapshot) => {
-      const result = await promise;
-      if (!result || result.ok === false) refereeHarness.setState(snapshot);
-      return result;
-    },
     setState: refereeHarness.setState,
     stateRef: refereeHarness.stateRef,
     submitRefereeRequest,
@@ -185,8 +270,10 @@ test("기존 심판 등록요청 응답은 임시 요청과 자기 알림을 제
       refereeRequests: [],
     },
   });
+  const rollback = createRollbackHarness(harness);
   let refreshCount = 0;
   const actions = buildProfileTeamActions({
+    ...rollback,
     currentUserId: "u1",
     getNewRefereeNotifications: (previous, next) => next.notifications.filter(
       (notification) => !previous.notifications.some((item) => item.id === notification.id),

@@ -6,6 +6,7 @@ export function buildSettingsActions(context) {
     authUserId,
     commitAdminAppointmentAction,
     commitAdminReviewAction,
+    captureServerMutation,
     currentUserId,
     deleteNotification: deleteNotificationState,
     deleteNotificationServer,
@@ -86,8 +87,9 @@ updateSettings: (patch) => {
     }
     let rollbackState = null;
     setState((prev) => {
-      rollbackState = prev;
-      return updateSettings({ ...prev, currentUserId }, patch);
+      const next = updateSettings({ ...prev, currentUserId }, patch);
+      rollbackState = captureServerMutation(prev, next);
+      return next;
     });
     return rollbackIfServerFailed(syncSettingsServer(patch), rollbackState, "설정 저장", { patch });
   },
@@ -95,8 +97,8 @@ updateSettings: (patch) => {
     let nextPrivacy = null;
     let rollbackState = null;
     setState((prev) => {
-      rollbackState = prev;
       const next = updatePrivacySettings({ ...prev, currentUserId }, patch);
+      rollbackState = captureServerMutation(prev, next);
       nextPrivacy = next.settings?.privacy ?? null;
       return next;
     });
@@ -331,9 +333,9 @@ updateSettings: (patch) => {
     let createdRequest = null;
     let rollbackState = null;
     setState((prev) => {
-      rollbackState = prev;
       const existingIds = new Set((prev.settings?.courtRequests ?? []).map((request) => request.id));
       const next = submitCourtRequest({ ...prev, currentUserId }, draft);
+      rollbackState = captureServerMutation(prev, next);
       createdRequest = (next.settings?.courtRequests ?? []).find((request) => !existingIds.has(request.id)) ?? null;
       return next;
     });
@@ -358,8 +360,8 @@ updateSettings: (patch) => {
     let submittedReview = null;
     let rollbackState = null;
     setState((prev) => {
-      rollbackState = prev;
       const next = submitCourtReview({ ...prev, currentUserId }, matchId, draft);
+      rollbackState = captureServerMutation(prev, next);
       submittedReview = (next.settings?.courtReviews ?? []).find((review) => review.matchId === matchId && review.reviewerId === currentUserId) ?? null;
       return next;
     });

@@ -2421,11 +2421,12 @@ flowchart TD
 
 ## 2026-06-26 optimistic server rollback
 
-1. Supabase/server action 모드에서 경기, 모집방, 팀, 토너먼트 생성/변경은 먼저 화면에 반영하되 server action 실패 시 이전 화면 상태로 되돌린다.
-2. 서버가 권한, 정원, 심판 자격, 중복 선수, 1v1 파티 금지 같은 규칙으로 거부하면 해당 변경은 새로고침 전에도 남기지 않는다.
-3. rollback은 사용자에게 `서버 저장 실패` 알림을 남긴다.
-4. match/recruiting operation은 서버가 현재 Supabase 상태를 다시 로드하고 중앙 reducer를 실행한 뒤 저장한다.
-5. 최종 완료 기준은 match/recruiting/team write를 DB transaction/RPC 단위로 옮기는 것이다.
+1. Supabase/server action 모드에서 경기, 모집방, 팀, 토너먼트 생성/변경은 먼저 화면에 반영하되 server action 실패 시 해당 mutation이 바꾼 entity와 field만 이전 값으로 되돌린다.
+2. rollback은 현재 값이 해당 요청의 낙관 값과 같고 경로별 mutation token이 최신일 때만 적용한다. 이후 성공한 mutation, directory/realtime 병합, 새 알림은 유지한다.
+3. 서버가 권한, 정원, 심판 자격, 중복 선수, 1v1 파티 금지 같은 규칙으로 거부하면 해당 변경은 새로고침 전에도 남기지 않는다.
+4. rollback은 사용자에게 `서버 저장 실패` 알림을 남긴다.
+5. match/recruiting operation은 서버가 현재 Supabase 상태를 다시 로드하고 중앙 reducer를 실행한 뒤 저장한다.
+6. 최종 완료 기준은 match/recruiting/team write를 DB transaction/RPC 단위로 옮기는 것이다.
 
 ## 2026-06-26 recruiting age eligibility server guard
 

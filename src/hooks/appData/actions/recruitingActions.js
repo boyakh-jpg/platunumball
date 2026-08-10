@@ -17,6 +17,7 @@ export function buildRecruitingActions(context) {
     applyRecruitingPostMutation,
     cancelMatchParticipation,
     cancelRecruitingParticipation,
+    captureServerMutation,
     closeRecruitingPost,
     createRecruitingPost,
     currentUserId,
@@ -182,11 +183,7 @@ createRecruitingPost: async (draft) => {
     const serverReady = await ensureServerActionAvailable("/api/recruiting/sync-post", "방 확정");
     if (serverReady !== true) return null;
     if (!ensureRemoteReady("방 확정")) return null;
-    let rollbackState = null;
-    setState((prev) => {
-      rollbackState = prev;
-      return prev;
-    });
+    const rollbackState = captureServerMutation(stateRef.current, stateRef.current);
     return rollbackIfServerFailed(
       syncRecruitingPostServer(null, [], { action: "confirmRecruitingMatch", postId }),
       rollbackState,
