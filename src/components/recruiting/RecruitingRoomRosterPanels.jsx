@@ -35,6 +35,17 @@ import {
   PlayerRoomSlot,
 } from "./RecruitingRoomCore.jsx";
 
+export const ROOM_CHAT_BOTTOM_THRESHOLD_PX = 64;
+
+export function isRoomChatNearBottom(node, threshold = ROOM_CHAT_BOTTOM_THRESHOLD_PX) {
+  if (!node) return true;
+  return node.scrollHeight - node.scrollTop - node.clientHeight <= threshold;
+}
+
+export function shouldAutoScrollRoomChat(initialized, nearBottom) {
+  return !initialized || nearBottom;
+}
+
 export function SideRoster({
   sideName,
   side,
@@ -268,6 +279,8 @@ export function RoomChat({
 }) {
   const rootRef = useRef(null);
   const listRef = useRef(null);
+  const chatPositionInitializedRef = useRef(false);
+  const chatNearBottomRef = useRef(true);
   const latestMessage = messages.at(-1);
   const latestMessageKey = latestMessage ? `${latestMessage.id || ""}:${latestMessage.createdAt || ""}:${latestMessage.body || ""}` : "";
   const inputDisabled = !canChat || sending || cooldown || locked;
@@ -275,8 +288,15 @@ export function RoomChat({
   useEffect(() => {
     const node = listRef.current;
     if (!node) return undefined;
+    const shouldScroll = shouldAutoScrollRoomChat(
+      chatPositionInitializedRef.current,
+      chatNearBottomRef.current,
+    );
+    chatPositionInitializedRef.current = true;
+    if (!shouldScroll) return undefined;
     const frameId = window.requestAnimationFrame(() => {
       node.scrollTop = node.scrollHeight;
+      chatNearBottomRef.current = true;
     });
     return () => window.cancelAnimationFrame(frameId);
   }, [messages.length, latestMessageKey]);
@@ -304,7 +324,13 @@ export function RoomChat({
         <span><MessageSquare size={16} /> 방 채팅</span>
         <strong>{publicPreview ? "로그인 필요" : locked ? "경기 종료됨" : messages.length}</strong>
       </header>
-      <div className="arena-chat-list" ref={listRef}>
+      <div
+        className="arena-chat-list"
+        ref={listRef}
+        onScroll={(event) => {
+          chatNearBottomRef.current = isRoomChatNearBottom(event.currentTarget);
+        }}
+      >
         {publicPreview ? (
           <div className="arena-chat-empty">채팅은 로그인 후 확인할 수 있습니다</div>
         ) : messages.length ? messages.map((message) => {

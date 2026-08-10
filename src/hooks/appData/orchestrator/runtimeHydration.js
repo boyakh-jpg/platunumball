@@ -55,6 +55,7 @@ export function useAppDataRuntimeHydration(context, runtime) {
     matchTeamSchedulePromiseRef,
     pendingMatchIdsRef,
     pendingMatchMutationCountsRef,
+    pendingRecruitingMutationCountsRef,
     pendingRecruitingPostIdsRef,
     playMatchesPromiseRef,
     profileRecordArchiveRef,
@@ -121,6 +122,7 @@ export function useAppDataRuntimeHydration(context, runtime) {
       homeRouteLoadKeyRef.current = "";
       recruitingPostPromiseRef.current = new Map();
       pendingRecruitingPostIdsRef.current = new Set();
+      pendingRecruitingMutationCountsRef.current = new Map();
       recentRecruitingMutationTimesRef.current = new Map();
       pendingMatchIdsRef.current = new Set();
       pendingMatchMutationCountsRef.current = new Map();
@@ -171,6 +173,7 @@ export function useAppDataRuntimeHydration(context, runtime) {
     homeRouteLoadKeyRef.current = "";
     recruitingPostPromiseRef.current = new Map();
     pendingRecruitingPostIdsRef.current = new Set();
+    pendingRecruitingMutationCountsRef.current = new Map();
     recentRecruitingMutationTimesRef.current = new Map();
     pendingMatchIdsRef.current = new Set();
     pendingMatchMutationCountsRef.current = new Map();

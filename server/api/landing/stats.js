@@ -15,6 +15,7 @@ import {
 } from "../../../shared/lib/repositoryColumns.js";
 
 const LANDING_RECRUITING_LIMIT = 3;
+const PUBLIC_RECRUITING_COLUMNS = "id,type,title,status,visibility,mode,court_id,court_name,region,scheduled_date,scheduled_time,scheduled_at,timing_type:room_state->>timingType,mmr_range_mode:room_state->>mmrRangeMode,mmr_limit_mode:room_state->>mmrLimitMode,team_only:room_state->teamOnly,referee_wanted:room_state->refereeWanted,host_reserve:room_state->hostReserve,party_reserves:room_state->partyReserves,pinned_reserve_players:room_state->pinnedReservePlayers,party_leaders:room_state->partyLeaders,party_sides:room_state->partySides,slot_positions:room_state->slotPositions,ranked,official,pre_registered,rating_scale,age_restriction,allowed_age_groups,rules,stakes,court_reserved,court_fee,spots,referee_trust_min,stat_entry_minutes,dispute_minutes,host_join_mode,host_side,host_ready,side_capacity,bench_capacity,player_id,player_ids,position,team_id,target_team_id,referee_id,created_at,updated_at";
 
 function getRecruitingLimit(request) {
   const rawLimit = Array.isArray(request.query?.recruitingLimit)
@@ -24,6 +25,22 @@ function getRecruitingLimit(request) {
   return Number.isSafeInteger(limit) && limit > 0
     ? Math.min(limit, REMOTE_CLIENT_RECRUITING_LIMIT)
     : LANDING_RECRUITING_LIMIT;
+}
+
+function getRequestedRecruitingPostId(request) {
+  const rawPostId = Array.isArray(request.query?.recruitingPostId)
+    ? request.query.recruitingPostId[0]
+    : request.query?.recruitingPostId;
+  const postId = typeof rawPostId === "string" ? rawPostId.trim() : "";
+  return postId && postId.length <= 128 ? postId : "";
+}
+
+export function resolveRequestedRecruitingResult(requestedPostId, row = null, post = null) {
+  if (!requestedPostId) return null;
+  if (!row) return { status: "not_found", post: null };
+  if (row.visibility !== "public") return { status: "private", post: null };
+  if (row.status !== "open") return { status: "closed", post: null };
+  return post ? { status: "open", post } : { status: "not_found", post: null };
 }
 
 async function readCount(query, label) {
@@ -154,12 +171,12 @@ export async function loadLandingStats(supabase) {
   return { openRecruiting, completedMatches, activeTeams, players };
 }
 
-export async function loadLandingFeed(supabase, recruitingLimit = LANDING_RECRUITING_LIMIT) {
-  const [recruitingRows, matchRows] = await Promise.all([
+export async function loadLandingFeed(supabase, recruitingLimit = LANDING_RECRUITING_LIMIT, requestedPostId = "") {
+  const [recruitingRows, matchRows, requestedRows] = await Promise.all([
     readRows(
       supabase
         .from("recruiting_posts")
-        .select("id,type,title,visibility,mode,court_id,court_name,region,scheduled_date,scheduled_time,scheduled_at,timing_type:room_state->>timingType,mmr_range_mode:room_state->>mmrRangeMode,mmr_limit_mode:room_state->>mmrLimitMode,team_only:room_state->teamOnly,referee_wanted:room_state->refereeWanted,host_reserve:room_state->hostReserve,party_reserves:room_state->partyReserves,pinned_reserve_players:room_state->pinnedReservePlayers,party_leaders:room_state->partyLeaders,party_sides:room_state->partySides,slot_positions:room_state->slotPositions,ranked,official,pre_registered,rating_scale,age_restriction,allowed_age_groups,rules,stakes,court_reserved,court_fee,spots,referee_trust_min,stat_entry_minutes,dispute_minutes,host_join_mode,host_side,host_ready,side_capacity,bench_capacity,player_id,player_ids,position,team_id,target_team_id,referee_id,created_at,updated_at")
+        .select(PUBLIC_RECRUITING_COLUMNS)
         .eq("status", "open")
         .eq("visibility", "public")
         .order("updated_at", { ascending: false })
@@ -174,8 +191,22 @@ export async function loadLandingFeed(supabase, recruitingLimit = LANDING_RECRUI
         .order("confirmed_at", { ascending: false, nullsFirst: false })
         .limit(3),
     ),
+    requestedPostId
+      ? readRows(supabase
+        .from("recruiting_posts")
+        .select(PUBLIC_RECRUITING_COLUMNS)
+        .eq("id", requestedPostId)
+        .limit(1))
+      : [],
   ]);
-  const postIds = recruitingRows.map((row) => row.id).filter(Boolean);
+  const requestedRow = requestedRows[0] ?? null;
+  const requestedPublicRow = requestedRow?.status === "open" && requestedRow?.visibility === "public"
+    ? requestedRow
+    : null;
+  const publicRecruitingRows = requestedPublicRow && !recruitingRows.some((row) => row.id === requestedPublicRow.id)
+    ? [...recruitingRows, requestedPublicRow]
+    : recruitingRows;
+  const postIds = publicRecruitingRows.map((row) => row.id).filter(Boolean);
   const applicationRows = postIds.length
     ? await readRows(supabase
       .from("recruiting_applications")
@@ -188,11 +219,11 @@ export async function loadLandingFeed(supabase, recruitingLimit = LANDING_RECRUI
     map.set(application.post_id, list);
     return map;
   }, new Map());
-  const rosterIdsByPost = new Map(recruitingRows.map((row) => [
+  const rosterIdsByPost = new Map(publicRecruitingRows.map((row) => [
     row.id,
     getPublicRosterIds(row, applicationsByPost.get(row.id) ?? []),
   ]));
-  const rosterTeamIdsByPost = new Map(recruitingRows.map((row) => [
+  const rosterTeamIdsByPost = new Map(publicRecruitingRows.map((row) => [
     row.id,
     getPublicRosterTeamIds(row, applicationsByPost.get(row.id) ?? []),
   ]));
@@ -210,21 +241,24 @@ export async function loadLandingFeed(supabase, recruitingLimit = LANDING_RECRUI
   const publicProfileById = new Map(profileRows.map((row) => [row.id, fromRemoteProfile(row)]));
   const publicTeamById = new Map(teamRows.map((row) => [row.id, toClientRecruitingTeam(row)]));
   const teamNames = new Map(teamRows.map((team) => [team.id, team.name]));
+  const projectPublicRoom = (row) => {
+    const rosterIds = rosterIdsByPost.get(row.id) ?? [];
+    const rosterTeamIds = rosterTeamIdsByPost.get(row.id) ?? [];
+    return {
+      ...fromRemoteRecruitingPost({
+        ...row,
+        status: "open",
+        room_state: projectPublicRecruitingRoomState(getRowPublicRoomState(row), row.player_id),
+      }, { applicationsByPost }),
+      publicParticipants: rosterIds.map((id) => publicProfileById.get(id)).filter(Boolean),
+      publicTeams: rosterTeamIds.map((id) => publicTeamById.get(id)).filter(Boolean),
+    };
+  };
+  const requestedPost = requestedPublicRow ? projectPublicRoom(requestedPublicRow) : null;
 
   return {
-    openRecruiting: recruitingRows.map((row) => {
-      const rosterIds = rosterIdsByPost.get(row.id) ?? [];
-      const rosterTeamIds = rosterTeamIdsByPost.get(row.id) ?? [];
-      return {
-        ...fromRemoteRecruitingPost({
-          ...row,
-          status: "open",
-          room_state: projectPublicRecruitingRoomState(getRowPublicRoomState(row), row.player_id),
-        }, { applicationsByPost }),
-        publicParticipants: rosterIds.map((id) => publicProfileById.get(id)).filter(Boolean),
-        publicTeams: rosterTeamIds.map((id) => publicTeamById.get(id)).filter(Boolean),
-      };
-    }),
+    openRecruiting: recruitingRows.map(projectPublicRoom),
+    requestedRecruiting: resolveRequestedRecruitingResult(requestedPostId, requestedRow, requestedPost),
     recentMatches: matchRows.map((row) => ({
       id: row.id,
       title: row.title,
@@ -243,7 +277,7 @@ export default async function handler(request, response) {
     const supabase = getSupabaseAdminClient();
     const [stats, feed] = await Promise.all([
       loadLandingStats(supabase),
-      loadLandingFeed(supabase, getRecruitingLimit(request)),
+      loadLandingFeed(supabase, getRecruitingLimit(request), getRequestedRecruitingPostId(request)),
     ]);
     sendJson(response, 200, { ok: true, stats, feed });
   } catch (error) {

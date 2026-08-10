@@ -66,6 +66,10 @@ import {
 import { inferRegionSelection } from "../src/lib/profileSetup.js";
 import { getLocalRivalries, getTeamScoreSummary } from "../src/lib/season.js";
 import { buildSettingsActions } from "../src/hooks/appData/actions/settingsActions.js";
+import {
+  clearRecruitingMutationPending,
+  markRecruitingMutationPending,
+} from "../src/hooks/appData/orchestrator/serverActions.js";
 
 const execFileAsync = promisify(execFile);
 const MODE_CAPACITY = Object.freeze({
@@ -2188,4 +2192,73 @@ test("personal record creation and owner-only deletion complete in local fronten
   assert.equal(state.matches[0].status, "confirmed");
   state = deleteSoloRecord(asActor(state, "u1"), created.id);
   assert.equal(state.matches[0].status, "cancelled");
+});
+
+test("overlapping recruiting mutations keep the room protected until every request settles", () => {
+  const pendingCounts = new Map();
+  const pendingIds = new Set();
+
+  markRecruitingMutationPending(pendingCounts, pendingIds, "room-1");
+  markRecruitingMutationPending(pendingCounts, pendingIds, "room-1");
+  assert.equal(pendingCounts.get("room-1"), 2);
+  assert.equal(pendingIds.has("room-1"), true);
+
+  clearRecruitingMutationPending(pendingCounts, pendingIds, "room-1");
+  assert.equal(pendingCounts.get("room-1"), 1);
+  assert.equal(pendingIds.has("room-1"), true);
+
+  clearRecruitingMutationPending(pendingCounts, pendingIds, "room-1");
+  assert.equal(pendingCounts.has("room-1"), false);
+  assert.equal(pendingIds.has("room-1"), false);
+});
+
+test("guest room targeting and chat scroll policy preserve exact-link and reading state", async () => {
+  const server = await createServer({
+    root: process.cwd(),
+    logLevel: "error",
+    server: { middlewareMode: true, hmr: false },
+    appType: "custom",
+  });
+
+  try {
+    const [{
+      isRoomChatNearBottom,
+      shouldAutoScrollRoomChat,
+    }, {
+      getGuestRecruitingUnavailableCopy,
+      resolveGuestRecruitingTarget,
+    }] = await Promise.all([
+      server.ssrLoadModule("/src/components/recruiting/RecruitingRoomRosterPanels.jsx"),
+      server.ssrLoadModule("/src/pages/Recruiting.jsx"),
+    ]);
+
+    assert.equal(isRoomChatNearBottom({ scrollHeight: 1_000, scrollTop: 100, clientHeight: 400 }), false);
+    assert.equal(shouldAutoScrollRoomChat(true, false), false);
+    assert.equal(shouldAutoScrollRoomChat(false, false), true);
+    assert.equal(isRoomChatNearBottom({ scrollHeight: 1_000, scrollTop: 550, clientHeight: 400 }), true);
+
+    const outsideFeedPost = { id: "outside-feed-room", title: "shared room" };
+    assert.deepEqual(resolveGuestRecruitingTarget({
+      loading: false,
+      error: false,
+      posts: [],
+      requestedRecruiting: { status: "open", post: outsideFeedPost },
+    }, outsideFeedPost.id), { post: outsideFeedPost, status: "open" });
+    assert.deepEqual(resolveGuestRecruitingTarget({
+      loading: false,
+      error: false,
+      posts: [],
+      requestedRecruiting: { status: "private", post: null },
+    }, "private-room"), { post: null, status: "private" });
+    assert.deepEqual(resolveGuestRecruitingTarget({
+      loading: false,
+      error: false,
+      posts: [],
+      requestedRecruiting: { status: "not_found", post: null },
+    }, "missing-room"), { post: null, status: "not_found" });
+    assert.equal(getGuestRecruitingUnavailableCopy("private").title, "비공개 방입니다");
+    assert.equal(getGuestRecruitingUnavailableCopy("not_found").title, "방을 찾을 수 없습니다");
+  } finally {
+    await server.close();
+  }
 });

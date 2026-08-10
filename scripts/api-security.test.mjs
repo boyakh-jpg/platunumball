@@ -35,7 +35,10 @@ import {
   normalizeAdminReviewInput,
 } from "../server/api/admin/review-action.js";
 import { isActiveReferee } from "../server/lib/refereeEligibilityPolicy.js";
-import { projectPublicRecruitingRoomState } from "../server/api/landing/stats.js";
+import {
+  projectPublicRecruitingRoomState,
+  resolveRequestedRecruitingResult,
+} from "../server/api/landing/stats.js";
 
 const root = new URL("../", import.meta.url);
 const readSource = (path) => readFile(new URL(path, root), "utf8");
@@ -217,7 +220,9 @@ test("public landing exposes aggregate counts and a roster-only public room proj
   assert.match(source, /\.eq\("status", "open"\)[\s\S]*?\.eq\("visibility", "public"\)/);
   assert.match(source, /\.eq\("status", "confirmed"\)[\s\S]*?\.eq\("visibility", "public"\)/);
   assert.match(source, /\.is\("deleted_at", null\)/);
-  assert.match(source, /from\("recruiting_posts"\)[\s\S]*?\.select\("id,type,title,visibility,[^"]*player_id,player_ids,[^"]*"\)[\s\S]*?\.limit\(recruitingLimit\)/);
+  assert.match(source, /const PUBLIC_RECRUITING_COLUMNS = "id,type,title,status,visibility,[^"]*player_id,player_ids,[^"]*"/);
+  assert.match(source, /from\("recruiting_posts"\)[\s\S]*?\.select\(PUBLIC_RECRUITING_COLUMNS\)[\s\S]*?\.limit\(recruitingLimit\)/);
+  assert.match(source, /\.select\(PUBLIC_RECRUITING_COLUMNS\)[\s\S]*?\.eq\("id", requestedPostId\)[\s\S]*?\.limit\(1\)/);
   assert.match(source, /party_reserves:room_state->partyReserves/);
   assert.doesNotMatch(source, /\.select\("[^"]*(?:^|,)room_state(?:,|$)[^"]*"\)/);
   assert.match(source, /from\("recruiting_applications"\)[\s\S]*?\.select\("post_id,kind,team_id,player_id,side,status,reserve,position,player_ids,source_team_id,source_entry_id,created_at,updated_at"\)/);
@@ -243,6 +248,22 @@ test("public landing exposes aggregate counts and a roster-only public room proj
   assert.equal(publicRoomState.ownerId, "player-1");
   ["chatMessages", "invitations", "kickLog", "scheduleProposal"].forEach((key) => {
     assert.equal(Object.hasOwn(publicRoomState, key), false);
+  });
+
+  assert.equal(resolveRequestedRecruitingResult("", null), null);
+  assert.deepEqual(resolveRequestedRecruitingResult("room-1", null), { status: "not_found", post: null });
+  assert.deepEqual(resolveRequestedRecruitingResult("room-1", { id: "room-1", visibility: "private", status: "open" }), {
+    status: "private",
+    post: null,
+  });
+  assert.deepEqual(resolveRequestedRecruitingResult("room-1", { id: "room-1", visibility: "public", status: "confirmed" }), {
+    status: "closed",
+    post: null,
+  });
+  const openRoom = { id: "room-1", visibility: "public", status: "open" };
+  assert.deepEqual(resolveRequestedRecruitingResult("room-1", openRoom, openRoom), {
+    status: "open",
+    post: openRoom,
   });
 });
 

@@ -1,3 +1,23 @@
+export function markRecruitingMutationPending(pendingCounts, pendingIds, postId) {
+  if (!postId) return 0;
+  const nextCount = (pendingCounts.get(postId) ?? 0) + 1;
+  pendingCounts.set(postId, nextCount);
+  pendingIds.add(postId);
+  return nextCount;
+}
+
+export function clearRecruitingMutationPending(pendingCounts, pendingIds, postId) {
+  if (!postId) return 0;
+  const pendingCount = pendingCounts.get(postId) ?? 0;
+  if (pendingCount > 1) {
+    pendingCounts.set(postId, pendingCount - 1);
+    return pendingCount - 1;
+  }
+  pendingCounts.delete(postId);
+  pendingIds.delete(postId);
+  return 0;
+}
+
 export function useAppDataServerActions(context) {
   const {
     MATCH_LIST_SCOPES,
@@ -23,6 +43,7 @@ export function useAppDataServerActions(context) {
     normalizeServerState,
     pendingMatchIdsRef,
     pendingMatchMutationCountsRef,
+    pendingRecruitingMutationCountsRef,
     pendingRecruitingPostIdsRef,
     profileLocked,
     profileRefreshPromiseRef,
@@ -131,13 +152,21 @@ const currentUser = useMemo(() => {
     const requestGeneration = authGenerationRef.current;
     if (pendingPostId) {
       roomMutationVersionRef.current += 1;
-      pendingRecruitingPostIdsRef.current.add(pendingPostId);
+      markRecruitingMutationPending(
+        pendingRecruitingMutationCountsRef.current,
+        pendingRecruitingPostIdsRef.current,
+        pendingPostId,
+      );
       recentRecruitingMutationTimesRef.current.set(pendingPostId, mutationStartedAt);
     }
     const clearPendingRecruitingPost = () => {
       if (requestGeneration !== authGenerationRef.current) return;
       if (!pendingPostId) return;
-      pendingRecruitingPostIdsRef.current.delete(pendingPostId);
+      clearRecruitingMutationPending(
+        pendingRecruitingMutationCountsRef.current,
+        pendingRecruitingPostIdsRef.current,
+        pendingPostId,
+      );
       if (recentRecruitingMutationTimesRef.current.get(pendingPostId) === mutationStartedAt) {
         recentRecruitingMutationTimesRef.current.delete(pendingPostId);
       }

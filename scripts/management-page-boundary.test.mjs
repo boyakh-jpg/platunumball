@@ -735,7 +735,11 @@ test("게스트는 실제 공개 매칭을 보고 개인 메뉴는 안내 상태
 
   assert.match(app, /\/app\/recruiting/u);
   assert.match(app, /<Recruiting app=\{app\} readOnly=\{guestPreview\} \/>/u);
-  assert.match(recruiting, /fetch\(`\/api\/landing\/stats\?recruitingLimit=\$\{REMOTE_CLIENT_RECRUITING_LIMIT\}`/u);
+  assert.match(recruiting, /const requestParams = new URLSearchParams\(\{ recruitingLimit: String\(REMOTE_CLIENT_RECRUITING_LIMIT\) \}\)/u);
+  assert.match(recruiting, /requestParams\.set\("recruitingPostId", targetPostId\)/u);
+  assert.match(recruiting, /fetch\(`\/api\/landing\/stats\?\$\{requestParams\.toString\(\)\}`/u);
+  assert.match(recruiting, /resolveGuestRecruitingTarget\(feed, targetPostId\)/u);
+  assert.match(recruiting, /getGuestRecruitingUnavailableCopy\(target\.status\)/u);
   assert.match(recruiting, /if \(readOnly\) return <GuestRecruiting app=\{app\} \/>/u);
   assert.match(recruiting, /<RecruitingRoomModal app=\{app\} post=\{selectedPost\} readOnly skipInitialDetailLoad/u);
   assert.match(recruiting, /actionLabel="방 보기"[\s\S]*onAction=\{\(\) => openRoom\(post\)\}/u);

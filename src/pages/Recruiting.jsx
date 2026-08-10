@@ -68,23 +68,55 @@ const PUBLIC_RECRUITING_TIMEOUT_MS = 10_000;
 const REGION_FILTER_ALL = "__all__";
 const REGION_FILTER_MINE = "__mine__";
 
+export function resolveGuestRecruitingTarget(feed, targetPostId) {
+  if (!targetPostId) return { post: null, status: "" };
+  const listedPost = (feed?.posts ?? []).find((post) => post.id === targetPostId) ?? null;
+  if (listedPost) return { post: listedPost, status: "open" };
+  const requested = feed?.requestedRecruiting;
+  if (requested?.status === "open" && requested?.post?.id === targetPostId) {
+    return { post: requested.post, status: "open" };
+  }
+  if (feed?.loading) return { post: null, status: "loading" };
+  if (feed?.error) return { post: null, status: "error" };
+  return { post: null, status: requested?.status || "not_found" };
+}
+
+export function getGuestRecruitingUnavailableCopy(status) {
+  if (status === "private") {
+    return { title: "비공개 방입니다", description: "이 공유 링크로는 방을 볼 수 없습니다." };
+  }
+  if (status === "closed") {
+    return { title: "종료된 방입니다", description: "모집이 끝났거나 방이 닫혔습니다." };
+  }
+  if (status === "error") {
+    return { title: "방을 불러올 수 없음", description: "잠시 후 다시 시도해 주세요." };
+  }
+  return { title: "방을 찾을 수 없습니다", description: "링크가 잘못됐거나 방이 삭제됐습니다." };
+}
+
 function GuestRecruiting({ app }) {
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [reloadKey, setReloadKey] = useState(0);
   const [regionFilterSido, setRegionFilterSido] = useState(REGION_FILTER_ALL);
   const [regionFilterDistrict, setRegionFilterDistrict] = useState("");
-  const [feed, setFeed] = useState({ loading: true, error: false, openCount: 0, posts: [] });
+  const [feed, setFeed] = useState({ loading: true, error: false, openCount: 0, posts: [], requestedRecruiting: null });
   const targetPostId = searchParams.get("post") ?? "";
-  const selectedPost = feed.posts.find((post) => post.id === targetPostId) ?? null;
-  useBodyScrollLock(Boolean(selectedPost));
+  const target = resolveGuestRecruitingTarget(feed, targetPostId);
+  const selectedPost = target.post;
+  const unavailableCopy = targetPostId && !selectedPost && !["", "loading"].includes(target.status)
+    ? getGuestRecruitingUnavailableCopy(target.status)
+    : null;
+  useBodyScrollLock(Boolean(selectedPost || unavailableCopy));
 
   useEffect(() => {
     let active = true;
     const controller = new AbortController();
     const timeoutId = window.setTimeout(() => controller.abort(), PUBLIC_RECRUITING_TIMEOUT_MS);
-    setFeed((current) => ({ ...current, loading: true, error: false }));
-    fetch(`/api/landing/stats?recruitingLimit=${REMOTE_CLIENT_RECRUITING_LIMIT}`, {
+    setFeed((current) => ({ ...current, loading: true, error: false, requestedRecruiting: null }));
+    const requestParams = new URLSearchParams({ recruitingLimit: String(REMOTE_CLIENT_RECRUITING_LIMIT) });
+    if (targetPostId) requestParams.set("recruitingPostId", targetPostId);
+    fetch(`/api/landing/stats?${requestParams.toString()}`, {
       method: "GET",
       headers: { Accept: "application/json" },
       signal: controller.signal,
@@ -104,6 +136,7 @@ function GuestRecruiting({ app }) {
           error: false,
           openCount: Number.isSafeInteger(openCount) && openCount >= 0 ? openCount : posts.length,
           posts,
+          requestedRecruiting: payload?.feed?.requestedRecruiting ?? null,
         });
       })
       .catch(() => {
@@ -117,7 +150,7 @@ function GuestRecruiting({ app }) {
       window.clearTimeout(timeoutId);
       controller.abort();
     };
-  }, [reloadKey]);
+  }, [reloadKey, targetPostId]);
 
   const loginPath = getLoginPath(`${location.pathname}${location.search}${location.hash}`);
   const openRoom = (post) => {
@@ -211,6 +244,14 @@ function GuestRecruiting({ app }) {
       </section>
       {selectedPost ? (
         <RecruitingRoomModal app={app} post={selectedPost} readOnly skipInitialDetailLoad onClose={closeRoom} />
+      ) : null}
+      {unavailableCopy ? (
+        <RecruitingRoomLoadFailedView
+          onClose={closeRoom}
+          onRetry={target.status === "error" ? () => setReloadKey((value) => value + 1) : null}
+          title={unavailableCopy.title}
+          description={unavailableCopy.description}
+        />
       ) : null}
     </div>
   );
