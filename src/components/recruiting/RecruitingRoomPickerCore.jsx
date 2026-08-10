@@ -51,6 +51,7 @@ export function TeamMemberPicker({
   onRosterChange,
   requiredPlayerId = "",
   eligiblePlayerIds = null,
+  externalPending = false,
   deferCommit = false,
   submitLabel = "선수 확정",
 }) {
@@ -78,8 +79,9 @@ export function TeamMemberPicker({
   const reserveSet = new Set(effectiveReserveIds);
   const eligibleSet = Array.isArray(eligiblePlayerIds) ? new Set(eligiblePlayerIds) : null;
   const canSelectReserves = Boolean(onRosterChange || onReserveChange);
+  const actionPending = commitPending || externalPending;
   const commitRoster = async (nextSelectedIds, nextReserveIds) => {
-    if (commitPendingRef.current) return;
+    if (commitPendingRef.current || externalPending) return;
     commitPendingRef.current = true;
     setCommitPending(true);
     setCommitError("");
@@ -161,20 +163,19 @@ export function TeamMemberPicker({
               </span>
               <TierBadge mmr={user?.ratings?.integrated ?? DEFAULT_RATING} ratings={user?.ratings} compact />
               <div className="arena-party-role-buttons">
-                <button type="button" className={selected ? "active" : ""} disabled={commitPending || !eligible || activeLocked} onClick={() => setMemberRole(playerId, "active")}>출전</button>
+                <button type="button" className={selected ? "active" : ""} disabled={actionPending || !eligible || activeLocked} onClick={() => setMemberRole(playerId, "active")}>출전</button>
                 {canSelectReserves ? (
-                  <button type="button" className={reserve ? "active" : ""} disabled={commitPending || !eligible || reserveLocked} onClick={() => setMemberRole(playerId, "reserve")}>후보</button>
+                  <button type="button" className={reserve ? "active" : ""} disabled={actionPending || !eligible || reserveLocked} onClick={() => setMemberRole(playerId, "reserve")}>후보</button>
                 ) : null}
-                <button type="button" disabled={commitPending || required} onClick={() => setMemberRole(playerId, "none")}>해제</button>
+                <button type="button" disabled={actionPending || required} onClick={() => setMemberRole(playerId, "none")}>해제</button>
               </div>
             </div>
           );
         })}
       </div>
-      {!effectiveSelectedIds.length ? <em>최소 1명 선택 필요</em> : null}
       {commitError ? <p className="form-warning" role="alert">{commitError}</p> : null}
       {deferCommit ? (
-        <Button type="button" size="sm" disabled={commitPending || !rosterChanged || !effectiveSelectedIds.length} onClick={() => void commitRoster(effectiveSelectedIds, effectiveReserveIds)}>
+        <Button type="button" size="sm" disabled={actionPending || !rosterChanged} onClick={() => void commitRoster(effectiveSelectedIds, effectiveReserveIds)}>
           {commitPending ? "저장 중..." : submitLabel}
         </Button>
       ) : null}

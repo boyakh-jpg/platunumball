@@ -51,7 +51,6 @@ export function setRecruitingTeamPartyRoster(state, postId, entryId, roster = {}
   const requestedActiveIds = uniquePlayerIds(roster.playerIds ?? [])
     .filter((playerId) => teamPlayerIds.has(playerId) && !occupiedPlayerIds.has(playerId));
   const nextPlayerIds = requestedActiveIds.slice(0, capacity);
-  if (!nextPlayerIds.length) return state;
 
   const nextPlayerSet = new Set(nextPlayerIds);
   const nextReservePlayerIds = uniquePlayerIds(roster.reservePlayerIds ?? [])
@@ -142,16 +141,12 @@ export function setRecruitingPartyPlayerReserve(state, postId, entryId, playerId
   const nextPlayerIds = reserve
     ? activeWithoutPlayer
     : uniquePlayerIds([...activeWithoutPlayer, playerId]);
-  const partyBecomesReserve = reserve && !entry.fixed && activeWithoutPlayer.length === 0;
-  const fixedPartyBecomesReserve = reserve && entry.fixed && activeWithoutPlayer.length === 0;
-  if ((!partyBecomesReserve && !fixedPartyBecomesReserve && !nextPlayerIds.length) || nextPlayerIds.length > capacity) return state;
+  if (nextPlayerIds.length > capacity) return state;
 
   const updatedAt = new Date().toISOString();
-  const nextReserveIds = partyBecomesReserve
-    ? reserveWithoutPlayer
-    : reserve
-      ? uniquePlayerIds([...reserveWithoutPlayer, playerId])
-      : reserveWithoutPlayer;
+  const nextReserveIds = reserve
+    ? uniquePlayerIds([...reserveWithoutPlayer, playerId])
+    : reserveWithoutPlayer;
   if (nextReserveIds.length > benchCapacity) return state;
   const nextPartyReserves = { ...roomState.partyReserves, [entry.id]: nextReserveIds };
   if (!nextReserveIds.length) delete nextPartyReserves[entry.id];
@@ -170,8 +165,8 @@ export function setRecruitingPartyPlayerReserve(state, postId, entryId, playerId
         getRecruitingApplicantKey(applicant) === entry.id
           ? {
               ...applicant,
-              reserve: partyBecomesReserve ? true : false,
-              playerIds: partyBecomesReserve ? currentPlayerIds : nextPlayerIds,
+              reserve: false,
+              playerIds: nextPlayerIds,
               status: getRecruitingSlotEditStatus(post),
               updatedAt,
             }

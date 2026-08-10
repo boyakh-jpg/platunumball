@@ -5,7 +5,7 @@ export function createRecruitingRoomSlotRenderers(context) {
     SlotCommandPanel, TeamMemberPicker, activeInviteDraft, activeSelfSlotDraft, app, benchCapacity,
     canInviteFromRoom, canInvitePlayerByRoom, canManageEntry, canManageMatchCheckin, canManageMatchRecordParticipants, canMovePlayerTo,
     canRequestPickupReroll, disabledInvitePlayerIds, favoritePlayerIds, favoriteTeamIds, getEntryMmr, getEntryPartyLeaderId,
-    getEntryPlayerReserveState, getInviteAllowedTeamId, getPartyPlayerIds, getPartyReserveIds, getRecruitingSideCapacity, getRoomSlotBadge,
+    getEntryPlayerReserveState, getInviteAllowedTeamId, getRecruitingSideCapacity, getRoomSlotBadge,
     getRoomSlotDisplayPosition, getSameSidePartyOptions, getTeamEventEligibility, individualOnlyRoom, inviteError, isPartyEntry,
     joinSideParty, lobby, mine, myEntry, myTeams, openInviteSlot,
     pickupAssignmentAttendanceReady, pickupAssignmentPolicy, pickupAssignmentSideCapacity, pickupAssignmentSidesComplete, pickupOpenSlotPlacements, pickupPoolMode,
@@ -181,12 +181,8 @@ const roomPhaseBadge = sourceMatch ? sourceMatchPhase : roomQueueStatus;
           const canManageTeamRoster = !sourceMatch && !individualOnlyRoom && targetEntry.kind === "team" && targetEntry.team && getEntryPartyLeaderId(targetEntry) === app.currentUser.id;
 
           const teamRosterCapacity = getRecruitingSideCapacity(selectedPost);
-          const teamRosterActiveIds = canManageTeamRoster
-            ? getPartyPlayerIds(targetEntry.team, targetEntry.players ?? [], teamRosterCapacity)
-            : [];
-          const teamRosterReserveIds = canManageTeamRoster
-            ? getPartyReserveIds(targetEntry.team, targetEntry.reserves ?? [], teamRosterActiveIds, benchCapacity)
-            : [];
+          const teamRosterActiveIds = canManageTeamRoster ? targetEntry.players ?? [] : [];
+          const teamRosterReserveIds = canManageTeamRoster ? targetEntry.reserves ?? [] : [];
           return (
             <SelfSlotCommandPanel
               entry={targetEntry}
@@ -224,12 +220,16 @@ const roomPhaseBadge = sourceMatch ? sourceMatchPhase : roomQueueStatus;
                   capacity={teamRosterCapacity}
                   reserveCapacity={benchCapacity}
                   requiredPlayerId={app.currentUser.id}
+                  externalPending={slotActionPending}
                   deferCommit
-                  onRosterChange={({ selectedIds, reserveIds }) => app.actions.setRecruitingTeamPartyRoster(selectedPost.id, targetEntry.id, {
-                    teamId: targetEntry.team.id,
-                    playerIds: selectedIds,
-                    reservePlayerIds: reserveIds,
-                  })}
+                  onRosterChange={({ selectedIds, reserveIds }) => runRoomSlotAction(
+                    () => app.actions.setRecruitingTeamPartyRoster(selectedPost.id, targetEntry.id, {
+                      teamId: targetEntry.team.id,
+                      playerIds: selectedIds,
+                      reservePlayerIds: reserveIds,
+                    }),
+                    { close: false },
+                  )}
                 />
               ) : null}
             </SelfSlotCommandPanel>

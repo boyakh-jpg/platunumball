@@ -139,8 +139,9 @@ export function isRecruitingEntryMember(entry, playerId) {
   return (entry.players ?? []).includes(playerId) || (entry.reserves ?? []).includes(playerId);
 }
 export function getRecruitingEntryPlayerIds(entry, targetApplicant, post, capacity) {
-  const storedPlayerIds = unique(entry.fixed ? post.playerIds : targetApplicant?.playerIds);
-  return (storedPlayerIds.length ? storedPlayerIds : unique(entry.players ?? [])).slice(0, capacity);
+  const storedPlayerIds = entry.fixed ? post.playerIds : targetApplicant?.playerIds;
+  const playerIds = Array.isArray(storedPlayerIds) ? storedPlayerIds : entry.players;
+  return unique(playerIds ?? []).slice(0, capacity);
 }
 export function getLobbyPrimaryTeamId(lobby, sideName) {
   return lobby.sides[sideName].entries
@@ -345,10 +346,10 @@ export function getTeamEntryPlayerIds(team = null, capacity = Infinity, playerId
 
   const teamPlayerIds = getTeamPlayerIds(team);
   const selectableIds = getSelectableTeamPlayerIds(team);
+  if (hasExplicitPlayerIds) return [];
   if (fallbackPlayerId) {
     return [fallbackPlayerId].slice(0, capacity);
   }
-  if (hasExplicitPlayerIds) return [];
   return selectableIds.slice(0, capacity);
 }
 export function getReserveTeamPlayerIds(team = {}) {

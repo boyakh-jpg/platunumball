@@ -1438,9 +1438,65 @@ test("주장 후보 이동은 lobby와 TeamMemberPicker 투영에서 동일하�
   assert.deepEqual(entry.reserves, ["u3", "u2"]);
 
   const source = await readFile(new URL("../src/components/recruiting/RecruitingRoomSlotRenderers.jsx", import.meta.url), "utf8");
-  assert.match(source, /getPartyPlayerIds\(targetEntry\.team, targetEntry\.players \?\? \[\], teamRosterCapacity\)/);
-  assert.match(source, /getPartyReserveIds\(targetEntry\.team, targetEntry\.reserves \?\? \[\], teamRosterActiveIds, benchCapacity\)/);
+  assert.match(source, /const teamRosterActiveIds = canManageTeamRoster \? targetEntry\.players \?\? \[\] : \[\]/);
+  assert.match(source, /const teamRosterReserveIds = canManageTeamRoster \? targetEntry\.reserves \?\? \[\] : \[\]/);
+  assert.doesNotMatch(source, /getPartyPlayerIds\(targetEntry\.team/);
+  assert.doesNotMatch(source, /getPartyReserveIds\(targetEntry\.team/);
   assert.doesNotMatch(source, /requiredActive/);
+});
+
+test("captain can move active to reserve and back without roster projection changes", () => {
+  const fixture = createActualTeamRosterFixture();
+  let state = setActualTeamRoster(
+    fixture.state,
+    fixture.postId,
+    fixture.entryId,
+    ["u2", "u1"],
+    ["u3"],
+  );
+
+  state = setRecruitingPartyPlayerReserve(
+    asActor(state, "u2"), fixture.postId, fixture.entryId, "u2", true,
+  );
+  assert.deepEqual(getActualTeamRosterEntry(state, fixture.postId).players, ["u1"]);
+  assert.deepEqual(getActualTeamRosterEntry(state, fixture.postId).reserves, ["u3", "u2"]);
+
+  state = setRecruitingPartyPlayerReserve(
+    asActor(state, "u2"), fixture.postId, fixture.entryId, "u2", false,
+  );
+  assert.deepEqual(getActualTeamRosterEntry(state, fixture.postId).players, ["u1", "u2"]);
+  assert.deepEqual(getActualTeamRosterEntry(state, fixture.postId).reserves, ["u3"]);
+});
+
+test("all party members can move active to reserve and back without disappearing", () => {
+  const fixture = createActualTeamRosterFixture();
+  let state = setActualTeamRoster(
+    fixture.state,
+    fixture.postId,
+    fixture.entryId,
+    ["u2", "u1"],
+    [],
+  );
+
+  for (const playerId of ["u2", "u1"]) {
+    state = setRecruitingPartyPlayerReserve(
+      asActor(state, "u2"), fixture.postId, fixture.entryId, playerId, true,
+    );
+  }
+  let entry = getActualTeamRosterEntry(state, fixture.postId);
+  assert.deepEqual(entry.players, []);
+  assert.deepEqual(entry.reserves, ["u2", "u1"]);
+  assertRosterInvariants(entry, ["u1", "u2"], 3, 3);
+
+  for (const playerId of ["u2", "u1"]) {
+    state = setRecruitingPartyPlayerReserve(
+      asActor(state, "u2"), fixture.postId, fixture.entryId, playerId, false,
+    );
+  }
+  entry = getActualTeamRosterEntry(state, fixture.postId);
+  assert.deepEqual(entry.players, ["u2", "u1"]);
+  assert.deepEqual(entry.reserves, []);
+  assertRosterInvariants(entry, ["u1", "u2"], 3, 3);
 });
 
 test("다른 선수 명단 저장은 후보 주장을 출전으로 되돌리지 않는다", () => {
@@ -1536,18 +1592,56 @@ test("일반 선수와 주장 출전 후보 이동 20회는 명단 불변식을 
 });
 
 test("팀 슬롯 action과 명단 저장은 중복 요청을 막고 실패 시 편집 상태를 유지한다", async () => {
-  const [pickerSource, controllerSource] = await Promise.all([
+  const [pickerSource, controllerSource, slotRendererSource] = await Promise.all([
     readFile(new URL("../src/components/recruiting/RecruitingRoomPickerCore.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/components/recruiting/useRecruitingRoomController.js", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/recruiting/RecruitingRoomSlotRenderers.jsx", import.meta.url), "utf8"),
   ]);
-  assert.match(pickerSource, /if \(commitPendingRef\.current\) return/);
+  assert.match(pickerSource, /if \(commitPendingRef\.current \|\| externalPending\) return/);
   assert.match(pickerSource, /commitPendingRef\.current = true/);
   assert.match(pickerSource, /result === false \|\| result\?\.ok === false/);
   assert.match(pickerSource, /선수 명단을 저장하지 못했습니다/);
-  assert.match(pickerSource, /disabled=\{commitPending/);
+  assert.match(pickerSource, /const actionPending = commitPending \|\| externalPending/);
+  assert.match(pickerSource, /disabled=\{actionPending/);
   assert.match(controllerSource, /if \(slotActionPendingRef\.current\) return false/);
   assert.match(controllerSource, /slotActionPendingRef\.current = true/);
   assert.match(controllerSource, /result === false \|\| result\?\.ok === false/);
+  assert.match(slotRendererSource, /externalPending=\{slotActionPending\}/);
+  assert.match(slotRendererSource, /onRosterChange=\{\(\{ selectedIds, reserveIds \}\) => runRoomSlotAction\(/);
+  assert.match(slotRendererSource, /\{ close: false \},?\s*\)\}/);
+
+  const runnerSource = controllerSource.match(
+    /const runRoomSlotAction = (async \(action, \{ close = true \} = \{\}\) => \{[\s\S]*?\r?\n  \});/,
+  )?.[1];
+  assert.ok(runnerSource, "runRoomSlotAction source must be executable in this test");
+
+  const pendingRef = { current: false };
+  const runRoomSlotAction = new Function(
+    "slotActionPendingRef",
+    "setSlotActionPending",
+    "setInviteDraft",
+    "setSlotActionDraft",
+    "showRoomShareStatus",
+    `return ${runnerSource};`,
+  )(pendingRef, () => {}, () => {}, () => {}, () => {});
+
+  let resolveRosterSave;
+  let rpcCalls = 0;
+  const rosterSave = runRoomSlotAction(() => {
+    rpcCalls += 1;
+    return new Promise((resolve) => {
+      resolveRosterSave = resolve;
+    });
+  }, { close: false });
+  const slotMove = runRoomSlotAction(async () => {
+    rpcCalls += 1;
+    return true;
+  }, { close: false });
+
+  assert.equal(await slotMove, false);
+  assert.equal(rpcCalls, 1);
+  resolveRosterSave(true);
+  assert.equal(await rosterSave, true);
 });
 
 test("알림 읽음 저장과 재조회가 모두 실패하면 낙관 상태를 되돌린다", async () => {
