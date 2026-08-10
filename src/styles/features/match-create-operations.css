@@ -179,8 +179,38 @@
 }
 
 .personal-record-score-field,
-.personal-record-stat-grid > label {
+.personal-record-stat-grid > .stat-stepper-row {
   min-width: 0;
+}
+
+.personal-record-stat-grid {
+  gap: var(--space-2);
+}
+
+.personal-record-score-field,
+.personal-record-stat-grid > .stat-stepper-row {
+  grid-template-columns: minmax(0, 1fr) 120px;
+  gap: var(--space-3);
+  padding: 8px;
+}
+
+.personal-record-score-field .stat-numeric-stepper,
+.personal-record-stat-grid .stat-numeric-stepper {
+  grid-template-columns: 36px 42px 36px;
+  width: 120px;
+  gap: 3px;
+}
+
+.personal-record-score-field.stat-stepper-row .stat-numeric-stepper input,
+.personal-record-stat-grid .stat-stepper-row .stat-numeric-stepper input {
+  padding-inline: 0;
+}
+
+@media (min-width: 721px) {
+  .personal-record-stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-3);
+  }
 }
 
 .match-intent-preset-grid {

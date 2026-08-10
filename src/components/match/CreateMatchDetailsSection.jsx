@@ -175,26 +175,34 @@ export function CreateMatchDetailsSection({ context }) {
             ) : null}
             {isSoloRecord ? (
               <>
-                <label className="personal-record-score-field">
-                  우리팀 점수
+                <div className="stat-stepper-row personal-record-score-field">
+                  <div>
+                    <strong>우리팀 점수</strong>
+                    <span>TEAM</span>
+                  </div>
                   <NumericStepper
+                    className="stat-numeric-stepper"
                     value={draft.soloScoreFor}
                     max={999}
                     label="우리팀 점수"
                     clearOnFocus
                     onChange={(value) => update({ soloScoreFor: value })}
                   />
-                </label>
-                <label className="personal-record-score-field">
-                  상대 점수
+                </div>
+                <div className="stat-stepper-row personal-record-score-field">
+                  <div>
+                    <strong>상대 점수</strong>
+                    <span>OPPONENT</span>
+                  </div>
                   <NumericStepper
+                    className="stat-numeric-stepper"
                     value={draft.soloScoreAgainst}
                     max={999}
                     label="상대 점수"
                     clearOnFocus
                     onChange={(value) => update({ soloScoreAgainst: value })}
                   />
-                </label>
+                </div>
                 {recordEntryMode === "named" ? (
                   <>
                 <label>

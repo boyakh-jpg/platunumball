@@ -197,18 +197,22 @@ export function CreateMatchCourtRosterSection({ context }) {
                 </div>
                 <Badge tone="green">본인</Badge>
               </Card>
-              <div className="form-grid two personal-record-stat-grid">
+              <div className="stat-stepper-list personal-record-stat-grid">
                 {PLAYER_STAT_FIELDS.map((field) => (
-                  <label key={field.id}>
-                    {field.id === "points" ? "내 득점 (PTS)" : field.label}
+                  <div className="stat-stepper-row" key={field.id}>
+                    <div>
+                      <strong>{field.id === "points" ? "내 득점" : field.label}</strong>
+                      <span>{field.shortLabel}</span>
+                    </div>
                     <NumericStepper
+                      className="stat-numeric-stepper"
                       value={(draft.soloStats ?? {})[field.id] ?? 0}
                       max={999}
                       label={field.id === "points" ? "내 득점" : field.label}
                       clearOnFocus
                       onChange={(value) => updateSoloStat(field.id, value)}
                     />
-                  </label>
+                  </div>
                 ))}
               </div>
             </>
