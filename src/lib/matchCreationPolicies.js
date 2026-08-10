@@ -463,11 +463,15 @@ const BALL_PROVIDER_LABELS = Object.freeze({
   unknown: "현장 협의",
 });
 
-export function getMatchOperationsSummaryRows(source = {}) {
+export function getMatchOperationsSummaryRows(source = {}, { includeCost = false } = {}) {
   const policy = getMatchCreationPolicyPayload(source);
   return [
-    { label: "공 준비", value: BALL_PROVIDER_LABELS[policy.ballProvider] ?? BALL_PROVIDER_LABELS.host },
-    ...(policy.onCourtCount > 1 ? [{ label: "조끼", value: policy.vestsProvided ? "방장 제공" : "미제공" }] : []),
+    { label: "공 제공", value: BALL_PROVIDER_LABELS[policy.ballProvider] ?? BALL_PROVIDER_LABELS.host },
+    ...(policy.onCourtCount > 1 ? [{ label: "조끼 제공", value: policy.vestsProvided ? "방장 제공" : "미제공" }] : []),
+    ...(includeCost && policy.totalCost > 0 ? [{
+      label: "비용",
+      value: `총 ${formatCurrency(policy.totalCost)}${policy.estimatedFeePerPlayer > 0 ? ` · 1인 예상 ${formatCurrency(policy.estimatedFeePerPlayer)}` : ""}`,
+    }] : []),
   ];
 }
 

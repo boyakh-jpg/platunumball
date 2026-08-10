@@ -316,20 +316,6 @@ const roomPhaseBadge = sourceMatch ? sourceMatchPhase : roomQueueStatus;
         );
         const renderPickupRotation = () => roomPhaseViewModel.rotation ? (
           <section className="ui-panel ui-modal-section pickup-rotation-panel">
-            <div className="pickup-operation-grid">
-              <div className="ui-control-surface pickup-operation-item">
-                <span>팀 구성 · 픽업 전용</span>
-                <strong>{pickupAssignmentPolicy.label}</strong>
-                <small>출석 확인 후 방장 또는 심판이 확정</small>
-              </div>
-              {benchCapacity > 0 ? (
-                <div className="ui-control-surface pickup-operation-item">
-                  <span>후보 교대</span>
-                  <strong>{roomPhaseViewModel.rotation.label} · 출전 ↔ 후보</strong>
-                  <small>자동 교체 아님 · 같은 사이드 안에서 방장 또는 심판이 직접 교체</small>
-                </div>
-              ) : null}
-            </div>
             {roomPhaseViewModel.mode === ROOM_BODY_MODES.pickupAssignment && !pickupAssignmentPolicy.decided && canManageMatchCheckin ? (
               <div className="arena-room-edit-actions">
                 {PICKUP_TEAM_ASSIGNMENT_MODE_OPTIONS.map((option) => (

@@ -1535,7 +1535,7 @@ test("방모달 뱃지와 메모 및 팀명은 공용 타이포그래피를 사�
   );
 });
 
-test("경기 기록 팀명과 픽업 운영 행은 공용 스포츠·버튼 타이포그래피를 사용한다", () => {
+test("경기 기록 팀명은 공용 스포츠 타이포그래피를 사용하고 픽업 정보는 중복하지 않는다", () => {
   assert.match(
     matchClockStyles,
     /\.ui-match-score-control-side > span\s*\{[^}]*font-family:\s*var\(--sports-display-font\);[^}]*font-size:\s*clamp\(1\.15rem,\s*2\.4vw,\s*1\.5rem\);[^}]*font-weight:\s*950;/,
@@ -1548,18 +1548,8 @@ test("경기 기록 팀명과 픽업 운영 행은 공용 스포츠·버튼 타�
     recruitingStyles,
     /\.arena-record-team-selected > strong\s*\{[^}]*font-family:\s*var\(--sports-display-font\);[^}]*font-size:\s*1\.15rem;[^}]*font-weight:\s*950;/,
   );
-  assert.match(
-    recruitingStyles,
-    /\.pickup-operation-item > strong\s*\{[^}]*font-size:\s*var\(--ui-button-font-size\);[^}]*font-weight:\s*var\(--ui-button-font-weight\);[^}]*line-height:\s*1\.2;/,
-  );
-  assert.match(
-    recruitingStyles,
-    /\.pickup-operation-item > span\s*\{[^}]*font-size:\s*var\(--font-size-meta\);/,
-  );
-  assert.match(
-    recruitingStyles,
-    /\.pickup-operation-item > small\s*\{[^}]*font-size:\s*var\(--font-size-meta\);/,
-  );
+  assert.doesNotMatch(recruitingStyles, /\.pickup-operation-(?:grid|item)/);
+  assert.doesNotMatch(pageSources.recruiting, /경기 기록에서는 점수와 선수 기록을 먼저 확인합니다/);
   assert.doesNotMatch(pageSources.recruiting, />기록방</);
 });
 

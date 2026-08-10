@@ -7,7 +7,7 @@ export function RecruitingRoomManagementSection({ context }) {
     closeRoomEdit, currentRuleRevision, currentUserCanRespondSchedule, currentUserNeedsRuleAcknowledgement, disabledRefereeIds, favoriteRefereeIds,
     getChatDraft, getCourtLayoutLabel, getCourtSurfaceLabel, getMeetingPointSummary, getRefereeInviteQuery, handleChatVisibleChange,
     matchRoom, maxSideFilled, maxSideReserveFilled, mine, openRoomEdit, pendingRefereeInvitations,
-    pickupResize, pickupRoom, publicPreview, referee, refereeInviteCandidates, remoteDirectoryEnabled,
+    benchCapacity, pickupAssignmentPolicy, pickupResize, pickupRoom, publicPreview, referee, refereeInviteCandidates, remoteDirectoryEnabled,
     roomChatLocked, roomEditAvailability, roomEditAvailable, roomEditBenchCapacityValid, roomEditCapacityValid, roomEditCourt,
     roomEditCourtOptions, roomEditCourtWarning, roomEditDraft, roomEditMeetingValid, roomEditPickupCapacityValid, roomEditRange,
     roomEditRulesValid, roomEditScheduleValid, roomEditStatus, roomPhaseViewModel, ruleAcknowledgedIds, ruleAcknowledgementPending,
@@ -126,6 +126,18 @@ export function RecruitingRoomManagementSection({ context }) {
                       <dd>{row.value}</dd>
                     </div>
                   ))}
+                  {pickupRoom ? (
+                    <div>
+                      <dt>팀 구성</dt>
+                      <dd>{pickupAssignmentPolicy.label} · 출석 후 방장 또는 심판 확정</dd>
+                    </div>
+                  ) : null}
+                  {pickupRoom && benchCapacity > 0 && roomPhaseViewModel.rotation ? (
+                    <div>
+                      <dt>후보 교대</dt>
+                      <dd>{roomPhaseViewModel.rotation.label} · 출전 ↔ 후보 · 자동 교체 아님</dd>
+                    </div>
+                  ) : null}
                 </dl>
                 <div className="arena-room-rule-summary detail">
                   <Badge tone="neutral" className="arena-room-rule-badge">공격권: {selectedMatchRules.attackRule}</Badge>

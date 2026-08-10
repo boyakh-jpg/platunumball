@@ -733,15 +733,19 @@ test("경기방은 축약 목록 캐시를 버리고 상세 경기와 정확한 
   assert.match(roomManagementSource, /선수 명단을 저장하지 못했습니다\. 다시 시도해 주세요\./);
 });
 
-test("픽업 팀 나누기 작업판은 공용 모달 안에서 전용 반응형 grid를 사용한다", () => {
+test("픽업 운영 정보는 핵심 정보로 합치고 작업 버튼만 반응형으로 유지한다", () => {
   const recruitingSource = readPageSourceGroup(RECRUITING_PAGE_SOURCE_PATHS);
   const roomManagementSource = readFileSync(new URL("../src/components/recruiting/RoomManagementPanels.jsx", import.meta.url), "utf8");
+  const roomManagementSectionSource = readFileSync(new URL("../src/components/recruiting/RecruitingRoomManagementSection.jsx", import.meta.url), "utf8");
   const recruitingStyles = readStyleSourceGroup(RECRUITING_STYLE_SOURCE_PATHS);
 
   assert.match(roomManagementSource, /arena-host-kick-panel\$\{pickupAssignmentMode \? " is-pickup-assignment" : ""\}/);
   assert.match(recruitingStyles, /\.arena-host-kick-panel\.is-pickup-assignment \.arena-host-kick-list\s*\{[^}]*grid-template-columns:\s*repeat\(auto-fit,/s);
-  assert.match(recruitingStyles, /\.pickup-operation-grid\s*\{[^}]*grid-template-columns:\s*repeat\(auto-fit,/s);
-  assert.match(recruitingStyles, /\.pickup-operation-item\s*\{[^}]*min-width:\s*0;[^}]*padding:\s*9px;/s);
+  assert.doesNotMatch(recruitingSource, /pickup-operation-(?:grid|item)/);
+  assert.doesNotMatch(recruitingStyles, /\.pickup-operation-(?:grid|item)/);
+  assert.match(roomManagementSectionSource, /<dt>팀 구성<\/dt>/);
+  assert.match(roomManagementSectionSource, /<dt>후보 교대<\/dt>/);
+  assert.match(roomManagementSectionSource, /pickupRoom && benchCapacity > 0 && roomPhaseViewModel\.rotation/);
   assert.match(recruitingStyles, /\.pickup-rotation-panel \.arena-room-edit-actions > \.button\s*\{[^}]*min-height:\s*var\(--ui-button-height\);/s);
   assert.doesNotMatch(readFileSync(new URL("../src/components/recruiting/RecruitingRoomPrimarySection.jsx", import.meta.url), "utf8"), /arena-lobby-actions/);
   assert.match(recruitingStyles, /\.arena-host-kick-panel\.is-pickup-assignment \.arena-host-kick-actions\s*\{[^}]*grid-template-columns:\s*repeat\(2,/s);

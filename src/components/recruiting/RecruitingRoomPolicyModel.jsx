@@ -237,7 +237,7 @@ const lobby = getRecruitingLobby(selectedPost, roomDataState);
           : selectedPost;
         const selectedMatchRules = normalizeMatchRules(selectedRoomPolicySource.rules, { mode: selectedRoomPolicySource.mode });
         const selectedMatchRuleRows = getMatchRuleDetailRows(selectedMatchRules, selectedRoomPolicySource.mode);
-        const selectedRoomOperationRows = getMatchOperationsSummaryRows(selectedRoomPolicySource);
+        const selectedRoomOperationRows = getMatchOperationsSummaryRows(selectedRoomPolicySource, { includeCost: true });
         const pickupRoom = isPickupRecruitingRoom(selectedPost);
         const pickupAssignmentPolicy = getPickupTeamAssignmentPolicy(sourceMatch ?? selectedPost);
         const recruitingRuleAcknowledgement = sourceMatch ? null : getRecruitingRuleAcknowledgement(selectedPost);

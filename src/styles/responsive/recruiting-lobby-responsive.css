@@ -445,36 +445,6 @@ html[data-theme="light"] .arena-lobby-modal .pickup-room-slot-grid {
   font-size: 0.78rem;
   font-weight: 800;
 }
-.pickup-operation-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
-  gap: var(--ui-control-group-gap);
-}
-.pickup-operation-item {
-  display: grid;
-  min-width: 0;
-  align-content: start;
-  gap: 4px;
-  padding: 9px;
-}
-.pickup-operation-item > span {
-  color: var(--rb-orange);
-  font-size: var(--font-size-meta);
-  font-weight: 900;
-}
-.pickup-operation-item > strong {
-  min-width: 0;
-  font-size: var(--ui-button-font-size);
-  font-weight: var(--ui-button-font-weight);
-  line-height: 1.2;
-  overflow-wrap: anywhere;
-}
-.pickup-operation-item > small {
-  color: var(--muted);
-  font-size: var(--font-size-meta);
-  font-weight: var(--font-weight-support);
-  line-height: 1.35;
-}
 .pickup-rotation-panel .arena-room-edit-actions {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(160px, 100%), 1fr));

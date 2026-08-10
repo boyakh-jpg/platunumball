@@ -21,7 +21,6 @@ const renderSourceMatchRecordBoard = () => {
           return (
             <div className="arena-match-source-actions arena-match-source-record-board">
               <strong className="ui-panel-title">경기 기록판</strong>
-              <span className="ui-panel-copy">경기 기록에서는 점수와 선수 기록을 먼저 확인합니다.</span>
               {showSourceMatchRecordSummary ? (
                 <SourceMatchRecordSummary match={sourceMatch} userById={userById} />
               ) : null}

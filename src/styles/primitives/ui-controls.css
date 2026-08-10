@@ -341,8 +341,7 @@ html[data-theme] .app-main :is(.recent-match-row.result-d, .rank-match-draw) {
   border-radius: var(--ui-panel-radius);
 }
 
-.ui-panel-title,
-.ui-panel-copy {
+.ui-panel-title {
   font-family: var(--font-body);
 }
 
@@ -350,13 +349,6 @@ html[data-theme] .app-main :is(.recent-match-row.result-d, .rank-match-draw) {
   color: var(--rb-text);
   font-weight: var(--font-weight-title);
   line-height: 1.25;
-}
-
-.ui-panel-copy {
-  color: var(--rb-muted);
-  font-size: var(--font-size-meta);
-  font-weight: var(--font-weight-body);
-  line-height: 1.45;
 }
 
 .ui-entity-list {

@@ -216,7 +216,6 @@ export function SourceMatchRecordSummary({ match, userById }) {
     const playerStats = normalizePlayerStats(result.playerStats, sidePlayerIds);
     return (
     <div className="arena-source-record-side" key={sideName}>
-      <strong>{match[sideName]?.name ?? SIDE_LABELS[sideName]}</strong>
       {sidePlayerIds.map((playerId, index) => (
           <div key={playerId}>
             <span>{getSourceMatchPlayerName(match, userById, sideName, playerId, index, "플레이어")}</span>

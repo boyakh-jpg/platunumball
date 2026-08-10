@@ -895,6 +895,10 @@ test("room operations keep only the clock, ball, and mode-relevant vest choices"
   assert.equal(normalizeMatchRules({ gameClockEnabled: false }, { mode: "3v3" }).gameClockEnabled, false);
   assert.equal(getMatchClockLabel({ gameClockEnabled: false }, "3v3"), "사용 안 함");
   assert.match(getMatchClockLabel({ gameClockEnabled: true, clockMode: "running" }, "3v3"), /^사용 · 러닝타임/);
+  assert.equal(
+    getMatchRuleDetailRows({ qrAttendanceEnabled: true }, "3v3").find((row) => row.label === "출석")?.value,
+    "QR 출석 · 경기 20분 전부터",
+  );
 
   assert.deepEqual(
     getMatchOperationsSummaryRows({
@@ -906,9 +910,23 @@ test("room operations keep only the clock, ball, and mode-relevant vest choices"
       statRecorderAvailable: false,
     }),
     [
-      { label: "공 준비", value: "구장 제공" },
-      { label: "조끼", value: "방장 제공" },
+      { label: "공 제공", value: "구장 제공" },
+      { label: "조끼 제공", value: "방장 제공" },
     ],
+  );
+
+  assert.equal(getMatchOperationsSummaryRows({ mode: "3v3", venueFee: 60000 }).some((row) => row.label === "비용"), false);
+  assert.deepEqual(
+    getMatchOperationsSummaryRows({
+      mode: "3v3",
+      venuePaymentType: "paid_reserved",
+      venueFee: 60000,
+    }, { includeCost: true }).find((row) => row.label === "비용"),
+    { label: "비용", value: "총 60,000원 · 1인 예상 6,000원" },
+  );
+  assert.equal(
+    getMatchOperationsSummaryRows({ mode: "3v3", venueFee: 0 }, { includeCost: true }).some((row) => row.label === "비용"),
+    false,
   );
 
   const summary = getMatchCreationSummary({
@@ -919,8 +937,8 @@ test("room operations keep only the clock, ball, and mode-relevant vest choices"
     shotClockAvailable: false,
     statRecorderAvailable: true,
   });
-  assert.equal(summary.rows.find((row) => row.label === "공 준비")?.value, "참가자 제공");
-  assert.equal(summary.rows.some((row) => row.label === "조끼"), false);
+  assert.equal(summary.rows.find((row) => row.label === "공 제공")?.value, "참가자 제공");
+  assert.equal(summary.rows.some((row) => row.label === "조끼 제공"), false);
   assert.equal(summary.rows.some((row) => row.label === "운영 장비"), false);
   assert.equal(getMatchCreationPolicyPayload({ mode: "1v1", vestsProvided: true }).vestsProvided, false);
 });

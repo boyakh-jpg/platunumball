@@ -988,17 +988,13 @@ test("default and functional panel typography use shared body tokens", () => {
   const panelTypographyFamily = [...declarations.entries()].find(([key]) => (
     key.startsWith("primitives:font-family:")
     && key.includes(".ui-panel-title")
-    && key.includes(".ui-panel-copy")
   ))?.[1];
   assert.equal(panelTypographyFamily, "var(--font-body)");
   assert.match(
     recruitingSource,
     /<strong className="ui-panel-title">경기 기록판<\/strong>/,
   );
-  assert.match(
-    recruitingSource,
-    /<span className="ui-panel-copy">경기 기록에서는 점수와 선수 기록을 먼저 확인합니다\.<\/span>/,
-  );
+  assert.doesNotMatch(recruitingSource, /경기 기록에서는 점수와 선수 기록을 먼저 확인합니다/);
 });
 
 test("light theme reserves green for semantic status only", () => {
