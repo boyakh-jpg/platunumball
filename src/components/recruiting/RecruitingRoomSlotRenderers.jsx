@@ -182,10 +182,10 @@ const roomPhaseBadge = sourceMatch ? sourceMatchPhase : roomQueueStatus;
 
           const teamRosterCapacity = getRecruitingSideCapacity(selectedPost);
           const teamRosterActiveIds = canManageTeamRoster
-            ? getPartyPlayerIds(targetEntry.team, targetEntry.players ?? [], teamRosterCapacity, app.currentUser.id)
+            ? getPartyPlayerIds(targetEntry.team, targetEntry.players ?? [], teamRosterCapacity)
             : [];
           const teamRosterReserveIds = canManageTeamRoster
-            ? getPartyReserveIds(targetEntry.team, roomState.partyReserves?.[targetEntry.id] ?? [], teamRosterActiveIds, benchCapacity)
+            ? getPartyReserveIds(targetEntry.team, targetEntry.reserves ?? [], teamRosterActiveIds, benchCapacity)
             : [];
           return (
             <SelfSlotCommandPanel
@@ -224,7 +224,6 @@ const roomPhaseBadge = sourceMatch ? sourceMatchPhase : roomQueueStatus;
                   capacity={teamRosterCapacity}
                   reserveCapacity={benchCapacity}
                   requiredPlayerId={app.currentUser.id}
-                  requiredActive
                   deferCommit
                   onRosterChange={({ selectedIds, reserveIds }) => app.actions.setRecruitingTeamPartyRoster(selectedPost.id, targetEntry.id, {
                     teamId: targetEntry.team.id,

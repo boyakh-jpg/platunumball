@@ -95,6 +95,14 @@ test("recruiting join keeps the required party leader first even from an empty s
   );
 });
 
+test("recruiting roster projection preserves a reserve party leader without reinjection", () => {
+  const activeIds = getRecruitingPartyPlayerIds(team, ["regular"], 3);
+  const reserveIds = getRecruitingPartyReserveIds(team, ["reserve", "party-leader"], activeIds, 3);
+
+  assert.deepEqual(activeIds, ["regular"]);
+  assert.deepEqual(reserveIds, ["reserve", "party-leader"]);
+});
+
 test("recruiting host, regular, and reserve paths retain their current contracts", () => {
   assert.deepEqual(
     getRecruitingDefaultTeamPlayerIds(team, 3, "host"),

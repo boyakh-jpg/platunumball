@@ -23,6 +23,7 @@ import {
   resolveMatchDispute,
   runAutomaticStateMaintenance,
   setMatchRoomPlayerPlacement,
+  setRecruitingPartyPlayerReserve,
   setRecruitingRoomTeam,
   setRecruitingTeamPartyRoster,
   startMatch,
@@ -92,6 +93,59 @@ function apply(state, actionName, args, actorId, message = actionName) {
 
 function asActor(state, actorId) {
   return { ...state, currentUserId: actorId };
+}
+
+function createActualTeamRosterFixture({ benchCapacity = 3 } = {}) {
+  const postId = `actual-team-roster-bench-${benchCapacity}`;
+  let state = {
+    ...structuredClone(demoFlowState),
+    currentUserId: "u2",
+    matches: [],
+    recruitingPosts: [],
+    notifications: [],
+  };
+  state = createRecruitingPost(state, {
+    id: postId,
+    title: postId,
+    visibility: "public",
+    timingType: "instant",
+    hostJoinMode: "team",
+    teamOnly: true,
+    mode: "3v3",
+    sideCapacity: 3,
+    benchCapacity,
+    ranked: false,
+    formationMode: "prearranged",
+    matchPurpose: "friendly",
+    court: "roster-test-court",
+  });
+  state = setRecruitingRoomTeam(asActor(state, "u2"), postId, "teamA", "t1");
+  const entryId = getActualTeamRosterEntry(state, postId).id;
+  return { entryId, postId, state };
+}
+
+function getActualTeamRosterEntry(state, postId) {
+  const post = state.recruitingPosts.find((item) => item.id === postId);
+  return getRecruitingLobby(post, state).entries.find((entry) => entry.kind === "team" && entry.team?.id === "t1");
+}
+
+function setActualTeamRoster(state, postId, entryId, playerIds, reservePlayerIds) {
+  return setRecruitingTeamPartyRoster(asActor(state, "u2"), postId, entryId, {
+    teamId: "t1",
+    playerIds,
+    reservePlayerIds,
+  });
+}
+
+function assertRosterInvariants(entry, expectedPlayerIds, capacity, benchCapacity) {
+  const activeIds = entry.players ?? [];
+  const reserveIds = entry.reserves ?? [];
+  assert.equal(new Set(activeIds).size, activeIds.length);
+  assert.equal(new Set(reserveIds).size, reserveIds.length);
+  assert.deepEqual(activeIds.filter((playerId) => reserveIds.includes(playerId)), []);
+  assert.equal(activeIds.length <= capacity, true);
+  assert.equal(reserveIds.length <= benchCapacity, true);
+  assert.deepEqual([...activeIds, ...reserveIds].sort(), [...expectedPlayerIds].sort());
 }
 
 function acceptActualInvitation(state, postId, targetUserId, role = "player") {
@@ -1368,12 +1422,132 @@ test("서버 action 실패는 기존 화면 상태를 보존하고 같은 영역
   assert.match(teamDetailSource, /setEmblemFeedback\(!result \|\| result\?\.ok === false/);
 });
 
-test("팀 슬롯 명단 저장은 중복 요청을 막고 실패 시 편집 상태를 유지한다", async () => {
-  const source = await readFile(new URL("../src/components/recruiting/RecruitingRoomPickerCore.jsx", import.meta.url), "utf8");
-  assert.match(source, /if \(commitPending\) return/);
-  assert.match(source, /result === false \|\| result\?\.ok === false/);
-  assert.match(source, /선수 명단을 저장하지 못했습니다/);
-  assert.match(source, /disabled=\{commitPending/);
+test("주장 후보 이동은 lobby와 TeamMemberPicker 투영에서 동일하게 유지된다", async () => {
+  const fixture = createActualTeamRosterFixture();
+  let state = setActualTeamRoster(
+    fixture.state,
+    fixture.postId,
+    fixture.entryId,
+    ["u2", "u1", "u5"],
+    ["u3"],
+  );
+  state = setRecruitingPartyPlayerReserve(asActor(state, "u2"), fixture.postId, fixture.entryId, "u2", true);
+  const entry = getActualTeamRosterEntry(state, fixture.postId);
+
+  assert.deepEqual(entry.players, ["u1", "u5"]);
+  assert.deepEqual(entry.reserves, ["u3", "u2"]);
+
+  const source = await readFile(new URL("../src/components/recruiting/RecruitingRoomSlotRenderers.jsx", import.meta.url), "utf8");
+  assert.match(source, /getPartyPlayerIds\(targetEntry\.team, targetEntry\.players \?\? \[\], teamRosterCapacity\)/);
+  assert.match(source, /getPartyReserveIds\(targetEntry\.team, targetEntry\.reserves \?\? \[\], teamRosterActiveIds, benchCapacity\)/);
+  assert.doesNotMatch(source, /requiredActive/);
+});
+
+test("다른 선수 명단 저장은 후보 주장을 출전으로 되돌리지 않는다", () => {
+  const fixture = createActualTeamRosterFixture();
+  let state = setActualTeamRoster(
+    fixture.state,
+    fixture.postId,
+    fixture.entryId,
+    ["u2", "u1", "u5"],
+    ["u3"],
+  );
+  state = setRecruitingPartyPlayerReserve(asActor(state, "u2"), fixture.postId, fixture.entryId, "u2", true);
+  state = setActualTeamRoster(state, fixture.postId, fixture.entryId, ["u1", "u5", "u4"], ["u3", "u2"]);
+
+  const entry = getActualTeamRosterEntry(state, fixture.postId);
+  assert.deepEqual(entry.players, ["u1", "u5", "u4"]);
+  assert.deepEqual(entry.reserves, ["u3", "u2"]);
+});
+
+test("주장은 후보가 될 수 있지만 파티에서 완전히 해제할 수 없다", () => {
+  const fixture = createActualTeamRosterFixture();
+  let state = setActualTeamRoster(
+    fixture.state,
+    fixture.postId,
+    fixture.entryId,
+    ["u2", "u1", "u5"],
+    ["u3"],
+  );
+  const captainReserveState = setActualTeamRoster(state, fixture.postId, fixture.entryId, ["u1", "u5"], ["u3", "u2"]);
+  assert.notStrictEqual(captainReserveState, state);
+  assert.deepEqual(getActualTeamRosterEntry(captainReserveState, fixture.postId).reserves, ["u3", "u2"]);
+
+  state = captainReserveState;
+  const captainRemovedState = setRecruitingTeamPartyRoster(
+    state,
+    fixture.postId,
+    fixture.entryId,
+    {
+      teamId: "t1",
+      playerIds: ["u1", "u5"],
+      reservePlayerIds: ["u3"],
+    },
+  );
+  assert.strictEqual(captainRemovedState, state);
+});
+
+test("출전과 후보가 가득 차면 양방향 개별 이동은 자동 맞교환 없이 no-op이다", () => {
+  const fixture = createActualTeamRosterFixture({ benchCapacity: 2 });
+  const state = setActualTeamRoster(
+    fixture.state,
+    fixture.postId,
+    fixture.entryId,
+    ["u2", "u1", "u5"],
+    ["u3", "u4"],
+  );
+  const activeToFullReserve = setRecruitingPartyPlayerReserve(
+    state, fixture.postId, fixture.entryId, "u1", true,
+  );
+  const reserveToFullActive = setRecruitingPartyPlayerReserve(
+    state, fixture.postId, fixture.entryId, "u3", false,
+  );
+
+  assert.strictEqual(activeToFullReserve, state);
+  assert.strictEqual(reserveToFullActive, state);
+  assert.deepEqual(getActualTeamRosterEntry(state, fixture.postId).players, ["u2", "u1", "u5"]);
+  assert.deepEqual(getActualTeamRosterEntry(state, fixture.postId).reserves, ["u3", "u4"]);
+});
+
+test("일반 선수와 주장 출전 후보 이동 20회는 명단 불변식을 지킨다", () => {
+  const fixture = createActualTeamRosterFixture({ benchCapacity: 3 });
+  let state = setActualTeamRoster(
+    fixture.state,
+    fixture.postId,
+    fixture.entryId,
+    ["u2", "u1", "u5"],
+    ["u3", "u4"],
+  );
+  const expectedPlayerIds = ["u1", "u2", "u3", "u4", "u5"];
+
+  for (const playerId of ["u1", "u2"]) {
+    for (let iteration = 0; iteration < 20; iteration += 1) {
+      state = setRecruitingPartyPlayerReserve(asActor(state, "u2"), fixture.postId, fixture.entryId, playerId, true);
+      let entry = getActualTeamRosterEntry(state, fixture.postId);
+      assert.equal(entry.reserves.includes(playerId), true);
+      assertRosterInvariants(entry, expectedPlayerIds, 3, 3);
+
+      state = setRecruitingPartyPlayerReserve(asActor(state, "u2"), fixture.postId, fixture.entryId, playerId, false);
+      entry = getActualTeamRosterEntry(state, fixture.postId);
+      assert.equal(entry.players.includes(playerId), true);
+      assertRosterInvariants(entry, expectedPlayerIds, 3, 3);
+    }
+  }
+});
+
+test("팀 슬롯 action과 명단 저장은 중복 요청을 막고 실패 시 편집 상태를 유지한다", async () => {
+  const [pickerSource, controllerSource] = await Promise.all([
+    readFile(new URL("../src/components/recruiting/RecruitingRoomPickerCore.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/recruiting/useRecruitingRoomController.js", import.meta.url), "utf8"),
+  ]);
+  assert.match(pickerSource, /if \(commitPendingRef\.current\) return/);
+  assert.match(pickerSource, /commitPendingRef\.current = true/);
+  assert.match(pickerSource, /result === false \|\| result\?\.ok === false/);
+  assert.match(pickerSource, /선수 명단을 저장하지 못했습니다/);
+  assert.match(pickerSource, /disabled=\{commitPending/);
+  assert.match(controllerSource, /if \(slotActionPendingRef\.current\) return false/);
+  assert.match(controllerSource, /slotActionPendingRef\.current = true/);
+  assert.match(controllerSource, /result === false \|\| result\?\.ok === false/);
 });
 
 test("알림 읽음 저장과 재조회가 모두 실패하면 낙관 상태를 되돌린다", async () => {

@@ -313,7 +313,7 @@ html[data-theme="light"] .arena-lobby-modal .arena-room-player-slot.empty {
     align-items: stretch;
   }
 }
-/* Reserve rows must not clip the same outer glow shown by active slots. */
+/* Reserve rows keep the theme scroll container so Team A/B retain their start edge. */
 .arena-lobby-modal .arena-reserve-line > .arena-room-reserve-row,
 html[data-theme="light"] .arena-lobby-modal .arena-reserve-line > .arena-room-reserve-row {
   grid-auto-columns: auto;
@@ -321,7 +321,6 @@ html[data-theme="light"] .arena-lobby-modal .arena-reserve-line > .arena-room-re
   grid-template-columns: repeat(auto-fit, minmax(72px, 72px));
   column-gap: var(--room-slot-gap);
   row-gap: var(--room-slot-gap);
-  overflow: visible;
 }
 .arena-side-inline-reserve {
   display: none;

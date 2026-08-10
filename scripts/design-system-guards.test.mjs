@@ -107,6 +107,7 @@ const teamsSource = read("src/pages/Teams.jsx");
 const recruitingListApiSource = read("server/api/recruiting/_listProjection.js");
 const useAppDataSource = readSourceGroupSync(read, APP_DATA_ORCHESTRATOR_SOURCE_PATHS);
 const recruitingStyles = readCssTree("src/styles/recruiting-arena.css");
+const recruitingLobbyResponsiveStyles = read("src/styles/responsive/recruiting-lobby-responsive.css");
 const matchesStyles = readCssTree("src/styles/matches-arena.css");
 const gettingStartedStyles = readCssTree("src/styles/getting-started.css");
 const matchClockStyles = readCssTree("src/styles/match-clock.css");
@@ -897,6 +898,9 @@ test("매칭과 기록 생성 선택 영역은 같은 제목과 버튼 타이포
 });
 
 test("공용 방의 A/B 출전·후보 슬롯은 같은 간격과 반응형 정렬을 사용한다", () => {
+  const responsiveReserveRowBlock = recruitingLobbyResponsiveStyles.match(
+    /\.arena-lobby-modal \.arena-reserve-line > \.arena-room-reserve-row,\s*html\[data-theme="light"\] \.arena-lobby-modal \.arena-reserve-line > \.arena-room-reserve-row\s*\{([^}]*)\}/,
+  )?.[1] ?? "";
   assert.match(
     recruitingStyles,
     /\.arena-record-team-selected \.team-emblem\s*\{[^}]*--team-emblem-size:\s*32px;/,
@@ -925,6 +929,16 @@ test("공용 방의 A/B 출전·후보 슬롯은 같은 간격과 반응형 정�
     recruitingStyles,
     /\.arena-lobby-modal \.arena-reserve-line\.team-b > \.arena-room-reserve-row,[\s\S]*?\{[^}]*justify-content:\s*start;[^}]*direction:\s*rtl;/,
   );
+  assert.match(
+    recruitingStyles,
+    /\.arena-lobby-modal \.arena-reserve-line\.team-b > \.arena-room-reserve-row \.arena-room-party-group,[\s\S]*?\.arena-lobby-modal \.arena-reserve-line\.team-b > \.arena-room-reserve-row \.arena-room-player-slot-wrap,[\s\S]*?\.arena-lobby-modal \.arena-reserve-line\.team-b > \.arena-room-reserve-row \.arena-room-player-slot[\s\S]*?\{[^}]*direction:\s*ltr;/,
+  );
+  assert.match(
+    recruitingStyles,
+    /\.arena-lobby-modal \.arena-reserve-line > \.arena-room-reserve-row,[\s\S]*?\{[^}]*padding:\s*18px;[^}]*margin:\s*-18px;[^}]*overflow-x:\s*auto;[^}]*overflow-y:\s*hidden;/,
+  );
+  assert.match(responsiveReserveRowBlock, /grid-template-columns:\s*repeat\(auto-fit,/);
+  assert.doesNotMatch(responsiveReserveRowBlock, /overflow:\s*visible;/);
   assert.match(
     recruitingStyles,
     /@media \(max-width:\s*1100px\)[\s\S]*?\.arena-lobby-modal \.arena-reserve-panel\s*\{[^}]*display:\s*none;[\s\S]*?\.arena-lobby-modal \.arena-side-inline-reserve\s*\{[^}]*display:\s*block;/,

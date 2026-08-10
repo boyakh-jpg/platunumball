@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useRef,
   useState,
 } from "react";
 
@@ -49,7 +50,6 @@ export function TeamMemberPicker({
   onReserveChange,
   onRosterChange,
   requiredPlayerId = "",
-  requiredActive = false,
   eligiblePlayerIds = null,
   deferCommit = false,
   submitLabel = "선수 확정",
@@ -57,6 +57,7 @@ export function TeamMemberPicker({
   const [draftRoster, setDraftRoster] = useState({ selectedIds, reserveIds });
   const [commitPending, setCommitPending] = useState(false);
   const [commitError, setCommitError] = useState("");
+  const commitPendingRef = useRef(false);
 
   useEffect(() => {
     setDraftRoster({ selectedIds, reserveIds });
@@ -78,7 +79,8 @@ export function TeamMemberPicker({
   const eligibleSet = Array.isArray(eligiblePlayerIds) ? new Set(eligiblePlayerIds) : null;
   const canSelectReserves = Boolean(onRosterChange || onReserveChange);
   const commitRoster = async (nextSelectedIds, nextReserveIds) => {
-    if (commitPending) return;
+    if (commitPendingRef.current) return;
+    commitPendingRef.current = true;
     setCommitPending(true);
     setCommitError("");
     try {
@@ -89,6 +91,7 @@ export function TeamMemberPicker({
     } catch {
       setCommitError("선수 명단을 저장하지 못했습니다. 다시 시도해 주세요.");
     } finally {
+      commitPendingRef.current = false;
       setCommitPending(false);
     }
   };
@@ -113,7 +116,6 @@ export function TeamMemberPicker({
       return;
     }
     if (role === "reserve") {
-      if (requiredActive && playerId === requiredPlayerId) return;
       if (nextReserveIds.length >= reserveCapacity) return;
 
       emitRoster(nextSelectedIds, [...nextReserveIds, playerId]);
@@ -140,9 +142,7 @@ export function TeamMemberPicker({
           const required = playerId === requiredPlayerId;
           const eligible = !eligibleSet || eligibleSet.has(playerId);
           const activeLocked = !selected && effectiveSelectedIds.length >= capacity;
-          const reserveLocked = requiredActive && required
-            ? true
-            : !reserve && effectiveReserveIds.length >= reserveCapacity;
+          const reserveLocked = !reserve && effectiveReserveIds.length >= reserveCapacity;
           return (
             <div
               key={playerId}

@@ -50,16 +50,14 @@ export function setRecruitingTeamPartyRoster(state, postId, entryId, roster = {}
   );
   const requestedActiveIds = uniquePlayerIds(roster.playerIds ?? [])
     .filter((playerId) => teamPlayerIds.has(playerId) && !occupiedPlayerIds.has(playerId));
-  const activeWithLeader = partyLeaderId && teamPlayerIds.has(partyLeaderId) && !occupiedPlayerIds.has(partyLeaderId)
-    ? [partyLeaderId, ...requestedActiveIds.filter((playerId) => playerId !== partyLeaderId)]
-    : requestedActiveIds;
-  const nextPlayerIds = activeWithLeader.slice(0, capacity);
+  const nextPlayerIds = requestedActiveIds.slice(0, capacity);
   if (!nextPlayerIds.length) return state;
 
   const nextPlayerSet = new Set(nextPlayerIds);
   const nextReservePlayerIds = uniquePlayerIds(roster.reservePlayerIds ?? [])
     .filter((playerId) => teamPlayerIds.has(playerId) && !occupiedPlayerIds.has(playerId) && !nextPlayerSet.has(playerId))
     .slice(0, benchCapacity);
+  if (partyLeaderId && !nextPlayerSet.has(partyLeaderId) && !nextReservePlayerIds.includes(partyLeaderId)) return state;
   const nextPartyReserves = { ...roomState.partyReserves, [entry.id]: nextReservePlayerIds };
   if (!nextReservePlayerIds.length) delete nextPartyReserves[entry.id];
   const nextRoomState = updateManyPinnedReservePlayers(
@@ -137,26 +135,23 @@ export function setRecruitingPartyPlayerReserve(state, postId, entryId, playerId
   const currentReserveIds = uniquePlayerIds(roomState.partyReserves?.[entry.id] ?? []);
   if (!reserve && currentPlayerIds.includes(playerId)) return state;
   if (reserve && currentReserveIds.includes(playerId) && !currentPlayerIds.includes(playerId)) return state;
-  const swapInPlayerId = reserve && currentReserveIds.length >= benchCapacity
-    ? currentReserveIds.find((id) => id !== playerId)
-    : "";
-  const swapOutPlayerId = !reserve && currentPlayerIds.length >= capacity
-    ? [...currentPlayerIds].reverse().find((id) => id !== playerId)
-    : "";
+  if (reserve && currentReserveIds.length >= benchCapacity) return state;
+  if (!reserve && currentPlayerIds.length >= capacity) return state;
+  const activeWithoutPlayer = currentPlayerIds.filter((id) => id !== playerId);
+  const reserveWithoutPlayer = currentReserveIds.filter((id) => id !== playerId);
   const nextPlayerIds = reserve
-    ? uniquePlayerIds([...currentPlayerIds.filter((id) => id !== playerId), swapInPlayerId].filter(Boolean))
-    : uniquePlayerIds([...currentPlayerIds.filter((id) => id !== swapOutPlayerId), playerId]);
-  const partyBecomesReserve = reserve && !entry.fixed && currentPlayerIds.length === 1 && currentPlayerIds[0] === playerId && !swapInPlayerId;
-  const fixedPartyBecomesReserve = reserve && entry.fixed && currentPlayerIds.length === 1 && currentPlayerIds[0] === playerId && !swapInPlayerId;
+    ? activeWithoutPlayer
+    : uniquePlayerIds([...activeWithoutPlayer, playerId]);
+  const partyBecomesReserve = reserve && !entry.fixed && activeWithoutPlayer.length === 0;
+  const fixedPartyBecomesReserve = reserve && entry.fixed && activeWithoutPlayer.length === 0;
   if ((!partyBecomesReserve && !fixedPartyBecomesReserve && !nextPlayerIds.length) || nextPlayerIds.length > capacity) return state;
 
   const updatedAt = new Date().toISOString();
-  const baseReserveIds = currentReserveIds.filter((id) => id !== playerId && id !== swapInPlayerId);
   const nextReserveIds = partyBecomesReserve
-    ? currentReserveIds.filter((id) => id !== playerId)
+    ? reserveWithoutPlayer
     : reserve
-      ? uniquePlayerIds([...baseReserveIds, playerId])
-      : uniquePlayerIds([...baseReserveIds, swapOutPlayerId].filter(Boolean));
+      ? uniquePlayerIds([...reserveWithoutPlayer, playerId])
+      : reserveWithoutPlayer;
   if (nextReserveIds.length > benchCapacity) return state;
   const nextPartyReserves = { ...roomState.partyReserves, [entry.id]: nextReserveIds };
   if (!nextReserveIds.length) delete nextPartyReserves[entry.id];
