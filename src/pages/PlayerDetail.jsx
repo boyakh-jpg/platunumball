@@ -358,7 +358,7 @@ export default function PlayerDetail({ app }) {
         </section>
 
         <div className="page-stack player-profile-detail-content">
-          {canViewCommunity ? <PlayerCommunityActivity app={app} player={player} isOwnProfile={isOwnProfile} /> : null}
+          {canViewCommunity ? <PlayerCommunityActivity key={player.id} app={app} player={player} isOwnProfile={isOwnProfile} /> : null}
           {placementComplete ? <section className="mode-grid">
             {Object.entries(player.ratings.modes).map(([mode, mmr]) => (
               <RatingCard key={mode} title={mode} mmr={mmr} ratings={player.ratings} mode={mode} />

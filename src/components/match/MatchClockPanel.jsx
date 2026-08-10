@@ -16,7 +16,7 @@ import {
 import { hasMatchScoreboardOperators } from "../../lib/matchUtils.js";
 import "../../styles/match-clock.css";
 import MatchClockPanelView from "./MatchClockPanelView.jsx";
-import useMatchClockRequests from "./useMatchClockRequests.js";
+import useMatchClockRequests, { useScreenWakeLock } from "./useMatchClockRequests.js";
 
 export { default as MatchScoreControls } from "./MatchScoreControls.jsx";
 
@@ -45,11 +45,8 @@ export default function MatchClockPanel({
   const [deviceNotice, setDeviceNotice] = useState("");
   const [nowMs, setNowMs] = useState(Date.now());
   const [focusMode, setFocusMode] = useState(false);
-  const [wakeLockRequested, setWakeLockRequested] = useState(false);
-  const [wakeLockActive, setWakeLockActive] = useState(false);
   const [volume, setVolume] = useState(100);
-  const wakeLockRef = useRef(null);
-  const wakeLockRequestedRef = useRef(false);
+  const { toggleWakeLock, wakeLockActive, wakeLockRequested } = useScreenWakeLock(setDeviceNotice);
   const configurationDirtyRef = useRef(false);
   const matchEndedNotifiedRef = useRef(false);
   const soundedRef = useRef({ period: false, shot: false, break: false });
@@ -338,60 +335,6 @@ export default function MatchClockPanel({
     }
   }, [breakElapsedMs, breakLimitMs, isBreak, liveClock, volume]);
 
-  const requestWakeLock = useCallback(async () => {
-    if (!("wakeLock" in navigator)) {
-      wakeLockRequestedRef.current = false;
-      setWakeLockRequested(false);
-      setWakeLockActive(false);
-      setDeviceNotice("이 브라우저는 화면 유지를 지원하지 않습니다.");
-      return false;
-    }
-    try {
-      const lock = await navigator.wakeLock.request("screen");
-      wakeLockRef.current = lock;
-      setWakeLockActive(true);
-      setDeviceNotice("");
-      lock.addEventListener("release", () => {
-        if (wakeLockRef.current === lock) wakeLockRef.current = null;
-        setWakeLockActive(false);
-      }, { once: true });
-      return true;
-    } catch {
-      setWakeLockActive(false);
-      setDeviceNotice("화면 유지 권한을 허용하지 못했습니다.");
-      return false;
-    }
-  }, []);
-
-  useEffect(() => {
-    const handleVisibility = () => {
-      if (document.visibilityState === "visible" && wakeLockRequestedRef.current && !wakeLockRef.current) {
-        void requestWakeLock();
-      }
-    };
-    document.addEventListener("visibilitychange", handleVisibility);
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisibility);
-      wakeLockRef.current?.release().catch(() => {});
-      wakeLockRef.current = null;
-    };
-  }, [requestWakeLock]);
-
-  const toggleWakeLock = async () => {
-    if (wakeLockRequestedRef.current) {
-      wakeLockRequestedRef.current = false;
-      setWakeLockRequested(false);
-      await wakeLockRef.current?.release().catch(() => {});
-      wakeLockRef.current = null;
-      setWakeLockActive(false);
-      setDeviceNotice("");
-      return;
-    }
-    wakeLockRequestedRef.current = true;
-    setWakeLockRequested(true);
-    await requestWakeLock();
-  };
-
   const openFocusMode = async () => {
     if (isPending) return;
     flushSync(() => setFocusMode(true));
@@ -495,5 +438,5 @@ export default function MatchClockPanel({
     });
   };
 
-  return <MatchClockPanelView context={{ activePlayers, applyResponse, attendanceQr, breakElapsedMs, breakLimitMinutes, breakLimitMs, breakOvertimeMs, breakRemainingMs, canEndMatch, canResetShotClock, canResumeEndedClock, clockClient, clockEditableScoreSides, closeFocusMode, configurationDirtyRef, confirmAction, controller, controllerCanEditScores, deadlineRemainingMs, deviceNotice, directScoreControlsEnabled, editableScoreSides, enableMediaControl, error, focusMode, halftimeAfterPeriod, hasRemainingPeriodTime, incrementScore, isBreak, isEnded, isHalftimeBreak, isPending, isRunning, lastMediaResetAtRef, liveClock, liveControllerCanEditScores, match, matchEndedNotifiedRef, matchRules, mediaControlEligible, mediaResetEnabled, nowMs, onEndMatch, onIncrementScore, onMatchEnded, onRosterChanged, openFocusMode, pendingAction, periodDisplayLabel, recognition, regulationEnded, requestMatchEnd, requestWakeLock, requiresForcedMatchEnd, rosterRevisionRef, runAction, saveConfiguration, score: visibleScore, scoreError, scorePendingSide, scoreboardEnabled, selectController, selectShotClock, selectedControllerId, setActivePlayers, setAttendanceQr, setDeviceNotice, setError, setFocusMode, setNowMs, setPendingAction, setScore, setScoreError, setScorePendingSide, setSelectedControllerId, setShotClockSeconds, setSnapshot, setVolume, setWakeLockActive, setWakeLockRequested, shotClockEnabled, shotClockSeconds, showAttendanceQr, snapshot, soundedRef, testBuzzer, tied, toggleWakeLock, volume, wakeLockActive, wakeLockRef, wakeLockRequested, wakeLockRequestedRef }} />;
+  return <MatchClockPanelView context={{ activePlayers, applyResponse, attendanceQr, breakElapsedMs, breakLimitMinutes, breakLimitMs, breakOvertimeMs, breakRemainingMs, canEndMatch, canResetShotClock, canResumeEndedClock, clockClient, clockEditableScoreSides, closeFocusMode, configurationDirtyRef, confirmAction, controller, controllerCanEditScores, deadlineRemainingMs, deviceNotice, directScoreControlsEnabled, editableScoreSides, enableMediaControl, error, focusMode, halftimeAfterPeriod, hasRemainingPeriodTime, incrementScore, isBreak, isEnded, isHalftimeBreak, isPending, isRunning, lastMediaResetAtRef, liveClock, liveControllerCanEditScores, match, matchEndedNotifiedRef, matchRules, mediaControlEligible, mediaResetEnabled, nowMs, onEndMatch, onIncrementScore, onMatchEnded, onRosterChanged, openFocusMode, pendingAction, periodDisplayLabel, recognition, regulationEnded, requestMatchEnd, requiresForcedMatchEnd, rosterRevisionRef, runAction, saveConfiguration, score: visibleScore, scoreError, scorePendingSide, scoreboardEnabled, selectController, selectShotClock, selectedControllerId, setActivePlayers, setAttendanceQr, setDeviceNotice, setError, setFocusMode, setNowMs, setPendingAction, setScore, setScoreError, setScorePendingSide, setSelectedControllerId, setShotClockSeconds, setSnapshot, setVolume, shotClockEnabled, shotClockSeconds, showAttendanceQr, snapshot, soundedRef, testBuzzer, tied, toggleWakeLock, volume, wakeLockActive, wakeLockRequested }} />;
 }

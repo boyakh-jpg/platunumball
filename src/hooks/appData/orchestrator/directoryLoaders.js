@@ -275,6 +275,7 @@ export function useDirectoryLoaders(context) {
         includeDirectorySettings: kind === "self" || kind === "all",
         includeFavoriteSettings: kind !== "affiliations",
         append: offset > 0,
+        replaceAffiliations: kind === "affiliations" && offset === 0,
       })));
       setDirectoryStatus({ loading: false, loaded: true, error: "", page: cached.result?.page ?? null, cacheKey });
       return returnResult ? cached.result : true;
@@ -297,6 +298,7 @@ export function useDirectoryLoaders(context) {
         includeDirectorySettings: kind === "self" || kind === "all",
         includeFavoriteSettings: kind !== "affiliations",
         append: offset > 0,
+        replaceAffiliations: kind === "affiliations" && offset === 0,
       })));
       directoryCacheRef.current.set(cacheKey, { expiresAt: Date.now() + DIRECTORY_CACHE_TTL_MS, mutationSnapshot, result });
       if (latestDirectoryRequestRef.current !== cacheKey) return result;

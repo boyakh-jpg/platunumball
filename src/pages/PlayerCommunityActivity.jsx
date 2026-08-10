@@ -47,6 +47,9 @@ export default function PlayerCommunityActivity({ app, player, isOwnProfile }) {
     }).finally(() => {
       if (requestId === requestRef.current) setLoading(false);
     });
+    return () => {
+      if (requestRef.current === requestId) requestRef.current += 1;
+    };
   }, [app.actions.community, app.remoteReady, kind, pageIndex, player.id, reloadToken]);
 
   if (!canViewPosts && !canViewComments) return null;

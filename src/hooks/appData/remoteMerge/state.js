@@ -50,6 +50,7 @@ export function mergeRemoteDirectory(state, remoteState = {}, options = {}) {
   const settingsPatch = getRemoteDirectorySettings(remoteState.settings, options);
   const includeDirectorySettings = options.includeDirectorySettings === true;
   const append = options.append === true;
+  const replaceAffiliations = options.replaceAffiliations === true;
   const visibleTeamInvitations = filterBlockedIncomingInvitations(remoteState.teamInvitations ?? [], state);
   const currentUser = (state.users ?? []).find((user) => user.id === state.currentUserId);
   const remoteUsers = options.preserveCurrentUserProfile
@@ -62,9 +63,11 @@ export function mergeRemoteDirectory(state, remoteState = {}, options = {}) {
     users: mergeRemoteById(state.users, remoteUsers),
     teams: mergeTeamsById(state.teams, remoteState.teams),
     teamInvitations: mergeRemoteById(state.teamInvitations, visibleTeamInvitations),
-    affiliations: remoteState.affiliations?.length
-      ? (append ? mergeRemoteById(state.affiliations, remoteState.affiliations) : remoteState.affiliations)
-      : state.affiliations,
+    affiliations: replaceAffiliations && Array.isArray(remoteState.affiliations)
+      ? remoteState.affiliations
+      : remoteState.affiliations?.length
+        ? (append ? mergeRemoteById(state.affiliations, remoteState.affiliations) : remoteState.affiliations)
+        : state.affiliations,
     seasons: remoteState.seasons?.length ? remoteState.seasons : state.seasons,
     reports: includeDirectorySettings && Array.isArray(remoteState.reports) ? mergeRemoteById(state.reports, remoteState.reports) : state.reports,
     settings: settingsPatch ? { ...state.settings, ...settingsPatch } : state.settings,

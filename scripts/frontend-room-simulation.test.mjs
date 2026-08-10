@@ -70,6 +70,7 @@ import {
   clearRecruitingMutationPending,
   markRecruitingMutationPending,
 } from "../src/hooks/appData/orchestrator/serverActions.js";
+import { useDirectoryLoaders } from "../src/hooks/appData/orchestrator/directoryLoaders.js";
 import { mergeRemoteDirectory } from "../src/hooks/appData/remoteMerge/state.js";
 import {
   beginTrackedMutation,
@@ -1923,6 +1924,267 @@ createRoot(document.getElementById("root")).render(<App />);
   }
 });
 
+test("wake lock races and player activity route changes are isolated in Chromium", async (t) => {
+  const chromePath = [
+    process.env.CHROME_PATH,
+    process.env.PROGRAMFILES && join(process.env.PROGRAMFILES, "Google", "Chrome", "Application", "chrome.exe"),
+    process.env["PROGRAMFILES(X86)"] && join(process.env["PROGRAMFILES(X86)"], "Google", "Chrome", "Application", "chrome.exe"),
+    process.env.LOCALAPPDATA && join(process.env.LOCALAPPDATA, "Google", "Chrome", "Application", "chrome.exe"),
+  ].filter(Boolean).find(existsSync);
+  if (!chromePath) {
+    t.skip("Chrome executable is not available");
+    return;
+  }
+
+  const fixtureDirectory = await mkdtemp(join(process.cwd(), ".async-ui-browser-"));
+  const chromeProfile = await mkdtemp(join(tmpdir(), "boxtier-async-chrome-"));
+  const server = await createServer({
+    root: process.cwd(),
+    logLevel: "error",
+    server: { host: "127.0.0.1", port: 0, strictPort: false, hmr: false },
+  });
+
+  const fixtureSource = String.raw`
+import React from "react";
+import { createRoot } from "react-dom/client";
+import { MemoryRouter } from "react-router-dom";
+import MatchClockPanel from "/src/components/match/MatchClockPanel.jsx";
+import PlayerCommunityActivity from "/src/pages/PlayerCommunityActivity.jsx";
+import "/src/styles/tokens.css";
+import "/src/styles/globals.css";
+import "/src/styles/ui-primitives.css";
+
+const waitFrames = async (count = 2) => {
+  await new Promise((resolve) => setTimeout(resolve, count * 16));
+};
+const waitFor = async (predicate, message) => {
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    if (predicate()) return;
+    await waitFrames();
+  }
+  throw new Error(message);
+};
+
+const wakeRequests = [];
+Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
+Object.defineProperty(navigator, "wakeLock", {
+  configurable: true,
+  value: {
+    request() {
+      return new Promise((resolve) => wakeRequests.push({ resolve }));
+    },
+  },
+});
+const createWakeLock = () => {
+  let releaseListener = null;
+  return {
+    releaseCalls: 0,
+    addEventListener(type, listener) {
+      if (type === "release") releaseListener = listener;
+    },
+    release() {
+      this.releaseCalls += 1;
+      return Promise.resolve();
+    },
+    emitRelease() {
+      releaseListener?.();
+    },
+  };
+};
+
+const match = {
+  id: "match-1",
+  mode: "3v3",
+  status: "live",
+  rules: { periodCount: 2, periodMinutes: 8, halftimeMinutes: 3, periodBreakMinutes: 1 },
+  result: { scoreA: 0, scoreB: 0 },
+  teamA: { name: "Team A" },
+  teamB: { name: "Team B" },
+};
+const clockResponse = {
+  clock: {
+    status: "paused",
+    currentPeriod: 1,
+    expectedPeriodCount: 2,
+    overtimeCount: 0,
+    periodRemainingMs: 480000,
+    shotClockSeconds: 0,
+    shotRemainingMs: 0,
+    activeElapsedMs: 0,
+    minimumActiveMs: 0,
+    serverNow: new Date().toISOString(),
+    canControl: false,
+    controllerId: "",
+  },
+  score: { a: 0, b: 0, revisionA: 0, revisionB: 0, updatedAt: null },
+  activePlayers: [],
+  attendanceQr: null,
+};
+const clockClient = async () => clockResponse;
+
+const clockRoot = createRoot(document.getElementById("clock-root"));
+clockRoot.render(<MatchClockPanel match={match} clockClient={clockClient} />);
+
+const activityRequests = [];
+const activityApp = {
+  remoteReady: true,
+  actions: {
+    community(action, payload) {
+      return new Promise((resolve) => activityRequests.push({ action, payload, resolve }));
+    },
+  },
+};
+const playerA = { id: "player-a", privacy: { communityPosts: true, communityComments: true } };
+const playerB = { id: "player-b", privacy: { communityPosts: false, communityComments: true } };
+const activityRoot = createRoot(document.getElementById("activity-root"));
+const renderActivity = (player) => activityRoot.render(
+  <MemoryRouter>
+    <PlayerCommunityActivity key={player.id} app={activityApp} player={player} isOwnProfile={false} />
+  </MemoryRouter>,
+);
+
+(async () => {
+  await waitFor(() => document.querySelectorAll(".ui-match-clock-device-tools button").length >= 2, "wake lock button missing");
+  const getWakeButton = () => document.querySelectorAll(".ui-match-clock-device-tools button")[1];
+
+  getWakeButton().click();
+  await waitFor(() => wakeRequests.length === 1, "first wake lock request missing");
+  document.dispatchEvent(new Event("visibilitychange"));
+  await waitFrames(3);
+  const noDuplicateDuringVisibility = wakeRequests.length === 1;
+  getWakeButton().click();
+  const staleToggleLock = createWakeLock();
+  wakeRequests[0].resolve(staleToggleLock);
+  await waitFrames(4);
+  const toggleOff = {
+    released: staleToggleLock.releaseCalls === 1,
+    requested: getWakeButton().getAttribute("aria-pressed"),
+  };
+
+  getWakeButton().click();
+  await waitFor(() => wakeRequests.length === 2, "active wake lock request missing");
+  const olderActiveLock = createWakeLock();
+  wakeRequests[1].resolve(olderActiveLock);
+  await waitFrames(4);
+  getWakeButton().click();
+  await waitFrames();
+  getWakeButton().click();
+  await waitFor(() => wakeRequests.length === 3, "replacement wake lock request missing");
+  const newerActiveLock = createWakeLock();
+  wakeRequests[2].resolve(newerActiveLock);
+  await waitFrames(4);
+  const activeLabel = getWakeButton().textContent;
+  olderActiveLock.emitRelease();
+  await waitFrames(3);
+  const oldReleasePreservedNewLock = getWakeButton().textContent === activeLabel;
+
+  getWakeButton().click();
+  await waitFrames();
+  getWakeButton().click();
+  await waitFor(() => wakeRequests.length === 4, "unmount wake lock request missing");
+  clockRoot.unmount();
+  const staleUnmountLock = createWakeLock();
+  wakeRequests[3].resolve(staleUnmountLock);
+  await waitFrames(4);
+
+  renderActivity(playerA);
+  await waitFor(() => activityRequests.length === 1, "player A first page request missing");
+  activityRequests[0].resolve({
+    ok: true,
+    items: [{ id: "post-a-1", title: "A FIRST PAGE", createdAt: "2026-01-01T00:00:00Z", viewCount: 0, likeCount: 0, commentCount: 0 }],
+    page: { total: 31, limit: 30 },
+  });
+  await waitFrames(4);
+  [...document.querySelectorAll(".ui-pagination button")].find((button) => button.textContent.trim() === "2").click();
+  await waitFor(() => activityRequests.length === 2, "player A second page request missing");
+  activityRequests[1].resolve({
+    ok: true,
+    items: [{ id: "post-a-2", title: "A SECOND PAGE", createdAt: "2026-01-02T00:00:00Z", viewCount: 0, likeCount: 0, commentCount: 0 }],
+    page: { total: 31, limit: 30 },
+  });
+  await waitFrames(4);
+  document.querySelectorAll('[role="tab"]')[1].click();
+  await waitFor(() => activityRequests.length === 3, "player A stale request missing");
+
+  renderActivity(playerB);
+  await waitFor(() => activityRequests.length === 4, "player B first request missing");
+  const oldContentHiddenBeforeBResponse = !document.body.textContent.includes("A SECOND PAGE");
+  const playerBRequest = { ...activityRequests[3].payload };
+  activityRequests[2].resolve({
+    ok: true,
+    items: [{ id: "comment-a", body: "A LATE COMMENT", createdAt: "2026-01-03T00:00:00Z", post: { id: "post-a-3", title: "A LATE TITLE" } }],
+    page: { total: 1, limit: 30 },
+  });
+  await waitFrames(4);
+  const staleAResponseIgnored = !document.body.textContent.includes("A LATE TITLE");
+  activityRequests[3].resolve({
+    ok: true,
+    items: [{ id: "comment-b", body: "B COMMENT", createdAt: "2026-01-04T00:00:00Z", post: { id: "post-b", title: "B TITLE" } }],
+    page: { total: 1, limit: 30 },
+  });
+  await waitFrames(4);
+
+  window.parent.postMessage({
+    wake: {
+      noDuplicateDuringVisibility,
+      toggleOff,
+      oldReleasePreservedNewLock,
+      unmountReleased: staleUnmountLock.releaseCalls === 1,
+    },
+    activity: {
+      oldContentHiddenBeforeBResponse,
+      playerBRequest,
+      staleAResponseIgnored,
+      bContentVisible: document.body.textContent.includes("B TITLE"),
+    },
+  }, "*");
+})().catch((error) => window.parent.postMessage({ error: error.stack || String(error) }, "*"));
+`;
+
+  try {
+    await Promise.all([
+      writeFile(join(fixtureDirectory, "index.html"), `<!doctype html><html><body><iframe src="./fixture.html" style="width:1200px;height:900px;border:0"></iframe><script>addEventListener("message",(event)=>{document.body.dataset.result=btoa(unescape(encodeURIComponent(JSON.stringify(event.data))))})</script></body></html>`, "utf8"),
+      writeFile(join(fixtureDirectory, "fixture.html"), `<!doctype html><html><body><div id="clock-root"></div><div id="activity-root"></div><script>addEventListener("error",(event)=>parent.postMessage({error:event.message||"module error"},"*"));addEventListener("unhandledrejection",(event)=>parent.postMessage({error:String(event.reason)},"*"))</script><script type="module" src="./async-browser-fixture.jsx" onerror="parent.postMessage({error:'module load failed'},'*')"></script></body></html>`, "utf8"),
+      writeFile(join(fixtureDirectory, "async-browser-fixture.jsx"), fixtureSource, "utf8"),
+    ]);
+    await server.listen();
+    const address = server.httpServer.address();
+    const port = typeof address === "object" && address ? address.port : 5173;
+    const url = `http://127.0.0.1:${port}/${basename(fixtureDirectory)}/index.html`;
+    const { stdout, stderr } = await execFileAsync(chromePath, [
+      "--headless=new",
+      "--disable-gpu",
+      "--no-first-run",
+      "--no-default-browser-check",
+      `--user-data-dir=${chromeProfile}`,
+      "--window-size=1400,1000",
+      "--virtual-time-budget=12000",
+      "--dump-dom",
+      url,
+    ], { maxBuffer: 10 * 1024 * 1024, timeout: 30000 });
+    const encodedResult = stdout.match(/data-result="([^"]+)"/)?.[1];
+    assert.ok(encodedResult, `browser fixture must publish a result\n${stderr}\n${stdout.slice(-3000)}`);
+    const result = JSON.parse(Buffer.from(encodedResult, "base64").toString("utf8"));
+    assert.equal(result.error, undefined, result.error);
+    assert.deepEqual(result.wake, {
+      noDuplicateDuringVisibility: true,
+      toggleOff: { released: true, requested: "false" },
+      oldReleasePreservedNewLock: true,
+      unmountReleased: true,
+    });
+    assert.deepEqual(result.activity, {
+      oldContentHiddenBeforeBResponse: true,
+      playerBRequest: { profileId: "player-b", kind: "comments", offset: 0 },
+      staleAResponseIgnored: true,
+      bContentVisible: true,
+    });
+  } finally {
+    await server.close();
+    await rm(fixtureDirectory, { recursive: true, force: true });
+    await rm(chromeProfile, { recursive: true, force: true });
+  }
+});
+
 test("알림 읽음 저장과 재조회가 모두 실패하면 낙관 상태를 되돌린다", async () => {
   const originalNotifications = [
     { id: "n1", readAt: null },
@@ -2303,6 +2565,59 @@ test("a stale directory response preserves newer profile, settings, and favorite
   assert.deepEqual(state.settings.favoritePlayerIds, ["u3"]);
   assert.deepEqual(state.settings.notificationChannels, { discord: true });
   assert.deepEqual(state.settings.privacy, { regionRanking: true });
+});
+
+test("affiliation directory loads replace only authoritative first pages", async () => {
+  const first = { id: "affiliation-1", type: "team", name: "Old team" };
+  const second = { id: "affiliation-2", type: "tournament", name: "New tournament" };
+  const load = async ({ kind, offset = 0, affiliations, reject = false }) => {
+    let state = {
+      currentUserId: "u1",
+      users: [],
+      teams: [],
+      teamInvitations: [],
+      affiliations: [first],
+      seasons: [],
+      reports: [],
+      settings: {},
+    };
+    const tracker = createMutationTracker(["profile", "settings", "favorites"]);
+    const { loadDirectory } = useDirectoryLoaders({
+      DIRECTORY_CACHE_TTL_MS: 60_000,
+      authEmail: "player@example.com",
+      authUserId: "u1",
+      demoPreview: false,
+      directoryCacheRef: { current: new Map() },
+      directoryPromiseRef: { current: new Map() },
+      getDirectoryPageRequest: (options) => ({ limit: 30, offset: Number(options.offset) || 0 }),
+      getTrackedMutationVersion,
+      hasTrackedMutationSince,
+      isSupabaseConfigured: true,
+      latestDirectoryRequestRef: { current: "" },
+      mergeRemoteDirectory,
+      normalizeDirectoryRankingSort: (value) => String(value ?? ""),
+      recruitingPagination: {},
+      setDirectoryStatus: () => {},
+      setState: (updater) => {
+        state = updater(state);
+      },
+      trackedPostServerAction: async () => {
+        if (reject) throw new Error("directory_failed");
+        return { state: { affiliations } };
+      },
+      userMutationTrackerRef: { current: tracker },
+      useCallback: (callback) => callback,
+    });
+    await loadDirectory({ kind, offset, force: true });
+    return state.affiliations;
+  };
+
+  assert.deepEqual(await load({ kind: "affiliations", affiliations: [] }), []);
+  assert.deepEqual(await load({ kind: "self", affiliations: [] }), [first]);
+  assert.deepEqual(await load({ kind: "affiliations", affiliations: [second] }), [second]);
+  assert.deepEqual(await load({ kind: "affiliations", offset: 30, affiliations: [second] }), [first, second]);
+  assert.deepEqual(await load({ kind: "affiliations", offset: 30, affiliations: [] }), [first]);
+  assert.deepEqual(await load({ kind: "affiliations", affiliations: [], reject: true }), [first]);
 });
 
 test("a stale notification refresh preserves newer reads and deletions", async () => {
