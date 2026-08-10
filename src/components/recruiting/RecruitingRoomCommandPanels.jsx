@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import {
   createPortal,
 } from "react-dom";
@@ -19,9 +20,15 @@ import {
 
 
 
-function CommandPopoverFrame({ floating = false, anchor = null, className = "", onClose, children }) {
+function CommandPopoverFrame({ floating = false, anchor = null, className = "", ariaLabel, onClose, children }) {
+  const panelRef = useRef(null);
+  const restoreFocusRef = useRef(null);
+  const onCloseRef = useRef(onClose);
+  const [viewportWidth, setViewportWidth] = useState(() => (
+    typeof window !== "undefined" ? window.innerWidth : 1024
+  ));
+  onCloseRef.current = onClose;
   const anchored = Boolean(floating && anchor);
-  const viewportWidth = typeof window !== "undefined" ? window.innerWidth : 1024;
   const panelWidth = anchored
     ? Math.min(Math.max(Number(anchor.width) || 0, 520), Math.max(240, viewportWidth - 24))
     : null;
@@ -40,15 +47,76 @@ function CommandPopoverFrame({ floating = false, anchor = null, className = "", 
   ].filter(Boolean).join(" ");
   const panelStyle = anchored
     ? {
-        "--popover-x": `${panelX}px`,
+        "--popover-left": `${panelX - panelWidth / 2}px`,
         "--popover-y": `${anchor.y}px`,
         "--popover-width": `${panelWidth}px`,
       }
     : undefined;
+
+  useEffect(() => {
+    if (!floating || typeof window === "undefined") return undefined;
+    const updateViewportWidth = () => setViewportWidth(window.innerWidth);
+    window.addEventListener("resize", updateViewportWidth);
+    window.visualViewport?.addEventListener("resize", updateViewportWidth);
+    return () => {
+      window.removeEventListener("resize", updateViewportWidth);
+      window.visualViewport?.removeEventListener("resize", updateViewportWidth);
+    };
+  }, [floating]);
+
+  useEffect(() => {
+    if (!floating || typeof document === "undefined") return undefined;
+    restoreFocusRef.current = document.activeElement;
+    const frame = window.requestAnimationFrame(() => {
+      const firstFocusable = panelRef.current?.querySelector(
+        "button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href], [tabindex='0']",
+      );
+      (firstFocusable ?? panelRef.current)?.focus();
+    });
+    return () => {
+      window.cancelAnimationFrame(frame);
+      if (restoreFocusRef.current?.isConnected) restoreFocusRef.current.focus();
+    };
+  }, [floating]);
+
+  const handleKeyDown = (event) => {
+    if (event.key === "Escape") {
+      if (!onCloseRef.current) return;
+      event.preventDefault();
+      event.stopPropagation();
+      onCloseRef.current();
+      return;
+    }
+    if (event.key !== "Tab") return;
+    const focusable = [...(panelRef.current?.querySelectorAll(
+      "button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href], [tabindex='0']",
+    ) ?? [])];
+    if (!focusable.length) {
+      event.preventDefault();
+      panelRef.current?.focus();
+      return;
+    }
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  };
+
   const panel = (
     <div
+      ref={panelRef}
       className={panelClassName}
       style={panelStyle}
+      role={floating ? "dialog" : undefined}
+      aria-modal={floating ? "true" : undefined}
+      aria-label={ariaLabel}
+      tabIndex={floating ? -1 : undefined}
+      onKeyDown={floating ? handleKeyDown : undefined}
       onPointerDown={(event) => event.stopPropagation()}
       onClick={(event) => event.stopPropagation()}
     >
@@ -85,11 +153,12 @@ export function SlotCommandPanel({
   onClose,
   children,
 }) {
+  const heading = poolMode ? "참가자 초대" : `${SIDE_LABELS[sideName]} ${reserve ? "후보" : "빈 슬롯"}`;
   return (
-    <CommandPopoverFrame floating={floating} anchor={anchor} className="arena-slot-command-popover" onClose={pending ? null : onClose}>
+    <CommandPopoverFrame floating={floating} anchor={anchor} className="arena-slot-command-popover" ariaLabel={heading} onClose={pending ? null : onClose}>
       <header>
         <div>
-          <strong>{poolMode ? "참가자 초대" : `${SIDE_LABELS[sideName]} ${reserve ? "후보" : "빈 슬롯"}`}</strong>
+          <strong>{heading}</strong>
           <span>{poolMode ? "픽업 참가자 풀의 빈자리에 선수를 초대합니다." : "이 자리로 이동하거나 선수를 초대할 수 있습니다."}</span>
         </div>
         <button type="button" className="arena-icon-button" aria-label="닫기" disabled={pending} onClick={onClose}><X size={16} /></button>
@@ -138,7 +207,7 @@ export function SelfSlotCommandPanel({
   const safeCurrentPosition = PLAYER_POSITIONS.includes(currentPosition) ? currentPosition : PLAYER_POSITIONS[0];
 
   return (
-    <CommandPopoverFrame floating anchor={anchor} className="arena-slot-command-popover arena-self-slot-popover" onClose={pending ? null : onClose}>
+    <CommandPopoverFrame floating anchor={anchor} className="arena-slot-command-popover arena-self-slot-popover" ariaLabel={heading} onClose={pending ? null : onClose}>
       <header>
         <div>
           <strong>{heading}</strong>

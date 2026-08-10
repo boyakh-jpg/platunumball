@@ -92,10 +92,6 @@ html[data-theme="light"] .arena-lobby-modal .arena-reserve-line.team-b > .arena-
   direction: rtl;
 }
 
-.arena-lobby-modal .arena-reserve-line.team-b > .arena-room-reserve-row > *,
-html[data-theme="light"] .arena-lobby-modal .arena-reserve-line.team-b > .arena-room-reserve-row > *,
-.arena-lobby-modal .arena-reserve-line.team-b > .arena-room-reserve-row .arena-room-party-group,
-html[data-theme="light"] .arena-lobby-modal .arena-reserve-line.team-b > .arena-room-reserve-row .arena-room-party-group,
 .arena-lobby-modal .arena-reserve-line.team-b > .arena-room-reserve-row .arena-room-player-slot-wrap,
 html[data-theme="light"] .arena-lobby-modal .arena-reserve-line.team-b > .arena-room-reserve-row .arena-room-player-slot-wrap,
 .arena-lobby-modal .arena-reserve-line.team-b > .arena-room-reserve-row .arena-room-player-slot,

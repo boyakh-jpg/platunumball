@@ -273,7 +273,8 @@ html[data-theme="light"] .arena-recruit-page > .arena-queue-controls > .arena-fi
   justify-content: start;
   direction: rtl;
 }
-.arena-lobby-modal .arena-lobby-team-panel.team-b .arena-room-slot-row > * {
+.arena-lobby-modal .arena-lobby-team-panel.team-b .arena-room-slot-row .arena-room-player-slot-wrap,
+.arena-lobby-modal .arena-lobby-team-panel.team-b .arena-room-slot-row .arena-room-player-slot {
   direction: ltr;
 }
 .arena-lobby-modal .arena-room-player-slot,

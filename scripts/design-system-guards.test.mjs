@@ -931,7 +931,15 @@ test("공용 방의 A/B 출전·후보 슬롯은 같은 간격과 반응형 정�
   );
   assert.match(
     recruitingStyles,
-    /\.arena-lobby-modal \.arena-reserve-line\.team-b > \.arena-room-reserve-row \.arena-room-party-group,[\s\S]*?\.arena-lobby-modal \.arena-reserve-line\.team-b > \.arena-room-reserve-row \.arena-room-player-slot-wrap,[\s\S]*?\.arena-lobby-modal \.arena-reserve-line\.team-b > \.arena-room-reserve-row \.arena-room-player-slot[\s\S]*?\{[^}]*direction:\s*ltr;/,
+    /\.arena-lobby-modal \.arena-reserve-line\.team-b > \.arena-room-reserve-row \.arena-room-player-slot-wrap,[\s\S]*?\.arena-lobby-modal \.arena-reserve-line\.team-b > \.arena-room-reserve-row \.arena-room-player-slot[\s\S]*?\{[^}]*direction:\s*ltr;/,
+  );
+  assert.doesNotMatch(
+    recruitingStyles,
+    /\.arena-lobby-modal \.arena-reserve-line\.team-b > \.arena-room-reserve-row \.arena-room-party-group[\s\S]*?\{[^}]*direction:\s*ltr;/,
+  );
+  assert.doesNotMatch(
+    recruitingStyles,
+    /\.arena-lobby-modal \.arena-lobby-team-panel\.team-b \.arena-room-slot-row > \*[\s\S]*?\{[^}]*direction:\s*ltr;/,
   );
   assert.match(
     recruitingStyles,

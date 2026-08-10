@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { execFile } from "node:child_process";
+import { existsSync } from "node:fs";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { basename, join } from "node:path";
 import test from "node:test";
+import { promisify } from "node:util";
+import { createServer } from "vite";
 import {
   acceptRecruitingInvitation,
   agreeMatch,
@@ -61,6 +67,7 @@ import { inferRegionSelection } from "../src/lib/profileSetup.js";
 import { getLocalRivalries, getTeamScoreSummary } from "../src/lib/season.js";
 import { buildSettingsActions } from "../src/hooks/appData/actions/settingsActions.js";
 
+const execFileAsync = promisify(execFile);
 const MODE_CAPACITY = Object.freeze({
   "1v1": 1,
   "2v2": 2,
@@ -1606,7 +1613,11 @@ test("팀 슬롯 action과 명단 저장은 중복 요청을 막고 실패 시 �
   assert.match(controllerSource, /if \(slotActionPendingRef\.current\) return false/);
   assert.match(controllerSource, /slotActionPendingRef\.current = true/);
   assert.match(controllerSource, /result === false \|\| result\?\.ok === false/);
-  assert.match(slotRendererSource, /externalPending=\{slotActionPending\}/);
+  assert.match(slotRendererSource, /const popoverPending = Boolean\(slotActionPending \|\| joiningPartyKey\)/);
+  assert.match(slotRendererSource, /externalPending=\{popoverPending\}/);
+  assert.match(slotRendererSource, /pending=\{popoverPending\}/);
+  assert.match(slotRendererSource, /runRoomSlotAction\(\(\) => joinSideParty/);
+  assert.match(slotRendererSource, /onInvitePlayers=\{\(playerIds, teamId, joinMode\) => runRoomSlotAction\(/);
   assert.match(slotRendererSource, /onRosterChange=\{\(\{ selectedIds, reserveIds \}\) => runRoomSlotAction\(/);
   assert.match(slotRendererSource, /\{ close: false \},?\s*\)\}/);
 
@@ -1642,6 +1653,255 @@ test("팀 슬롯 action과 명단 저장은 중복 요청을 막고 실패 시 �
   assert.equal(rpcCalls, 1);
   resolveRosterSave(true);
   assert.equal(await rosterSave, true);
+});
+
+test("room slot popover browser layout, lock, resize, and keyboard contract", async (t) => {
+  const chromePath = [
+    process.env.CHROME_PATH,
+    process.env.PROGRAMFILES && join(process.env.PROGRAMFILES, "Google", "Chrome", "Application", "chrome.exe"),
+    process.env["PROGRAMFILES(X86)"] && join(process.env["PROGRAMFILES(X86)"], "Google", "Chrome", "Application", "chrome.exe"),
+    process.env.LOCALAPPDATA && join(process.env.LOCALAPPDATA, "Google", "Chrome", "Application", "chrome.exe"),
+  ].filter(Boolean).find(existsSync);
+  if (!chromePath) {
+    t.skip("Chrome executable is not available");
+    return;
+  }
+
+  const fixtureDirectory = await mkdtemp(join(process.cwd(), ".room-ui-browser-"));
+  const chromeProfile = await mkdtemp(join(tmpdir(), "boxtier-room-chrome-"));
+  const server = await createServer({
+    root: process.cwd(),
+    logLevel: "error",
+    server: { host: "127.0.0.1", port: 0, strictPort: false, hmr: false },
+  });
+
+  const fixtureSource = String.raw`
+import React, { useState } from "react";
+import { createRoot } from "react-dom/client";
+import { SlotCommandPanel } from "/src/components/recruiting/RecruitingRoomCommandPanels.jsx";
+import { InvitePanel } from "/src/components/recruiting/RecruitingRoomInvitePanels.jsx";
+import { TeamMemberPicker } from "/src/components/recruiting/RecruitingRoomPickerCore.jsx";
+import "/src/styles/tokens.css";
+import "/src/styles/globals.css";
+import "/src/styles/ui-primitives.css";
+import "/src/styles/recruiting-arena.css";
+
+const users = {
+  u1: { id: "u1", name: "Captain", handle: "captain", position: "PG", region: "Seoul", avatarColor: "#345", ratings: { integrated: 1200 } },
+  u2: { id: "u2", name: "Member", handle: "member", position: "SG", region: "Seoul", avatarColor: "#456", ratings: { integrated: 1210 } },
+};
+const team = {
+  id: "team-1",
+  name: "Party",
+  handle: "party",
+  mmr: 1200,
+  members: [{ userId: "u1", role: "captain" }, { userId: "u2", role: "member" }],
+};
+const waitFrames = async (count = 2) => {
+  await new Promise((resolve) => setTimeout(resolve, count * 16));
+};
+const measureOrder = (prefix) => {
+  const ids = [prefix + "-empty", prefix + "-second", prefix + "-first"];
+  return {
+    ids,
+    lefts: ids.map((id) => Math.round(document.getElementById(id).getBoundingClientRect().left)),
+    rowDirection: getComputedStyle(document.getElementById(prefix + "-row")).direction,
+    partyDirection: getComputedStyle(document.getElementById(prefix + "-party")).direction,
+    slotDirections: ids.map((id) => getComputedStyle(document.getElementById(id)).direction),
+  };
+};
+const Slot = ({ id, empty = false }) => (
+  <div id={id} className="arena-room-player-slot-wrap">
+    <button type="button" className={empty ? "arena-room-player-slot empty" : "arena-room-player-slot ready"}>{id}</button>
+  </div>
+);
+function LayoutFixture() {
+  return (
+    <div className="arena-lobby-modal">
+      <div className="arena-lobby-arena" style={{ width: 300 }}>
+        <section className="arena-lobby-team-panel team-b">
+          <div id="active-row" className="arena-room-slot-row" style={{ "--slot-count": 3 }}>
+            <div id="active-party" className="arena-room-party-group" style={{ "--party-slot-count": 2, gridColumn: "span 2" }}>
+              <Slot id="active-first" />
+              <Slot id="active-second" />
+            </div>
+            <Slot id="active-empty" empty />
+          </div>
+        </section>
+        <div className="arena-reserve-line team-b" style={{ width: 260 }}>
+          <div id="reserve-row" className="arena-room-reserve-row" style={{ "--slot-count": 3 }}>
+            <div id="reserve-party" className="arena-room-party-group" style={{ "--party-slot-count": 2, gridColumn: "span 2" }}>
+              <Slot id="reserve-first" />
+              <Slot id="reserve-second" />
+            </div>
+            <Slot id="reserve-empty" empty />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+function App() {
+  const [open, setOpen] = useState(false);
+  const [pending, setPending] = useState(false);
+  const [query, setQuery] = useState("");
+  const [selectedPlayerIds, setSelectedPlayerIds] = useState(["u2"]);
+  return (
+    <>
+      <LayoutFixture />
+      <button id="slot-trigger" type="button" onClick={() => setOpen(true)}>open</button>
+      {open ? (
+        <SlotCommandPanel
+          sideName="teamB"
+          floating
+          anchor={{ x: 1120, y: 80, width: 560, placement: "bottom" }}
+          canMoveHere
+          partyJoinOptions={[{ sideName: "teamB", team, entry: { id: "entry-1", user: users.u1 } }]}
+          pending={pending}
+          onMoveHere={() => {}}
+          onJoinParty={() => {}}
+          onClose={() => setOpen(false)}
+        >
+          <TeamMemberPicker
+            team={team}
+            userById={users}
+            selectedIds={["u1"]}
+            reserveIds={[]}
+            capacity={2}
+            reserveCapacity={2}
+            requiredPlayerId="u1"
+            externalPending={pending}
+            deferCommit
+            onRosterChange={() => {
+              setPending(true);
+              return new Promise((resolve) => {
+                window.__resolveRoster = () => {
+                  setPending(false);
+                  resolve(true);
+                };
+              });
+            }}
+          />
+          <InvitePanel
+            sideName="teamB"
+            query={query}
+            onQueryChange={setQuery}
+            users={Object.values(users)}
+            teams={[team]}
+            userById={users}
+            disabledPlayerIds={[]}
+            selectedPlayerIds={selectedPlayerIds}
+            favoritePlayerIds={[]}
+            favoriteTeamIds={[]}
+            remoteSearchEnabled={false}
+            externalPending={pending}
+            onTogglePlayer={(playerId) => setSelectedPlayerIds((current) => current.includes(playerId) ? current.filter((id) => id !== playerId) : [...current, playerId])}
+            onInvitePlayers={() => Promise.resolve(true)}
+            onClose={() => {}}
+          />
+        </SlotCommandPanel>
+      ) : null}
+    </>
+  );
+}
+
+createRoot(document.getElementById("root")).render(<App />);
+
+(async () => {
+  await waitFrames(3);
+  const layout = { active: measureOrder("active"), reserve: measureOrder("reserve") };
+  const trigger = document.getElementById("slot-trigger");
+  trigger.focus();
+  trigger.click();
+  await waitFrames(3);
+  const dialog = document.querySelector('[role="dialog"]');
+  const focusEntered = Boolean(dialog && dialog.contains(document.activeElement));
+  document.activeElement.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+  await waitFrames(3);
+  const escaped = !document.querySelector('[role="dialog"]');
+  const focusRestored = document.activeElement === trigger;
+
+  trigger.click();
+  await waitFrames(3);
+  const memberCards = [...document.querySelectorAll(".arena-party-member-card")];
+  memberCards[1].querySelectorAll(".arena-party-role-buttons button")[1].click();
+  await waitFrames();
+  document.querySelector(".arena-party-picker > button").click();
+  await waitFrames(3);
+  const pendingDialog = document.querySelector('[role="dialog"]');
+  const pendingControls = [...pendingDialog.querySelectorAll("button, input, select, textarea")];
+  const lock = {
+    allControlsDisabled: pendingControls.length > 0 && pendingControls.every((control) => control.disabled),
+    moveAndJoinDisabled: [...pendingDialog.querySelectorAll(".arena-slot-command-actions button")].every((button) => button.disabled),
+    inviteDisabled: [...pendingDialog.querySelectorAll(".arena-invite-panel button, .arena-invite-panel input")].every((control) => control.disabled),
+  };
+  document.querySelector(".arena-slot-popover-backdrop").dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+  await waitFrames();
+  lock.backdropBlocked = Boolean(document.querySelector('[role="dialog"]'));
+
+  window.__resolveRoster();
+  await waitFrames(3);
+  window.frameElement.style.width = "800px";
+  await new Promise((resolve) => setTimeout(resolve, 80));
+  await waitFrames(4);
+  const resizedDialog = document.querySelector('[role="dialog"]');
+  const rect = resizedDialog.getBoundingClientRect();
+  const resize = {
+    viewportWidth: window.innerWidth,
+    left: Math.round(rect.left),
+    right: Math.round(rect.right),
+    inside: rect.left >= 0 && rect.right <= window.innerWidth,
+  };
+  window.parent.postMessage({ layout, focus: { focusEntered, escaped, focusRestored }, lock, resize }, "*");
+})().catch((error) => window.parent.postMessage({ error: error.stack || String(error) }, "*"));
+`;
+
+  try {
+    await Promise.all([
+      writeFile(join(fixtureDirectory, "index.html"), `<!doctype html><html><body><iframe id="fixture" src="./fixture.html" style="width:1200px;height:900px;border:0"></iframe><script>addEventListener("message",(event)=>{document.body.dataset.result=btoa(unescape(encodeURIComponent(JSON.stringify(event.data))))})</script></body></html>`, "utf8"),
+      writeFile(join(fixtureDirectory, "fixture.html"), `<!doctype html><html><body><div id="root"></div><script>addEventListener("error",(event)=>parent.postMessage({error:event.message||"module error"},"*"));addEventListener("unhandledrejection",(event)=>parent.postMessage({error:String(event.reason)},"*"))</script><script type="module" src="./room-browser-fixture.jsx" onerror="parent.postMessage({error:'module load failed'},'*')"></script></body></html>`, "utf8"),
+      writeFile(join(fixtureDirectory, "room-browser-fixture.jsx"), fixtureSource, "utf8"),
+    ]);
+    await server.listen();
+    const address = server.httpServer.address();
+    const port = typeof address === "object" && address ? address.port : 5173;
+    const url = `http://127.0.0.1:${port}/${basename(fixtureDirectory)}/index.html`;
+    const { stdout, stderr } = await execFileAsync(chromePath, [
+      "--headless=new",
+      "--disable-gpu",
+      "--no-first-run",
+      "--no-default-browser-check",
+      `--user-data-dir=${chromeProfile}`,
+      "--window-size=1400,1000",
+      "--virtual-time-budget=12000",
+      "--dump-dom",
+      url,
+    ], { maxBuffer: 10 * 1024 * 1024, timeout: 30000 });
+    const encodedResult = stdout.match(/data-result="([^"]+)"/)?.[1];
+    assert.ok(encodedResult, `browser fixture must publish a result\n${stderr}\n${stdout.slice(-3000)}`);
+    const result = JSON.parse(Buffer.from(encodedResult, "base64").toString("utf8"));
+    assert.equal(result.error, undefined, result.error);
+    for (const line of [result.layout.active, result.layout.reserve]) {
+      assert.equal(line.rowDirection, "rtl");
+      assert.equal(line.partyDirection, "rtl");
+      assert.deepEqual(line.slotDirections, ["ltr", "ltr", "ltr"]);
+      assert.ok(line.lefts[0] < line.lefts[1] && line.lefts[1] < line.lefts[2], JSON.stringify(line));
+    }
+    assert.deepEqual(result.focus, { focusEntered: true, escaped: true, focusRestored: true });
+    assert.deepEqual(result.lock, {
+      allControlsDisabled: true,
+      moveAndJoinDisabled: true,
+      inviteDisabled: true,
+      backdropBlocked: true,
+    });
+    assert.equal(result.resize.viewportWidth, 800);
+    assert.equal(result.resize.inside, true, JSON.stringify(result.resize));
+    t.diagnostic(`active x=${result.layout.active.lefts.join(",")}; reserve x=${result.layout.reserve.lefts.join(",")}; resized=${result.resize.left}-${result.resize.right}/${result.resize.viewportWidth}`);
+  } finally {
+    await server.close();
+    await rm(fixtureDirectory, { recursive: true, force: true });
+    await rm(chromeProfile, { recursive: true, force: true });
+  }
 });
 
 test("알림 읽음 저장과 재조회가 모두 실패하면 낙관 상태를 되돌린다", async () => {

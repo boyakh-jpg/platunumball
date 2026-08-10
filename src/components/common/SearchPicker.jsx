@@ -113,6 +113,7 @@ export default function SearchPicker({
   fieldClassName = "",
   resultsClassName = "",
   closeOnResultClick = false,
+  disabled = false,
 }) {
   const [focused, setFocused] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -166,9 +167,9 @@ export default function SearchPicker({
       getItemName,
     );
   }, [canSearch, getSearchText, idleItems, items, mappedRemoteItems, query, remoteSearchCategory]);
-  const canShow = floating
+  const canShow = !disabled && (floating
     ? focused && (canSearch || showIdleOnFocus)
-    : canSearch || (showIdleOnFocus && focused);
+    : canSearch || (showIdleOnFocus && focused));
   const currentVisibleLimit = detailStep ? Math.min(visibleLimit, maxDetailLimit) : (expanded ? maxDetailLimit : baseLimit);
   const visibleItems = activeItems.slice(0, currentVisibleLimit);
   const hasMore = activeItems.length > currentVisibleLimit && currentVisibleLimit < maxDetailLimit;
@@ -275,6 +276,7 @@ export default function SearchPicker({
         <input
           ref={inputRef}
           value={value}
+          disabled={disabled}
           placeholder={placeholder}
           aria-controls={canShow ? resultsId : undefined}
           aria-expanded={canShow}

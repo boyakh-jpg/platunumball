@@ -46,9 +46,11 @@ export function InvitePanel({
   onClose,
   error = "",
   remoteSearchEnabled = true,
+  externalPending = false,
 }) {
   const invitePendingRef = useRef(false);
   const [invitePending, setInvitePending] = useState(false);
+  const actionPending = Boolean(invitePending || externalPending);
   const teamSummonMode = Boolean(allowedTeamId);
   const relationTerms = teamSummonMode ? ROOM_RELATION_TERMS.teamRoster : ROOM_RELATION_TERMS.pregame;
   const actionNoun = relationTerms.request;
@@ -98,7 +100,7 @@ export function InvitePanel({
     return [player.name, getUserHashtag(player), player.handle, player.region, player.position].filter(Boolean).join(" ");
   };
   const submitInvites = async (playerIds, teamId, joinMode) => {
-    if (invitePendingRef.current) return;
+    if (invitePendingRef.current || externalPending) return;
     invitePendingRef.current = true;
     setInvitePending(true);
     try {
@@ -121,7 +123,7 @@ export function InvitePanel({
           <button
             type="button"
             className="search-picker-result-main"
-            disabled={invitePending}
+            disabled={actionPending}
             onClick={() => onQueryChange(getTeamHashtag(team), { selectedTeam: team, selectedPlayerIds: [] })}
           >
             <strong>{team.name}</strong>
@@ -133,7 +135,7 @@ export function InvitePanel({
       );
     }
     const player = item.player;
-    const disabled = invitePending || disabledSet.has(player.id) || !isAllowedPlayer(player.id, player);
+    const disabled = actionPending || disabledSet.has(player.id) || !isAllowedPlayer(player.id, player);
     const selected = selectedSet.has(player.id);
     return (
       <div
@@ -160,7 +162,7 @@ export function InvitePanel({
   };
 
   return (
-    <div className="arena-invite-panel">
+    <div className="arena-invite-panel" aria-busy={actionPending}>
       <header>
         <div>
           <strong>{poolMode ? "참가자 초대" : `${SIDE_LABELS[sideName]} ${reserve ? "후보" : "빈 슬롯"} ${actionLabel}`}</strong>
@@ -172,7 +174,7 @@ export function InvitePanel({
                 ? "수락하면 해당 사이드의 후보 선수로 합류합니다."
                 : "선착순으로 수락되며, 정원이 차면 참여할 수 없습니다."}</span>
         </div>
-        <button type="button" className="arena-icon-button" aria-label={`${actionNoun} 닫기`} disabled={invitePending} onClick={onClose}><X size={18} /></button>
+        <button type="button" className="arena-icon-button" aria-label={`${actionNoun} 닫기`} disabled={actionPending} onClick={onClose}><X size={18} /></button>
       </header>
       {!teamSummonMode ? (
         <SearchPicker
@@ -195,6 +197,7 @@ export function InvitePanel({
           loadMoreStep={5}
           remoteLimit={25}
           floating
+          disabled={actionPending}
           fieldClassName="arena-invite-search"
           renderItem={renderInviteSearchItem}
         />
@@ -202,7 +205,7 @@ export function InvitePanel({
 
       {canShowSelectedInviteAction ? (
         <div className="arena-invite-actions">
-          <Button type="button" size="sm" disabled={invitePending} onClick={() => { void submitInvites(selectedInvitableIds, selectedInviteTeamId, selectedInviteJoinMode); }}>
+          <Button type="button" size="sm" disabled={actionPending} onClick={() => { void submitInvites(selectedInvitableIds, selectedInviteTeamId, selectedInviteJoinMode); }}>
             {invitePending ? "전송 중" : `선택 ${selectedInvitableIds.length}명 ${actionLabel}`}
           </Button>
         </div>
@@ -227,7 +230,7 @@ export function InvitePanel({
             {teamMemberIds.map((playerId) => {
               const player = userById[playerId];
               const selected = selectedSet.has(playerId);
-              const disabled = invitePending || disabledSet.has(playerId);
+              const disabled = actionPending || disabledSet.has(playerId);
               return (
                 <button key={playerId} type="button" className={selected ? "selected" : ""} disabled={disabled} aria-pressed={selected} onClick={() => {
                   if (!disabled) onTogglePlayer(playerId);
@@ -241,7 +244,7 @@ export function InvitePanel({
               );
             })}
           </div>
-          <Button type="button" size="sm" disabled={invitePending || !selectedInvitableIds.length} onClick={() => { void submitInvites(selectedInvitableIds, rosterTeam.id, "team"); }}>
+          <Button type="button" size="sm" disabled={actionPending || !selectedInvitableIds.length} onClick={() => { void submitInvites(selectedInvitableIds, rosterTeam.id, "team"); }}>
             {invitePending ? "전송 중" : `선택 ${selectedInvitableIds.length}명 ${actionLabel}`}
           </Button>
         </div>

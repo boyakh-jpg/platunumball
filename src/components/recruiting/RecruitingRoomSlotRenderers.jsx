@@ -7,7 +7,7 @@ export function createRecruitingRoomSlotRenderers(context) {
     canRequestPickupReroll, disabledInvitePlayerIds, favoritePlayerIds, favoriteTeamIds, getEntryMmr, getEntryPartyLeaderId,
     getEntryPlayerReserveState, getInviteAllowedTeamId, getRecruitingSideCapacity, getRoomSlotBadge,
     getRoomSlotDisplayPosition, getSameSidePartyOptions, getTeamEventEligibility, individualOnlyRoom, inviteError, isPartyEntry,
-    joinSideParty, lobby, mine, myEntry, myTeams, openInviteSlot,
+    joinSideParty, joiningPartyKey, lobby, mine, myEntry, myTeams, openInviteSlot,
     pickupAssignmentAttendanceReady, pickupAssignmentPolicy, pickupAssignmentSideCapacity, pickupAssignmentSidesComplete, pickupOpenSlotPlacements, pickupPoolMode,
     pickupRerollState, pickupRerollTrustReady, remoteDirectoryEnabled, roomOwnerId, roomPhaseViewModel, roomQueueStatus,
     roomDataState, roomState, runRoomSlotAction, runSourceMatchAction, selectedPost, sendInvites, setInviteDraft, setSlotActionDraft, showMatchRecordRosterPanel,
@@ -27,6 +27,7 @@ const roomPhaseBadge = sourceMatch ? sourceMatchPhase : roomQueueStatus;
           myEntry.reserves?.includes(app.currentUser.id)
         ));
         const currentUserInParty = Boolean(!individualOnlyRoom && currentUserInEntry && isPartyEntry(myEntry));
+        const popoverPending = Boolean(slotActionPending || joiningPartyKey);
         const canMoveActiveUserToSlot = (sideName, reserve) => {
           if (!myEntry || !currentUserInEntry) return false;
           if (mine && sideName !== myEntry.side) return false;
@@ -73,16 +74,16 @@ const roomPhaseBadge = sourceMatch ? sourceMatchPhase : roomQueueStatus;
               floating
               anchor={activeSlotDraft.anchor}
               canMoveHere={canMoveHere}
-              pending={slotActionPending}
+              pending={popoverPending}
               partyJoinOptions={targetPartyOptions}
               poolMode={pickupPoolMode}
               onMoveHere={() => { void moveActiveUserToSlot(sideName, reserve); }}
               onJoinParty={async (teamId, entryId) => {
-                const result = await joinSideParty(selectedPost, {
+                const result = await runRoomSlotAction(() => joinSideParty(selectedPost, {
                   team: teamById[teamId] ?? { id: teamId },
                   sideName,
                   entry: entryId ? { id: entryId } : null,
-                });
+                }), { close: false });
                 if (result && result.ok !== false) setInviteDraft(null);
               }}
               onClose={() => setInviteDraft(null)}
@@ -106,9 +107,13 @@ const roomPhaseBadge = sourceMatch ? sourceMatchPhase : roomQueueStatus;
                 canInvitePlayer={canInvitePlayerByRoom}
                 error={inviteError}
                 onTogglePlayer={toggleInvitePlayer}
-                onInvitePlayers={(playerIds, teamId, joinMode) => sendInvites(selectedPost, playerIds, teamId, joinMode)}
+                onInvitePlayers={(playerIds, teamId, joinMode) => runRoomSlotAction(
+                  () => sendInvites(selectedPost, playerIds, teamId, joinMode),
+                  { close: false },
+                )}
                 onClose={() => setInviteDraft(null)}
                 remoteSearchEnabled={remoteDirectoryEnabled}
+                externalPending={popoverPending}
               />
             </SlotCommandPanel>
           );
@@ -144,7 +149,7 @@ const roomPhaseBadge = sourceMatch ? sourceMatchPhase : roomQueueStatus;
                     size="sm"
                     variant={active ? "primary" : "secondary"}
                     aria-pressed={active}
-                    disabled={slotActionPending || (!active && !movable)}
+                    disabled={popoverPending || (!active && !movable)}
                     onClick={() => {
                       if (active) return;
                       if (targetIsParty) {
@@ -194,18 +199,18 @@ const roomPhaseBadge = sourceMatch ? sourceMatchPhase : roomQueueStatus;
               canLeaveParty={targetIsCurrentUser && !sourceMatch && currentUserInParty && !teamOnlyRoom}
               partyJoinOptions={targetPartyOptions}
               currentPosition={currentSlotPosition}
-              pending={slotActionPending}
+              pending={popoverPending}
               onPositionChange={targetIsCurrentUser && !sourceMatch ? (position) => runRoomSlotAction(
                 () => app.actions.setRecruitingSlotPosition(selectedPost.id, targetPlayerId, position),
                 { close: false },
               ) : null}
               onLeaveParty={leaveCurrentParty}
               onJoinParty={async (teamId, entryId) => {
-                const result = await joinSideParty(selectedPost, {
+                const result = await runRoomSlotAction(() => joinSideParty(selectedPost, {
                   team: teamById[teamId] ?? { id: teamId },
                   sideName: activeSelfSlotDraft.sideName,
                   entry: entryId ? { id: entryId } : null,
-                });
+                }), { close: false });
                 if (result && result.ok !== false) setSlotActionDraft(null);
               }}
               onClose={() => setSlotActionDraft(null)}
@@ -220,7 +225,7 @@ const roomPhaseBadge = sourceMatch ? sourceMatchPhase : roomQueueStatus;
                   capacity={teamRosterCapacity}
                   reserveCapacity={benchCapacity}
                   requiredPlayerId={app.currentUser.id}
-                  externalPending={slotActionPending}
+                  externalPending={popoverPending}
                   deferCommit
                   onRosterChange={({ selectedIds, reserveIds }) => runRoomSlotAction(
                     () => app.actions.setRecruitingTeamPartyRoster(selectedPost.id, targetEntry.id, {
