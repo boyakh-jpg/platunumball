@@ -10,6 +10,7 @@ import { projectTeamRow } from "../shared/lib/teamRowProjection.js";
 import { toClientRecruitingTeam } from "../src/data/recruitingMappers.js";
 import { fromRemoteTeam } from "../src/data/teamMappers.js";
 import { mapRemoteTeamEmblem as mapClientRemoteTeamEmblem } from "../src/lib/teamEmblem.js";
+import { isCurrentScopedOperation } from "../src/lib/asyncState.js";
 
 const teamRow = {
   id: "team-1",
@@ -71,6 +72,31 @@ const commonTeam = {
   createdAt: "2026-01-02T00:00:00.000Z",
   updatedAt: "2026-07-29T00:00:00.000Z",
 };
+
+test("이전 팀 엠블럼 완료는 이동한 팀의 복원 상태와 메시지를 바꾸지 않는다", async () => {
+  let currentTeamId = "team-a";
+  let currentOperation = { scopeId: currentTeamId, operationId: 1 };
+  let emblemCanRestore = false;
+  let feedback = "";
+  let finishUpload;
+  const upload = new Promise((resolve) => { finishUpload = resolve; });
+  const operation = currentOperation;
+  const completion = upload.then((result) => {
+    if (!isCurrentScopedOperation(currentOperation, operation, currentTeamId)) return;
+    emblemCanRestore = result.emblemCanRestore;
+    feedback = "엠블럼을 변경했습니다.";
+  });
+
+  currentTeamId = "team-b";
+  currentOperation = null;
+  emblemCanRestore = true;
+  feedback = "B 상태";
+  finishUpload({ emblemCanRestore: false });
+  await completion;
+
+  assert.equal(emblemCanRestore, true);
+  assert.equal(feedback, "B 상태");
+});
 
 test("team emblem client shim re-exports the shared canonical implementation", () => {
   assert.equal(mapClientRemoteTeamEmblem, mapSharedRemoteTeamEmblem);

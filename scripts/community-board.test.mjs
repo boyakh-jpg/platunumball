@@ -12,6 +12,7 @@ import {
   normalizeCommunityPostDraft,
   selectPopularCommunityPosts,
 } from "../shared/lib/communityPolicy.js";
+import { isLatestRequest } from "../src/lib/asyncState.js";
 
 const now = Date.parse("2026-08-05T12:00:00.000Z");
 const post = (id, hoursAgo, likeCount, commentCount, category = "general") => ({
@@ -20,6 +21,58 @@ const post = (id, hoursAgo, likeCount, commentCount, category = "general") => ({
   likeCount,
   commentCount,
   createdAt: new Date(now - hoursAgo * 60 * 60 * 1000).toISOString(),
+});
+
+const deferred = () => {
+  let resolve;
+  const promise = new Promise((nextResolve) => { resolve = nextResolve; });
+  return { promise, resolve };
+};
+
+test("늦은 게시글 상세 응답은 새 상세와 닫힌 모달을 덮어쓰지 않는다", async () => {
+  let requestId = 0;
+  let selectedPost = null;
+  let comments = [];
+  const open = async (pendingDetail) => {
+    const currentRequestId = ++requestId;
+    const result = await pendingDetail;
+    if (!isLatestRequest(requestId, currentRequestId)) return;
+    selectedPost = result.post;
+    comments = result.comments;
+  };
+  const close = () => {
+    requestId += 1;
+    selectedPost = null;
+    comments = [];
+  };
+
+  const detailA = deferred();
+  const detailB = deferred();
+  const openingA = open(detailA.promise);
+  const openingB = open(detailB.promise);
+  detailB.resolve({ post: { id: "B" }, comments: [{ id: "B-comment" }] });
+  await openingB;
+  detailA.resolve({ post: { id: "A" }, comments: [{ id: "A-comment" }] });
+  await openingA;
+  assert.equal(selectedPost.id, "B");
+  assert.deepEqual(comments.map(({ id }) => id), ["B-comment"]);
+
+  const detailC = deferred();
+  const openingC = open(detailC.promise);
+  close();
+  detailC.resolve({ post: { id: "C" }, comments: [{ id: "C-comment" }] });
+  await openingC;
+  assert.equal(selectedPost, null);
+  assert.deepEqual(comments, []);
+});
+
+test("커뮤니티 상세 모달은 body 잠금과 키보드 포커스 격리를 적용한다", async () => {
+  const dialog = await readFile(new URL("../src/pages/CommunityPostDialog.jsx", import.meta.url), "utf8");
+  assert.match(dialog, /useBodyScrollLock\(open\)/);
+  assert.match(dialog, /querySelector\("\.community-dialog-close"\)\?\.focus\(\)/);
+  assert.match(dialog, /event\.key !== "Tab"/);
+  assert.match(dialog, /event\.shiftKey \? last : first/);
+  assert.match(dialog, /target instanceof window\.HTMLElement && target\.isConnected/);
 });
 
 test("인기글은 최근 3일 공지 외 글을 추천 3점과 댓글 1점으로 최대 5개 정렬한다", () => {

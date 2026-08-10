@@ -15,6 +15,7 @@ import {
 import courtAiWorker from "../cloudflare/court-ai/worker.js";
 import { encodeCourtPhotoCanvas, resolveCourtPhotoMetadata } from "../src/lib/courtRequestImages.js";
 import { getCourtRequestQuotaUi } from "../src/pages/settingsPageModel.js";
+import { isCurrentScopedOperation, isLatestRequest } from "../src/lib/asyncState.js";
 
 const eligibleAssessment = {
   court: true,
@@ -43,6 +44,35 @@ const eligibleEvidence = {
   publicAccess: "public",
   photoLocation: { status: "matched", confidence: 1 },
 };
+
+test("이전 구장 리뷰 완료는 이동한 구장 상세와 메시지를 바꾸지 않는다", async () => {
+  let currentCourtId = "court-a";
+  let currentOperation = { scopeId: currentCourtId, operationId: 1 };
+  let detailRequestId = 1;
+  let detail = { court: { id: currentCourtId } };
+  let message = "";
+  let finishReview;
+  const review = new Promise((resolve) => { finishReview = resolve; });
+  const operation = currentOperation;
+  const requestId = detailRequestId;
+  const completion = review.then((result) => {
+    if (!isCurrentScopedOperation(currentOperation, operation, currentCourtId)) return;
+    if (!isLatestRequest(detailRequestId, requestId)) return;
+    detail = result.detail;
+    message = "리뷰를 등록했습니다.";
+  });
+
+  currentCourtId = "court-b";
+  currentOperation = null;
+  detailRequestId += 1;
+  detail = { court: { id: currentCourtId } };
+  message = "";
+  finishReview({ detail: { court: { id: "court-a" } } });
+  await completion;
+
+  assert.equal(detail.court.id, "court-b");
+  assert.equal(message, "");
+});
 
 test("court photos fall back to JPEG and are sanitized back to WebP", async () => {
   const requestedTypes = [];

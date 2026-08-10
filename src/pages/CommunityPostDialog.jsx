@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Eye, MessageCircle, Pencil, Reply, ThumbsUp, Trash2, X } from "lucide-react";
 import Button from "../components/common/Button.jsx";
@@ -9,6 +9,7 @@ import { getUserHashtag } from "../lib/handles.js";
 import { getSafeImageUrl } from "../lib/inputSecurity.js";
 import { formatKoreanDateTime } from "../../shared/lib/matchTimeUtils.js";
 import { COMMUNITY_COMMENT_BODY_MAX, COMMUNITY_POST_CATEGORY_LABELS } from "../../shared/lib/communityPolicy.js";
+import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import CommunityPostEditor from "./CommunityPostEditor.jsx";
 
 export function CommunityAuthorLink({ author, teams }) {
@@ -60,6 +61,11 @@ export default function CommunityPostDialog({ app, controller }) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [replyTo, setReplyTo] = useState(null);
   const [commentBody, setCommentBody] = useState("");
+  const dialogRef = useRef(null);
+  const restoreFocusRef = useRef(null);
+  const open = Boolean(post);
+
+  useBodyScrollLock(open);
 
   useEffect(() => {
     setEditing(false);
@@ -69,13 +75,50 @@ export default function CommunityPostDialog({ app, controller }) {
   }, [post?.id]);
 
   useEffect(() => {
-    if (!post) return undefined;
-    const closeOnEscape = (event) => {
-      if (event.key === "Escape" && !pending) controller.closePost();
+    if (!open) return undefined;
+    restoreFocusRef.current = document.activeElement;
+    const focusFrame = window.requestAnimationFrame(() => {
+      dialogRef.current?.querySelector(".community-dialog-close")?.focus();
+    });
+    return () => {
+      window.cancelAnimationFrame(focusFrame);
+      const target = restoreFocusRef.current;
+      if (target instanceof window.HTMLElement && target.isConnected) target.focus();
     };
-    window.addEventListener("keydown", closeOnEscape);
-    return () => window.removeEventListener("keydown", closeOnEscape);
-  }, [controller.closePost, pending, post]);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const handleDialogKeyDown = (event) => {
+      if (event.key === "Escape") {
+        if (!pending) controller.closePost();
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const focusable = [...(dialogRef.current?.querySelectorAll(
+        'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      ) ?? [])];
+      if (!focusable.length) {
+        event.preventDefault();
+        dialogRef.current?.focus();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (!dialogRef.current?.contains(document.activeElement)) {
+        event.preventDefault();
+        (event.shiftKey ? last : first).focus();
+      } else if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    window.addEventListener("keydown", handleDialogKeyDown);
+    return () => window.removeEventListener("keydown", handleDialogKeyDown);
+  }, [controller.closePost, open, pending]);
 
   if (!post || typeof document === "undefined") return null;
   const ownsPost = post.authorId === app.currentUserId;
@@ -93,7 +136,7 @@ export default function CommunityPostDialog({ app, controller }) {
 
   return createPortal(
     <div className="app-confirm-backdrop community-dialog-backdrop" role="presentation" onMouseDown={() => !pending && controller.closePost()}>
-      <section className="app-confirm-dialog community-post-dialog" role="dialog" aria-modal="true" aria-labelledby="community-post-dialog-title" onMouseDown={(event) => event.stopPropagation()}>
+      <section ref={dialogRef} className="app-confirm-dialog community-post-dialog" role="dialog" aria-modal="true" aria-labelledby="community-post-dialog-title" tabIndex={-1} onMouseDown={(event) => event.stopPropagation()}>
         <header className="community-dialog-header">
           <div>
             <Badge tone={post.category === "notice" ? "orange" : post.category === "question" ? "blue" : "neutral"}>{COMMUNITY_POST_CATEGORY_LABELS[post.category] ?? "자유"}</Badge>

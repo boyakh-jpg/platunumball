@@ -28,6 +28,7 @@ import { getUserHashtag } from "../lib/handles.js";
 import { getTeamScoreSummary, getTeamSide } from "../lib/season.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 import { getTeamJoinApplicationBlockReason } from "../lib/teamJoinApplication.js";
+import { isCurrentScopedOperation } from "../lib/asyncState.js";
 import TeamDetailView from "./TeamDetailView.jsx";
 
 function isHistoryInDetailWindow(match) {
@@ -83,7 +84,10 @@ export default function TeamDetail({ app }) {
     emblemFont: displayTeam?.emblemFont ?? "sport",
   }));
   const emblemInputRef = useRef(null);
-  const emblemPendingRef = useRef(false);
+  const emblemPendingRef = useRef(null);
+  const emblemOperationSequenceRef = useRef(0);
+  const currentTeamIdRef = useRef(teamId);
+  currentTeamIdRef.current = teamId;
   const emblemStatusRequestRef = useRef("");
   const detailRequestRef = useRef("");
   const teamManagementPendingRef = useRef(false);
@@ -97,6 +101,15 @@ export default function TeamDetail({ app }) {
   const canManage = teamDetailReady
     && authoritativeTeam?.membersPartial !== true
     && authoritativeCaptain?.userId === app.currentUser.id;
+
+  useEffect(() => {
+    emblemPendingRef.current = null;
+    setEmblemPending(false);
+    setEmblemCanRestore(false);
+    setEmblemStatusError("");
+    setEmblemFeedback("");
+    setEmblemFile(null);
+  }, [teamId]);
 
   useEffect(() => {
     const cooldownMs = getNextEmblemUploadAt(team?.emblemUploadCount, team?.emblemUploadedAt)?.getTime() ?? 0;
@@ -435,12 +448,14 @@ export default function TeamDetail({ app }) {
   };
   const confirmEmblemUpload = async (crop) => {
     const file = emblemFile;
-    if (!file || emblemPendingRef.current) return;
-    emblemPendingRef.current = true;
+    if (!file || emblemPendingRef.current?.scopeId === team.id) return;
+    const operation = { scopeId: team.id, operationId: ++emblemOperationSequenceRef.current };
+    emblemPendingRef.current = operation;
     setEmblemPending(true);
     setEmblemFeedback("");
     try {
       const result = await app.actions.uploadTeamEmblem(team.id, file, crop);
+      if (!isCurrentScopedOperation(emblemPendingRef.current, operation, currentTeamIdRef.current)) return;
       if (!result || result.ok === false) {
         const nextAt = result?.details?.nextAllowedAt;
         setEmblemFeedback(nextAt ? `${getTeamEmblemErrorMessage(result?.error)} ${formatEmblemDate(nextAt)}` : getTeamEmblemErrorMessage(result?.error));
@@ -452,53 +467,63 @@ export default function TeamDetail({ app }) {
       setEmblemCanRestore(result.emblemCanRestore === true);
       setEmblemFile(null);
     } catch (error) {
-      setEmblemFeedback(getTeamEmblemErrorMessage(error?.code || error?.message));
+      if (isCurrentScopedOperation(emblemPendingRef.current, operation, currentTeamIdRef.current)) setEmblemFeedback(getTeamEmblemErrorMessage(error?.code || error?.message));
     } finally {
-      emblemPendingRef.current = false;
-      setEmblemPending(false);
+      if (isCurrentScopedOperation(emblemPendingRef.current, operation, currentTeamIdRef.current)) {
+        emblemPendingRef.current = null;
+        setEmblemPending(false);
+      }
     }
   };
   const restorePreviousEmblem = async () => {
-    if (emblemPendingRef.current || !emblemCanRestore) return;
-    emblemPendingRef.current = true;
+    if (emblemPendingRef.current?.scopeId === team.id || !emblemCanRestore) return;
+    const operation = { scopeId: team.id, operationId: ++emblemOperationSequenceRef.current };
+    emblemPendingRef.current = operation;
     setEmblemPending(true);
     setEmblemFeedback("");
     try {
       const result = await app.actions.restoreTeamEmblem(team.id);
+      if (!isCurrentScopedOperation(emblemPendingRef.current, operation, currentTeamIdRef.current)) return;
       const nextAt = result?.details?.nextAllowedAt;
       if (result && result.ok !== false) setEmblemCanRestore(result.emblemCanRestore === true);
       setEmblemFeedback(!result || result?.ok === false
         ? `${getTeamEmblemErrorMessage(result?.error)}${nextAt ? ` ${formatEmblemDate(nextAt)}` : ""}`
         : "직전 사진으로 되돌렸습니다.");
     } catch (error) {
-      setEmblemFeedback(getTeamEmblemErrorMessage(error?.code || error?.message));
+      if (isCurrentScopedOperation(emblemPendingRef.current, operation, currentTeamIdRef.current)) setEmblemFeedback(getTeamEmblemErrorMessage(error?.code || error?.message));
     } finally {
-      emblemPendingRef.current = false;
-      setEmblemPending(false);
+      if (isCurrentScopedOperation(emblemPendingRef.current, operation, currentTeamIdRef.current)) {
+        emblemPendingRef.current = null;
+        setEmblemPending(false);
+      }
     }
   };
   const selectEmblemSource = async (emblemSource) => {
     const currentSource = team.emblemSource ?? (team.emblemKey ? "upload" : "initial");
-    if (emblemPendingRef.current || emblemSource === currentSource) return;
+    if (emblemPendingRef.current?.scopeId === team.id || emblemSource === currentSource) return;
     if (emblemSource === "upload" && !team.emblemKey) {
       if (!isEmblemUploadLocked(team.emblemUploadCount, team.emblemUploadedAt)) emblemInputRef.current?.click();
       return;
     }
-    emblemPendingRef.current = true;
+    const operation = { scopeId: team.id, operationId: ++emblemOperationSequenceRef.current };
+    emblemPendingRef.current = operation;
     setEmblemPending(true);
     setEmblemFeedback("");
     try {
       const result = await app.actions.setTeamEmblemSource(team.id, emblemSource);
+      if (!isCurrentScopedOperation(emblemPendingRef.current, operation, currentTeamIdRef.current)) return;
       setEmblemFeedback(!result || result?.ok === false ? getTeamEmblemErrorMessage(result?.error) : "엠블럼 표시 방식을 저장했습니다.");
     } catch (error) {
-      setEmblemFeedback(getTeamEmblemErrorMessage(error?.code || error?.message));
+      if (isCurrentScopedOperation(emblemPendingRef.current, operation, currentTeamIdRef.current)) setEmblemFeedback(getTeamEmblemErrorMessage(error?.code || error?.message));
     } finally {
-      emblemPendingRef.current = false;
-      setEmblemPending(false);
+      if (isCurrentScopedOperation(emblemPendingRef.current, operation, currentTeamIdRef.current)) {
+        emblemPendingRef.current = null;
+        setEmblemPending(false);
+      }
     }
   };
   const saveEmblemStyle = async () => {
-    if (emblemPendingRef.current) return;
+    if (emblemPendingRef.current?.scopeId === team.id) return;
     const emblemAbbreviation = normalizeTeamEmblemAbbreviation(emblemStyleDraft.emblemAbbreviation);
     if (emblemAbbreviation && !isTeamEmblemAbbreviation(emblemAbbreviation)) {
       setEmblemFeedback("약칭은 공백을 제외한 1~4자로 입력해 주세요.");
@@ -508,18 +533,22 @@ export default function TeamDetail({ app }) {
       setEmblemFeedback("공백만 있는 약칭은 저장할 수 없습니다. 1~4자로 입력해 주세요.");
       return;
     }
-    emblemPendingRef.current = true;
+    const operation = { scopeId: team.id, operationId: ++emblemOperationSequenceRef.current };
+    emblemPendingRef.current = operation;
     setEmblemPending(true);
     setEmblemFeedback("");
     try {
       const result = await app.actions.updateTeamEmblemStyle(team.id, { ...emblemStyleDraft, emblemAbbreviation });
+      if (!isCurrentScopedOperation(emblemPendingRef.current, operation, currentTeamIdRef.current)) return;
       if (result && result.ok !== false) setEmblemStyleDraft((current) => ({ ...current, emblemAbbreviation }));
       setEmblemFeedback(!result || result?.ok === false ? getTeamEmblemErrorMessage(result?.error) : "엠블럼 디자인을 저장했습니다.");
     } catch (error) {
-      setEmblemFeedback(getTeamEmblemErrorMessage(error?.code || error?.message));
+      if (isCurrentScopedOperation(emblemPendingRef.current, operation, currentTeamIdRef.current)) setEmblemFeedback(getTeamEmblemErrorMessage(error?.code || error?.message));
     } finally {
-      emblemPendingRef.current = false;
-      setEmblemPending(false);
+      if (isCurrentScopedOperation(emblemPendingRef.current, operation, currentTeamIdRef.current)) {
+        emblemPendingRef.current = null;
+        setEmblemPending(false);
+      }
     }
   };
 

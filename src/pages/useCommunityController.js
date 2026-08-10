@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 import { getLoginPath } from "../lib/profileSetup.js";
+import { isLatestRequest } from "../lib/asyncState.js";
 import {
   COMMUNITY_POST_ADMIN_CATEGORIES,
   COMMUNITY_POST_CATEGORIES,
@@ -77,6 +78,7 @@ export default function useCommunityController(app) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const listRequestRef = useRef(0);
+  const detailRequestRef = useRef(0);
   const localViewedPostIdsRef = useRef(new Set());
 
   const requireLogin = () => {
@@ -136,6 +138,7 @@ export default function useCommunityController(app) {
   const commentThreads = useMemo(() => getCommunityCommentThreads(comments), [comments]);
 
   const openPost = async (post) => {
+    const requestId = ++detailRequestRef.current;
     setSelectedPost(remote && !post.title ? null : post);
     setComments([]);
     setError("");
@@ -154,16 +157,19 @@ export default function useCommunityController(app) {
     try {
       const result = await communityAction("detail", { postId: post.id });
       if (!result || result.ok === false) throw new Error(result?.error || "community_detail_failed");
+      if (!isLatestRequest(detailRequestRef.current, requestId)) return;
       setRemotePosts((current) => current.map((item) => item.id === post.id ? { ...item, ...result.post } : item));
       setRemotePopularPosts((current) => current.map((item) => item.id === post.id ? { ...item, ...result.post } : item));
       setSelectedPost(result.post);
       setComments(result.comments ?? []);
       setCanModerate(result.canModerate === true);
     } catch (detailError) {
-      setError(getCommunityErrorMessage(detailError.message));
-      setSelectedPost(null);
+      if (isLatestRequest(detailRequestRef.current, requestId)) {
+        setError(getCommunityErrorMessage(detailError.message));
+        setSelectedPost(null);
+      }
     } finally {
-      setDetailLoading(false);
+      if (isLatestRequest(detailRequestRef.current, requestId)) setDetailLoading(false);
     }
   };
 
@@ -311,8 +317,10 @@ export default function useCommunityController(app) {
   };
 
   const closePost = useCallback(() => {
+    detailRequestRef.current += 1;
     setSelectedPost(null);
     setComments([]);
+    setDetailLoading(false);
   }, []);
 
   return {

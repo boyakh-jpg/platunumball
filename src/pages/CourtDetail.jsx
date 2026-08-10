@@ -21,6 +21,7 @@ import {
   getCourtSurfaceLabel,
 } from "../lib/courts.js";
 import { getCourtHashtag } from "../lib/handles.js";
+import { isCurrentScopedOperation, isLatestRequest } from "../lib/asyncState.js";
 import { formatDate, getMatchDate, getLoadError, getLocalDetail } from "./courtDetailModel.js";
 
 export default function CourtDetail({ app, courtId: courtIdProp = "", embedded = false, onClose }) {
@@ -34,7 +35,7 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
   const [selectedMatchId, setSelectedMatchId] = useState("");
   const [rating, setRating] = useState(0);
   const [memo, setMemo] = useState("");
-  const [saving, setSaving] = useState(false); const savingRef = useRef(false);
+  const [saving, setSaving] = useState(false); const savingRef = useRef(null);
   const [saveMessage, setSaveMessage] = useState("");
   const [correctionOpen, setCorrectionOpen] = useState(false);
   const [correctionField, setCorrectionField] = useState("name");
@@ -42,9 +43,12 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
   const [correctionValue, setCorrectionValue] = useState("");
   const [correctionNote, setCorrectionNote] = useState("");
   const [correctionUrl, setCorrectionUrl] = useState("");
-  const [correctionSaving, setCorrectionSaving] = useState(false); const correctionSavingRef = useRef(false);
+  const [correctionSaving, setCorrectionSaving] = useState(false); const correctionSavingRef = useRef(null);
   const [correctionMessage, setCorrectionMessage] = useState("");
   const detailRequestRef = useRef(0);
+  const operationSequenceRef = useRef(0);
+  const currentCourtIdRef = useRef(courtId);
+  currentCourtIdRef.current = courtId;
   const loadCourtDetail = app.actions?.loadCourtDetail;
   const correctionAttributes = useMemo(
     () => getCourtCorrectionAttributeOptions(correctionField),
@@ -72,6 +76,7 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
     setCorrectionMessage("");
   };
   const refreshDetail = useCallback(async ({ silent = false } = {}) => {
+    const requestCourtId = courtId;
     const requestId = detailRequestRef.current + 1;
     detailRequestRef.current = requestId;
     if (!silent) {
@@ -81,7 +86,7 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
     setLoadError(null);
     try {
       const result = await loadCourtDetail?.(courtId);
-      if (detailRequestRef.current !== requestId) return;
+      if (!isLatestRequest(detailRequestRef.current, requestId) || currentCourtIdRef.current !== requestCourtId) return;
       if (result?.court) setDetail(result);
       else if (localDetail) setDetail(localDetail);
       else {
@@ -89,7 +94,7 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
         setLoadError(getLoadError(new Error("court_detail_load_failed")));
       }
     } catch (error) {
-      if (detailRequestRef.current !== requestId) return;
+      if (!isLatestRequest(detailRequestRef.current, requestId) || currentCourtIdRef.current !== requestCourtId) return;
       const nextError = getLoadError(error);
       if (localDetail) {
         setDetail(localDetail);
@@ -101,7 +106,7 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
         setLoadError(nextError);
       }
     } finally {
-      if (detailRequestRef.current === requestId) setLoading(false);
+      if (isLatestRequest(detailRequestRef.current, requestId) && currentCourtIdRef.current === requestCourtId) setLoading(false);
     }
   }, [courtId, loadCourtDetail, localDetail]);
 
@@ -112,6 +117,11 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
     };
   }, [refreshDetail]);
   useEffect(() => {
+    savingRef.current = null;
+    correctionSavingRef.current = null;
+    setSaving(false);
+    setSaveMessage("");
+    setCorrectionSaving(false);
     setCorrectionOpen(false);
     setCorrectionField("name");
     setCorrectionAttribute("");
@@ -140,8 +150,9 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
 
   const submitReview = async (event) => {
     event.preventDefault();
-    if (!selectedMatchId || rating < 1 || savingRef.current) return;
-    savingRef.current = true;
+    if (!selectedMatchId || rating < 1 || savingRef.current?.scopeId === courtId) return;
+    const operation = { scopeId: courtId, operationId: ++operationSequenceRef.current };
+    savingRef.current = operation;
     setSaving(true);
     setSaveMessage("");
     try {
@@ -150,15 +161,22 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
         rating,
         memo,
       });
+      if (!isCurrentScopedOperation(savingRef.current, operation, currentCourtIdRef.current)) return;
       if (result?.ok === false || !result) {
         setSaveMessage("리뷰를 저장하지 못했습니다.");
         return;
       }
       await refreshDetail({ silent: true });
+      if (!isCurrentScopedOperation(savingRef.current, operation, currentCourtIdRef.current)) return;
       setSaveMessage(selectedMatch?.existingReview ? "리뷰를 수정했습니다." : "리뷰를 등록했습니다.");
     } catch {
-      setSaveMessage("리뷰를 저장하지 못했습니다.");
-    } finally { savingRef.current = false; setSaving(false); }
+      if (isCurrentScopedOperation(savingRef.current, operation, currentCourtIdRef.current)) setSaveMessage("리뷰를 저장하지 못했습니다.");
+    } finally {
+      if (isCurrentScopedOperation(savingRef.current, operation, currentCourtIdRef.current)) {
+        savingRef.current = null;
+        setSaving(false);
+      }
+    }
   };
 
   const submitCorrection = async (event) => {
@@ -166,12 +184,13 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
     const proposedValue = correctionValue.trim();
     const note = correctionNote.trim();
     const evidenceUrl = correctionUrl.trim();
-    if (!correctionCanSubmit || correctionSavingRef.current) return;
+    if (!correctionCanSubmit || correctionSavingRef.current?.scopeId === courtId) return;
     if (evidenceUrl && !/^https?:\/\//i.test(evidenceUrl)) {
       setCorrectionMessage("근거 URL은 http:// 또는 https://로 입력해 주세요.");
       return;
     }
-    correctionSavingRef.current = true;
+    const operation = { scopeId: courtId, operationId: ++operationSequenceRef.current };
+    correctionSavingRef.current = operation;
     setCorrectionSaving(true);
     setCorrectionMessage("");
     const fieldLabel = getCourtCorrectionFieldLabel(correctionField);
@@ -188,6 +207,7 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
         },
         detail?.court ?? null,
       );
+      if (!isCurrentScopedOperation(correctionSavingRef.current, operation, currentCourtIdRef.current)) return;
       if (result?.duplicate) {
         setCorrectionMessage("이미 검토 중인 정보 수정 신고가 있습니다.");
       } else if (!result || result.ok === false) {
@@ -201,8 +221,13 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
         setCorrectionMessage("접수했습니다. 관리자 확인 전까지 현재 정보는 유지됩니다.");
       }
     } catch {
-      setCorrectionMessage("정보 수정 신고를 접수하지 못했습니다.");
-    } finally { correctionSavingRef.current = false; setCorrectionSaving(false); }
+      if (isCurrentScopedOperation(correctionSavingRef.current, operation, currentCourtIdRef.current)) setCorrectionMessage("정보 수정 신고를 접수하지 못했습니다.");
+    } finally {
+      if (isCurrentScopedOperation(correctionSavingRef.current, operation, currentCourtIdRef.current)) {
+        correctionSavingRef.current = null;
+        setCorrectionSaving(false);
+      }
+    }
   };
 
   if (loading && !detail) {
