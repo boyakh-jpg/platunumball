@@ -2673,6 +2673,233 @@ test("overlapping recruiting mutations keep the room protected until every reque
   assert.equal(pendingIds.has("room-1"), false);
 });
 
+test("referee, query error, and profile hash route state stay synchronized in Chromium", async (t) => {
+  const chromePath = [
+    process.env.CHROME_PATH,
+    process.env.PROGRAMFILES && join(process.env.PROGRAMFILES, "Google", "Chrome", "Application", "chrome.exe"),
+    process.env["PROGRAMFILES(X86)"] && join(process.env["PROGRAMFILES(X86)"], "Google", "Chrome", "Application", "chrome.exe"),
+    process.env.LOCALAPPDATA && join(process.env.LOCALAPPDATA, "Google", "Chrome", "Application", "chrome.exe"),
+  ].filter(Boolean).find(existsSync);
+  if (!chromePath) {
+    t.skip("Chromium executable is unavailable.");
+    return;
+  }
+
+  const fixtureDirectory = await mkdtemp(join(process.cwd(), ".tmp-route-state-"));
+  const fixtureName = basename(fixtureDirectory);
+  const chromeProfile = await mkdtemp(join(tmpdir(), "boxtier-route-state-chrome-"));
+  const server = await createServer({
+    root: process.cwd(),
+    logLevel: "error",
+    define: {
+      "import.meta.env.VITE_SUPABASE_URL": JSON.stringify("https://example.supabase.co"),
+      "import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY": JSON.stringify("test-key"),
+    },
+    server: { host: "127.0.0.1", port: 0, strictPort: false, hmr: false },
+  });
+  await writeFile(join(fixtureDirectory, "index.html"), `<!doctype html>
+<html><body>
+  <div id="referee-root"></div><div id="boundary-root"></div><div id="profile-root"></div>
+  <script>
+    const reportFixtureError = (error) => {
+      const message = error?.stack || error?.message || String(error);
+      document.body.dataset.result = btoa(unescape(encodeURIComponent(JSON.stringify({ error: message }))));
+    };
+    addEventListener("error", (event) => reportFixtureError(event.error || event.message));
+    addEventListener("unhandledrejection", (event) => reportFixtureError(event.reason));
+  </script>
+  <script type="module" src="./main.jsx"></script>
+</body></html>`, "utf8");
+  await writeFile(join(fixtureDirectory, "main.jsx"), `
+import React, { useEffect } from "react";
+import { flushSync } from "react-dom";
+import { createRoot } from "react-dom/client";
+import { MemoryRouter, Route, Routes, useLocation, useNavigate } from "react-router-dom";
+import { AppErrorBoundary, getAppErrorBoundaryResetKey } from "/src/App.jsx";
+import Profile from "/src/pages/Profile.jsx";
+import RefereeDetail from "/src/pages/RefereeDetail.jsx";
+import { demoFlowState } from "/src/lib/demoFlowState.js";
+import "/src/styles/tokens.css";
+import "/src/styles/globals.css";
+import "/src/styles/ui-primitives.css";
+
+const waitFrames = (count = 2) => new Promise((resolve) => setTimeout(resolve, count * 16));
+const waitFor = async (predicate) => {
+  for (let attempt = 0; attempt < 180; attempt += 1) {
+    if (predicate()) return;
+    await waitFrames(1);
+  }
+  throw new Error("Timed out waiting for fixture state.");
+};
+
+const baseUser = demoFlowState.users.find((user) => user.id === demoFlowState.currentUserId) ?? demoFlowState.users[0];
+const refereeRequests = [];
+const refereeApp = {
+  remoteReady: true,
+  currentUser: baseUser,
+  state: { users: [], matches: [], teams: [], settings: { refereeAppointments: [] } },
+  actions: {
+    loadRefereeDetail(refereeId) {
+      return new Promise((resolve, reject) => refereeRequests.push({ refereeId, resolve, reject }));
+    },
+  },
+  matchEntities: {},
+};
+const refereeResult = (id, name) => ({
+  ok: true,
+  referee: { ...baseUser, id, name, region: "서울", trustScore: 80, refereeProfile: { grade: "candidate" } },
+  state: { matches: [], teams: [] },
+  stats: { completed: 0, ranked: 0, official: 0, recent: 0 },
+});
+let navigateReferee;
+function RefereeHarness() {
+  const navigate = useNavigate();
+  useEffect(() => { navigateReferee = navigate; }, [navigate]);
+  return <Routes><Route path="/app/referees/:refereeId" element={<RefereeDetail app={refereeApp} />} /></Routes>;
+}
+const refereeRoot = createRoot(document.getElementById("referee-root"));
+refereeRoot.render(<MemoryRouter initialEntries={["/app/referees/ref-a"]}><RefereeHarness /></MemoryRouter>);
+await waitFor(() => refereeRequests.length === 1);
+refereeRequests[0].resolve(refereeResult("ref-a", "REF_A_UNIQUE"));
+await waitFor(() => document.getElementById("referee-root").textContent.includes("REF_A_UNIQUE"));
+navigateReferee("/app/referees/ref-b");
+await waitFor(() => refereeRequests.length === 2);
+const oldRefereeHiddenDuringLoad = !document.getElementById("referee-root").textContent.includes("REF_A_UNIQUE");
+refereeRequests[1].reject(new Error("ref-b failed"));
+await waitFor(() => document.querySelector("#referee-root .ui-empty-state-compact button"));
+const failedRefereeState = {
+  oldNameHidden: !document.getElementById("referee-root").textContent.includes("REF_A_UNIQUE"),
+  retryVisible: Boolean(document.querySelector("#referee-root .ui-empty-state-compact button")),
+};
+
+navigateReferee("/app/referees/ref-a-late");
+await waitFor(() => refereeRequests.length === 3);
+await waitFor(() => !document.querySelector("#referee-root .ui-empty-state-compact button"));
+navigateReferee("/app/referees/ref-b-latest");
+await waitFor(() => refereeRequests.length === 4);
+refereeRequests[3].reject(new Error("latest failed"));
+await waitFor(() => document.querySelector("#referee-root .ui-empty-state-compact button"));
+refereeRequests[2].resolve(refereeResult("ref-a-late", "REF_A_LATE_UNIQUE"));
+await waitFrames(2);
+const lateRefereeIgnored = !document.getElementById("referee-root").textContent.includes("REF_A_LATE_UNIQUE");
+
+let navigateBoundary;
+function BrokenChild() { throw new Error("broken query modal"); }
+function BoundaryHarness() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  useEffect(() => { navigateBoundary = navigate; }, [navigate]);
+  return <AppErrorBoundary resetKey={getAppErrorBoundaryResetKey(location)}>
+    {location.search ? <BrokenChild /> : <div id="boundary-normal">NORMAL CHILD</div>}
+  </AppErrorBoundary>;
+}
+const boundaryRoot = createRoot(document.getElementById("boundary-root"));
+boundaryRoot.render(<MemoryRouter initialEntries={["/app/matches?match=broken"]}><BoundaryHarness /></MemoryRouter>);
+await waitFor(() => document.querySelector("#boundary-root .auth-card"));
+const boundaryFallbackVisible = Boolean(document.querySelector("#boundary-root .auth-card"));
+navigateBoundary("/app/matches");
+await waitFor(() => document.querySelector("#boundary-normal"));
+const boundaryRecovered = document.querySelector("#boundary-normal")?.textContent === "NORMAL CHILD";
+
+const profileUser = demoFlowState.users.find((user) => user.id === demoFlowState.currentUserId) ?? demoFlowState.users[0];
+const profileApp = {
+  currentUser: profileUser,
+  remoteReady: true,
+  state: { ...demoFlowState, matches: [], teams: [], affiliations: [] },
+  actions: {
+    profileRecordsLoaded: true,
+    updateProfile: async () => ({ ok: true }),
+    loadProfileIconAchievements: async () => ({ ok: true, unlockedIconKeys: [] }),
+    saveProfileIconSettings: async () => ({ ok: true }),
+    setProfileAffiliation: async () => ({ ok: true }),
+  },
+  recordArchives: { profile: {} },
+  matchEntities: {},
+};
+let navigateProfile;
+let profileLocation = "";
+function ProfileHarness() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  useEffect(() => { navigateProfile = navigate; }, [navigate]);
+  profileLocation = location.pathname + location.search + location.hash;
+  return <Profile app={profileApp} />;
+}
+const profileRoot = createRoot(document.getElementById("profile-root"));
+const renderProfile = (entry, key) => flushSync(() => profileRoot.render(
+  <MemoryRouter key={key} initialEntries={[entry]}><ProfileHarness /></MemoryRouter>,
+));
+renderProfile("/app/profile?tab=me#icons", "initial");
+await waitFor(() => document.querySelector("#profile-root .profile-icon-dialog"));
+document.querySelector("#profile-root .profile-icon-dialog-header button").click();
+await waitFor(() => !document.querySelector("#profile-root .profile-icon-dialog"));
+const closeRemovedOnlyIconHash = profileLocation === "/app/profile?tab=me";
+renderProfile(profileLocation, "refresh");
+const refreshStayedClosed = !document.querySelector("#profile-root .profile-icon-dialog");
+navigateProfile("/app/profile?tab=me#icons");
+await waitFor(() => document.querySelector("#profile-root .profile-icon-dialog"));
+navigateProfile(-1);
+await waitFor(() => !document.querySelector("#profile-root .profile-icon-dialog"));
+const backClosedDialog = profileLocation === "/app/profile?tab=me";
+navigateProfile(1);
+await waitFor(() => document.querySelector("#profile-root .profile-icon-dialog"));
+const forwardOpenedDialog = profileLocation === "/app/profile?tab=me#icons";
+navigateProfile("/app/profile?tab=me#other");
+await waitFor(() => !document.querySelector("#profile-root .profile-icon-dialog"));
+document.querySelector("#profile-root .profile-icon-card-actions button").click();
+await waitFor(() => document.querySelector("#profile-root .profile-icon-dialog"));
+document.querySelector("#profile-root .profile-icon-dialog-header button").click();
+await waitFor(() => !document.querySelector("#profile-root .profile-icon-dialog"));
+const otherHashPreserved = profileLocation === "/app/profile?tab=me#other";
+
+document.body.dataset.result = btoa(JSON.stringify({
+  referee: { oldRefereeHiddenDuringLoad, ...failedRefereeState, lateRefereeIgnored },
+  boundary: { boundaryFallbackVisible, boundaryRecovered },
+  profile: { closeRemovedOnlyIconHash, refreshStayedClosed, backClosedDialog, forwardOpenedDialog, otherHashPreserved },
+}));
+`, "utf8");
+
+  try {
+    await server.listen();
+    const address = server.httpServer.address();
+    const port = typeof address === "object" && address ? address.port : 5173;
+    const pageUrl = `http://127.0.0.1:${port}/${fixtureName}/index.html`;
+    const { stdout, stderr } = await execFileAsync(chromePath, [
+      "--headless=new",
+      "--disable-gpu",
+      "--no-first-run",
+      "--no-default-browser-check",
+      `--user-data-dir=${chromeProfile}`,
+      "--window-size=1400,1000",
+      "--virtual-time-budget=18000",
+      "--dump-dom",
+      pageUrl,
+    ], { maxBuffer: 10 * 1024 * 1024, timeout: 40000 });
+    const encodedResult = stdout.match(/data-result="([^"]+)"/)?.[1];
+    assert.ok(encodedResult, `Chromium fixture did not expose its result.\n${stderr}\n${stdout.slice(-3000)}`);
+    const result = JSON.parse(Buffer.from(encodedResult, "base64").toString("utf8"));
+    assert.equal(result.error, undefined, result.error);
+    assert.deepEqual(result.referee, {
+      oldRefereeHiddenDuringLoad: true,
+      oldNameHidden: true,
+      retryVisible: true,
+      lateRefereeIgnored: true,
+    });
+    assert.deepEqual(result.boundary, { boundaryFallbackVisible: true, boundaryRecovered: true });
+    assert.deepEqual(result.profile, {
+      closeRemovedOnlyIconHash: true,
+      refreshStayedClosed: true,
+      backClosedDialog: true,
+      forwardOpenedDialog: true,
+      otherHashPreserved: true,
+    });
+  } finally {
+    await server.close();
+    await rm(fixtureDirectory, { recursive: true, force: true });
+    await rm(chromeProfile, { recursive: true, force: true });
+  }
+});
+
 test("guest room targeting and chat scroll policy preserve exact-link and reading state", async () => {
   const server = await createServer({
     root: process.cwd(),

@@ -1182,7 +1182,7 @@ test("home Season Zero banner routes by founding player status", () => {
   assert.doesNotMatch(gettingStartedStyles, /\.home-guide-card\s*\{[^}]*--ui-card-bg:/s);
   assert.doesNotMatch(gettingStartedStyles, /\.home-guide-card::after/);
   assert.match(pageSources.profile, /useState\(\(\) => location\.hash === "#icons"\)/);
-  assert.match(pageSources.profile, /if \(location\.hash === "#icons"\) setIconDialogOpen\(true\)/);
+  assert.match(pageSources.profile, /setIconDialogOpen\(location\.hash === "#icons"\)/);
   assert.doesNotMatch(pageSources.playerDetail, /foundingPlayer|FOUNDING PLAYER/);
 });
 

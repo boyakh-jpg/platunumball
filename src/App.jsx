@@ -101,7 +101,7 @@ function LegacyMatchRoomRedirect() {
   );
 }
 
-class AppErrorBoundary extends Component {
+export class AppErrorBoundary extends Component {
   constructor(props) {
     super(props);
     this.state = { error: null };
@@ -136,6 +136,10 @@ class AppErrorBoundary extends Component {
       </main>
     );
   }
+}
+
+export function getAppErrorBoundaryResetKey(location = {}) {
+  return `${location.pathname ?? ""}${location.search ?? ""}${location.hash ?? ""}`;
 }
 
 export default function App() {
@@ -195,7 +199,7 @@ export default function App() {
   }
 
   return (
-    <AppErrorBoundary resetKey={location.pathname}>
+    <AppErrorBoundary resetKey={getAppErrorBoundaryResetKey(location)}>
       <svg aria-hidden="true" width="0" height="0" focusable="false">
         <defs>
           <filter

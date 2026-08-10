@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
@@ -91,6 +91,7 @@ function RecentRecordCard({ records, userId, teams, onOpenRecord, loading = fals
 
 export default function Profile({ app }) {
   const location = useLocation();
+  const navigate = useNavigate();
   const user = app.currentUser;
   const inferredRegion = inferRegionSelection([user.regionSido, user.regionDistrict, user.region].filter(Boolean).join(" "));
   const [draft, setDraft] = useState({
@@ -113,8 +114,15 @@ export default function Profile({ app }) {
   const update = (patch) => setDraft((current) => ({ ...current, ...patch }));
 
   useEffect(() => {
-    if (location.hash === "#icons") setIconDialogOpen(true);
+    setIconDialogOpen(location.hash === "#icons");
   }, [location.hash]);
+
+  const closeIconDialog = () => {
+    setIconDialogOpen(false);
+    if (location.hash === "#icons") {
+      navigate({ pathname: location.pathname, search: location.search, hash: "" }, { replace: true });
+    }
+  };
 
   const submit = async (event) => {
     event.preventDefault();
@@ -340,7 +348,7 @@ export default function Profile({ app }) {
         <ProfileIconDialog
           user={user}
           actions={app.actions}
-          onClose={() => setIconDialogOpen(false)}
+          onClose={closeIconDialog}
           onSaved={() => setEmblemFeedback("프로필 아이콘을 저장했습니다.")}
         />
       ) : null}

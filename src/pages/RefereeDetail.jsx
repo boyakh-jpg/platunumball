@@ -65,6 +65,12 @@ export default function RefereeDetail({ app }) {
   const [selectedMatchId, setSelectedMatchId] = useState("");
 
   useEffect(() => {
+    setDetail(null);
+    setStatus("loading");
+    setSelectedMatchId("");
+  }, [refereeId]);
+
+  useEffect(() => {
     if (!refereeId || app.remoteReady === false) return undefined;
     let cancelled = false;
     if (!isSupabaseConfigured) {
@@ -95,16 +101,20 @@ export default function RefereeDetail({ app }) {
         setStatus("loaded");
       })
       .catch(() => {
-        if (!cancelled) setStatus("error");
+        if (!cancelled) {
+          setDetail(null);
+          setStatus("error");
+        }
       });
     return () => { cancelled = true; };
   }, [app.remoteReady, app.state.matches, app.state.settings?.refereeAppointments, app.state.teams, app.state.users, loadRefereeDetail, refereeId]);
 
-  const grade = detail?.referee?.refereeProfile?.grade ?? detail?.referee?.refereeGrade ?? "candidate";
+  const currentDetail = detail?.referee?.id === refereeId ? detail : null;
+  const grade = currentDetail?.referee?.refereeProfile?.grade ?? currentDetail?.referee?.refereeGrade ?? "candidate";
   const gradeMeta = REFEREE_GRADE_META[grade] ?? REFEREE_GRADE_META.candidate;
 
   if (status === "loading") return <BasketballLoader label="심판 프로필을 불러오는 중" />;
-  if (!detail?.referee) {
+  if (!currentDetail?.referee) {
     return (
       <div className="page-stack rank-profile-page">
         <Card className="section-card ui-empty-state-compact">
@@ -115,7 +125,7 @@ export default function RefereeDetail({ app }) {
     );
   }
 
-  const { referee, matches, stats, teams } = detail;
+  const { referee, matches, stats, teams } = currentDetail;
   return (
     <div className="page-stack rank-profile-page profile-detail-page referee-detail-page">
       <EntityProfileHero
