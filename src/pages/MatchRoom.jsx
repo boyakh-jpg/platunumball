@@ -99,7 +99,7 @@ export default function MatchRoom({ app }) {
     [app.currentUser.id, app.state.settings?.courtReviews, match?.id],
   );
   const [courtReviewDraft, setCourtReviewDraft] = useState(() => getCourtReviewDraft(existingCourtReview));
-  useBodyScrollLock(Boolean((match?.refereeId && statEditorPlayerId) || soloRecordDeleteOpen || voidDialogOpen || finalizeDialogOpen));
+  useBodyScrollLock(Boolean(statEditorPlayerId || soloRecordDeleteOpen || voidDialogOpen || finalizeDialogOpen));
   useEffect(() => {
     matchDetailRequestSequenceRef.current += 1;
     requestedMatchIdRef.current = "";

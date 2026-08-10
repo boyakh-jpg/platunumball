@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import test from "node:test";
 import { promisify } from "node:util";
+import { chromium } from "playwright-core";
 import { createServer } from "vite";
 import {
   acceptRecruitingInvitation,
@@ -2948,5 +2949,436 @@ test("guest room targeting and chat scroll policy preserve exact-link and readin
     assert.equal(getGuestRecruitingUnavailableCopy("not_found").title, "방을 찾을 수 없습니다");
   } finally {
     await server.close();
+  }
+});
+
+test("ReserveLine keeps real component order, direction, placement, and overflow contracts in Chromium", async (t) => {
+  const chromePath = [
+    process.env.CHROME_PATH,
+    process.env.PROGRAMFILES && join(process.env.PROGRAMFILES, "Google", "Chrome", "Application", "chrome.exe"),
+    process.env["PROGRAMFILES(X86)"] && join(process.env["PROGRAMFILES(X86)"], "Google", "Chrome", "Application", "chrome.exe"),
+    process.env.LOCALAPPDATA && join(process.env.LOCALAPPDATA, "Google", "Chrome", "Application", "chrome.exe"),
+  ].filter(Boolean).find(existsSync);
+  if (!chromePath) {
+    t.skip("Chrome executable is not available");
+    return;
+  }
+
+  const fixtureDirectory = await mkdtemp(join(process.cwd(), ".reserve-line-browser-"));
+  const server = await createServer({
+    root: process.cwd(),
+    logLevel: "error",
+    server: { host: "127.0.0.1", port: 0, strictPort: false, hmr: false },
+  });
+  const fixtureSource = String.raw`
+import React, { useState } from "react";
+import { createRoot } from "react-dom/client";
+import { flushSync } from "react-dom";
+import { ReserveLine, SideRoster } from "/src/components/recruiting/RecruitingRoomRosterPanels.jsx";
+import "/src/styles/tokens.css";
+import "/src/styles/globals.css";
+import "/src/styles/ui-primitives.css";
+import "/src/styles/recruiting-arena.css";
+
+const scenarioCounts = { all: 3, mixed: 2, none: 0, overflow: 18 };
+const makeUser = (side, index) => ({
+  id: side + "-p" + index,
+  name: side.toUpperCase() + String(index).padStart(2, "0") + " Long Name",
+  handle: side + index,
+  position: index % 2 ? "PG" : "SF",
+  avatarColor: index % 2 ? "#315a78" : "#784631",
+  ratings: { integrated: 1200 + index },
+});
+const allUsers = Object.fromEntries(["a", "b"].flatMap((side) => (
+  Array.from({ length: 18 }, (_, offset) => makeUser(side, offset + 1))
+)).map((user) => [user.id, user]));
+const makeSide = (side, count) => {
+  const playerIds = Array.from({ length: count }, (_, offset) => side + "-p" + (offset + 1));
+  const partyIds = playerIds.slice(0, 2);
+  const partyEntry = partyIds.length === 2 ? [{
+    id: side + "-party",
+    kind: "team",
+    team: { id: side + "-team", name: side.toUpperCase() + " Party", members: partyIds.map((userId) => ({ userId })) },
+    players: [],
+    reserves: partyIds,
+    status: "ready",
+  }] : [];
+  const individualEntries = playerIds.slice(partyIds.length).map((playerId) => ({
+    id: side + "-entry-" + playerId,
+    kind: "player",
+    user: allUsers[playerId],
+    players: [],
+    reserves: [playerId],
+    status: "ready",
+  }));
+  const candidates = playerIds.map((playerId, index) => ({
+    playerId,
+    entryId: index < partyIds.length ? side + "-party" : side + "-entry-" + playerId,
+    status: "ready",
+  }));
+  return { candidates, entries: [...partyEntry, ...individualEntries] };
+};
+const makeActiveSide = (side) => {
+  const playerIds = Array.from({ length: 3 }, (_, offset) => side + "-p" + (offset + 1));
+  return {
+    entries: [{
+      id: side + "-active-party",
+      kind: "team",
+      team: { id: side + "-active-team", name: side.toUpperCase() + " Active", members: playerIds.map((userId) => ({ userId })) },
+      players: playerIds,
+      reserves: [],
+      status: "ready",
+    }],
+    filled: 3,
+    capacity: 3,
+    fillSlots: [],
+  };
+};
+function Line({ sideName, scenario }) {
+  const side = sideName === "teamA" ? "a" : "b";
+  const count = scenarioCounts[scenario];
+  const capacity = scenario === "overflow" ? 18 : 3;
+  const data = makeSide(side, count);
+  return (
+    <ReserveLine
+      sideName={sideName}
+      candidates={data.candidates}
+      playingIds={[]}
+      lobby={{ entries: data.entries }}
+      userById={allUsers}
+      teams={[]}
+      capacity={capacity}
+      canManageEntry={() => true}
+      onSelfSlotAction={() => {}}
+    />
+  );
+}
+function App() {
+  const [scenario, setScenario] = useState("mixed");
+  window.__setReserveScenario = (next) => flushSync(() => setScenario(next));
+  return (
+    <main className="arena-lobby-modal" data-scenario={scenario}>
+      <div className="arena-lobby-arena">
+        <div className="arena-lobby-versus-stage">
+          <section className="arena-lobby-team-panel team-a">
+            <SideRoster sideName="teamA" side={makeActiveSide("a")} userById={allUsers} teams={[]} />
+            <div className="arena-side-inline-reserve" data-placement="inline-a"><Line sideName="teamA" scenario={scenario} /></div>
+          </section>
+          <div className="arena-lobby-score-core"><strong>VS</strong></div>
+          <section className="arena-lobby-team-panel team-b">
+            <SideRoster sideName="teamB" side={makeActiveSide("b")} userById={allUsers} teams={[]} />
+            <div className="arena-side-inline-reserve" data-placement="inline-b"><Line sideName="teamB" scenario={scenario} /></div>
+          </section>
+        </div>
+        <div className="arena-reserve-panel" data-placement="desktop">
+          <Line sideName="teamA" scenario={scenario} />
+          <Line sideName="teamB" scenario={scenario} />
+        </div>
+      </div>
+    </main>
+  );
+}
+createRoot(document.getElementById("root")).render(<App />);
+window.__fixtureReady = true;
+`;
+  const fixtureStyle = `
+html, body, #root { min-width: 0; margin: 0; }
+.arena-lobby-modal { width: 100%; max-width: none; min-width: 0; padding: 16px; }
+.arena-lobby-arena { min-width: 0; }
+.arena-lobby-team-panel { min-width: 0; min-height: 180px; }
+`;
+
+  let browser;
+  try {
+    await writeFile(join(fixtureDirectory, "index.html"), `<!doctype html><html data-theme="dark"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><style>${fixtureStyle}</style></head><body><div id="root"></div><script type="module" src="./fixture.jsx"></script></body></html>`, "utf8");
+    await writeFile(join(fixtureDirectory, "fixture.jsx"), fixtureSource, "utf8");
+    await server.listen();
+    const address = server.httpServer.address();
+    assert.ok(address && typeof address !== "string");
+    browser = await chromium.launch({ executablePath: chromePath, headless: true });
+    const page = await browser.newPage();
+    await page.goto(`http://127.0.0.1:${address.port}/${basename(fixtureDirectory)}/index.html`);
+    await page.waitForFunction(() => window.__fixtureReady === true && typeof window.__setReserveScenario === "function");
+
+    const widths = [1101, 1100, 720, 719];
+    const themes = ["dark", "light"];
+    const scenarios = ["all", "mixed", "none", "overflow"];
+    for (const width of widths) {
+      await page.setViewportSize({ width, height: 1000 });
+      for (const theme of themes) {
+        await page.evaluate((nextTheme) => { document.documentElement.dataset.theme = nextTheme; }, theme);
+        for (const scenario of scenarios) {
+          await page.evaluate((nextScenario) => window.__setReserveScenario(nextScenario), scenario);
+          await page.waitForFunction((nextScenario) => document.querySelector(".arena-lobby-modal")?.dataset.scenario === nextScenario, scenario);
+          const result = await page.evaluate(({ width: viewportWidth, scenario: currentScenario }) => {
+            const desktop = document.querySelector('[data-placement="desktop"]');
+            const inlineA = document.querySelector('[data-placement="inline-a"]');
+            const inlineB = document.querySelector('[data-placement="inline-b"]');
+            const useDesktop = viewportWidth > 1100;
+            const container = useDesktop ? desktop : document;
+            const lineA = useDesktop
+              ? desktop.querySelector(".arena-reserve-line.team-a")
+              : inlineA.querySelector(".arena-reserve-line.team-a");
+            const lineB = useDesktop
+              ? desktop.querySelector(".arena-reserve-line.team-b")
+              : inlineB.querySelector(".arena-reserve-line.team-b");
+            const readLine = (line, descending) => {
+              const row = line.querySelector(".arena-room-reserve-row");
+              const wrappers = [...row.querySelectorAll(".arena-room-player-slot-wrap")];
+              const cards = wrappers.map((wrapper) => wrapper.querySelector(".arena-room-player-slot"));
+              const records = wrappers.map((wrapper) => {
+                const rect = wrapper.getBoundingClientRect();
+                const empty = Boolean(wrapper.querySelector(".arena-room-player-slot.empty"));
+                return {
+                  name: empty ? "EMPTY" : wrapper.querySelector("strong")?.textContent?.trim(),
+                  empty,
+                  left: rect.left,
+                  right: rect.right,
+                  top: rect.top,
+                };
+              });
+              const visual = [...records].sort((left, right) => {
+                if (Math.abs(left.top - right.top) > 2) return left.top - right.top;
+                return descending ? right.left - left.left : left.left - right.left;
+              });
+              const party = row.querySelector(".arena-room-party-group");
+              const innerNodes = [
+                ...wrappers,
+                ...cards,
+                ...row.querySelectorAll(".avatar, strong, button"),
+              ];
+              const rowRect = row.getBoundingClientRect();
+              const initialScrollLeft = row.scrollLeft;
+              const firstReal = wrappers.find((wrapper) => !wrapper.querySelector(".empty"));
+              const firstRealRect = firstReal?.getBoundingClientRect();
+              const firstRealVisibleAtInitial = !firstRealRect
+                || (firstRealRect.right > rowRect.left && firstRealRect.left < rowRect.right);
+              let focusInside = true;
+              if (firstReal) {
+                const button = firstReal.querySelector("button");
+                button.focus();
+                button.scrollIntoView({ block: "nearest", inline: "nearest" });
+                const focusedRect = button.getBoundingClientRect();
+                const focusedRowRect = row.getBoundingClientRect();
+                focusInside = focusedRect.left >= focusedRowRect.left - 1
+                  && focusedRect.right <= focusedRowRect.right + 1
+                  && focusedRect.top >= focusedRowRect.top - 1
+                  && focusedRect.bottom <= focusedRowRect.bottom + 1;
+              }
+              const scrollable = row.scrollWidth > row.clientWidth + 1;
+              const reachable = wrappers.every((wrapper) => {
+                wrapper.scrollIntoView({ block: "nearest", inline: "nearest" });
+                const itemRect = wrapper.getBoundingClientRect();
+                const currentRowRect = row.getBoundingClientRect();
+                return itemRect.right > currentRowRect.left && itemRect.left < currentRowRect.right;
+              });
+              row.scrollLeft = 0;
+              return {
+                direction: getComputedStyle(row).direction,
+                partyDirection: party ? getComputedStyle(party).direction : null,
+                innerDirections: innerNodes.map((node) => getComputedStyle(node).direction),
+                names: visual.map((record) => record.name),
+                realNames: visual.filter((record) => !record.empty).map((record) => record.name),
+                emptyFlags: visual.map((record) => record.empty),
+                firstRealAtStartEdge: !visual.some((record) => !record.empty)
+                  || (descending
+                    ? visual.find((record) => !record.empty).right >= Math.max(...visual.map((record) => record.right)) - 1
+                    : visual.find((record) => !record.empty).left <= Math.min(...visual.map((record) => record.left)) + 1),
+                initialScrollLeft,
+                firstRealVisibleAtInitial,
+                scrollable,
+                reachable,
+                focusInside,
+              };
+            };
+            const readCardSize = (node) => {
+              const rect = node?.getBoundingClientRect();
+              return rect ? { width: rect.width, height: rect.height } : null;
+            };
+            const activeA = document.querySelector(".arena-lobby-team-panel.team-a .arena-room-slot-row .arena-room-player-slot");
+            const activeB = document.querySelector(".arena-lobby-team-panel.team-b .arena-room-slot-row .arena-room-player-slot");
+            return {
+              desktopDisplay: getComputedStyle(desktop).display,
+              inlineADisplay: getComputedStyle(inlineA).display,
+              inlineBDisplay: getComputedStyle(inlineB).display,
+              pageFits: document.documentElement.scrollWidth <= window.innerWidth,
+              activeLineCount: container.querySelectorAll?.(".arena-reserve-line").length ?? 0,
+              a: readLine(lineA, false),
+              b: readLine(lineB, true),
+              activeASize: readCardSize(activeA),
+              activeBSize: readCardSize(activeB),
+              reserveASize: readCardSize(lineA.querySelector(".arena-room-player-slot")),
+              reserveBSize: readCardSize(lineB.querySelector(".arena-room-player-slot")),
+              currentScenario,
+            };
+          }, { width, scenario });
+
+          const label = `${width}px/${theme}/${scenario}`;
+          assert.equal(result.pageFits, true, `${label}: page overflow`);
+          assert.equal(result.desktopDisplay !== "none", width > 1100, `${label}: desktop reserve placement`);
+          assert.equal(result.inlineADisplay !== "none", width <= 1100, `${label}: Team A inline placement`);
+          assert.equal(result.inlineBDisplay !== "none", width <= 1100, `${label}: Team B inline placement`);
+          assert.equal(result.a.direction, "ltr", `${label}: Team A row direction`);
+          assert.equal(result.b.direction, "rtl", `${label}: Team B row direction`);
+          assert.ok(result.a.innerDirections.every((direction) => direction === "ltr"), `${label}: Team A inner LTR`);
+          assert.ok(result.b.innerDirections.every((direction) => direction === "ltr"), `${label}: Team B inner LTR`);
+          if (scenario !== "none") {
+            assert.equal(result.a.partyDirection, "ltr", `${label}: Team A party direction`);
+            assert.equal(result.b.partyDirection, "rtl", `${label}: Team B party direction`);
+            assert.equal(result.a.firstRealAtStartEdge, true, `${label}: Team A first candidate edge`);
+            assert.equal(result.b.firstRealAtStartEdge, true, `${label}: Team B first candidate edge`);
+            assert.equal(result.a.firstRealVisibleAtInitial, true, `${label}: Team A first candidate visible at start`);
+            assert.equal(result.b.firstRealVisibleAtInitial, true, `${label}: Team B first candidate visible at start`);
+            assert.equal(result.a.focusInside, true, `${label}: Team A focus bounds`);
+            assert.equal(result.b.focusInside, true, `${label}: Team B focus bounds`);
+          }
+          const expectedCount = scenario === "overflow" ? 18 : scenario === "all" ? 3 : scenario === "mixed" ? 2 : 0;
+          const expectedA = Array.from({ length: expectedCount }, (_, index) => `A${String(index + 1).padStart(2, "0")} Long Name`);
+          const expectedB = Array.from({ length: expectedCount }, (_, index) => `B${String(index + 1).padStart(2, "0")} Long Name`);
+          assert.deepEqual(result.a.realNames, expectedA, `${label}: Team A visual data order`);
+          assert.deepEqual(result.b.realNames, expectedB, `${label}: Team B visual data order`);
+          const firstEmptyA = result.a.emptyFlags.indexOf(true);
+          const firstEmptyB = result.b.emptyFlags.indexOf(true);
+          assert.ok(firstEmptyA < 0 || result.a.emptyFlags.slice(firstEmptyA).every(Boolean), `${label}: Team A empty slots follow candidates`);
+          assert.ok(firstEmptyB < 0 || result.b.emptyFlags.slice(firstEmptyB).every(Boolean), `${label}: Team B empty slots follow candidates`);
+          assert.equal(result.a.reachable, true, `${label}: Team A all slots reachable`);
+          assert.equal(result.b.reachable, true, `${label}: Team B all slots reachable`);
+          if (width <= 720) {
+            assert.ok(result.activeASize && result.reserveASize, `${label}: Team A slot dimensions available`);
+            assert.ok(result.activeBSize && result.reserveBSize, `${label}: Team B slot dimensions available`);
+            assert.ok(Math.abs(result.activeASize.width - result.reserveASize.width) <= 1, `${label}: Team A active/reserve width`);
+            assert.ok(Math.abs(result.activeASize.height - result.reserveASize.height) <= 1, `${label}: Team A active/reserve height`);
+            assert.ok(Math.abs(result.activeBSize.width - result.reserveBSize.width) <= 1, `${label}: Team B active/reserve width`);
+            assert.ok(Math.abs(result.activeBSize.height - result.reserveBSize.height) <= 1, `${label}: Team B active/reserve height`);
+          }
+          if (scenario === "overflow" && width > 720) {
+            assert.equal(result.a.scrollable, result.b.scrollable, `${label}: A/B overflow symmetry`);
+            if (result.a.scrollable) {
+              assert.equal(Math.abs(result.a.initialScrollLeft), 0, `${label}: Team A starts left`);
+              assert.equal(Math.abs(result.b.initialScrollLeft), 0, `${label}: Team B starts right`);
+            }
+          }
+        }
+      }
+    }
+  } finally {
+    await browser?.close();
+    await server.close();
+    await rm(fixtureDirectory, { recursive: true, force: true });
+  }
+});
+
+test("stat editor and expanded QR dialogs lock scroll and keep keyboard focus in Chromium", async (t) => {
+  const chromePath = [
+    process.env.CHROME_PATH,
+    process.env.PROGRAMFILES && join(process.env.PROGRAMFILES, "Google", "Chrome", "Application", "chrome.exe"),
+    process.env["PROGRAMFILES(X86)"] && join(process.env["PROGRAMFILES(X86)"], "Google", "Chrome", "Application", "chrome.exe"),
+    process.env.LOCALAPPDATA && join(process.env.LOCALAPPDATA, "Google", "Chrome", "Application", "chrome.exe"),
+  ].filter(Boolean).find(existsSync);
+  if (!chromePath) {
+    t.skip("Chrome executable is not available");
+    return;
+  }
+
+  const matchRoomSource = await readFile(join(process.cwd(), "src/pages/MatchRoom.jsx"), "utf8");
+  assert.match(
+    matchRoomSource,
+    /useBodyScrollLock\(Boolean\(statEditorPlayerId \|\| soloRecordDeleteOpen \|\| voidDialogOpen \|\| finalizeDialogOpen\)\)/,
+    "the no-referee stat editor must participate in MatchRoom's shared body lock",
+  );
+
+  const fixtureDirectory = await mkdtemp(join(process.cwd(), ".match-dialog-browser-"));
+  const server = await createServer({
+    root: process.cwd(),
+    logLevel: "error",
+    server: { host: "127.0.0.1", port: 0, strictPort: false, hmr: false },
+  });
+  const fixtureSource = String.raw`
+import React, { useState } from "react";
+import { createRoot } from "react-dom/client";
+import QrCode from "/src/components/common/QrCode.jsx";
+import useBodyScrollLock from "/src/hooks/useBodyScrollLock.js";
+import { MatchRoomStatEditor } from "/src/pages/MatchRoomStatEditor.jsx";
+import "/src/styles/tokens.css";
+import "/src/styles/globals.css";
+import "/src/styles/ui-primitives.css";
+
+function StatHarness() {
+  const [playerId, setPlayerId] = useState(null);
+  useBodyScrollLock(Boolean(playerId));
+  return (
+    <>
+      <button id="stat-trigger" type="button" onClick={() => setPlayerId("player-1")}>open stat</button>
+      <MatchRoomStatEditor controller={{
+        statEditorPlayerId: playerId,
+        setStatEditorPlayerId: setPlayerId,
+        statEditorPlayer: playerId ? { id: "player-1", name: "Player One" } : null,
+        hasReferee: false,
+        isSoloRecord: true,
+        score: { playerStats: { "player-1": { points: 2 } } },
+        editableStatFields: [{ id: "points", label: "Points", shortLabel: "PTS" }],
+        canEditPlayerStat: () => true,
+        updatePlayerStat: () => {},
+      }} />
+    </>
+  );
+}
+
+function App() {
+  return (
+    <main style={{ minHeight: "2000px" }}>
+      <StatHarness />
+      <QrCode value="https://boxtier.kr/check-in" label="Attendance QR" expandable />
+      <button id="background-action" type="button">background</button>
+    </main>
+  );
+}
+
+createRoot(document.getElementById("root")).render(<App />);
+window.__fixtureReady = true;
+`;
+
+  let browser;
+  try {
+    await writeFile(join(fixtureDirectory, "index.html"), '<!doctype html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head><body><div id="root"></div><script type="module" src="./fixture.jsx"></script></body></html>', "utf8");
+    await writeFile(join(fixtureDirectory, "fixture.jsx"), fixtureSource, "utf8");
+    await server.listen();
+    const address = server.httpServer.address();
+    assert.ok(address && typeof address !== "string");
+    browser = await chromium.launch({ executablePath: chromePath, headless: true });
+    const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    await page.goto(`http://127.0.0.1:${address.port}/${basename(fixtureDirectory)}/index.html`);
+    await page.waitForFunction(() => window.__fixtureReady === true);
+
+    await page.locator("#stat-trigger").click();
+    const statDialog = page.locator('.stat-editor-modal[role="dialog"][aria-modal="true"]');
+    await statDialog.waitFor();
+    assert.equal(await page.evaluate(() => document.body.style.overflow), "hidden");
+    assert.equal(await page.evaluate(() => document.activeElement?.hasAttribute("data-dialog-initial-focus")), true);
+    await page.keyboard.press("Shift+Tab");
+    assert.equal(await page.evaluate(() => document.activeElement === [...document.querySelectorAll('.stat-editor-modal button:not([disabled])')].at(-1)), true);
+    await page.keyboard.press("Tab");
+    assert.equal(await page.evaluate(() => document.activeElement?.hasAttribute("data-dialog-initial-focus")), true);
+    await page.keyboard.press("Escape");
+    await statDialog.waitFor({ state: "detached" });
+    assert.equal(await page.evaluate(() => document.body.style.overflow), "");
+    assert.equal(await page.evaluate(() => document.activeElement?.id), "stat-trigger");
+
+    const qrTrigger = page.locator(".ui-qr-expand-trigger");
+    await qrTrigger.click();
+    const qrDialog = page.locator('.ui-qr-expand-dialog[role="dialog"][aria-modal="true"]');
+    await qrDialog.waitFor();
+    assert.equal(await page.evaluate(() => document.body.style.overflow), "hidden");
+    assert.equal(await page.evaluate(() => document.querySelector(".ui-qr-expand-dialog")?.contains(document.activeElement)), true);
+    await page.keyboard.press("Tab");
+    assert.equal(await page.evaluate(() => document.querySelector(".ui-qr-expand-dialog")?.contains(document.activeElement)), true);
+    await page.keyboard.press("Escape");
+    await qrDialog.waitFor({ state: "detached" });
+    assert.equal(await page.evaluate(() => document.body.style.overflow), "");
+    assert.equal(await page.evaluate(() => document.activeElement?.classList.contains("ui-qr-expand-trigger")), true);
+  } finally {
+    await browser?.close();
+    await server.close();
+    await rm(fixtureDirectory, { recursive: true, force: true });
   }
 });
