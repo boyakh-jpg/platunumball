@@ -366,13 +366,13 @@ const navigate = useNavigate();
     if (!wizardStepIds.has(step)) return;
 
     setWizardStep(step);
-    window.scrollTo({ top: 0, behavior: "auto" });
+    if (step !== wizardStep) window.scrollTo({ top: 0, behavior: "auto" });
     if (!syncStepToUrl) return;
     const nextSearch = getCreateStepSearch(location.search, step);
     if (nextSearch === location.search) return;
 
     navigate({ pathname: location.pathname, search: nextSearch }, { replace });
-  }, [location.pathname, location.search, navigate, syncStepToUrl, wizardStepIds]);
+  }, [location.pathname, location.search, navigate, syncStepToUrl, wizardStep, wizardStepIds]);
 
   useEffect(() => {
     if (!syncStepToUrl) return;

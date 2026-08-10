@@ -106,6 +106,11 @@ test("게스트 생성 draft는 같은 생성 URL에서만 복원하고 실제 �
   assert.match(appSource, /GUEST_PUBLIC_APP_PATHS[\s\S]*"\/app\/create"/u);
 });
 
+test("방 만들기는 같은 단계의 조건 변경은 스크롤을 유지하고 실제 단계 이동만 상단으로 이동한다", () => {
+  const source = fs.readFileSync(new URL("../src/components/match/useCreateMatchBaseController.js", import.meta.url), "utf8");
+  assert.match(source, /if \(step !== wizardStep\) window\.scrollTo\(\{ top: 0, behavior: "auto" \}\)/u);
+});
+
 test("공개 개인 경쟁전은 평균과 사이드 내부 MMR 폭을 함께 제한한다", () => {
   const users = Object.fromEntries([
     ["host", 1200], ["low", 1000], ["high", 1400], ["mid", 1200],
