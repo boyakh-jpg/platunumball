@@ -165,27 +165,31 @@ const [open, setOpen] = useState(true);
     proximityRequestRef.current = requestId;
     setProximityLoading(true);
     setProximityReview(null);
-    void app.actions.loadAdminCourtProximity?.({ courtId, facilityName: reviewRow.facility_name }).then((result) => {
-      if (proximityRequestRef.current !== requestId) return;
-      setProximityLoading(false);
-      if (!result || result.ok === false) {
-        setStatus(getSaveErrorMessage(result?.error));
-        return;
-      }
-      setProximityReview(result);
-      setActualCourtCount(String(result.actualCount ?? result.detectedCount ?? 1));
-      const groupedCourts = new Map((result.courts ?? []).map((court) => [court.id, court]));
-      setCourtRows((current) => current.map((row) => {
-        const grouped = groupedCourts.get(row.id);
-        return grouped ? {
-          ...row,
-          name: grouped.name ?? row.name,
-          facility_name: grouped.facilityName ?? row.facility_name,
-          court_unit: grouped.courtUnit ?? row.court_unit,
-          status: grouped.status ?? row.status,
-        } : row;
-      }));
-    });
+    void Promise.resolve()
+      .then(() => app.actions.loadAdminCourtProximity?.({ courtId, facilityName: reviewRow.facility_name }))
+      .then((result) => {
+        if (proximityRequestRef.current !== requestId) return;
+        if (!result || result.ok === false) throw new Error(result?.error ?? "unknown_error");
+        setProximityReview(result);
+        setActualCourtCount(String(result.actualCount ?? result.detectedCount ?? 1));
+        const groupedCourts = new Map((result.courts ?? []).map((court) => [court.id, court]));
+        setCourtRows((current) => current.map((row) => {
+          const grouped = groupedCourts.get(row.id);
+          return grouped ? {
+            ...row,
+            name: grouped.name ?? row.name,
+            facility_name: grouped.facilityName ?? row.facility_name,
+            court_unit: grouped.courtUnit ?? row.court_unit,
+            status: grouped.status ?? row.status,
+          } : row;
+        }));
+      })
+      .catch((error) => {
+        if (proximityRequestRef.current === requestId) setStatus(getSaveErrorMessage(error?.message));
+      })
+      .finally(() => {
+        if (proximityRequestRef.current === requestId) setProximityLoading(false);
+      });
     return () => { proximityRequestRef.current += 1; };
     // A new court id is the only trigger. Row refreshes must not create another audit event.
     // eslint-disable-next-line react-hooks/exhaustive-deps

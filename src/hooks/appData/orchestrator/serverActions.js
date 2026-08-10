@@ -335,16 +335,23 @@ const currentUser = useMemo(() => {
     };
     stateRef.current = applyOptimisticToggle(stateRef.current);
     setState((prev) => applyOptimisticToggle(prev));
+    const rollbackOptimisticToggle = () => {
+      setState((prev) => {
+        const stillOptimistic = (prev.settings?.[settingsKey] ?? []).includes(safeTargetId) === active;
+        const next = stillOptimistic ? toggleAction(prev, safeTargetId) : prev;
+        stateRef.current = next;
+        return next;
+      });
+    };
     const mutation = syncFavoriteServer(targetType, safeTargetId, active)
       .then((result) => {
         if (result?.ok !== false) return result;
-        setState((prev) => {
-          const stillOptimistic = (prev.settings?.[settingsKey] ?? []).includes(safeTargetId) === active;
-          const next = stillOptimistic ? toggleAction(prev, safeTargetId) : prev;
-          stateRef.current = next;
-          return next;
-        });
+        rollbackOptimisticToggle();
         return result;
+      })
+      .catch((error) => {
+        rollbackOptimisticToggle();
+        return { ok: false, error: error?.message ?? "favorite_sync_failed" };
       })
       .finally(() => {
         if (pendingFavoriteMutationsRef.current.get(mutationKey) === mutation) {

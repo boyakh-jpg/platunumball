@@ -8,6 +8,7 @@ import { getTeamCaptainMemberId as getTeamCaptainId } from "../data/teamMappers.
 import { getTournamentTeamIds, getTournamentTeamStatus } from "../data/tournamentMappers.js";
 import { getRegisteredCourts } from "../lib/courts.js";
 import { getUserHashtag } from "../lib/handles.js";
+import { isCurrentScopedRequest } from "../lib/asyncState.js";
 import { addDateDays, getLocalDateInputValue, isEligibleReferee } from "../lib/matchUtils.js";
 import { getTournamentMatches } from "../lib/tournamentMatches.js";
 import { REFEREE_TRUST_MIN } from "../lib/constants.js";
@@ -30,6 +31,7 @@ const location = useLocation();
   const { tournamentId } = useParams();
   const tournament = (app.state.tournaments ?? []).find((item) => item.id === tournamentId);
   const requestedTournamentIdRef = useRef("");
+  const tournamentLoadRequestRef = useRef(0);
   const [tournamentMissing, setTournamentMissing] = useState(false);
   const [scheduleDialog, setScheduleDialog] = useState(null);
   const [savingScheduleId, setSavingScheduleId] = useState("");
@@ -49,12 +51,35 @@ const location = useLocation();
   const matchesById = Object.fromEntries(app.state.matches.map((match) => [match.id, match]));
 
   useEffect(() => {
+    tournamentLoadRequestRef.current += 1;
+    requestedTournamentIdRef.current = "";
+    setTournamentMissing(false);
+    setScheduleDialog(null);
+    setSavingScheduleId("");
+    savingScheduleRef.current = "";
+    setForfeitDialog(null);
+    setSavingForfeitId("");
+    savingForfeitRef.current = "";
+    setSelectedMatchId("");
+    setEditingScheduleId("");
+    setRefereeQuery("");
+    setGovernanceAction("");
+    governanceActionRef.current = "";
+    setGovernanceFeedback("");
+    return () => { tournamentLoadRequestRef.current += 1; };
+  }, [tournamentId]);
+
+  useEffect(() => {
     if (!tournamentId || app.remoteReady === false || requestedTournamentIdRef.current === tournamentId) return;
     setTournamentMissing(false);
     requestedTournamentIdRef.current = tournamentId;
-    Promise.resolve(app.actions.loadTournament?.(tournamentId)).then((count) => {
+    const requestId = tournamentLoadRequestRef.current + 1;
+    tournamentLoadRequestRef.current = requestId;
+    Promise.resolve().then(() => app.actions.loadTournament?.(tournamentId)).then((count) => {
+      if (!isCurrentScopedRequest(requestedTournamentIdRef.current, tournamentLoadRequestRef.current, tournamentId, requestId)) return;
       if (!count) setTournamentMissing(true);
     }).catch(() => {
+      if (!isCurrentScopedRequest(requestedTournamentIdRef.current, tournamentLoadRequestRef.current, tournamentId, requestId)) return;
       setTournamentMissing(true);
     });
   }, [app.actions, app.remoteReady, tournamentId, tournamentMissing]);
@@ -71,6 +96,7 @@ const location = useLocation();
           <strong>대회 없음</strong>
           <p>삭제되었거나 아직 불러오지 못한 대회입니다.</p>
           <Button type="button" variant="secondary" onClick={() => {
+            tournamentLoadRequestRef.current += 1;
             requestedTournamentIdRef.current = "";
             setTournamentMissing(false);
           }}>다시 시도</Button>

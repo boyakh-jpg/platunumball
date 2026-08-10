@@ -22,7 +22,7 @@ import {
 import { readCssTree } from "./css-source-tree.mjs";
 import { BRAND_NAME } from "../src/lib/brand.js";
 import { getAdminStatusLabel } from "../src/lib/admin.js";
-import { isCurrentScopedOperation } from "../src/lib/asyncState.js";
+import { isCurrentScopedOperation, isCurrentScopedRequest } from "../src/lib/asyncState.js";
 import {
   BASKETBALL_POSITIONS,
   DEFAULT_PLAYER_RATINGS,
@@ -89,6 +89,36 @@ test("화면별 비동기 작업은 최신 대상과 최신 작업만 반영한�
   assert.equal(isCurrentScopedOperation(matchA, matchA, "match-b"), false);
   assert.equal(isCurrentScopedOperation(matchB, matchA, "match-b"), false);
   assert.equal(isCurrentScopedOperation(matchB, matchB, "match-b"), true);
+});
+
+test("대회 A 지연 응답은 B 화면 상태를 덮지 않는다", async () => {
+  const deferred = () => {
+    let resolve;
+    const promise = new Promise((done) => { resolve = done; });
+    return { promise, resolve };
+  };
+  let currentScopeId = "tournament-a";
+  let currentRequestId = 1;
+  let visibleTournament = "";
+  const apply = async (scopeId, requestId, request) => {
+    const value = await request;
+    if (isCurrentScopedRequest(currentScopeId, currentRequestId, scopeId, requestId)) {
+      visibleTournament = value;
+    }
+  };
+  const tournamentA = deferred();
+  const requestA = apply("tournament-a", 1, tournamentA.promise);
+
+  currentScopeId = "tournament-b";
+  currentRequestId = 2;
+  const tournamentB = deferred();
+  const requestB = apply("tournament-b", 2, tournamentB.promise);
+  tournamentB.resolve("tournament-b");
+  await requestB;
+  tournamentA.resolve("tournament-a");
+  await requestA;
+
+  assert.equal(visibleTournament, "tournament-b");
 });
 
 test("selected report target text keeps matching punctuation-separated metadata", () => {
@@ -1184,6 +1214,7 @@ test("season rival challenge closes the created room when the B-team invite fail
 
 test("remote favorite search hydrates the selected entity before optimistic toggle", async () => {
   const favoriteSource = await readSource("src/pages/useSettingsFavorites.jsx");
+  const createMatchActions = await readSource("src/components/match/CreateMatchActions.jsx");
   const settingsActions = await readSource("src/hooks/appData/actions/settingsActions.js");
   const serverActions = await readSource("src/hooks/appData/orchestrator/serverActions.js");
   assert.match(favoriteSource, /const result = await toggleAction\(item\.id, item\)/);
@@ -1193,6 +1224,10 @@ test("remote favorite search hydrates the selected entity before optimistic togg
   assert.match(serverActions, /active && targetSnapshot\?\.id === safeTargetId/);
   assert.match(serverActions, /mergeRemoteProfileState\(current, targetType === "team"/);
   assert.match(serverActions, /approvedCourts: mergeCourtSearchCourts/);
+  assert.match(createMatchActions, /await app\.actions\.toggleFavoriteTeam\(team\.id, team\)/);
+  assert.match(createMatchActions, /favoriteTeamPendingRef\.current/);
+  assert.match(serverActions, /const rollbackOptimisticToggle = \(\) =>/);
+  assert.match(serverActions, /\.catch\(\(error\) => \{[\s\S]*rollbackOptimisticToggle\(\)/);
 });
 
 test("report success survives a synchronous directory refresh failure", async () => {

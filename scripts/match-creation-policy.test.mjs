@@ -75,6 +75,7 @@ import {
   clearCreateMatchGuestDraft,
   getCreateMatchGuestDraft,
   getTeamChallengeEligibilityPolicy,
+  hydrateCreateMatchTeam,
   saveCreateMatchGuestDraft,
 } from "../src/lib/createMatchPage.js";
 
@@ -1469,11 +1470,65 @@ test("대회 원격 팀 검색 선택은 로컬 directory 밖에서도 snapshot�
 
   assert.match(source, /const \[selectedTournamentTeamProfiles, setSelectedTournamentTeamProfiles\] = useState\(\[\]\)/);
   assert.match(source, /\[\.\.\.selectedTournamentTeamProfiles, \.\.\.app\.state\.teams\]\.map\(\(team\) => \[team\.id, team\]\)/);
-  assert.match(source, /const toggleTournamentTeam = \(teamOrId\) => \{/);
+  assert.match(source, /const toggleTournamentTeam = async \(teamOrId\) => \{/);
   assert.match(source, /setSelectedTournamentTeamProfiles\(\(current\) => \(/);
-  assert.match(source, /if \(isTournamentRoom\) toggleTournamentTeam\(team\)/);
+  assert.match(source, /if \(isTournamentRoom\) void toggleTournamentTeam\(team\)/);
   assert.match(validationEffectsSource, /\[\.\.\.app\.state\.teams, \.\.\.selectedTournamentTeamProfiles\]\.map\(\(team\) => team\.id\)/);
   assert.match(source, /teamIds: draft\.tournamentTeamIds/);
+});
+
+test("원격 팀은 팀원 프로필 수화 후 최신 자격으로 선택한다", async () => {
+  const remoteTeam = {
+    id: "remote-team",
+    name: "원격 팀",
+    mmr: 1200,
+    members: [
+      { userId: "captain", role: "captain" },
+      { userId: "member", role: "member" },
+    ],
+  };
+  const getEligibility = (team, users) => {
+    const userIds = new Set(users.map((user) => user.id));
+    const missingProfileIds = team.members
+      .map((member) => member.userId)
+      .filter((userId) => !userIds.has(userId));
+    return { allowed: missingProfileIds.length === 0, missingProfileIds };
+  };
+  let receivedOptions = null;
+
+  assert.deepEqual(getEligibility(remoteTeam, []).missingProfileIds, ["captain", "member"]);
+  const hydrated = await hydrateCreateMatchTeam({
+    team: remoteTeam,
+    teams: [],
+    users: [],
+    getEligibility,
+    loadDirectory: async (options) => {
+      receivedOptions = options;
+      return {
+        state: {
+          teams: [{ ...remoteTeam, homeCourt: "원격 구장" }],
+          users: [{ id: "captain" }, { id: "member" }],
+        },
+      };
+    },
+  });
+
+  assert.deepEqual(receivedOptions, {
+    force: true,
+    kind: "teams",
+    teamId: "remote-team",
+    includeTeamMemberProfiles: true,
+    returnResult: true,
+  });
+  assert.equal(hydrated.team.homeCourt, "원격 구장");
+  assert.equal(getEligibility(hydrated.team, hydrated.users).allowed, true);
+});
+
+test("원격 B팀 선택은 snapshot을 보존하고 이전 상대 명단을 초기화한다", () => {
+  const source = readPageSourceGroup(CREATE_MATCH_PAGE_SOURCE_PATHS);
+  assert.match(source, /onClick=\{\(\) => void selectTeamB\(team\)\}/);
+  assert.match(source, /setSelectedOpponentTeamProfile\(team\)/);
+  assert.match(source, /opponentPlayerIds: \[\],[\s\S]*opponentReservePlayerIds: \[\]/);
 });
 
 test("테스트 계정도 활성 심판 임명이 있어야 자격을 얻는다", () => {

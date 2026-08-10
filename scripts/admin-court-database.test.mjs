@@ -3,11 +3,60 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { buildCourtAddressNameUpdates, getAdminCourtStreetViewUrl, getCourtAddressFacilityName, getCourtFacilityBaseName, getCourtMapUrl, getCourtNaverMapAppUrl } from "../src/lib/courts.js";
 import { getCourtUpdateReason } from "../server/api/admin/courtAdminQueries.js";
+import useCourtDatabasePanelActions from "../src/components/admin/useCourtDatabasePanelActions.js";
 import { APP_DATA_ACTION_SOURCE_PATHS, readSourceGroup } from "./management-source-groups.mjs";
 import { readCssTree } from "./css-source-tree.mjs";
 
 const readSource = (relativePath) => readFile(new URL(`../${relativePath}`, import.meta.url), "utf8");
 const readSources = (...relativePaths) => Promise.all(relativePaths.map(readSource)).then((sources) => sources.join("\n"));
+
+test("관리자 구장 저장 rejection 뒤 pending이 풀리고 draft를 유지해 재시도한다", async () => {
+  const savingStates = [];
+  const statuses = [];
+  let attempts = 0;
+  let refreshAttempts = 0;
+  let resetCount = 0;
+  const actions = useCourtDatabasePanelActions({
+    app: {
+      actions: {
+        saveAdminCourtBatch: async () => {
+          attempts += 1;
+          if (attempts === 1) throw new Error("network_error");
+          return { ok: true, updatedCount: 1 };
+        },
+      },
+    },
+    dirtyFieldCount: 1,
+    dirtyUpdates: [{ courtId: "court-1", patch: { name: "수정 구장" } }],
+    editDirty: true,
+    editValidation: "",
+    loadRows: async () => {
+      refreshAttempts += 1;
+      return refreshAttempts === 1 ? null : { ok: true, rows: [] };
+    },
+    reason: "네트워크 재시도",
+    reasonValid: true,
+    resetEdits: () => { resetCount += 1; },
+    saving: false,
+    setSaving: (value) => savingStates.push(value),
+    setStatus: (value) => statuses.push(value),
+  });
+
+  await actions.saveUpdates();
+  assert.deepEqual(savingStates, [true, false]);
+  assert.equal(resetCount, 0);
+  assert.match(statuses.at(-1), /저장|실패|다시/);
+
+  await actions.saveUpdates();
+  assert.deepEqual(savingStates, [true, false, true, false]);
+  assert.equal(attempts, 2);
+  assert.equal(resetCount, 0);
+
+  await actions.saveUpdates();
+  assert.deepEqual(savingStates, [true, false, true, false, true, false]);
+  assert.equal(attempts, 3);
+  assert.equal(resetCount, 1);
+});
 
 test("관리자 구장 DB는 전체 DB 서버 필터와 100행 페이지를 사용한다", async () => {
   const server = await readSources(

@@ -216,6 +216,7 @@ export function useDirectoryLoaders(context) {
     if (!isSupabaseConfigured || (!authUserId && !demoPreview)) return false;
     const options = forceOrOptions && typeof forceOrOptions === "object" ? forceOrOptions : {};
     const force = forceOrOptions === true || options.force === true;
+    const returnResult = options.returnResult === true;
     const pathname = typeof window !== "undefined" ? window.location.pathname.replace(/\/$/, "") : "";
     const teamDetailMatch = pathname.match(/^\/app\/teams\/([^/]+)$/);
     const requestedTeamId = String(options.teamId ?? "").trim();
@@ -244,6 +245,7 @@ export function useDirectoryLoaders(context) {
       rankingSort,
     };
     latestDirectoryRequestRef.current = cacheKey;
+    if (force) directoryCacheRef.current.delete(cacheKey);
     const cached = directoryCacheRef.current.get(cacheKey);
     if (!force && cached?.expiresAt > Date.now()) {
       const remoteState = cached.result?.state ?? {};
@@ -253,10 +255,12 @@ export function useDirectoryLoaders(context) {
         append: offset > 0,
       }));
       setDirectoryStatus({ loading: false, loaded: true, error: "", page: cached.result?.page ?? null, cacheKey });
-      return true;
+      return returnResult ? cached.result : true;
     }
-    if (directoryPromiseRef.current.has(cacheKey)) return directoryPromiseRef.current.get(cacheKey);
-    if (force) directoryCacheRef.current.delete(cacheKey);
+    if (directoryPromiseRef.current.has(cacheKey)) {
+      const pending = directoryPromiseRef.current.get(cacheKey);
+      return returnResult ? pending : pending.then(Boolean);
+    }
     setDirectoryStatus((prev) => ({ ...prev, loading: true, error: "", page: requestPage, cacheKey }));
     const promise = trackedPostServerAction(
       endpoint,
@@ -272,9 +276,9 @@ export function useDirectoryLoaders(context) {
         append: offset > 0,
       }));
       directoryCacheRef.current.set(cacheKey, { expiresAt: Date.now() + DIRECTORY_CACHE_TTL_MS, result });
-      if (latestDirectoryRequestRef.current !== cacheKey) return true;
+      if (latestDirectoryRequestRef.current !== cacheKey) return result;
       setDirectoryStatus({ loading: false, loaded: true, error: "", page: result?.page ?? null, cacheKey });
-      return true;
+      return result;
     }).catch((error) => {
       if (latestDirectoryRequestRef.current !== cacheKey) return false;
       console.warn("Directory load failed.", error.message);
@@ -284,7 +288,7 @@ export function useDirectoryLoaders(context) {
       directoryPromiseRef.current.delete(cacheKey);
     });
     directoryPromiseRef.current.set(cacheKey, promise);
-    return promise;
+    return returnResult ? promise : promise.then(Boolean);
   }, [authEmail, authUserId, demoPreview, setState, trackedPostServerAction]);
 
   const loadCourtDetail = useCallback(async (courtId) => {

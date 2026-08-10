@@ -81,23 +81,25 @@ export default function useCourtDatabasePanelActions(context) {
       return;
     }
     setSaving(true);
-    const result = await app.actions.reviewAdminCourt?.({
-      courtId: row.id,
-      scenario,
-      patch,
-      reason: scenario === "manual" ? reason.trim() : undefined,
-    });
-    if (!result || result.ok === false) {
+    try {
+      const result = await app.actions.reviewAdminCourt?.({
+        courtId: row.id,
+        scenario,
+        patch,
+        reason: scenario === "manual" ? reason.trim() : undefined,
+      });
+      if (!result || result.ok === false) throw new Error(result?.error ?? "unknown_error");
+      const refreshedResult = await loadRows(true);
+      if (!refreshedResult || refreshedResult.ok === false) throw new Error(refreshedResult?.error ?? "court_refresh_failed");
+      clearDraftEdits();
+      const aliasText = scenario === "regional_alias" && result.regionalAliasNo ? ` · ${result.regionalAliasNo}번` : "";
+      setStatus(`${successMessage}${aliasText}`);
+      advanceReviewAfterSave(row.id, refreshedResult);
+    } catch (error) {
+      setStatus(getSaveErrorMessage(error?.message));
+    } finally {
       setSaving(false);
-      setStatus(getSaveErrorMessage(result?.error));
-      return;
     }
-    clearDraftEdits();
-    const refreshedResult = await loadRows(true);
-    setSaving(false);
-    const aliasText = scenario === "regional_alias" && result.regionalAliasNo ? ` · ${result.regionalAliasNo}번` : "";
-    setStatus(`${successMessage}${aliasText}`);
-    advanceReviewAfterSave(row.id, refreshedResult);
   };
 
   const saveReviewAndNext = async () => {
@@ -120,30 +122,39 @@ export default function useCourtDatabasePanelActions(context) {
       return;
     }
     setSaving(true);
-    const result = await app.actions.verifyAdminCourtCount?.({
-      courtId: reviewRow.id,
-      actualCount,
-      facilityName: reviewValues?.facilityName,
-      patch: reviewPatch,
-    });
-    if (!result || result.ok === false) {
+    try {
+      const result = await app.actions.verifyAdminCourtCount?.({
+        courtId: reviewRow.id,
+        actualCount,
+        facilityName: reviewValues?.facilityName,
+        patch: reviewPatch,
+      });
+      if (!result || result.ok === false) throw new Error(result?.error ?? "unknown_error");
+      let proximityWarning = false;
+      try {
+        const refreshed = await app.actions.loadAdminCourtProximity?.({
+          courtId: reviewRow.id,
+          facilityName: reviewValues?.facilityName,
+        });
+        if (refreshed?.ok === false) throw new Error(refreshed.error ?? "unknown_error");
+        if (refreshed) setProximityReview(refreshed);
+      } catch {
+        proximityWarning = true;
+      }
+      const refreshedResult = await loadRows(true);
+      if (!refreshedResult || refreshedResult.ok === false) throw new Error(refreshedResult?.error ?? "court_refresh_failed");
+      clearDraftEdits();
+      const disabled = Number(result.disabledDuplicateCount ?? 0);
+      const missing = Number(result.missingRowCount ?? 0);
+      const status = missing > 0
+        ? `실제 ${actualCount}코트로 기록했습니다. DB 행이 ${missing}개 부족합니다.`
+        : `실제 ${actualCount}코트로 확정했습니다.${disabled ? ` 초과 ${disabled}개 행은 중복 비활성화했습니다.` : ""}`;
+      setStatus(`${status}${proximityWarning ? " 근접 코트 조회는 실패했습니다. 다시 시도해 주세요." : ""}`);
+    } catch (error) {
+      setStatus(getSaveErrorMessage(error?.message));
+    } finally {
       setSaving(false);
-      setStatus(getSaveErrorMessage(result?.error));
-      return;
     }
-    clearDraftEdits();
-    const refreshed = await app.actions.loadAdminCourtProximity?.({
-      courtId: reviewRow.id,
-      facilityName: reviewValues?.facilityName,
-    });
-    if (refreshed?.ok !== false) setProximityReview(refreshed);
-    await loadRows(true);
-    setSaving(false);
-    const disabled = Number(result.disabledDuplicateCount ?? 0);
-    const missing = Number(result.missingRowCount ?? 0);
-    setStatus(missing > 0
-      ? `실제 ${actualCount}코트로 기록했습니다. DB 행이 ${missing}개 부족합니다.`
-      : `실제 ${actualCount}코트로 확정했습니다.${disabled ? ` 초과 ${disabled}개 행은 중복 비활성화했습니다.` : ""}`);
   };
 
   const saveUpdates = async () => {
@@ -157,21 +168,23 @@ export default function useCourtDatabasePanelActions(context) {
       return;
     }
     setSaving(true);
-    const result = await app.actions.saveAdminCourtBatch?.({
-      updates: dirtyUpdates.map(({ courtId, patch }) => ({ courtId, patch })),
-      reason: reason.trim(),
-    });
-    if (!result || result.ok === false) {
+    try {
+      const result = await app.actions.saveAdminCourtBatch?.({
+        updates: dirtyUpdates.map(({ courtId, patch }) => ({ courtId, patch })),
+        reason: reason.trim(),
+      });
+      if (!result || result.ok === false) throw new Error(result?.error ?? "unknown_error");
+      const savedRows = Number(result.updatedCount ?? dirtyUpdates.length);
+      const savedFields = dirtyFieldCount;
+      const refreshedResult = await loadRows(true);
+      if (!refreshedResult || refreshedResult.ok === false) throw new Error(refreshedResult?.error ?? "court_refresh_failed");
+      resetEdits();
+      setStatus(`${savedRows}개 구장 · ${savedFields}개 셀을 일괄 저장했습니다.`);
+    } catch (error) {
+      setStatus(getSaveErrorMessage(error?.message));
+    } finally {
       setSaving(false);
-      setStatus(getSaveErrorMessage(result?.error));
-      return;
     }
-    const savedRows = Number(result.updatedCount ?? dirtyUpdates.length);
-    const savedFields = dirtyFieldCount;
-    resetEdits();
-    setSaving(false);
-    await loadRows(true);
-    setStatus(`${savedRows}개 구장 · ${savedFields}개 셀을 일괄 저장했습니다.`);
   };
 
   const openDuplicateReview = async () => {
@@ -183,23 +196,25 @@ export default function useCourtDatabasePanelActions(context) {
     duplicateRequestRef.current = requestId;
     setDuplicateLoading(true);
     setStatus("중복 주소·근접 코트 목록을 불러오고 있습니다.");
-    const result = await app.actions.loadAdminCourtDuplicateGroups?.();
-    if (duplicateRequestRef.current !== requestId) return;
-    if (!result || result.ok === false) {
-      setDuplicateLoading(false);
-      const errorCode = String(result?.error ?? "unknown_error");
+    try {
+      const result = await app.actions.loadAdminCourtDuplicateGroups?.();
+      if (duplicateRequestRef.current !== requestId) return;
+      if (!result || result.ok === false) throw new Error(result?.error ?? "unknown_error");
+      const groups = result.groups ?? [];
+      setDuplicateReview(groups.length ? { groups, index: 0 } : null);
+      setDuplicateActualCount(groups.length
+        ? String(groups[0].courts.find((court) => court.verifiedCourtCount != null)?.verifiedCourtCount ?? groups[0].detectedCount ?? 1)
+        : "");
+      setStatus(groups.length
+        ? `중복 후보 ${Number(result.groupCount ?? groups.length).toLocaleString()}곳 · ${Number(result.duplicateCourtCount ?? 0).toLocaleString()}개 행`
+        : "중복 후보가 없습니다.");
+    } catch (error) {
+      if (duplicateRequestRef.current !== requestId) return;
+      const errorCode = String(error?.message ?? "unknown_error");
       setStatus(`${getSaveErrorMessage(errorCode)} (${errorCode})`);
-      return;
+    } finally {
+      if (duplicateRequestRef.current === requestId) setDuplicateLoading(false);
     }
-    const groups = result.groups ?? [];
-    setDuplicateLoading(false);
-    setDuplicateReview(groups.length ? { groups, index: 0 } : null);
-    setDuplicateActualCount(groups.length
-      ? String(groups[0].courts.find((court) => court.verifiedCourtCount != null)?.verifiedCourtCount ?? groups[0].detectedCount ?? 1)
-      : "");
-    setStatus(groups.length
-      ? `중복 후보 ${Number(result.groupCount ?? groups.length).toLocaleString()}곳 · ${Number(result.duplicateCourtCount ?? 0).toLocaleString()}개 행`
-      : "중복 후보가 없습니다.");
   };
 
   const moveDuplicateReview = (direction) => {
@@ -230,30 +245,32 @@ export default function useCourtDatabasePanelActions(context) {
       return;
     }
     setSaving(true);
-    const result = await app.actions.verifyAdminCourtCount?.({
-      courtId: anchorCourtId,
-      actualCount,
-      facilityName: duplicateGroup.facilityName,
-      patch: {},
-    });
-    if (!result || result.ok === false) {
+    try {
+      const result = await app.actions.verifyAdminCourtCount?.({
+        courtId: anchorCourtId,
+        actualCount,
+        facilityName: duplicateGroup.facilityName,
+        patch: {},
+      });
+      if (!result || result.ok === false) throw new Error(result?.error ?? "unknown_error");
+      const disabled = Number(result.disabledDuplicateCount ?? 0);
+      const missing = Number(result.missingRowCount ?? 0);
+      setStatus(missing > 0
+        ? `실제 ${actualCount}코트로 기록 · DB 행 ${missing}개 부족`
+        : `실제 ${actualCount}코트 확정${disabled ? ` · 초과 ${disabled}개 중복 비활성화` : ""}`);
+      if (duplicateReview.index < duplicateReview.groups.length - 1) {
+        const nextIndex = duplicateReview.index + 1;
+        const nextGroup = duplicateReview.groups[nextIndex];
+        setDuplicateReview((current) => ({ ...current, index: nextIndex }));
+        setDuplicateActualCount(String(nextGroup.courts.find((court) => court.verifiedCourtCount != null)?.verifiedCourtCount ?? nextGroup.detectedCount ?? 1));
+      } else {
+        const refreshedResult = await loadRows(true);
+        if (!refreshedResult || refreshedResult.ok === false) throw new Error(refreshedResult?.error ?? "court_refresh_failed");
+      }
+    } catch (error) {
+      setStatus(getSaveErrorMessage(error?.message));
+    } finally {
       setSaving(false);
-      setStatus(getSaveErrorMessage(result?.error));
-      return;
-    }
-    setSaving(false);
-    const disabled = Number(result.disabledDuplicateCount ?? 0);
-    const missing = Number(result.missingRowCount ?? 0);
-    setStatus(missing > 0
-      ? `실제 ${actualCount}코트로 기록 · DB 행 ${missing}개 부족`
-      : `실제 ${actualCount}코트 확정${disabled ? ` · 초과 ${disabled}개 중복 비활성화` : ""}`);
-    if (duplicateReview.index < duplicateReview.groups.length - 1) {
-      const nextIndex = duplicateReview.index + 1;
-      const nextGroup = duplicateReview.groups[nextIndex];
-      setDuplicateReview((current) => ({ ...current, index: nextIndex }));
-      setDuplicateActualCount(String(nextGroup.courts.find((court) => court.verifiedCourtCount != null)?.verifiedCourtCount ?? nextGroup.detectedCount ?? 1));
-    } else {
-      await loadRows(true);
     }
   };
 

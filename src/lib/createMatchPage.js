@@ -256,6 +256,27 @@ export function getOpponentTeam(teams, teamId, region, excludedIds = [], capacit
     ?? teams.find((team) => team.id !== teamId);
 }
 
+export async function hydrateCreateMatchTeam({ team, teams = [], users = [], loadDirectory, getEligibility }) {
+  if (!team?.id) throw new Error("team_directory_load_failed");
+  const eligibility = getEligibility?.(team, users);
+  const needsHydration = !teams.some((item) => item.id === team.id)
+    || Boolean(eligibility?.missingProfileIds?.length);
+  if (!needsHydration) return { team, users };
+
+  const result = await loadDirectory?.({
+    force: true,
+    kind: "teams",
+    teamId: team.id,
+    includeTeamMemberProfiles: true,
+    returnResult: true,
+  });
+  const hydratedTeam = result?.state?.teams?.find((item) => item.id === team.id);
+  if (!hydratedTeam) throw new Error("team_directory_load_failed");
+  const userById = new Map(users.map((user) => [user.id, user]));
+  (result.state?.users ?? []).forEach((user) => userById.set(user.id, user));
+  return { team: hydratedTeam, users: [...userById.values()] };
+}
+
 export function getMmrSpread(teams) {
   const mmrs = teams.map((team) => Number(team.mmr ?? DEFAULT_RATING));
   return mmrs.length ? Math.max(...mmrs) - Math.min(...mmrs) : 0;

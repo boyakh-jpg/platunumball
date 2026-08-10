@@ -3,13 +3,20 @@ export function createCreateMatchActions(context) {
     RECORD_TYPES, Star, ageRestrictionOption, app, appendSoloRecordUser, challengeTeamAId, challengeTeamBId, clearCreateMatchGuestDraft, createReturnTo, currentRegion, draft, hasTeamChallenge,
     favoriteRefereeIds, favoriteTeamIds, formatCreateSaveError, getAvailableTeamPlayerIds, getCourtAddress, getCourtHashtag, getCourtLayoutLabel,
     getClientActionAccessToken, getCourtSurfaceLabel, getLoginPath, getMatchCreationPolicyPayload, getMatchRulesPayload, getOpponentTeam, getPersonalRecordDraftPayload, getRepresentativePlayerIds, getScopedMatchCreationPolicyPayload,
-    getTeamEligibility, getTeamHashtag, getTournamentTeamEligibility, getUserHashtag, isFavoriteCourt, isInstantRoom, isMatchRecordRoom,
+    getTeamEligibility, getTeamHashtag, getTournamentTeamEligibility, getUserHashtag, hydrateCreateMatchTeam, isFavoriteCourt, isInstantRoom, isMatchRecordRoom,
     isMmrInRecruitingRange, isPublicRoom, isSoloRecord, isSupabaseConfigured, isTeamRoom, isTournamentRoom, myTeams, navigate,
     normalizeSoloRecordRosterInput, onRecruitingCreated, practiceMode, recordComposition, remakeDraft, remakeSourceId, remakeSourceMatchId,
-    representativeTournamentTeam, selectCourt, selectedCourt, selectedTeamA, selectedTournamentCourts, setDraft, setOpponentTeamQuery,
-    saveCreateMatchGuestDraft, setRefereeQuery, setSelectedTournamentTeamProfiles, setSelectedTournamentRefereeProfiles, setSubmitFeedback, setSubmitting, sideCapacity, sortedTeams, submitDisabled,
-    submitDisabledReason, submitting, submittingRef, update, finalWizardStep, wizardStep,
+    favoriteTeamPendingId, favoriteTeamPendingRef, loadDirectory, representativeTournamentTeam, selectCourt, selectedCourt, selectedTeamA, selectedTeamB, selectedTournamentCourts, setDraft, setFavoriteTeamPendingId, setOpponentTeamQuery,
+    saveCreateMatchGuestDraft, setRefereeQuery, setSelectedOpponentTeamProfile, setSelectedTournamentTeamProfiles, setSelectedTournamentRefereeProfiles, setSubmitFeedback, setSubmitting, setTeamSelectionPendingId, sideCapacity, sortedTeams, submitDisabled,
+    submitDisabledReason, submitting, submittingRef, teamSelectionPendingId, teamSelectionPendingRef, update, finalWizardStep, wizardStep,
   } = context;
+  const hydrateRemoteTeam = (team) => hydrateCreateMatchTeam({
+    team,
+    teams: app.state.teams,
+    users: app.state.users,
+    loadDirectory,
+    getEligibility: (targetTeam, users) => getTeamEligibility(targetTeam, targetTeam?.mmr, users),
+  });
   const selectTeamA = (teamAId) => {
     if (!myTeams.some((team) => team.id === teamAId)) return;
     const team = app.state.teams.find((item) => item.id === teamAId);
@@ -19,7 +26,7 @@ export function createCreateMatchActions(context) {
       return;
     }
     const playerIds = getRepresentativePlayerIds(app.currentUser.id);
-    const currentTeamB = app.state.teams.find((item) => item.id === draft.teamBId);
+    const currentTeamB = selectedTeamB;
     const currentTeamBUsable = currentTeamB &&
       currentTeamB.id !== teamAId &&
       getAvailableTeamPlayerIds(currentTeamB, playerIds).length >= 1;
@@ -28,6 +35,7 @@ export function createCreateMatchActions(context) {
       : getOpponentTeam(sortedTeams, teamAId, currentRegion, playerIds, 1) ?? getOpponentTeam(app.state.teams, teamAId, currentRegion, playerIds, 1);
     const opponentLeaderId = nextTeamB?.members?.find((member) => member.role === "captain")?.userId ?? "";
     setOpponentTeamQuery("");
+    setSelectedOpponentTeamProfile(nextTeamB && !app.state.teams.some((item) => item.id === nextTeamB.id) ? nextTeamB : null);
     update({
       teamAId,
       teamBId: nextTeamB?.id,
@@ -40,41 +48,61 @@ export function createCreateMatchActions(context) {
       } : {}),
     });
   };
-  const selectTeamB = (teamBId) => {
-    const currentTeamA = app.state.teams.find((item) => item.id === draft.teamAId);
-    const nextTeamA = currentTeamA?.id === teamBId
-      ? getOpponentTeam(sortedTeams, teamBId, currentRegion, [], sideCapacity) ?? getOpponentTeam(app.state.teams, teamBId, currentRegion, [], sideCapacity)
-      : currentTeamA;
-    const playerIds = draft.playerIds?.length ? draft.playerIds : getRepresentativePlayerIds(app.currentUser.id);
-    const team = app.state.teams.find((item) => item.id === teamBId);
-    const teamEligibility = getTeamEligibility(team, nextTeamA?.mmr ?? team?.mmr);
-    if (!teamEligibility.allowed) {
-      setSubmitFeedback(`${team?.name ?? "상대 팀"}: ${teamEligibility.reason}`);
+  const selectTeamB = async (teamOrId) => {
+    const teamBId = typeof teamOrId === "string" ? teamOrId : teamOrId?.id;
+    if (!teamBId || teamSelectionPendingRef.current) return;
+    const sourceTeam = typeof teamOrId === "string"
+      ? app.state.teams.find((item) => item.id === teamBId)
+      : teamOrId;
+    if (!sourceTeam) {
+      setSubmitFeedback("팀이 없습니다.");
       return;
     }
-    const opponentLeaderId = team?.members?.find((member) => member.role === "captain")?.userId ?? "";
-    setOpponentTeamQuery("");
-    update({
-      teamAId: nextTeamA?.id,
-      teamBId,
-      ...(isTeamRoom ? {
-        playerIds,
-        reservePlayerIds: [],
-        opponentPlayerIds: [],
-        opponentReservePlayerIds: [],
-        opponentLeaderId,
-      } : {}),
-    });
+    teamSelectionPendingRef.current = teamBId;
+    setTeamSelectionPendingId(teamBId);
+    try {
+      const hydrated = await hydrateRemoteTeam(sourceTeam);
+      const team = hydrated.team;
+      const currentTeamA = app.state.teams.find((item) => item.id === draft.teamAId);
+      const nextTeamA = currentTeamA?.id === teamBId
+        ? getOpponentTeam(sortedTeams, teamBId, currentRegion, [], sideCapacity) ?? getOpponentTeam(app.state.teams, teamBId, currentRegion, [], sideCapacity)
+        : currentTeamA;
+      const playerIds = draft.playerIds?.length ? draft.playerIds : getRepresentativePlayerIds(app.currentUser.id);
+      const teamEligibility = getTeamEligibility(team, nextTeamA?.mmr ?? team?.mmr, hydrated.users);
+      if (!teamEligibility.allowed) {
+        setSubmitFeedback(`${team?.name ?? "상대 팀"}: ${teamEligibility.reason}`);
+        return;
+      }
+      const opponentLeaderId = team.members?.find((member) => member.role === "captain")?.userId ?? "";
+      setOpponentTeamQuery("");
+      setSelectedOpponentTeamProfile(team);
+      update({
+        teamAId: nextTeamA?.id,
+        teamBId: team.id,
+        ...(isTeamRoom ? {
+          playerIds,
+          reservePlayerIds: [],
+          opponentPlayerIds: [],
+          opponentReservePlayerIds: [],
+          opponentLeaderId,
+        } : {}),
+      });
+    } catch {
+      setSubmitFeedback(`${sourceTeam.name ?? "상대 팀"}: 팀원 정보를 불러오지 못했습니다. 다시 시도해 주세요.`);
+    } finally {
+      if (teamSelectionPendingRef.current === teamBId) teamSelectionPendingRef.current = "";
+      setTeamSelectionPendingId((current) => current === teamBId ? "" : current);
+    }
   };
   const assignTeam = (teamId, side) => {
     if (side === "A") selectTeamA(teamId);
     if (side === "B") selectTeamB(teamId);
   };
-  const toggleTournamentTeam = (teamOrId) => {
+  const toggleTournamentTeam = async (teamOrId) => {
     const teamId = typeof teamOrId === "string" ? teamOrId : teamOrId?.id;
     if (!teamId) return;
     const teamIds = draft.tournamentTeamIds ?? [];
-    const team = typeof teamOrId === "string"
+    let team = typeof teamOrId === "string"
       ? app.state.teams.find((item) => item.id === teamId)
       : teamOrId;
     if (teamIds.includes(teamId) && teamId === representativeTournamentTeam?.id) {
@@ -82,14 +110,27 @@ export function createCreateMatchActions(context) {
       return;
     }
     if (!teamIds.includes(teamId)) {
-      const eligibility = getTournamentTeamEligibility(team);
-      if (!eligibility.allowed) {
-        setSubmitFeedback(`${team?.name ?? "선택 팀"}: ${eligibility.reason}`);
+      if (teamSelectionPendingRef.current) return;
+      teamSelectionPendingRef.current = teamId;
+      setTeamSelectionPendingId(teamId);
+      try {
+        const hydrated = await hydrateRemoteTeam(team);
+        team = hydrated.team;
+        const eligibility = getTournamentTeamEligibility(team, hydrated.users);
+        if (!eligibility.allowed) {
+          setSubmitFeedback(`${team?.name ?? "선택 팀"}: ${eligibility.reason}`);
+          return;
+        }
+        setSelectedTournamentTeamProfiles((current) => (
+          current.some((item) => item.id === teamId) ? current : [...current, team]
+        ));
+      } catch {
+        setSubmitFeedback(`${team?.name ?? "선택 팀"}: 팀원 정보를 불러오지 못했습니다. 다시 시도해 주세요.`);
         return;
+      } finally {
+        if (teamSelectionPendingRef.current === teamId) teamSelectionPendingRef.current = "";
+        setTeamSelectionPendingId((current) => current === teamId ? "" : current);
       }
-      setSelectedTournamentTeamProfiles((current) => (
-        current.some((item) => item.id === teamId) ? current : [...current, team]
-      ));
     } else {
       setSelectedTournamentTeamProfiles((current) => current.filter((item) => item.id !== teamId));
     }
@@ -130,33 +171,49 @@ export function createCreateMatchActions(context) {
     const invited = (draft.tournamentTeamIds ?? []).includes(team.id);
     const selected = isTournamentRoom ? invited : isPublicRoom ? draft.teamAId === team.id : draft.teamAId === team.id;
     const eligibility = isTournamentRoom ? getTournamentTeamEligibility(team) : getTeamEligibility(team, team.mmr);
+    const checkingProfiles = Boolean(eligibility.missingProfileIds?.length);
+    const selectionPending = teamSelectionPendingId === team.id;
     const actionLabel = isTournamentRoom ? (invited ? "초대 해제" : "초대") : isPublicRoom ? "내 파티" : "A사이드";
     return (
       <button
         key={team.id}
         type="button"
-        className={["search-picker-result-row", selected ? "selected" : "", !eligibility.allowed && !invited ? "is-disabled" : ""].filter(Boolean).join(" ")}
-        disabled={!eligibility.allowed && !invited}
+        className={["search-picker-result-row", selected ? "selected" : "", !eligibility.allowed && !checkingProfiles && !invited ? "is-disabled" : ""].filter(Boolean).join(" ")}
+        disabled={selectionPending || (!eligibility.allowed && !checkingProfiles && !invited)}
+        aria-busy={selectionPending}
         onMouseDown={(event) => event.preventDefault()}
         onClick={() => {
-          if (isTournamentRoom) toggleTournamentTeam(team);
+          if (isTournamentRoom) void toggleTournamentTeam(team);
           else assignTeam(team.id, "A");
         }}
       >
         <strong>{team.name}</strong>
         <span>{team.region} · {team.mmr} MMR · {team.homeCourt}</span>
-        <em>{getTeamHashtag(team)} · {eligibility.allowed ? `${actionLabel} · 가능 ${eligibility.eligibleCount}/${eligibility.capacity}` : eligibility.reason}</em>
+        <em>{getTeamHashtag(team)} · {selectionPending || checkingProfiles ? "팀원 정보 확인 후 선택" : eligibility.allowed ? `${actionLabel} · 가능 ${eligibility.eligibleCount}/${eligibility.capacity}` : eligibility.reason}</em>
       </button>
     );
   };
   const renderOpponentTeamSearchItem = (team) => {
     const mmrBlocked = draft.mmrLimitMode === "block" && draft.ranked && selectedTeamA && !isMmrInRecruitingRange(team.mmr, selectedTeamA.mmr, true, draft.mmrRangeMode);
     const eligibility = getTeamEligibility(team, selectedTeamA?.mmr ?? team.mmr);
+    const checkingProfiles = Boolean(eligibility.missingProfileIds?.length);
+    const selectionPending = teamSelectionPendingId === team.id;
     const favorite = favoriteTeamIds.includes(team.id);
-    const toggleFavorite = (event) => {
+    const toggleFavorite = async (event) => {
       event.preventDefault();
       event.stopPropagation();
-      app.actions.toggleFavoriteTeam(team.id);
+      if (favoriteTeamPendingRef.current) return;
+      favoriteTeamPendingRef.current = team.id;
+      setFavoriteTeamPendingId(team.id);
+      try {
+        const result = await app.actions.toggleFavoriteTeam(team.id, team);
+        if (result?.ok === false) setSubmitFeedback("즐겨찾기를 저장하지 못했습니다. 다시 시도해 주세요.");
+      } catch {
+        setSubmitFeedback("즐겨찾기를 저장하지 못했습니다. 다시 시도해 주세요.");
+      } finally {
+        if (favoriteTeamPendingRef.current === team.id) favoriteTeamPendingRef.current = "";
+        setFavoriteTeamPendingId((current) => current === team.id ? "" : current);
+      }
     };
     return (
       <div
@@ -164,18 +221,20 @@ export function createCreateMatchActions(context) {
         className={team.id === draft.teamBId ? "search-picker-result-row search-picker-result-row-actionable selected" : "search-picker-result-row search-picker-result-row-actionable"}
         onMouseDown={(event) => event.preventDefault()}
       >
-        <button type="button" className="search-picker-result-main" disabled={!eligibility.allowed || mmrBlocked} onClick={() => selectTeamB(team.id)}>
+        <button type="button" className="search-picker-result-main" disabled={selectionPending || (!eligibility.allowed && !checkingProfiles) || mmrBlocked} aria-busy={selectionPending} onClick={() => void selectTeamB(team)}>
           <strong>{team.name}</strong>
           <span>{team.region} · {team.mmr} MMR · {team.homeCourt}</span>
-          <em>{getTeamHashtag(team)} · {mmrBlocked ? "팀 MMR 범위 밖" : eligibility.allowed ? `${favorite ? "즐겨찾기" : "B사이드"} · 가능 ${eligibility.eligibleCount}/${eligibility.capacity}` : eligibility.reason}</em>
+          <em>{getTeamHashtag(team)} · {mmrBlocked ? "팀 MMR 범위 밖" : selectionPending || checkingProfiles ? "팀원 정보 확인 후 선택" : eligibility.allowed ? `${favorite ? "즐겨찾기" : "B사이드"} · 가능 ${eligibility.eligibleCount}/${eligibility.capacity}` : eligibility.reason}</em>
         </button>
         <button
           type="button"
           className={favorite ? "search-picker-favorite-action active" : "search-picker-favorite-action"}
           aria-label={favorite ? `${team.name} 즐겨찾기 해제` : `${team.name} 즐겨찾기 추가`}
           aria-pressed={favorite}
+          disabled={Boolean(favoriteTeamPendingId)}
+          aria-busy={favoriteTeamPendingId === team.id}
           onMouseDown={(event) => event.preventDefault()}
-          onClick={toggleFavorite}
+          onClick={(event) => void toggleFavorite(event)}
         >
           <Star size={16} fill={favorite ? "currentColor" : "none"} />
         </button>

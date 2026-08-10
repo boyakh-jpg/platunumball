@@ -118,6 +118,11 @@ const navigate = useNavigate();
   const [courtDetailCourtId, setCourtDetailCourtId] = useState("");
   const [refereeQuery, setRefereeQuery] = useState("");
   const [selectedTournamentTeamProfiles, setSelectedTournamentTeamProfiles] = useState([]);
+  const [selectedOpponentTeamProfile, setSelectedOpponentTeamProfile] = useState(null);
+  const [teamSelectionPendingId, setTeamSelectionPendingId] = useState("");
+  const teamSelectionPendingRef = useRef("");
+  const [favoriteTeamPendingId, setFavoriteTeamPendingId] = useState("");
+  const favoriteTeamPendingRef = useRef("");
   const [selectedTournamentRefereeProfiles, setSelectedTournamentRefereeProfiles] = useState([]);
   const [soloTeamAUserQuery, setSoloTeamAUserQuery] = useState("");
   const [soloTeamBUserQuery, setSoloTeamBUserQuery] = useState("");
@@ -302,7 +307,12 @@ const navigate = useNavigate();
   }, [currentRegion, favoriteCourtIds, registeredCourts]);
 
   const selectedTeamA = app.state.teams.find((team) => team.id === draft.teamAId);
-  const selectedTeamB = app.state.teams.find((team) => team.id === draft.teamBId);
+  const selectedTeamB = selectedOpponentTeamProfile?.id === draft.teamBId
+    ? selectedOpponentTeamProfile
+    : app.state.teams.find((team) => team.id === draft.teamBId);
+  useEffect(() => {
+    setSelectedOpponentTeamProfile((current) => current?.id === draft.teamBId ? current : null);
+  }, [draft.teamBId]);
   const challengePolicyByMode = useMemo(() => new Map(
     MATCH_MODES
       .filter((mode) => mode.size > 1)
@@ -393,7 +403,7 @@ const navigate = useNavigate();
   const currentRoomKind = getRoomKindFromDraft(draft);
   const sideCapacity = getRecruitingSideCapacity(draft);
   const ageRestrictionOption = getAgeRestrictionOption(draft.ageRestriction);
-  const getTeamEligibility = (team, targetMmr = team?.mmr) => getTeamEventEligibility(team, app.state.users, {
+  const getTeamEligibility = (team, targetMmr = team?.mmr, users = app.state.users) => getTeamEventEligibility(team, users, {
     mode: draft.mode,
     capacity: sideCapacity,
     ranked: isMatchRecordRoom ? false : draft.ranked,
@@ -422,8 +432,8 @@ const navigate = useNavigate();
     );
     return (draft.tournamentTeamIds ?? []).map((teamId) => teamsById.get(teamId)).filter(Boolean);
   }, [app.state.teams, draft.tournamentTeamIds, selectedTournamentTeamProfiles]);
-  const getTournamentTeamEligibility = (team) => {
-    const eligibility = getTeamEligibility(team, team?.mmr);
+  const getTournamentTeamEligibility = (team, users = app.state.users) => {
+    const eligibility = getTeamEligibility(team, team?.mmr, users);
     const isMyTeam = myTeams.some((item) => item.id === team?.id);
     if (isMyTeam && representativeTournamentTeam?.id !== team?.id) {
       return { ...eligibility, allowed: false, reason: "내 팀은 대표팀으로 설정된 팀만 참가할 수 있습니다." };
@@ -464,7 +474,10 @@ const navigate = useNavigate();
     defaultTeamB, defaultTournamentTeamB, defaultTeamBPlayerIds, defaultMmrLimitMode, directoryCourts, discoveredCourts, setDiscoveredCourts,
     courtMapDirectoryStatus, setCourtMapDirectoryStatus, registeredCourts, defaultCourt, teamQuery, setTeamQuery, opponentTeamQuery,
     setOpponentTeamQuery, courtQuery, setCourtQuery, courtMapOpen, setCourtMapOpen, courtDetailCourtId, setCourtDetailCourtId,
-    refereeQuery, setRefereeQuery, selectedTournamentTeamProfiles, setSelectedTournamentTeamProfiles, selectedTournamentRefereeProfiles, setSelectedTournamentRefereeProfiles, soloTeamAUserQuery, setSoloTeamAUserQuery, soloTeamBUserQuery,
+    refereeQuery, setRefereeQuery, selectedTournamentTeamProfiles, setSelectedTournamentTeamProfiles, selectedOpponentTeamProfile, setSelectedOpponentTeamProfile,
+    teamSelectionPendingId, setTeamSelectionPendingId, teamSelectionPendingRef,
+    favoriteTeamPendingId, setFavoriteTeamPendingId, favoriteTeamPendingRef,
+    selectedTournamentRefereeProfiles, setSelectedTournamentRefereeProfiles, soloTeamAUserQuery, setSoloTeamAUserQuery, soloTeamBUserQuery,
     setSoloTeamBUserQuery, teamRegion, setTeamRegion, courtRegion, setCourtRegion, courtMapRegion,
     defaultAgeRestriction, favoriteTeamIds, favoriteRefereeIds, isFavoriteTeam, isFavoriteCourt, defaultSchedule, draft,
     setDraft, submitting, setSubmitting, submittingRef, submitFeedback, setSubmitFeedback, wizardStep, setWizardStep,
