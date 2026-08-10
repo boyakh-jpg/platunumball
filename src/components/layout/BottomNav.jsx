@@ -1,4 +1,5 @@
 import { CalendarDays, ClipboardList, Ellipsis, Handshake, House, MessageSquareText, Settings, UserRound, UsersRound } from "lucide-react";
+import { useEffect, useRef } from "react";
 import { NavLink } from "react-router-dom";
 
 const items = [
@@ -16,6 +17,17 @@ const moreItems = [
 ];
 
 export default function BottomNav() {
+  const moreRef = useRef(null);
+
+  useEffect(() => {
+    const closeMoreOutside = (event) => {
+      const more = moreRef.current;
+      if (more?.open && !more.contains(event.target)) more.removeAttribute("open");
+    };
+    document.addEventListener("pointerdown", closeMoreOutside);
+    return () => document.removeEventListener("pointerdown", closeMoreOutside);
+  }, []);
+
   return (
     <nav className="bottom-nav" aria-label="하단 메뉴">
       {items.map((item) => {
@@ -27,7 +39,7 @@ export default function BottomNav() {
           </NavLink>
         );
       })}
-      <details className="bottom-nav-more">
+      <details ref={moreRef} className="bottom-nav-more">
         <summary>
           <Ellipsis size={20} />
           <span>더보기</span>

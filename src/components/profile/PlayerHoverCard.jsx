@@ -106,7 +106,7 @@ export default function PlayerHoverCard({ user, teams = [], children, className 
               <span className="hover-hashtag">{getUserHashtag(user)}</span>
               {discordProfileUrl ? (
                 <a className="discord-link-badge discord-icon-link" href={discordProfileUrl} target="_blank" rel="noreferrer" aria-label="Discord에서 DM 열기" title="Discord에서 DM 열기">
-                  <MessageCircle size={13} aria-hidden="true" />
+                  <MessageCircle size={16} aria-hidden="true" />
                 </a>
               ) : null}
               <span className="hover-age-group">{getAgeGroupLabel(getAgeGroupForUser(user))}</span>

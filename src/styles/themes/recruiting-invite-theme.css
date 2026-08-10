@@ -452,6 +452,10 @@ html[data-theme="light"] .arena-lobby-modal .arena-lobby-team-panel .arena-side-
   overflow: visible;
 }
 
+.arena-slot-command-popover .arena-invite-actions {
+  align-items: center;
+}
+
 .arena-filter-bar button,
 .arena-filter-bar .segmented-control button,
 .arena-filter-bar .arena-start-date-filter button,

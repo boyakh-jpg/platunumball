@@ -89,7 +89,7 @@ test("경기시계 인정 진행률은 전체 시간이 아니라 최소 인정�
     path.join(ROOT, "src/components/match/MatchClockPanelView.jsx"),
     "utf8",
   );
-  assert.match(viewSource, /인정 기준 진행/u);
+  assert.match(viewSource, /인정시간 \$\{formatClockTime\(liveClock\.activeElapsedMs\)\} \/ \$\{formatClockTime\(liveClock\.minimumActiveMs\)\}/u);
   assert.match(viewSource, /단일 경기에는 다음 쿼터가 없습니다/u);
   assert.match(viewSource, /시계 종료/u);
   assert.match(viewSource, /경기 종료/u);
@@ -100,7 +100,7 @@ test("경기시계 인정 진행률은 전체 시간이 아니라 최소 인정�
   assert.match(viewSource, /`연장 \$\{liveClock\.overtimeCount\} 종료`/u);
   assert.match(viewSource, /canResumeEndedClock[\s\S]*runAction\("resume"\)/u);
   assert.match(viewSource, /requiresForcedMatchEnd \? "강제 종료" : "경기 종료"/u);
-  assert.match(viewSource, /Math\.floor\(recognition\.ratio \* 100\)/u);
+  assert.doesNotMatch(viewSource, /Math\.floor\(recognition\.ratio \* 100\)/u);
 });
 
 test("최소 인정시간 전 종료만 강제 문구를 쓰고 경기 종료는 같은 lifecycle action을 유지한다", async () => {

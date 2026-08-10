@@ -13,7 +13,7 @@ export function createRecruitingRoomMatchRenderers(context) {
     roomState, selectedPost, setRoomCancellationPending, setRoomCancellationTarget, setSourceMatchDraftScore, showCaptainBadge, showSourceMatchRecordSummary,
     slotPositions, sourceMatch, sourceMatchAction, sourceMatchIsPersonalRecord, sourceMatchIsRecordRoom, sourceMatchPhase,
     sourceMatchRecordBoardFirst, sourceMatchRecordWindow, sourceMatchResultSubmitLabel, sourceMatchReviewRefreshing, sourceMatchSideLeaderIds, sourceMatchSlotManagementOpen,
-    sourceMatchResultEntryPermission, sourceRoomReadOnly, teamOnlyRoom, userById,
+    runSourceMatchAction, sourceMatchResultEntryPermission, sourceRoomReadOnly, teamOnlyRoom, userById,
   } = context;
 
 const renderSourceMatchRecordBoard = () => {
@@ -173,7 +173,7 @@ const renderSourceMatchRecordBoard = () => {
           setRoomCancellationPending(true);
           try {
             const result = roomCancellationTarget.kind === "match"
-              ? await app.actions.cancelMatch(roomCancellationTarget.id, reason)
+              ? await runSourceMatchAction("cancel", () => app.actions.cancelMatch(roomCancellationTarget.id, reason))
               : roomCancellationTarget.kind === "participation"
                 ? await app.actions.cancelMatchParticipation(roomCancellationTarget.id, reason)
                 : await app.actions.closeRecruitingPost(roomCancellationTarget.id, reason);

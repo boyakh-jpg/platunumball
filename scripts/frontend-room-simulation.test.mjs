@@ -2245,16 +2245,18 @@ test("초대와 알림 읽음 UI는 중복 요청을 막고 실패를 같은 영
 });
 
 test("슬롯·경기·이의제기 action은 서버 결과를 기다리고 실패 시 현재 화면을 유지한다", async () => {
-  const [actions, recruitingActions, controller, slotRenderers, disputeInteractions, actionSection, tournamentActions, participation, matchRenderers, matchController, matchReview, matchRoom, matchRoomView, matchDialog, disputeQueue] = await Promise.all([
+  const [actions, recruitingActions, controller, slotRenderers, disputeInteractions, actionSection, dialogSection, tournamentActions, participation, matchRenderers, managementSection, matchController, matchReview, matchRoom, matchRoomView, matchDialog, disputeQueue] = await Promise.all([
     readFile(new URL("../src/hooks/appData/actions.js", import.meta.url), "utf8"),
     readFile(new URL("../src/hooks/appData/actions/recruitingActions.js", import.meta.url), "utf8"),
     readFile(new URL("../src/components/recruiting/useRecruitingRoomController.js", import.meta.url), "utf8"),
     readFile(new URL("../src/components/recruiting/RecruitingRoomSlotRenderers.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/components/recruiting/useRecruitingRoomModalInteractions.js", import.meta.url), "utf8"),
     readFile(new URL("../src/components/recruiting/RecruitingRoomActionSection.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/recruiting/RecruitingRoomDialogSection.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/hooks/appData/actions/matchActions.js", import.meta.url), "utf8"),
     readFile(new URL("../src/components/recruiting/useRecruitingRoomParticipationActions.js", import.meta.url), "utf8"),
     readFile(new URL("../src/components/recruiting/RecruitingRoomMatchRenderers.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/recruiting/RecruitingRoomManagementSection.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/pages/matchRoomControllerParts.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/pages/MatchRoomReviewPanels.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/pages/MatchRoom.jsx", import.meta.url), "utf8"),
@@ -2273,6 +2275,23 @@ test("슬롯·경기·이의제기 action은 서버 결과를 기다리고 실�
   assert.match(disputeInteractions, /sourceDisputePendingRef\.current[\s\S]*이의제기를 접수하지 못했습니다/);
   assert.match(actionSection, /sourceMatchActionPending === "start" \? "처리 중"/);
   assert.match(actionSection, /runSourceMatchAction\("cancel-participation"[\s\S]*cancelRecruitingParticipation/);
+  assert.match(matchRenderers, /runSourceMatchAction\("cancel", \(\) => app\.actions\.cancelMatch/);
+  assert.match(
+    managementSection,
+    /onEndMatch=\{\(\) => runSourceMatchAction\("end", \(\) => app\.actions\.endMatch\(sourceMatch\.id\)\)\}/,
+  );
+  assert.match(
+    actionSection,
+    /const sourceMatchMutationBusy = Boolean\(sourceMatchActionPending\) \|\| roomCancellationTarget\?\.kind === "match"/,
+  );
+  assert.match(
+    actionSection,
+    /requestSourceMatchFinalization\(\s*sourceMatch\.id,\s*sourceFinalAuthorityLabel,\s*\)/,
+  );
+  assert.match(controller, /setFinalizeMatchTarget\(\{ matchId, authorityLabel \}\)/);
+  assert.match(dialogSection, /openDisputeCount=\{sourceOpenDisputes\.length\}/);
+  assert.match(dialogSection, /eligible=\{sourceManualFinalizationStatus\.ready\}/);
+  assert.doesNotMatch(controller, /openDisputeCount, authorityLabel, eligible/);
   assert.match(tournamentActions, /return rollbackIfServerFailed\(syncTournamentServer\(syncedTournament/);
   assert.match(participation, /if \(!result \|\| result\?\.ok === false\) throw new Error\(result\?\.error \|\| "chat_send_failed"\)/);
   assert.match(matchRenderers, /if \(!result \|\| result\?\.ok === false\)[\s\S]*취소하지 못했습니다/);
@@ -2974,6 +2993,8 @@ test("ReserveLine keeps real component order, direction, placement, and overflow
 import React, { useState } from "react";
 import { createRoot } from "react-dom/client";
 import { flushSync } from "react-dom";
+import { MemoryRouter } from "react-router-dom";
+import BottomNav from "/src/components/layout/BottomNav.jsx";
 import { ReserveLine, SideRoster } from "/src/components/recruiting/RecruitingRoomRosterPanels.jsx";
 import "/src/styles/tokens.css";
 import "/src/styles/globals.css";
@@ -3057,25 +3078,28 @@ function App() {
   const [scenario, setScenario] = useState("mixed");
   window.__setReserveScenario = (next) => flushSync(() => setScenario(next));
   return (
-    <main className="arena-lobby-modal" data-scenario={scenario}>
-      <div className="arena-lobby-arena">
-        <div className="arena-lobby-versus-stage">
-          <section className="arena-lobby-team-panel team-a">
-            <SideRoster sideName="teamA" side={makeActiveSide("a")} userById={allUsers} teams={[]} />
-            <div className="arena-side-inline-reserve" data-placement="inline-a"><Line sideName="teamA" scenario={scenario} /></div>
-          </section>
-          <div className="arena-lobby-score-core"><strong>VS</strong></div>
-          <section className="arena-lobby-team-panel team-b">
-            <SideRoster sideName="teamB" side={makeActiveSide("b")} userById={allUsers} teams={[]} />
-            <div className="arena-side-inline-reserve" data-placement="inline-b"><Line sideName="teamB" scenario={scenario} /></div>
-          </section>
+    <>
+      <main className="arena-lobby-modal" data-scenario={scenario}>
+        <div className="arena-lobby-arena">
+          <div className="arena-lobby-versus-stage">
+            <section className="arena-lobby-team-panel team-a">
+              <SideRoster sideName="teamA" side={makeActiveSide("a")} userById={allUsers} teams={[]} />
+              <div className="arena-side-inline-reserve" data-placement="inline-a"><Line sideName="teamA" scenario={scenario} /></div>
+            </section>
+            <div className="arena-lobby-score-core"><strong>VS</strong></div>
+            <section className="arena-lobby-team-panel team-b">
+              <SideRoster sideName="teamB" side={makeActiveSide("b")} userById={allUsers} teams={[]} />
+              <div className="arena-side-inline-reserve" data-placement="inline-b"><Line sideName="teamB" scenario={scenario} /></div>
+            </section>
+          </div>
+          <div className="arena-reserve-panel" data-placement="desktop">
+            <Line sideName="teamA" scenario={scenario} />
+            <Line sideName="teamB" scenario={scenario} />
+          </div>
         </div>
-        <div className="arena-reserve-panel" data-placement="desktop">
-          <Line sideName="teamA" scenario={scenario} />
-          <Line sideName="teamB" scenario={scenario} />
-        </div>
-      </div>
-    </main>
+      </main>
+      <MemoryRouter initialEntries={["/app"]}><BottomNav /></MemoryRouter>
+    </>
   );
 }
 createRoot(document.getElementById("root")).render(<App />);
@@ -3099,6 +3123,12 @@ html, body, #root { min-width: 0; margin: 0; }
     const page = await browser.newPage();
     await page.goto(`http://127.0.0.1:${address.port}/${basename(fixtureDirectory)}/index.html`);
     await page.waitForFunction(() => window.__fixtureReady === true && typeof window.__setReserveScenario === "function");
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.click(".bottom-nav-more > summary");
+    assert.equal(await page.locator(".bottom-nav-more").evaluate((node) => node.open), true, "mobile more menu opens");
+    await page.mouse.click(8, 8);
+    assert.equal(await page.locator(".bottom-nav-more").evaluate((node) => node.open), false, "mobile more menu closes on outside pointer input");
 
     const widths = [1101, 1100, 720, 719];
     const themes = ["dark", "light"];
@@ -3142,6 +3172,7 @@ html, body, #root { min-width: 0; margin: 0; }
                 return descending ? right.left - left.left : left.left - right.left;
               });
               const party = row.querySelector(".arena-room-party-group");
+              const partyGlow = party ? getComputedStyle(party, "::before") : null;
               const innerNodes = [
                 ...wrappers,
                 ...cards,
@@ -3176,6 +3207,10 @@ html, body, #root { min-width: 0; margin: 0; }
               return {
                 direction: getComputedStyle(row).direction,
                 partyDirection: party ? getComputedStyle(party).direction : null,
+                partyGlowInset: partyGlow
+                  ? [partyGlow.top, partyGlow.right, partyGlow.bottom, partyGlow.left]
+                  : null,
+                partyGlowBoxShadow: partyGlow?.boxShadow ?? null,
                 innerDirections: innerNodes.map((node) => getComputedStyle(node).direction),
                 names: visual.map((record) => record.name),
                 realNames: visual.filter((record) => !record.empty).map((record) => record.name),
@@ -3225,6 +3260,10 @@ html, body, #root { min-width: 0; margin: 0; }
           if (scenario !== "none") {
             assert.equal(result.a.partyDirection, "ltr", `${label}: Team A party direction`);
             assert.equal(result.b.partyDirection, "rtl", `${label}: Team B party direction`);
+            assert.deepEqual(result.a.partyGlowInset, ["0px", "0px", "0px", "0px"], `${label}: Team A party glow covers four edges`);
+            assert.deepEqual(result.b.partyGlowInset, ["0px", "0px", "0px", "0px"], `${label}: Team B party glow covers four edges`);
+            assert.notEqual(result.a.partyGlowBoxShadow, "none", `${label}: Team A party glow visible`);
+            assert.notEqual(result.b.partyGlowBoxShadow, "none", `${label}: Team B party glow visible`);
             assert.equal(result.a.firstRealAtStartEdge, true, `${label}: Team A first candidate edge`);
             assert.equal(result.b.firstRealAtStartEdge, true, `${label}: Team B first candidate edge`);
             assert.equal(result.a.firstRealVisibleAtInitial, true, `${label}: Team A first candidate visible at start`);

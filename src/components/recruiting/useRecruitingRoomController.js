@@ -176,8 +176,8 @@ export function useRecruitingRoomController({
       setFinalizeMatchPending(false);
     }
   };
-  const requestSourceMatchFinalization = (matchId, openDisputeCount, authorityLabel, eligible) => {
-    setFinalizeMatchTarget({ matchId, openDisputeCount, authorityLabel, eligible });
+  const requestSourceMatchFinalization = (matchId, authorityLabel) => {
+    setFinalizeMatchTarget({ matchId, authorityLabel });
   };
   const roomPostId = selectedPost?.id ?? "";
   const roomPostIsSynthetic = isSyntheticMatchRoomId(roomPostId);

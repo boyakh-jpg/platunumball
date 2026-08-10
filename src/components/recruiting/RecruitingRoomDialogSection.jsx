@@ -4,7 +4,7 @@ export function RecruitingRoomDialogSection({ context }) {
     getMatchRoomPhase,
     createPortal, finalizeMatchPending, finalizeMatchTarget, roomCancellationPending, roomCancellationPolicy, roomCancellationTarget,
     roomHelpOpen, selectedPost, setFinalizeMatchTarget, setInviteDraft, setRoomCancellationTarget, setRoomHelpOpen, setSoloRecordDeleteTarget,
-    soloRecordDeleteTarget, sourceMatch, submitRoomCancellation,
+    soloRecordDeleteTarget, sourceManualFinalizationStatus, sourceMatch, sourceOpenDisputes, submitRoomCancellation,
   } = context;
   const roomPhase = sourceMatch ? getMatchRoomPhase(sourceMatch).phase : "recruiting";
   const recordType = sourceMatch?.rules?.recordType ?? "match";
@@ -167,10 +167,10 @@ export function RecruitingRoomDialogSection({ context }) {
                 document.body,
               ) : null}
               <MatchFinalizeDialog
-                open={Boolean(finalizeMatchTarget)}
+                open={Boolean(finalizeMatchTarget && finalizeMatchTarget.matchId === sourceMatch?.id)}
                 pending={finalizeMatchPending}
-                openDisputeCount={finalizeMatchTarget?.openDisputeCount ?? 0}
-                eligible={finalizeMatchTarget?.eligible === true}
+                openDisputeCount={sourceOpenDisputes.length}
+                eligible={sourceManualFinalizationStatus.ready}
                 authorityLabel={finalizeMatchTarget?.authorityLabel ?? "방장"}
                 onClose={() => setFinalizeMatchTarget(null)}
                 onConfirm={confirmSourceMatchFinalization}

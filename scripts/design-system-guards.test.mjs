@@ -333,6 +333,7 @@ test("Discord는 ID 문자 없이 선수 상세에 DM 보내기 pill로 표시�
   assert.match(pageSources.playerDetail, /getDiscordDmUrl/);
   assert.match(pageSources.playerDetail, /className="discord-link-badge"[\s\S]*<span>DM 보내기<\/span>/);
   assert.match(playerHoverCard, /hover-hashtag[\s\S]*aria-label="Discord에서 DM 열기"/);
+  assert.match(playerHoverCard, /<MessageCircle size=\{16\} aria-hidden="true" \/>/);
   assert.match(sidebar, /sidebar-profile-handle[\s\S]*aria-label="Discord에서 DM 열기"/);
   assert.match(settingsPrimaryColumn, /<strong>\{app\.currentUser\.name\}<\/strong>/);
 });
@@ -390,7 +391,9 @@ test("guest shell replaces the demo identity with login actions", () => {
   assert.doesNotMatch(appShellSource, /guest-preview-bar/);
   assert.match(sidebar, /guestPreview \? \([\s\S]*?<strong>로그인<\/strong>/);
   assert.match(bottomNav, /<NavLink key=\{item\.to\} to=\{item\.to\}/);
-  assert.match(bottomNav, /<details className="bottom-nav-more">/);
+  assert.match(bottomNav, /<details ref=\{moreRef\} className="bottom-nav-more">/);
+  assert.match(bottomNav, /document\.addEventListener\("pointerdown", closeMoreOutside\)/);
+  assert.match(bottomNav, /!more\.contains\(event\.target\)[\s\S]*removeAttribute\("open"\)/);
   assert.match(bottomNav, /<Ellipsis size=\{20\} \/>[\s\S]*?<span>더보기<\/span>/);
   assert.match(bottomNav, /to: "\/app\/profile", label: "나"/);
   assert.match(bottomNav, /to: "\/app\/teams", label: "팀"/);
@@ -944,6 +947,14 @@ test("공용 방의 A/B 출전·후보 슬롯은 같은 간격과 반응형 정�
   assert.match(
     recruitingStyles,
     /\.arena-lobby-modal \.arena-reserve-line > \.arena-room-reserve-row,[\s\S]*?\{[^}]*padding:\s*18px;[^}]*margin:\s*-18px;[^}]*overflow-x:\s*auto;[^}]*overflow-y:\s*hidden;/,
+  );
+  assert.match(
+    recruitingStyles,
+    /\.arena-slot-command-popover \.arena-invite-actions\s*\{[^}]*align-items:\s*center;/,
+  );
+  assert.match(
+    recruitingStyles,
+    /\.arena-room-reserve-row \.arena-room-party-group::before,[\s\S]*?html\[data-theme="light"\] \.arena-room-reserve-row \.arena-room-party-group::before\s*\{[^}]*inset:\s*0;[^}]*box-shadow:[^}]*inset 0 0 0 var\(--ui-stroke-width\) color-mix\([^)]*var\(--orange\)[^)]*\),[^}]*inset 0 0 20px color-mix\([^)]*var\(--orange\)[^)]*\);/,
   );
   assert.match(responsiveReserveRowBlock, /grid-template-columns:\s*repeat\(auto-fit,/);
   assert.doesNotMatch(responsiveReserveRowBlock, /overflow:\s*visible;/);
