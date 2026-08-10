@@ -7,6 +7,7 @@ import {
 import { normalizeCourtFacilityName } from "../lib/courts.js";
 import { getCourtRequestPhotoErrorMessage, prepareCourtRequestPhotos } from "../lib/courtRequestImages.js";
 import { reverseGeocodeNaverCoordinate } from "../lib/naverAddress.js";
+import { isLatestRequest } from "../lib/asyncState.js";
 import { getCourtAddressDong } from "./settingsPageModel.js";
 
 export default function useSettingsCourtEvidenceController({
@@ -30,6 +31,7 @@ export default function useSettingsCourtEvidenceController({
   const [courtFieldLocation, setCourtFieldLocation] = useState(null);
   const [courtFieldLocationPending, setCourtFieldLocationPending] = useState(false);
   const courtFieldLocationPendingRef = useRef(false);
+  const courtLocationOperationVersionRef = useRef(0);
   const courtPhotoSequenceRef = useRef(0);
   const courtPhotoObjectUrlsRef = useRef(new Set());
   const courtPhotoSelectionRef = useRef("");
@@ -43,7 +45,14 @@ export default function useSettingsCourtEvidenceController({
     courtPhotoObjectUrlsRef.current.clear();
     setCourtPhotos([]);
   };
+  const invalidateCourtLocationOperation = () => {
+    courtLocationOperationVersionRef.current += 1;
+    courtFieldLocationPendingRef.current = false;
+    setCourtFieldLocationPending(false);
+  };
   useEffect(() => () => {
+    courtLocationOperationVersionRef.current += 1;
+    courtFieldLocationPendingRef.current = false;
     courtPhotoObjectUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
   }, []);
 
@@ -63,8 +72,14 @@ export default function useSettingsCourtEvidenceController({
     }
     courtFieldLocationPendingRef.current = true;
     setCourtFieldLocationPending(true);
+    const operationVersion = courtLocationOperationVersionRef.current + 1;
+    courtLocationOperationVersionRef.current = operationVersion;
     navigator.geolocation.getCurrentPosition(
       ({ coords }) => {
+        if (!isLatestRequest(courtLocationOperationVersionRef.current, operationVersion)) {
+          resolve(null);
+          return;
+        }
         const location = {
           lat: coords.latitude,
           lng: coords.longitude,
@@ -73,13 +88,13 @@ export default function useSettingsCourtEvidenceController({
           capturedAt: new Date().toISOString(),
         };
         setCourtFieldLocation(location);
-        courtFieldLocationPendingRef.current = false;
-        setCourtFieldLocationPending(false);
-        resolve(location);
+        resolve({ location, operationVersion });
       },
       () => {
-        courtFieldLocationPendingRef.current = false;
-        setCourtFieldLocationPending(false);
+        if (!isLatestRequest(courtLocationOperationVersionRef.current, operationVersion)) {
+          resolve(null);
+          return;
+        }
         fail("court_field_location_failed");
       },
       { enableHighAccuracy: true, maximumAge: 0, timeout: 15_000 },
@@ -165,14 +180,18 @@ export default function useSettingsCourtEvidenceController({
   };
   const confirmCourtFieldLocation = async () => {
     let location = null;
+    let operationVersion = 0;
     try {
-      location = await readCourtFieldLocation();
+      const captured = await readCourtFieldLocation();
+      if (!captured) return;
+      ({ location, operationVersion } = captured);
       if (courtPinConfirmed && courtAddressSelected) {
         setCourtLookupStatus(`현장 위치 확인됨 · 오차 ${Math.round(location.accuracy)}m · 핀과 ${Math.round(location.distanceMeters)}m`);
         return;
       }
       if (!naverMapKeyReady) throw new Error("court_reverse_geocode_unavailable");
       const pin = await reverseGeocodeNaverCoordinate(location.lat, location.lng);
+      if (!isLatestRequest(courtLocationOperationVersionRef.current, operationVersion)) return;
       const addressDong = getCourtAddressDong(pin);
       const buildingName = normalizeCourtFacilityName(pin.buildingName);
       updateCourtDraft({
@@ -194,11 +213,17 @@ export default function useSettingsCourtEvidenceController({
       setNaverAddressResults([]);
       setCourtPinConfirmed(true);
       setCourtLookupStatus(`현재 위치로 구장을 지정했습니다 · GPS 오차 ${Math.round(location.accuracy)}m`);
-      await loadCourtNearbyCandidates({ ...pin, lat: location.lat, lng: location.lng });
+      await loadCourtNearbyCandidates({ ...pin, lat: location.lat, lng: location.lng }, operationVersion);
     } catch {
+      if (operationVersion && !isLatestRequest(courtLocationOperationVersionRef.current, operationVersion)) return;
       setCourtLookupStatus(location
         ? "현재 위치는 확인했지만 주소를 찾지 못했습니다. 주소로 찾기를 선택해 직접 지정해 주세요."
         : "현장 위치를 확인하지 못했습니다. GPS와 위치 권한을 켠 뒤 다시 시도해 주세요.");
+    } finally {
+      if (!operationVersion || isLatestRequest(courtLocationOperationVersionRef.current, operationVersion)) {
+        courtFieldLocationPendingRef.current = false;
+        setCourtFieldLocationPending(false);
+      }
     }
   };
 
@@ -207,8 +232,10 @@ export default function useSettingsCourtEvidenceController({
     confirmCourtFieldLocation,
     courtFieldLocation,
     courtFieldLocationPending,
+    courtLocationOperationVersionRef,
     courtPhotoPending,
     courtPhotos,
+    invalidateCourtLocationOperation,
     removeCourtPhoto,
     selectCourtPhotos,
     setCourtFieldLocation,

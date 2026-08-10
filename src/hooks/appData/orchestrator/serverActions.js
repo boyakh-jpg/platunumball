@@ -24,9 +24,12 @@ export function useAppDataServerActions(context) {
     authEmail,
     authGenerationRef,
     authUserId,
+    beginTrackedMutation,
     cacheCurrentProfileState,
     createProfileShell,
     currentUserId,
+    deletedNotificationIdsRef,
+    endTrackedMutation,
     filterBlockedIncomingNotifications,
     getServerActionAvailability,
     getServerActionErrorText,
@@ -36,6 +39,7 @@ export function useAppDataServerActions(context) {
     makeClientNotificationId,
     mergeCourtSearchCourts,
     mergeMatchThumbsResult,
+    mergeNotificationRefresh,
     mergeRecruitingChatMessage,
     mergeRemoteProfileState,
     mergeRemoteTournamentState,
@@ -60,6 +64,7 @@ export function useAppDataServerActions(context) {
     trackedPostServerAction,
     updateMatchListScope,
     updateSettings,
+    userMutationTrackerRef,
     useCallback,
     useMemo,
     useRef,
@@ -135,10 +140,12 @@ const currentUser = useMemo(() => {
     });
   }, [pushLocalWarning, trackedPostServerAction]);
   const persistProfileServer = useCallback((profile) => {
+    const tracker = userMutationTrackerRef.current;
+    beginTrackedMutation(tracker, "profile");
     const promise = trackedPostServerAction("/api/profile/upsert", { profile }, { allowWhenDisabled: true }).then((result) => {
       if (!result) throw new Error("profile_server_action_unavailable");
       return result;
-    });
+    }).finally(() => endTrackedMutation(tracker, "profile"));
     promise.catch((error) => {
       console.warn("Profile server action failed.", error.message);
     });
@@ -313,6 +320,8 @@ const currentUser = useMemo(() => {
     const mutationKey = `${targetType}:${safeTargetId}`;
     const pendingMutation = pendingFavoriteMutationsRef.current.get(mutationKey);
     if (pendingMutation) return pendingMutation;
+    const tracker = userMutationTrackerRef.current;
+    beginTrackedMutation(tracker, "favorites");
     const active = !(stateRef.current.settings?.[settingsKey] ?? []).includes(safeTargetId);
     const applyOptimisticToggle = (current) => {
       let hydrated = current;
@@ -354,6 +363,7 @@ const currentUser = useMemo(() => {
         return { ok: false, error: error?.message ?? "favorite_sync_failed" };
       })
       .finally(() => {
+        endTrackedMutation(tracker, "favorites");
         if (pendingFavoriteMutationsRef.current.get(mutationKey) === mutation) {
           pendingFavoriteMutationsRef.current.delete(mutationKey);
         }
@@ -362,21 +372,49 @@ const currentUser = useMemo(() => {
     return mutation;
   }, [mergeCourtSearchCourts, mergeRemoteProfileState, setState, syncFavoriteServer]);
   const markNotificationReadServer = useCallback((payload = {}) => {
-    if (!isSupabaseConfigured) return Promise.resolve({ ok: true, local: true });
-    return runServerAction("/api/notifications/read", payload);
+    const tracker = userMutationTrackerRef.current;
+    beginTrackedMutation(tracker, "notifications");
+    const request = isSupabaseConfigured
+      ? runServerAction("/api/notifications/read", payload)
+      : Promise.resolve({ ok: true, local: true });
+    return request.finally(() => endTrackedMutation(tracker, "notifications"));
+  }, [runServerAction]);
+  const deleteNotificationServer = useCallback((payload = {}) => {
+    const tracker = userMutationTrackerRef.current;
+    beginTrackedMutation(tracker, "notifications");
+    const request = isSupabaseConfigured
+      ? runServerAction("/api/notifications/delete", payload)
+      : Promise.resolve({ ok: true, local: true });
+    return request.then((result) => {
+      if (result?.ok !== false && payload.notificationId) deletedNotificationIdsRef.current.add(String(payload.notificationId));
+      return result;
+    }).finally(() => endTrackedMutation(tracker, "notifications"));
   }, [runServerAction]);
   const loadNotifications = useCallback(() => {
     if (!isSupabaseConfigured) return Promise.resolve(stateRef.current.notifications ?? []);
+    const tracker = userMutationTrackerRef.current;
+    const mutationVersion = tracker.notifications?.version ?? 0;
     return runServerAction("/api/notifications/list", { limit: 80 }).then((result) => {
       if (!result || result.ok === false || !Array.isArray(result.notifications)) return false;
       setState((prev) => ({
         ...prev,
-        notifications: filterBlockedIncomingNotifications(result.notifications, prev),
+        notifications: mergeNotificationRefresh(
+          prev.notifications,
+          filterBlockedIncomingNotifications(result.notifications, prev),
+          {
+            deletedIds: deletedNotificationIdsRef.current,
+            preserveLocalChanges: userMutationTrackerRef.current !== tracker
+              || Boolean(tracker.notifications?.pending)
+              || (tracker.notifications?.version ?? 0) !== mutationVersion,
+          },
+        ),
       }));
       return result.notifications;
     });
   }, [runServerAction, setState]);
   const syncSettingsServer = useCallback((settingsPatch = {}, options = {}) => {
+    const tracker = userMutationTrackerRef.current;
+    beginTrackedMutation(tracker, "settings");
     const requestedAuthUserId = authUserId;
     const requestedCurrentUserId = currentUserId;
     const shouldApply = typeof options.shouldApply === "function" ? options.shouldApply : () => true;
@@ -395,7 +433,7 @@ const currentUser = useMemo(() => {
       return result;
     });
     settingsSyncQueueRef.current = request.catch(() => null);
-    return request;
+    return request.finally(() => endTrackedMutation(tracker, "settings"));
   }, [authUserId, currentUserId, runServerAction, setState]);
 
   const refreshCurrentProfile = useCallback(async () => {
@@ -425,6 +463,7 @@ const currentUser = useMemo(() => {
     applyFavoriteToggle,
     currentUser,
     deleteTeamServer,
+    deleteNotificationServer,
     ensureRemoteReady,
     ensureServerActionAvailable,
     loadNotifications,

@@ -16,6 +16,7 @@ export function useAppDataRuntime(context) {
     clearDemoStorage,
     createInitialMatchListStore,
     createMatchListStore,
+    createMutationTracker,
     createProfileShell,
     demoPreview,
     ensureLocalDemoInitialState,
@@ -122,6 +123,8 @@ const authUserId = typeof authUser === "string" ? authUser : authUser?.id ?? nul
   const recentMatchMutationTimesRef = useRef(new Map());
   const roomMutationVersionRef = useRef(0);
   const syncedDiscordDeliveryIdsRef = useRef(new Set());
+  const userMutationTrackerRef = useRef(createMutationTracker(["profile", "settings", "favorites", "notifications"]));
+  const deletedNotificationIdsRef = useRef(new Set());
   const authIdentityRef = useRef(authUserId);
   const authGenerationRef = useRef(0);
   const authIdentityChanged = authIdentityRef.current !== authUserId;
@@ -129,6 +132,8 @@ const authUserId = typeof authUser === "string" ? authUser : authUser?.id ?? nul
     authIdentityRef.current = authUserId;
     authGenerationRef.current += 1;
     remoteReadyRef.current = !isSupabaseConfigured;
+    userMutationTrackerRef.current = createMutationTracker(["profile", "settings", "favorites", "notifications"]);
+    deletedNotificationIdsRef.current = new Set();
   }
   const profileKey = authUserId ?? "local-demo";
   const profileLocked = isPersistentAuthUserId(authUserId);
@@ -326,6 +331,7 @@ const authUserId = typeof authUser === "string" ? authUser : authUser?.id ?? nul
     directoryPromiseRef,
     directoryStatus,
     directoryStatusRef,
+    deletedNotificationIdsRef,
     latestAdminRequestRef,
     latestDirectoryRequestRef,
     latestRecruitingLoadMoreRequestRef,
@@ -388,5 +394,6 @@ const authUserId = typeof authUser === "string" ? authUser : authUser?.id ?? nul
     teamRecordsPromiseRef,
     themeCommittedValueRef,
     themeMutationVersionRef,
+    userMutationTrackerRef,
   };
 }

@@ -10,12 +10,14 @@ export function useDirectoryLoaders(context) {
     directoryPromiseRef,
     filterPendingRecruitingPosts,
     getDirectoryPageRequest,
+    getTrackedMutationVersion,
     getRecruitingPaginationOffset,
     getRecruitingRegionRequest,
     getRecruitingStartFilterRequest,
     getStateRecruitingPostIds,
     isSupabaseConfigured,
     isSyntheticMatchRoomId,
+    hasTrackedMutationSince,
     latestDirectoryRequestRef,
     latestRecruitingLoadMoreRequestRef,
     latestRecruitingRegionRequestRef,
@@ -36,8 +38,28 @@ export function useDirectoryLoaders(context) {
     setRecruitingPagination,
     setState,
     trackedPostServerAction,
+    userMutationTrackerRef,
     useCallback,
   } = context;
+
+  const captureDirectoryMutationSnapshot = () => {
+    const tracker = userMutationTrackerRef.current;
+    return {
+      tracker,
+      favorites: getTrackedMutationVersion(tracker, "favorites"),
+      profile: getTrackedMutationVersion(tracker, "profile"),
+      settings: getTrackedMutationVersion(tracker, "settings"),
+    };
+  };
+  const getDirectoryMergeOptions = (snapshot, options) => ({
+    ...options,
+    preserveCurrentUserProfile: !snapshot || userMutationTrackerRef.current !== snapshot.tracker
+      || hasTrackedMutationSince(snapshot.tracker, "profile", snapshot.profile),
+    preserveFavoriteSettings: !snapshot || userMutationTrackerRef.current !== snapshot.tracker
+      || hasTrackedMutationSince(snapshot.tracker, "favorites", snapshot.favorites),
+    preserveUserSettings: !snapshot || userMutationTrackerRef.current !== snapshot.tracker
+      || hasTrackedMutationSince(snapshot.tracker, "settings", snapshot.settings),
+  });
 
   const loadMoreRecruiting = useCallback(async () => {
     if (!isSupabaseConfigured || !authUserId || recruitingPagination.loading || recruitingPagination.exhausted) return false;
@@ -249,11 +271,11 @@ export function useDirectoryLoaders(context) {
     const cached = directoryCacheRef.current.get(cacheKey);
     if (!force && cached?.expiresAt > Date.now()) {
       const remoteState = cached.result?.state ?? {};
-      setState((prev) => mergeRemoteDirectory(prev, remoteState, {
+      setState((prev) => mergeRemoteDirectory(prev, remoteState, getDirectoryMergeOptions(cached.mutationSnapshot, {
         includeDirectorySettings: kind === "self" || kind === "all",
         includeFavoriteSettings: kind !== "affiliations",
         append: offset > 0,
-      }));
+      })));
       setDirectoryStatus({ loading: false, loaded: true, error: "", page: cached.result?.page ?? null, cacheKey });
       return returnResult ? cached.result : true;
     }
@@ -262,6 +284,7 @@ export function useDirectoryLoaders(context) {
       return returnResult ? pending : pending.then(Boolean);
     }
     setDirectoryStatus((prev) => ({ ...prev, loading: true, error: "", page: requestPage, cacheKey }));
+    const mutationSnapshot = captureDirectoryMutationSnapshot();
     const promise = trackedPostServerAction(
       endpoint,
       endpoint === "/api/teams/detail"
@@ -270,12 +293,12 @@ export function useDirectoryLoaders(context) {
       { allowWhenDisabled: true, allowAnonymous: demoPreview },
     ).then((result) => {
       const remoteState = result?.state ?? {};
-      setState((prev) => mergeRemoteDirectory(prev, remoteState, {
+      setState((prev) => mergeRemoteDirectory(prev, remoteState, getDirectoryMergeOptions(mutationSnapshot, {
         includeDirectorySettings: kind === "self" || kind === "all",
         includeFavoriteSettings: kind !== "affiliations",
         append: offset > 0,
-      }));
-      directoryCacheRef.current.set(cacheKey, { expiresAt: Date.now() + DIRECTORY_CACHE_TTL_MS, result });
+      })));
+      directoryCacheRef.current.set(cacheKey, { expiresAt: Date.now() + DIRECTORY_CACHE_TTL_MS, mutationSnapshot, result });
       if (latestDirectoryRequestRef.current !== cacheKey) return result;
       setDirectoryStatus({ loading: false, loaded: true, error: "", page: result?.page ?? null, cacheKey });
       return result;

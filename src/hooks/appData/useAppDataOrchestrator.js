@@ -36,6 +36,7 @@ export function useAppData(authUser = null, appLocation = null, options = {}) {
     directoryPromiseRef,
     directoryStatus,
     directoryStatusRef,
+    deletedNotificationIdsRef,
     latestAdminRequestRef,
     latestDirectoryRequestRef,
     latestRecruitingLoadMoreRequestRef,
@@ -98,6 +99,7 @@ export function useAppData(authUser = null, appLocation = null, options = {}) {
     teamRecordsPromiseRef,
     themeCommittedValueRef,
     themeMutationVersionRef,
+    userMutationTrackerRef,
   } = useAppDataRuntime({
     ...APP_DATA_ORCHESTRATOR_DEPENDENCIES,
     appLocation,
@@ -137,6 +139,7 @@ export function useAppData(authUser = null, appLocation = null, options = {}) {
   const {
     applyFavoriteToggle,
     currentUser,
+    deleteNotificationServer,
     deleteTeamServer,
     ensureRemoteReady,
     ensureServerActionAvailable,
@@ -159,6 +162,7 @@ export function useAppData(authUser = null, appLocation = null, options = {}) {
     authGenerationRef,
     authUserId,
     currentUserId,
+    deletedNotificationIdsRef,
     pendingMatchIdsRef,
     pendingMatchMutationCountsRef,
     pendingRecruitingMutationCountsRef,
@@ -176,6 +180,7 @@ export function useAppData(authUser = null, appLocation = null, options = {}) {
     state,
     stateRef,
     trackedPostServerAction,
+    userMutationTrackerRef,
   });
 
   const {
@@ -241,6 +246,7 @@ export function useAppData(authUser = null, appLocation = null, options = {}) {
     teamRecordArchivesRef,
     teamRecordsPromiseRef,
     trackedPostServerAction,
+    userMutationTrackerRef,
   });
 
 useEffect(() => {
@@ -281,6 +287,7 @@ useEffect(() => {
       blockedSettingsPendingCountRef,
       blockedSettingsSyncRef,
       currentUserId,
+      deleteNotificationServer,
       deleteTeamServer,
       directoryStatusRef,
       ensureRemoteReady,
@@ -337,7 +344,7 @@ useEffect(() => {
       themeCommittedValueRef,
       themeMutationVersionRef,
     }),
-    [applyFavoriteToggle, authEmail, authUserId, currentUserId, deleteTeamServer, ensureRemoteReady, ensureServerActionAvailable, loadAdminContext, loadAdminSection, loadCourtDetail, loadDirectory, loadMatchDetail, loadMatchRecruitingSchedule, loadMatchTeamSchedule, loadMoreMatches, loadMoreRecruiting, loadNotifications, loadRecruitingRegion, loadRecruitingPost, loadPlayMatches, loadReportableMatches, loadProfileRecords, loadPublicProfileRecords, loadTeamRecords, profileRecordsLoaded, markNotificationReadServer, persistProfileServer, profileKey, profileLocked, refreshAdminState, refreshCurrentProfile, runServerAction, serverProfileBound, submitCourtDetailReview, submitReportServer, syncMatchServer, syncRecruitingPostServer, syncRefereeServer, syncSettingsServer, syncTeamInvitationServer, syncTeamServer, syncTournamentServer],
+    [applyFavoriteToggle, authEmail, authUserId, currentUserId, deleteNotificationServer, deleteTeamServer, ensureRemoteReady, ensureServerActionAvailable, loadAdminContext, loadAdminSection, loadCourtDetail, loadDirectory, loadMatchDetail, loadMatchRecruitingSchedule, loadMatchTeamSchedule, loadMoreMatches, loadMoreRecruiting, loadNotifications, loadRecruitingRegion, loadRecruitingPost, loadPlayMatches, loadReportableMatches, loadProfileRecords, loadPublicProfileRecords, loadTeamRecords, profileRecordsLoaded, markNotificationReadServer, persistProfileServer, profileKey, profileLocked, refreshAdminState, refreshCurrentProfile, runServerAction, serverProfileBound, submitCourtDetailReview, submitReportServer, syncMatchServer, syncRecruitingPostServer, syncRefereeServer, syncSettingsServer, syncTeamInvitationServer, syncTeamServer, syncTournamentServer],
   );
 
   const safeCurrentUserId = currentUserId ?? currentUser?.id ?? "";

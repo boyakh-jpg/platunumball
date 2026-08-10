@@ -32,6 +32,12 @@ const venueAssessment = {
   synthetic: false,
 };
 
+const createDeferred = () => {
+  let resolve;
+  const promise = new Promise((next) => { resolve = next; });
+  return { promise, resolve };
+};
+
 const eligibleEvidence = {
   assessments: [eligibleAssessment, venueAssessment],
   photoCount: 2,
@@ -72,6 +78,55 @@ test("이전 구장 리뷰 완료는 이동한 구장 상세와 메시지를 바
 
   assert.equal(detail.court.id, "court-b");
   assert.equal(message, "");
+});
+
+test("stale GPS, reverse geocode, and map results cannot overwrite a changed location mode", async () => {
+  const operationVersionRef = { current: 0 };
+  const state = { address: "", fieldLocation: null, nearbyCandidates: [], pinConfirmed: false };
+  const invalidate = () => {
+    operationVersionRef.current += 1;
+    state.address = "";
+    state.fieldLocation = null;
+    state.nearbyCandidates = [];
+    state.pinConfirmed = false;
+  };
+
+  const gps = createDeferred();
+  const gpsVersion = ++operationVersionRef.current;
+  const gpsCompletion = gps.promise.then((location) => {
+    if (!isLatestRequest(operationVersionRef.current, gpsVersion)) return;
+    state.fieldLocation = location;
+  });
+  invalidate();
+  gps.resolve({ lat: 37.5, lng: 127, capturedAt: "2026-08-10T00:00:00.000Z" });
+  await gpsCompletion;
+  assert.equal(state.fieldLocation, null);
+
+  const reverseGeocode = createDeferred();
+  const reverseGeocodeVersion = ++operationVersionRef.current;
+  const reverseGeocodeCompletion = reverseGeocode.promise.then((pin) => {
+    if (!isLatestRequest(operationVersionRef.current, reverseGeocodeVersion)) return;
+    state.address = pin.addressText;
+    state.pinConfirmed = true;
+  });
+  invalidate();
+  reverseGeocode.resolve({ addressText: "이전 GPS 주소" });
+  await reverseGeocodeCompletion;
+  assert.equal(state.address, "");
+  assert.equal(state.pinConfirmed, false);
+
+  const mapPin = createDeferred();
+  const mapPinVersion = ++operationVersionRef.current;
+  const mapPinCompletion = mapPin.promise.then((result) => {
+    if (!isLatestRequest(operationVersionRef.current, mapPinVersion)) return;
+    state.address = result.pin.addressText;
+    state.nearbyCandidates = result.nearbyCandidates;
+    state.pinConfirmed = true;
+  });
+  invalidate();
+  mapPin.resolve({ pin: { addressText: "이전 지도 주소" }, nearbyCandidates: [{ id: "old-court" }] });
+  await mapPinCompletion;
+  assert.deepEqual(state, { address: "", fieldLocation: null, nearbyCandidates: [], pinConfirmed: false });
 });
 
 test("court photos fall back to JPEG and are sanitized back to WebP", async () => {
@@ -311,6 +366,12 @@ test("court photos use browser resizing and private R2", async () => {
   assert.match(form, /다른 조건도 충족하면 AI 자동승인 후보/);
   assert.match(form, /setCourtAddressQuery\(event\.target\.value, true\)/);
   assert.match(evidenceController, /reverseGeocodeNaverCoordinate/);
+  assert.match(evidenceController, /const courtLocationOperationVersionRef = useRef\(0\)/);
+  assert.match(evidenceController, /invalidateCourtLocationOperation/);
+  assert.match(evidenceController, /isLatestRequest\(courtLocationOperationVersionRef\.current, operationVersion\)/);
+  assert.match(controller, /invalidateCourtLocationOperation\(\)/);
+  assert.match(controller, /loadCourtNearbyCandidates\(pin, operationVersion\)/);
+  assert.match(form, /disabled=\{courtLocationMethodPending\}/);
   assert.match(controller, /onsiteCourtEntry && courtPinConfirmed && courtFieldLocation/);
   assert.match(controller, /distanceMeters: getCoordinateDistanceMeters\(pinLat, pinLng, current\.lat, current\.lng\)/);
   assert.match(map, /zoom: 18/);

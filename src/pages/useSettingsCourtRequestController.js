@@ -24,8 +24,8 @@ import {
 import { COURT_REQUEST_FIELD_CAPTURE_MAX_AGE_MS, getCoordinateDistanceMeters } from "../../shared/lib/courtRequestImagePolicy.js";
 import { getCourtRequestPhotoErrorMessage } from "../lib/courtRequestImages.js";
 import { postServerAction } from "../lib/serverActions.js";
+import { isLatestRequest } from "../lib/asyncState.js";
 import useSettingsCourtEvidenceController from "./useSettingsCourtEvidenceController.js";
-
 export default function useSettingsCourtRequestController({ app, currentTrustScore }) {
   const [courtAddressQuery, setCourtAddressQueryState] = useState("");
   const [naverAddressResults, setNaverAddressResults] = useState([]);
@@ -47,9 +47,9 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
     ...DEFAULT_COURT_REQUEST,
     region: app.currentUser?.region ?? DEFAULT_COURT_REQUEST.region,
   }));
-
   const naverMapKeyReady = Boolean(getNaverMapClientId());
   const setCourtAddressQuery = (value, resetSelection = false) => {
+    if (resetSelection) invalidateCourtLocationOperation();
     courtAddressSearchRef.current += 1;
     setCourtAddressSearchPending(false);
     setCourtAddressQueryState(value);
@@ -123,11 +123,9 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
     title: courtQuotaTitle,
   } = getCourtRequestQuotaUi(courtRequestLimit, courtAiQuota, currentTrustScore);
   const canOpenCourtRequestForm = currentTrustScore >= COURT_REQUEST_TRUST_MIN && !courtQuotaBlocked;
-
   useEffect(() => {
     setCourtNearbyConfirmed(false);
   }, [courtNearbyCandidateSignature]);
-
   useEffect(() => {
     let active = true;
     postServerAction("/api/court-requests/quota", {}, { allowWhenDisabled: true })
@@ -138,7 +136,6 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
       .catch(() => null);
     return () => { active = false; };
   }, [app.currentUserId]);
-
   const updateCourtDraft = (patch) => {
     if (Object.keys(patch).some((key) => COURT_NEARBY_REVIEW_FIELDS.has(key))) setCourtNearbyConfirmed(false);
     if (Object.keys(patch).some((key) => ["addressText", "lat", "lng"].includes(key))) {
@@ -164,7 +161,8 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
   const setCourtLocationEntryMode = (mode) => {
     const nextMode = mode === "address" ? "address" : "onsite";
     if (nextMode === courtDraft.locationEntryMode) return;
-    courtAddressSearchRef.current += 1;
+    invalidateCourtLocationOperation(); courtPinPendingRef.current = false;
+    setCourtPinPending(false); courtAddressSearchRef.current += 1;
     setCourtAddressQueryState("");
     setNaverAddressResults([]);
     setCourtPinConfirmed(false);
@@ -187,17 +185,18 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
       lng: "",
     }));
   };
-  const loadCourtNearbyCandidates = async (pin) => {
-    const requestId = courtNearbySearchRef.current + 1;
-    courtNearbySearchRef.current = requestId;
+  const loadCourtNearbyCandidates = async (pin, locationOperationVersion = null) => {
+    const requestId = courtNearbySearchRef.current + 1; courtNearbySearchRef.current = requestId;
     setCourtServerNearbyCandidates([]);
     setCourtNearbyLookupFailed(false);
     try {
       const nearbyCourts = await searchNearbyCourtCandidates(pin);
       if (courtNearbySearchRef.current !== requestId) return;
+      if (locationOperationVersion !== null && !isLatestRequest(courtLocationOperationVersionRef.current, locationOperationVersion)) return;
       setCourtServerNearbyCandidates(nearbyCourts);
     } catch {
       if (courtNearbySearchRef.current !== requestId) return;
+      if (locationOperationVersion !== null && !isLatestRequest(courtLocationOperationVersionRef.current, locationOperationVersion)) return;
       setCourtServerNearbyCandidates([]);
       setCourtNearbyLookupFailed(true);
       setCourtLookupStatus("근처 등록 구장을 불러오지 못했습니다. 실제 위치 확인을 눌러 다시 시도해 주세요.");
@@ -241,10 +240,12 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
       return;
     }
     courtPinPendingRef.current = true;
+    const operationVersion = courtLocationOperationVersionRef.current + 1; courtLocationOperationVersionRef.current = operationVersion;
     setCourtPinPending(true);
     setCourtLookupStatus("지도에서 실제 구장 위치를 조정해 주세요.");
     try {
       const pin = await openNaverMapPinPicker(courtDraft);
+      if (!isLatestRequest(courtLocationOperationVersionRef.current, operationVersion)) return;
       const addressDong = getCourtAddressDong(pin);
       const buildingName = normalizeCourtFacilityName(pin.buildingName);
       updateCourtDraft({
@@ -272,19 +273,22 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
         : buildingName
           ? `핀 주소의 건물명 '${buildingName}'을 시설명에 자동 반영했습니다.`
           : "핀 위치의 실제 주소를 저장했습니다. 시설/장소명을 확인해 주세요.");
-      await loadCourtNearbyCandidates(pin);
+      await loadCourtNearbyCandidates(pin, operationVersion);
     } catch (error) {
+      if (!isLatestRequest(courtLocationOperationVersionRef.current, operationVersion)) return;
       if (error?.code === "naver_pin_picker_cancelled") {
         setCourtLookupStatus("지도 위치 선택을 취소했습니다.");
         return;
       }
       setCourtLookupStatus("구장 위치를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.");
     } finally {
-      courtPinPendingRef.current = false;
-      setCourtPinPending(false);
+      if (isLatestRequest(courtLocationOperationVersionRef.current, operationVersion)) { courtPinPendingRef.current = false; setCourtPinPending(false); }
     }
   };
   const selectNaverAddress = (result) => {
+    invalidateCourtLocationOperation();
+    courtPinPendingRef.current = false;
+    setCourtPinPending(false);
     resetCourtNearbyLookup();
     const addressDong = getCourtAddressDong(result);
     const buildingName = normalizeCourtFacilityName(result.buildingName);
@@ -310,8 +314,8 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
     setCourtLookupStatus("근처 주소를 선택했습니다. 지도 핀으로 실제 구장 위치를 확정해 주세요.");
   };
   const {
-    clearCourtPhotos, confirmCourtFieldLocation, courtFieldLocation, courtFieldLocationPending,
-    courtPhotoPending, courtPhotos, removeCourtPhoto, selectCourtPhotos, setCourtFieldLocation,
+    clearCourtPhotos, confirmCourtFieldLocation, courtFieldLocation, courtFieldLocationPending, courtLocationOperationVersionRef,
+    courtPhotoPending, courtPhotos, invalidateCourtLocationOperation, removeCourtPhoto, selectCourtPhotos, setCourtFieldLocation,
   } = useSettingsCourtEvidenceController({
     courtAddressSelected, courtDraft, courtPinConfirmed, courtQuotaBlocked, courtQuotaMessage,
     getCourtAddressRegion, loadCourtNearbyCandidates, naverMapKeyReady, onsiteCourtEntry,
@@ -422,7 +426,7 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
         setCourtLookupStatus("구장 등록 요청을 저장하지 못했습니다. 입력 내용을 확인한 뒤 다시 시도해 주세요.");
         return;
       }
-      setCourtAddressQuery("");
+      setCourtAddressQuery("", true);
       setNaverAddressResults([]);
       setCourtPinConfirmed(false);
       resetCourtNearbyLookup();

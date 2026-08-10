@@ -19,20 +19,27 @@ const DIRECTORY_FAVORITE_SETTING_KEYS = [
   "favoriteCourtIds",
   "favoriteRefereeIds",
 ];
-function getRemoteDirectorySettings(settings = null, { includeTheme = false, includeDirectorySettings = false, includeFavoriteSettings = false } = {}) {
+function getRemoteDirectorySettings(settings = null, options = {}) {
+  const {
+    includeTheme = false,
+    includeDirectorySettings = false,
+    includeFavoriteSettings = false,
+    preserveFavoriteSettings = false,
+    preserveUserSettings = false,
+  } = options;
   if (!settings) return null;
   const settingsPatch = {};
   if (includeTheme && (settings.theme === "light" || settings.theme === "dark")) settingsPatch.theme = settings.theme;
-  if (settings.privacy && typeof settings.privacy === "object" && !Array.isArray(settings.privacy)) settingsPatch.privacy = settings.privacy;
-  if (settings.notificationChannels && typeof settings.notificationChannels === "object" && !Array.isArray(settings.notificationChannels)) {
+  if (!preserveUserSettings && settings.privacy && typeof settings.privacy === "object" && !Array.isArray(settings.privacy)) settingsPatch.privacy = settings.privacy;
+  if (!preserveUserSettings && settings.notificationChannels && typeof settings.notificationChannels === "object" && !Array.isArray(settings.notificationChannels)) {
     settingsPatch.notificationChannels = settings.notificationChannels;
   }
-  if (includeDirectorySettings) {
+  if (includeDirectorySettings && !preserveUserSettings) {
     DIRECTORY_SETTING_ARRAY_KEYS.forEach((key) => {
       if (Array.isArray(settings[key])) settingsPatch[key] = settings[key];
     });
   }
-  if (includeFavoriteSettings) {
+  if (includeFavoriteSettings && !preserveFavoriteSettings) {
     DIRECTORY_FAVORITE_SETTING_KEYS.forEach((key) => {
       if (Array.isArray(settings[key])) settingsPatch[key] = settings[key];
     });
@@ -44,9 +51,15 @@ export function mergeRemoteDirectory(state, remoteState = {}, options = {}) {
   const includeDirectorySettings = options.includeDirectorySettings === true;
   const append = options.append === true;
   const visibleTeamInvitations = filterBlockedIncomingInvitations(remoteState.teamInvitations ?? [], state);
+  const currentUser = (state.users ?? []).find((user) => user.id === state.currentUserId);
+  const remoteUsers = options.preserveCurrentUserProfile
+    ? (remoteState.users ?? []).filter((user) => (
+      user.id !== state.currentUserId && (!currentUser?.authUserId || user.authUserId !== currentUser.authUserId)
+    ))
+    : remoteState.users;
   return {
     ...state,
-    users: mergeRemoteById(state.users, remoteState.users),
+    users: mergeRemoteById(state.users, remoteUsers),
     teams: mergeTeamsById(state.teams, remoteState.teams),
     teamInvitations: mergeRemoteById(state.teamInvitations, visibleTeamInvitations),
     affiliations: remoteState.affiliations?.length

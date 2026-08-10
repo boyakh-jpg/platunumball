@@ -7,7 +7,8 @@ export function buildSettingsActions(context) {
     commitAdminAppointmentAction,
     commitAdminReviewAction,
     currentUserId,
-    deleteNotification,
+    deleteNotification: deleteNotificationState,
+    deleteNotificationServer,
     ensureRemoteReady,
     ensureServerActionAvailable,
     finishRefereeExamAttempt,
@@ -313,10 +314,12 @@ updateSettings: (patch) => {
       if (!ensureRemoteReady("알림 삭제")) return false;
       const serverReady = await ensureServerActionAvailable("/api/notifications/delete", "알림 삭제");
       if (serverReady !== true) return serverReady;
-      const result = await runServerAction("/api/notifications/delete", { notificationId: safeNotificationId });
+      const result = deleteNotificationServer
+        ? await deleteNotificationServer({ notificationId: safeNotificationId })
+        : await runServerAction("/api/notifications/delete", { notificationId: safeNotificationId });
       if (!result || result.ok === false) return result;
     }
-    setState((prev) => deleteNotification(prev, safeNotificationId));
+    setState((prev) => deleteNotificationState(prev, safeNotificationId));
     return true;
   },
   toggleFavoritePlayer: (userId, targetSnapshot) => applyFavoriteToggle("player", userId, "favoritePlayerIds", toggleFavoritePlayer, targetSnapshot),

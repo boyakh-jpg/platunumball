@@ -193,6 +193,20 @@ export function dedupeNotifications(notifications = []) {
   return output;
 }
 
+export function mergeNotificationRefresh(currentNotifications = [], remoteNotifications = [], options = {}) {
+  const deletedIds = options.deletedIds instanceof Set
+    ? options.deletedIds
+    : new Set(options.deletedIds ?? []);
+  const currentById = new Map((currentNotifications ?? []).map((notification) => [String(notification.id), notification]));
+  return (remoteNotifications ?? [])
+    .filter((notification) => !deletedIds.has(String(notification.id)))
+    .map((notification) => {
+      if (!options.preserveLocalChanges) return notification;
+      const current = currentById.get(String(notification.id));
+      return current?.readAt ? { ...notification, readAt: current.readAt } : notification;
+    });
+}
+
 export function isNotificationDisplayable(notification = {}, options = {}) {
   if (notification.payload?.supersededBy) return false;
   return !isNotificationTargetUnavailable(notification, options) || isTerminalRoomNotice(notification);

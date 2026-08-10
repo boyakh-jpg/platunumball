@@ -70,6 +70,15 @@ import {
   clearRecruitingMutationPending,
   markRecruitingMutationPending,
 } from "../src/hooks/appData/orchestrator/serverActions.js";
+import { mergeRemoteDirectory } from "../src/hooks/appData/remoteMerge/state.js";
+import {
+  beginTrackedMutation,
+  createMutationTracker,
+  endTrackedMutation,
+  getTrackedMutationVersion,
+  hasTrackedMutationSince,
+} from "../src/lib/asyncState.js";
+import { mergeNotificationRefresh } from "../shared/lib/notifications.js";
 
 const execFileAsync = promisify(execFile);
 const MODE_CAPACITY = Object.freeze({
@@ -1214,6 +1223,12 @@ test("최종 승인은 결과 제출과 경기 종료 중 늦은 시각부터 3�
   assert.equal(getMatchManualFinalizationStatus(match, "2026-07-31T12:13:00.000Z").ready, true);
 });
 
+function createDeferred() {
+  let resolve;
+  const promise = new Promise((done) => { resolve = done; });
+  return { promise, resolve };
+}
+
 test("실제 출전자 2/3가 이의 없음을 누르면 3분 전에도 최종 승인할 수 있다", () => {
   const match = {
     teamA: { players: ["a", "b"] },
@@ -2202,6 +2217,127 @@ test("personal record creation and owner-only deletion complete in local fronten
   assert.equal(state.matches[0].status, "confirmed");
   state = deleteSoloRecord(asActor(state, "u1"), created.id);
   assert.equal(state.matches[0].status, "cancelled");
+});
+
+test("a stale directory response preserves newer profile, settings, and favorites", async () => {
+  const tracker = createMutationTracker(["profile", "settings", "favorites"]);
+  const snapshot = Object.fromEntries(["profile", "settings", "favorites"].map((key) => [
+    key,
+    getTrackedMutationVersion(tracker, key),
+  ]));
+  const staleDirectory = createDeferred();
+  let state = {
+    currentUserId: "u1",
+    users: [{ id: "u1", authUserId: "auth-u1", name: "old name" }],
+    teams: [],
+    teamInvitations: [],
+    affiliations: [],
+    seasons: [],
+    reports: [],
+    settings: {
+      favoritePlayerIds: [],
+      notificationChannels: { discord: true },
+      privacy: { regionRanking: true },
+    },
+  };
+  const completion = staleDirectory.promise.then((remoteState) => {
+    state = mergeRemoteDirectory(state, remoteState, {
+      includeDirectorySettings: true,
+      includeFavoriteSettings: true,
+      preserveCurrentUserProfile: hasTrackedMutationSince(tracker, "profile", snapshot.profile),
+      preserveFavoriteSettings: hasTrackedMutationSince(tracker, "favorites", snapshot.favorites),
+      preserveUserSettings: hasTrackedMutationSince(tracker, "settings", snapshot.settings),
+    });
+  });
+
+  beginTrackedMutation(tracker, "profile");
+  state = { ...state, users: [{ ...state.users[0], name: "new name" }] };
+  endTrackedMutation(tracker, "profile");
+  beginTrackedMutation(tracker, "settings");
+  state = {
+    ...state,
+    settings: {
+      ...state.settings,
+      notificationChannels: { discord: false },
+      privacy: { regionRanking: false },
+    },
+  };
+  endTrackedMutation(tracker, "settings");
+  beginTrackedMutation(tracker, "favorites");
+  state = { ...state, settings: { ...state.settings, favoritePlayerIds: ["u2"] } };
+  endTrackedMutation(tracker, "favorites");
+  staleDirectory.resolve({
+    users: [{ id: "u1", authUserId: "auth-u1", name: "old name" }],
+    settings: {
+      favoritePlayerIds: [],
+      notificationChannels: { discord: true },
+      privacy: { regionRanking: true },
+    },
+  });
+  await completion;
+
+  assert.equal(state.users[0].name, "new name");
+  assert.deepEqual(state.settings.favoritePlayerIds, ["u2"]);
+  assert.deepEqual(state.settings.notificationChannels, { discord: false });
+  assert.deepEqual(state.settings.privacy, { regionRanking: false });
+
+  const freshSnapshot = Object.fromEntries(["profile", "settings", "favorites"].map((key) => [
+    key,
+    getTrackedMutationVersion(tracker, key),
+  ]));
+  state = mergeRemoteDirectory(state, {
+    users: [{ id: "u1", authUserId: "auth-u1", name: "server newest" }],
+    settings: {
+      favoritePlayerIds: ["u3"],
+      notificationChannels: { discord: true },
+      privacy: { regionRanking: true },
+    },
+  }, {
+    includeDirectorySettings: true,
+    includeFavoriteSettings: true,
+    preserveCurrentUserProfile: hasTrackedMutationSince(tracker, "profile", freshSnapshot.profile),
+    preserveFavoriteSettings: hasTrackedMutationSince(tracker, "favorites", freshSnapshot.favorites),
+    preserveUserSettings: hasTrackedMutationSince(tracker, "settings", freshSnapshot.settings),
+  });
+  assert.equal(state.users[0].name, "server newest");
+  assert.deepEqual(state.settings.favoritePlayerIds, ["u3"]);
+  assert.deepEqual(state.settings.notificationChannels, { discord: true });
+  assert.deepEqual(state.settings.privacy, { regionRanking: true });
+});
+
+test("a stale notification refresh preserves newer reads and deletions", async () => {
+  const tracker = createMutationTracker(["notifications"]);
+  const deletedIds = new Set();
+  const staleRefresh = createDeferred();
+  const requestVersion = getTrackedMutationVersion(tracker, "notifications");
+  let notifications = [
+    { id: "n1", readAt: null },
+    { id: "n2", readAt: null },
+  ];
+  const completion = staleRefresh.promise.then((remoteNotifications) => {
+    notifications = mergeNotificationRefresh(notifications, remoteNotifications, {
+      deletedIds,
+      preserveLocalChanges: hasTrackedMutationSince(tracker, "notifications", requestVersion),
+    });
+  });
+
+  beginTrackedMutation(tracker, "notifications");
+  notifications = notifications.map((notification) => (
+    notification.id === "n1" ? { ...notification, readAt: "2026-08-10T01:00:00.000Z" } : notification
+  ));
+  endTrackedMutation(tracker, "notifications");
+  beginTrackedMutation(tracker, "notifications");
+  deletedIds.add("n2");
+  notifications = notifications.filter((notification) => notification.id !== "n2");
+  endTrackedMutation(tracker, "notifications");
+  staleRefresh.resolve([
+    { id: "n1", readAt: null },
+    { id: "n2", readAt: null },
+  ]);
+  await completion;
+
+  assert.equal(notifications.find((notification) => notification.id === "n1")?.readAt, "2026-08-10T01:00:00.000Z");
+  assert.equal(notifications.some((notification) => notification.id === "n2"), false);
 });
 
 test("overlapping recruiting mutations keep the room protected until every request settles", () => {

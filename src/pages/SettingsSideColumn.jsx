@@ -76,6 +76,7 @@ export default function SettingsSideColumn({ controller, onOpenList }) {
   const courtAutomaticReviewLocationReady = Boolean(courtFieldLocation)
     || (courtReadyPhotos.length > 0 && courtPhotoLocationCount === courtReadyPhotos.length);
   const courtPhotoStepComplete = courtPinConfirmed && !courtPhotoPending && !courtPhotoError && (!onsiteCourtEntry || courtReadyPhotos.length > 0);
+  const courtLocationMethodPending = courtFieldLocationPending || courtPinPending || courtSubmitPending;
   return (
 <aside className="page-stack settings-side-column">
           <Card className="section-card settings-block-card">
@@ -131,8 +132,8 @@ export default function SettingsSideColumn({ controller, onOpenList }) {
             {canOpenCourtRequestForm ? (
               <form className="form-stack settings-court-form" onSubmit={submitCourtRequest}>
                 <div className="ui-segmented-control segmented-control settings-court-location-method" role="radiogroup" aria-label="구장 위치 입력 방법">
-                  <button type="button" className={onsiteCourtEntry ? "active" : ""} aria-pressed={onsiteCourtEntry} onClick={() => setCourtLocationEntryMode("onsite")}>현재 위치 사용</button>
-                  <button type="button" className={!onsiteCourtEntry ? "active" : ""} aria-pressed={!onsiteCourtEntry} onClick={() => setCourtLocationEntryMode("address")}>주소로 찾기</button>
+                  <button type="button" className={onsiteCourtEntry ? "active" : ""} aria-pressed={onsiteCourtEntry} disabled={courtLocationMethodPending} onClick={() => setCourtLocationEntryMode("onsite")}>현재 위치 사용</button>
+                  <button type="button" className={!onsiteCourtEntry ? "active" : ""} aria-pressed={!onsiteCourtEntry} disabled={courtLocationMethodPending} onClick={() => setCourtLocationEntryMode("address")}>주소로 찾기</button>
                 </div>
                 <section className={`settings-court-step ${courtLocationReady ? "is-complete" : "is-current"}`} aria-labelledby="court-step-location-title">
                   <div className="settings-court-step-head">

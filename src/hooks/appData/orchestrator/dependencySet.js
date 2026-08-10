@@ -2,6 +2,7 @@ import * as React from "react";
 import * as repository from "../../../data/repository.js";
 import * as constants from "../../../lib/constants.js";
 import * as courtCore from "../../../lib/courtCore.js";
+import * as asyncState from "../../../lib/asyncState.js";
 import * as matchUtils from "../../../lib/matchUtils.js";
 import * as queryPolicy from "../../../lib/queryPolicy.js";
 import * as rating from "../../../lib/rating.js";
@@ -15,9 +16,11 @@ import * as recordArchive from "../recordArchive.js";
 import * as remoteMerge from "../remoteMerge.js";
 import * as serverOperations from "../serverOperations.js";
 import * as stateNormalization from "../stateNormalization.js";
+import * as notifications from "../../../../shared/lib/notifications.js";
 
 export const APP_DATA_ORCHESTRATOR_DEPENDENCIES = Object.freeze({
   ...constants,
+  ...asyncState,
   ...courtCore,
   ...queryPolicy,
   ...matchUtils,
@@ -33,5 +36,6 @@ export const APP_DATA_ORCHESTRATOR_DEPENDENCIES = Object.freeze({
   ...remoteMerge,
   ...serverOperations,
   ...stateNormalization,
+  ...notifications,
   ...React,
 });
