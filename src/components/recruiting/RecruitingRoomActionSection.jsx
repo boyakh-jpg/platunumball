@@ -43,7 +43,7 @@ export function RecruitingRoomActionSection({ context }) {
                         <CircleHelp size={18} />
                       </Button>
                     </div>
-                    <span>{sourceMatchAction.detail}</span>
+                    {sourceMatchAction.detail ? <span>{sourceMatchAction.detail}</span> : null}
                     {sourceMatchApprovalOpen && sourceMatchRecordWindow?.disputeClosesAt ? (
                       <RecruitingRoomDisputeCountdown closesAt={sourceMatchRecordWindow.disputeClosesAt} />
                     ) : null}

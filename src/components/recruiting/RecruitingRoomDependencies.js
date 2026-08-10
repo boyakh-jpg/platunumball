@@ -171,7 +171,7 @@ import {
 } from "../../lib/matchRules.js";
 import {
   PICKUP_TEAM_ASSIGNMENT_MODE_OPTIONS,
-  getMatchCreationSummary,
+  getMatchOperationsSummaryRows,
   getRoomRemakeDraft,
 } from "../../lib/matchCreationPolicies.js";
 import {
@@ -283,7 +283,7 @@ export const RECRUITING_ROOM_DEPENDENCIES = {
   getMatchReservePlayerIds, getMatchSideLeaderId, getMatchSidePlayerIds, getTournamentMatchDisplayTitle, getPublicRoomTimingStatus, getRoomScheduleLabel,
   canOperateAssignedMatchReferee, isEligibleReferee, isMatchReferee, isMatchRecordMatch, isMatchRoomChatLocked, isMatchSideTeamParty, isPersonalRecordMatch,
   isTournamentMatchLineupEditable, getMatchPeriodLabel, getMatchRuleDetailRows, getMatchRuleInputValidation, getMatchRuleSummary, getMeetingPointSummary, normalizeMatchRules,
-  PICKUP_TEAM_ASSIGNMENT_MODE_OPTIONS, getMatchCreationSummary, getRoomRemakeDraft, ROOM_BODY_MODES, getPickupOpenSlotPlacements, getPickupParticipantIds,
+  PICKUP_TEAM_ASSIGNMENT_MODE_OPTIONS, getMatchOperationsSummaryRows, getRoomRemakeDraft, ROOM_BODY_MODES, getPickupOpenSlotPlacements, getPickupParticipantIds,
   getPickupRerollState, getPickupResizeValidation, getPickupTeamAssignmentPolicy, getPostgameRecordVerification, getRecruitingRuleAcknowledgement, getRoomCancellationActionLabel,
   getRoomCancellationPolicy, getRoomEditAvailability, getRoomPhaseViewModel, getRoomScheduleProposalProgress, isMatchPregameSlotManagementOpen, isMatchRecordParticipantSetupOpen, isMatchRecordParticipantSetupRequired,
   isRoomScheduleChangePending, DIRECTORY_PICKER_PAGE_LIMIT, getUnsafeUserTextReason, UNSAFE_INPUT_MESSAGE, CHAT_MESSAGE_MAX_LENGTH, CHAT_RATE_LIMIT,

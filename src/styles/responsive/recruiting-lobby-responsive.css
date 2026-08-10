@@ -106,8 +106,7 @@ html[data-theme="light"] .arena-filter-bar .arena-start-date-filter {
   min-height: 0;
   padding: var(--card-padding);
 }
-.arena-lobby-modal .arena-lobby-topline,
-.arena-lobby-modal .arena-lobby-actions {
+.arena-lobby-modal .arena-lobby-topline {
   gap: var(--ui-control-group-gap);
 }
 .arena-lobby-modal .arena-lobby-title {
@@ -128,11 +127,6 @@ html[data-theme="light"] .arena-filter-bar .arena-start-date-filter {
 html[data-theme="light"] .arena-lobby-modal .arena-reserve-panel {
   margin-top: 0;
   padding: 12px;
-}
-.arena-lobby-modal .arena-lobby-actions > div {
-  min-height: var(--ui-button-height);
-  gap: var(--ui-control-group-gap);
-  padding: 8px 10px;
 }
 .arena-lobby-modal .arena-match-source-record-board,
 .arena-lobby-modal .arena-record-roster-panel {
@@ -451,19 +445,35 @@ html[data-theme="light"] .arena-lobby-modal .pickup-room-slot-grid {
   font-size: 0.78rem;
   font-weight: 800;
 }
-.pickup-rotation-panel .ui-status-strip {
+.pickup-operation-grid {
   display: grid;
-  min-height: var(--ui-button-height);
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
+  grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+  gap: var(--ui-control-group-gap);
+}
+.pickup-operation-item {
+  display: grid;
+  min-width: 0;
+  align-content: start;
+  gap: 4px;
+  padding: 9px;
+}
+.pickup-operation-item > span {
+  color: var(--rb-orange);
+  font-size: var(--font-size-meta);
+  font-weight: 900;
+}
+.pickup-operation-item > strong {
+  min-width: 0;
   font-size: var(--ui-button-font-size);
   font-weight: var(--ui-button-font-weight);
   line-height: 1.2;
-}
-.pickup-rotation-panel .ui-status-strip strong {
-  min-width: 0;
-  text-align: right;
   overflow-wrap: anywhere;
+}
+.pickup-operation-item > small {
+  color: var(--muted);
+  font-size: var(--font-size-meta);
+  font-weight: var(--font-weight-support);
+  line-height: 1.35;
 }
 .pickup-rotation-panel .arena-room-edit-actions {
   display: grid;

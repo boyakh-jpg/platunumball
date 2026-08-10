@@ -467,7 +467,7 @@ export function getMatchOperationsSummaryRows(source = {}) {
   const policy = getMatchCreationPolicyPayload(source);
   return [
     { label: "공 준비", value: BALL_PROVIDER_LABELS[policy.ballProvider] ?? BALL_PROVIDER_LABELS.host },
-    ...(policy.onCourtCount > 1 ? [{ label: "조끼", value: policy.vestsProvided ? "제공" : "미제공" }] : []),
+    ...(policy.onCourtCount > 1 ? [{ label: "조끼", value: policy.vestsProvided ? "방장 제공" : "미제공" }] : []),
   ];
 }
 

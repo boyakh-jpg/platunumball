@@ -379,6 +379,13 @@
   white-space: nowrap;
 }
 
+.arena-room-support-notes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+  min-width: 0;
+  gap: 6px;
+}
+
 .arena-room-rule-panel .arena-details-memo {
   display: grid;
   gap: 5px;
@@ -386,6 +393,10 @@
   border-radius: var(--radius-xs);
   background: var(--ui-card-bg);
   padding: 9px;
+}
+
+.arena-room-rule-panel .arena-room-support-notes .arena-details-memo {
+  grid-column: auto;
 }
 
 .arena-room-rule-panel .arena-details-memo strong {

@@ -124,7 +124,7 @@ export function getSourceMatchAction(match, userId, teams = [], userById = {}) {
       label: "경기 종료",
       detail: match.refereeId
         ? "배정 심판이 팀 점수와 개인 스탯을 정리하고 최종 승인합니다."
-        : "방장이 경기 중 기록된 팀 점수를 확인하고 최종 승인합니다.",
+        : "",
     };
   }
   if (phase.phase === "dispute") return { label: "결과 확인", detail: "이의신청 시간 안에 기록을 확인합니다." };

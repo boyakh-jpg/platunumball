@@ -316,14 +316,19 @@ const roomPhaseBadge = sourceMatch ? sourceMatchPhase : roomQueueStatus;
         );
         const renderPickupRotation = () => roomPhaseViewModel.rotation ? (
           <section className="ui-panel ui-modal-section pickup-rotation-panel">
-            <div className="ui-status-strip">
-              <span>팀 나누기</span>
-              <strong>{pickupAssignmentPolicy.label}</strong>
-            </div>
-            <small>{pickupAssignmentPolicy.description}</small>
-            <div className="ui-status-strip">
-              <span>균등 교대</span>
-              <strong>{roomPhaseViewModel.rotation.label}</strong>
+            <div className="pickup-operation-grid">
+              <div className="ui-control-surface pickup-operation-item">
+                <span>팀 구성 · 픽업 전용</span>
+                <strong>{pickupAssignmentPolicy.label}</strong>
+                <small>출석 확인 후 방장 또는 심판이 확정</small>
+              </div>
+              {benchCapacity > 0 ? (
+                <div className="ui-control-surface pickup-operation-item">
+                  <span>후보 교대</span>
+                  <strong>{roomPhaseViewModel.rotation.label} · 출전 ↔ 후보</strong>
+                  <small>자동 교체 아님 · 같은 사이드 안에서 방장 또는 심판이 직접 교체</small>
+                </div>
+              ) : null}
             </div>
             {roomPhaseViewModel.mode === ROOM_BODY_MODES.pickupAssignment && !pickupAssignmentPolicy.decided && canManageMatchCheckin ? (
               <div className="arena-room-edit-actions">
@@ -342,9 +347,6 @@ const roomPhaseBadge = sourceMatch ? sourceMatchPhase : roomQueueStatus;
                   </Button>
                 ))}
               </div>
-            ) : null}
-            {roomPhaseViewModel.mode === ROOM_BODY_MODES.pickupAssignment && !pickupAssignmentPolicy.decided && !canManageMatchCheckin ? (
-              <small>방장 또는 배정 심판이 출석자 기준 팀 배치 방식을 선택합니다.</small>
             ) : null}
             {roomPhaseViewModel.mode === ROOM_BODY_MODES.pickupAssignment && pickupAssignmentPolicy.decided ? (
               <div className="arena-room-edit-actions">
@@ -379,9 +381,6 @@ const roomPhaseBadge = sourceMatch ? sourceMatchPhase : roomQueueStatus;
                   >{sourceMatchActionPending === "pickup:confirm" ? "처리 중" : "배정 확정"}</Button>
                 ) : null}
               </div>
-            ) : null}
-            {pickupAssignmentPolicy.decided && sourceMatch?.ranked !== false ? (
-              <small>MMR 반영 여부와 결과는 확정된 배치와 서버 정책에 따라 결정됩니다.</small>
             ) : null}
           </section>
         ) : null;

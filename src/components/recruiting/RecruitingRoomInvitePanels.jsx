@@ -321,12 +321,13 @@ export function RefereeInvitePanel({
     );
   };
 
+  if (!canInvite && !canJoin && !pendingInvitations.length && !inviteError) return null;
+
   return (
     <div className="arena-invite-panel arena-referee-invite-panel">
       <header>
         <div>
-          <strong>심판 초대 슬롯</strong>
-          <span>심판 자격이 있고 이 방에 참여하지 않은 사람만 초대할 수 있습니다.</span>
+          <strong>심판 초대</strong>
         </div>
         {canJoin ? (
           <Button type="button" size="sm" onClick={onJoin}>
@@ -351,9 +352,7 @@ export function RefereeInvitePanel({
           closeOnResultClick
           renderItem={renderRefereeSearchItem}
         />
-      ) : (
-        <div className="arena-invite-empty">심판 초대 권한 없음</div>
-      )}
+      ) : null}
 
       {inviteError ? <div role="status" className="arena-invite-empty error">{inviteError}</div> : null}
 

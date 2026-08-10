@@ -907,7 +907,7 @@ test("room operations keep only the clock, ball, and mode-relevant vest choices"
     }),
     [
       { label: "공 준비", value: "구장 제공" },
-      { label: "조끼", value: "제공" },
+      { label: "조끼", value: "방장 제공" },
     ],
   );
 
@@ -1382,7 +1382,8 @@ test("CreateMatch persists bench capacity at top level and inside rules", () => 
   assert.match(recruitingSource, /const reserve = event\.target\.value === "reserve"/);
   assert.doesNotMatch(recruitingSource, /arena-check-row/);
   assert.match(recruitingSource, /getMatchRuleDetailRows/);
-  assert.match(recruitingSource, /selectedRoomPolicyRows/);
+  assert.doesNotMatch(recruitingSource, /selectedRoomPolicyRows/);
+  assert.match(recruitingSource, /selectedRoomOperationRows/);
   assert.match(recruitingSource, /playerOnly=\{individualOnlyRoom\}/);
   assert.match(recruitingSource, /placeholder=\{playerOnly \? "선수 검색" : "선수 또는 팀 검색"\}/);
   assert.match(recruitingSource, /const currentUserInParty = Boolean\(!individualOnlyRoom/);

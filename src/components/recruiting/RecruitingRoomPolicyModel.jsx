@@ -2,7 +2,7 @@ export function buildRecruitingRoomPolicyModel(context) {
   const {
     DEFAULT_RATING, MATCH_SIDES, RECRUITING_JOIN_MODES, ROOM_BODY_MODES, app, getCourtPlayWarning,
     getDefaultJoinRoster, getJoinActiveCapacity, getJoinDraft, getJoinableSidePartyOptions, getLobbyPrimaryTeamId, getLobbySideMeta,
-    getMatchCreationSummary, getMatchRuleDetailRows, getMatchRuleInputValidation, getPartyPlayerIds, getPartyReserveIds, getPickupOpenSlotPlacements,
+    getMatchOperationsSummaryRows, getMatchRuleDetailRows, getMatchRuleInputValidation, getPartyPlayerIds, getPartyReserveIds, getPickupOpenSlotPlacements,
     getPickupResizeValidation, getPickupTeamAssignmentPolicy, getPlayerMmrAverage, getPublicRoomTimingStatus, getRecruitingBenchCapacity, getRecruitingFit,
     getRecruitingLobby, getRecruitingMmrBalance, getRecruitingMmrBalancedPlacement, getRecruitingRoomOwnerId, getRecruitingRuleAcknowledgement, getRecruitingSideCapacity, getRecruitingTargetMmr, getRecruitingTierRange,
     getRoomEditDraftByPost, getRoomPhaseViewModel, getRoomScheduleProposalProgress, getSameSidePartyOptions, getSourceMatchAction, getSourceMatchDecisionSideName,
@@ -237,13 +237,7 @@ const lobby = getRecruitingLobby(selectedPost, roomDataState);
           : selectedPost;
         const selectedMatchRules = normalizeMatchRules(selectedRoomPolicySource.rules, { mode: selectedRoomPolicySource.mode });
         const selectedMatchRuleRows = getMatchRuleDetailRows(selectedMatchRules, selectedRoomPolicySource.mode);
-        const selectedCreationSummary = getMatchCreationSummary(selectedRoomPolicySource);
-        const selectedRoomPolicyRows = selectedCreationSummary.rows.filter((row) => (
-          row.label === "경기 목적" || row.label === "팀 구성" || row.label === "명단" || row.label === "팀 배치" || row.label === "운영 정책" || row.label === "출전 정책"
-        ));
-        const selectedRoomOperationRows = selectedCreationSummary.rows.filter((row) => (
-          row.label === "공 준비" || row.label === "조끼"
-        ));
+        const selectedRoomOperationRows = getMatchOperationsSummaryRows(selectedRoomPolicySource);
         const pickupRoom = isPickupRecruitingRoom(selectedPost);
         const pickupAssignmentPolicy = getPickupTeamAssignmentPolicy(sourceMatch ?? selectedPost);
         const recruitingRuleAcknowledgement = sourceMatch ? null : getRecruitingRuleAcknowledgement(selectedPost);
@@ -379,8 +373,8 @@ const lobby = getRecruitingLobby(selectedPost, roomDataState);
     canJoinReferee, joinMmrLimitMode, joinTierAllowed, canJoin, roomTeamSelectionOpen, getRoomTeamSelectionEligibility,
     roomTeamACandidates, roomTeamBCandidates, saveRoomTeam, renderRoomTeamResult, joiningThisRoom, joinModeEntries,
     selectedRange, roomEditDraft, roomEditStatus, roomEditCurrentCourt, roomEditCourtOptions, roomEditRange,
-    roomEditCourt, roomEditCourtWarning, selectedRoomPolicySource, selectedMatchRules, selectedMatchRuleRows, selectedCreationSummary,
-    selectedRoomPolicyRows, selectedRoomOperationRows, pickupRoom, pickupAssignmentPolicy, recruitingRuleAcknowledgement, matchRuleRequiredIds,
+    roomEditCourt, roomEditCourtWarning, selectedRoomPolicySource, selectedMatchRules, selectedMatchRuleRows,
+    selectedRoomOperationRows, pickupRoom, pickupAssignmentPolicy, recruitingRuleAcknowledgement, matchRuleRequiredIds,
     matchRuleAcknowledgedIds, ruleAcknowledgementRequiredIds, ruleAcknowledgedIds, ruleAcknowledgementPending, currentRuleRevision, currentUserNeedsRuleAcknowledgement,
     currentUserCanRespondSchedule, maxSideFilled, maxSideReserveFilled, pickupResize, roomEditPickupCapacityValid, roomEditCapacityValid,
     roomEditBenchCapacityValid, roomEditMeetingValid, roomEditRulesValid, roomEditScheduleValid, playingIds, partyJoinOptions,

@@ -318,7 +318,7 @@ test("심판 stats 전용 프로필 표시와 score-only 정책 계약을 고정
   assert.match(recruitingSource, /Boolean\(sourceMatch\.refereeId\).*SourceMatchDisputeEditor/s);
   assert.doesNotMatch(recruitingSource, /경기 종료 전까지 개인활약을 입력합니다/);
   assert.match(recruitingSource, /배정 심판이 팀 점수와 개인 스탯을 정리하고 최종 승인합니다/);
-  assert.match(recruitingSource, /방장이 경기 중 기록된 팀 점수를 확인하고 최종 승인합니다/);
+  assert.doesNotMatch(recruitingSource, /방장이 경기 중 기록된 팀 점수를 확인하고 최종 승인합니다/);
   assert.match(recruitingSource, /\$\{authorityLabel\}이 이의제기 \$\{openCount\}건을 사유와 함께 가결 또는 부결/);
   assert.match(matchContractSource, /\{referee \? <div>\s*<span>[^<]+<\/span>\s*<strong>\{match\.statEntryMinutes/);
   [logicSource, designSource].forEach((source) => {

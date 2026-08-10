@@ -228,8 +228,7 @@ html[data-theme="light"] .arena-side-roster .arena-room-player-slot:not(.empty) 
 }
 
 .arena-lobby-team-panel,
-.arena-lobby-score-core,
-.arena-lobby-actions > div {
+.arena-lobby-score-core {
   border: var(--ui-room-panel-border-width) solid rgba(255, 255, 255, 0.12);
   border-radius: var(--radius-md);
   background: rgba(0, 0, 0, 0.16);
@@ -271,8 +270,7 @@ html[data-theme="light"] .arena-side-roster .arena-room-player-slot:not(.empty) 
   color: var(--rb-orange-2);
 }
 
-.arena-lobby-score-core span,
-.arena-lobby-actions svg {
+.arena-lobby-score-core span {
   color: var(--rb-green);
 }
 

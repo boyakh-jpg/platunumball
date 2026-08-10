@@ -258,8 +258,7 @@ html[data-theme="light"] .arena-lobby-title p {
 }
 
 html[data-theme="light"] .arena-lobby-team-panel,
-html[data-theme="light"] .arena-lobby-score-core,
-html[data-theme="light"] .arena-lobby-actions > div {
+html[data-theme="light"] .arena-lobby-score-core {
   border-color: rgba(32, 56, 68, 0.16);
   background: rgba(255, 255, 255, 0.9);
   box-shadow: 0 14px 34px rgba(35, 50, 59, 0.1);

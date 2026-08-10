@@ -139,8 +139,7 @@
   z-index: -1;
 }
 
-.arena-lobby-topline,
-.arena-lobby-actions {
+.arena-lobby-topline {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -298,35 +297,6 @@
 
 .arena-lobby-score-core small.is-over {
   color: var(--danger);
-}
-
-.arena-lobby-actions {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-.arena-lobby-actions > div {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 8px;
-  border-radius: var(--radius-xs);
-  color: var(--muted);
-  padding: 11px 12px;
-  font-size: 0.82rem;
-  font-weight: 850;
-}
-
-.arena-lobby-actions svg {
-  color: var(--green);
-  flex: 0 0 auto;
-}
-
-.arena-lobby-actions span {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .arena-lobby-team-panel .arena-side-roster {

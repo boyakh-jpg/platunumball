@@ -1483,7 +1483,7 @@ test("구장 팝업 프로필은 공용 표면과 정자체를 사용한다", ()
   assert.match(visualSystemStyles, /\.court-hover-card \.court-hover-stats > span\s*\{[^}]*background:\s*var\(--ui-control-bg\);/);
 });
 
-test("모바일 방모달 손잡이와 규칙 준비물 뱃지는 표준 위치를 유지한다", () => {
+test("모바일 방모달 손잡이와 핵심 정보 grid는 표준 위치를 유지한다", () => {
   const mobileHandleRule = recruitingStyles.match(
     /@media \(max-width:\s*720px\)[\s\S]*?\.arena-lobby-drag-handle\s*\{([^}]*)\}/,
   )?.[1] ?? "";
@@ -1493,8 +1493,9 @@ test("모바일 방모달 손잡이와 규칙 준비물 뱃지는 표준 위치�
   assert.match(mobileHandleRule, /margin:\s*0 auto;/);
   assert.match(
     pageSources.recruiting,
-    /className="arena-room-rule-summary"[\s\S]*?selectedRoomOperationRows\.map/,
+    /className="arena-room-rule-detail-grid"[\s\S]*?selectedRoomOperationRows\.map/,
   );
+  assert.doesNotMatch(pageSources.recruiting, /selectedRoomPolicyRows/);
   assert.doesNotMatch(pageSources.recruiting, /arena-room-equipment-summary/);
   assert.doesNotMatch(
     pageSources.recruiting,
@@ -1507,7 +1508,7 @@ test("방모달 뱃지와 메모 및 팀명은 공용 타이포그래피를 사�
     primitiveStyles,
     /\.ui-badge\s*\{[^}]*align-items:\s*center;[^}]*justify-content:\s*center;[^}]*min-height:\s*calc\(var\(--ui-badge-font-size\) \+ 12px\);[^}]*font-size:\s*var\(--ui-badge-font-size\);[^}]*line-height:\s*1;/,
   );
-  assert.equal(count(pageSources.recruiting, 'className="arena-room-rule-badge"'), 6);
+  assert.equal(count(pageSources.recruiting, 'className="arena-room-rule-badge"'), 2);
   assert.match(
     recruitingStyles,
     /\.arena-room-rule-panel \.arena-room-rule-badge\s*\{[^}]*border-radius:\s*var\(--ui-control-radius\);[^}]*font-size:\s*var\(--ui-badge-font-size\);[^}]*font-weight:\s*var\(--ui-badge-font-weight\);[^}]*line-height:\s*1;/,
@@ -1519,6 +1520,14 @@ test("방모달 뱃지와 메모 및 팀명은 공용 타이포그래피를 사�
   assert.match(
     recruitingStyles,
     /\.arena-room-rule-panel \.arena-details-memo\s*\{[^}]*background:\s*var\(--ui-card-bg\);/,
+  );
+  assert.match(
+    recruitingStyles,
+    /\.arena-room-support-notes\s*\{[^}]*grid-template-columns:\s*repeat\(auto-fit,/s,
+  );
+  assert.doesNotMatch(
+    pageSources.recruiting,
+    /심판 초대 슬롯|심판 자격이 있고 이 방에 참여하지 않은|심판 초대 권한 없음|MMR 반영 여부와 결과는 확정된 배치|방장이 경기 중 기록된 팀 점수를 확인하고 최종 승인합니다/,
   );
   assert.match(
     recruitingStyles,
@@ -1541,7 +1550,15 @@ test("경기 기록 팀명과 픽업 운영 행은 공용 스포츠·버튼 타�
   );
   assert.match(
     recruitingStyles,
-    /\.pickup-rotation-panel \.ui-status-strip\s*\{[^}]*font-size:\s*var\(--ui-button-font-size\);[^}]*font-weight:\s*var\(--ui-button-font-weight\);[^}]*line-height:\s*1\.2;/,
+    /\.pickup-operation-item > strong\s*\{[^}]*font-size:\s*var\(--ui-button-font-size\);[^}]*font-weight:\s*var\(--ui-button-font-weight\);[^}]*line-height:\s*1\.2;/,
+  );
+  assert.match(
+    recruitingStyles,
+    /\.pickup-operation-item > span\s*\{[^}]*font-size:\s*var\(--font-size-meta\);/,
+  );
+  assert.match(
+    recruitingStyles,
+    /\.pickup-operation-item > small\s*\{[^}]*font-size:\s*var\(--font-size-meta\);/,
   );
   assert.doesNotMatch(pageSources.recruiting, />기록방</);
 });
@@ -1844,6 +1861,6 @@ test("shared control families and fixed labels keep canonical ownership", () => 
   assert.match(matchesSource, /진행·예정/);
   assert.match(matchesSource, /내 대회·초대/);
   assert.doesNotMatch(fixedSlotLabels, /후보 슬롯/);
-  assert.match(read("src/components/recruiting/RecruitingRoomPrimarySection.jsx"), /arena-lobby-actions[\s\S]*?getMatchPeriodLabel/);
+  assert.doesNotMatch(read("src/components/recruiting/RecruitingRoomPrimarySection.jsx"), /arena-lobby-actions|getMatchPeriodLabel/);
   assert.match(recentMatchStyles, /\.recent-match-matchup \.team-hover-trigger > strong\s*\{[^}]*text-overflow:\s*clip;[^}]*white-space:\s*normal;/);
 });

@@ -106,7 +106,6 @@ html[data-theme="light"] .arena-lobby-arena {
 
 html[data-theme="light"] .arena-lobby-team-panel,
 html[data-theme="light"] .arena-lobby-score-core,
-html[data-theme="light"] .arena-lobby-actions > div,
 html[data-theme="light"] .arena-owner-panel,
 html[data-theme="light"] .arena-room-rule-panel,
 html[data-theme="light"] .arena-room-chat,
@@ -462,9 +461,7 @@ html[data-theme="light"] .arena-reserve-line > .arena-room-reserve-row {
 }
 
 .arena-lobby-score-core span,
-.arena-lobby-actions svg,
-html[data-theme="light"] .arena-lobby-score-core span,
-html[data-theme="light"] .arena-lobby-actions svg {
+html[data-theme="light"] .arena-lobby-score-core span {
   color: var(--rb-gold);
 }
 

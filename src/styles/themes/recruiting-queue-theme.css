@@ -195,7 +195,6 @@ html[data-theme="light"] .arena-filter-bar {
 
 html[data-theme="light"] .arena-lobby-team-panel,
 html[data-theme="light"] .arena-lobby-score-core,
-html[data-theme="light"] .arena-lobby-actions > div,
 html[data-theme="light"] .arena-side-roster,
 html[data-theme="light"] .arena-owner-panel,
 html[data-theme="light"] .arena-room-rule-panel,
@@ -374,8 +373,7 @@ html[data-theme="light"] .arena-filter-bar {
 }
 
 .arena-lobby-team-panel,
-.arena-lobby-score-core,
-.arena-lobby-actions > div {
+.arena-lobby-score-core {
   border-color: rgba(255, 255, 255, 0.12);
 }
 
@@ -439,8 +437,7 @@ html[data-theme="light"] .arena-lobby-arena::before {
     radial-gradient(ellipse at 50% 48%, rgba(229, 85, 63, 0.08), transparent 20rem);
 }
 
-html[data-theme="light"] .arena-lobby-score-core,
-html[data-theme="light"] .arena-lobby-actions > div {
+html[data-theme="light"] .arena-lobby-score-core {
   background: rgba(255, 255, 255, 0.7);
 }
 

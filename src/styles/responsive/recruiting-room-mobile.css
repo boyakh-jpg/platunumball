@@ -103,10 +103,6 @@
     flex: 1 0 100%;
   }
 
-  .arena-lobby-actions {
-    grid-template-columns: 1fr;
-  }
-
   .arena-reserve-panel {
     padding-inline: 0;
   }

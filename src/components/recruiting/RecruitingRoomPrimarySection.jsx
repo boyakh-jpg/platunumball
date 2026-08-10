@@ -80,14 +80,14 @@ function RecruitingRoomVersusSide({ context, sideName, meta }) {
 
 export function RecruitingRoomPrimarySection({ context }) {
   const {
-    Badge, Button, CircleHelp, Clock3, CourtHoverCard, Crown,
+    Badge, Button, CircleHelp, CourtHoverCard, Crown,
     InvitationPanel, InvitePanel, MapPin, MatchAttendanceQrPanel, ROOM_BODY_MODES, RoomKickPanel,
-    RoomPhaseRenderer, SearchPicker, Share2, ShieldCheck, SideRoster, Swords,
-    TeamEmblem, UsersRound, X, acceptRoomInvitation, activeInviteDraft, alreadyApplied,
+    RoomPhaseRenderer, SearchPicker, Share2, SideRoster,
+    TeamEmblem, X, acceptRoomInvitation, activeInviteDraft, alreadyApplied,
     app, attendanceScanState, autoBalancedIndividualRoom, benchCapacity, canInspectMatchAttendance, canInvitePlayerByRoom, canInviteSideFromRoom,
     canManageEntry, canManageMatchCheckin, canMoveMatchSides, closeModal, contextPanel,
     courtByName, disabledInvitePlayerIds, entryPoint, favoritePlayerIds, favoriteTeamIds, getInviteAllowedTeamId,
-    getMatchPeriodLabel, getPickupParticipantIds, getRecruitingSideCapacity, getRoomRefereeLabel, getRoomScheduleLabel,
+    getRecruitingSideCapacity, getRoomRefereeLabel, getRoomScheduleLabel,
     getRoomTeamSelectionEligibility, getTeamCaptainId, getTeamHashtag, individualOnlyRoom, invitations, inviteError,
     lobby, matchRoom, mine, moveCandidate, openInviteSlot, openSelfSlotAction,
     pickupAssignmentPolicy, pickupPoolMode, referee, remoteDirectoryEnabled, renderMatchRecordSetupPanels,
@@ -99,7 +99,7 @@ export function RecruitingRoomPrimarySection({ context }) {
     saveRoomTeam, selectedMatchRules, selectedPost, selectedRoomTeamAId,
     selectedRoomTeamBId, sendInvites, setAttendanceStartStatus, setInviteDraft, setRoomTeamQuery, setSlotActionDraft,
     shareRoom, showCaptainBadge, slotPositions, sourceMatch, sourceMatchAttendance, sourceMatchCheckedInIds,
-    setRoomHelpOpen, sideMmrBalance, sourceMatchIsRecordRoom, sourceMatchPlacementByPlayerId, sourceMatchSideLeaderIds, sourceMatchSlotManagementOpen, sourceRoomReadOnly, teamAMeta,
+    setRoomHelpOpen, sideMmrBalance, sourceMatchPlacementByPlayerId, sourceMatchSideLeaderIds, sourceMatchSlotManagementOpen, sourceRoomReadOnly, teamAMeta,
     teamBMeta, teamOnlyRoom, toggleInvitePlayer, tournamentRoomOwnerName, updateInviteDraft, userById,
   } = context;
 
@@ -254,14 +254,6 @@ export function RecruitingRoomPrimarySection({ context }) {
                   {renderRoomReserveLine("teamB")}
                 </div> : null}
 
-                <div className="arena-lobby-actions">
-                  <div><Clock3 size={17} /><span>{getRoomScheduleLabel(selectedPost)}</span></div>
-                  <div><UsersRound size={17} /><span>{roomPhaseViewModel.mode === ROOM_BODY_MODES.pickupPool
-                    ? `참가 ${getPickupParticipantIds(lobby).length}/${(getRecruitingSideCapacity(selectedPost) + benchCapacity) * 2}`
-                    : `${getRecruitingSideCapacity(selectedPost)} vs ${getRecruitingSideCapacity(selectedPost)}`}</span></div>
-                  <div><ShieldCheck size={17} /><span>{selectedPost.ranked === false ? "티어 자유" : "MMR 서버 검증"}</span></div>
-                  {!sourceMatchIsRecordRoom ? <div><Swords size={17} /><span>{getMatchPeriodLabel(selectedMatchRules, selectedPost.mode)}</span></div> : null}
-                </div>
               </div>
               {renderSlotCommand()}
               {renderSelfSlotCommand()}

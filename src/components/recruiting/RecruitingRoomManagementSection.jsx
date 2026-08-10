@@ -7,12 +7,12 @@ export function RecruitingRoomManagementSection({ context }) {
     closeRoomEdit, currentRuleRevision, currentUserCanRespondSchedule, currentUserNeedsRuleAcknowledgement, disabledRefereeIds, favoriteRefereeIds,
     getChatDraft, getCourtLayoutLabel, getCourtSurfaceLabel, getMeetingPointSummary, getRefereeInviteQuery, handleChatVisibleChange,
     matchRoom, maxSideFilled, maxSideReserveFilled, mine, openRoomEdit, pendingRefereeInvitations,
-    pickupAssignmentPolicy, pickupResize, pickupRoom, publicPreview, referee, refereeInviteCandidates, remoteDirectoryEnabled,
+    pickupResize, pickupRoom, publicPreview, referee, refereeInviteCandidates, remoteDirectoryEnabled,
     roomChatLocked, roomEditAvailability, roomEditAvailable, roomEditBenchCapacityValid, roomEditCapacityValid, roomEditCourt,
     roomEditCourtOptions, roomEditCourtWarning, roomEditDraft, roomEditMeetingValid, roomEditPickupCapacityValid, roomEditRange,
     roomEditRulesValid, roomEditScheduleValid, roomEditStatus, roomPhaseViewModel, ruleAcknowledgedIds, ruleAcknowledgementPending,
     ruleAcknowledgementRequiredIds, saveRoomEdit, scheduleChangePending, scheduleProposalProgress, selectedMatchRuleRows, selectedMatchRules,
-    selectedPost, selectedRange, selectedRoomOperationRows, selectedRoomPolicyRows, selectedRoomPolicySource, showRefereeInviteSlot,
+    selectedPost, selectedRange, selectedRoomOperationRows, selectedRoomPolicySource, showRefereeInviteSlot,
     sourceMatch, sourceMatchDraftScore, sourceMatchIsRecordRoom, sourceMatchPhase, sourceMatchResultEntryPermission, sourceRoomReadOnly, submitChat,
     updateChatDraft, updateRefereeInviteQuery, updateRoomEditDraft, userById,
   } = context;
@@ -81,7 +81,7 @@ export function RecruitingRoomManagementSection({ context }) {
 
               {roomPhaseViewModel.showRules ? <div className="arena-room-rule-panel">
                 <div className="arena-room-rule-head">
-                  <strong>규칙</strong>
+                  <strong>경기 핵심 정보</strong>
                   {!sourceRoomReadOnly && canOperateSourceRoomRules ? (
                     <Button
                       type="button"
@@ -103,22 +103,24 @@ export function RecruitingRoomManagementSection({ context }) {
                     </Button>
                   ) : null}
                 </div>
-                <div className="arena-room-rule-summary">
-                  {selectedRoomPolicyRows.map((row) => (
-                    <Badge key={row.label} tone="neutral" className="arena-room-rule-badge">{row.value}</Badge>
-                  ))}
-                  <Badge tone="neutral" className="arena-room-rule-badge">
-                    {getMeetingPointSummary(selectedMatchRules, selectedRoomPolicySource.timingType, selectedRoomPolicySource.mode)}
-                  </Badge>
-                  <Badge tone="neutral" className="arena-room-rule-badge">
-                    {selectedPost.ranked !== false ? selectedRange.label : "친선 · 티어 자유"}
-                  </Badge>
-                  {selectedRoomOperationRows.map((row) => (
-                    <Badge key={row.label} tone="neutral" className="arena-room-rule-badge">{row.label} · {row.value}</Badge>
-                  ))}
-                </div>
                 <dl className="arena-room-rule-detail-grid">
                   {selectedMatchRuleRows.map((row) => (
+                    <div key={row.label}>
+                      <dt>{row.label}</dt>
+                      <dd>{row.value}</dd>
+                    </div>
+                  ))}
+                  <div>
+                    <dt>만남 위치</dt>
+                    <dd>{getMeetingPointSummary(selectedMatchRules, selectedRoomPolicySource.timingType, selectedRoomPolicySource.mode)}</dd>
+                  </div>
+                  {selectedPost.ranked !== false ? (
+                    <div>
+                      <dt>참가 범위</dt>
+                      <dd>{selectedRange.label}</dd>
+                    </div>
+                  ) : null}
+                  {selectedRoomOperationRows.map((row) => (
                     <div key={row.label}>
                       <dt>{row.label}</dt>
                       <dd>{row.value}</dd>
@@ -129,18 +131,16 @@ export function RecruitingRoomManagementSection({ context }) {
                   <Badge tone="neutral" className="arena-room-rule-badge">공격권: {selectedMatchRules.attackRule}</Badge>
                   <Badge tone="neutral" className="arena-room-rule-badge">파울: {selectedMatchRules.foulRule}</Badge>
                 </div>
-                <div className="arena-room-referee-line ui-control-surface">
-                  <strong>심판</strong>
-                  {referee ? (
+                {referee ? (
+                  <div className="arena-room-referee-line ui-control-surface">
+                    <strong>심판</strong>
                     <RefereeHoverCard user={referee} matches={app.state.matches} minTrust={selectedPost.refereeTrustMin} className="arena-room-referee-card">
 
                       <ProfileEmblem user={referee} className="small" />
                       <span>{referee.name}</span>
                     </RefereeHoverCard>
-                  ) : (
-                    <span>없음</span>
-                  )}
-                </div>
+                  </div>
+                ) : null}
                 {!sourceRoomReadOnly && showRefereeInviteSlot ? (
                   <RefereeInvitePanel
                     query={getRefereeInviteQuery(selectedPost)}
@@ -159,16 +159,20 @@ export function RecruitingRoomManagementSection({ context }) {
                     remoteSearchEnabled={remoteDirectoryEnabled}
                   />
                 ) : null}
-                {selectedPost.stakes ? (
-                  <div className="arena-details-memo">
-                    <strong>약속/벌칙</strong>
-                    <span>{selectedPost.stakes}</span>
-                  </div>
-                ) : null}
-                {selectedPost.memo ? (
-                  <div className="arena-details-memo">
-                    <strong>경기 메모</strong>
-                    <span>{selectedPost.memo}</span>
+                {selectedPost.stakes || selectedPost.memo ? (
+                  <div className="arena-room-support-notes">
+                    {selectedPost.stakes ? (
+                      <div className="arena-details-memo">
+                        <strong>약속/벌칙</strong>
+                        <span>{selectedPost.stakes}</span>
+                      </div>
+                    ) : null}
+                    {selectedPost.memo ? (
+                      <div className="arena-details-memo">
+                        <strong>경기 메모</strong>
+                        <span>{selectedPost.memo}</span>
+                      </div>
+                    ) : null}
                   </div>
                 ) : null}
                 {!sourceRoomReadOnly && roomEditDraft ? (
@@ -320,14 +324,6 @@ export function RecruitingRoomManagementSection({ context }) {
                       참가자가 있으면 규칙 변경은 각 참가자의 확인이 필요합니다. 일정·구장 변경은 전원이 승인할 때까지 기존 일정이 유지됩니다.
                     </small>
                   </div>
-                ) : null}
-                {pickupRoom ? (
-                  <>
-                    <span>{sourceMatch?.ranked === false || selectedPost.ranked === false
-                      ? "친선 경기로 MMR을 반영하지 않습니다."
-                      : "경쟁 경기로 확정 배치 결과를 서버에서 검증해 MMR 반영 여부를 결정합니다."}</span>
-                    <span>{pickupAssignmentPolicy.description} 최종 배치는 방장 또는 배정 심판이 확정합니다.</span>
-                  </>
                 ) : null}
               </div> : null}
 
