@@ -23,9 +23,7 @@ import {
   getPlayerMetaLabel,
   COURT_REVIEW_FIELDS,
 } from "./matchRoomModel.js";
-import {
-  CourtReviewRating,
-} from "./MatchRoomParts.jsx";
+import { CourtReviewRating } from "./MatchRoomParts.jsx";
 import { MatchRoomReviewPanels } from "./MatchRoomReviewPanels.jsx";
 import { MatchRoomStatEditor } from "./MatchRoomStatEditor.jsx";
 export default function MatchRoomView({ controller }) {

@@ -653,14 +653,31 @@ test("관리자 업무 탭은 임명 처리 상태를 controller에서 받는다
   assert.match(source, /disabled=\{reviewActionPending \|\| appointmentActionPending\}/);
 });
 
+test("설정 포털은 열린 동안 뒤 화면을 잠그고 포커스를 내부에서 순환한다", async () => {
+  const [pageView, listDialog, activityDialog] = await Promise.all([
+    read("src/pages/SettingsPageView.jsx"),
+    read("src/pages/SettingsListDialog.jsx"),
+    read("src/pages/SettingsActivityDialog.jsx"),
+  ]);
+
+  assert.match(pageView, /useBodyScrollLock\(withdrawalOpen \|\| Boolean\(activityList\) \|\| Boolean\(activityDetail\)\)/u);
+  for (const source of [listDialog, activityDialog]) {
+    assert.match(source, /restoreFocusRef = useRef\(null\)/u);
+    assert.match(source, /event\.key === "Escape"[\s\S]{0,100}onCloseRef\.current\(\)/u);
+    assert.match(source, /event\.key !== "Tab"/u);
+    assert.match(source, /data-dialog-initial-focus/u);
+    assert.match(source, /restoreTarget instanceof window\.HTMLElement && restoreTarget\.isConnected/u);
+  }
+});
+
 test("구장 상세 저장 실패는 버튼 잠금을 해제하고 재시도를 허용한다", async () => {
   const [source, databaseController] = await Promise.all([
     read("src/pages/CourtDetail.jsx"),
     read("src/components/admin/useCourtDatabasePanelController.js"),
   ]);
 
-  assert.match(source, /const submitReview = async[\s\S]*?try \{[\s\S]*?catch \{[\s\S]*?finally \{[\s\S]{0,100}setSaving\(false\);/u);
-  assert.match(source, /const submitCorrection = async[\s\S]*?try \{[\s\S]*?catch \{[\s\S]*?finally \{[\s\S]{0,120}setCorrectionSaving\(false\);/u);
+  assert.match(source, /const submitReview = async[\s\S]*?finally \{[\s\S]{0,300}isCurrentScopedOperation\(savingRef\.current, operation, currentCourtIdRef\.current\)[\s\S]{0,160}setSaving\(false\);/u);
+  assert.match(source, /const submitCorrection = async[\s\S]*?finally \{[\s\S]{0,300}isCurrentScopedOperation\(correctionSavingRef\.current, operation, currentCourtIdRef\.current\)[\s\S]{0,180}setCorrectionSaving\(false\);/u);
   assert.match(databaseController, /catch \{[\s\S]{0,240}필터 적용을 눌러 다시 시도해 주세요\.[\s\S]{0,180}finally \{[\s\S]{0,100}setLoading\(false\)/u);
 });
 

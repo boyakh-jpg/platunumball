@@ -2010,6 +2010,9 @@ test("슬롯·경기·이의제기 action은 서버 결과를 기다리고 실�
   assert.match(matchRoom, /await app\.actions\.finalizeMatch\?\.\(match\.id, options\)[\s\S]*if \(!result \|\| result\?\.ok === false\)/);
   assert.match(matchRoomView, /managementActionPending === "delete" \? "삭제 중"/);
   assert.match(matchDialog, /error \? <small role="status" className="form-warning">/);
+  assert.match(matchDialog, /\{openDisputeCount > 0\s*\?\s*`열린 이의신청/);
+  assert.doesNotMatch(matchDialog, /\{blocked\s*\?\s*`열린 이의신청/);
+  assert.match(matchDialog, /disabled=\{blocked \|\| pending\}/);
   assert.match(disputeQueue, /if \(result && result\?\.ok !== false\)[\s\S]*resolutionError\.id === dispute\.id/);
 });
 
@@ -2033,7 +2036,7 @@ test("후보 전용 entry는 참가자 관리에서도 출전자로 바뀌지 �
   );
 });
 
-test("경기 결과 제출은 진행 중 중복 요청을 막고 실패 후 다시 제출할 수 있다", async () => {
+test("경기 결과 작업은 같은 경기 중복을 막고 다른 경기 화면에 완료 상태를 남기지 않는다", async () => {
   const [matchRoomSource, actionSource, viewSource, modalEditorSource] = await Promise.all([
     readFile(new URL("../src/pages/MatchRoom.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/pages/matchRoomControllerParts.jsx", import.meta.url), "utf8"),
@@ -2042,7 +2045,14 @@ test("경기 결과 제출은 진행 중 중복 요청을 막고 실패 후 다�
   ]);
 
   assert.match(matchRoomSource, /const resultSavePendingRef = useRef\(false\)/);
-  assert.match(actionSource, /if \(!canSubmitResult \|\| resultSavePendingRef\.current\) return/);
+  assert.match(matchRoomSource, /resetMatchRoomScopedOperations\(\{ courtReviewOperationRef, matchRefreshOperationRef, resultSaveOperationRef/);
+  assert.match(matchRoomSource, /resultSave: resultSavePending && resultSaveOperationRef\.current\?\.scopeId === matchId/);
+  assert.match(matchRoomSource, /courtReviewSaving: scopedPending\.courtReview, matchDetailRefreshing: scopedPending\.refresh/);
+  assert.match(actionSource, /if \(!canSubmitResult \|\| resultSaveOperationRef\.current\?\.scopeId === match\.id\) return/);
+  assert.match(actionSource, /const operation = \{ scopeId: match\.id, operationId: \+\+matchOperationSequenceRef\.current \}/);
+  assert.match(actionSource, /isCurrentScopedOperation\(resultSaveOperationRef\.current, operation, currentMatchIdRef\.current\)/);
+  assert.match(actionSource, /isCurrentScopedOperation\(matchRefreshOperationRef\.current, operation, currentMatchIdRef\.current\)/);
+  assert.match(actionSource, /isCurrentScopedOperation\(courtReviewOperationRef\.current, operation, currentMatchIdRef\.current\)/);
   assert.match(actionSource, /resultSavePendingRef\.current = true[\s\S]*finally \{[\s\S]*resultSavePendingRef\.current = false/);
   assert.match(viewSource, /disabled=\{!canSubmitResult \|\| resultSavePending\}/);
   assert.match(modalEditorSource, /if \(!canSaveDraft \|\| savePendingRef\.current \|\| !onSave\) return/);

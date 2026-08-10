@@ -22,6 +22,7 @@ import {
 import { readCssTree } from "./css-source-tree.mjs";
 import { BRAND_NAME } from "../src/lib/brand.js";
 import { getAdminStatusLabel } from "../src/lib/admin.js";
+import { isCurrentScopedOperation } from "../src/lib/asyncState.js";
 import {
   BASKETBALL_POSITIONS,
   DEFAULT_PLAYER_RATINGS,
@@ -79,6 +80,16 @@ import { SERVER_RATING_AUTHORITY } from "../server/lib/ratingAuthority.js";
 import { isCourtFuzzyMatch } from "../server/api/search.js";
 
 configureServerRatingAuthority(SERVER_RATING_AUTHORITY);
+
+test("화면별 비동기 작업은 최신 대상과 최신 작업만 반영한다", () => {
+  const matchA = { scopeId: "match-a", operationId: 1 };
+  const matchB = { scopeId: "match-b", operationId: 2 };
+
+  assert.equal(isCurrentScopedOperation(matchA, matchA, "match-a"), true);
+  assert.equal(isCurrentScopedOperation(matchA, matchA, "match-b"), false);
+  assert.equal(isCurrentScopedOperation(matchB, matchA, "match-b"), false);
+  assert.equal(isCurrentScopedOperation(matchB, matchB, "match-b"), true);
+});
 
 test("selected report target text keeps matching punctuation-separated metadata", () => {
   const haystack = "강민준 #rb001pg PG Team A 출전 오늘의 2v2 경쟁전 #m7 연북중학교";

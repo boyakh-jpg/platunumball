@@ -19,7 +19,7 @@ export default function SettingsPageView({ controller, auth }) {
   const [withdrawalOpen, setWithdrawalOpen] = useState(false);
   const [withdrawalAcknowledged, setWithdrawalAcknowledged] = useState(false);
   const [withdrawalStatus, setWithdrawalStatus] = useState("");
-  useBodyScrollLock(withdrawalOpen);
+  useBodyScrollLock(withdrawalOpen || Boolean(activityList) || Boolean(activityDetail));
 
   const switchTestAccount = async (event) => {
     event.preventDefault();

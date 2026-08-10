@@ -39,7 +39,7 @@ export function MatchFinalizeDialog({
       >
         <strong id="match-finalize-dialog-title">더 이상 이의가 없음을 확인하셨나요?</strong>
         <p>
-          {blocked
+          {openDisputeCount > 0
             ? `열린 이의신청 ${openDisputeCount}건을 먼저 처리해 주세요.`
             : `${authorityLabel}이 현장 참가자들과 최종 점수를 확인한 뒤 승인합니다.`}
         </p>

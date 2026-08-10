@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
@@ -7,14 +7,50 @@ import { getCourtPublicAccessLabel } from "../lib/courts.js";
 import { getSettingsReportTargetName } from "./settingsPageModel.js";
 
 export default function SettingsListDialog({ kind, controller, onClose, onOpenDetail }) {
+  const dialogRef = useRef(null);
+  const onCloseRef = useRef(onClose);
+  const restoreFocusRef = useRef(null);
+  const open = Boolean(kind);
+  onCloseRef.current = onClose;
+
   useEffect(() => {
-    if (!kind) return undefined;
-    const closeOnEscape = (event) => {
-      if (event.key === "Escape") onClose();
+    if (!open) return undefined;
+    restoreFocusRef.current = document.activeElement;
+    const focusFrame = window.requestAnimationFrame(() => dialogRef.current?.querySelector("[data-dialog-initial-focus]")?.focus());
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onCloseRef.current();
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const focusable = [...(dialogRef.current?.querySelectorAll(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      ) ?? [])];
+      const first = focusable[0];
+      const last = focusable.at(-1);
+      if (!first || !last) {
+        event.preventDefault();
+        dialogRef.current?.focus();
+      } else if (!dialogRef.current?.contains(document.activeElement)) {
+        event.preventDefault();
+        (event.shiftKey ? last : first).focus();
+      } else if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
     };
-    window.addEventListener("keydown", closeOnEscape);
-    return () => window.removeEventListener("keydown", closeOnEscape);
-  }, [kind, onClose]);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.cancelAnimationFrame(focusFrame);
+      window.removeEventListener("keydown", handleKeyDown);
+      const restoreTarget = restoreFocusRef.current;
+      if (restoreTarget instanceof window.HTMLElement && restoreTarget.isConnected) restoreTarget.focus();
+    };
+  }, [open]);
 
   if (!kind || typeof document === "undefined") return null;
   const {
@@ -33,7 +69,7 @@ export default function SettingsListDialog({ kind, controller, onClose, onOpenDe
 
   return createPortal(
     <div className="app-confirm-backdrop" role="presentation" onMouseDown={onClose}>
-      <section className="app-confirm-dialog settings-activity-dialog settings-list-dialog" role="dialog" aria-modal="true" aria-labelledby="settings-list-dialog-title" onMouseDown={(event) => event.stopPropagation()}>
+      <section ref={dialogRef} tabIndex={-1} className="app-confirm-dialog settings-activity-dialog settings-list-dialog" role="dialog" aria-modal="true" aria-labelledby="settings-list-dialog-title" onMouseDown={(event) => event.stopPropagation()}>
         <div className="section-title-row">
           <strong id="settings-list-dialog-title">{title}</strong>
           <Badge tone={count ? "orange" : "neutral"}>{count}{isBlocks ? "명" : "건"}</Badge>
@@ -79,7 +115,7 @@ export default function SettingsListDialog({ kind, controller, onClose, onOpenDe
           {!count ? <div className="ui-empty-state-compact">{isReports ? "신고 내역이 없습니다." : isBlocks ? "차단한 플레이어가 없습니다." : "요청한 구장이 없습니다."}</div> : null}
         </div>
         <div className="ui-action-row app-confirm-actions">
-          <Button type="button" variant="secondary" autoFocus onClick={onClose}>닫기</Button>
+          <Button data-dialog-initial-focus type="button" variant="secondary" onClick={onClose}>닫기</Button>
         </div>
       </section>
     </div>,
