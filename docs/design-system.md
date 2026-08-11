@@ -160,7 +160,7 @@
 5. 교체 UI는 같은 사이드의 `출전선수 ↔ 후보선수`만 선택할 수 있다. 후보 본인에게는 자신이 들어가는 자진 교체 action만 표시하고 배정 심판에게는 양 사이드 교체 action을 표시한다. `부상`과 기록권한 관련 사유는 신규 선택지에 표시하지 않는다.
 6. 일반 경기의 `이의신청 종료` action은 결과 제출 직후부터 배정 심판 경기에서는 배정 심판에게, 무심판 경기에서는 방장에게 표시한다. 실제 출전자에게는 이의신청 영역 한 줄 분할 action으로 `이의 없음`과 현재 인원/2/3 기준을 표시한다. 3분 경과 또는 2/3 충족 전 종료를 누르면 차단 안내만 표시하고, 조건 하나가 충족되면 공용 확인창의 명시적 확인 checkbox를 표시한 뒤 `disputesAcknowledged=true`로 서버 action을 호출한다.
 7. 열린 이의신청이 있으면 확인창은 건수를 안내하고 최종 승인 버튼을 비활성화한다. 이의 처리자는 필수 처리 사유를 입력해야 한다. 마지막 이의 처리 뒤에는 자동 확정 문구를 표시하지 않고 배정 심판 또는 방장의 별도 최종 승인을 안내한다.
-8. `match_record`는 일반 경기 `최종 승인` panel을 사용하지 않는다. 실제 참가자 본인에게만 `내 참가 확인` action을 표시하고, `N/M명 확인`, `2/3 이상`, 24시간 마감과 확인한 참가자·`미확인` 참가자를 같은 panel에서 구분한다.
+8. `match_record`는 일반 경기 `최종 승인` panel을 사용하지 않는다. 실제 미확인 참가자 본인에게만 방 상단 NEXT 카드와 확인 panel에 `내 참가 확인` 직접 action을 표시하고, `N/M명 확인`, `2/3 이상`, 24시간 마감과 확인한 참가자·`미확인` 참가자를 같은 panel에서 구분한다.
 9. `match_record`의 공통 신고가 열리면 `검토 중`, 24시간 뒤 2/3 미만이면 `확인 부족`을 표시한다. `문제 신고`는 공통 신고 화면을 사용하며 개인 스탯 제출 상태를 표시하지 않는다.
 10. 심판이 경기시계 담당자를 겸하면 `경기시계 기기는 코트 옆에 두고, 개인기록은 별도 기록판 또는 다른 기기에서 입력해 주세요.` 안내를 표시한다.
 11. 위 panel과 확인창은 공용 surface·button·focus token을 사용한다. desktop/mobile에서 control이 겹치거나 화면 밖으로 나가지 않아야 하고 dark/light에서 같은 정보 순서와 대비를 유지한다.
@@ -1577,7 +1577,7 @@ UI 수정 전:
 7. Desktop home separates the left content rail and right support rail; each rail owns its own vertical stack gap so one rail height does not change the other rail's card spacing.
 8. Desktop home search remains the full-width top bar; only the content below the search bar splits into left and right rails.
 9. Desktop home right-rail invitation action rows place controls on their own row so accept/decline/view buttons do not squeeze the 360px rail.
-10. Home `Action Queue` title is `내가 처리할 일` and contains pending room/team/tournament actions only.
+10. Home `Action Queue` title is `내가 처리할 일` and contains pending room/team/tournament actions plus the current user's pending `내 참가 확인` action for match records.
 11. Home has a separate `알림` card for due unread app notifications such as match reminders, record input, approval, and room notices. Discord-linked users still see the same app alert card.
 
 ## 2026-07-01 Full internal preview pass

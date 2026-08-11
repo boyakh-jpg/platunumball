@@ -5,7 +5,7 @@ import Card from "../components/common/Card.jsx";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import { getRoomScheduleLabel } from "../lib/matchUtils.js";
-import { compareNotificationsNewestFirst, dedupeNotifications, getNotificationDisplayAt, getNotificationHref, isNotificationDisplayable, isNotificationTargetUnavailable, isNotificationVisibleToUser } from "../lib/notifications.js";
+import { compareNotificationsNewestFirst, dedupeNotifications, getNotificationDisplayAt, getNotificationDisplayContent, getNotificationHref, isNotificationDisplayable, isNotificationTargetUnavailable, isNotificationVisibleToUser } from "../lib/notifications.js";
 import { getPendingRecruitingInvitations, getRecruitingInvitationSenderName } from "../lib/recruiting.js";
 import { useRoomModalNavigation } from "../lib/roomModalNavigation.js";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
@@ -351,12 +351,14 @@ export default function Notifications({ app }) {
         </div>
         <div className="home-action-list notifications-list ui-design-borderless-list" role="tabpanel">
           {notificationReadError ? <small role="status" className="form-warning">{notificationReadError}</small> : null}
-          {displayedNotifications.length ? displayedNotifications.map((notification) => (
-            <article key={notification.id} className={`home-action-row notification-row ${notification.readAt ? "notification-read" : "notification-unread"} ${notification.targetUnavailable ? "notification-terminal-row" : ""}`}>
+          {displayedNotifications.length ? displayedNotifications.map((notification) => {
+            const displayContent = getNotificationDisplayContent(notification);
+            return (
+              <article key={notification.id} className={`home-action-row notification-row ${notification.readAt ? "notification-read" : "notification-unread"} ${notification.targetUnavailable ? "notification-terminal-row" : ""}`}>
               <span className="home-action-icon"><Bell size={18} aria-hidden="true" /></span>
               <span className="home-action-main">
-                <strong>{notification.title}</strong>
-                <em>{notification.body}</em>
+                <strong>{displayContent.title}</strong>
+                <em>{displayContent.body}</em>
                 {formatNotificationTime(getNotificationDisplayAt(notification)) ? (
                   <time dateTime={getNotificationDisplayAt(notification)}>{formatNotificationTime(getNotificationDisplayAt(notification))}</time>
                 ) : null}
@@ -405,20 +407,21 @@ export default function Notifications({ app }) {
                     type="button"
                     className="ui-compact-action notification-delete-button"
                     title="알림 삭제"
-                    aria-label={`${notification.title} 알림 삭제`}
+                    aria-label={`${displayContent.title} 알림 삭제`}
                     disabled={Boolean(deletingNotificationId)}
                     onClick={() => deletePastNotification(notification.id)}
                   >
                     <Trash2 size={16} aria-hidden="true" />
                   </button>
                 ) : (
-                  <button type="button" className="notification-action-control notification-read-button" title="읽음 처리" aria-label={`${notification.title} 읽음 처리`} disabled={Boolean(notificationReadPendingId)} onClick={() => { void readNotifications(notification.id, () => app.actions.markNotificationRead(notification.id)); }}>
+                  <button type="button" className="notification-action-control notification-read-button" title="읽음 처리" aria-label={`${displayContent.title} 읽음 처리`} disabled={Boolean(notificationReadPendingId)} onClick={() => { void readNotifications(notification.id, () => app.actions.markNotificationRead(notification.id)); }}>
                     {notificationReadPendingId === notification.id ? "처리 중" : "읽음"}
                   </button>
                 )}
               </span>
-            </article>
-          )) : (
+              </article>
+            );
+          }) : (
             <div className="ui-empty-state-compact">
               {notificationView === "past" ? "지난 알림이 없습니다." : "읽지 않은 알림이 없습니다."}
             </div>

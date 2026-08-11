@@ -12,6 +12,7 @@ import {
   getDuePostgameRecordNotifications,
   getPostgameRecordDecisionEligibility,
   getPostgameRecordVerification,
+  userNeedsPostgameRecordParticipation,
 } from "../src/lib/postgameRecordVerification.js";
 import { getApprovalStatus } from "../src/lib/matchUtils.js";
 import { SERVER_RATING_AUTHORITY } from "../server/lib/ratingAuthority.js";
@@ -142,6 +143,22 @@ test("본인이 아닌 참가자의 승인 대리는 허용하지 않는다", ()
     getPostgameRecordDecisionEligibility(makeRecord(), "room-owner-not-player"),
     { allowed: false, reason: "실제 참가자만 본인의 참가와 결과를 확인할 수 있음" },
   );
+});
+
+test("미확인 참가자는 2/3 충족 뒤에도 본인 참가 확인 action을 유지한다", () => {
+  const partialMatch = makeRecord({
+    approvals: { teamA: players.slice(0, 7), teamB: players.slice(7, 9) },
+  });
+  const thresholdMatch = makeRecord({
+    approvals: { teamA: players.slice(0, 7), teamB: players.slice(7, 10) },
+  });
+  const now = "2026-07-23T00:10:00.000Z";
+
+  assert.equal(userNeedsPostgameRecordParticipation(partialMatch, players[13], { now }), true);
+  assert.equal(userNeedsPostgameRecordParticipation(partialMatch, players[0], { now }), false);
+  assert.equal(userNeedsPostgameRecordParticipation(partialMatch, "room-owner-not-player", { now }), false);
+  assert.equal(userNeedsPostgameRecordParticipation(thresholdMatch, players[13], { now }), true);
+  assert.equal(userNeedsPostgameRecordParticipation({ ...partialMatch, status: "confirmed" }, players[13], { now }), false);
 });
 
 test("교체 출전 뒤 후보로 돌아간 선수도 참가 확인 대상과 UI에 남는다", async () => {

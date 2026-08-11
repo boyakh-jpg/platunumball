@@ -99,6 +99,27 @@ function normalizeStatus(value) {
   return String(value ?? "").trim().toLowerCase();
 }
 
+const CORRUPTED_NOTIFICATION_TEXT_PATTERN = /\?{3,}/u;
+const RECORD_CONFIRMATION_NOTIFICATION_TYPES = new Set([
+  "match_record_setup",
+  "postgame_record_approval_requested",
+  "postgame_record_approval_reminder",
+]);
+
+export function getNotificationDisplayContent(notification = {}) {
+  const type = normalizeStatus(notification.type ?? notification.discordEvent);
+  const title = String(notification.title ?? "").trim();
+  const body = String(notification.body ?? "").trim();
+  if (!RECORD_CONFIRMATION_NOTIFICATION_TYPES.has(type)) return { title: title || "알림", body };
+
+  return {
+    title: !title || CORRUPTED_NOTIFICATION_TEXT_PATTERN.test(title) ? "경기 기록 확인 요청" : title,
+    body: !body || CORRUPTED_NOTIFICATION_TEXT_PATTERN.test(body)
+      ? "경기 기록의 참가 명단과 내 참가 여부를 확인해 주세요."
+      : body,
+  };
+}
+
 export function isTerminalMatchStatus(value = "") {
   return TERMINAL_MATCH_STATUSES.has(normalizeStatus(value));
 }

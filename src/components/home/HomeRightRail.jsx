@@ -1,7 +1,7 @@
 import { Bell, ClipboardCheck, Trophy } from "lucide-react";
 import { Link } from "react-router-dom";
 import { MAX_TEAM_MEMBERSHIPS, getTeamRoleLabel } from "../../lib/constants.js";
-import { getNotificationHref } from "../../lib/notifications.js";
+import { getNotificationDisplayContent, getNotificationHref } from "../../lib/notifications.js";
 import { getPlacementLabel } from "../../lib/rating.js";
 import Badge from "../common/Badge.jsx";
 import Button from "../common/Button.jsx";
@@ -149,12 +149,13 @@ export default function HomeRightRail({
             {priorityNoticeItems.length ? (
               <>
                 {priorityNoticeItems.map((notification) => {
+                  const displayContent = getNotificationDisplayContent(notification);
                   const content = (
                     <>
                       <span className="home-action-icon"><Bell size={18} /></span>
                       <span className="home-action-main">
-                        <strong>{notification.title}</strong>
-                        <em>{getNotificationPreviewBody(notification)}</em>
+                        <strong>{displayContent.title}</strong>
+                        <em>{getNotificationPreviewBody(displayContent)}</em>
                       </span>
                       <b>{notification.targetUnavailable ? "종료됨" : "보기"}</b>
                     </>

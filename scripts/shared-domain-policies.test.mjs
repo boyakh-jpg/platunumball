@@ -172,6 +172,7 @@ import {
   compareNotificationsNewestFirst,
   dedupeNotifications,
   getNotificationDisplayAt,
+  getNotificationDisplayContent,
   getNotificationHref,
   getNotificationTargetPath,
   isTerminalMatchStatus,
@@ -2240,6 +2241,25 @@ test("home loads the authoritative profile record page when bootstrap has no rec
   const source = await readSource("src/pages/Home.jsx");
   assert.match(source, /!app\.remoteReady \|\| app\.actions\.profileRecordsLoaded \|\| !app\.actions\.loadProfileRecords/);
   assert.match(source, /app\.actions\.loadProfileRecords\(\)/);
+});
+
+test("깨진 경기 기록 알림만 안전 문구로 복구한다", () => {
+  assert.deepEqual(getNotificationDisplayContent({
+    type: "postgame_record_approval_requested",
+    title: "???????",
+    body: "경기기록 ????????",
+  }), {
+    title: "경기 기록 확인 요청",
+    body: "경기 기록의 참가 명단과 내 참가 여부를 확인해 주세요.",
+  });
+  assert.deepEqual(getNotificationDisplayContent({
+    type: "team_invite",
+    title: "왜???",
+    body: "원문",
+  }), {
+    title: "왜???",
+    body: "원문",
+  });
 });
 
 test("profile fills a missing match summary after a thin home bootstrap", async () => {

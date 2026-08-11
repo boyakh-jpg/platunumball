@@ -174,6 +174,22 @@ export function getPostgameRecordVerification(match = {}, options = {}) {
   };
 }
 
+export function userNeedsPostgameRecordParticipation(match = {}, userId = "", options = {}) {
+  const normalizedUserId = String(userId ?? "").trim();
+  const recordType = match.rules?.recordType ?? match.recordType;
+  if (
+    recordType !== "match_record"
+    || match.status !== "approval"
+    || !normalizedUserId
+    || !getPostgameRecordDecisionEligibility(match, normalizedUserId).allowed
+  ) return false;
+
+  const verification = getPostgameRecordVerification(match, options);
+  return !verification.expired
+    && verification.verificationStatus !== "disputed"
+    && verification.unconfirmedIds.includes(normalizedUserId);
+}
+
 export function getDuePostgameRecordNotifications(match = {}, options = {}) {
   const verification = getPostgameRecordVerification(match, options);
   if (verification.verificationStatus === "confirmed" || verification.verificationStatus === "disputed" || verification.expired) return [];

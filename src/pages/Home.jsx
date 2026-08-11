@@ -9,6 +9,7 @@ import { useRoomModalNavigation } from "../lib/roomModalNavigation.js";
 import { getCurrentSeason, getPlayerSeasonRows, getSeasonProgress } from "../lib/season.js";
 import { getTierDivision } from "../lib/tier.js";
 import { compareNotificationsNewestFirst, dedupeNotifications, getNotificationHref, isHomeActionNotification, isNotificationDisplayable, isNotificationTargetUnavailable, isNotificationVisibleToUser } from "../lib/notifications.js";
+import { userNeedsPostgameRecordParticipation } from "../lib/postgameRecordVerification.js";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import { MatchRoomModal } from "./Matches.jsx";
 import { RecruitingRoomLoadFailedView, RecruitingRoomLoadingView, RecruitingRoomModal } from "./Recruiting.jsx";
@@ -311,6 +312,18 @@ function AuthenticatedHome({ app }) {
       .filter((match) => isHomeActionableMatchSchedule(match, todayValue))
       .map((match) => {
         const phase = getMatchRoomPhase(match).phase;
+        if (userNeedsPostgameRecordParticipation(match, user.id)) {
+          return {
+            id: `record-participation-${match.id}`,
+            matchId: match.id,
+            priority: 0,
+            label: "내 참가 확인",
+            title: getTournamentMatchDisplayTitle(match, match.title),
+            meta: "경기 기록 · 참가 및 결과 확인 필요",
+            href: `/app/matches?match=${match.id}`,
+            icon: ClipboardCheck,
+          };
+        }
         if (userNeedsMatchAgreement(match, user.id)) {
           return {
             id: `agreement-${match.id}`,
