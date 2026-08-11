@@ -404,11 +404,11 @@ html[data-theme="light"] .arena-lobby-modal .arena-reserve-line > .arena-room-re
   html[data-theme="light"] .arena-lobby-modal .arena-reserve-line > .arena-room-reserve-row {
     grid-auto-flow: row;
     grid-auto-columns: auto;
-    inline-size: 100%;
-    max-width: 100%;
-    margin: 0;
-    padding: 0;
-    overflow-x: visible;
+    inline-size: calc(100% + 36px);
+    max-width: none;
+    margin: -18px;
+    padding: 18px;
+    overflow: visible;
   }
 }
 

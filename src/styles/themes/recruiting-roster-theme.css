@@ -257,14 +257,6 @@ html[data-theme="light"] .arena-room-party-group::before {
   box-shadow: 0 0 24px rgba(240, 90, 70, 0.16);
 }
 
-.arena-room-reserve-row .arena-room-party-group::before,
-html[data-theme="light"] .arena-room-reserve-row .arena-room-party-group::before {
-  inset: 0;
-  box-shadow:
-    0 0 10px 2px color-mix(in srgb, var(--orange) 34%, transparent),
-    0 0 18px color-mix(in srgb, var(--orange) 22%, transparent);
-}
-
 .arena-room-party-group::after,
 html[data-theme="light"] .arena-room-party-group::after {
   bottom: auto;

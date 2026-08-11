@@ -952,12 +952,16 @@ test("공용 방의 A/B 출전·후보 슬롯은 같은 간격과 반응형 정�
     recruitingStyles,
     /\.arena-slot-command-popover \.arena-invite-actions\s*\{[^}]*align-items:\s*center;/,
   );
-  const reservePartyGlowBlock = recruitingStyles.match(
-    /\.arena-room-reserve-row \.arena-room-party-group::before,[\s\S]*?html\[data-theme="light"\] \.arena-room-reserve-row \.arena-room-party-group::before\s*\{[^}]*\}/,
-  )?.[0] ?? "";
-  assert.match(reservePartyGlowBlock, /inset:\s*0;/);
-  assert.match(reservePartyGlowBlock, /box-shadow:[^}]*0 0 10px 2px[^}]*0 0 18px/);
-  assert.doesNotMatch(reservePartyGlowBlock, /box-shadow:[^}]*\binset\b/);
+  assert.doesNotMatch(
+    recruitingStyles,
+    /\.arena-room-reserve-row \.arena-room-party-group::before/,
+    "reserve parties must inherit the exact active-party glow",
+  );
+  assert.match(
+    recruitingStyles,
+    /@media \(max-width:\s*720px\)[\s\S]*?\.arena-lobby-modal \.arena-reserve-line > \.arena-room-reserve-row,[\s\S]*?\{[^}]*margin:\s*-18px;[^}]*padding:\s*18px;[^}]*overflow:\s*visible;/,
+    "mobile reserve rows must preserve the active-party glow space",
+  );
   assert.match(responsiveReserveRowBlock, /grid-template-columns:\s*repeat\(auto-fit,/);
   assert.doesNotMatch(responsiveReserveRowBlock, /overflow:\s*visible;/);
   assert.match(
