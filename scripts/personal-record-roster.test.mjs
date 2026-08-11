@@ -135,6 +135,46 @@ test("personal_record는 팀 점수와 본인 PTS를 분리하고 연결 선수�
   assert.ok(!JSON.stringify(match.rules.recordSummary).includes("#"));
 });
 
+test("이름 기록은 입력하지 않은 출전 슬롯을 무기명 선수로 채운다", () => {
+  const schedule = getRecentKstSchedule();
+  const state = {
+    currentUserId: "owner",
+    users,
+    teams: [],
+    matches: [],
+    notifications: [],
+    affiliations: [],
+    settings: {},
+    approvedCourts: [],
+    courts: [],
+  };
+  const next = createMatch(state, {
+    id: "personal-anonymous-fill",
+    title: "빈 슬롯 보충",
+    recordType: "solo",
+    recordEntryMode: "named",
+    visibility: "private",
+    mode: "2v2",
+    ...schedule,
+    soloScoreFor: 10,
+    soloScoreAgainst: 8,
+    soloStats: { points: 6 },
+    soloTeamAName: "우리팀",
+    soloTeamBName: "상대팀",
+    soloTeamAPlayersText: "김민준",
+    soloTeamBPlayersText: "",
+    soloTeamAPlayerRefs: [],
+    soloTeamBPlayerRefs: [],
+  });
+  const match = next.matches[0];
+
+  assert.equal(match.playedPlayerIds.teamA.length, 2);
+  assert.equal(match.playedPlayerIds.teamB.length, 2);
+  assert.equal(Object.keys(match.anonymousPlayers).length, 3);
+  assert.deepEqual(match.rules.recordSummary.teamAPlayers, ["기록자", "김민준"]);
+  assert.deepEqual(match.rules.recordSummary.teamBPlayers, ["무기명 1", "무기명 2"]);
+});
+
 test("서버와 생성 UI가 연결 profile scope·공용 stepper·해시태그 제거 계약을 유지한다", () => {
   const authoritativeSource = readFileSync(new URL("../server/api/_authoritativeState.js", import.meta.url), "utf8");
   const validationSource = readFileSync(new URL("../server/lib/matchSnapshotValidation.js", import.meta.url), "utf8");

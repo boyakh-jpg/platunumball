@@ -91,12 +91,14 @@ function createSoloRecordMatch(state, draft = {}) {
   }
   const rosterError = getSoloRecordRosterError(teamAEntries, teamBEntries, sideSize);
   if (rosterError) return withSoloRecordNotification(state, "개인 기록 선수 확인", rosterError);
+  const teamAPlayerCount = recordEntryMode === "named" ? Math.max(0, sideSize - 1) : 0;
+  const teamBPlayerCount = recordEntryMode === "named" ? sideSize : 0;
   const teamAAnonymous = makeSoloRecordAnonymousSide({
-    count: teamAEntries.length,
+    count: teamAPlayerCount,
     entries: teamAEntries,
   });
   const teamBAnonymous = makeSoloRecordAnonymousSide({
-    count: teamBEntries.length,
+    count: teamBPlayerCount,
     entries: teamBEntries,
   });
   const anonymousPlayers = Object.fromEntries(

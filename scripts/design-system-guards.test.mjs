@@ -1867,6 +1867,7 @@ test("shared control families and fixed labels keep canonical ownership", () => 
 
   assert.match(sharedControlStyles, /\.ui-segmented-control button/);
   assert.match(uiControlsStyles, /\.ui-folder-tabs button/);
+  assert.match(uiControlsStyles, /\.ui-folder-tabs button\[aria-selected="true"\][\s\S]*?background:\s*var\(--rb-bg\)/);
   assert.match(sharedControlStyles, /button\.ui-choice-tile/);
   assert.match(sharedControlStyles, /\.ui-compact-action/);
   assert.doesNotMatch(sharedControlStyles, /\.(?:create-mode-grid|favorite-type-grid|referee-exam-choice-grid) button/);

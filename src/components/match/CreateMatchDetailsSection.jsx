@@ -257,7 +257,7 @@ export function CreateMatchDetailsSection({ context }) {
                   우리팀 선수
                   <textarea
                     value={draft.soloTeamAPlayersText}
-                    placeholder="한 줄에 한 명. 예: 김민준 #rb001pg PG"
+                    placeholder="한 줄에 한 명. 예: 김민준 PG"
                     onChange={(event) => update({ soloTeamAPlayersText: event.target.value })}
                     onBlur={() => normalizeSoloRosterSide("teamA")}
                   />
@@ -266,7 +266,7 @@ export function CreateMatchDetailsSection({ context }) {
                   상대 선수
                   <textarea
                     value={draft.soloTeamBPlayersText}
-                    placeholder="한 줄에 한 명. 예: 이서연 #rb002c C"
+                    placeholder="한 줄에 한 명. 예: 이서연 C"
                     onChange={(event) => update({ soloTeamBPlayersText: event.target.value })}
                     onBlur={() => normalizeSoloRosterSide("teamB")}
                   />

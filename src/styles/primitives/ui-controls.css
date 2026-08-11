@@ -173,7 +173,7 @@ html[data-theme] .app-main :is(.recent-match-row.result-d, .rank-match-draw) {
 
 .ui-folder-tabs button[aria-selected="true"] {
   border-color: var(--ui-control-border);
-  background: var(--ui-card-bg);
+  background: var(--rb-bg);
   color: var(--rb-text);
   box-shadow: inset 0 calc(var(--ui-stroke-width) * 3) 0 var(--rb-orange);
   transform: translateY(var(--ui-stroke-width));
