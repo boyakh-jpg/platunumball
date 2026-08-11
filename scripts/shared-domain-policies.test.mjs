@@ -21,6 +21,13 @@ import {
 } from "./management-source-groups.mjs";
 import { readCssTree } from "./css-source-tree.mjs";
 import { BRAND_NAME } from "../src/lib/brand.js";
+import {
+  MATCH_RECEIPT_CANVAS_SIZES,
+  MATCH_RECEIPT_LIMITS,
+  getMatchReceiptOutcome,
+  normalizeMatchReceiptDraft,
+  validateMatchReceiptDraft,
+} from "../src/lib/matchReceipt.js";
 import { getAdminStatusLabel } from "../src/lib/admin.js";
 import { isCurrentScopedOperation, isCurrentScopedRequest } from "../src/lib/asyncState.js";
 import {
@@ -2867,4 +2874,46 @@ test("팀 초대 검색 결과는 선택 표면 안에서 hover card를 열지 �
 
   assert.match(source, /<span className="search-picker-player-identity">/);
   assert.doesNotMatch(source, /<PlayerHoverCard as="span"[^>]*search-picker-player-identity/);
+});
+
+test("경기 영수증 입력은 안전하게 정규화하고 이미지 규격을 고정한다", () => {
+  const draft = normalizeMatchReceiptDraft({
+    homeTeam: `<script>${"홈".repeat(30)}`,
+    awayTeam: "원정\u0000팀>",
+    homeScore: "1200",
+    awayScore: "-3",
+    playedOn: "invalid",
+    venue: "  서대문구 농구장  ",
+    address: "서울 서대문구 연희동",
+    format: "unknown",
+    homeColor: "javascript:alert(1)",
+    awayColor: "#123ABC",
+    comment: "  오늘도 <승리>  ",
+  });
+
+  assert.equal(draft.homeTeam.includes("<"), false);
+  assert.equal(draft.homeTeam.length, MATCH_RECEIPT_LIMITS.teamName);
+  assert.equal(draft.awayTeam, "원정팀");
+  assert.equal(draft.homeScore, MATCH_RECEIPT_LIMITS.score);
+  assert.equal(draft.awayScore, 0);
+  assert.match(draft.playedOn, /^\d{4}-\d{2}-\d{2}$/);
+  assert.equal(draft.venue, "서대문구 농구장");
+  assert.equal(draft.format, "3v3");
+  assert.equal(draft.homeColor, "#f05a46");
+  assert.equal(draft.awayColor, "#123abc");
+  assert.equal(draft.comment, "오늘도 승리");
+  assert.deepEqual(MATCH_RECEIPT_CANVAS_SIZES.story, { width: 1080, height: 1920, label: "Story 1080×1920" });
+  assert.deepEqual(MATCH_RECEIPT_CANVAS_SIZES.feed, { width: 1080, height: 1350, label: "Feed 1080×1350" });
+});
+
+test("경기 영수증은 필수값과 승패를 실행형 정책으로 판정한다", () => {
+  const missing = validateMatchReceiptDraft({ homeTeam: "", awayTeam: "", venue: "" });
+  assert.equal(missing.valid, false);
+  assert.deepEqual(Object.keys(missing.errors).sort(), ["awayTeam", "homeTeam", "venue"]);
+
+  const base = { homeTeam: "A", awayTeam: "B", venue: "코트" };
+  assert.equal(validateMatchReceiptDraft(base).valid, true);
+  assert.deepEqual(getMatchReceiptOutcome({ ...base, homeScore: 21, awayScore: 18 }), { key: "home", label: "HOME WIN" });
+  assert.deepEqual(getMatchReceiptOutcome({ ...base, homeScore: 18, awayScore: 21 }), { key: "away", label: "AWAY WIN" });
+  assert.deepEqual(getMatchReceiptOutcome({ ...base, homeScore: 21, awayScore: 21 }), { key: "draw", label: "DRAW" });
 });

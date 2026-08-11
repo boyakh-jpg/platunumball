@@ -17,6 +17,7 @@ const AdminCourtMapPopup = lazy(() => import("./pages/AdminCourtMapPopup.jsx"));
 const Affiliations = lazy(() => import("./pages/Affiliations.jsx"));
 const Community = lazy(() => import("./pages/Community.jsx"));
 const CreateMatch = lazy(() => import("./pages/CreateMatch.jsx"));
+const MatchReceipt = lazy(() => import("./pages/MatchReceipt.jsx"));
 const CourtDetail = lazy(() => import("./pages/CourtDetail.jsx"));
 const DataSources = lazy(() => import("./pages/DataSources.jsx"));
 const GettingStarted = lazy(() => import("./pages/GettingStarted.jsx"));
@@ -63,6 +64,7 @@ const GUEST_PUBLIC_APP_PATHS = new Set([
   "/app/guide",
   "/app/guide/practice",
   "/app/create",
+  "/app/receipt",
   "/app/community",
   "/app/matches",
   "/app/profile",
@@ -233,6 +235,7 @@ export default function App() {
             <Route path="/app/guide" element={<GettingStarted app={app} />} />
             <Route path="/app/guide/practice" element={<PracticeMatch app={app} />} />
             <Route path="/app/create" element={<CreateMatch app={app} />} />
+            <Route path="/app/receipt" element={<MatchReceipt auth={auth} />} />
             <Route path="/app/courts/:courtId" element={<CourtDetail app={app} />} />
             <Route path="/app/matches/:matchId" element={<LegacyMatchRoomRedirect />} />
             <Route path="/app/matches" element={<Matches app={app} />} />
