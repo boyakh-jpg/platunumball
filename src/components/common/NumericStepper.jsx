@@ -42,7 +42,10 @@ export default function NumericStepper({
         value={inputValue}
         onFocus={(event) => {
           blurFallbackRef.current = numericValue;
-          if (clearOnFocus || (clearZeroOnFocus && numericValue === 0)) event.currentTarget.select();
+          if (clearOnFocus || (clearZeroOnFocus && numericValue === 0)) {
+            onChange?.("");
+            event.currentTarget.select();
+          }
         }}
         onBlur={(event) => {
           const blurValue = getNumericInputBlurValue(event.currentTarget.value, blurFallbackRef.current);

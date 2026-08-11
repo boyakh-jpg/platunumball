@@ -204,6 +204,7 @@
 .personal-record-score-field.stat-stepper-row .stat-numeric-stepper input,
 .personal-record-stat-grid .stat-stepper-row .stat-numeric-stepper input {
   padding-inline: 0;
+  text-align: center;
 }
 
 @media (min-width: 721px) {

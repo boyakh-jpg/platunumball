@@ -3199,6 +3199,8 @@ html, body, #root { min-width: 0; margin: 0; }
             assert.deepEqual(result.b.partyGlowInset, ["0px", "0px", "0px", "0px"], `${label}: Team B party glow covers four edges`);
             assert.notEqual(result.a.partyGlowBoxShadow, "none", `${label}: Team A party glow visible`);
             assert.notEqual(result.b.partyGlowBoxShadow, "none", `${label}: Team B party glow visible`);
+            assert.doesNotMatch(result.a.partyGlowBoxShadow, /\binset\b/, `${label}: Team A party glow is not an inner border`);
+            assert.doesNotMatch(result.b.partyGlowBoxShadow, /\binset\b/, `${label}: Team B party glow is not an inner border`);
             assert.equal(result.a.firstRealAtStartEdge, true, `${label}: Team A first candidate edge`);
             assert.equal(result.b.firstRealAtStartEdge, true, `${label}: Team B first candidate edge`);
             assert.equal(result.a.firstRealVisibleAtInitial, true, `${label}: Team A first candidate visible at start`);

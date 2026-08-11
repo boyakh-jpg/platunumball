@@ -53,7 +53,7 @@ test("empty numeric input restores its valid default on blur", async () => {
     readFile(new URL("../src/components/match/CreateMatchLayout.jsx", import.meta.url), "utf8"),
   ]);
   assert.match(stepperSource, /blurFallbackRef\.current = numericValue/);
-  assert.match(stepperSource, /clearOnFocus[\s\S]*event\.currentTarget\.select\(\)/);
+  assert.match(stepperSource, /clearOnFocus[\s\S]*onChange\?\.\(""\);[\s\S]*event\.currentTarget\.select\(\)/);
   assert.doesNotMatch(stepperSource, /onChange\?\.\(0\)/);
   assert.match(stepperSource, /getNumericInputBlurValue\(event\.currentTarget\.value, blurFallbackRef\.current\)/);
   assert.match(inlineInputSource, /if \(inputProps\.value !== ""\) blurFallbackRef\.current = inputProps\.value/);
@@ -62,4 +62,16 @@ test("empty numeric input restores its valid default on blur", async () => {
   assert.match(inlineInputSource, /getNumericInputBlurValue\(event\.currentTarget\.value, blurFallbackRef\.current\)/);
   assert.match(createValidationSource, /setDraft\(\(current\) => \(\{[\s\S]*?soloStats: \{ \.\.\.\(current\.soloStats/);
   assert.match(createLayoutSource, /onPointerDownCapture=\{\(event\) => \{[\s\S]*?activeElement\.type === "number"[\s\S]*?activeElement\.value === ""[\s\S]*?activeElement\.blur\(\)/);
+});
+
+test("개인 기록 숫자 입력값은 가운데 정렬한다", async () => {
+  const personalRecordStyles = await readFile(
+    new URL("../src/styles/features/match-create-operations.css", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(
+    personalRecordStyles,
+    /\.personal-record-score-field\.stat-stepper-row \.stat-numeric-stepper input,[\s\S]*?\.personal-record-stat-grid \.stat-stepper-row \.stat-numeric-stepper input\s*\{[^}]*text-align:\s*center;/,
+  );
 });
