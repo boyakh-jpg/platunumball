@@ -7,7 +7,7 @@ export function CreateMatchCourtRosterSection({ context }) {
     PLAYER_STAT_FIELDS, REGION_TREE, SearchPicker, ShieldCheck, TeamHoverCard, UsersRound, X,
     activePlayerIds, ageRestrictionBlocked, ageRestrictionOption, app, challengeTeamAId, challengeTeamBId, clearSelectedCourt, courtDetailCourtId, courtMapDirectoryStatus,
     courtMapOpen, courtMapRegion, courtPlayWarning, courtQuery, courtRegion, courtSummary, draft,
-    favoriteCourts, favoriteReferees, getCourtAddress, getCourtLayoutLabel, getCourtSearchText, getCourtSurfaceLabel,
+    favoriteCourts, favoriteReferees, finalWizardStep, getCourtAddress, getCourtLayoutLabel, getCourtSearchText, getCourtSurfaceLabel,
     getTournamentTeamEligibility, hasTeamChallenge, isMatchRecordRoom, isPublicRoom, isSoloRecord, isStandardCreateWizard, isTeamRoom, isTournamentRoom,
     loadedCourtMapRegionsRef, mmrLimitOptions, mmrRangePolicy, recordComposition, refereeQuery, refereeSearchResults, registeredCourts,
     remoteDirectoryEnabled, removeTournamentCourt, removeTournamentReferee, renderCourtSearchItem, renderCreateTeamSearchItem, renderRefereeSearchItem, representativeTournamentTeam,
@@ -18,16 +18,20 @@ export function CreateMatchCourtRosterSection({ context }) {
     update, updateSoloStat, wizardStep,
   } = context;
 
+  const recordCourtOptional = isSoloRecord || isMatchRecordRoom;
+
   return (
     <>
-{wizardStep === 4 ? (
+{wizardStep === finalWizardStep ? (
         <Card className="section-card full-span selector-panel">
           <div className="section-title-row">
             <div>
               <p className="eyebrow">Court Finder</p>
               <h2>코트 검색</h2>
             </div>
-            <Badge tone={selectedCourt ? "green" : "orange"}>{selectedCourt?.name ?? "구장 선택 필요"}</Badge>
+            <Badge tone={selectedCourt ? "green" : recordCourtOptional ? "neutral" : "orange"}>
+              {selectedCourt?.name ?? (recordCourtOptional ? "구장 미정" : "구장 선택 필요")}
+            </Badge>
           </div>
           <div className="search-controls court-finder-controls">
             <label>
@@ -78,8 +82,8 @@ export function CreateMatchCourtRosterSection({ context }) {
             <div className="create-selected-court-main">
               <span className="create-selected-court-icon"><MapPin size={20} /></span>
               <div>
-                <strong>{selectedCourt?.name ?? "구장을 선택해 주세요"}</strong>
-                <span>{selectedCourt ? getCourtAddress(selectedCourt) : "코트명·주소 검색 또는 지도에서 등록 구장을 확인할 수 있습니다."}</span>
+                <strong>{selectedCourt?.name ?? (recordCourtOptional ? "구장 미정" : "구장을 선택해 주세요")}</strong>
+                <span>{selectedCourt ? getCourtAddress(selectedCourt) : recordCourtOptional ? "선택하지 않으면 구장 미정으로 저장합니다." : "코트명·주소 검색 또는 지도에서 등록 구장을 확인할 수 있습니다."}</span>
                 {selectedCourt ? (
                   <em>
                     {selectedCourt.region || "지역 미정"} · {getCourtSurfaceLabel(selectedCourt)} · {getCourtLayoutLabel(selectedCourt)} · {Number(selectedCourt.reviewCount) > 0 ? `보정 ${Number(selectedCourt.adjustedRating ?? selectedCourt.rating ?? 0).toFixed(1)} (${selectedCourt.reviewCount})` : "평가 전"}
@@ -113,7 +117,7 @@ export function CreateMatchCourtRosterSection({ context }) {
               ) : null}
             </div>
           ) : null}
-          {!isSoloRecord ? (
+          {!isSoloRecord && !isMatchRecordRoom ? (
             <MeetingPointFields
               draft={draft}
               onChange={update}
@@ -145,13 +149,15 @@ export function CreateMatchCourtRosterSection({ context }) {
               </div>
             </div>
           ) : null}
-          <div className={!selectedCourt || courtPlayWarning ? "tier-range-note tier-range-note-warning" : "tier-range-note"}>
+          <div className={courtPlayWarning || (!selectedCourt && !recordCourtOptional) ? "tier-range-note tier-range-note-warning" : "tier-range-note"}>
             <div>
               <span>구장 속성</span>
-              <strong>{selectedCourt ? `${getCourtSurfaceLabel(courtSummary)} / ${getCourtLayoutLabel(courtSummary)}` : "구장 선택 필요"}</strong>
-              <em>{selectedCourt ? (courtPlayWarning || "선택한 방식과 구장 형태가 충돌하지 않습니다.") : "등록된 구장을 검색 결과에서 선택해 주세요."}</em>
+              <strong>{selectedCourt ? `${getCourtSurfaceLabel(courtSummary)} / ${getCourtLayoutLabel(courtSummary)}` : recordCourtOptional ? "선택 사항" : "구장 선택 필요"}</strong>
+              <em>{selectedCourt ? (courtPlayWarning || "선택한 방식과 구장 형태가 충돌하지 않습니다.") : recordCourtOptional ? "선택하지 않으면 구장 미정으로 저장합니다." : "등록된 구장을 검색 결과에서 선택해 주세요."}</em>
             </div>
-            <Badge tone={!selectedCourt || courtPlayWarning ? "orange" : "green"}>{!selectedCourt ? "필수" : courtPlayWarning ? "경고" : "가능"}</Badge>
+            <Badge tone={courtPlayWarning || (!selectedCourt && !recordCourtOptional) ? "orange" : selectedCourt ? "green" : "neutral"}>
+              {!selectedCourt ? (recordCourtOptional ? "선택" : "필수") : courtPlayWarning ? "경고" : "가능"}
+            </Badge>
           </div>
         </Card>
         ) : null}

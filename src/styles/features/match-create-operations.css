@@ -532,20 +532,6 @@
   max-width: min(420px, 45vw);
 }
 
-.create-record-court-field {
-  display: grid;
-  gap: var(--space-4);
-}
-
-.create-record-court-selection {
-  min-width: 0;
-}
-
-.create-record-court-selection > span {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
 .create-referee-row {
   display: grid;
   grid-column: 1 / -1;

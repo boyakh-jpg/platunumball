@@ -1443,6 +1443,17 @@ test("심판 미선택 상태는 중복 설명 행을 표시하지 않는다", (
   assert.match(source, /selectedReferee \? \([\s\S]*초대할 심판:[\s\S]*초대 해제/);
 });
 
+test("record creation reuses the room court finder with map lookup", () => {
+  const courtSectionSource = fs.readFileSync(new URL("../src/components/match/CreateMatchCourtRosterSection.jsx", import.meta.url), "utf8");
+  const reviewSectionSource = fs.readFileSync(new URL("../src/components/match/CreateMatchPolicyReviewSection.jsx", import.meta.url), "utf8");
+
+  assert.match(courtSectionSource, /wizardStep === finalWizardStep/);
+  assert.match(courtSectionSource, /지도에서 찾기/);
+  assert.match(courtSectionSource, /const recordCourtOptional = isSoloRecord \|\| isMatchRecordRoom/);
+  assert.match(courtSectionSource, /recordCourtOptional \? "구장 미정" : "구장 선택 필요"/);
+  assert.doesNotMatch(reviewSectionSource, /create-record-court-field|코트명·주소 검색/);
+});
+
 test("invalid rule input is not normalized into a valid-looking final summary", () => {
   const summary = getMatchCreationSummary({ mode: "5v5", periodCount: 4, periodMinutes: "-5" });
   assert.equal(summary.rows.find((row) => row.label === "경기 규칙")?.value, "입력값 확인 필요");
