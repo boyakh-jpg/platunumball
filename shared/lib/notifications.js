@@ -99,7 +99,7 @@ function normalizeStatus(value) {
   return String(value ?? "").trim().toLowerCase();
 }
 
-const CORRUPTED_NOTIFICATION_TEXT_PATTERN = /\?{3,}/u;
+const CORRUPTED_NOTIFICATION_TEXT_PATTERN = /(?:\?\s*){3,}/u;
 const RECORD_CONFIRMATION_NOTIFICATION_TYPES = new Set([
   "match_record_setup",
   "postgame_record_approval_requested",
