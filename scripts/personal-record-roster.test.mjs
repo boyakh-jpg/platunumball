@@ -175,6 +175,40 @@ test("이름 기록은 입력하지 않은 출전 슬롯을 무기명 선수로 
   assert.deepEqual(match.rules.recordSummary.teamBPlayers, ["무기명 1", "무기명 2"]);
 });
 
+test("빠른 기록도 출전 정원을 무기명 선수로 채운다", () => {
+  const schedule = getRecentKstSchedule();
+  const state = {
+    currentUserId: "owner",
+    users,
+    teams: [],
+    matches: [],
+    notifications: [],
+    affiliations: [],
+    settings: {},
+    approvedCourts: [],
+    courts: [],
+  };
+  const next = createMatch(state, {
+    id: "personal-quick-anonymous-fill",
+    title: "빠른 기록 빈 슬롯 보충",
+    recordType: "solo",
+    recordEntryMode: "quick",
+    visibility: "private",
+    mode: "3v3",
+    ...schedule,
+    soloScoreFor: 12,
+    soloScoreAgainst: 9,
+    soloStats: { points: 7 },
+  });
+  const match = next.matches[0];
+
+  assert.equal(match.playedPlayerIds.teamA.length, 3);
+  assert.equal(match.playedPlayerIds.teamB.length, 3);
+  assert.equal(Object.keys(match.anonymousPlayers).length, 5);
+  assert.deepEqual(match.rules.recordSummary.teamAPlayers, ["기록자", "무기명 1", "무기명 2"]);
+  assert.deepEqual(match.rules.recordSummary.teamBPlayers, ["무기명 1", "무기명 2", "무기명 3"]);
+});
+
 test("서버와 생성 UI가 연결 profile scope·공용 stepper·해시태그 제거 계약을 유지한다", () => {
   const authoritativeSource = readFileSync(new URL("../server/api/_authoritativeState.js", import.meta.url), "utf8");
   const validationSource = readFileSync(new URL("../server/lib/matchSnapshotValidation.js", import.meta.url), "utf8");

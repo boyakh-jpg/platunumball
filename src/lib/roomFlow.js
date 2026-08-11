@@ -2,6 +2,7 @@ import {
   getMatchRoomPhase,
   getMatchScheduledDate,
   isMatchRecordMatch,
+  isPersonalRecordMatch,
   isTournamentMatchLineupEditable,
 } from "./matchUtils.js";
 
@@ -352,7 +353,7 @@ export function getRoomPhaseViewModel({ post = {}, match = null } = {}) {
     sectionOrder: ["recordBoard", "versus"],
     showVersusStage: true,
     showParticipantPool: false,
-    showSideReserves: true,
+    showSideReserves: !isPersonalRecordMatch(source),
     showRules: true,
     primaryAction: phase === "checkin" ? "경기 시작" : null,
   };

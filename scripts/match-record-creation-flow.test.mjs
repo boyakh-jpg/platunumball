@@ -488,11 +488,15 @@ test("personal quick record ignores stale names and creates no approval room", (
   assert.equal(match.status, "confirmed");
   assert.deepEqual(match.teamA.players, ["u1"]);
   assert.deepEqual(match.teamB.players, []);
+  assert.equal(match.playedPlayerIds.teamA.length, 3);
+  assert.equal(match.playedPlayerIds.teamB.length, 3);
+  assert.equal(Object.keys(match.anonymousPlayers).length, 5);
   assert.equal(match.rules.recordEntryMode, "quick");
   assert.equal(match.visibility, "private");
   assert.equal(match.rules.visibility, "private");
-  assert.deepEqual(match.rules.recordSummary.teamAPlayers, ["선수1"]);
-  assert.deepEqual(match.rules.recordSummary.teamBPlayers, []);
+  assert.equal(match.rules.recordSummary.teamAPlayers.length, 3);
+  assert.equal(match.rules.recordSummary.teamBPlayers.length, 3);
+  assert.equal(match.rules.recordSummary.teamAPlayers[0], "선수1");
 
   const publicRecord = createMatch(makeState(), {
     id: "personal-public",

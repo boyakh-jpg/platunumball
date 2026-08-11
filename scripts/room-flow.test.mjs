@@ -450,6 +450,17 @@ test("픽업 체크인은 배정 확정 전 A/B 작업대를 표시한다", () =
   assert.equal(view.assignmentConfirmed, false);
 });
 
+test("개인 기록 방은 출전 명단만 표시하고 후보 라인을 숨긴다", () => {
+  const match = {
+    status: "confirmed",
+    rules: { recordType: "solo" },
+    result: { scoreA: 12, scoreB: 9 },
+  };
+  const view = getRoomPhaseViewModel({ match });
+  assert.equal(view.showVersusStage, true);
+  assert.equal(view.showSideReserves, false);
+});
+
 test("슬롯 관리는 경기 시작 전까지만 열린다", () => {
   const pregame = { status: "agreed", timingType: "instant" };
   assert.equal(isMatchPregameSlotManagementOpen(pregame), true);
