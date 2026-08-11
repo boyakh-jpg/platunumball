@@ -203,6 +203,7 @@
 
 .personal-record-score-field.stat-stepper-row .stat-numeric-stepper input,
 .personal-record-stat-grid .stat-stepper-row .stat-numeric-stepper input {
+  border: 0;
   padding-inline: 0;
   text-align: center;
 }

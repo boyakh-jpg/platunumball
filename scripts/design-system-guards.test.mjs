@@ -83,6 +83,7 @@ const courtDatabasePanelSource = read("src/components/admin/CourtDatabasePanelVi
 const courtDatabaseDuplicateSource = read("src/components/admin/CourtDatabaseDuplicateReview.jsx");
 const courtDatabaseMapStyles = read("src/styles/features/admin-court-database-map.css");
 const courtDatabaseShellStyles = read("src/styles/features/admin-court-database-shell.css");
+const matchCreateOperationsStyles = read("src/styles/features/match-create-operations.css");
 const globalWorkflowStyles = readCssTree("src/styles/global-workflows.css");
 const globalSurfaceStyles = readCssTree("src/styles/global-surfaces.css");
 const landingScoreThemeStyles = read("src/styles/themes/landing-score-theme.css");
@@ -614,6 +615,13 @@ function getRuleBody(source, selector) {
   assert.ok(match, `${selector} 규칙이 필요합니다.`);
   return match[1];
 }
+
+test("개인 기록 숫자 입력칸은 별도 테두리를 표시하지 않는다", () => {
+  assert.match(
+    matchCreateOperationsStyles,
+    /\.personal-record-score-field\.stat-stepper-row \.stat-numeric-stepper input,\s*\.personal-record-stat-grid \.stat-stepper-row \.stat-numeric-stepper input\s*\{[^}]*border:\s*0;/,
+  );
+});
 
 test("모든 페이지 기본 본문은 800이며 명시형 굵기는 600 이상을 유지한다", () => {
   const foundationStyles = readCssTree("src/styles/global-foundation.css");
