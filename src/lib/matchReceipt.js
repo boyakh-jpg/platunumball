@@ -1,10 +1,16 @@
 import { RECORD_TYPES } from "./constants.js";
+import { assetUrl, BOXTIER_LOGO_URL } from "./assets.js";
 import { createQrMatrix } from "./qrCode.js";
+import { getTier, getTierDivision } from "./tier.js";
 
 export const MATCH_RECEIPT_DRAFT_STORAGE_KEY = "boxtier.match-receipt.draft.v1";
 export const MATCH_RECEIPT_CREATE_RETURN_TO = "/app/create?intent=record&source=receipt";
-const MATCH_RECEIPT_DRAFT_VERSION = 1;
+export const MATCH_RECEIPT_PHOTO_MAX_BYTES = 15 * 1024 * 1024;
+const MATCH_RECEIPT_DRAFT_VERSION = 2;
 const MATCH_RECEIPT_DRAFT_TTL_MS = 24 * 60 * 60 * 1000;
+const PHOTO_DB_NAME = "boxtier-match-receipt";
+const PHOTO_STORE_NAME = "photos";
+const PHOTO_KEY = "current";
 
 export const MATCH_RECEIPT_LIMITS = Object.freeze({
   teamName: 24,
@@ -20,12 +26,30 @@ export const MATCH_RECEIPT_FORMATS = Object.freeze([
   { value: "other", label: "기타" },
 ]);
 
+export const MATCH_RECEIPT_NATURES = Object.freeze([
+  { value: "friendly", label: "FRIENDLY" },
+  { value: "competitive", label: "COMPETITIVE" },
+  { value: "revenge", label: "REVENGE" },
+  { value: "semifinal", label: "SEMIFINAL" },
+  { value: "final", label: "FINAL" },
+]);
+
 export const MATCH_RECEIPT_CANVAS_SIZES = Object.freeze({
   story: Object.freeze({ width: 1080, height: 1920, label: "Story 1080×1920" }),
   feed: Object.freeze({ width: 1080, height: 1350, label: "Feed 1080×1350" }),
 });
 
 const DEFAULT_COLORS = Object.freeze({ home: "#f05a46", away: "#27354d" });
+const TIER_EMBLEMS = Object.freeze({
+  Rookie: "/assets/tier-emblems/tier-rookie-v5.webp",
+  Bronze: "/assets/tier-emblems/tier-bronze-v5.webp",
+  Silver: "/assets/tier-emblems/tier-silver-v5.webp",
+  Gold: "/assets/tier-emblems/tier-gold-v5.webp",
+  Platinum: "/assets/tier-emblems/tier-platinum-v5.webp",
+  Diamond: "/assets/tier-emblems/tier-diamond-v5.webp",
+  Master: "/assets/tier-emblems/tier-master-v5.webp",
+  Legend: "/assets/tier-emblems/tier-legend-v5.webp",
+});
 
 function todayInKorea() {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -47,10 +71,19 @@ function cleanText(value, maxLength) {
     .trimEnd();
 }
 
+function clampNumber(value, minimum, maximum, fallback = 0) {
+  const number = Number(value);
+  return Number.isFinite(number) ? Math.min(maximum, Math.max(minimum, number)) : fallback;
+}
+
 function cleanScore(value) {
-  const parsed = Number.parseInt(String(value ?? "0"), 10);
-  if (!Number.isFinite(parsed)) return 0;
-  return Math.min(MATCH_RECEIPT_LIMITS.score, Math.max(0, parsed));
+  return Math.round(clampNumber(value, 0, MATCH_RECEIPT_LIMITS.score));
+}
+
+function cleanOptionalNumber(value) {
+  if (value === "" || value === null || value === undefined) return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
 }
 
 function cleanColor(value, fallback) {
@@ -67,35 +100,74 @@ export function createDefaultMatchReceiptDraft() {
     venue: "",
     address: "",
     format: "3v3",
+    matchNature: "competitive",
     homeColor: DEFAULT_COLORS.home,
     awayColor: DEFAULT_COLORS.away,
     comment: "",
+    photoZoom: 1,
+    photoX: 0,
+    photoY: 0,
+    photoRotation: 0,
+    homeMmr: null,
+    awayMmr: null,
+    personalMmr: null,
+    personalPoints: null,
+    personalRebounds: null,
+    verified: false,
   };
 }
 
 export function normalizeMatchReceiptDraft(value = {}) {
   const format = MATCH_RECEIPT_FORMATS.some((item) => item.value === value.format) ? value.format : "3v3";
+  const matchNature = MATCH_RECEIPT_NATURES.some((item) => item.value === value.matchNature)
+    ? value.matchNature
+    : "competitive";
   return {
     homeTeam: cleanText(value.homeTeam, MATCH_RECEIPT_LIMITS.teamName),
     awayTeam: cleanText(value.awayTeam, MATCH_RECEIPT_LIMITS.teamName),
     homeScore: cleanScore(value.homeScore),
     awayScore: cleanScore(value.awayScore),
-    playedOn: /^\d{4}-\d{2}-\d{2}$/.test(String(value.playedOn ?? ""))
-      ? String(value.playedOn)
-      : todayInKorea(),
+    playedOn: /^\d{4}-\d{2}-\d{2}$/.test(String(value.playedOn ?? "")) ? String(value.playedOn) : todayInKorea(),
     venue: cleanText(value.venue, MATCH_RECEIPT_LIMITS.venue),
     address: cleanText(value.address, MATCH_RECEIPT_LIMITS.address),
     format,
+    matchNature,
     homeColor: cleanColor(value.homeColor, DEFAULT_COLORS.home),
     awayColor: cleanColor(value.awayColor, DEFAULT_COLORS.away),
     comment: cleanText(value.comment, MATCH_RECEIPT_LIMITS.comment),
+    photoZoom: clampNumber(value.photoZoom, 1, 3, 1),
+    photoX: clampNumber(value.photoX, -100, 100),
+    photoY: clampNumber(value.photoY, -100, 100),
+    photoRotation: ((clampNumber(value.photoRotation, -10_000, 10_000) + 180) % 360 + 360) % 360 - 180,
+    homeMmr: cleanOptionalNumber(value.homeMmr),
+    awayMmr: cleanOptionalNumber(value.awayMmr),
+    personalMmr: cleanOptionalNumber(value.personalMmr),
+    personalPoints: cleanOptionalNumber(value.personalPoints),
+    personalRebounds: cleanOptionalNumber(value.personalRebounds),
+    verified: Boolean(value.verified),
   };
+}
+
+function inferMatchReceiptNature(match = {}, tournament = null) {
+  if (MATCH_RECEIPT_NATURES.some(({ value }) => value === match.matchNature)) return match.matchNature;
+  if (match.tournamentFormat === "tournament" || tournament?.format === "tournament") {
+    const bracketSize = Number(tournament?.bracket?.bracketSize ?? 0);
+    const totalRounds = bracketSize > 1 ? Math.ceil(Math.log2(bracketSize)) : 0;
+    const round = Number(match.tournamentRound ?? 0);
+    if (totalRounds && round === totalRounds) return "final";
+    if (totalRounds > 1 && round === totalRounds - 1) return "semifinal";
+  }
+  const source = `${match.title ?? ""} ${match.roundName ?? ""} ${match.stage ?? ""}`.toLowerCase();
+  if (/semi[ -]?final|준결승/.test(source)) return "semifinal";
+  if (/\bfinal\b|결승/.test(source)) return "final";
+  if (/revenge|리벤지/.test(source)) return "revenge";
+  if (match.matchPurpose === "friendly" || match.rules?.matchPurpose === "friendly") return "friendly";
+  return "competitive";
 }
 
 function getMatchReceiptDraftStorage(storage) {
   if (storage) return storage;
-  if (typeof window === "undefined") return null;
-  return window.localStorage;
+  return typeof window === "undefined" ? null : window.localStorage;
 }
 
 export function saveMatchReceiptDraft(value, storage) {
@@ -119,11 +191,7 @@ export function loadMatchReceiptDraft(storage) {
   try {
     const value = JSON.parse(target.getItem(MATCH_RECEIPT_DRAFT_STORAGE_KEY) || "null");
     const savedAt = Number(value?.savedAt);
-    if (
-      value?.version !== MATCH_RECEIPT_DRAFT_VERSION
-      || !Number.isFinite(savedAt)
-      || Date.now() - savedAt > MATCH_RECEIPT_DRAFT_TTL_MS
-    ) {
+    if (![1, MATCH_RECEIPT_DRAFT_VERSION].includes(value?.version) || !Number.isFinite(savedAt) || Date.now() - savedAt > MATCH_RECEIPT_DRAFT_TTL_MS) {
       if (value) target.removeItem(MATCH_RECEIPT_DRAFT_STORAGE_KEY);
       return null;
     }
@@ -143,6 +211,80 @@ export function clearMatchReceiptDraft(storage) {
   } catch {
     return false;
   }
+}
+
+function openPhotoDatabase() {
+  if (typeof indexedDB === "undefined") return Promise.resolve(null);
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(PHOTO_DB_NAME, 1);
+    request.onupgradeneeded = () => request.result.createObjectStore(PHOTO_STORE_NAME);
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function usePhotoStore(mode, callback) {
+  const database = await openPhotoDatabase();
+  if (!database) return null;
+  try {
+    return await new Promise((resolve, reject) => {
+      const transaction = database.transaction(PHOTO_STORE_NAME, mode);
+      const request = callback(transaction.objectStore(PHOTO_STORE_NAME));
+      request.onsuccess = () => resolve(request.result ?? true);
+      request.onerror = () => reject(request.error);
+    });
+  } finally {
+    database.close();
+  }
+}
+
+export async function saveMatchReceiptPhoto(blob) {
+  if (!(blob instanceof Blob)) return false;
+  await usePhotoStore("readwrite", (store) => store.put({ blob, savedAt: Date.now() }, PHOTO_KEY));
+  return true;
+}
+
+export async function loadMatchReceiptPhoto() {
+  try {
+    const value = await usePhotoStore("readonly", (store) => store.get(PHOTO_KEY));
+    if (!value?.blob) return null;
+    if (Date.now() - Number(value.savedAt ?? 0) > MATCH_RECEIPT_DRAFT_TTL_MS) {
+      await clearMatchReceiptPhoto();
+      return null;
+    }
+    return value.blob;
+  } catch {
+    return null;
+  }
+}
+
+export async function clearMatchReceiptPhoto() {
+  try {
+    await usePhotoStore("readwrite", (store) => store.delete(PHOTO_KEY));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function canvasToBlob(canvas, type = "image/jpeg", quality = 0.92) {
+  return new Promise((resolve, reject) => canvas.toBlob((blob) => (
+    blob ? resolve(blob) : reject(new Error("match_receipt_photo_failed"))
+  ), type, quality));
+}
+
+export async function normalizeMatchReceiptPhotoFile(file) {
+  if (!(file instanceof Blob) || !String(file.type).startsWith("image/")) throw new Error("match_receipt_photo_type");
+  if (file.size > MATCH_RECEIPT_PHOTO_MAX_BYTES) throw new Error("match_receipt_photo_size");
+  const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+  const maximumSide = 4096;
+  const scale = Math.min(1, maximumSide / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+  canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+  canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close?.();
+  return canvasToBlob(canvas, "image/jpeg", 0.92);
 }
 
 export function validateMatchReceiptDraft(value) {
@@ -174,6 +316,8 @@ export function getMatchReceiptCreateDraft(value) {
 export function getMatchReceiptDraftFromMatch(match = {}, style = {}, court = null) {
   const summary = match.rules?.recordSummary ?? {};
   const memo = match.memo === "혼자 저장한 개인 기록입니다." ? "" : match.memo;
+  const playerStats = match.result?.playerStats?.[style.currentUserId] ?? {};
+  const verified = match.status === "confirmed" && match.recordType !== RECORD_TYPES.personalRecord;
   return normalizeMatchReceiptDraft({
     homeTeam: match.teamA?.name || summary.teamAName || "",
     awayTeam: match.teamB?.name || summary.teamBName || "",
@@ -181,20 +325,29 @@ export function getMatchReceiptDraftFromMatch(match = {}, style = {}, court = nu
     awayScore: match.result?.scoreB ?? match.teamB?.score ?? 0,
     playedOn: String(match.scheduledDate ?? "").slice(0, 10),
     format: MATCH_RECEIPT_FORMATS.some(({ value }) => value === match.mode) ? match.mode : "other",
+    matchNature: inferMatchReceiptNature(match, style.tournament),
     venue: court?.name ?? (match.court && match.court !== "미정" ? match.court : ""),
     address: court?.address ?? style.address ?? "",
     comment: memo,
     homeColor: style.homeColor,
     awayColor: style.awayColor,
+    photoZoom: style.photoZoom,
+    photoX: style.photoX,
+    photoY: style.photoY,
+    photoRotation: style.photoRotation,
+    homeMmr: style.homeMmr ?? match.teamA?.mmr,
+    awayMmr: style.awayMmr ?? match.teamB?.mmr,
+    personalMmr: style.personalMmr,
+    personalPoints: verified ? playerStats.points : null,
+    personalRebounds: verified ? playerStats.rebounds : null,
+    verified,
   });
 }
 
 export function getMatchReceiptOutcome(value) {
   const draft = normalizeMatchReceiptDraft(value);
   if (draft.homeScore === draft.awayScore) return { key: "draw", label: "DRAW" };
-  return draft.homeScore > draft.awayScore
-    ? { key: "home", label: "HOME WIN" }
-    : { key: "away", label: "AWAY WIN" };
+  return draft.homeScore > draft.awayScore ? { key: "home", label: "HOME WIN" } : { key: "away", label: "AWAY WIN" };
 }
 
 export function getMatchReceiptCanvasSize(preset = "story") {
@@ -203,12 +356,15 @@ export function getMatchReceiptCanvasSize(preset = "story") {
 
 export function getMatchReceiptFileName(value, preset = "story") {
   const draft = normalizeMatchReceiptDraft(value);
-  const date = draft.playedOn.replaceAll("-", "");
-  return `boxtier-match-receipt-${date}-${preset}.png`;
+  return `boxtier-match-receipt-${draft.playedOn.replaceAll("-", "")}-${preset}.png`;
 }
 
 export function getMatchReceiptFormatLabel(format) {
   return MATCH_RECEIPT_FORMATS.find((item) => item.value === format)?.label ?? "기타";
+}
+
+export function getMatchReceiptNatureLabel(matchNature) {
+  return MATCH_RECEIPT_NATURES.find((item) => item.value === matchNature)?.label ?? "COMPETITIVE";
 }
 
 function receiptNumber(draft) {
@@ -218,72 +374,109 @@ function receiptNumber(draft) {
     hash ^= input.charCodeAt(index);
     hash = Math.imul(hash, 16777619);
   }
-  return `GUEST-${(hash >>> 0).toString(36).toUpperCase().padStart(7, "0").slice(-7)}`;
+  return `BT-${draft.playedOn.replaceAll("-", "")}-${(hash >>> 0).toString(36).toUpperCase().padStart(4, "0").slice(-4)}`;
 }
 
-function roundedRect(ctx, x, y, width, height, radius) {
-  const r = Math.min(radius, width / 2, height / 2);
+function getTierVisual(mmr) {
+  if (!Number.isFinite(mmr)) return null;
+  const tier = getTier(mmr);
+  return { label: getTierDivision(mmr).toUpperCase(), src: assetUrl(TIER_EMBLEMS[tier.name] ?? TIER_EMBLEMS.Rookie) };
+}
+
+export function createMatchReceiptViewModel(value, options = {}) {
+  const draft = normalizeMatchReceiptDraft(value);
+  const hasPersonalStats = draft.verified && (draft.personalPoints !== null || draft.personalRebounds !== null);
+  return {
+    ...draft,
+    outcome: getMatchReceiptOutcome(draft),
+    serial: options.publicId ? `NO. ${options.publicId}` : receiptNumber(draft),
+    matchUrl: String(options.matchUrl ?? ""),
+    logoUrl: BOXTIER_LOGO_URL,
+    defaultPhotoUrl: assetUrl("/assets/rankball-record-create-night.webp"),
+    homeTier: getTierVisual(draft.homeMmr),
+    awayTier: getTierVisual(draft.awayMmr),
+    personalTier: getTierVisual(draft.personalMmr),
+    matchNatureLabel: getMatchReceiptNatureLabel(draft.matchNature),
+    hasPersonalStats,
+  };
+}
+
+function loadCanvasImage(source) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.crossOrigin = "anonymous";
+    const temporaryUrl = source instanceof Blob ? URL.createObjectURL(source) : "";
+    image.onload = () => {
+      if (temporaryUrl) URL.revokeObjectURL(temporaryUrl);
+      resolve(image);
+    };
+    image.onerror = () => {
+      if (temporaryUrl) URL.revokeObjectURL(temporaryUrl);
+      reject(new Error("match_receipt_image_failed"));
+    };
+    image.src = temporaryUrl || source;
+  });
+}
+
+function drawCoverPhoto(ctx, image, rect, draft) {
+  const rotation = draft.photoRotation * Math.PI / 180;
+  const cover = Math.max(rect.width / image.naturalWidth, rect.height / image.naturalHeight);
+  const rotationSafety = Math.abs(Math.sin(rotation)) > 0.01 ? 1.45 : 1;
+  const width = image.naturalWidth * cover * draft.photoZoom * rotationSafety;
+  const height = image.naturalHeight * cover * draft.photoZoom * rotationSafety;
+  const travelX = Math.max(rect.width * 0.35, Math.abs(width - rect.width) / 2);
+  const travelY = Math.max(rect.height * 0.35, Math.abs(height - rect.height) / 2);
+  ctx.save();
   ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.arcTo(x + width, y, x + width, y + height, r);
-  ctx.arcTo(x + width, y + height, x, y + height, r);
-  ctx.arcTo(x, y + height, x, y, r);
-  ctx.arcTo(x, y, x + width, y, r);
-  ctx.closePath();
+  ctx.rect(rect.x, rect.y, rect.width, rect.height);
+  ctx.clip();
+  ctx.translate(rect.x + rect.width / 2 + draft.photoX / 100 * travelX, rect.y + rect.height / 2 + draft.photoY / 100 * travelY);
+  ctx.rotate(rotation);
+  ctx.filter = "brightness(0.78) contrast(1.08) saturate(0.92)";
+  ctx.drawImage(image, -width / 2, -height / 2, width, height);
+  ctx.restore();
 }
 
-function fitText(ctx, text, maxWidth, initialSize, minSize = 34) {
+function fitCanvasText(ctx, text, maxWidth, initialSize, minimumSize = 28) {
   let size = initialSize;
-  do {
-    ctx.font = `900 ${size}px "Pretendard Variable", sans-serif`;
-    if (ctx.measureText(text).width <= maxWidth) return size;
+  while (size > minimumSize) {
+    ctx.font = `900 ${size}px "KBO Dia Gothic", sans-serif`;
+    if (ctx.measureText(text).width <= maxWidth) break;
     size -= 2;
-  } while (size > minSize);
-  return minSize;
-}
-
-function drawMetaRow(ctx, label, value, x, y, width) {
-  ctx.fillStyle = "#8d8981";
-  ctx.font = '800 28px "Pretendard Variable", sans-serif';
-  ctx.textAlign = "left";
-  ctx.fillText(label, x, y);
-  ctx.fillStyle = "#18191a";
-  ctx.font = '900 31px "Pretendard Variable", sans-serif';
-  ctx.textAlign = "right";
-  ctx.fillText(value, x + width, y);
+  }
+  return size;
 }
 
 function drawQrCode(ctx, value, x, y, size) {
   const matrix = createQrMatrix(value);
   const quietZone = 4;
-  const moduleCount = matrix.length + quietZone * 2;
-  const scale = Math.max(1, Math.floor(size / moduleCount));
-  const actualSize = moduleCount * scale;
-
-  ctx.fillStyle = "#ffffff";
+  const scale = Math.max(1, Math.floor(size / (matrix.length + quietZone * 2)));
+  const actualSize = (matrix.length + quietZone * 2) * scale;
+  ctx.fillStyle = "#f1e8db";
   ctx.fillRect(x, y, actualSize, actualSize);
-  ctx.fillStyle = "#050505";
-  matrix.forEach((row, rowIndex) => {
-    row.forEach((cell, columnIndex) => {
-      if (!cell) return;
-      ctx.fillRect(
-        x + (columnIndex + quietZone) * scale,
-        y + (rowIndex + quietZone) * scale,
-        scale,
-        scale,
-      );
-    });
-  });
-
+  ctx.fillStyle = "#111111";
+  matrix.forEach((row, rowIndex) => row.forEach((cell, columnIndex) => {
+    if (cell) ctx.fillRect(x + (columnIndex + quietZone) * scale, y + (rowIndex + quietZone) * scale, scale, scale);
+  }));
   return actualSize;
+}
+
+function drawTornEdge(ctx, y, width, color) {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(0, y + 14);
+  for (let x = 0; x <= width; x += 18) ctx.lineTo(x, y + (Math.floor(x / 18) % 2 ? 0 : 18));
+  ctx.lineTo(width, 1920);
+  ctx.lineTo(0, 1920);
+  ctx.closePath();
+  ctx.fill();
 }
 
 export async function renderMatchReceiptPng(value, preset = "story", options = {}) {
   if (typeof document === "undefined") throw new Error("match_receipt_canvas_unavailable");
-  const draft = normalizeMatchReceiptDraft(value);
-  const matchId = String(options.matchId ?? "").trim();
-  const matchUrl = String(options.matchUrl ?? "").trim();
+  const model = createMatchReceiptViewModel(value, options);
   const { width, height } = getMatchReceiptCanvasSize(preset);
+  const compact = preset === "feed";
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
@@ -291,142 +484,137 @@ export async function renderMatchReceiptPng(value, preset = "story", options = {
   if (!ctx) throw new Error("match_receipt_canvas_unavailable");
   await document.fonts?.ready;
 
-  const compact = preset === "feed";
-  const paperX = 78;
-  const paperY = compact ? 70 : 170;
-  const paperWidth = width - paperX * 2;
-  const paperHeight = compact ? 1210 : 1580;
-  const contentX = paperX + 72;
-  const contentWidth = paperWidth - 144;
-  const scoreY = compact ? 520 : 680;
-  const outcome = getMatchReceiptOutcome(draft);
+  const photoHeight = compact ? 590 : 860;
+  const receiptTop = compact ? 1010 : 1520;
+  const [photo, logo, homeTier, awayTier, personalTier] = await Promise.all([
+    loadCanvasImage(options.photoBlob || model.defaultPhotoUrl),
+    loadCanvasImage(model.logoUrl).catch(() => null),
+    model.homeTier ? loadCanvasImage(model.homeTier.src).catch(() => null) : null,
+    model.awayTier ? loadCanvasImage(model.awayTier.src).catch(() => null) : null,
+    model.personalTier ? loadCanvasImage(model.personalTier.src).catch(() => null) : null,
+  ]);
 
-  ctx.fillStyle = "#18191a";
+  ctx.fillStyle = "#111111";
   ctx.fillRect(0, 0, width, height);
-  const glow = ctx.createRadialGradient(width / 2, height * 0.24, 40, width / 2, height * 0.24, 720);
-  glow.addColorStop(0, `${outcome.key === "away" ? draft.awayColor : draft.homeColor}55`);
-  glow.addColorStop(1, "#18191a00");
-  ctx.fillStyle = glow;
-  ctx.fillRect(0, 0, width, height);
+  drawCoverPhoto(ctx, photo, { x: 0, y: 0, width, height: photoHeight }, model);
+  const photoFade = ctx.createLinearGradient(0, photoHeight * 0.35, 0, photoHeight + 260);
+  photoFade.addColorStop(0, "rgba(12,12,12,0)");
+  photoFade.addColorStop(0.58, "rgba(12,12,12,.76)");
+  photoFade.addColorStop(1, "#111111");
+  ctx.fillStyle = photoFade;
+  ctx.fillRect(0, photoHeight * 0.3, width, photoHeight + 280);
 
-  ctx.save();
-  ctx.shadowColor = "rgba(0, 0, 0, 0.42)";
-  ctx.shadowBlur = 48;
-  ctx.shadowOffsetY = 20;
-  roundedRect(ctx, paperX, paperY, paperWidth, paperHeight, 30);
-  ctx.fillStyle = "#f5f1e8";
-  ctx.fill();
-  ctx.restore();
-
-  ctx.fillStyle = draft.homeColor;
-  ctx.fillRect(paperX, paperY, paperWidth / 2, 14);
-  ctx.fillStyle = draft.awayColor;
-  ctx.fillRect(paperX + paperWidth / 2, paperY, paperWidth / 2, 14);
-
-  ctx.fillStyle = "#18191a";
-  ctx.font = '900 48px "KBO Dia Gothic", "Pretendard Variable", sans-serif';
-  ctx.textAlign = "left";
-  ctx.fillText("BOXTIER", contentX, paperY + 92);
-  ctx.fillStyle = "#f05a46";
-  ctx.font = '900 25px "Pretendard Variable", sans-serif';
+  if (logo) ctx.drawImage(logo, 44, 48, 142, 42);
+  ctx.fillStyle = "#f05a2a";
   ctx.textAlign = "right";
-  ctx.fillText("MATCH RECEIPT", paperX + paperWidth - 72, paperY + 76);
-  ctx.fillStyle = "#8d8981";
-  ctx.font = '800 20px ui-monospace, monospace';
-  ctx.fillText(matchId ? `MATCH-${matchId}` : receiptNumber(draft), paperX + paperWidth - 72, paperY + 110);
+  ctx.font = '900 25px "KBO Dia Gothic", sans-serif';
+  ctx.fillText(model.serial, width - 48, 80);
 
-  ctx.strokeStyle = "rgba(24, 25, 26, 0.23)";
-  ctx.lineWidth = 3;
-  ctx.setLineDash([12, 12]);
+  const verifiedY = compact ? 440 : 720;
+  ctx.strokeStyle = "#f05a2a";
+  ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.moveTo(contentX, paperY + 150);
-  ctx.lineTo(contentX + contentWidth, paperY + 150);
+  ctx.moveTo(150, verifiedY);
+  ctx.lineTo(382, verifiedY);
+  ctx.moveTo(698, verifiedY);
+  ctx.lineTo(930, verifiedY);
+  ctx.stroke();
+  ctx.fillStyle = "#f05a2a";
+  ctx.textAlign = "center";
+  ctx.font = '900 30px "KBO Dia Gothic", sans-serif';
+  ctx.fillText(model.verified ? "★  BOXTIER VERIFIED  ★" : "★  MATCH RECEIPT  ★", width / 2, verifiedY + 11);
+
+  const scoreTop = verifiedY + 70;
+  ctx.fillStyle = "#f1e8db";
+  ctx.font = `900 ${compact ? 146 : 196}px "KBO Dia Gothic", sans-serif`;
+  ctx.fillText(`${model.homeScore} : ${model.awayScore}`, width / 2, scoreTop + (compact ? 145 : 190));
+  ctx.fillStyle = "#f05a2a";
+  ctx.font = '900 31px "KBO Dia Gothic", sans-serif';
+  ctx.fillText(model.matchNatureLabel, width / 2, scoreTop + 7);
+
+  const teamY = compact ? 825 : 1195;
+  const columns = [270, 810];
+  const teams = [
+    { name: model.homeTeam || "HOME TEAM", tier: model.homeTier, image: homeTier },
+    { name: model.awayTeam || "AWAY TEAM", tier: model.awayTier, image: awayTier },
+  ];
+  teams.forEach((team, index) => {
+    ctx.fillStyle = "#f1e8db";
+    ctx.textAlign = "center";
+    fitCanvasText(ctx, team.name, 430, compact ? 44 : 54, 28);
+    ctx.fillText(team.name, columns[index], teamY);
+    if (team.image) {
+      ctx.save();
+      ctx.globalAlpha = 0.7;
+      ctx.filter = "grayscale(1) sepia(1) saturate(1.8) brightness(1.25) contrast(1.8)";
+      ctx.drawImage(team.image, columns[index] - 55, teamY + 28, 110, 110);
+      ctx.restore();
+    }
+    if (team.tier) {
+      ctx.fillStyle = "#c69a4b";
+      ctx.font = '900 23px "KBO Dia Gothic", sans-serif';
+      ctx.fillText(`TEAM TIER · ${team.tier.label}`, columns[index], teamY + (team.image ? 165 : 54));
+    }
+  });
+  ctx.strokeStyle = "rgba(240,90,42,.7)";
+  ctx.setLineDash([4, 8]);
+  ctx.beginPath();
+  ctx.moveTo(width / 2, teamY - 20);
+  ctx.lineTo(width / 2, receiptTop - 38);
   ctx.stroke();
   ctx.setLineDash([]);
 
-  const teamY = paperY + (compact ? 258 : 305);
-  const teamColumnWidth = contentWidth * 0.43;
-  ctx.fillStyle = "#8d8981";
-  ctx.font = '900 23px "Pretendard Variable", sans-serif';
-  ctx.textAlign = "left";
-  ctx.fillText("HOME", contentX, teamY - 44);
-  ctx.textAlign = "right";
-  ctx.fillText("AWAY", contentX + contentWidth, teamY - 44);
-
-  ctx.fillStyle = "#18191a";
-  ctx.textAlign = "left";
-  fitText(ctx, draft.homeTeam || "HOME TEAM", teamColumnWidth, 58);
-  ctx.fillText(draft.homeTeam || "HOME TEAM", contentX, teamY);
-  ctx.textAlign = "right";
-  fitText(ctx, draft.awayTeam || "AWAY TEAM", teamColumnWidth, 58);
-  ctx.fillText(draft.awayTeam || "AWAY TEAM", contentX + contentWidth, teamY);
-
-  ctx.font = `900 ${compact ? 182 : 208}px "KBO Dia Gothic", "Pretendard Variable", sans-serif`;
-  ctx.fillStyle = "#18191a";
+  drawTornEdge(ctx, receiptTop, width, "#f1e8db");
+  const footerY = receiptTop + 78;
+  ctx.fillStyle = "#151515";
   ctx.textAlign = "center";
-  ctx.fillText(`${draft.homeScore} : ${draft.awayScore}`, width / 2, paperY + (compact ? 480 : 580));
+  ctx.font = '900 27px "KBO Dia Gothic", sans-serif';
+  ctx.fillText([model.address, model.venue].filter(Boolean).join(" · ") || "경기 장소", 220, footerY + 54, 360);
+  ctx.fillText(model.playedOn.replaceAll("-", "."), 220, footerY + 126);
 
-  roundedRect(ctx, width / 2 - 154, scoreY, 308, 72, 36);
-  ctx.fillStyle = outcome.key === "draw" ? "#18191a" : outcome.key === "away" ? draft.awayColor : draft.homeColor;
-  ctx.fill();
-  ctx.fillStyle = "#ffffff";
-  ctx.font = '900 29px ui-monospace, monospace';
-  ctx.textAlign = "center";
-  ctx.fillText(outcome.label, width / 2, scoreY + 47);
-
-  const metaTop = scoreY + (compact ? 155 : 190);
-  const rowGap = compact ? 74 : 88;
-  drawMetaRow(ctx, "DATE", draft.playedOn.replaceAll("-", "."), contentX, metaTop, contentWidth);
-  drawMetaRow(ctx, "FORMAT", getMatchReceiptFormatLabel(draft.format), contentX, metaTop + rowGap, contentWidth);
-  let nextY = metaTop + rowGap * 2;
-  if (draft.venue) {
-    drawMetaRow(ctx, "VENUE", `⌖ ${draft.venue}`, contentX, nextY, contentWidth);
-    nextY += rowGap;
-  }
-  if (draft.address) {
-    drawMetaRow(ctx, "ADDRESS", draft.address, contentX, nextY, contentWidth);
-    nextY += rowGap;
+  if (personalTier) {
+    const tierSize = model.hasPersonalStats ? 142 : 168;
+    ctx.save();
+    ctx.globalAlpha = model.hasPersonalStats ? 0.12 : 0.72;
+    ctx.filter = model.hasPersonalStats ? "grayscale(1) contrast(1.2)" : "none";
+    ctx.drawImage(personalTier, 540 - tierSize / 2, footerY - 10, tierSize, tierSize);
+    ctx.restore();
   }
 
-  if (draft.comment) {
-    ctx.strokeStyle = "rgba(24, 25, 26, 0.16)";
-    ctx.beginPath();
-    ctx.moveTo(contentX, nextY + 8);
-    ctx.lineTo(contentX + contentWidth, nextY + 8);
-    ctx.stroke();
-    ctx.fillStyle = "#18191a";
-    ctx.font = '900 34px "Pretendard Variable", sans-serif';
-    ctx.textAlign = "center";
-    ctx.fillText(`“${draft.comment}”`, width / 2, nextY + 78, contentWidth);
+  if (model.hasPersonalStats) {
+    ctx.fillStyle = "#d4582b";
+    ctx.font = '900 25px "KBO Dia Gothic", sans-serif';
+    ctx.fillText("MY GAME", 540, footerY + 10);
+    ctx.fillStyle = "#151515";
+    ctx.font = '900 62px "KBO Dia Gothic", sans-serif';
+    ctx.fillText(`${model.personalPoints ?? 0}   ${model.personalRebounds ?? 0}`, 540, footerY + 78);
+    ctx.font = '900 20px "KBO Dia Gothic", sans-serif';
+    ctx.fillText("PTS            REB", 540, footerY + 112);
+  } else if (!personalTier) {
+    ctx.fillStyle = "#d4582b";
+    ctx.font = '900 25px "KBO Dia Gothic", sans-serif';
+    ctx.fillText(getMatchReceiptFormatLabel(model.format), 540, footerY + 55);
+    ctx.fillStyle = "#151515";
+    ctx.font = '900 22px "KBO Dia Gothic", sans-serif';
+    ctx.fillText(model.comment || model.outcome.label, 540, footerY + 100, 260);
   }
 
-  const footerY = paperY + paperHeight - 126;
-  const qrSize = compact ? 102 : 126;
-  const qrActualSize = matchUrl
-    ? drawQrCode(ctx, matchUrl, contentX, footerY - qrSize / 2, qrSize)
-    : 0;
-  const footerTextX = matchUrl
-    ? contentX + qrActualSize + (contentWidth - qrActualSize) / 2
-    : width / 2;
-  ctx.fillStyle = "#f05a46";
-  ctx.font = '900 30px "Pretendard Variable", sans-serif';
-  ctx.textAlign = "center";
-  ctx.fillText("오늘 농구, 증거 남김.", footerTextX, footerY);
-  ctx.fillStyle = "#8d8981";
-  ctx.font = '800 22px ui-monospace, monospace';
-  ctx.fillText(matchUrl ? "SCAN TO OPEN MATCH" : "PRACTICE RECEIPT · boxtier.kr", footerTextX, footerY + 48);
+  if (model.matchUrl) {
+    const qrSize = compact ? 160 : 190;
+    ctx.fillStyle = "#d4582b";
+    ctx.font = '900 22px "KBO Dia Gothic", sans-serif';
+    ctx.fillText("경기 기록 보기", 850, footerY + 6);
+    drawQrCode(ctx, model.matchUrl, 850 - qrSize / 2, footerY + 24, qrSize);
+  } else {
+    ctx.fillStyle = "#d4582b";
+    ctx.font = '900 23px "KBO Dia Gothic", sans-serif';
+    ctx.fillText("boxtier.kr", 850, footerY + 76);
+  }
 
-  return new Promise((resolve, reject) => {
-    canvas.toBlob((blob) => {
-      if (blob) resolve(blob);
-      else reject(new Error("match_receipt_png_failed"));
-    }, "image/png");
-  });
+  return canvasToBlob(canvas, "image/png");
 }
 
 export function trackMatchReceiptEvent(name, detail = {}) {
   if (typeof window === "undefined") return;
-  window.dispatchEvent(new CustomEvent("boxtier:analytics", {
-    detail: { event: name, ...detail },
-  }));
+  window.dispatchEvent(new CustomEvent("boxtier:analytics", { detail: { event: name, ...detail } }));
 }

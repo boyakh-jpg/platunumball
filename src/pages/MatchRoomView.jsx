@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { CalendarDays, MapPin, RotateCcw, ShieldCheck, Star, Trophy, UsersRound } from "lucide-react";
+import { CalendarDays, MapPin, ReceiptText, RotateCcw, ShieldCheck, Star, Trophy, UsersRound } from "lucide-react";
 import AgreementPanel from "../components/match/AgreementPanel.jsx";
 import ApprovalPanel from "../components/match/ApprovalPanel.jsx";
 import MatchClockPanel, { MatchScoreControls } from "../components/match/MatchClockPanel.jsx";
@@ -82,6 +82,11 @@ return (
           <div><ShieldCheck size={17} /><span>{match.ranked === false ? "티어 자유" : "MMR 반영"}</span></div>
           <div><Trophy size={17} /><span>{match.rules?.targetScore ?? 21}점 · {match.rules?.timeLimit ?? 12}분</span></div>
         </div>
+        {match.result ? (
+          <Button as={Link} to={`/app/receipt?match=${encodeURIComponent(match.id)}`} variant="secondary" className="gm-receipt-action">
+            <ReceiptText size={17} /> 경기 영수증 만들기
+          </Button>
+        ) : null}
       </section>
       {soloRecordDeleteOpen ? (
         <div className="app-confirm-backdrop" role="presentation" onMouseDown={() => !managementActionPending && setSoloRecordDeleteOpen(false)}>

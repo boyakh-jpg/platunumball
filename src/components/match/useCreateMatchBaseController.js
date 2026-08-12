@@ -46,6 +46,9 @@ const navigate = useNavigate();
     () => !practiceMode && new URLSearchParams(location.search).get("intent") === "record",
     [location.search, practiceMode],
   );
+  const receiptDraftId = useMemo(() => (
+    practiceMode ? "" : String(new URLSearchParams(location.search).get("receiptDraft") ?? "").trim()
+  ), [location.search, practiceMode]);
   const receiptSourceDraft = useMemo(() => {
     if (practiceMode || new URLSearchParams(location.search).get("source") !== "receipt") return null;
     const source = location.state?.receiptSourceDraft;
@@ -59,9 +62,10 @@ const navigate = useNavigate();
     return receiptSourceDraft ? getMatchReceiptCreateDraft(receiptSourceDraft) : null;
   }, [getMatchReceiptCreateDraft, location.search, location.state?.receiptDraft, practiceMode, receiptSourceDraft]);
   const receiptFlowRef = useRef({
-    returnTo: receiptCreateDraft ? "/app/receipt" : "",
+    returnTo: receiptCreateDraft || receiptDraftId ? `/app/receipt${receiptDraftId ? `?draft=${encodeURIComponent(receiptDraftId)}` : ""}` : "",
     sourceDraft: receiptCreateDraft ? receiptSourceDraft : null,
   });
+  const claimedReceiptDraftRef = useRef("");
   const loadDirectory = app.actions.loadDirectory;
   const remoteDirectoryEnabled = !app.demoPreview && app.capabilities?.remoteDirectory !== false;
   const requestedTournamentDirectoryRef = useRef(false);
@@ -226,6 +230,27 @@ const navigate = useNavigate();
   const submittingRef = useRef(false);
   const [submitFeedback, setSubmitFeedback] = useState("");
   const [wizardStep, setWizardStep] = useState(1);
+
+  useEffect(() => {
+    if (!receiptDraftId || receiptCreateDraft || claimedReceiptDraftRef.current === receiptDraftId) return;
+    claimedReceiptDraftRef.current = receiptDraftId;
+    postServerAction("/api/match-receipts/claim", { publicId: receiptDraftId })
+      .then((result) => {
+        if (!result?.draft) throw new Error("receipt_draft_not_found");
+        const sourceDraft = result.draft;
+        const createDraft = getMatchReceiptCreateDraft(sourceDraft);
+        setDraft((current) => ({ ...current, ...createDraft }));
+        receiptFlowRef.current = {
+          returnTo: `/app/receipt?draft=${encodeURIComponent(receiptDraftId)}`,
+          sourceDraft,
+        };
+        modeManuallyChangedRef.current = true;
+        setSubmitFeedback("경기 영수증 내용을 불러왔습니다.");
+      })
+      .catch(() => {
+        setSubmitFeedback("경기 영수증 인계 정보를 불러오지 못했습니다.");
+      });
+  }, [getMatchReceiptCreateDraft, postServerAction, receiptCreateDraft, receiptDraftId]);
 
   useEffect(() => {
     setDraft((current) => {

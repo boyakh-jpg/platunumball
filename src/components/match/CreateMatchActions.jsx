@@ -366,7 +366,8 @@ export function createCreateMatchActions(context) {
       clearCreateMatchGuestDraft();
       if (receiptReturnTo) {
         clearMatchReceiptDraft();
-        navigate(`${receiptReturnTo}?match=${encodeURIComponent(matchId)}`, {
+        const receiptReturnSeparator = receiptReturnTo.includes("?") ? "&" : "?";
+        navigate(`${receiptReturnTo}${receiptReturnSeparator}match=${encodeURIComponent(matchId)}`, {
             replace: true,
             state: { receiptDraft: receiptSourceDraft },
           });

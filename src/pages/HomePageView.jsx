@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { useState } from "react";
-import { ArrowRight, ArrowUpRight, Bell, BookOpenCheck, CalendarDays, ClipboardCheck, FlaskConical, MessageSquareText, PlusCircle, Trophy, UsersRound } from "lucide-react";
+import { ArrowRight, ArrowUpRight, Bell, BookOpenCheck, CalendarDays, ClipboardCheck, FlaskConical, MessageSquareText, PlusCircle, ReceiptText, Trophy, UsersRound } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
@@ -45,6 +45,7 @@ function GuestHomePage() {
         <div className="home-search-actions">
           <Button as={Link} to="/app/create" className="home-search-create ui-button-block"><PlusCircle size={18} /> 매칭 만들기</Button>
           <Button as={Link} to="/app/create?intent=record" variant="secondary" className="home-search-create ui-button-block"><ClipboardCheck size={18} /> 경기 기록하기</Button>
+          <Button as={Link} to="/app/receipt" variant="secondary" className="home-search-create ui-button-block"><ReceiptText size={18} /> 경기 영수증 만들기</Button>
         </div>
       </Card>
 
@@ -132,6 +133,7 @@ export default function HomePageView({
         <div className="home-search-actions">
           <Button as={Link} to="/app/create" className="home-search-create ui-button-block"><PlusCircle size={18} /> 매칭 만들기</Button>
           <Button as={Link} to="/app/create?intent=record" variant="secondary" className="home-search-create ui-button-block"><ClipboardCheck size={18} /> 경기 기록하기</Button>
+          <Button as={Link} to="/app/receipt" variant="secondary" className="home-search-create ui-button-block"><ReceiptText size={18} /> 경기 영수증 만들기</Button>
         </div>
       </Card>
 

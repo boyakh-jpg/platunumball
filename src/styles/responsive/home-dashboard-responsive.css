@@ -197,7 +197,7 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
 }
 .rank-home .home-search-actions {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-4);
 }
 .rank-home .home-public-actions {
@@ -326,6 +326,10 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
   .rank-home .home-search-create,
   .rank-home .home-search-actions {
     width: 100%;
+  }
+
+  .rank-home .home-search-actions {
+    grid-template-columns: 1fr;
   }
 
   .rivalry-challenge-actions {
