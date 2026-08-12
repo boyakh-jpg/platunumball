@@ -25,6 +25,7 @@ import {
   MATCH_RECEIPT_CANVAS_SIZES,
   MATCH_RECEIPT_DRAFT_STORAGE_KEY,
   MATCH_RECEIPT_LIMITS,
+  createMatchReceiptViewModel,
   getMatchReceiptCreateDraft,
   getMatchReceiptOutcome,
   getMatchReceiptPhotoStyle,
@@ -2918,6 +2919,9 @@ test("경기 영수증 입력은 안전하게 정규화하고 이미지 규격�
     "--receipt-photo-scale": 1,
     "--receipt-photo-rotation": "0deg",
   });
+  const viewModel = createMatchReceiptViewModel({ homeMmr: 1300 });
+  assert.match(viewModel.paperUrl, /match-receipt-paper-torn-v1\.png$/);
+  assert.match(viewModel.homeTier.outlineSrc, /tier-[a-z]+-outline-v1\.png$/);
 });
 
 test("경기 영수증은 필수값과 승패를 실행형 정책으로 판정한다", () => {

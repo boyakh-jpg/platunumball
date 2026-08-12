@@ -117,9 +117,10 @@ function ReceiptPreview({ draft, photoUrl = "", matchUrl = "" }) {
           <div key={index}>
             <strong>{team.name || (index ? "AWAY TEAM" : "HOME TEAM")}</strong>
             {team.tier ? (
-              <span
+              <img
                 className="match-receipt-team-tier"
-                style={{ "--receipt-tier-image": `url(${JSON.stringify(team.tier.src)})` }}
+                src={team.tier.outlineSrc}
+                alt=""
                 aria-hidden="true"
               />
             ) : null}
@@ -128,6 +129,7 @@ function ReceiptPreview({ draft, photoUrl = "", matchUrl = "" }) {
         ))}
       </section>
       <footer className="match-receipt-ticket">
+        <img className="match-receipt-ticket-paper" src={model.paperUrl} alt="" aria-hidden="true" />
         <div className="match-receipt-ticket-place">
           <MapPin aria-hidden="true" />
           <strong>{[model.address, model.venue].filter(Boolean).join(" · ") || "경기 장소"}</strong>
