@@ -116,7 +116,7 @@ function ReceiptPreview({ draft, photoUrl = "", matchUrl = "" }) {
         {[{ name: model.homeTeam, tier: model.homeTier }, { name: model.awayTeam, tier: model.awayTier }].map((team, index) => (
           <div key={index}>
             <strong>{team.name || (index ? "AWAY TEAM" : "HOME TEAM")}</strong>
-            {team.tier ? (
+            {model.showTeamTierEmblems && team.tier ? (
               <img
                 className="match-receipt-team-tier"
                 src={team.tier.outlineSrc}
@@ -124,7 +124,7 @@ function ReceiptPreview({ draft, photoUrl = "", matchUrl = "" }) {
                 aria-hidden="true"
               />
             ) : null}
-            <span>{team.tier ? `TEAM TIER · ${team.tier.label}` : index ? "AWAY" : "HOME"}</span>
+            <span>{model.showTeamTierEmblems && team.tier ? `TEAM TIER · ${team.tier.label}` : index ? "AWAY" : "HOME"}</span>
           </div>
         ))}
       </section>
@@ -136,8 +136,8 @@ function ReceiptPreview({ draft, photoUrl = "", matchUrl = "" }) {
           <span>{model.playedOn.replaceAll("-", ".")}</span>
         </div>
         <div className="match-receipt-ticket-game">
-          {model.personalTier ? <img className={`match-receipt-personal-tier${model.hasPersonalStats ? " is-watermark" : ""}`} src={model.personalTier.src} alt={`${model.personalTier.label} 티어`} /> : null}
-          {model.hasPersonalStats ? <strong>MY GAME</strong> : model.personalTier ? null : <strong>{getMatchReceiptFormatLabel(model.format)}</strong>}
+          {model.personalTier ? <img className="match-receipt-personal-tier is-watermark" src={model.personalTier.outlineSrc} alt="" aria-hidden="true" /> : null}
+          {model.personalTier ? <strong>MY GAME</strong> : <strong>{getMatchReceiptFormatLabel(model.format)}</strong>}
           {model.hasPersonalStats ? <b>{model.personalPoints ?? 0}<small>PTS</small> {model.personalRebounds ?? 0}<small>REB</small></b> : model.personalTier ? null : <span>{model.comment || model.outcome.label}</span>}
         </div>
         <div className="match-receipt-ticket-qr">
@@ -194,8 +194,9 @@ export default function MatchReceipt({ auth, app }) {
     () => app?.state?.tournaments?.find((tournament) => tournament.id === canonicalMatch?.tournamentId) ?? null,
     [app?.state?.tournaments, canonicalMatch?.tournamentId],
   );
-  const currentUserId = auth?.session?.user?.id ?? app?.currentUser?.id ?? "";
+  const currentUserId = auth?.session?.user?.id ?? "";
   const currentUserMmr = Number(app?.currentUser?.ratings?.integrated);
+  const personalMmr = currentUserId && Number.isFinite(currentUserMmr) ? currentUserMmr : null;
   const readOnlyReceipt = Boolean(canonicalMatchId || requestedPublicDraftId);
   const matchUrl = useMemo(() => (
     typeof window !== "undefined" && (canonicalMatchId || publicDraftId)
@@ -211,7 +212,7 @@ export default function MatchReceipt({ auth, app }) {
       setDraft((current) => getMatchReceiptDraftFromMatch(canonicalMatch, {
         ...current,
         currentUserId,
-        personalMmr: Number.isFinite(currentUserMmr) ? currentUserMmr : null,
+        personalMmr,
         tournament: canonicalTournament,
       }));
       setGenerated(true);
@@ -223,14 +224,14 @@ export default function MatchReceipt({ auth, app }) {
     Promise.resolve(app?.actions?.loadMatchDetail?.(matchId)).then((loaded) => {
       if (!loaded) setStatus("저장된 경기 기록을 불러오지 못했습니다.");
     });
-  }, [app?.actions, canonicalMatch, canonicalTournament, currentUserId, currentUserMmr, matchId]);
+  }, [app?.actions, canonicalMatch, canonicalTournament, currentUserId, matchId, personalMmr]);
 
   useEffect(() => {
-    if (requestedPublicDraftId || canonicalMatchId || !Number.isFinite(currentUserMmr)) return;
-    setDraft((current) => current.personalMmr === currentUserMmr
+    if (requestedPublicDraftId || canonicalMatchId) return;
+    setDraft((current) => current.personalMmr === personalMmr
       ? current
-      : normalizeMatchReceiptDraft({ ...current, personalMmr: currentUserMmr }));
-  }, [canonicalMatchId, currentUserMmr, requestedPublicDraftId]);
+      : normalizeMatchReceiptDraft({ ...current, personalMmr }));
+  }, [canonicalMatchId, personalMmr, requestedPublicDraftId]);
 
   useEffect(() => {
     if (!requestedPublicDraftId || canonicalMatchId) return;
@@ -607,10 +608,6 @@ export default function MatchReceipt({ auth, app }) {
                 <h2>배경 사진</h2>
                 <p>사진은 이 브라우저에만 24시간 보관되며 서버로 전송되지 않습니다.</p>
               </div>
-              <label className="button ui-button button-secondary ui-button-secondary button-md ui-button-md">
-                <ImagePlus aria-hidden="true" /> 사진 선택
-                <input type="file" accept="image/jpeg,image/png,image/webp" disabled={busy === "photo"} onChange={handlePhotoChange} />
-              </label>
             </div>
             <div
               className={`match-receipt-photo-crop${photoUrl ? " has-photo" : ""}`}
@@ -627,13 +624,11 @@ export default function MatchReceipt({ auth, app }) {
               />
               <span>{photoUrl ? "한 손가락 이동 · 두 손가락 확대·회전" : "기본 배경 · 사진을 선택해 교체"}</span>
             </div>
-            <div className="match-receipt-photo-controls">
-              <label>확대축소 <input type="range" min="1" max="3" step="0.01" value={draft.photoZoom} onChange={(event) => updateField("photoZoom", event.target.value)} /></label>
-              <label>좌우 이동 <input type="range" min="-100" max="100" step="1" value={draft.photoX} onChange={(event) => updateField("photoX", event.target.value)} /></label>
-              <label>상하 이동 <input type="range" min="-100" max="100" step="1" value={draft.photoY} onChange={(event) => updateField("photoY", event.target.value)} /></label>
-              <label>회전 <input type="range" min="-180" max="180" step="1" value={draft.photoRotation} onChange={(event) => updateField("photoRotation", event.target.value)} /></label>
-            </div>
             <div className="match-receipt-photo-actions">
+              <label className="button ui-button button-secondary ui-button-secondary button-md ui-button-md">
+                <ImagePlus aria-hidden="true" /> 사진 선택
+                <input type="file" accept="image/jpeg,image/png,image/webp" disabled={busy === "photo"} onChange={handlePhotoChange} />
+              </label>
               <button type="button" className="button ui-button button-secondary ui-button-secondary button-md ui-button-md" onClick={() => updateField("photoRotation", draft.photoRotation + 90)}><RotateCcw aria-hidden="true" /> 90° 회전</button>
               <button type="button" className="button ui-button button-secondary ui-button-secondary button-md ui-button-md" onClick={resetPhotoTransform}>편집 초기화</button>
               {photoUrl ? <button type="button" className="button ui-button button-secondary ui-button-secondary button-md ui-button-md is-danger" onClick={removePhoto}><Trash2 aria-hidden="true" /> 사진 제거</button> : null}

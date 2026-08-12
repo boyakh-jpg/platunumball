@@ -26,6 +26,7 @@ import {
   MATCH_RECEIPT_DRAFT_STORAGE_KEY,
   MATCH_RECEIPT_LIMITS,
   createMatchReceiptViewModel,
+  getMatchReceiptDraftFromMatch,
   getMatchReceiptCreateDraft,
   getMatchReceiptOutcome,
   getMatchReceiptPhotoStyle,
@@ -2922,6 +2923,25 @@ test("경기 영수증 입력은 안전하게 정규화하고 이미지 규격�
   const viewModel = createMatchReceiptViewModel({ homeMmr: 1300 });
   assert.match(viewModel.paperUrl, /match-receipt-paper-torn-v1\.png$/);
   assert.match(viewModel.homeTier.outlineSrc, /tier-[a-z]+-outline-v1\.png$/);
+
+  const canonicalDraft = getMatchReceiptDraftFromMatch({
+    status: "confirmed",
+    teamA: { teamId: "team-a", name: "HOME", mmr: 1300 },
+    teamB: { teamId: "team-b", name: "AWAY", mmr: 1200 },
+    result: { scoreA: 21, scoreB: 18, playerStats: { userA: { points: 8, rebounds: 4 } } },
+  }, { currentUserId: "userA", personalMmr: 1400 });
+  const canonicalViewModel = createMatchReceiptViewModel(canonicalDraft);
+  assert.equal(canonicalDraft.hasCanonicalTeamMatch, true);
+  assert.equal(canonicalViewModel.showTeamTierEmblems, true);
+  assert.match(canonicalViewModel.personalTier.outlineSrc, /tier-[a-z]+-outline-v1\.png$/);
+
+  const pickupDraft = getMatchReceiptDraftFromMatch({
+    status: "confirmed",
+    teamA: { name: "HOME", mmr: 1300 },
+    teamB: { name: "AWAY", mmr: 1200 },
+  });
+  assert.equal(pickupDraft.hasCanonicalTeamMatch, false);
+  assert.equal(createMatchReceiptViewModel(pickupDraft).showTeamTierEmblems, false);
 });
 
 test("경기 영수증은 필수값과 승패를 실행형 정책으로 판정한다", () => {

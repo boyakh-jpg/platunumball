@@ -4132,10 +4132,10 @@ flowchart TD
 
 ## 2026-08-11 경기 영수증
 
-1. 비회원 경기 영수증의 입력값은 브라우저에 24시간 임시 보관한다. 배경 사진은 IndexedDB에만 보관하고 서버, Supabase Storage, R2에 업로드하지 않는다. 사진은 브라우저에서 크롭 영역 이동, 1~3배 확대·축소, 회전만 처리한다.
+1. 비회원 경기 영수증의 입력값은 브라우저에 24시간 임시 보관한다. 배경 사진은 IndexedDB에만 보관하고 서버, Supabase Storage, R2에 업로드하지 않는다. 사진은 하나의 크롭 영역에서 Pointer Events로 한 손가락 이동과 두 손가락 이동·확대·축소·회전만 처리하며 별도 변환 슬라이더를 두지 않는다.
 2. 유효한 비회원 영수증은 공유 시 서버에 사진을 제외한 공개 draft를 만든다. QR에는 추측 불가능한 공개 ID만 넣고 소유권 capability는 원 작성자 브라우저의 `HttpOnly`, `SameSite=Lax` 쿠키와 서버 해시로 분리한다. draft는 30일 뒤 만료하며 생성은 IP 해시 기준 시간당 10건으로 제한한다.
 3. 공개 ID 조회는 영수증 표시용 안전 필드만 반환하고 수정 권한을 주지 않는다. 로그인 뒤 capability를 가진 동일 브라우저만 한 사용자 프로필로 claim할 수 있으며, 다른 사용자는 QR만으로 claim·수정할 수 없다.
 4. Google 로그인 복귀 뒤 claim한 draft 또는 브라우저 draft를 기존 `personal_record` 작성 흐름에 미리 채운다. 생성 성공 뒤 실제 경기 ID의 `/app/receipt?match={matchId}`로 복귀하고 내 기록에 표시한다.
-5. 확정 경기 영수증은 기존 경기의 팀·점수·날짜·장소·팀 MMR·현재 사용자 개인 스탯을 사용하고 `BOXTIER VERIFIED`로 표시한다. 직접 작성 draft는 공식 전적이나 MMR에 반영하지 않는다. QR은 canonical 경기 또는 서버 공개 영수증 URL만 가리키며 외부 지도 URL과 소유권 비밀을 포함하지 않는다.
+5. 확정 경기 영수증은 기존 경기의 팀·점수·날짜·장소·팀 MMR·현재 사용자 개인 스탯을 사용하고 `BOXTIER VERIFIED`로 표시한다. 양 팀 canonical ID가 모두 있는 확정 팀전만 팀 티어 선화 엠블럼을 표시한다. 직접 작성 draft와 공개 draft는 verified·canonical 팀전 상태를 만들 수 없고 공식 전적이나 MMR에 반영하지 않는다. QR은 canonical 경기 또는 서버 공개 영수증 URL만 가리키며 외부 지도 URL과 소유권 비밀을 포함하지 않는다.
 6. 영수증의 경기 성격은 `friendly`, `competitive`, `revenge`, `semifinal`, `final` 중 하나이며 포스터에는 `FRIENDLY`, `COMPETITIVE`, `REVENGE`, `SEMIFINAL`, `FINAL`로 표시한다. 대회 경기의 결승·준결승 단계와 일반 경기의 `matchPurpose`를 우선 매핑하고 정보가 없으면 `competitive`를 사용한다. 이 값은 영수증 표시 메타데이터이며 경기 권한·MMR·대회 진행 규칙을 변경하지 않는다.
-7. 개인 티어는 현재 로그인 사용자의 canonical 통합 MMR로만 계산해 영수증에 표시한다. 개인 스탯이 있으면 `MY GAME` 배경 워터마크로, 스탯이 없으면 엠블럼 단독으로 표시한다. 이 표시는 경기 결과·MMR을 변경하지 않는다.
+7. 개인 티어는 실제 인증 세션이 있는 현재 로그인 사용자의 canonical 통합 MMR로만 계산한다. 스탯 유무와 관계없이 `MY GAME` 영역 뒤에 투명 선화 워터마크로 표시하며, 개인 스탯이 있으면 수치도 함께 표시한다. 익명 영수증에는 개인 티어를 표시하지 않는다. 이 표시는 경기 결과·MMR을 변경하지 않는다.

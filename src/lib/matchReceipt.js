@@ -144,6 +144,7 @@ export function createDefaultMatchReceiptDraft() {
     personalMmr: null,
     personalPoints: null,
     personalRebounds: null,
+    hasCanonicalTeamMatch: false,
     verified: false,
   };
 }
@@ -175,6 +176,7 @@ export function normalizeMatchReceiptDraft(value = {}) {
     personalMmr: cleanOptionalNumber(value.personalMmr),
     personalPoints: cleanOptionalNumber(value.personalPoints),
     personalRebounds: cleanOptionalNumber(value.personalRebounds),
+    hasCanonicalTeamMatch: Boolean(value.hasCanonicalTeamMatch),
     verified: Boolean(value.verified),
   };
 }
@@ -371,6 +373,10 @@ export function getMatchReceiptDraftFromMatch(match = {}, style = {}, court = nu
     personalMmr: style.personalMmr,
     personalPoints: verified ? playerStats.points : null,
     personalRebounds: verified ? playerStats.rebounds : null,
+    hasCanonicalTeamMatch: Boolean(
+      (match.teamA?.teamId ?? match.teamAId)
+      && (match.teamB?.teamId ?? match.teamBId)
+    ),
     verified,
   });
 }
@@ -435,6 +441,7 @@ export function createMatchReceiptViewModel(value, options = {}) {
     personalTier: getTierVisual(draft.personalMmr),
     matchNatureLabel: getMatchReceiptNatureLabel(draft.matchNature),
     hasPersonalStats,
+    showTeamTierEmblems: draft.verified && draft.hasCanonicalTeamMatch,
   };
 }
 
@@ -519,13 +526,13 @@ export async function renderMatchReceiptPng(value, preset = "story", options = {
   await document.fonts?.ready;
 
   const photoHeight = compact ? 590 : 860;
-  const receiptTop = compact ? 1010 : 1520;
+  const receiptTop = compact ? 1010 : 1495;
   const [photo, wordmark, homeTier, awayTier, personalTier, paper] = await Promise.all([
     loadCanvasImage(options.photoBlob || model.defaultPhotoUrl),
     loadCanvasImage(model.wordmarkUrl).catch(() => null),
-    model.homeTier ? loadCanvasImage(model.homeTier.outlineSrc).catch(() => null) : null,
-    model.awayTier ? loadCanvasImage(model.awayTier.outlineSrc).catch(() => null) : null,
-    model.personalTier ? loadCanvasImage(model.personalTier.src).catch(() => null) : null,
+    model.showTeamTierEmblems && model.homeTier ? loadCanvasImage(model.homeTier.outlineSrc).catch(() => null) : null,
+    model.showTeamTierEmblems && model.awayTier ? loadCanvasImage(model.awayTier.outlineSrc).catch(() => null) : null,
+    model.personalTier ? loadCanvasImage(model.personalTier.outlineSrc).catch(() => null) : null,
     loadCanvasImage(model.paperUrl),
   ]);
 
@@ -556,7 +563,7 @@ export async function renderMatchReceiptPng(value, preset = "story", options = {
   ctx.fillStyle = "#f05a2a";
   ctx.textAlign = "left";
   if (wordmark) {
-    const wordmarkScale = Math.min(190 / wordmark.naturalWidth, 38 / wordmark.naturalHeight);
+    const wordmarkScale = Math.min(124 / wordmark.naturalWidth, 32 / wordmark.naturalHeight);
     ctx.save();
     ctx.filter = "brightness(0) saturate(100%) invert(47%) sepia(93%) saturate(2858%) hue-rotate(346deg) brightness(96%) contrast(93%)";
     ctx.drawImage(wordmark, 44, 48, wordmark.naturalWidth * wordmarkScale, wordmark.naturalHeight * wordmarkScale);
@@ -570,7 +577,7 @@ export async function renderMatchReceiptPng(value, preset = "story", options = {
   ctx.font = '900 25px "KBO Dia Gothic", sans-serif';
   ctx.fillText(model.serial, width - 48, 80);
 
-  const verifiedY = compact ? 440 : 720;
+  const verifiedY = compact ? 440 : 780;
   ctx.strokeStyle = "#f05a2a";
   ctx.lineWidth = 2;
   ctx.beginPath();
@@ -592,7 +599,8 @@ export async function renderMatchReceiptPng(value, preset = "story", options = {
   ctx.font = '900 31px "KBO Dia Gothic", sans-serif';
   ctx.fillText(model.matchNatureLabel, width / 2, scoreTop + 7);
 
-  const teamY = compact ? 825 : 1195;
+  const teamY = compact ? 825 : 1205;
+  const teamTierSize = compact ? 110 : 170;
   const columns = [270, 810];
   const teams = [
     { name: model.homeTeam || "HOME TEAM", tier: model.homeTier, image: homeTier },
@@ -604,12 +612,12 @@ export async function renderMatchReceiptPng(value, preset = "story", options = {
     fitCanvasText(ctx, team.name, 430, compact ? 44 : 54, 28);
     ctx.fillText(team.name, columns[index], teamY);
     if (team.image) {
-      ctx.drawImage(team.image, columns[index] - 55, teamY + 28, 110, 110);
+      ctx.drawImage(team.image, columns[index] - teamTierSize / 2, teamY + 28, teamTierSize, teamTierSize);
     }
-    if (team.tier) {
+    if (model.showTeamTierEmblems && team.tier) {
       ctx.fillStyle = "#c69a4b";
       ctx.font = '900 23px "KBO Dia Gothic", sans-serif';
-      ctx.fillText(`TEAM TIER · ${team.tier.label}`, columns[index], teamY + (team.image ? 165 : 54));
+      ctx.fillText(`TEAM TIER · ${team.tier.label}`, columns[index], teamY + (compact ? 165 : 230));
     }
   });
   ctx.strokeStyle = "rgba(240,90,42,.7)";
@@ -626,7 +634,7 @@ export async function renderMatchReceiptPng(value, preset = "story", options = {
   ctx.shadowOffsetY = 6;
   ctx.drawImage(paper, 28, receiptTop, width - 56, height - receiptTop - 26);
   ctx.restore();
-  const footerY = receiptTop + 78;
+  const footerY = receiptTop + (compact ? 78 : 54);
   ctx.fillStyle = "#151515";
   ctx.textAlign = "center";
   ctx.font = '900 27px "KBO Dia Gothic", sans-serif';
@@ -634,18 +642,20 @@ export async function renderMatchReceiptPng(value, preset = "story", options = {
   ctx.fillText(model.playedOn.replaceAll("-", "."), 220, footerY + 126);
 
   if (personalTier) {
-    const tierSize = model.hasPersonalStats ? 142 : 168;
+    const tierSize = compact ? 142 : 190;
     ctx.save();
-    ctx.globalAlpha = model.hasPersonalStats ? 0.12 : 0.72;
-    ctx.filter = model.hasPersonalStats ? "grayscale(1) contrast(1.2)" : "none";
-    ctx.drawImage(personalTier, 540 - tierSize / 2, footerY - 10, tierSize, tierSize);
+    ctx.globalAlpha = 0.16;
+    ctx.drawImage(personalTier, 540 - tierSize / 2, footerY - 12, tierSize, tierSize);
     ctx.restore();
   }
 
-  if (model.hasPersonalStats) {
+  if (personalTier) {
     ctx.fillStyle = "#d4582b";
     ctx.font = '900 25px "KBO Dia Gothic", sans-serif';
     ctx.fillText("MY GAME", 540, footerY + 10);
+  }
+
+  if (model.hasPersonalStats) {
     ctx.fillStyle = "#151515";
     ctx.font = '900 62px "KBO Dia Gothic", sans-serif';
     ctx.fillText(`${model.personalPoints ?? 0}   ${model.personalRebounds ?? 0}`, 540, footerY + 78);

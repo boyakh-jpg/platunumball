@@ -59,7 +59,7 @@ export function sanitizeReceiptDraftPayload(value = {}) {
     awayMmr: cleanOptionalNumber(value.awayMmr),
     personalPoints: cleanOptionalNumber(value.personalPoints),
     personalRebounds: cleanOptionalNumber(value.personalRebounds),
-    verified: Boolean(value.verified),
+    verified: false,
   };
 }
 

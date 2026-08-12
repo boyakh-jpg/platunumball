@@ -21,6 +21,10 @@ test("public receipt draft keeps only bounded safe fields", () => {
     matchNature: "semifinal",
     homeColor: "red",
     awayColor: "#ABCDEF",
+    homeMmr: 1300,
+    awayMmr: 1250,
+    personalMmr: 1400,
+    hasCanonicalTeamMatch: true,
     photo: "data:image/jpeg;base64,private",
     photoZoom: 2,
     verified: "yes",
@@ -34,9 +38,13 @@ test("public receipt draft keeps only bounded safe fields", () => {
   assert.equal(payload.matchNature, "semifinal");
   assert.equal(payload.homeColor, "#f05a46");
   assert.equal(payload.awayColor, "#abcdef");
-  assert.equal(payload.verified, true);
+  assert.equal(payload.homeMmr, 1300);
+  assert.equal(payload.awayMmr, 1250);
+  assert.equal(payload.verified, false);
   assert.equal("photo" in payload, false);
   assert.equal("photoZoom" in payload, false);
+  assert.equal("personalMmr" in payload, false);
+  assert.equal("hasCanonicalTeamMatch" in payload, false);
 });
 
 test("public receipt draft rejects unknown match nature", () => {
