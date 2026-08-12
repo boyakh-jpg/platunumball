@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { extname, resolve } from "node:path";
 
 const RECEIPT_ASSETS = [
+  "public/assets/rankball-record-create-night-v3.webp",
   "public/assets/rankball-record-create-night-v2.webp",
   "public/assets/match-receipt-paper-torn-v1.png",
   "public/assets/tier-emblems/tier-rookie-outline-v1.png",
@@ -12,10 +13,12 @@ const RECEIPT_ASSETS = [
   "public/assets/tier-emblems/tier-diamond-outline-v1.png",
   "public/assets/tier-emblems/tier-master-outline-v1.png",
   "public/assets/tier-emblems/tier-legend-outline-v1.png",
+  "public/assets/tier-emblems/tier-neutral-outline-v1.svg",
 ];
 
 const CONTENT_TYPES = new Map([
   [".png", "image/png"],
+  [".svg", "image/svg+xml"],
   [".webp", "image/webp"],
 ]);
 

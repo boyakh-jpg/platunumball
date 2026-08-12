@@ -82,6 +82,7 @@ function ReceiptPreview({ draft, photoUrl = "", matchUrl = "", photoGestureHandl
       style={{
         "--receipt-home": model.homeColor,
         "--receipt-away": model.awayColor,
+        "--receipt-paper-texture": `url("${model.paperUrl}")`,
         ...getMatchReceiptPhotoStyle(model),
       }}
       aria-label="경기 영수증 미리보기"
@@ -120,14 +121,12 @@ function ReceiptPreview({ draft, photoUrl = "", matchUrl = "", photoGestureHandl
         {[{ name: model.homeTeam, tier: model.homeTier }, { name: model.awayTeam, tier: model.awayTier }].map((team, index) => (
           <div key={index}>
             <strong>{team.name || (index ? "AWAY TEAM" : "HOME TEAM")}</strong>
-            {model.showTeamTierEmblems && team.tier ? (
-              <img
-                className="match-receipt-team-tier"
-                src={team.tier.outlineSrc}
-                alt=""
-                aria-hidden="true"
-              />
-            ) : null}
+            <img
+              className={`match-receipt-team-tier${model.showTeamTierEmblems && team.tier ? "" : " is-neutral"}`}
+              src={model.showTeamTierEmblems && team.tier ? team.tier.outlineSrc : model.neutralTeamMarkUrl}
+              alt=""
+              aria-hidden="true"
+            />
             <span>{model.showTeamTierEmblems && team.tier ? `TEAM TIER · ${team.tier.label}` : index ? "AWAY" : "HOME"}</span>
           </div>
         ))}
@@ -141,7 +140,7 @@ function ReceiptPreview({ draft, photoUrl = "", matchUrl = "", photoGestureHandl
         </div>
         <div className="match-receipt-ticket-game">
           {model.personalTier ? <img className="match-receipt-personal-tier is-watermark" src={model.personalTier.outlineSrc} alt="" aria-hidden="true" /> : null}
-          {model.personalTier ? <strong>MY GAME</strong> : <strong>{getMatchReceiptFormatLabel(model.format)}</strong>}
+          {model.personalTier && model.hasPersonalStats ? <strong>MY GAME</strong> : !model.personalTier ? <strong>{getMatchReceiptFormatLabel(model.format)}</strong> : null}
           {model.hasPersonalStats ? (
             <span className="match-receipt-personal-stats">
               <b><em>{model.personalPoints ?? 0}</em><small>PTS</small></b>

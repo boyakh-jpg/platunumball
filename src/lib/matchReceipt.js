@@ -80,6 +80,7 @@ const TIER_OUTLINE_EMBLEMS = Object.freeze({
   Master: "/assets/tier-emblems/tier-master-outline-v1.png",
   Legend: "/assets/tier-emblems/tier-legend-outline-v1.png",
 });
+const MATCH_RECEIPT_NEUTRAL_TEAM_MARK_URL = assetUrl("/assets/tier-emblems/tier-neutral-outline-v1.svg");
 const MATCH_RECEIPT_PAPER_URL = assetUrl("/assets/match-receipt-paper-torn-v1.png");
 
 function todayInKorea() {
@@ -434,8 +435,9 @@ export function createMatchReceiptViewModel(value, options = {}) {
     matchUrl: String(options.matchUrl ?? ""),
     logoUrl: BOXTIER_LOGO_URL,
     wordmarkUrl: BOXTIER_LETTER_DARK_URL,
-    defaultPhotoUrl: assetUrl("/assets/rankball-record-create-night-v2.webp"),
+    defaultPhotoUrl: assetUrl("/assets/rankball-record-create-night-v3.webp"),
     paperUrl: MATCH_RECEIPT_PAPER_URL,
+    neutralTeamMarkUrl: MATCH_RECEIPT_NEUTRAL_TEAM_MARK_URL,
     homeTier: getTierVisual(draft.homeMmr),
     awayTier: getTierVisual(draft.awayMmr),
     personalTier: getTierVisual(draft.personalMmr),
@@ -489,14 +491,48 @@ function drawCoverPhoto(ctx, image, rect, draft) {
   ctx.restore();
 }
 
-function fitCanvasText(ctx, text, maxWidth, initialSize, minimumSize = 28) {
-  let size = initialSize;
-  while (size > minimumSize) {
-    ctx.font = `900 ${size}px "KBO Dia Gothic", sans-serif`;
-    if (ctx.measureText(text).width <= maxWidth) break;
-    size -= 2;
+function createCanvasPaperPattern(ctx, paper) {
+  const texture = document.createElement("canvas");
+  texture.width = 256;
+  texture.height = 256;
+  const textureCtx = texture.getContext("2d");
+  if (!textureCtx) return "#f1e8db";
+  textureCtx.drawImage(
+    paper,
+    0,
+    paper.naturalHeight * 0.2,
+    paper.naturalWidth,
+    paper.naturalHeight * 0.6,
+    0,
+    0,
+    texture.width,
+    texture.height,
+  );
+  return ctx.createPattern(texture, "repeat") || "#f1e8db";
+}
+
+function wrapCanvasText(ctx, text, maxWidth, maxLines = 2) {
+  const characters = Array.from(String(text || "").trim());
+  const lines = [];
+  let line = "";
+
+  for (let index = 0; index < characters.length; index += 1) {
+    const next = line + characters[index];
+    if (line && ctx.measureText(next).width > maxWidth) {
+      lines.push(line.trim());
+      line = characters[index].trimStart();
+      if (lines.length === maxLines - 1) {
+        const remainder = Array.from((line + characters.slice(index + 1).join("")).trim());
+        while (remainder.length > 1 && ctx.measureText(`${remainder.join("")}…`).width > maxWidth) remainder.pop();
+        line = `${remainder.join("").trimEnd()}…`;
+        break;
+      }
+    } else {
+      line = next;
+    }
   }
-  return size;
+  if (line) lines.push(line.trim());
+  return lines.slice(0, maxLines);
 }
 
 function drawQrCode(ctx, value, x, y, size) {
@@ -526,15 +562,17 @@ export async function renderMatchReceiptPng(value, preset = "story", options = {
   await document.fonts?.ready;
 
   const photoHeight = compact ? 610 : 885;
-  const receiptTop = compact ? 1010 : 1500;
-  const [photo, wordmark, homeTier, awayTier, personalTier, paper] = await Promise.all([
+  const receiptTop = compact ? 1010 : 1504;
+  const [photo, wordmark, homeTier, awayTier, neutralTeamMark, personalTier, paper] = await Promise.all([
     loadCanvasImage(options.photoBlob || model.defaultPhotoUrl),
     loadCanvasImage(model.wordmarkUrl).catch(() => null),
     model.showTeamTierEmblems && model.homeTier ? loadCanvasImage(model.homeTier.outlineSrc).catch(() => null) : null,
     model.showTeamTierEmblems && model.awayTier ? loadCanvasImage(model.awayTier.outlineSrc).catch(() => null) : null,
+    loadCanvasImage(model.neutralTeamMarkUrl).catch(() => null),
     model.personalTier ? loadCanvasImage(model.personalTier.outlineSrc).catch(() => null) : null,
     loadCanvasImage(model.paperUrl),
   ]);
+  const paperTextPattern = createCanvasPaperPattern(ctx, paper);
 
   ctx.fillStyle = "#111111";
   ctx.fillRect(0, 0, width, height);
@@ -581,10 +619,10 @@ export async function renderMatchReceiptPng(value, preset = "story", options = {
   ctx.strokeStyle = "#f05a2a";
   ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.moveTo(150, verifiedY);
-  ctx.lineTo(382, verifiedY);
-  ctx.moveTo(698, verifiedY);
-  ctx.lineTo(930, verifiedY);
+  ctx.moveTo(175, verifiedY);
+  ctx.lineTo(370, verifiedY);
+  ctx.moveTo(710, verifiedY);
+  ctx.lineTo(905, verifiedY);
   ctx.stroke();
   ctx.fillStyle = "#f05a2a";
   ctx.textAlign = "center";
@@ -592,38 +630,55 @@ export async function renderMatchReceiptPng(value, preset = "story", options = {
   ctx.fillText(model.verified ? "★  BOXTIER VERIFIED  ★" : "★  MATCH RECEIPT  ★", width / 2, verifiedY + 11);
 
   const scoreTop = verifiedY + 70;
-  ctx.fillStyle = "#f1e8db";
-  ctx.font = `900 ${compact ? 146 : 196}px "KBO Dia Gothic", sans-serif`;
-  ctx.fillText(`${model.homeScore} : ${model.awayScore}`, width / 2, scoreTop + (compact ? 145 : 190));
+  ctx.save();
+  ctx.fillStyle = paperTextPattern;
+  ctx.shadowColor = "rgba(0,0,0,.42)";
+  ctx.shadowBlur = 16;
+  ctx.shadowOffsetY = 4;
+  ctx.font = `900 ${compact ? 146 : 270}px "KBO Dia Gothic", sans-serif`;
+  ctx.fillText(`${model.homeScore} : ${model.awayScore}`, width / 2, compact ? scoreTop + 145 : 1120);
+  ctx.restore();
   ctx.fillStyle = "#f05a2a";
-  ctx.font = '900 31px "KBO Dia Gothic", sans-serif';
-  ctx.fillText(model.matchNatureLabel, width / 2, scoreTop + 7);
+  ctx.font = `300 ${compact ? 31 : 36}px "Pretendard Variable", sans-serif`;
+  ctx.letterSpacing = compact ? "4px" : "5px";
+  ctx.fillText(model.matchNatureLabel, width / 2, scoreTop + (compact ? 7 : 17));
+  ctx.letterSpacing = "0px";
 
-  const teamY = compact ? 825 : 1145;
-  const teamTierSize = compact ? 110 : 180;
+  const teamTop = compact ? 781 : 1121;
+  const teamFontSize = compact ? 44 : 58;
+  const teamTierY = compact ? 853 : 1266;
+  const teamTierSize = compact ? 110 : 156;
+  const teamLabelY = compact ? 990 : 1458;
   const columns = [270, 810];
   const teams = [
-    { name: model.homeTeam || "HOME TEAM", tier: model.homeTier, image: homeTier },
-    { name: model.awayTeam || "AWAY TEAM", tier: model.awayTier, image: awayTier },
+    { name: model.homeTeam || "HOME TEAM", tier: model.homeTier, image: homeTier || neutralTeamMark },
+    { name: model.awayTeam || "AWAY TEAM", tier: model.awayTier, image: awayTier || neutralTeamMark },
   ];
   teams.forEach((team, index) => {
-    ctx.fillStyle = "#f1e8db";
     ctx.textAlign = "center";
-    fitCanvasText(ctx, team.name, 430, compact ? 44 : 54, 28);
-    ctx.fillText(team.name, columns[index], teamY);
+    ctx.font = `900 ${teamFontSize}px "KBO Dia Gothic", sans-serif`;
+    ctx.fillStyle = paperTextPattern;
+    wrapCanvasText(ctx, team.name, 430).forEach((line, lineIndex) => {
+      ctx.fillText(line, columns[index], teamTop + teamFontSize + lineIndex * teamFontSize * 1.04);
+    });
     if (team.image) {
-      ctx.drawImage(team.image, columns[index] - teamTierSize / 2, teamY + 28, teamTierSize, teamTierSize);
+      ctx.save();
+      if (!(model.showTeamTierEmblems && team.tier)) ctx.globalAlpha = 0.72;
+      ctx.drawImage(team.image, columns[index] - teamTierSize / 2, teamTierY, teamTierSize, teamTierSize);
+      ctx.restore();
     }
-    if (model.showTeamTierEmblems && team.tier) {
-      ctx.fillStyle = "#c69a4b";
-      ctx.font = '900 23px "KBO Dia Gothic", sans-serif';
-      ctx.fillText(`TEAM TIER · ${team.tier.label}`, columns[index], teamY + (compact ? 165 : 235));
-    }
+    ctx.fillStyle = "#c69a4b";
+    ctx.font = '900 23px "KBO Dia Gothic", sans-serif';
+    ctx.fillText(
+      model.showTeamTierEmblems && team.tier ? `TEAM TIER · ${team.tier.label}` : index ? "AWAY" : "HOME",
+      columns[index],
+      teamLabelY,
+    );
   });
   ctx.strokeStyle = "rgba(240,90,42,.7)";
   ctx.setLineDash([4, 8]);
   ctx.beginPath();
-  ctx.moveTo(width / 2, teamY - 20);
+  ctx.moveTo(width / 2, compact ? 805 : teamTop);
   ctx.lineTo(width / 2, receiptTop - 38);
   ctx.stroke();
   ctx.setLineDash([]);
@@ -632,94 +687,98 @@ export async function renderMatchReceiptPng(value, preset = "story", options = {
   ctx.shadowColor = "rgba(0,0,0,.45)";
   ctx.shadowBlur = 18;
   ctx.shadowOffsetY = 6;
-  ctx.drawImage(paper, 28, receiptTop, width - 56, height - receiptTop - 26);
+  ctx.drawImage(paper, 28, receiptTop, width - 56, height - receiptTop - (compact ? 26 : 34));
   ctx.restore();
-  const footerY = receiptTop + (compact ? 78 : 54);
+  const footerY = receiptTop + (compact ? 78 : 66);
+  const footerLeftDivider = compact ? 386 : 414;
+  const footerRightDivider = compact ? 690 : 711;
+  const footerMiddleX = compact ? 540 : 562;
+  const footerRightX = compact ? 850 : 876;
 
   ctx.strokeStyle = "rgba(195,74,37,.7)";
   ctx.lineWidth = 2;
   ctx.setLineDash([3, 7]);
   ctx.beginPath();
-  ctx.moveTo(386, footerY - 4);
-  ctx.lineTo(386, height - 58);
-  ctx.moveTo(690, footerY - 4);
-  ctx.lineTo(690, height - 58);
-  ctx.moveTo(70, footerY + 126);
-  ctx.lineTo(362, footerY + 126);
-  ctx.moveTo(420, footerY + 137);
-  ctx.lineTo(660, footerY + 137);
+  ctx.moveTo(footerLeftDivider, footerY - (compact ? 4 : 26));
+  ctx.lineTo(footerLeftDivider, height - 58);
+  ctx.moveTo(footerRightDivider, footerY - (compact ? 4 : 26));
+  ctx.lineTo(footerRightDivider, height - 58);
+  ctx.moveTo(compact ? 70 : 80, footerY + (compact ? 126 : 177));
+  ctx.lineTo(compact ? 362 : 380, footerY + (compact ? 126 : 177));
+  ctx.moveTo(compact ? 420 : 445, footerY + (compact ? 137 : 209));
+  ctx.lineTo(compact ? 660 : 680, footerY + (compact ? 137 : 209));
   ctx.stroke();
   ctx.setLineDash([]);
 
   ctx.strokeStyle = "#d4582b";
   ctx.lineWidth = 5;
   ctx.beginPath();
-  ctx.arc(220, footerY + 12, 15, 0, Math.PI * 2);
+  ctx.arc(220, footerY + (compact ? 12 : 28), 15, 0, Math.PI * 2);
   ctx.stroke();
   ctx.fillStyle = "#d4582b";
   ctx.beginPath();
-  ctx.arc(220, footerY + 12, 4, 0, Math.PI * 2);
+  ctx.arc(220, footerY + (compact ? 12 : 28), 4, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.fillStyle = "#151515";
   ctx.textAlign = "center";
   ctx.font = '900 25px "KBO Dia Gothic", sans-serif';
-  ctx.fillText(model.address || "경기 장소", 220, footerY + 64, 320);
-  ctx.fillText(model.venue || "", 220, footerY + 96, 320);
+  ctx.fillText(model.address || "경기 장소", 220, footerY + (compact ? 64 : 94), 320);
+  ctx.fillText(model.venue || "", 220, footerY + (compact ? 96 : 138), 320);
   ctx.font = '900 27px "KBO Dia Gothic", sans-serif';
-  ctx.fillText(model.playedOn.replaceAll("-", "."), 220, footerY + 174);
+  ctx.fillText(model.playedOn.replaceAll("-", "."), 220, footerY + (compact ? 174 : 255));
 
   if (personalTier) {
     const tierSize = compact ? 142 : 190;
     ctx.save();
     ctx.globalAlpha = 0.16;
-    ctx.drawImage(personalTier, 540 - tierSize / 2, footerY - 12, tierSize, tierSize);
+    ctx.drawImage(personalTier, footerMiddleX - tierSize / 2, footerY - 12, tierSize, tierSize);
     ctx.restore();
   }
 
-  if (personalTier) {
+  if (personalTier && model.hasPersonalStats) {
     ctx.fillStyle = "#d4582b";
     ctx.font = '900 25px "KBO Dia Gothic", sans-serif';
-    ctx.fillText("MY GAME", 540, footerY + 10);
+    ctx.fillText("MY GAME", footerMiddleX, footerY + (compact ? 10 : 30));
   }
 
   if (model.hasPersonalStats) {
     ctx.fillStyle = "#151515";
     ctx.font = '900 62px "KBO Dia Gothic", sans-serif';
-    ctx.fillText(`${model.personalPoints ?? 0}`, 480, footerY + 78);
-    ctx.fillText(`${model.personalRebounds ?? 0}`, 600, footerY + 78);
+    ctx.fillText(`${model.personalPoints ?? 0}`, compact ? 480 : 505, footerY + (compact ? 78 : 132));
+    ctx.fillText(`${model.personalRebounds ?? 0}`, compact ? 600 : 620, footerY + (compact ? 78 : 132));
     ctx.font = '900 20px "KBO Dia Gothic", sans-serif';
-    ctx.fillText("PTS", 480, footerY + 110);
-    ctx.fillText("REB", 600, footerY + 110);
+    ctx.fillText("PTS", compact ? 480 : 505, footerY + (compact ? 110 : 166));
+    ctx.fillText("REB", compact ? 600 : 620, footerY + (compact ? 110 : 166));
     ctx.strokeStyle = "rgba(195,74,37,.7)";
     ctx.setLineDash([3, 7]);
     ctx.beginPath();
-    ctx.moveTo(540, footerY + 30);
-    ctx.lineTo(540, footerY + 116);
+    ctx.moveTo(footerMiddleX, footerY + (compact ? 30 : 70));
+    ctx.lineTo(footerMiddleX, footerY + (compact ? 116 : 180));
     ctx.stroke();
     ctx.setLineDash([]);
     ctx.fillStyle = "#151515";
     ctx.font = '900 18px "KBO Dia Gothic", sans-serif';
-    ctx.fillText("내 경기 기록", 540, footerY + 176);
+    ctx.fillText("내 경기 기록", footerMiddleX, footerY + (compact ? 176 : 278));
   } else if (!personalTier) {
     ctx.fillStyle = "#d4582b";
     ctx.font = '900 25px "KBO Dia Gothic", sans-serif';
-    ctx.fillText(getMatchReceiptFormatLabel(model.format), 540, footerY + 55);
+    ctx.fillText(getMatchReceiptFormatLabel(model.format), footerMiddleX, footerY + 55);
     ctx.fillStyle = "#151515";
     ctx.font = '900 22px "KBO Dia Gothic", sans-serif';
-    ctx.fillText(model.comment || model.outcome.label, 540, footerY + 100, 260);
+    ctx.fillText(model.comment || model.outcome.label, footerMiddleX, footerY + 100, 260);
   }
 
   if (model.matchUrl) {
-    const qrSize = compact ? 160 : 190;
+    const qrSize = compact ? 160 : 198;
     ctx.fillStyle = "#d4582b";
     ctx.font = '900 22px "KBO Dia Gothic", sans-serif';
-    ctx.fillText("경기 기록 보기", 850, footerY + 6);
-    drawQrCode(ctx, model.matchUrl, 850 - qrSize / 2, footerY + 24, qrSize);
+    ctx.fillText("경기 기록 보기", footerRightX, footerY + (compact ? 6 : 30));
+    drawQrCode(ctx, model.matchUrl, footerRightX - qrSize / 2, footerY + (compact ? 24 : 54), qrSize);
   } else {
     ctx.fillStyle = "#d4582b";
     ctx.font = '900 23px "KBO Dia Gothic", sans-serif';
-    ctx.fillText("boxtier.kr", 850, footerY + 76);
+    ctx.fillText("boxtier.kr", footerRightX, footerY + 76);
   }
 
   return canvasToBlob(canvas, "image/png");
