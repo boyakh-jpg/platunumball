@@ -72,7 +72,7 @@ function getPhotoGestureSnapshot(pointers) {
   };
 }
 
-function ReceiptPreview({ draft, photoUrl = "", matchUrl = "" }) {
+function ReceiptPreview({ draft, photoUrl = "", matchUrl = "", photoGestureHandlers = {} }) {
   const model = createMatchReceiptViewModel(draft, { matchUrl });
   const backgroundUrl = photoUrl || model.defaultPhotoUrl;
 
@@ -86,7 +86,11 @@ function ReceiptPreview({ draft, photoUrl = "", matchUrl = "" }) {
       }}
       aria-label="경기 영수증 미리보기"
     >
-      <div className="match-receipt-photo">
+      <div
+        className={`match-receipt-photo${photoUrl ? " is-editable" : ""}`}
+        aria-label={photoUrl ? "영수증 배경 사진 편집" : undefined}
+        {...photoGestureHandlers}
+      >
         <img src={backgroundUrl} alt="" />
       </div>
       <header className="match-receipt-poster-head">
@@ -133,18 +137,22 @@ function ReceiptPreview({ draft, photoUrl = "", matchUrl = "" }) {
         <div className="match-receipt-ticket-place">
           <MapPin aria-hidden="true" />
           <strong>{[model.address, model.venue].filter(Boolean).join(" · ") || "경기 장소"}</strong>
-          <span>{model.playedOn.replaceAll("-", ".")}</span>
+          <span className="match-receipt-ticket-date">{model.playedOn.replaceAll("-", ".")}</span>
         </div>
         <div className="match-receipt-ticket-game">
           {model.personalTier ? <img className="match-receipt-personal-tier is-watermark" src={model.personalTier.outlineSrc} alt="" aria-hidden="true" /> : null}
           {model.personalTier ? <strong>MY GAME</strong> : <strong>{getMatchReceiptFormatLabel(model.format)}</strong>}
-          {model.hasPersonalStats ? <b>{model.personalPoints ?? 0}<small>PTS</small> {model.personalRebounds ?? 0}<small>REB</small></b> : model.personalTier ? null : <span>{model.comment || model.outcome.label}</span>}
+          {model.hasPersonalStats ? (
+            <span className="match-receipt-personal-stats">
+              <b><em>{model.personalPoints ?? 0}</em><small>PTS</small></b>
+              <b><em>{model.personalRebounds ?? 0}</em><small>REB</small></b>
+            </span>
+          ) : model.personalTier ? null : <span>{model.comment || model.outcome.label}</span>}
+          {model.hasPersonalStats ? <span className="match-receipt-ticket-caption">내 경기 기록</span> : null}
         </div>
         <div className="match-receipt-ticket-qr">
+          <strong>{matchUrl ? "경기 기록 보기" : "boxtier.kr"}</strong>
           {matchUrl ? <QrCode value={matchUrl} label="경기 열기 QR 코드" className="match-receipt-qr" /> : null}
-          <div>
-            <strong>{matchUrl ? "경기 기록 보기" : "boxtier.kr"}</strong>
-          </div>
         </div>
       </footer>
     </article>
@@ -602,39 +610,6 @@ export default function MatchReceipt({ auth, app }) {
             <p className="match-receipt-map-note"><MapPin aria-hidden="true" /> 이미지에는 장소명과 짧은 주소만 들어갑니다. 지도 화면은 포함하지 않습니다.</p>
           </section>
 
-          <section className="ui-panel match-receipt-photo-editor">
-            <div className="match-receipt-photo-editor-head">
-              <div>
-                <h2>배경 사진</h2>
-                <p>사진은 이 브라우저에만 24시간 보관되며 서버로 전송되지 않습니다.</p>
-              </div>
-            </div>
-            <div
-              className={`match-receipt-photo-crop${photoUrl ? " has-photo" : ""}`}
-              onPointerDown={beginPhotoGesture}
-              onPointerMove={movePhotoGesture}
-              onPointerUp={endPhotoGesture}
-              onPointerCancel={endPhotoGesture}
-              onLostPointerCapture={endPhotoGesture}
-            >
-              <img
-                src={photoUrl || createMatchReceiptViewModel(draft).defaultPhotoUrl}
-                alt="영수증 배경 미리보기"
-                style={getMatchReceiptPhotoStyle(draft)}
-              />
-              <span>{photoUrl ? "한 손가락 이동 · 두 손가락 확대·회전" : "기본 배경 · 사진을 선택해 교체"}</span>
-            </div>
-            <div className="match-receipt-photo-actions">
-              <label className="button ui-button button-secondary ui-button-secondary button-md ui-button-md">
-                <ImagePlus aria-hidden="true" /> 사진 선택
-                <input type="file" accept="image/jpeg,image/png,image/webp" disabled={busy === "photo"} onChange={handlePhotoChange} />
-              </label>
-              <button type="button" className="button ui-button button-secondary ui-button-secondary button-md ui-button-md" onClick={() => updateField("photoRotation", draft.photoRotation + 90)}><RotateCcw aria-hidden="true" /> 90° 회전</button>
-              <button type="button" className="button ui-button button-secondary ui-button-secondary button-md ui-button-md" onClick={resetPhotoTransform}>편집 초기화</button>
-              {photoUrl ? <button type="button" className="button ui-button button-secondary ui-button-secondary button-md ui-button-md is-danger" onClick={removePhoto}><Trash2 aria-hidden="true" /> 사진 제거</button> : null}
-            </div>
-          </section>
-
           <button type="submit" className="button ui-button button-primary ui-button-primary button-md ui-button-md match-receipt-complete">영수증 완성하기</button>
           {status ? <p className="match-receipt-status" role="status">{status}</p> : null}
         </form>
@@ -644,7 +619,32 @@ export default function MatchReceipt({ auth, app }) {
             <div><span>미리보기</span><strong>{outcome.label}</strong></div>
             <span>9:16 STORY</span>
           </div>
-          <ReceiptPreview draft={draft} photoUrl={photoUrl} matchUrl={matchUrl} />
+          <div className="match-receipt-preview-stage">
+            <ReceiptPreview
+              draft={draft}
+              photoUrl={photoUrl}
+              matchUrl={matchUrl}
+              photoGestureHandlers={{
+                onPointerDown: beginPhotoGesture,
+                onPointerMove: movePhotoGesture,
+                onPointerUp: endPhotoGesture,
+                onPointerCancel: endPhotoGesture,
+                onLostPointerCapture: endPhotoGesture,
+              }}
+            />
+            <div className="match-receipt-photo-actions" aria-label="미리보기 사진 편집">
+              <label className="button ui-button button-secondary ui-button-secondary button-md ui-button-md">
+                <ImagePlus aria-hidden="true" /> 사진 선택
+                <input type="file" accept="image/jpeg,image/png,image/webp" disabled={busy === "photo"} onChange={handlePhotoChange} />
+              </label>
+              <button type="button" className="button ui-button button-secondary ui-button-secondary button-md ui-button-md" onClick={() => updateField("photoRotation", draft.photoRotation + 90)}><RotateCcw aria-hidden="true" /> 90° 회전</button>
+              <button type="button" className="button ui-button button-secondary ui-button-secondary button-md ui-button-md" onClick={resetPhotoTransform}>초기화</button>
+              {photoUrl ? <button type="button" className="button ui-button button-secondary ui-button-secondary button-md ui-button-md is-danger" onClick={removePhoto}><Trash2 aria-hidden="true" /> 제거</button> : null}
+            </div>
+            <p className="match-receipt-photo-note">
+              {photoUrl ? "사진을 직접 이동 · 두 손가락 확대·축소·회전" : "사진을 선택하면 이 영역에서 바로 편집"} · 서버 미업로드
+            </p>
+          </div>
 
           {generated ? (
             <div className="match-receipt-actions">

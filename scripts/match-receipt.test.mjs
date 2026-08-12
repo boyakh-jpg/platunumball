@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 import {
   createReceiptCapability,
@@ -71,4 +72,21 @@ test("receipt ownership capability is secret, hashed, and cookie-scoped", () => 
   assert.match(cookie, /SameSite=Lax/);
   assert.match(cookie, /Path=\/api\/match-receipts/);
   assert.equal(cookie.includes(hash), false);
+});
+
+test("receipt photo editing stays in the preview and reference dividers remain", async () => {
+  const [page, styles, renderer] = await Promise.all([
+    readFile(new URL("../src/pages/MatchReceipt.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/styles/features/match-receipt.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/lib/matchReceipt.js", import.meta.url), "utf8"),
+  ]);
+
+  assert.doesNotMatch(page, /match-receipt-photo-editor|match-receipt-photo-crop/);
+  assert.match(page, /photoGestureHandlers/);
+  assert.match(page, /match-receipt-personal-stats/);
+  assert.match(styles, /\.match-receipt-photo\.is-editable[\s\S]*touch-action: none/);
+  assert.match(styles, /\.match-receipt-ticket-date[\s\S]*border-top/);
+  assert.match(styles, /\.match-receipt-personal-stats b \+ b[\s\S]*border-left/);
+  assert.match(renderer, /ctx\.moveTo\(386, footerY - 4\)/);
+  assert.match(renderer, /ctx\.moveTo\(540, footerY \+ 30\)/);
 });

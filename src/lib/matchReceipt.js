@@ -525,8 +525,8 @@ export async function renderMatchReceiptPng(value, preset = "story", options = {
   if (!ctx) throw new Error("match_receipt_canvas_unavailable");
   await document.fonts?.ready;
 
-  const photoHeight = compact ? 590 : 860;
-  const receiptTop = compact ? 1010 : 1495;
+  const photoHeight = compact ? 610 : 885;
+  const receiptTop = compact ? 1010 : 1500;
   const [photo, wordmark, homeTier, awayTier, personalTier, paper] = await Promise.all([
     loadCanvasImage(options.photoBlob || model.defaultPhotoUrl),
     loadCanvasImage(model.wordmarkUrl).catch(() => null),
@@ -546,19 +546,19 @@ export async function renderMatchReceiptPng(value, preset = "story", options = {
   blurredPhoto.getContext("2d")?.drawImage(canvas, 0, 0, width, photoHeight, 0, 0, width, photoHeight);
   ctx.save();
   ctx.beginPath();
-  ctx.rect(0, photoHeight * 0.55, width, photoHeight * 0.45);
+  ctx.rect(0, photoHeight * 0.58, width, photoHeight * 0.42);
   ctx.clip();
   ctx.filter = "blur(14px)";
   ctx.drawImage(blurredPhoto, 0, 0);
   ctx.restore();
 
-  const photoFade = ctx.createLinearGradient(0, photoHeight * 0.32, 0, photoHeight + 220);
+  const photoFade = ctx.createLinearGradient(0, photoHeight * 0.5, 0, photoHeight + 60);
   photoFade.addColorStop(0, "rgba(12,12,12,0)");
-  photoFade.addColorStop(0.45, "rgba(12,12,12,.34)");
-  photoFade.addColorStop(0.68, "rgba(12,12,12,.82)");
+  photoFade.addColorStop(0.42, "rgba(12,12,12,.16)");
+  photoFade.addColorStop(0.76, "rgba(12,12,12,.64)");
   photoFade.addColorStop(1, "#111111");
   ctx.fillStyle = photoFade;
-  ctx.fillRect(0, photoHeight * 0.28, width, photoHeight + 250);
+  ctx.fillRect(0, photoHeight * 0.5, width, photoHeight * 0.6);
 
   ctx.fillStyle = "#f05a2a";
   ctx.textAlign = "left";
@@ -599,8 +599,8 @@ export async function renderMatchReceiptPng(value, preset = "story", options = {
   ctx.font = '900 31px "KBO Dia Gothic", sans-serif';
   ctx.fillText(model.matchNatureLabel, width / 2, scoreTop + 7);
 
-  const teamY = compact ? 825 : 1205;
-  const teamTierSize = compact ? 110 : 170;
+  const teamY = compact ? 825 : 1145;
+  const teamTierSize = compact ? 110 : 180;
   const columns = [270, 810];
   const teams = [
     { name: model.homeTeam || "HOME TEAM", tier: model.homeTier, image: homeTier },
@@ -617,7 +617,7 @@ export async function renderMatchReceiptPng(value, preset = "story", options = {
     if (model.showTeamTierEmblems && team.tier) {
       ctx.fillStyle = "#c69a4b";
       ctx.font = '900 23px "KBO Dia Gothic", sans-serif';
-      ctx.fillText(`TEAM TIER · ${team.tier.label}`, columns[index], teamY + (compact ? 165 : 230));
+      ctx.fillText(`TEAM TIER · ${team.tier.label}`, columns[index], teamY + (compact ? 165 : 235));
     }
   });
   ctx.strokeStyle = "rgba(240,90,42,.7)";
@@ -635,11 +635,39 @@ export async function renderMatchReceiptPng(value, preset = "story", options = {
   ctx.drawImage(paper, 28, receiptTop, width - 56, height - receiptTop - 26);
   ctx.restore();
   const footerY = receiptTop + (compact ? 78 : 54);
+
+  ctx.strokeStyle = "rgba(195,74,37,.7)";
+  ctx.lineWidth = 2;
+  ctx.setLineDash([3, 7]);
+  ctx.beginPath();
+  ctx.moveTo(386, footerY - 4);
+  ctx.lineTo(386, height - 58);
+  ctx.moveTo(690, footerY - 4);
+  ctx.lineTo(690, height - 58);
+  ctx.moveTo(70, footerY + 126);
+  ctx.lineTo(362, footerY + 126);
+  ctx.moveTo(420, footerY + 137);
+  ctx.lineTo(660, footerY + 137);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.strokeStyle = "#d4582b";
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  ctx.arc(220, footerY + 12, 15, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.fillStyle = "#d4582b";
+  ctx.beginPath();
+  ctx.arc(220, footerY + 12, 4, 0, Math.PI * 2);
+  ctx.fill();
+
   ctx.fillStyle = "#151515";
   ctx.textAlign = "center";
+  ctx.font = '900 25px "KBO Dia Gothic", sans-serif';
+  ctx.fillText(model.address || "경기 장소", 220, footerY + 64, 320);
+  ctx.fillText(model.venue || "", 220, footerY + 96, 320);
   ctx.font = '900 27px "KBO Dia Gothic", sans-serif';
-  ctx.fillText([model.address, model.venue].filter(Boolean).join(" · ") || "경기 장소", 220, footerY + 54, 360);
-  ctx.fillText(model.playedOn.replaceAll("-", "."), 220, footerY + 126);
+  ctx.fillText(model.playedOn.replaceAll("-", "."), 220, footerY + 174);
 
   if (personalTier) {
     const tierSize = compact ? 142 : 190;
@@ -658,9 +686,21 @@ export async function renderMatchReceiptPng(value, preset = "story", options = {
   if (model.hasPersonalStats) {
     ctx.fillStyle = "#151515";
     ctx.font = '900 62px "KBO Dia Gothic", sans-serif';
-    ctx.fillText(`${model.personalPoints ?? 0}   ${model.personalRebounds ?? 0}`, 540, footerY + 78);
+    ctx.fillText(`${model.personalPoints ?? 0}`, 480, footerY + 78);
+    ctx.fillText(`${model.personalRebounds ?? 0}`, 600, footerY + 78);
     ctx.font = '900 20px "KBO Dia Gothic", sans-serif';
-    ctx.fillText("PTS            REB", 540, footerY + 112);
+    ctx.fillText("PTS", 480, footerY + 110);
+    ctx.fillText("REB", 600, footerY + 110);
+    ctx.strokeStyle = "rgba(195,74,37,.7)";
+    ctx.setLineDash([3, 7]);
+    ctx.beginPath();
+    ctx.moveTo(540, footerY + 30);
+    ctx.lineTo(540, footerY + 116);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = "#151515";
+    ctx.font = '900 18px "KBO Dia Gothic", sans-serif';
+    ctx.fillText("내 경기 기록", 540, footerY + 176);
   } else if (!personalTier) {
     ctx.fillStyle = "#d4582b";
     ctx.font = '900 25px "KBO Dia Gothic", sans-serif';
