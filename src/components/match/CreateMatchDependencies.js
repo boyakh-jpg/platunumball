@@ -105,6 +105,11 @@ import {
   tournamentMmrPolicyOptions,
   tournamentScheduleOptions,
 } from "../../lib/createMatchPage.js";
+import {
+  clearMatchReceiptDraft,
+  getMatchReceiptCreateDraft,
+  loadMatchReceiptDraft,
+} from "../../lib/matchReceipt.js";
 
 const SOLO_RECORD_MODES = Array.from(SOLO_RECORD_MODE_IDS, (id) => ({ id, label: id }));
 
@@ -133,7 +138,7 @@ export const CREATE_MATCH_DEPENDENCIES = {
   getTournamentRefereePoolValidation, DEFAULT_MATCH_MEMO, MATCH_MODE_IDS, formatCreateSaveError, getAgeRestrictionOption, getAvailableTeamPlayerIds,
   getCreateStepFromSearch, getCreateStepSearch, getDefaultCreateMode, getDefaultCreateTitle, getDefaultMmrLimitMode, getDefaultTournamentTitle,
   getMatchModeOrDefault, getMatchRecordMemo, getMmrSpread, getOpponentTeam, hydrateCreateMatchTeam, getRepresentativePlayerIds, getTeamChallengeEligibilityPolicy,
-  clearCreateMatchGuestDraft, getCreateMatchGuestDraft, includesQuery, isDefaultCreateTitle, isDefaultTournamentTitle, isHashtagQuery,
+  clearCreateMatchGuestDraft, clearMatchReceiptDraft, getCreateMatchGuestDraft, getMatchReceiptCreateDraft, loadMatchReceiptDraft, includesQuery, isDefaultCreateTitle, isDefaultTournamentTitle, isHashtagQuery,
   makeEmptySoloStats, saveCreateMatchGuestDraft, mmrLimitOptions, toggleAgeRestriction,
   tournamentFormatOptions, tournamentMmrPolicyOptions, tournamentScheduleOptions, SOLO_RECORD_MODES,
 };

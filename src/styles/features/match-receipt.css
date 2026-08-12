@@ -371,6 +371,23 @@
   text-align: center;
 }
 
+.match-receipt-paper footer.has-qr {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.match-receipt-paper footer > div {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.match-receipt-qr {
+  width: clamp(62px, 18vw, 92px);
+  height: auto;
+  flex: 0 0 auto;
+}
+
 .match-receipt-paper footer strong {
   color: #f05a46;
   font-size: clamp(11px, 2.7vw, 17px);

@@ -135,6 +135,7 @@ export default function ProfileRecords({ app }) {
             {visibleRecentRecords.map((match) => {
               const line = getRecordLine(match, user.id);
               const stats = hasVerifiedPlayerStats(match, user.id) ? match.result.playerStats[user.id] : null;
+              const personalRecord = isPersonalRecordMatch(match);
               return (
                 <RecentMatchRow
                   key={match.id}
@@ -145,9 +146,9 @@ export default function ProfileRecords({ app }) {
                   score={line.score}
                   opponentScore={line.opponentScore}
                   teams={app.state.teams}
-                  to={`/app/matches?match=${match.id}`}
-                  onOpen={() => setSelectedRecordMatchId(match.id)}
-                  afterCourt={isPersonalRecordMatch(match) ? <PersonalRecordMetaLabels visibility={match.visibility} /> : null}
+                  to={personalRecord ? `/app/receipt?match=${encodeURIComponent(match.id)}` : `/app/matches?match=${encodeURIComponent(match.id)}`}
+                  onOpen={personalRecord ? undefined : () => setSelectedRecordMatchId(match.id)}
+                  afterCourt={personalRecord ? <PersonalRecordMetaLabels visibility={match.visibility} /> : null}
                   detail={stats ? formatStatLine(stats) : null}
                   className="profile-record-row"
                 />
@@ -198,6 +199,7 @@ export default function ProfileRecords({ app }) {
                 opponent={{ name: record.opponentTeamName }}
                 score={record.score}
                 opponentScore={record.opponentScore}
+                to={isPersonalArchiveRecord(record) ? `/app/receipt?match=${encodeURIComponent(record.matchId)}` : undefined}
                 afterCourt={isPersonalArchiveRecord(record) ? <PersonalRecordMetaLabels visibility={record.visibility} /> : null}
                 detail="6개월이 지난 기록은 목록으로 보관합니다."
                 className="profile-record-row record-archive-row"

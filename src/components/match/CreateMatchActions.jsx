@@ -1,6 +1,7 @@
 export function createCreateMatchActions(context) {
   const {
-    RECORD_TYPES, Star, ageRestrictionOption, app, appendSoloRecordUser, challengeTeamAId, challengeTeamBId, clearCreateMatchGuestDraft, createReturnTo, currentRegion, draft, hasTeamChallenge,
+    RECORD_TYPES, Star, ageRestrictionOption, app, appendSoloRecordUser, challengeTeamAId, challengeTeamBId, clearCreateMatchGuestDraft, clearMatchReceiptDraft, createReturnTo, currentRegion, draft, hasTeamChallenge,
+    receiptReturnTo, receiptSourceDraft,
     favoriteRefereeIds, favoriteTeamIds, formatCreateSaveError, getAvailableTeamPlayerIds, getCourtAddress, getCourtHashtag, getCourtLayoutLabel,
     getClientActionAccessToken, getCourtSurfaceLabel, getLoginPath, getMatchCreationPolicyPayload, getMatchRulesPayload, getOpponentTeam, getPersonalRecordDraftPayload, getRepresentativePlayerIds, getScopedMatchCreationPolicyPayload,
     getTeamEligibility, getTeamHashtag, getTournamentTeamEligibility, getUserHashtag, hydrateCreateMatchTeam, isFavoriteCourt, isInstantRoom, isMatchRecordRoom,
@@ -357,13 +358,21 @@ export function createCreateMatchActions(context) {
         mode: draft.mode,
         mmrLimitMode: "off",
         courtId: selectedCourt?.id ?? "",
-        court: selectedCourt?.name ?? "",
+        court: selectedCourt?.name ?? draft.court ?? "",
         scheduledDate: draft.scheduledDate,
         scheduledTime: draft.scheduledTime,
       });
       if (typeof matchId === "string" && matchId) {
-        clearCreateMatchGuestDraft();
-        navigate("/app/profile/records");
+      clearCreateMatchGuestDraft();
+      if (receiptReturnTo) {
+        clearMatchReceiptDraft();
+        navigate(`${receiptReturnTo}?match=${encodeURIComponent(matchId)}`, {
+            replace: true,
+            state: { receiptDraft: receiptSourceDraft },
+          });
+        } else {
+          navigate("/app/profile/records");
+        }
       }
       else {
         setSubmitFeedback(formatCreateSaveError(matchId, "개인 기록을 저장하지 못했습니다."));

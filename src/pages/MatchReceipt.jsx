@@ -1,28 +1,28 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Copy, Download, MapPin, Share2 } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
+import QrCode from "../components/common/QrCode.jsx";
 import {
   MATCH_RECEIPT_CANVAS_SIZES,
-  MATCH_RECEIPT_DRAFT_STORAGE_KEY,
+  MATCH_RECEIPT_CREATE_RETURN_TO,
   MATCH_RECEIPT_FORMATS,
   MATCH_RECEIPT_LIMITS,
   createDefaultMatchReceiptDraft,
+  getMatchReceiptCreateDraft,
+  getMatchReceiptDraftFromMatch,
   getMatchReceiptFileName,
   getMatchReceiptFormatLabel,
   getMatchReceiptOutcome,
+  loadMatchReceiptDraft,
   normalizeMatchReceiptDraft,
   renderMatchReceiptPng,
+  saveMatchReceiptDraft,
   trackMatchReceiptEvent,
   validateMatchReceiptDraft,
 } from "../lib/matchReceipt.js";
 
 function loadDraft() {
-  if (typeof window === "undefined") return createDefaultMatchReceiptDraft();
-  try {
-    const stored = window.localStorage.getItem(MATCH_RECEIPT_DRAFT_STORAGE_KEY);
-    return stored ? normalizeMatchReceiptDraft(JSON.parse(stored)) : createDefaultMatchReceiptDraft();
-  } catch {
-    return createDefaultMatchReceiptDraft();
-  }
+  return loadMatchReceiptDraft() ?? createDefaultMatchReceiptDraft();
 }
 
 function downloadBlob(blob, fileName) {
@@ -34,7 +34,7 @@ function downloadBlob(blob, fileName) {
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-function ReceiptPreview({ draft }) {
+function ReceiptPreview({ draft, matchId = "", matchUrl = "" }) {
   const outcome = getMatchReceiptOutcome(draft);
   const hasComment = Boolean(draft.comment.trim());
   const hasAddress = Boolean(draft.address.trim());
@@ -54,7 +54,7 @@ function ReceiptPreview({ draft }) {
           <strong>BOXTIER</strong>
           <span>MATCH RECEIPT</span>
         </div>
-        <div className="match-receipt-serial">PRACTICE · LIVE PREVIEW</div>
+        <div className="match-receipt-serial">{matchId ? `MATCH-${matchId}` : "PRACTICE · LIVE PREVIEW"}</div>
 
         <div className="match-receipt-teams">
           <div>
@@ -77,40 +77,74 @@ function ReceiptPreview({ draft }) {
         <dl className="match-receipt-meta">
           <div><dt>DATE</dt><dd>{draft.playedOn.replaceAll("-", ".")}</dd></div>
           <div><dt>FORMAT</dt><dd>{getMatchReceiptFormatLabel(draft.format)}</dd></div>
-          <div><dt>VENUE</dt><dd><MapPin aria-hidden="true" /> {draft.venue || "경기 장소"}</dd></div>
+        {draft.venue ? <div><dt>VENUE</dt><dd><MapPin aria-hidden="true" /> {draft.venue}</dd></div> : null}
           {hasAddress ? <div><dt>ADDRESS</dt><dd>{draft.address}</dd></div> : null}
         </dl>
 
         {hasComment ? <blockquote>“{draft.comment}”</blockquote> : null}
-        <footer>
-          <strong>오늘 농구, 증거 남김.</strong>
-          <span>PRACTICE RECEIPT · boxtier.kr</span>
+        <footer className={matchUrl ? "has-qr" : ""}>
+          {matchUrl ? <QrCode value={matchUrl} label="경기 열기 QR 코드" className="match-receipt-qr" /> : null}
+          <div>
+            <strong>오늘 농구, 증거 남김.</strong>
+            <span>{matchUrl ? "SCAN TO OPEN MATCH" : "PRACTICE RECEIPT · boxtier.kr"}</span>
+          </div>
         </footer>
       </div>
     </article>
   );
 }
 
-export default function MatchReceipt({ auth }) {
-  const [draft, setDraft] = useState(loadDraft);
+export default function MatchReceipt({ auth, app }) {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const matchId = useMemo(
+    () => new URLSearchParams(location.search).get("match")?.trim() ?? "",
+    [location.search],
+  );
+  const sourceDraftRef = useRef(location.state?.receiptDraft
+    ? normalizeMatchReceiptDraft(location.state.receiptDraft)
+    : null);
+  const [draft, setDraft] = useState(() => sourceDraftRef.current ?? loadDraft());
   const [errors, setErrors] = useState({});
   const [generated, setGenerated] = useState(false);
   const [busy, setBusy] = useState("");
   const [status, setStatus] = useState("");
   const startedRef = useRef(false);
+  const requestedMatchIdRef = useRef("");
   const previewRef = useRef(null);
   const outcome = useMemo(() => getMatchReceiptOutcome(draft), [draft]);
+  const canonicalMatch = useMemo(
+    () => app?.state?.matches?.find((match) => String(match.id) === matchId) ?? null,
+    [app?.state?.matches, matchId],
+  );
+  const canonicalMatchId = canonicalMatch ? matchId : "";
+  const matchUrl = useMemo(() => (
+    canonicalMatchId && typeof window !== "undefined"
+      ? new URL(`/app/matches?match=${encodeURIComponent(canonicalMatchId)}`, window.location.origin).toString()
+      : ""
+  ), [canonicalMatchId]);
+
+  useEffect(() => {
+    if (!matchId) return;
+    if (canonicalMatch) {
+      setDraft(getMatchReceiptDraftFromMatch(canonicalMatch, sourceDraftRef.current ?? {}));
+      setGenerated(true);
+      setStatus("");
+      return;
+    }
+    if (requestedMatchIdRef.current === matchId) return;
+    requestedMatchIdRef.current = matchId;
+    Promise.resolve(app?.actions?.loadMatchDetail?.(matchId)).then((loaded) => {
+      if (!loaded) setStatus("저장된 경기 기록을 불러오지 못했습니다.");
+    });
+  }, [app?.actions, canonicalMatch, matchId]);
 
   useEffect(() => {
     trackMatchReceiptEvent("receipt_page_view", { loggedIn: Boolean(auth?.session), entry: "direct" });
   }, [auth?.session]);
 
   useEffect(() => {
-    try {
-      window.localStorage.setItem(MATCH_RECEIPT_DRAFT_STORAGE_KEY, JSON.stringify(draft));
-    } catch {
-      // 저장 공간이 막혀도 현재 작성 흐름은 유지한다.
-    }
+    saveMatchReceiptDraft(draft);
   }, [draft]);
 
   function updateField(name, value) {
@@ -118,6 +152,7 @@ export default function MatchReceipt({ auth }) {
       startedRef.current = true;
       trackMatchReceiptEvent("receipt_started", { loggedIn: Boolean(auth?.session) });
     }
+    if (matchId) navigate("/app/receipt", { replace: true });
     setDraft((current) => normalizeMatchReceiptDraft({ ...current, [name]: value }));
     setErrors((current) => (current[name] ? { ...current, [name]: "" } : current));
     setGenerated(false);
@@ -150,7 +185,7 @@ export default function MatchReceipt({ auth }) {
       setStatus("영수증을 먼저 완성해 주세요.");
       throw new Error("match_receipt_invalid");
     }
-    return renderMatchReceiptPng(result.draft, preset);
+    return renderMatchReceiptPng(result.draft, preset, { matchId: canonicalMatchId, matchUrl });
   }
 
   async function handleDownload(preset) {
@@ -206,10 +241,23 @@ export default function MatchReceipt({ auth }) {
     setBusy("login");
     trackMatchReceiptEvent("receipt_save_login_started", { loggedIn: false, matchType: draft.format });
     try {
-      await auth?.signInWithProvider?.("google", "/app/receipt");
+      await auth?.signInWithProvider?.("google", MATCH_RECEIPT_CREATE_RETURN_TO);
     } finally {
       setBusy("");
     }
+  }
+
+  function continueToRecord() {
+    if (!auth?.session) {
+      void continueWithGoogle();
+      return;
+    }
+    navigate(MATCH_RECEIPT_CREATE_RETURN_TO, {
+      state: {
+        receiptDraft: getMatchReceiptCreateDraft(draft),
+        receiptSourceDraft: draft,
+      },
+    });
   }
 
   return (
@@ -262,8 +310,7 @@ export default function MatchReceipt({ auth }) {
               <label>경기 방식<select value={draft.format} onChange={(event) => updateField("format", event.target.value)}>{MATCH_RECEIPT_FORMATS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
               <label className="is-wide">
                 경기 장소
-                <input value={draft.venue} maxLength={MATCH_RECEIPT_LIMITS.venue} placeholder="예: 서대문구 연북중학교 농구장" onChange={(event) => updateField("venue", event.target.value)} aria-invalid={Boolean(errors.venue)} />
-                {errors.venue ? <small className="field-error">{errors.venue}</small> : null}
+                <input value={draft.venue} maxLength={MATCH_RECEIPT_LIMITS.venue} placeholder="예: 서대문구 연북중학교 농구장" onChange={(event) => updateField("venue", event.target.value)} />
               </label>
               <label className="is-wide">짧은 주소 <input value={draft.address} maxLength={MATCH_RECEIPT_LIMITS.address} placeholder="선택 · 예: 서울 서대문구" onChange={(event) => updateField("address", event.target.value)} /></label>
               <label className="is-wide">한 줄 코멘트 <input value={draft.comment} maxLength={MATCH_RECEIPT_LIMITS.comment} placeholder="선택 · 예: 마지막 3점으로 역전" onChange={(event) => updateField("comment", event.target.value)} /></label>
@@ -280,7 +327,7 @@ export default function MatchReceipt({ auth }) {
             <div><span>미리보기</span><strong>{outcome.label}</strong></div>
             <span>9:16 STORY</span>
           </div>
-          <ReceiptPreview draft={draft} />
+          <ReceiptPreview draft={draft} matchId={canonicalMatchId} matchUrl={matchUrl} />
 
           {generated ? (
             <div className="match-receipt-actions">
@@ -293,13 +340,21 @@ export default function MatchReceipt({ auth }) {
 
           {generated ? (
             <section className="ui-panel match-receipt-save-card">
-              <h2>이 경기를 내 기록으로 가져가기</h2>
-              {auth?.session ? (
-                <p>기록 연결은 다음 단계에서 제공됩니다. 지금은 이미지 저장만 가능합니다.</p>
+              <h2>{canonicalMatchId ? "내 기록에 저장됨" : "이 경기를 내 기록으로 가져가기"}</h2>
+              {canonicalMatchId ? (
+                <>
+                  <p>실제 경기 ID가 연결됐습니다. QR 코드는 이 경기 기록을 엽니다.</p>
+                  <button type="button" className="button ui-button button-secondary ui-button-secondary button-md ui-button-md" onClick={() => navigate("/app/profile/records")}>내 기록 보기</button>
+                </>
+              ) : auth?.session ? (
+                <>
+                  <p>상세 기록을 이어서 작성하면 기존 개인 기록 저장 흐름으로 보관됩니다.</p>
+                  <button type="button" className="button ui-button button-secondary ui-button-secondary button-md ui-button-md" onClick={continueToRecord}>상세 기록 이어서 작성</button>
+                </>
               ) : (
                 <>
-                  <p>Google로 계속하면 작성 내용이 유지됩니다. 경기 기록 저장은 다음 단계에서 연결됩니다.</p>
-                  <button type="button" className="button ui-button button-secondary ui-button-secondary button-md ui-button-md" disabled={Boolean(busy)} onClick={continueWithGoogle}>Google로 계속</button>
+                  <p>Google로 계속하면 작성 내용이 유지됩니다. 로그인 뒤 상세 기록을 작성해 저장할 수 있습니다.</p>
+                  <button type="button" className="button ui-button button-secondary ui-button-secondary button-md ui-button-md" disabled={Boolean(busy)} onClick={continueToRecord}>상세 기록 이어서 작성</button>
                 </>
               )}
             </section>

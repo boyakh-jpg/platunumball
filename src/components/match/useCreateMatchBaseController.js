@@ -12,7 +12,7 @@ export function useCreateMatchBaseController({
   const {
     COURT_MAP_SEARCH_LIMIT, COURT_MAP_SEARCH_PURPOSE, DEFAULT_MATCH_MEMO, DEFAULT_TOURNAMENT_MMR_GAP, DIRECTORY_PICKER_PAGE_LIMIT, DISPUTE_WINDOW_MINUTES, MATCH_MODES, MAX_PARTY_RESERVES,
     RECORD_TYPES, REGIONS, ROOM_SCHEDULE_MAX_DAYS, SCHEDULE_MAX_DAYS, addDateDays, getAgeGroupForUser, getAgeRestrictionOption,
-    getCanonicalRegion, getCourtPickerResults, getCourtRecommendationScore, getCreateMatchGuestDraft, getCreateStepFromSearch, getCreateStepSearch, getDefaultCreateMode, getDefaultCreateTitle,
+    getCanonicalRegion, getCourtPickerResults, getCourtRecommendationScore, getCreateMatchGuestDraft, getMatchReceiptCreateDraft, loadMatchReceiptDraft, getCreateStepFromSearch, getCreateStepSearch, getDefaultCreateMode, getDefaultCreateTitle,
     getDefaultMatchCreationPolicy, getDefaultMmrLimitMode, getDefaultTeamPlayerIds, getLocalDateInputValue, getMatchCreationSteps, getMatchCreationValidation, getMatchCreationWizardType,
     getMatchFormationMode, getMatchModeChangePatch, getMmrSpread, getNextQueueSchedule, getOpponentTeam, getPartyPlayerIds, getPartyReserveIds,
     getPublicRoomMaxDateInput, getRecordComposition, getRecordEntryMode, getRecruitingSideCapacity, getRegisteredCourts, getRepresentativePlayerIds, getRepresentativeTeam,
@@ -46,10 +46,26 @@ const navigate = useNavigate();
     () => !practiceMode && new URLSearchParams(location.search).get("intent") === "record",
     [location.search, practiceMode],
   );
+  const receiptSourceDraft = useMemo(() => {
+    if (practiceMode || new URLSearchParams(location.search).get("source") !== "receipt") return null;
+    const source = location.state?.receiptSourceDraft;
+    if (source && typeof source === "object" && !Array.isArray(source)) return source;
+    return loadMatchReceiptDraft();
+  }, [loadMatchReceiptDraft, location.search, location.state?.receiptSourceDraft, practiceMode]);
+  const receiptCreateDraft = useMemo(() => {
+    if (practiceMode || new URLSearchParams(location.search).get("source") !== "receipt") return null;
+    const source = location.state?.receiptDraft;
+    if (source && typeof source === "object" && !Array.isArray(source)) return source;
+    return receiptSourceDraft ? getMatchReceiptCreateDraft(receiptSourceDraft) : null;
+  }, [getMatchReceiptCreateDraft, location.search, location.state?.receiptDraft, practiceMode, receiptSourceDraft]);
+  const receiptFlowRef = useRef({
+    returnTo: receiptCreateDraft ? "/app/receipt" : "",
+    sourceDraft: receiptCreateDraft ? receiptSourceDraft : null,
+  });
   const loadDirectory = app.actions.loadDirectory;
   const remoteDirectoryEnabled = !app.demoPreview && app.capabilities?.remoteDirectory !== false;
   const requestedTournamentDirectoryRef = useRef(false);
-  const modeManuallyChangedRef = useRef(Boolean(remakeDraft || hasTeamChallenge));
+  const modeManuallyChangedRef = useRef(Boolean(remakeDraft || hasTeamChallenge || receiptCreateDraft));
   const loadedCourtMapRegionsRef = useRef(new Set());
   const courtMapRequestIdRef = useRef(0);
   useEffect(() => {
@@ -203,6 +219,7 @@ const navigate = useNavigate();
       teamBId: challengeTeamBId,
     } : {}),
     ...(restoredGuestDraft ?? {}),
+    ...(receiptCreateDraft ?? {}),
     ...(initialDraft ?? {}),
   });
   const [submitting, setSubmitting] = useState(false);
@@ -466,6 +483,7 @@ const navigate = useNavigate();
   return {
     ...CREATE_MATCH_DEPENDENCIES,
     app, initialDraft, onRecruitingCreated, onCancel, embedded, practiceMode, syncStepToUrl, createReturnTo,
+    receiptReturnTo: receiptFlowRef.current.returnTo, receiptSourceDraft: receiptFlowRef.current.sourceDraft,
     navigate, location, remakeDraft, remakeSourceId, remakeSourceMatchId, challengeTeamAId, challengeTeamBId, hasTeamChallenge, today, minSoloRecordDate,
     nextWeek, maxScheduleDate, maxPrivateScheduleDate, maxPublicScheduleDate, isRecordCreateIntent, loadDirectory, remoteDirectoryEnabled,
     requestedTournamentDirectoryRef, modeManuallyChangedRef, loadedCourtMapRegionsRef, courtMapRequestIdRef, myTeams, captainTeams, representativeTeamId,

@@ -1,4 +1,10 @@
+import { RECORD_TYPES } from "./constants.js";
+import { createQrMatrix } from "./qrCode.js";
+
 export const MATCH_RECEIPT_DRAFT_STORAGE_KEY = "boxtier.match-receipt.draft.v1";
+export const MATCH_RECEIPT_CREATE_RETURN_TO = "/app/create?intent=record&source=receipt";
+const MATCH_RECEIPT_DRAFT_VERSION = 1;
+const MATCH_RECEIPT_DRAFT_TTL_MS = 24 * 60 * 60 * 1000;
 
 export const MATCH_RECEIPT_LIMITS = Object.freeze({
   teamName: 24,
@@ -86,13 +92,101 @@ export function normalizeMatchReceiptDraft(value = {}) {
   };
 }
 
+function getMatchReceiptDraftStorage(storage) {
+  if (storage) return storage;
+  if (typeof window === "undefined") return null;
+  return window.localStorage;
+}
+
+export function saveMatchReceiptDraft(value, storage) {
+  const target = getMatchReceiptDraftStorage(storage);
+  if (!target) return false;
+  try {
+    target.setItem(MATCH_RECEIPT_DRAFT_STORAGE_KEY, JSON.stringify({
+      version: MATCH_RECEIPT_DRAFT_VERSION,
+      savedAt: Date.now(),
+      draft: normalizeMatchReceiptDraft(value),
+    }));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function loadMatchReceiptDraft(storage) {
+  const target = getMatchReceiptDraftStorage(storage);
+  if (!target) return null;
+  try {
+    const value = JSON.parse(target.getItem(MATCH_RECEIPT_DRAFT_STORAGE_KEY) || "null");
+    const savedAt = Number(value?.savedAt);
+    if (
+      value?.version !== MATCH_RECEIPT_DRAFT_VERSION
+      || !Number.isFinite(savedAt)
+      || Date.now() - savedAt > MATCH_RECEIPT_DRAFT_TTL_MS
+    ) {
+      if (value) target.removeItem(MATCH_RECEIPT_DRAFT_STORAGE_KEY);
+      return null;
+    }
+    return normalizeMatchReceiptDraft(value.draft);
+  } catch {
+    target.removeItem(MATCH_RECEIPT_DRAFT_STORAGE_KEY);
+    return null;
+  }
+}
+
+export function clearMatchReceiptDraft(storage) {
+  const target = getMatchReceiptDraftStorage(storage);
+  if (!target) return false;
+  try {
+    target.removeItem(MATCH_RECEIPT_DRAFT_STORAGE_KEY);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function validateMatchReceiptDraft(value) {
   const draft = normalizeMatchReceiptDraft(value);
   const errors = {};
   if (!draft.homeTeam.trim()) errors.homeTeam = "홈팀 이름을 입력해 주세요.";
   if (!draft.awayTeam.trim()) errors.awayTeam = "원정팀 이름을 입력해 주세요.";
-  if (!draft.venue.trim()) errors.venue = "경기 장소를 입력해 주세요.";
   return { draft, errors, valid: Object.keys(errors).length === 0 };
+}
+
+export function getMatchReceiptCreateDraft(value) {
+  const draft = normalizeMatchReceiptDraft(value);
+  return {
+    recordType: RECORD_TYPES.personalRecord,
+    recordEntryMode: "quick",
+    visibility: "private",
+    ...(draft.format === "3v3" || draft.format === "5v5" ? { mode: draft.format } : {}),
+    scheduledDate: draft.playedOn,
+    soloTeamAName: draft.homeTeam,
+    soloTeamBName: draft.awayTeam,
+    soloScoreFor: draft.homeScore,
+    soloScoreAgainst: draft.awayScore,
+    courtId: "",
+    ...(draft.venue ? { court: draft.venue } : {}),
+    ...(draft.comment ? { memo: draft.comment } : {}),
+  };
+}
+
+export function getMatchReceiptDraftFromMatch(match = {}, style = {}, court = null) {
+  const summary = match.rules?.recordSummary ?? {};
+  const memo = match.memo === "혼자 저장한 개인 기록입니다." ? "" : match.memo;
+  return normalizeMatchReceiptDraft({
+    homeTeam: match.teamA?.name || summary.teamAName || "",
+    awayTeam: match.teamB?.name || summary.teamBName || "",
+    homeScore: match.result?.scoreA ?? match.teamA?.score ?? 0,
+    awayScore: match.result?.scoreB ?? match.teamB?.score ?? 0,
+    playedOn: String(match.scheduledDate ?? "").slice(0, 10),
+    format: MATCH_RECEIPT_FORMATS.some(({ value }) => value === match.mode) ? match.mode : "other",
+    venue: court?.name ?? (match.court && match.court !== "미정" ? match.court : ""),
+    address: court?.address ?? style.address ?? "",
+    comment: memo,
+    homeColor: style.homeColor,
+    awayColor: style.awayColor,
+  });
 }
 
 export function getMatchReceiptOutcome(value) {
@@ -159,9 +253,36 @@ function drawMetaRow(ctx, label, value, x, y, width) {
   ctx.fillText(value, x + width, y);
 }
 
-export async function renderMatchReceiptPng(value, preset = "story") {
+function drawQrCode(ctx, value, x, y, size) {
+  const matrix = createQrMatrix(value);
+  const quietZone = 4;
+  const moduleCount = matrix.length + quietZone * 2;
+  const scale = Math.max(1, Math.floor(size / moduleCount));
+  const actualSize = moduleCount * scale;
+
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(x, y, actualSize, actualSize);
+  ctx.fillStyle = "#050505";
+  matrix.forEach((row, rowIndex) => {
+    row.forEach((cell, columnIndex) => {
+      if (!cell) return;
+      ctx.fillRect(
+        x + (columnIndex + quietZone) * scale,
+        y + (rowIndex + quietZone) * scale,
+        scale,
+        scale,
+      );
+    });
+  });
+
+  return actualSize;
+}
+
+export async function renderMatchReceiptPng(value, preset = "story", options = {}) {
   if (typeof document === "undefined") throw new Error("match_receipt_canvas_unavailable");
   const draft = normalizeMatchReceiptDraft(value);
+  const matchId = String(options.matchId ?? "").trim();
+  const matchUrl = String(options.matchUrl ?? "").trim();
   const { width, height } = getMatchReceiptCanvasSize(preset);
   const canvas = document.createElement("canvas");
   canvas.width = width;
@@ -212,7 +333,7 @@ export async function renderMatchReceiptPng(value, preset = "story") {
   ctx.fillText("MATCH RECEIPT", paperX + paperWidth - 72, paperY + 76);
   ctx.fillStyle = "#8d8981";
   ctx.font = '800 20px ui-monospace, monospace';
-  ctx.fillText(receiptNumber(draft), paperX + paperWidth - 72, paperY + 110);
+  ctx.fillText(matchId ? `MATCH-${matchId}` : receiptNumber(draft), paperX + paperWidth - 72, paperY + 110);
 
   ctx.strokeStyle = "rgba(24, 25, 26, 0.23)";
   ctx.lineWidth = 3;
@@ -257,8 +378,11 @@ export async function renderMatchReceiptPng(value, preset = "story") {
   const rowGap = compact ? 74 : 88;
   drawMetaRow(ctx, "DATE", draft.playedOn.replaceAll("-", "."), contentX, metaTop, contentWidth);
   drawMetaRow(ctx, "FORMAT", getMatchReceiptFormatLabel(draft.format), contentX, metaTop + rowGap, contentWidth);
-  drawMetaRow(ctx, "VENUE", `⌖ ${draft.venue || "경기 장소"}`, contentX, metaTop + rowGap * 2, contentWidth);
-  let nextY = metaTop + rowGap * 3;
+  let nextY = metaTop + rowGap * 2;
+  if (draft.venue) {
+    drawMetaRow(ctx, "VENUE", `⌖ ${draft.venue}`, contentX, nextY, contentWidth);
+    nextY += rowGap;
+  }
   if (draft.address) {
     drawMetaRow(ctx, "ADDRESS", draft.address, contentX, nextY, contentWidth);
     nextY += rowGap;
@@ -277,13 +401,20 @@ export async function renderMatchReceiptPng(value, preset = "story") {
   }
 
   const footerY = paperY + paperHeight - 126;
+  const qrSize = compact ? 102 : 126;
+  const qrActualSize = matchUrl
+    ? drawQrCode(ctx, matchUrl, contentX, footerY - qrSize / 2, qrSize)
+    : 0;
+  const footerTextX = matchUrl
+    ? contentX + qrActualSize + (contentWidth - qrActualSize) / 2
+    : width / 2;
   ctx.fillStyle = "#f05a46";
   ctx.font = '900 30px "Pretendard Variable", sans-serif';
   ctx.textAlign = "center";
-  ctx.fillText("오늘 농구, 증거 남김.", width / 2, footerY);
+  ctx.fillText("오늘 농구, 증거 남김.", footerTextX, footerY);
   ctx.fillStyle = "#8d8981";
   ctx.font = '800 22px ui-monospace, monospace';
-  ctx.fillText("PRACTICE RECEIPT · boxtier.kr", width / 2, footerY + 48);
+  ctx.fillText(matchUrl ? "SCAN TO OPEN MATCH" : "PRACTICE RECEIPT · boxtier.kr", footerTextX, footerY + 48);
 
   return new Promise((resolve, reject) => {
     canvas.toBlob((blob) => {

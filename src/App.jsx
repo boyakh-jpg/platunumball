@@ -235,7 +235,7 @@ export default function App() {
             <Route path="/app/guide" element={<GettingStarted app={app} />} />
             <Route path="/app/guide/practice" element={<PracticeMatch app={app} />} />
             <Route path="/app/create" element={<CreateMatch app={app} />} />
-            <Route path="/app/receipt" element={<MatchReceipt auth={auth} />} />
+            <Route path="/app/receipt" element={<MatchReceipt auth={auth} app={app} />} />
             <Route path="/app/courts/:courtId" element={<CourtDetail app={app} />} />
             <Route path="/app/matches/:matchId" element={<LegacyMatchRoomRedirect />} />
             <Route path="/app/matches" element={<Matches app={app} />} />

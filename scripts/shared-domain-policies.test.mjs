@@ -23,9 +23,13 @@ import { readCssTree } from "./css-source-tree.mjs";
 import { BRAND_NAME } from "../src/lib/brand.js";
 import {
   MATCH_RECEIPT_CANVAS_SIZES,
+  MATCH_RECEIPT_DRAFT_STORAGE_KEY,
   MATCH_RECEIPT_LIMITS,
+  getMatchReceiptCreateDraft,
   getMatchReceiptOutcome,
+  loadMatchReceiptDraft,
   normalizeMatchReceiptDraft,
+  saveMatchReceiptDraft,
   validateMatchReceiptDraft,
 } from "../src/lib/matchReceipt.js";
 import { getAdminStatusLabel } from "../src/lib/admin.js";
@@ -2909,11 +2913,53 @@ test("경기 영수증 입력은 안전하게 정규화하고 이미지 규격�
 test("경기 영수증은 필수값과 승패를 실행형 정책으로 판정한다", () => {
   const missing = validateMatchReceiptDraft({ homeTeam: "", awayTeam: "", venue: "" });
   assert.equal(missing.valid, false);
-  assert.deepEqual(Object.keys(missing.errors).sort(), ["awayTeam", "homeTeam", "venue"]);
+  assert.deepEqual(Object.keys(missing.errors).sort(), ["awayTeam", "homeTeam"]);
 
   const base = { homeTeam: "A", awayTeam: "B", venue: "코트" };
   assert.equal(validateMatchReceiptDraft(base).valid, true);
   assert.deepEqual(getMatchReceiptOutcome({ ...base, homeScore: 21, awayScore: 18 }), { key: "home", label: "HOME WIN" });
   assert.deepEqual(getMatchReceiptOutcome({ ...base, homeScore: 18, awayScore: 21 }), { key: "away", label: "AWAY WIN" });
   assert.deepEqual(getMatchReceiptOutcome({ ...base, homeScore: 21, awayScore: 21 }), { key: "draw", label: "DRAW" });
+});
+
+function createMemoryStorage() {
+  const values = new Map();
+  return {
+    getItem(key) {
+      return values.has(key) ? values.get(key) : null;
+    },
+    setItem(key, value) {
+      values.set(key, String(value));
+    },
+    removeItem(key) {
+      values.delete(key);
+    },
+  };
+}
+
+test("경기 영수증 초안을 만료 전 복원하고 기록 생성 입력으로 넘긴다", () => {
+  const storage = createMemoryStorage();
+  const draft = {
+    homeTeam: "A팀",
+    awayTeam: "B팀",
+    homeScore: 31,
+    awayScore: 28,
+    venue: "",
+  };
+
+  assert.equal(saveMatchReceiptDraft(draft, storage), true);
+  const restored = loadMatchReceiptDraft(storage);
+  assert.equal(restored.venue, "");
+
+  const createDraft = getMatchReceiptCreateDraft(restored);
+  assert.equal(createDraft.soloScoreFor, 31);
+  assert.equal(createDraft.soloScoreAgainst, 28);
+
+  storage.setItem(MATCH_RECEIPT_DRAFT_STORAGE_KEY, JSON.stringify({
+    version: 1,
+    savedAt: Date.now() - (25 * 60 * 60 * 1000),
+    draft,
+  }));
+  assert.equal(loadMatchReceiptDraft(storage), null);
+  assert.equal(storage.getItem(MATCH_RECEIPT_DRAFT_STORAGE_KEY), null);
 });
