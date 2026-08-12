@@ -79,7 +79,7 @@ test("receipt photo editing stays in the preview and reference dividers remain",
     readFile(new URL("../src/pages/MatchReceipt.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/styles/features/match-receipt.css", import.meta.url), "utf8"),
     readFile(new URL("../src/lib/matchReceipt.js", import.meta.url), "utf8"),
-    readFile(new URL("../public/assets/tier-emblems/tier-neutral-outline-v1.svg", import.meta.url), "utf8"),
+    readFile(new URL("../public/assets/tier-emblems/tier-neutral-outline-v2.png", import.meta.url)),
   ]);
 
   assert.doesNotMatch(page, /match-receipt-photo-editor|match-receipt-photo-crop/);
@@ -90,7 +90,11 @@ test("receipt photo editing stays in the preview and reference dividers remain",
   assert.match(page, /--receipt-paper-texture/);
   assert.match(page, /model\.personalTier && model\.hasPersonalStats/);
   assert.match(page, /match-receipt-team-watermarks/);
-  assert.match(page, /PLAYER TIER · \{model\.personalTier\.label\}/);
+  assert.match(page, /MY TIER · \{model\.personalTier\.label\}/);
+  assert.match(page, /CourtMapPicker/);
+  assert.match(page, /getRegisteredCourts/);
+  assert.match(page, /직접 입력 또는 지도에서 선택/);
+  assert.doesNotMatch(page, /match-receipt-color-input/);
   assert.match(styles, /\.match-receipt-photo\.is-editable[\s\S]*touch-action: none/);
   assert.match(styles, /\.match-receipt-poster-score > span[\s\S]*font-variation-settings: "wght" 300/);
   assert.match(styles, /font-size: clamp\(10px, 3\.3cqw, 16px\)/);
@@ -100,7 +104,7 @@ test("receipt photo editing stays in the preview and reference dividers remain",
   assert.match(styles, /inset: auto 3\.1% 1\.8%/);
   assert.match(styles, /height: 19\.9%/);
   assert.match(styles, /\.match-receipt-team-tier\.is-neutral[\s\S]*opacity: 0\.9/);
-  assert.match(styles, /\.match-receipt-personal-tier[\s\S]*opacity: 0\.28/);
+  assert.match(styles, /\.match-receipt-personal-tier[\s\S]*opacity: 0\.48/);
   assert.match(styles, /\.match-receipt-ticket-date[\s\S]*border-top/);
   assert.match(styles, /\.match-receipt-personal-stats b \+ b[\s\S]*border-left/);
   assert.match(renderer, /const receiptTop = compact \? 1010 : 1504/);
@@ -111,11 +115,11 @@ test("receipt photo editing stays in the preview and reference dividers remain",
   assert.match(renderer, /ctx\.moveTo\(footerMiddleX, footerY \+ \(compact \? 30 : 70\)\)/);
   assert.match(renderer, /createCanvasPaperPattern/);
   assert.match(renderer, /wrapCanvasText/);
-  assert.match(renderer, /tier-neutral-outline-v1\.svg/);
+  assert.match(renderer, /tier-neutral-outline-v2\.png/);
+  assert.match(renderer, /getTierDivisionNumber/);
+  assert.match(renderer, /`\$\{tier\.name\}\$\{division \? ` \$\{division\}` : ""\}`\.toUpperCase\(\)/);
   assert.match(renderer, /rankball-record-create-night-v3\.webp/);
   assert.match(renderer, /TEAM TIER · \$\{team\.tier\.label\}/);
-  assert.match(renderer, /PLAYER TIER · \$\{model\.personalTier\.label\}/);
-  assert.match(neutralMark, /id="neutral-laurel"/);
-  assert.match(neutralMark, /translate\(240 0\) scale\(-1 1\)/);
-  assert.match(neutralMark, /stroke-width="3\.5"/);
+  assert.match(renderer, /MY TIER · \$\{model\.personalTier\.label\}/);
+  assert.equal(neutralMark.subarray(1, 4).toString("ascii"), "PNG");
 });

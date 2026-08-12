@@ -14,6 +14,7 @@ const RECEIPT_ASSETS = [
   "public/assets/tier-emblems/tier-master-outline-v1.png",
   "public/assets/tier-emblems/tier-legend-outline-v1.png",
   "public/assets/tier-emblems/tier-neutral-outline-v1.svg",
+  "public/assets/tier-emblems/tier-neutral-outline-v2.png",
 ];
 
 const CONTENT_TYPES = new Map([

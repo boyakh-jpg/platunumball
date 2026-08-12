@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Copy, Download, ImagePlus, MapPin, RotateCcw, Share2, Trash2 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import QrCode from "../components/common/QrCode.jsx";
+import CourtMapPicker from "../components/court/CourtMapPicker.jsx";
+import { getCourtAddress, getRegisteredCourts } from "../lib/courts.js";
 import {
   MATCH_RECEIPT_CANVAS_SIZES,
   MATCH_RECEIPT_CREATE_RETURN_TO,
@@ -154,7 +156,12 @@ function ReceiptPreview({ draft, photoUrl = "", matchUrl = "", photoGestureHandl
           <span className="match-receipt-ticket-date">{model.playedOn.replaceAll("-", ".")}</span>
         </div>
         <div className="match-receipt-ticket-game">
-          {model.personalTier ? <img className="match-receipt-personal-tier is-watermark" src={model.personalTier.outlineSrc} alt="" aria-hidden="true" /> : null}
+          {model.personalTier ? (
+            <div className="match-receipt-personal-tier-mark" aria-hidden="true">
+              <img className="match-receipt-personal-tier is-watermark" src={model.personalTier.outlineSrc} alt="" />
+              <small className="match-receipt-personal-tier-label">MY TIER · {model.personalTier.label}</small>
+            </div>
+          ) : null}
           {model.personalTier && model.hasPersonalStats ? <strong>MY GAME</strong> : !model.personalTier ? <strong>{getMatchReceiptFormatLabel(model.format)}</strong> : null}
           {model.hasPersonalStats ? (
             <span className="match-receipt-personal-stats">
@@ -162,7 +169,6 @@ function ReceiptPreview({ draft, photoUrl = "", matchUrl = "", photoGestureHandl
               <b><em>{model.personalRebounds ?? 0}</em><small>REB</small></b>
             </span>
           ) : model.personalTier ? null : <span>{model.comment || model.outcome.label}</span>}
-          {model.personalTier ? <small className="match-receipt-personal-tier-label">PLAYER TIER · {model.personalTier.label}</small> : null}
           {model.hasPersonalStats ? <span className="match-receipt-ticket-caption">내 경기 기록</span> : null}
         </div>
         <div className="match-receipt-ticket-qr">
@@ -196,6 +202,8 @@ export default function MatchReceipt({ auth, app }) {
   const [photoBlob, setPhotoBlob] = useState(null);
   const [photoUrl, setPhotoUrl] = useState("");
   const [publicDraftId, setPublicDraftId] = useState(requestedPublicDraftId);
+  const [courtMapOpen, setCourtMapOpen] = useState(false);
+  const [selectedCourtId, setSelectedCourtId] = useState("");
   const startedRef = useRef(false);
   const requestedMatchIdRef = useRef("");
   const previewRef = useRef(null);
@@ -220,6 +228,12 @@ export default function MatchReceipt({ auth, app }) {
   const currentUserId = auth?.session?.user?.id ?? "";
   const currentUserMmr = Number(app?.currentUser?.ratings?.integrated);
   const personalMmr = currentUserId && Number.isFinite(currentUserMmr) ? currentUserMmr : null;
+  const registeredCourts = useMemo(() => getRegisteredCourts(app?.state ?? {}), [app?.state]);
+  const selectedCourt = useMemo(() => (
+    registeredCourts.find((court) => String(court.id) === selectedCourtId)
+      ?? registeredCourts.find((court) => court.name === draft.venue)
+      ?? null
+  ), [draft.venue, registeredCourts, selectedCourtId]);
   const readOnlyReceipt = Boolean(canonicalMatchId || requestedPublicDraftId);
   const matchUrl = useMemo(() => (
     typeof window !== "undefined" && (canonicalMatchId || publicDraftId)
@@ -320,6 +334,15 @@ export default function MatchReceipt({ auth, app }) {
     setErrors((current) => (current[name] ? { ...current, [name]: "" } : current));
     setGenerated(Boolean(canonicalMatchId));
     setStatus("");
+  }
+
+  function selectCourt(court) {
+    if (!court || readOnlyReceipt) return;
+    const courtAddress = getCourtAddress(court);
+    setSelectedCourtId(String(court.id ?? ""));
+    updateField("venue", court.name ?? "");
+    updateField("address", court.region || (courtAddress === "주소 미등록" ? "" : courtAddress));
+    setCourtMapOpen(false);
   }
 
   async function handlePhotoChange(event) {
@@ -590,7 +613,6 @@ export default function MatchReceipt({ auth, app }) {
                   점수
                   <input type="number" inputMode="numeric" min="0" max={MATCH_RECEIPT_LIMITS.score} value={draft.homeScore} disabled={readOnlyReceipt} onFocus={(event) => event.currentTarget.select()} onClick={(event) => event.currentTarget.value === "0" && event.currentTarget.select()} onChange={(event) => updateField("homeScore", event.target.value)} />
                 </label>
-                <label className="match-receipt-color-input">팀 컬러 <input type="color" value={draft.homeColor} onChange={(event) => updateField("homeColor", event.target.value)} /></label>
               </fieldset>
 
               <fieldset>
@@ -604,7 +626,6 @@ export default function MatchReceipt({ auth, app }) {
                   점수
                   <input type="number" inputMode="numeric" min="0" max={MATCH_RECEIPT_LIMITS.score} value={draft.awayScore} disabled={readOnlyReceipt} onFocus={(event) => event.currentTarget.select()} onClick={(event) => event.currentTarget.value === "0" && event.currentTarget.select()} onChange={(event) => updateField("awayScore", event.target.value)} />
                 </label>
-                <label className="match-receipt-color-input">팀 컬러 <input type="color" value={draft.awayColor} onChange={(event) => updateField("awayColor", event.target.value)} /></label>
               </fieldset>
             </div>
           </section>
@@ -617,7 +638,14 @@ export default function MatchReceipt({ auth, app }) {
               <label>경기 성격<select value={draft.matchNature} disabled={readOnlyReceipt} onChange={(event) => updateField("matchNature", event.target.value)}>{MATCH_RECEIPT_NATURES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
               <label className="is-wide">
                 경기 장소
-                <input value={draft.venue} maxLength={MATCH_RECEIPT_LIMITS.venue} disabled={readOnlyReceipt} placeholder="예: 서대문구 연북중학교 농구장" onChange={(event) => updateField("venue", event.target.value)} />
+                <span className="match-receipt-venue-control">
+                  <input value={draft.venue} maxLength={MATCH_RECEIPT_LIMITS.venue} disabled={readOnlyReceipt} placeholder="직접 입력 또는 지도에서 선택" onChange={(event) => updateField("venue", event.target.value)} />
+                  {!readOnlyReceipt ? (
+                    <button type="button" className="button ui-button button-secondary ui-button-secondary button-md ui-button-md match-receipt-map-button" onClick={() => setCourtMapOpen(true)}>
+                      <MapPin aria-hidden="true" /> 지도에서 선택
+                    </button>
+                  ) : null}
+                </span>
               </label>
               <label className="is-wide">짧은 주소 <input value={draft.address} maxLength={MATCH_RECEIPT_LIMITS.address} disabled={readOnlyReceipt} placeholder="선택 · 예: 서울 서대문구" onChange={(event) => updateField("address", event.target.value)} /></label>
               <label className="is-wide">한 줄 코멘트 <input value={draft.comment} maxLength={MATCH_RECEIPT_LIMITS.comment} placeholder="선택 · 예: 마지막 3점으로 역전" onChange={(event) => updateField("comment", event.target.value)} /></label>
@@ -693,6 +721,14 @@ export default function MatchReceipt({ auth, app }) {
           ) : null}
         </aside>
       </div>
+      <CourtMapPicker
+        open={courtMapOpen}
+        courts={registeredCourts}
+        selectedCourt={selectedCourt}
+        currentRegion={app?.currentUser?.region ?? ""}
+        onSelect={selectCourt}
+        onClose={() => setCourtMapOpen(false)}
+      />
     </section>
   );
 }

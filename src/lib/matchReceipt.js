@@ -1,7 +1,7 @@
 import { RECORD_TYPES } from "./constants.js";
 import { assetUrl, BOXTIER_LETTER_DARK_URL, BOXTIER_LOGO_URL } from "./assets.js";
 import { createQrMatrix } from "./qrCode.js";
-import { getTier, getTierDivision } from "./tier.js";
+import { getTier, getTierDivisionNumber } from "./tier.js";
 
 export const MATCH_RECEIPT_DRAFT_STORAGE_KEY = "boxtier.match-receipt.draft.v1";
 export const MATCH_RECEIPT_CREATE_RETURN_TO = "/app/create?intent=record&source=receipt";
@@ -80,7 +80,7 @@ const TIER_OUTLINE_EMBLEMS = Object.freeze({
   Master: "/assets/tier-emblems/tier-master-outline-v1.png",
   Legend: "/assets/tier-emblems/tier-legend-outline-v1.png",
 });
-const MATCH_RECEIPT_NEUTRAL_TEAM_MARK_URL = assetUrl("/assets/tier-emblems/tier-neutral-outline-v1.svg");
+const MATCH_RECEIPT_NEUTRAL_TEAM_MARK_URL = assetUrl("/assets/tier-emblems/tier-neutral-outline-v2.png");
 const MATCH_RECEIPT_PAPER_URL = assetUrl("/assets/match-receipt-paper-torn-v1.png");
 
 function todayInKorea() {
@@ -418,8 +418,9 @@ function receiptNumber(draft) {
 function getTierVisual(mmr) {
   if (!Number.isFinite(mmr)) return null;
   const tier = getTier(mmr);
+  const division = getTierDivisionNumber(mmr);
   return {
-    label: getTierDivision(mmr).toUpperCase(),
+    label: `${tier.name}${division ? ` ${division}` : ""}`.toUpperCase(),
     src: assetUrl(TIER_EMBLEMS[tier.name] ?? TIER_EMBLEMS.Rookie),
     outlineSrc: assetUrl(TIER_OUTLINE_EMBLEMS[tier.name] ?? TIER_OUTLINE_EMBLEMS.Rookie),
   };
@@ -653,7 +654,10 @@ export async function renderMatchReceiptPng(value, preset = "story", options = {
   ctx.shadowBlur = 16;
   ctx.shadowOffsetY = 4;
   ctx.font = `900 ${compact ? 146 : 270}px "KBO Dia Gothic", sans-serif`;
-  ctx.fillText(`${model.homeScore} : ${model.awayScore}`, width / 2, compact ? scoreTop + 137 : 1100);
+  const scoreBaseline = compact ? scoreTop + 137 : 1100;
+  ctx.fillText(String(model.homeScore), columns[0], scoreBaseline);
+  ctx.fillText(String(model.awayScore), columns[1], scoreBaseline);
+  ctx.fillText(":", width / 2, scoreBaseline);
   ctx.restore();
   ctx.fillStyle = "#f05a2a";
   ctx.font = `300 ${compact ? 31 : 36}px "Pretendard Variable", sans-serif`;
@@ -670,8 +674,11 @@ export async function renderMatchReceiptPng(value, preset = "story", options = {
     ctx.textAlign = "center";
     ctx.font = `900 ${teamFontSize}px "KBO Dia Gothic", sans-serif`;
     ctx.fillStyle = paperTextPattern;
-    wrapCanvasText(ctx, team.name, 430).forEach((line, lineIndex) => {
-      ctx.fillText(line, columns[index], teamTop + teamFontSize + lineIndex * teamFontSize * 1.04);
+    const teamLines = wrapCanvasText(ctx, team.name, 430).slice(0, 2);
+    const teamLineHeight = teamFontSize * 1.04;
+    const teamTextTop = teamTop + (2 - teamLines.length) * teamLineHeight / 2;
+    teamLines.forEach((line, lineIndex) => {
+      ctx.fillText(line, columns[index], teamTextTop + teamFontSize + lineIndex * teamLineHeight);
     });
     if (team.image) {
       ctx.save();
@@ -743,7 +750,7 @@ export async function renderMatchReceiptPng(value, preset = "story", options = {
   if (personalTier) {
     const tierSize = compact ? 158 : 208;
     ctx.save();
-    ctx.globalAlpha = 0.28;
+    ctx.globalAlpha = 0.48;
     ctx.drawImage(personalTier, footerMiddleX - tierSize / 2, footerY - 12, tierSize, tierSize);
     ctx.restore();
   }
@@ -784,7 +791,7 @@ export async function renderMatchReceiptPng(value, preset = "story", options = {
   if (personalTier) {
     ctx.fillStyle = "#8f6032";
     ctx.font = `900 ${compact ? 15 : 18}px "KBO Dia Gothic", sans-serif`;
-    ctx.fillText(`PLAYER TIER · ${model.personalTier.label}`, footerMiddleX, footerY + (compact ? 153 : 225), 250);
+    ctx.fillText(`MY TIER · ${model.personalTier.label}`, footerMiddleX, footerY + (compact ? 153 : 225), 250);
   }
 
   if (model.matchUrl) {
