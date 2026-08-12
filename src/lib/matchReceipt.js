@@ -1,5 +1,5 @@
 import { RECORD_TYPES } from "./constants.js";
-import { assetUrl, BOXTIER_LOGO_URL } from "./assets.js";
+import { assetUrl, BOXTIER_LETTER_DARK_URL, BOXTIER_LOGO_URL } from "./assets.js";
 import { createQrMatrix } from "./qrCode.js";
 import { getTier, getTierDivision } from "./tier.js";
 
@@ -38,6 +38,26 @@ export const MATCH_RECEIPT_CANVAS_SIZES = Object.freeze({
   story: Object.freeze({ width: 1080, height: 1920, label: "Story 1080×1920" }),
   feed: Object.freeze({ width: 1080, height: 1350, label: "Feed 1080×1350" }),
 });
+
+export const MATCH_RECEIPT_PHOTO_ASPECT = 1080 / 860;
+
+export function getMatchReceiptRotationCoverScale(rotation, aspect = MATCH_RECEIPT_PHOTO_ASPECT) {
+  const radians = Math.abs(Number(rotation) || 0) * Math.PI / 180;
+  const safeAspect = Math.max(0.01, Number(aspect) || MATCH_RECEIPT_PHOTO_ASPECT);
+  const cosine = Math.abs(Math.cos(radians));
+  const sine = Math.abs(Math.sin(radians));
+  return Math.max(cosine + sine / safeAspect, cosine + sine * safeAspect);
+}
+
+export function getMatchReceiptPhotoStyle(value, aspect = MATCH_RECEIPT_PHOTO_ASPECT) {
+  const draft = normalizeMatchReceiptDraft(value);
+  return {
+    "--receipt-photo-position-x": `${50 - draft.photoX / 2}%`,
+    "--receipt-photo-position-y": `${50 - draft.photoY / 2}%`,
+    "--receipt-photo-scale": getMatchReceiptRotationCoverScale(draft.photoRotation, aspect) * draft.photoZoom,
+    "--receipt-photo-rotation": `${draft.photoRotation}deg`,
+  };
+}
 
 const DEFAULT_COLORS = Object.freeze({ home: "#f05a46", away: "#27354d" });
 const TIER_EMBLEMS = Object.freeze({
@@ -392,7 +412,8 @@ export function createMatchReceiptViewModel(value, options = {}) {
     serial: options.publicId ? `NO. ${options.publicId}` : receiptNumber(draft),
     matchUrl: String(options.matchUrl ?? ""),
     logoUrl: BOXTIER_LOGO_URL,
-    defaultPhotoUrl: assetUrl("/assets/rankball-record-create-night.webp"),
+    wordmarkUrl: BOXTIER_LETTER_DARK_URL,
+    defaultPhotoUrl: assetUrl("/assets/rankball-record-create-night-v2.webp"),
     homeTier: getTierVisual(draft.homeMmr),
     awayTier: getTierVisual(draft.awayMmr),
     personalTier: getTierVisual(draft.personalMmr),
@@ -421,20 +442,54 @@ function loadCanvasImage(source) {
 function drawCoverPhoto(ctx, image, rect, draft) {
   const rotation = draft.photoRotation * Math.PI / 180;
   const cover = Math.max(rect.width / image.naturalWidth, rect.height / image.naturalHeight);
-  const rotationSafety = Math.abs(Math.sin(rotation)) > 0.01 ? 1.45 : 1;
-  const width = image.naturalWidth * cover * draft.photoZoom * rotationSafety;
-  const height = image.naturalHeight * cover * draft.photoZoom * rotationSafety;
-  const travelX = Math.max(rect.width * 0.35, Math.abs(width - rect.width) / 2);
-  const travelY = Math.max(rect.height * 0.35, Math.abs(height - rect.height) / 2);
+  const width = image.naturalWidth * cover;
+  const height = image.naturalHeight * cover;
+  const positionX = (100 - draft.photoX) / 200;
+  const positionY = (100 - draft.photoY) / 200;
+  const frame = document.createElement("canvas");
+  frame.width = rect.width;
+  frame.height = rect.height;
+  const frameCtx = frame.getContext("2d");
+  if (!frameCtx) throw new Error("match_receipt_canvas_unavailable");
+  frameCtx.filter = "brightness(0.78) contrast(1.08) saturate(0.92)";
+  frameCtx.drawImage(image, -(width - rect.width) * positionX, -(height - rect.height) * positionY, width, height);
+
   ctx.save();
   ctx.beginPath();
   ctx.rect(rect.x, rect.y, rect.width, rect.height);
   ctx.clip();
-  ctx.translate(rect.x + rect.width / 2 + draft.photoX / 100 * travelX, rect.y + rect.height / 2 + draft.photoY / 100 * travelY);
+  ctx.translate(rect.x + rect.width / 2, rect.y + rect.height / 2);
   ctx.rotate(rotation);
-  ctx.filter = "brightness(0.78) contrast(1.08) saturate(0.92)";
-  ctx.drawImage(image, -width / 2, -height / 2, width, height);
+  const scale = getMatchReceiptRotationCoverScale(draft.photoRotation, rect.width / rect.height) * draft.photoZoom;
+  ctx.scale(scale, scale);
+  ctx.drawImage(frame, -rect.width / 2, -rect.height / 2);
   ctx.restore();
+}
+
+function drawTierOutline(ctx, image, x, y, size, color = "#c69a4b", thickness = 5) {
+  const padding = Math.ceil(thickness * 2);
+  const silhouette = document.createElement("canvas");
+  silhouette.width = size + padding * 2;
+  silhouette.height = size + padding * 2;
+  const silhouetteCtx = silhouette.getContext("2d");
+  if (!silhouetteCtx) return;
+  silhouetteCtx.drawImage(image, padding, padding, size, size);
+  silhouetteCtx.globalCompositeOperation = "source-in";
+  silhouetteCtx.fillStyle = color;
+  silhouetteCtx.fillRect(0, 0, silhouette.width, silhouette.height);
+
+  const outline = document.createElement("canvas");
+  outline.width = silhouette.width;
+  outline.height = silhouette.height;
+  const outlineCtx = outline.getContext("2d");
+  if (!outlineCtx) return;
+  for (let step = 0; step < 16; step += 1) {
+    const angle = step * Math.PI / 8;
+    outlineCtx.drawImage(silhouette, Math.cos(angle) * thickness, Math.sin(angle) * thickness);
+  }
+  outlineCtx.globalCompositeOperation = "destination-out";
+  outlineCtx.drawImage(silhouette, 0, 0);
+  ctx.drawImage(outline, x - padding, y - padding);
 }
 
 function fitCanvasText(ctx, text, maxWidth, initialSize, minimumSize = 28) {
@@ -461,15 +516,27 @@ function drawQrCode(ctx, value, x, y, size) {
   return actualSize;
 }
 
-function drawTornEdge(ctx, y, width, color) {
+function drawTornTicket(ctx, x, y, width, bottom, color) {
+  const topTears = [14, 3, 17, 7, 20, 4, 13, 1, 16, 8, 21, 5, 12, 2, 18, 6];
+  const bottomTears = [3, 16, 7, 20, 5, 13, 1, 18, 8, 15, 4, 21, 6, 12, 2, 17];
+  const segment = width / (topTears.length - 1);
+  ctx.save();
   ctx.fillStyle = color;
+  ctx.shadowColor = "rgba(0,0,0,.45)";
+  ctx.shadowBlur = 18;
+  ctx.shadowOffsetY = 6;
   ctx.beginPath();
-  ctx.moveTo(0, y + 14);
-  for (let x = 0; x <= width; x += 18) ctx.lineTo(x, y + (Math.floor(x / 18) % 2 ? 0 : 18));
-  ctx.lineTo(width, 1920);
-  ctx.lineTo(0, 1920);
+  topTears.forEach((tear, index) => {
+    const pointX = x + index * segment;
+    if (index === 0) ctx.moveTo(pointX, y + tear);
+    else ctx.lineTo(pointX, y + tear);
+  });
+  for (let index = bottomTears.length - 1; index >= 0; index -= 1) {
+    ctx.lineTo(x + index * segment, bottom - bottomTears[index]);
+  }
   ctx.closePath();
   ctx.fill();
+  ctx.restore();
 }
 
 export async function renderMatchReceiptPng(value, preset = "story", options = {}) {
@@ -486,9 +553,9 @@ export async function renderMatchReceiptPng(value, preset = "story", options = {
 
   const photoHeight = compact ? 590 : 860;
   const receiptTop = compact ? 1010 : 1520;
-  const [photo, logo, homeTier, awayTier, personalTier] = await Promise.all([
+  const [photo, wordmark, homeTier, awayTier, personalTier] = await Promise.all([
     loadCanvasImage(options.photoBlob || model.defaultPhotoUrl),
-    loadCanvasImage(model.logoUrl).catch(() => null),
+    loadCanvasImage(model.wordmarkUrl).catch(() => null),
     model.homeTier ? loadCanvasImage(model.homeTier.src).catch(() => null) : null,
     model.awayTier ? loadCanvasImage(model.awayTier.src).catch(() => null) : null,
     model.personalTier ? loadCanvasImage(model.personalTier.src).catch(() => null) : null,
@@ -497,14 +564,39 @@ export async function renderMatchReceiptPng(value, preset = "story", options = {
   ctx.fillStyle = "#111111";
   ctx.fillRect(0, 0, width, height);
   drawCoverPhoto(ctx, photo, { x: 0, y: 0, width, height: photoHeight }, model);
-  const photoFade = ctx.createLinearGradient(0, photoHeight * 0.35, 0, photoHeight + 260);
+
+  const blurredPhoto = document.createElement("canvas");
+  blurredPhoto.width = width;
+  blurredPhoto.height = photoHeight;
+  blurredPhoto.getContext("2d")?.drawImage(canvas, 0, 0, width, photoHeight, 0, 0, width, photoHeight);
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, photoHeight * 0.55, width, photoHeight * 0.45);
+  ctx.clip();
+  ctx.filter = "blur(14px)";
+  ctx.drawImage(blurredPhoto, 0, 0);
+  ctx.restore();
+
+  const photoFade = ctx.createLinearGradient(0, photoHeight * 0.32, 0, photoHeight + 220);
   photoFade.addColorStop(0, "rgba(12,12,12,0)");
-  photoFade.addColorStop(0.58, "rgba(12,12,12,.76)");
+  photoFade.addColorStop(0.45, "rgba(12,12,12,.34)");
+  photoFade.addColorStop(0.68, "rgba(12,12,12,.82)");
   photoFade.addColorStop(1, "#111111");
   ctx.fillStyle = photoFade;
-  ctx.fillRect(0, photoHeight * 0.3, width, photoHeight + 280);
+  ctx.fillRect(0, photoHeight * 0.28, width, photoHeight + 250);
 
-  if (logo) ctx.drawImage(logo, 44, 48, 142, 42);
+  ctx.fillStyle = "#f05a2a";
+  ctx.textAlign = "left";
+  if (wordmark) {
+    const wordmarkScale = Math.min(190 / wordmark.naturalWidth, 38 / wordmark.naturalHeight);
+    ctx.save();
+    ctx.filter = "brightness(0) saturate(100%) invert(47%) sepia(93%) saturate(2858%) hue-rotate(346deg) brightness(96%) contrast(93%)";
+    ctx.drawImage(wordmark, 44, 48, wordmark.naturalWidth * wordmarkScale, wordmark.naturalHeight * wordmarkScale);
+    ctx.restore();
+  } else {
+    ctx.font = '900 27px "Arial Black", Impact, sans-serif';
+    ctx.fillText("BOXTIER", 44, 79);
+  }
   ctx.fillStyle = "#f05a2a";
   ctx.textAlign = "right";
   ctx.font = '900 25px "KBO Dia Gothic", sans-serif';
@@ -544,11 +636,7 @@ export async function renderMatchReceiptPng(value, preset = "story", options = {
     fitCanvasText(ctx, team.name, 430, compact ? 44 : 54, 28);
     ctx.fillText(team.name, columns[index], teamY);
     if (team.image) {
-      ctx.save();
-      ctx.globalAlpha = 0.7;
-      ctx.filter = "grayscale(1) sepia(1) saturate(1.8) brightness(1.25) contrast(1.8)";
-      ctx.drawImage(team.image, columns[index] - 55, teamY + 28, 110, 110);
-      ctx.restore();
+      drawTierOutline(ctx, team.image, columns[index] - 55, teamY + 28, 110);
     }
     if (team.tier) {
       ctx.fillStyle = "#c69a4b";
@@ -564,7 +652,7 @@ export async function renderMatchReceiptPng(value, preset = "story", options = {
   ctx.stroke();
   ctx.setLineDash([]);
 
-  drawTornEdge(ctx, receiptTop, width, "#f1e8db");
+  drawTornTicket(ctx, 28, receiptTop, width - 56, height - 26, "#f1e8db");
   const footerY = receiptTop + 78;
   ctx.fillStyle = "#151515";
   ctx.textAlign = "center";

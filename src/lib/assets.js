@@ -1,6 +1,6 @@
 const RAW_ASSET_BASE_URL = (
-  import.meta.env.VITE_ASSET_BASE_URL ||
-  import.meta.env.VITE_PUBLIC_ASSET_BASE_URL ||
+  import.meta.env?.VITE_ASSET_BASE_URL ||
+  import.meta.env?.VITE_PUBLIC_ASSET_BASE_URL ||
   ""
 ).trim();
 

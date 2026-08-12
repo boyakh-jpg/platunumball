@@ -27,6 +27,8 @@ import {
   MATCH_RECEIPT_LIMITS,
   getMatchReceiptCreateDraft,
   getMatchReceiptOutcome,
+  getMatchReceiptPhotoStyle,
+  getMatchReceiptRotationCoverScale,
   loadMatchReceiptDraft,
   normalizeMatchReceiptDraft,
   saveMatchReceiptDraft,
@@ -2908,6 +2910,14 @@ test("경기 영수증 입력은 안전하게 정규화하고 이미지 규격�
   assert.equal(draft.comment, "오늘도 승리");
   assert.deepEqual(MATCH_RECEIPT_CANVAS_SIZES.story, { width: 1080, height: 1920, label: "Story 1080×1920" });
   assert.deepEqual(MATCH_RECEIPT_CANVAS_SIZES.feed, { width: 1080, height: 1350, label: "Feed 1080×1350" });
+  assert.equal(getMatchReceiptRotationCoverScale(0), 1);
+  assert.ok(getMatchReceiptRotationCoverScale(45) > 1.5);
+  assert.deepEqual(getMatchReceiptPhotoStyle({ photoX: 40, photoY: -20, photoZoom: 1, photoRotation: 0 }), {
+    "--receipt-photo-position-x": "30%",
+    "--receipt-photo-position-y": "60%",
+    "--receipt-photo-scale": 1,
+    "--receipt-photo-rotation": "0deg",
+  });
 });
 
 test("경기 영수증은 필수값과 승패를 실행형 정책으로 판정한다", () => {

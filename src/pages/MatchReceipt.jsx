@@ -17,6 +17,7 @@ import {
   getMatchReceiptFileName,
   getMatchReceiptFormatLabel,
   getMatchReceiptOutcome,
+  getMatchReceiptPhotoStyle,
   loadMatchReceiptPhoto,
   loadMatchReceiptDraft,
   normalizeMatchReceiptPhotoFile,
@@ -54,6 +55,23 @@ function downloadBlob(blob, fileName) {
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+function getPhotoGestureSnapshot(pointers) {
+  const points = [...pointers.values()].slice(0, 2);
+  if (!points.length) return null;
+  const centerX = points.reduce((sum, point) => sum + point.x, 0) / points.length;
+  const centerY = points.reduce((sum, point) => sum + point.y, 0) / points.length;
+  if (points.length === 1) return { count: 1, centerX, centerY, distance: 0, angle: 0 };
+  const deltaX = points[1].x - points[0].x;
+  const deltaY = points[1].y - points[0].y;
+  return {
+    count: 2,
+    centerX,
+    centerY,
+    distance: Math.hypot(deltaX, deltaY),
+    angle: Math.atan2(deltaY, deltaX) * 180 / Math.PI,
+  };
+}
+
 function ReceiptPreview({ draft, photoUrl = "", matchUrl = "" }) {
   const model = createMatchReceiptViewModel(draft, { matchUrl });
   const backgroundUrl = photoUrl || model.defaultPhotoUrl;
@@ -64,10 +82,7 @@ function ReceiptPreview({ draft, photoUrl = "", matchUrl = "" }) {
       style={{
         "--receipt-home": model.homeColor,
         "--receipt-away": model.awayColor,
-        "--receipt-photo-x": `${model.photoX}%`,
-        "--receipt-photo-y": `${model.photoY}%`,
-        "--receipt-photo-zoom": model.photoZoom,
-        "--receipt-photo-rotation": `${model.photoRotation}deg`,
+        ...getMatchReceiptPhotoStyle(model),
       }}
       aria-label="경기 영수증 미리보기"
     >
@@ -75,7 +90,17 @@ function ReceiptPreview({ draft, photoUrl = "", matchUrl = "" }) {
         <img src={backgroundUrl} alt="" />
       </div>
       <header className="match-receipt-poster-head">
-        <img src={model.logoUrl} alt="BOXTIER" />
+        <span className="match-receipt-wordmark">
+          <img
+            src={model.wordmarkUrl}
+            alt="BOXTIER"
+            onError={(event) => {
+              event.currentTarget.hidden = true;
+              event.currentTarget.nextElementSibling?.removeAttribute("hidden");
+            }}
+          />
+          <strong hidden>BOXTIER</strong>
+        </span>
         <span>{model.serial}</span>
       </header>
       <div className="match-receipt-verified">★ <i /> {model.verified ? "BOXTIER VERIFIED" : "MATCH RECEIPT"} <i /> ★</div>
@@ -91,7 +116,13 @@ function ReceiptPreview({ draft, photoUrl = "", matchUrl = "" }) {
         {[{ name: model.homeTeam, tier: model.homeTier }, { name: model.awayTeam, tier: model.awayTier }].map((team, index) => (
           <div key={index}>
             <strong>{team.name || (index ? "AWAY TEAM" : "HOME TEAM")}</strong>
-            {team.tier ? <img className="match-receipt-team-tier" src={team.tier.src} alt="" /> : null}
+            {team.tier ? (
+              <span
+                className="match-receipt-team-tier"
+                style={{ "--receipt-tier-image": `url(${JSON.stringify(team.tier.src)})` }}
+                aria-hidden="true"
+              />
+            ) : null}
             <span>{team.tier ? `TEAM TIER · ${team.tier.label}` : index ? "AWAY" : "HOME"}</span>
           </div>
         ))}
@@ -143,7 +174,14 @@ export default function MatchReceipt({ auth, app }) {
   const startedRef = useRef(false);
   const requestedMatchIdRef = useRef("");
   const previewRef = useRef(null);
-  const photoDragRef = useRef(null);
+  const photoGestureRef = useRef({ pointers: new Map(), baseline: null });
+  const photoTransformRef = useRef(null);
+  photoTransformRef.current = {
+    photoX: draft.photoX,
+    photoY: draft.photoY,
+    photoZoom: draft.photoZoom,
+    photoRotation: draft.photoRotation,
+  };
   const outcome = useMemo(() => getMatchReceiptOutcome(draft), [draft]);
   const canonicalMatch = useMemo(
     () => app?.state?.matches?.find((match) => String(match.id) === matchId) ?? null,
@@ -305,30 +343,66 @@ export default function MatchReceipt({ auth, app }) {
     setStatus("");
   }
 
-  function beginPhotoDrag(event) {
-    if (!photoUrl) return;
-    event.currentTarget.setPointerCapture(event.pointerId);
-    photoDragRef.current = {
-      pointerId: event.pointerId,
-      startX: event.clientX,
-      startY: event.clientY,
-      photoX: draft.photoX,
-      photoY: draft.photoY,
-      width: event.currentTarget.clientWidth,
-      height: event.currentTarget.clientHeight,
+  function getPhotoGestureBaseline(target, pointers) {
+    const snapshot = getPhotoGestureSnapshot(pointers);
+    if (!snapshot) return null;
+    return {
+      ...snapshot,
+      ...photoTransformRef.current,
+      width: Math.max(1, target.clientWidth),
+      height: Math.max(1, target.clientHeight),
     };
   }
 
-  function movePhoto(event) {
-    const drag = photoDragRef.current;
-    if (!drag || drag.pointerId !== event.pointerId) return;
-    const photoX = drag.photoX + (event.clientX - drag.startX) / drag.width * 100;
-    const photoY = drag.photoY + (event.clientY - drag.startY) / drag.height * 100;
-    setDraft((current) => normalizeMatchReceiptDraft({ ...current, photoX, photoY }));
+  function beginPhotoGesture(event) {
+    if (!photoUrl) return;
+    event.preventDefault();
+    const gesture = photoGestureRef.current;
+    gesture.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    event.currentTarget.setPointerCapture(event.pointerId);
+    gesture.baseline = getPhotoGestureBaseline(event.currentTarget, gesture.pointers);
   }
 
-  function endPhotoDrag(event) {
-    if (photoDragRef.current?.pointerId === event.pointerId) photoDragRef.current = null;
+  function movePhotoGesture(event) {
+    const gesture = photoGestureRef.current;
+    if (!photoUrl || !gesture.pointers.has(event.pointerId) || !gesture.baseline) return;
+    event.preventDefault();
+    gesture.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    const snapshot = getPhotoGestureSnapshot(gesture.pointers);
+    if (!snapshot) return;
+
+    const baseline = gesture.baseline;
+    let photoZoom = baseline.photoZoom;
+    let photoRotation = baseline.photoRotation;
+    if (snapshot.count === 2 && baseline.count === 2) {
+      photoZoom *= snapshot.distance / Math.max(1, baseline.distance);
+      const angleDelta = ((snapshot.angle - baseline.angle + 540) % 360) - 180;
+      photoRotation += angleDelta;
+    }
+
+    setDraft((current) => {
+      const next = normalizeMatchReceiptDraft({
+        ...current,
+        photoX: baseline.photoX + (snapshot.centerX - baseline.centerX) / baseline.width * 200,
+        photoY: baseline.photoY + (snapshot.centerY - baseline.centerY) / baseline.height * 200,
+        photoZoom,
+        photoRotation,
+      });
+      photoTransformRef.current = {
+        photoX: next.photoX,
+        photoY: next.photoY,
+        photoZoom: next.photoZoom,
+        photoRotation: next.photoRotation,
+      };
+      return next;
+    });
+  }
+
+  function endPhotoGesture(event) {
+    const gesture = photoGestureRef.current;
+    if (!gesture.pointers.has(event.pointerId)) return;
+    gesture.pointers.delete(event.pointerId);
+    gesture.baseline = getPhotoGestureBaseline(event.currentTarget, gesture.pointers);
   }
 
   async function ensurePublicDraft(value = draft) {
@@ -538,27 +612,24 @@ export default function MatchReceipt({ auth, app }) {
             </div>
             <div
               className={`match-receipt-photo-crop${photoUrl ? " has-photo" : ""}`}
-              onPointerDown={beginPhotoDrag}
-              onPointerMove={movePhoto}
-              onPointerUp={endPhotoDrag}
-              onPointerCancel={endPhotoDrag}
+              onPointerDown={beginPhotoGesture}
+              onPointerMove={movePhotoGesture}
+              onPointerUp={endPhotoGesture}
+              onPointerCancel={endPhotoGesture}
+              onLostPointerCapture={endPhotoGesture}
             >
               <img
                 src={photoUrl || createMatchReceiptViewModel(draft).defaultPhotoUrl}
                 alt="영수증 배경 미리보기"
-                style={{
-                  "--receipt-photo-x": `${draft.photoX}%`,
-                  "--receipt-photo-y": `${draft.photoY}%`,
-                  "--receipt-photo-zoom": draft.photoZoom,
-                  "--receipt-photo-rotation": `${draft.photoRotation}deg`,
-                }}
+                style={getMatchReceiptPhotoStyle(draft)}
               />
-              <span>{photoUrl ? "드래그해서 사진 이동" : "기본 배경 · 사진을 선택해 교체"}</span>
+              <span>{photoUrl ? "한 손가락 이동 · 두 손가락 확대·회전" : "기본 배경 · 사진을 선택해 교체"}</span>
             </div>
             <div className="match-receipt-photo-controls">
               <label>확대축소 <input type="range" min="1" max="3" step="0.01" value={draft.photoZoom} onChange={(event) => updateField("photoZoom", event.target.value)} /></label>
               <label>좌우 이동 <input type="range" min="-100" max="100" step="1" value={draft.photoX} onChange={(event) => updateField("photoX", event.target.value)} /></label>
               <label>상하 이동 <input type="range" min="-100" max="100" step="1" value={draft.photoY} onChange={(event) => updateField("photoY", event.target.value)} /></label>
+              <label>회전 <input type="range" min="-180" max="180" step="1" value={draft.photoRotation} onChange={(event) => updateField("photoRotation", event.target.value)} /></label>
             </div>
             <div className="match-receipt-photo-actions">
               <button type="button" className="button ui-button button-secondary ui-button-secondary button-md ui-button-md" onClick={() => updateField("photoRotation", draft.photoRotation + 90)}><RotateCcw aria-hidden="true" /> 90° 회전</button>
