@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "vite --host 127.0.0.1",
-    "build": "node --test scripts/design-system-guards.test.mjs scripts/css-cascade-guards.test.mjs && vite build",
+    "build": "node --test scripts/design-system-guards.test.mjs scripts/css-cascade-guards.test.mjs && vite build && node scripts/sync-receipt-assets-to-r2.mjs",
     "seed:demo-flow": "node scripts/seed-demo-flow.mjs",
     "seed:demo-flow:check": "node scripts/seed-demo-flow.mjs --check",
     "seed:supabase": "node scripts/seed-supabase-state.mjs",
