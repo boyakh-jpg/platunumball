@@ -75,6 +75,10 @@ function getPhotoGestureSnapshot(pointers) {
 function ReceiptPreview({ draft, photoUrl = "", matchUrl = "", photoGestureHandlers = {} }) {
   const model = createMatchReceiptViewModel(draft, { matchUrl });
   const backgroundUrl = photoUrl || model.defaultPhotoUrl;
+  const posterTeams = [
+    { name: model.homeTeam, tier: model.homeTier },
+    { name: model.awayTeam, tier: model.awayTier },
+  ];
 
   return (
     <article
@@ -109,6 +113,17 @@ function ReceiptPreview({ draft, photoUrl = "", matchUrl = "", photoGestureHandl
         <span>{model.serial}</span>
       </header>
       <div className="match-receipt-verified">★ <i /> {model.verified ? "BOXTIER VERIFIED" : "MATCH RECEIPT"} <i /> ★</div>
+      <div className="match-receipt-team-watermarks" aria-hidden="true">
+        {posterTeams.map((team, index) => (
+          <span key={index}>
+            <img
+              className={model.showTeamTierEmblems && team.tier ? "" : "is-neutral"}
+              src={model.showTeamTierEmblems && team.tier ? team.tier.outlineSrc : model.neutralTeamMarkUrl}
+              alt=""
+            />
+          </span>
+        ))}
+      </div>
       <section className="match-receipt-poster-score">
         <span>{model.matchNatureLabel}</span>
         <div aria-label={`${model.homeScore} 대 ${model.awayScore}`}>
@@ -118,7 +133,7 @@ function ReceiptPreview({ draft, photoUrl = "", matchUrl = "", photoGestureHandl
         </div>
       </section>
       <section className="match-receipt-poster-teams">
-        {[{ name: model.homeTeam, tier: model.homeTier }, { name: model.awayTeam, tier: model.awayTier }].map((team, index) => (
+        {posterTeams.map((team, index) => (
           <div key={index}>
             <strong>{team.name || (index ? "AWAY TEAM" : "HOME TEAM")}</strong>
             <img
@@ -147,6 +162,7 @@ function ReceiptPreview({ draft, photoUrl = "", matchUrl = "", photoGestureHandl
               <b><em>{model.personalRebounds ?? 0}</em><small>REB</small></b>
             </span>
           ) : model.personalTier ? null : <span>{model.comment || model.outcome.label}</span>}
+          {model.personalTier ? <small className="match-receipt-personal-tier-label">PLAYER TIER · {model.personalTier.label}</small> : null}
           {model.hasPersonalStats ? <span className="match-receipt-ticket-caption">내 경기 기록</span> : null}
         </div>
         <div className="match-receipt-ticket-qr">

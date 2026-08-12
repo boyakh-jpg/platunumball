@@ -629,6 +629,23 @@ export async function renderMatchReceiptPng(value, preset = "story", options = {
   ctx.font = '900 30px "KBO Dia Gothic", sans-serif';
   ctx.fillText(model.verified ? "★  BOXTIER VERIFIED  ★" : "★  MATCH RECEIPT  ★", width / 2, verifiedY + 11);
 
+  const columns = [270, 810];
+  const teams = [
+    { name: model.homeTeam || "HOME TEAM", tier: model.homeTier, image: homeTier || neutralTeamMark },
+    { name: model.awayTeam || "AWAY TEAM", tier: model.awayTier, image: awayTier || neutralTeamMark },
+  ];
+  const teamWatermarkSize = compact ? 360 : 470;
+  const teamWatermarkY = compact ? 510 : 810;
+  teams.forEach((team, index) => {
+    if (!team.image) return;
+    ctx.save();
+    ctx.globalAlpha = model.showTeamTierEmblems && team.tier ? 0.24 : 0.2;
+    ctx.filter = "grayscale(1) sepia(.55) brightness(.48)";
+    const centerX = index ? width - 72 : 72;
+    ctx.drawImage(team.image, centerX - teamWatermarkSize / 2, teamWatermarkY, teamWatermarkSize, teamWatermarkSize);
+    ctx.restore();
+  });
+
   const scoreTop = verifiedY + 70;
   ctx.save();
   ctx.fillStyle = paperTextPattern;
@@ -636,7 +653,7 @@ export async function renderMatchReceiptPng(value, preset = "story", options = {
   ctx.shadowBlur = 16;
   ctx.shadowOffsetY = 4;
   ctx.font = `900 ${compact ? 146 : 270}px "KBO Dia Gothic", sans-serif`;
-  ctx.fillText(`${model.homeScore} : ${model.awayScore}`, width / 2, compact ? scoreTop + 145 : 1120);
+  ctx.fillText(`${model.homeScore} : ${model.awayScore}`, width / 2, compact ? scoreTop + 137 : 1100);
   ctx.restore();
   ctx.fillStyle = "#f05a2a";
   ctx.font = `300 ${compact ? 31 : 36}px "Pretendard Variable", sans-serif`;
@@ -646,14 +663,9 @@ export async function renderMatchReceiptPng(value, preset = "story", options = {
 
   const teamTop = compact ? 781 : 1121;
   const teamFontSize = compact ? 44 : 58;
-  const teamTierY = compact ? 853 : 1266;
-  const teamTierSize = compact ? 110 : 156;
+  const teamTierY = compact ? 842 : 1260;
+  const teamTierSize = compact ? 124 : 174;
   const teamLabelY = compact ? 990 : 1458;
-  const columns = [270, 810];
-  const teams = [
-    { name: model.homeTeam || "HOME TEAM", tier: model.homeTier, image: homeTier || neutralTeamMark },
-    { name: model.awayTeam || "AWAY TEAM", tier: model.awayTier, image: awayTier || neutralTeamMark },
-  ];
   teams.forEach((team, index) => {
     ctx.textAlign = "center";
     ctx.font = `900 ${teamFontSize}px "KBO Dia Gothic", sans-serif`;
@@ -663,7 +675,7 @@ export async function renderMatchReceiptPng(value, preset = "story", options = {
     });
     if (team.image) {
       ctx.save();
-      if (!(model.showTeamTierEmblems && team.tier)) ctx.globalAlpha = 0.72;
+      if (!(model.showTeamTierEmblems && team.tier)) ctx.globalAlpha = 0.9;
       ctx.drawImage(team.image, columns[index] - teamTierSize / 2, teamTierY, teamTierSize, teamTierSize);
       ctx.restore();
     }
@@ -729,9 +741,9 @@ export async function renderMatchReceiptPng(value, preset = "story", options = {
   ctx.fillText(model.playedOn.replaceAll("-", "."), 220, footerY + (compact ? 174 : 255));
 
   if (personalTier) {
-    const tierSize = compact ? 142 : 190;
+    const tierSize = compact ? 158 : 208;
     ctx.save();
-    ctx.globalAlpha = 0.16;
+    ctx.globalAlpha = 0.28;
     ctx.drawImage(personalTier, footerMiddleX - tierSize / 2, footerY - 12, tierSize, tierSize);
     ctx.restore();
   }
@@ -767,6 +779,12 @@ export async function renderMatchReceiptPng(value, preset = "story", options = {
     ctx.fillStyle = "#151515";
     ctx.font = '900 22px "KBO Dia Gothic", sans-serif';
     ctx.fillText(model.comment || model.outcome.label, footerMiddleX, footerY + 100, 260);
+  }
+
+  if (personalTier) {
+    ctx.fillStyle = "#8f6032";
+    ctx.font = `900 ${compact ? 15 : 18}px "KBO Dia Gothic", sans-serif`;
+    ctx.fillText(`PLAYER TIER · ${model.personalTier.label}`, footerMiddleX, footerY + (compact ? 153 : 225), 250);
   }
 
   if (model.matchUrl) {

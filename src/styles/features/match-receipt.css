@@ -343,6 +343,30 @@
   background: currentColor;
 }
 
+.match-receipt-team-watermarks {
+  position: absolute; z-index: 1; inset: 44.5% 0 auto;
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  height: 27%; overflow: hidden; pointer-events: none;
+}
+
+.match-receipt-team-watermarks > span {
+  position: relative; min-width: 0; overflow: hidden;
+}
+
+.match-receipt-team-watermarks img {
+  position: absolute; top: 5%; display: block;
+  width: 94%; aspect-ratio: 1; object-fit: contain; opacity: 0.24;
+  filter: grayscale(1) sepia(0.55) brightness(0.48);
+}
+
+.match-receipt-team-watermarks span:first-child img { left: -30% }
+
+.match-receipt-team-watermarks span:last-child img { right: -30% }
+
+.match-receipt-team-watermarks img.is-neutral {
+  opacity: 0.2
+}
+
 .match-receipt-poster-score {
   position: absolute;
   z-index: 2;
@@ -363,7 +387,7 @@
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  margin-top: -1%;
+  margin-top: -2.2%;
   font-variant-numeric: tabular-nums;
   line-height: 0.92;
 }
@@ -432,7 +456,7 @@
   top: 40%;
   left: 50%;
   display: block;
-  width: 34%;
+  width: 38%;
   aspect-ratio: 1;
   margin: 0;
   object-fit: contain;
@@ -441,7 +465,7 @@
 }
 
 .match-receipt-poster-teams .match-receipt-team-tier.is-neutral {
-  opacity: 0.72;
+  opacity: 0.9;
 }
 
 .match-receipt-poster-teams span {
@@ -566,14 +590,16 @@
 }
 
 .match-receipt-personal-tier {
-  position: absolute;
-  inset: 50% auto auto 50%;
-  z-index: 0;
-  width: 82%;
-  max-height: none;
-  object-fit: contain;
-  opacity: 0.16;
+  position: absolute; z-index: 0; inset: 50% auto auto 50%;
+  width: 82%; max-height: none; object-fit: contain; opacity: 0.28;
   transform: translate(-50%, -50%);
+}
+
+.match-receipt-ticket-game > .match-receipt-personal-tier-label {
+  position: relative; z-index: 1; display: block;
+  max-width: 100%; overflow: hidden; color: #8f6032;
+  font-size: clamp(5px, 1.65cqw, 8px); font-weight: 900;
+  letter-spacing: 0.04em; line-height: 1; text-overflow: ellipsis; white-space: nowrap;
 }
 
 .match-receipt-personal-stats small {
