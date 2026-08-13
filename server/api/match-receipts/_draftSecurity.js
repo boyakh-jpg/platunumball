@@ -13,7 +13,7 @@ const TEXT_LIMITS = Object.freeze({
   originalAddress: 96,
   format: 5,
   matchNature: 11,
-  comment: 10,
+  comment: 12,
 });
 
 function cleanText(value, maxLength) {

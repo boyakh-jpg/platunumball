@@ -4,19 +4,13 @@
   padding: 32px 0 72px;
 }
 
-.match-receipt-page-head {
-  margin-bottom: 24px;
-}
+.match-receipt-page-head { margin-bottom: 24px; }
 
 .match-receipt-page-head h1 {
   margin: 4px 0 8px;
   font-size: clamp(30px, 4vw, 44px);
 }
-
-.match-receipt-page-head > p:last-child {
-  margin: 0;
-  color: var(--rb-muted);
-}
+.match-receipt-page-head > p:last-child { margin: 0; color: var(--rb-muted); }
 
 .match-receipt-workspace {
   display: grid;
@@ -26,9 +20,7 @@
 }
 
 .match-receipt-editor,
-.match-receipt-preview-panel {
-  min-width: 0;
-}
+.match-receipt-preview-panel { min-width: 0; }
 
 .match-receipt-editor {
   display: grid;
@@ -57,17 +49,12 @@
 .match-receipt-team-fields fieldset {
   display: grid; grid-template-columns: minmax(0, 1fr) 84px;
   align-items: end; gap: var(--space-4); min-width: 0;
-  margin: 0; padding: 14px;
-  border: var(--ui-stroke-width) solid var(--line);
-  border-radius: 16px;
-  background: var(--surface-2);
+  margin: 0; padding: 0;
+  border: 0;
+  background: transparent;
 }
 
-.match-receipt-team-fields legend {
-  padding: 0 6px;
-  color: var(--rb-orange);
-  font-weight: 900;
-}
+.match-receipt-team-fields legend { padding: 0 6px; color: var(--rb-orange); font-weight: 900; }
 
 .match-receipt-editor label {
   display: grid;
@@ -94,14 +81,9 @@
 }
 
 .match-receipt-editor input:focus-visible,
-.match-receipt-editor select:focus-visible {
-  outline: var(--ui-stroke-width-strong) solid var(--rb-orange);
-  outline-offset: 2px;
-}
+.match-receipt-editor select:focus-visible { outline: var(--ui-stroke-width-strong) solid var(--rb-orange); outline-offset: 2px; }
 
-.match-receipt-editor input[aria-invalid="true"] {
-  border-color: var(--danger);
-}
+.match-receipt-editor input[aria-invalid="true"] { border-color: var(--danger); }
 
 .match-receipt-score-input input {
   text-align: center;
@@ -109,9 +91,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-.match-receipt-info-fields .is-wide {
-  grid-column: 1 / -1;
-}
+.match-receipt-info-fields .is-wide { grid-column: 1 / -1; }
 
 .match-receipt-venue-control {
   display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-4);
@@ -123,9 +103,7 @@
 }
 .match-receipt-map-button svg { width: 16px; height: 16px; }
 
-.field-error {
-  color: var(--danger);
-}
+.field-error { color: var(--danger); }
 
 .match-receipt-map-note,
 .match-receipt-status {
@@ -138,15 +116,9 @@
   font-weight: 700;
 }
 
-.match-receipt-map-note svg {
-  width: 15px;
-  height: 15px;
-  flex: 0 0 auto;
-}
+.match-receipt-map-note svg { width: 15px; height: 15px; flex: 0 0 auto; }
 
-.match-receipt-complete {
-  width: 100%;
-}
+.match-receipt-complete { width: 100%; }
 
 .match-receipt-preview-panel {
   position: sticky;
@@ -170,9 +142,7 @@
   gap: var(--space-5);
 }
 
-.match-receipt-preview-head strong {
-  color: var(--rb-orange);
-}
+.match-receipt-preview-head strong { color: var(--rb-orange); }
 
 .match-receipt-card {
   position: relative;
@@ -671,7 +641,7 @@
 .match-receipt-ticket-qr > a { display: grid; width: 100%; min-height: 0; place-items: center; }
 
 .match-receipt-ticket-qr .match-receipt-qr {
-  width: 62%; max-height: 70%; overflow: visible;
+  width: 72%; max-height: 78%; overflow: visible;
 }
 
 .match-receipt-locked-note {
@@ -706,14 +676,22 @@
   justify-content: center;
 }
 
+.match-receipt-hard-reset { margin-left: auto; }
+
+.match-receipt-field-heading {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.match-receipt-field-count {
+  color: var(--rb-orange); font-variant-numeric: tabular-nums;
+}
+
 .match-receipt-photo-actions .button {
   gap: var(--space-3);
 }
 
-.match-receipt-photo-actions svg {
-  width: 16px;
-  height: 16px;
-}
+.match-receipt-photo-actions svg { width: 16px; height: 16px; }
 
 .match-receipt-photo-actions input[type="file"] {
   position: absolute;
@@ -740,10 +718,7 @@
   gap: var(--space-4);
 }
 
-.match-receipt-actions svg {
-  width: 17px;
-  height: 17px;
-}
+.match-receipt-actions svg { width: 17px; height: 17px; }
 
 .match-receipt-save-card {
   text-align: left;
@@ -758,11 +733,20 @@
 
 @media (max-width: 900px) {
   .match-receipt-workspace {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr; gap: var(--space-8);
   }
 
+  .match-receipt-editor { display: contents; }
+  .match-receipt-editor > section { order: 1; }
+
   .match-receipt-preview-panel {
-    position: static;
+    position: static; order: 2;
+  }
+
+  .match-receipt-complete { order: 3; }
+
+  .match-receipt-status {
+    order: 4; margin-top: 0;
   }
 }
 

@@ -15,6 +15,7 @@ import {
   MATCH_RECEIPT_NATURES,
   MATCH_RECEIPT_LIMITS,
   MATCH_RECEIPT_PHOTO_MAX_BYTES,
+  clearMatchReceiptDraft,
   clearMatchReceiptPhoto,
   createMatchReceiptViewModel,
   createDefaultMatchReceiptDraft,
@@ -522,6 +523,26 @@ export default function MatchReceipt({ auth, app }) {
     setStatus("");
   }
 
+  async function hardRefreshReceipt() {
+    if (!window.confirm("입력값과 선택 사진을 지우고 새로고침할까요?")) return;
+
+    setBusy("reset");
+    clearMatchReceiptDraft();
+    await clearMatchReceiptPhoto();
+
+    try {
+      if ("caches" in window) {
+        const cacheNames = await window.caches.keys();
+        await Promise.all(cacheNames.map((name) => window.caches.delete(name)));
+      }
+      await fetch(window.location.href, { cache: "reload" });
+    } catch {
+      // 캐시 API를 사용할 수 없어도 아래 새로고침은 실행한다.
+    }
+
+    window.location.reload();
+  }
+
   function updatePhotoTransform(values) {
     setDraft((current) => {
       const next = normalizeMatchReceiptDraft({ ...current, ...values });
@@ -848,7 +869,13 @@ export default function MatchReceipt({ auth, app }) {
                 {errors.venue ? <small className="field-error">{errors.venue}</small> : null}
               </label>
               <label className="is-wide">짧은 주소 <input value={draft.address} maxLength={MATCH_RECEIPT_LIMITS.address} disabled={isFieldReadOnly("address")} placeholder="선택 · 예: 마포구 와우근린공원 농구장" onChange={(event) => updateField("address", event.target.value)} /></label>
-              <label className="is-wide">한 줄 코멘트 <input value={draft.comment} maxLength={MATCH_RECEIPT_LIMITS.comment} disabled={isFieldReadOnly("comment")} placeholder="선택 · 10자 이내" onChange={(event) => updateField("comment", event.target.value)} /></label>
+              <label className="is-wide">
+                <span className="match-receipt-field-heading">
+                  <span>한 줄 코멘트</span>
+                  <span className="match-receipt-field-count">{draft.comment.length}/{MATCH_RECEIPT_LIMITS.comment}</span>
+                </span>
+                <input value={draft.comment} maxLength={MATCH_RECEIPT_LIMITS.comment} disabled={isFieldReadOnly("comment")} placeholder="선택 · 12자 이내" onChange={(event) => updateField("comment", event.target.value)} />
+              </label>
             </div>
             <p className="match-receipt-map-note"><MapPin aria-hidden="true" /> 이미지에는 장소명과 짧은 주소만 들어갑니다. 지도 화면은 포함하지 않습니다.</p>
           </section>
@@ -902,8 +929,16 @@ export default function MatchReceipt({ auth, app }) {
                 <input type="file" accept="image/jpeg,image/png,image/webp" disabled={busy === "photo"} onChange={handlePhotoChange} />
               </Button>
               <Button variant="secondary" onClick={() => updateField("photoRotation", draft.photoRotation + 90)}><RotateCcw aria-hidden="true" /> 90° 회전</Button>
-              <Button variant="secondary" onClick={resetPhotoTransform}>초기화</Button>
               {photoUrl ? <Button variant="danger" onClick={removePhoto}><Trash2 aria-hidden="true" /> 제거</Button> : null}
+              <Button
+                variant="secondary"
+                className="match-receipt-hard-reset"
+                disabled={busy === "reset"}
+                title="입력값·사진·캐시 초기화 후 새로고침"
+                onClick={hardRefreshReceipt}
+              >
+                <RotateCcw aria-hidden="true" /> 초기화
+              </Button>
             </div>
             <p className="match-receipt-photo-note">
               {photoUrl

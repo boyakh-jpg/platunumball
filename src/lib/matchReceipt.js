@@ -18,7 +18,7 @@ export const MATCH_RECEIPT_LIMITS = Object.freeze({
   venue: 36,
   address: 48,
   originalAddress: 96,
-  comment: 10,
+  comment: 12,
   score: 999,
 });
 
@@ -715,11 +715,10 @@ function drawQrCode(ctx, value, x, y, size) {
   return actualSize;
 }
 
-export async function renderMatchReceiptPng(value, preset = "story", options = {}) {
+async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
   if (typeof document === "undefined") throw new Error("match_receipt_canvas_unavailable");
   if (preset === "feed") {
-    const storyBlob = await renderMatchReceiptPng(value, "story", options);
-    const story = await loadCanvasImage(storyBlob);
+    const story = await renderMatchReceiptCanvas(value, "story", options);
     const { width, height } = getMatchReceiptCanvasSize("feed");
     const canvas = document.createElement("canvas");
     canvas.width = width;
@@ -729,10 +728,10 @@ export async function renderMatchReceiptPng(value, preset = "story", options = {
     ctx.fillStyle = "#111111";
     ctx.fillRect(0, 0, width, height);
     const targetHeight = height;
-    const targetWidth = targetHeight * story.naturalWidth / story.naturalHeight;
+    const targetWidth = targetHeight * story.width / story.height;
     const targetX = (width - targetWidth) / 2;
     ctx.drawImage(story, targetX, 0, targetWidth, targetHeight);
-    return canvasToBlob(canvas, "image/png");
+    return canvas;
   }
   const model = createMatchReceiptViewModel(value, options);
   const { width, height } = getMatchReceiptCanvasSize(preset);
@@ -1014,7 +1013,7 @@ export async function renderMatchReceiptPng(value, preset = "story", options = {
   }
 
   if (model.matchUrl) {
-    const qrSize = compact ? 160 : 198;
+    const qrSize = compact ? 176 : 218;
     ctx.fillStyle = "#d4582b";
     ctx.font = '900 22px "KBO Dia Gothic", sans-serif';
     ctx.fillText("경기 기록 보기", footerRightX, footerY + (compact ? 6 : 30));
@@ -1025,6 +1024,11 @@ export async function renderMatchReceiptPng(value, preset = "story", options = {
     ctx.fillText("boxtier.kr", footerRightX, footerY + 76);
   }
 
+  return canvas;
+}
+
+export async function renderMatchReceiptPng(value, preset = "story", options = {}) {
+  const canvas = await renderMatchReceiptCanvas(value, preset, options);
   return canvasToBlob(canvas, "image/png");
 }
 

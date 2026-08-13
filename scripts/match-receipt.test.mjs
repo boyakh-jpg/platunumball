@@ -29,6 +29,7 @@ test("public receipt draft keeps only bounded safe fields", () => {
     originalAddress: `Seoul ${"B".repeat(120)}`,
     format: "invalid",
     matchNature: "semifinal",
+    comment: "123456789012345",
     homeColor: "red",
     awayColor: "#ABCDEF",
     homeMmr: 1300,
@@ -47,6 +48,7 @@ test("public receipt draft keeps only bounded safe fields", () => {
   assert.equal(payload.originalAddress.length, 96);
   assert.equal(payload.format, "3v3");
   assert.equal(payload.matchNature, "semifinal");
+  assert.equal(payload.comment, "123456789012");
   assert.equal(payload.homeColor, "#f05a46");
   assert.equal(payload.awayColor, "#abcdef");
   assert.equal(payload.homeMmr, 1300);
@@ -87,13 +89,19 @@ test("receipt view model uses compact game labels, venue fallback, and a safe ha
 
 test("receipt serial stays stable until a new receipt is explicitly started", () => {
   const draft = createDefaultMatchReceiptDraft();
-  const edited = normalizeMatchReceiptDraft({ ...draft, homeTeam: "EDITED", homeScore: 99 });
+  const edited = normalizeMatchReceiptDraft({
+    ...draft,
+    homeTeam: "EDITED",
+    homeScore: 99,
+    comment: "123456789012345",
+  });
   const renewed = renewMatchReceiptDraft(edited);
   const match = { id: "match-123", home_team_name: "HOME", away_team_name: "AWAY" };
   const canonicalA = getMatchReceiptDraftFromMatch(match);
   const canonicalB = getMatchReceiptDraftFromMatch({ ...match, home_team_name: "CHANGED" });
 
   assert.equal(edited.serialSeed, draft.serialSeed);
+  assert.equal(edited.comment, "123456789012");
   assert.equal(createMatchReceiptViewModel(edited).serial, createMatchReceiptViewModel(draft).serial);
   assert.notEqual(renewed.serialSeed, edited.serialSeed);
   assert.notEqual(createMatchReceiptViewModel(renewed).serial, createMatchReceiptViewModel(edited).serial);
@@ -153,6 +161,13 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.doesNotMatch(page, /<RotateCcw aria-hidden="true" \/> 자유 회전/);
   assert.match(page, /<Button as="label" variant="secondary">/);
   assert.match(page, /<Button variant="danger" onClick=\{removePhoto\}>/);
+  assert.match(page, /\{draft\.comment\.length\}\/\{MATCH_RECEIPT_LIMITS\.comment\}/);
+  assert.match(page, /placeholder="선택 · 12자 이내"/);
+  assert.match(page, /className="match-receipt-hard-reset"/);
+  assert.match(page, /onClick=\{hardRefreshReceipt\}/);
+  assert.match(page, /clearMatchReceiptDraft\(\)/);
+  assert.match(page, /window\.caches\.keys\(\)/);
+  assert.match(page, /cache: "reload"/);
   assert.match(page, /onWheel: zoomPhotoWithWheel/);
   assert.match(page, /onDoubleClick: resetPhotoTransform/);
   assert.match(page, /className="match-receipt-photo-tools"/);
@@ -216,6 +231,10 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(styles, /height: 19\.9%/);
   assert.match(styles, /\.match-receipt-team-tier\.is-neutral[\s\S]*opacity: 0\.76/);
   assert.match(styles, /\.match-receipt-personal-tier[\s\S]*opacity: 0\.64/);
+  assert.match(styles, /\.match-receipt-ticket-qr \.match-receipt-qr[\s\S]*width: 72%[\s\S]*max-height: 78%/);
+  assert.match(styles, /\.match-receipt-team-fields fieldset[\s\S]*border: 0;[\s\S]*background: transparent;/);
+  assert.match(styles, /\.match-receipt-hard-reset[\s\S]*margin-left: auto/);
+  assert.match(styles, /@media \(max-width: 900px\)[\s\S]*?\.match-receipt-editor \{[\s\S]*?display: contents;[\s\S]*?\.match-receipt-preview-panel \{[\s\S]*?order: 2;[\s\S]*?\.match-receipt-complete \{[\s\S]*?order: 3;/);
   assert.match(styles, /\.match-receipt-ticket-date[\s\S]*border-top/);
   assert.match(styles, /\.match-receipt-personal-stats b \+ b[\s\S]*border-left/);
   assert.match(renderer, /const receiptTop = compact \? 1010 : 1504/);
@@ -232,6 +251,7 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(renderer, /blurFade\.addColorStop\(0\.68, "rgba\(0,0,0,0\.72\)"\)/);
   assert.match(renderer, /fadeIn: 0\.24/);
   assert.match(renderer, /const footerLeftDivider = compact \? 386 : 414/);
+  assert.match(renderer, /const qrSize = compact \? 176 : 218/);
   assert.match(renderer, /ctx\.moveTo\(footerMiddleX, footerY \+ \(compact \? 30 : 70\)\)/);
   assert.match(renderer, /createCanvasPaperPattern/);
   assert.match(renderer, /drawCanvasPaperGrain/);
@@ -267,11 +287,15 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(renderer, /ctx\.fillText\(model\.matchNatureLabel/);
   assert.match(renderer, /if \(model\.comment\)/);
   assert.doesNotMatch(renderer, /model\.comment \|\| "내 경기 기록"/);
-  assert.match(renderer, /renderMatchReceiptPng\(value, "story", options\)/);
+  assert.match(renderer, /renderMatchReceiptCanvas\(value, "story", options\)/);
+  assert.doesNotMatch(renderer, /const storyBlob = await renderMatchReceiptPng/);
+  assert.doesNotMatch(renderer, /loadCanvasImage\(storyBlob\)/);
   assert.match(renderer, /getMatchReceiptCanvasSize\("feed"\)/);
   assert.match(renderer, /const targetHeight = height/);
+  assert.match(renderer, /story\.width \/ story\.height/);
   assert.match(renderer, /const targetX = \(width - targetWidth\) \/ 2/);
   assert.match(renderer, /ctx\.drawImage\(story, targetX, 0, targetWidth, targetHeight\)/);
+  assert.match(renderer, /canvasToBlob\(canvas, "image\/png"\)/);
   assert.equal(homeNeutralMark.subarray(1, 4).toString("ascii"), "PNG");
   assert.equal(awayNeutralMark.subarray(1, 4).toString("ascii"), "PNG");
   assert.equal(paperGrain.subarray(1, 4).toString("ascii"), "PNG");
