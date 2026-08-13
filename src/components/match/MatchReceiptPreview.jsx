@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { MapPin } from "lucide-react";
 import {
   createMatchReceiptViewModel,
@@ -28,6 +29,27 @@ export default function MatchReceiptPreview({
   publicId = "",
   photoGestureHandlers = {},
 }) {
+  const photoElementRef = useRef(null);
+
+  useEffect(() => {
+    const photoElement = photoElementRef.current;
+    if (!photoElement || !photoUrl) return undefined;
+
+    const preventBrowserGesture = (event) => {
+      if (event.cancelable) event.preventDefault();
+    };
+
+    photoElement.addEventListener("touchmove", preventBrowserGesture, { passive: false });
+    photoElement.addEventListener("gesturestart", preventBrowserGesture, { passive: false });
+    photoElement.addEventListener("gesturechange", preventBrowserGesture, { passive: false });
+
+    return () => {
+      photoElement.removeEventListener("touchmove", preventBrowserGesture);
+      photoElement.removeEventListener("gesturestart", preventBrowserGesture);
+      photoElement.removeEventListener("gesturechange", preventBrowserGesture);
+    };
+  }, [photoUrl]);
+
   const model = createMatchReceiptViewModel(draft, { matchUrl, publicId });
   const backgroundUrl = photoUrl || model.defaultPhotoUrl;
   const posterTeams = [
@@ -49,6 +71,7 @@ export default function MatchReceiptPreview({
       aria-label="경기 영수증 미리보기"
     >
       <div
+        ref={photoElementRef}
         className={`match-receipt-photo${photoUrl ? " is-editable" : " is-default"}`}
         aria-label={photoUrl ? "영수증 배경 사진 편집" : undefined}
         {...photoGestureHandlers}

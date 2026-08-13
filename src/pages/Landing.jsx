@@ -37,8 +37,8 @@ function GoogleLoginButton({ auth, compact = false, className = "", variant = "s
       disabled={auth?.authActionPending}
       aria-label="Google로 로그인"
     >
-      <span aria-hidden="true" className="guest-landing-login-long">Google로 로그인</span>
-      {compact ? <span aria-hidden="true" className="guest-landing-login-short">로그인</span> : null}
+      <span aria-hidden="true" className="guest-landing-login-long">별도 가입 없이 Google로 로그인</span>
+      {compact ? <span aria-hidden="true" className="guest-landing-login-short">가입 없이 로그인</span> : null}
     </Button>
   );
 }

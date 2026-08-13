@@ -29,6 +29,7 @@
 
 .match-receipt-editor > section,
 .match-receipt-save-card {
+  min-width: 0; max-width: 100%;
   --ui-panel-padding: 20px;
   --ui-panel-radius: 20px;
 }
@@ -94,19 +95,17 @@
 
 .match-receipt-info-fields .is-wide { grid-column: 1 / -1; }
 
-.match-receipt-info-fields > label { min-width: 0; }
+.match-receipt-info-fields > label {
+  width: 100%; min-width: 0; max-width: 100%; contain: inline-size;
+}
 
 .match-receipt-info-fields input[type="date"] {
-  display: block;
-  box-sizing: border-box;
-  inline-size: 100%;
-  min-inline-size: 0;
-  max-inline-size: 100%;
+  display: block; box-sizing: border-box; overflow: hidden;
+  inline-size: 100%; min-inline-size: 0; max-inline-size: 100%;
 }
 
 .match-receipt-info-fields input[type="date"]::-webkit-date-and-time-value {
-  min-width: 0;
-  text-align: left;
+  min-width: 0; text-align: left;
 }
 
 .match-receipt-venue-control {

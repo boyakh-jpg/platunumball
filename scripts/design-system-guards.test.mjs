@@ -199,6 +199,8 @@ test("앱은 분류 박스 없는 표준 디자인을 사용하고 비교 데모
   assert.match(pageSources.landing, /to="\/app\/guide\/practice"/);
   assert.match(pageSources.landing, /to="\/app\/rankings"/);
   assert.match(pageSources.landing, /className="ui-match-clock-scoreboard"/);
+  assert.match(pageSources.landing, /별도 가입 없이 Google로 로그인/);
+  assert.match(pageSources.landing, /가입 없이 로그인/);
   assert.equal(count(pageSources.landing, "<GoogleLoginButton"), 1);
   assert.doesNotMatch(pageSources.landing, /guest-landing-text-login|guest-landing-account-login/);
   assert.doesNotMatch(pageSources.landing, /Recent games|지금 열려 있는 경기|Team basketball|Season ranking|ui-design-spotlight|landing-stat-grid/);
@@ -1263,6 +1265,9 @@ test("hero inner boards share one readable liquid-glass system", () => {
   assert.match(landingGuestStyles, /@media \(max-width:\s*760px\)[\s\S]*?\.guest-landing-hero\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\);/);
   assert.match(landingGuestStyles, /\.guest-landing-record-flow\s*\{[^}]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\);/);
   assert.match(landingGuestStyles, /\.guest-landing-experience\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1\.15fr\)\s+minmax\(250px,\s*0\.85fr\);/);
+  assert.match(landingGuestStyles, /\.guest-landing-mobile-scoreboard\s*\{[^}]*max-width:\s*100%;[^}]*overflow:\s*hidden;/);
+  assert.match(landingGuestStyles, /@media \(max-width:\s*760px\)[\s\S]*?\.guest-landing-record-flow,[\s\S]*?width:\s*calc\(100% - 24px\);/);
+  assert.match(landingGuestStyles, /@media \(max-width:\s*760px\)[\s\S]*?\.guest-landing-mobile-scoreboard \.ui-match-clock-scoreboard\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*0\.78fr\) minmax\(84px,\s*1\.12fr\) minmax\(0,\s*0\.78fr\);/);
   assert.doesNotMatch(landingGuestStyles, /\.guest-landing-mobile-cta|position:\s*fixed;/);
   assert.equal(count(primitiveStyles, "-webkit-mask-composite: xor;"), 1);
   assert.equal(count(primitiveStyles, "mask-composite: exclude;"), 1);

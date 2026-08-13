@@ -314,6 +314,13 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(page, /onWheel: zoomPhotoWithWheel/);
   assert.match(page, /onDoubleClick: resetPhotoTransform/);
   assert.match(page, /className="match-receipt-photo-tools"/);
+  assert.match(preview, /addEventListener\("touchmove", preventBrowserGesture, \{ passive: false \}\)/);
+  assert.match(preview, /addEventListener\("gesturestart", preventBrowserGesture, \{ passive: false \}\)/);
+  assert.match(preview, /addEventListener\("gesturechange", preventBrowserGesture, \{ passive: false \}\)/);
+  assert.match(styles, /\.match-receipt-info-fields > label\s*\{[^}]*contain:\s*inline-size;/);
+  assert.match(styles, /\.match-receipt-info-fields input\[type="date"\]\s*\{[^}]*min-inline-size:\s*0;[^}]*max-inline-size:\s*100%;/);
+  assert.match(landing, /별도 가입 없이 Google로 로그인/);
+  assert.match(landing, /가입 없이 로그인/);
   assert.match(preview, /model\.hasPersonalStats \? "MY GAME" : "GAME INFO"/);
   assert.match(preview, /match-receipt-personal-stats/);
   assert.match(preview, /neutralTeamMarkUrls\.home/);
