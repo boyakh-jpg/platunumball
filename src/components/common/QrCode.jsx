@@ -9,6 +9,11 @@ function QrGraphic({ qr, label, className = "", branded = false }) {
   const badgeInset = badgeSize * 0.14;
   const badgeX = (qr.size - badgeSize) / 2;
   const badgeY = badgeX;
+  const finderCenterPositions = [
+    [6, 6],
+    [qr.size - 9, 6],
+    [6, qr.size - 9],
+  ];
 
   return (
     <svg
@@ -19,9 +24,12 @@ function QrGraphic({ qr, label, className = "", branded = false }) {
       shapeRendering="crispEdges"
     >
       <rect width={qr.size} height={qr.size} fill={branded ? "#f1e8db" : "#fff"} />
-      <path d={qr.path} fill="#000" />
+      <path d={qr.path} fill="#111" stroke="#111" strokeWidth="0.1" strokeLinejoin="round" />
       {branded ? (
         <g aria-hidden="true">
+          {finderCenterPositions.map(([x, y]) => (
+            <rect key={`${x}-${y}`} x={x} y={y} width="3" height="3" rx="0.45" fill="#d4582b" />
+          ))}
           <rect x={badgeX} y={badgeY} width={badgeSize} height={badgeSize} rx={badgeSize * 0.16} fill="#f1e8db" />
           <rect
             x={badgeX + badgeInset}

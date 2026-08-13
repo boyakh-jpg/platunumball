@@ -100,16 +100,17 @@ function ReceiptPreview({ draft, photoUrl = "", matchUrl = "", photoGestureHandl
         "--receipt-home": model.homeColor,
         "--receipt-away": model.awayColor,
         "--receipt-paper-texture": `url("${model.paperUrl}")`,
-        ...getMatchReceiptPhotoStyle(model),
+        ...getMatchReceiptPhotoStyle(model, undefined, { defaultPhoto: !photoUrl }),
       }}
       aria-label="경기 영수증 미리보기"
     >
       <div
-        className={`match-receipt-photo${photoUrl ? " is-editable" : ""}`}
+        className={`match-receipt-photo${photoUrl ? " is-editable" : " is-default"}`}
         aria-label={photoUrl ? "영수증 배경 사진 편집" : undefined}
         {...photoGestureHandlers}
       >
-        <img src={backgroundUrl} alt="" />
+        {!photoUrl ? <img className="match-receipt-photo-backdrop" src={backgroundUrl} alt="" aria-hidden="true" /> : null}
+        <img className="match-receipt-photo-image" src={backgroundUrl} alt="" />
       </div>
       <header className="match-receipt-poster-head">
         <span className="match-receipt-wordmark">
@@ -125,7 +126,7 @@ function ReceiptPreview({ draft, photoUrl = "", matchUrl = "", photoGestureHandl
         </span>
         <span>{model.serial}</span>
       </header>
-      <div className="match-receipt-verified">★ <i /> {model.verified ? "BOXTIER VERIFIED" : "MATCH RECEIPT"} <i /> ★</div>
+      <div className={`match-receipt-verified${model.verified ? "" : " is-receipt"}`}>★ <i /> {model.verified ? "BOXTIER VERIFIED" : "MATCH RECEIPT"} <i /> ★</div>
       <div className="match-receipt-team-watermarks" aria-hidden="true">
         {posterTeams.map((team, index) => (
           <span key={index}>
@@ -155,7 +156,7 @@ function ReceiptPreview({ draft, photoUrl = "", matchUrl = "", photoGestureHandl
               alt=""
               aria-hidden="true"
             />
-            <span>{model.showTeamTierEmblems && team.tier ? `TEAM TIER · ${team.tier.label}` : index ? "AWAY" : "HOME"}</span>
+            {model.showTeamTierEmblems && team.tier ? <span>{`TEAM TIER · ${team.tier.label}`}</span> : null}
           </div>
         ))}
       </section>

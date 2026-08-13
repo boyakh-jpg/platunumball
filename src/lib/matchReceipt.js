@@ -40,6 +40,7 @@ export const MATCH_RECEIPT_CANVAS_SIZES = Object.freeze({
 });
 
 export const MATCH_RECEIPT_PHOTO_ASPECT = 1080 / 860;
+const MATCH_RECEIPT_DEFAULT_PHOTO_FOCUS = Object.freeze({ x: 0, y: 82 });
 
 export function getMatchReceiptRotationCoverScale(rotation, aspect = MATCH_RECEIPT_PHOTO_ASPECT) {
   const radians = Math.abs(Number(rotation) || 0) * Math.PI / 180;
@@ -49,11 +50,13 @@ export function getMatchReceiptRotationCoverScale(rotation, aspect = MATCH_RECEI
   return Math.max(cosine + sine / safeAspect, cosine + sine * safeAspect);
 }
 
-export function getMatchReceiptPhotoStyle(value, aspect = MATCH_RECEIPT_PHOTO_ASPECT) {
+export function getMatchReceiptPhotoStyle(value, aspect = MATCH_RECEIPT_PHOTO_ASPECT, options = {}) {
   const draft = normalizeMatchReceiptDraft(value);
+  const photoX = options.defaultPhoto ? MATCH_RECEIPT_DEFAULT_PHOTO_FOCUS.x : draft.photoX;
+  const photoY = options.defaultPhoto ? MATCH_RECEIPT_DEFAULT_PHOTO_FOCUS.y : draft.photoY;
   return {
-    "--receipt-photo-position-x": `${50 - draft.photoX / 2}%`,
-    "--receipt-photo-position-y": `${50 - draft.photoY / 2}%`,
+    "--receipt-photo-position-x": `${50 - photoX / 2}%`,
+    "--receipt-photo-position-y": `${50 - photoY / 2}%`,
     "--receipt-photo-scale": getMatchReceiptRotationCoverScale(draft.photoRotation, aspect) * draft.photoZoom,
     "--receipt-photo-rotation": `${draft.photoRotation}deg`,
   };
@@ -81,8 +84,8 @@ const TIER_OUTLINE_EMBLEMS = Object.freeze({
   Legend: "/assets/tier-emblems/tier-legend-outline-v1.png",
 });
 const MATCH_RECEIPT_NEUTRAL_TEAM_MARK_URLS = Object.freeze({
-  home: assetUrl("/assets/tier-emblems/tier-neutral-home-outline-v4.png"),
-  away: assetUrl("/assets/tier-emblems/tier-neutral-away-outline-v4.png"),
+  home: assetUrl("/assets/tier-emblems/tier-neutral-home-outline-v5.png"),
+  away: assetUrl("/assets/tier-emblems/tier-neutral-away-outline-v5.png"),
 });
 const MATCH_RECEIPT_PAPER_URL = assetUrl("/assets/match-receipt-paper-torn-v1.png");
 
@@ -388,7 +391,10 @@ export function getMatchReceiptDraftFromMatch(match = {}, style = {}, court = nu
 export function getMatchReceiptOutcome(value) {
   const draft = normalizeMatchReceiptDraft(value);
   if (draft.homeScore === draft.awayScore) return { key: "draw", label: "DRAW" };
-  return draft.homeScore > draft.awayScore ? { key: "home", label: "HOME WIN" } : { key: "away", label: "AWAY WIN" };
+  const winner = draft.homeScore > draft.awayScore
+    ? { key: "home", name: draft.homeTeam || "HOME TEAM" }
+    : { key: "away", name: draft.awayTeam || "AWAY TEAM" };
+  return { key: winner.key, label: `${winner.name} WIN` };
 }
 
 export function getMatchReceiptCanvasSize(preset = "story") {
@@ -468,20 +474,44 @@ function loadCanvasImage(source) {
   });
 }
 
-function drawCoverPhoto(ctx, image, rect, draft) {
+function drawCoverPhoto(ctx, image, rect, draft, options = {}) {
   const rotation = draft.photoRotation * Math.PI / 180;
   const cover = Math.max(rect.width / image.naturalWidth, rect.height / image.naturalHeight);
   const width = image.naturalWidth * cover;
   const height = image.naturalHeight * cover;
-  const positionX = (100 - draft.photoX) / 200;
-  const positionY = (100 - draft.photoY) / 200;
+  const photoX = options.defaultPhoto ? MATCH_RECEIPT_DEFAULT_PHOTO_FOCUS.x : draft.photoX;
+  const photoY = options.defaultPhoto ? MATCH_RECEIPT_DEFAULT_PHOTO_FOCUS.y : draft.photoY;
+  const positionX = (100 - photoX) / 200;
+  const positionY = (100 - photoY) / 200;
+  const foregroundScale = options.defaultPhoto ? 0.92 : 1;
+  const foregroundWidth = width * foregroundScale;
+  const foregroundHeight = height * foregroundScale;
   const frame = document.createElement("canvas");
   frame.width = rect.width;
   frame.height = rect.height;
   const frameCtx = frame.getContext("2d");
   if (!frameCtx) throw new Error("match_receipt_canvas_unavailable");
+  if (options.defaultPhoto) {
+    const backdropScale = 1.08;
+    const backdropWidth = width * backdropScale;
+    const backdropHeight = height * backdropScale;
+    frameCtx.filter = "blur(16px) brightness(0.62) contrast(1.08) saturate(0.92)";
+    frameCtx.drawImage(
+      image,
+      -(backdropWidth - rect.width) * positionX,
+      -(backdropHeight - rect.height) * positionY,
+      backdropWidth,
+      backdropHeight,
+    );
+  }
   frameCtx.filter = "brightness(0.78) contrast(1.08) saturate(0.92)";
-  frameCtx.drawImage(image, -(width - rect.width) * positionX, -(height - rect.height) * positionY, width, height);
+  frameCtx.drawImage(
+    image,
+    -(foregroundWidth - rect.width) * positionX,
+    -(foregroundHeight - rect.height) * positionY,
+    foregroundWidth,
+    foregroundHeight,
+  );
 
   ctx.save();
   ctx.beginPath();
@@ -501,12 +531,13 @@ function createCanvasPaperPattern(ctx, paper) {
   texture.height = 256;
   const textureCtx = texture.getContext("2d");
   if (!textureCtx) return "#f1e8db";
+  const sourceSize = Math.min(paper.naturalWidth, paper.naturalHeight * 0.36);
   textureCtx.drawImage(
     paper,
-    0,
+    (paper.naturalWidth - sourceSize) / 2,
     paper.naturalHeight * 0.2,
-    paper.naturalWidth,
-    paper.naturalHeight * 0.6,
+    sourceSize,
+    sourceSize,
     0,
     0,
     texture.width,
@@ -548,8 +579,29 @@ function drawQrCode(ctx, value, x, y, size) {
   ctx.fillRect(x, y, actualSize, actualSize);
   ctx.fillStyle = "#111111";
   matrix.forEach((row, rowIndex) => row.forEach((cell, columnIndex) => {
-    if (cell) ctx.fillRect(x + (columnIndex + quietZone) * scale, y + (rowIndex + quietZone) * scale, scale, scale);
+    if (!cell) return;
+    const moduleX = x + (columnIndex + quietZone) * scale;
+    const moduleY = y + (rowIndex + quietZone) * scale;
+    ctx.beginPath();
+    ctx.roundRect(moduleX, moduleY, scale, scale, scale * 0.12);
+    ctx.fill();
   }));
+  ctx.fillStyle = "#d4582b";
+  [
+    [2, 2],
+    [matrix.length - 5, 2],
+    [2, matrix.length - 5],
+  ].forEach(([columnIndex, rowIndex]) => {
+    ctx.beginPath();
+    ctx.roundRect(
+      x + (columnIndex + quietZone) * scale,
+      y + (rowIndex + quietZone) * scale,
+      scale * 3,
+      scale * 3,
+      scale * 0.5,
+    );
+    ctx.fill();
+  });
   const badgeSize = actualSize * 0.14;
   const badgeInset = badgeSize * 0.14;
   const badgeX = x + (actualSize - badgeSize) / 2;
@@ -585,7 +637,7 @@ export async function renderMatchReceiptPng(value, preset = "story", options = {
   await document.fonts?.ready;
   if (document.fonts?.load) {
     await Promise.all([
-      document.fonts.load('900 270px "Anton"'),
+      document.fonts.load('900 270px "Bebas Neue"'),
       document.fonts.load('900 58px "Black Han Sans"'),
     ]);
   }
@@ -606,7 +658,7 @@ export async function renderMatchReceiptPng(value, preset = "story", options = {
 
   ctx.fillStyle = "#111111";
   ctx.fillRect(0, 0, width, height);
-  drawCoverPhoto(ctx, photo, { x: 0, y: 0, width, height: photoHeight }, model);
+  drawCoverPhoto(ctx, photo, { x: 0, y: 0, width, height: photoHeight }, model, { defaultPhoto: !options.photoBlob });
 
   const blurredPhoto = document.createElement("canvas");
   blurredPhoto.width = width;
@@ -647,7 +699,7 @@ export async function renderMatchReceiptPng(value, preset = "story", options = {
 
   const verifiedY = compact ? 440 : 780;
   ctx.strokeStyle = "#f05a2a";
-  ctx.lineWidth = 2;
+  ctx.lineWidth = model.verified ? 2 : 1;
   ctx.beginPath();
   ctx.moveTo(175, verifiedY);
   ctx.lineTo(370, verifiedY);
@@ -656,15 +708,19 @@ export async function renderMatchReceiptPng(value, preset = "story", options = {
   ctx.stroke();
   ctx.fillStyle = "#f05a2a";
   ctx.textAlign = "center";
-  ctx.font = '900 30px "KBO Dia Gothic", sans-serif';
+  ctx.font = model.verified
+    ? '900 30px "KBO Dia Gothic", sans-serif'
+    : '900 30px "Bebas Neue", sans-serif';
+  ctx.letterSpacing = "1px";
   ctx.fillText(model.verified ? "★  BOXTIER VERIFIED  ★" : "★  MATCH RECEIPT  ★", width / 2, verifiedY + 11);
+  ctx.letterSpacing = "0px";
 
   const columns = [270, 810];
   const teams = [
     { name: model.homeTeam || "HOME TEAM", tier: model.homeTier, image: homeTier || homeNeutralTeamMark },
     { name: model.awayTeam || "AWAY TEAM", tier: model.awayTier, image: awayTier || awayNeutralTeamMark },
   ];
-  const teamWatermarkSize = compact ? 360 : 470;
+  const teamWatermarkSize = compact ? 450 : 600;
   const teamWatermarkY = compact ? 510 : 810;
   teams.forEach((team, index) => {
     if (!team.image) return;
@@ -679,26 +735,23 @@ export async function renderMatchReceiptPng(value, preset = "story", options = {
   const scoreTop = verifiedY + 70;
   ctx.save();
   ctx.fillStyle = paperTextPattern;
-  ctx.shadowColor = "rgba(0,0,0,.42)";
-  ctx.shadowBlur = 16;
-  ctx.shadowOffsetY = 4;
-  ctx.font = `900 ${compact ? 142 : 258}px "Anton", "KBO Dia Gothic", sans-serif`;
+  ctx.font = `900 ${compact ? 154 : 278}px "Bebas Neue", "Anton", "KBO Dia Gothic", sans-serif`;
   const scoreBaseline = compact ? scoreTop + 132 : 1086;
   ctx.fillText(String(model.homeScore), columns[0], scoreBaseline);
   ctx.fillText(String(model.awayScore), columns[1], scoreBaseline);
   ctx.fillText(":", width / 2, scoreBaseline);
   ctx.restore();
   ctx.fillStyle = "#f05a2a";
-  ctx.font = `300 ${compact ? 31 : 36}px "Pretendard Variable", sans-serif`;
-  ctx.letterSpacing = compact ? "4px" : "5px";
+  ctx.font = `900 ${compact ? 31 : 36}px "Bebas Neue", sans-serif`;
+  ctx.letterSpacing = compact ? "0.8px" : "1.2px";
   ctx.fillText(model.matchNatureLabel, width / 2, scoreTop + (compact ? 7 : 17));
   ctx.letterSpacing = "0px";
 
   const teamTop = compact ? 779 : 1113;
   const teamFontSize = compact ? 40 : 52;
-  const teamTierY = compact ? 840 : 1248;
-  const teamTierSize = compact ? 124 : 174;
-  const teamLabelY = compact ? 990 : 1458;
+  const teamTierY = compact ? 834 : 1234;
+  const teamTierSize = compact ? 152 : 218;
+  const teamLabelY = compact ? 994 : 1462;
   teams.forEach((team, index) => {
     ctx.textAlign = "center";
     ctx.font = `900 ${teamFontSize}px "Black Han Sans", "KBO Dia Gothic", sans-serif`;
@@ -707,7 +760,11 @@ export async function renderMatchReceiptPng(value, preset = "story", options = {
     const teamLineHeight = teamFontSize * 1.04;
     const teamTextTop = teamTop + (2 - teamLines.length) * teamLineHeight / 2;
     teamLines.forEach((line, lineIndex) => {
-      ctx.fillText(line, columns[index], teamTextTop + teamFontSize + lineIndex * teamLineHeight);
+      ctx.save();
+      ctx.translate(columns[index], 0);
+      ctx.scale(0.92, 1);
+      ctx.fillText(line, 0, teamTextTop + teamFontSize + lineIndex * teamLineHeight);
+      ctx.restore();
     });
     if (team.image) {
       ctx.save();
@@ -715,13 +772,11 @@ export async function renderMatchReceiptPng(value, preset = "story", options = {
       ctx.drawImage(team.image, columns[index] - teamTierSize / 2, teamTierY, teamTierSize, teamTierSize);
       ctx.restore();
     }
-    ctx.fillStyle = "#c69a4b";
-    ctx.font = '900 23px "KBO Dia Gothic", sans-serif';
-    ctx.fillText(
-      model.showTeamTierEmblems && team.tier ? `TEAM TIER · ${team.tier.label}` : index ? "AWAY" : "HOME",
-      columns[index],
-      teamLabelY,
-    );
+    if (model.showTeamTierEmblems && team.tier) {
+      ctx.fillStyle = "#c69a4b";
+      ctx.font = '900 23px "KBO Dia Gothic", sans-serif';
+      ctx.fillText(`TEAM TIER · ${team.tier.label}`, columns[index], teamLabelY);
+    }
   });
   ctx.strokeStyle = "rgba(240,90,42,.7)";
   ctx.setLineDash([4, 8]);
@@ -779,7 +834,7 @@ export async function renderMatchReceiptPng(value, preset = "story", options = {
   if (personalTier) {
     const tierSize = compact ? 158 : 208;
     ctx.save();
-    ctx.globalAlpha = 0.48;
+    ctx.globalAlpha = 0.64;
     ctx.drawImage(personalTier, footerMiddleX - tierSize / 2, footerY - 12, tierSize, tierSize);
     ctx.restore();
   }
@@ -824,8 +879,8 @@ export async function renderMatchReceiptPng(value, preset = "story", options = {
   }
 
   if (personalTier) {
-    ctx.fillStyle = "#8f6032";
-    ctx.font = `900 ${compact ? 15 : 18}px "KBO Dia Gothic", sans-serif`;
+    ctx.fillStyle = "#71451f";
+    ctx.font = `900 ${compact ? 17 : 20}px "KBO Dia Gothic", sans-serif`;
     ctx.fillText(`MY TIER · ${model.personalTier.label}`, footerMiddleX, footerY + (compact ? 153 : 225), 250);
   }
 

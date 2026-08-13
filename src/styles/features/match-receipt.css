@@ -259,18 +259,26 @@
   background: linear-gradient(180deg, rgba(0, 0, 0, 0.08) 50%, rgba(0, 0, 0, 0.16) 64%, rgba(0, 0, 0, 0.62) 84%, #101110 100%);
 }
 
-.match-receipt-photo img {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+.match-receipt-photo-image,
+.match-receipt-photo-backdrop {
+  position: absolute; top: 50%; left: 50%;
+  width: 100%; height: 100%; object-fit: cover;
   object-position: var(--receipt-photo-position-x) var(--receipt-photo-position-y);
+  user-select: none; pointer-events: none;
+}
+
+.match-receipt-photo-image {
   transform: translate(-50%, -50%) rotate(var(--receipt-photo-rotation)) scale(var(--receipt-photo-scale));
   filter: brightness(0.78) contrast(1.08) saturate(0.92);
-  user-select: none;
-  pointer-events: none;
+}
+
+.match-receipt-photo-backdrop {
+  transform: translate(-50%, -50%) rotate(var(--receipt-photo-rotation)) scale(calc(var(--receipt-photo-scale) * 1.08));
+  filter: blur(12px) brightness(0.62) contrast(1.08) saturate(0.92);
+}
+
+.match-receipt-photo.is-default .match-receipt-photo-image {
+  transform: translate(-50%, -50%) rotate(var(--receipt-photo-rotation)) scale(calc(var(--receipt-photo-scale) * 0.92));
 }
 
 .match-receipt-poster-head {
@@ -341,29 +349,28 @@
   background: currentColor;
 }
 
+.match-receipt-verified.is-receipt {
+  font-family: "Bebas Neue", sans-serif; font-weight: 900; letter-spacing: 0.025em;
+}
+.match-receipt-verified.is-receipt i { height: 0.5px; }
 .match-receipt-team-watermarks {
   position: absolute; z-index: 1; inset: 44.5% 0 auto;
   display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
   height: 27%; overflow: hidden; pointer-events: none;
 }
 
-.match-receipt-team-watermarks > span {
-  position: relative; min-width: 0; overflow: hidden;
-}
+.match-receipt-team-watermarks > span { position: relative; min-width: 0; overflow: hidden; }
 
 .match-receipt-team-watermarks img {
   position: absolute; top: 5%; display: block;
-  width: 94%; aspect-ratio: 1; object-fit: contain; opacity: 0.24;
+  width: 118%; aspect-ratio: 1; object-fit: contain; opacity: 0.24;
   filter: grayscale(1) sepia(0.55) brightness(0.48);
 }
 
-.match-receipt-team-watermarks span:first-child img { left: -30% }
+.match-receipt-team-watermarks span:first-child img { left: -41% }
+.match-receipt-team-watermarks span:last-child img { right: -41% }
 
-.match-receipt-team-watermarks span:last-child img { right: -30% }
-
-.match-receipt-team-watermarks img.is-neutral {
-  opacity: 0.2
-}
+.match-receipt-team-watermarks img.is-neutral { opacity: 0.2 }
 
 .match-receipt-poster-score {
   position: absolute;
@@ -373,12 +380,8 @@
 }
 
 .match-receipt-poster-score > span {
-  color: var(--receipt-orange);
-  font-family: var(--font-body);
-  font-size: clamp(10px, 3.3cqw, 16px);
-  font-weight: 600;
-  font-variation-settings: "wght" 300;
-  letter-spacing: 0.14em;
+  color: var(--receipt-orange); font-family: "Bebas Neue", sans-serif;
+  font-size: clamp(10px, 3.3cqw, 16px); font-weight: 900; letter-spacing: 0.025em;
 }
 
 .match-receipt-poster-score > div {
@@ -394,7 +397,7 @@
 .match-receipt-poster-score strong,
 .match-receipt-poster-score > div > span,
 .match-receipt-poster-teams strong {
-  background: var(--receipt-paper-texture) center / auto 185% repeat-x;
+  background: var(--receipt-paper-texture) center / auto 240% repeat-x;
   background-clip: text;
   color: transparent;
   -webkit-background-clip: text;
@@ -403,11 +406,8 @@
 
 .match-receipt-poster-score strong {
   overflow: hidden;
-  font-family: "Anton", "KBO Dia Gothic", sans-serif;
-  font-size: clamp(66px, 23.8cqw, 114px);
-  font-weight: 900;
-  letter-spacing: -0.035em;
-  text-shadow: 0 4px 16px rgba(0, 0, 0, 0.42);
+  font-family: "Bebas Neue", "Anton", "KBO Dia Gothic", sans-serif;
+  font-size: clamp(72px, 26cqw, 125px); font-weight: 900; letter-spacing: 0.005em;
 }
 
 .match-receipt-poster-score > div > span {
@@ -443,6 +443,7 @@
   font-size: clamp(12px, 4.8cqw, 23px);
   font-weight: 900;
   line-height: 1.08;
+  transform: scaleX(0.92);
   -webkit-box-orient: vertical; -webkit-box-pack: center; -webkit-line-clamp: 2;
 }
 
@@ -451,7 +452,7 @@
   top: 39%;
   left: 50%;
   display: block;
-  width: 38%;
+  width: 50%;
   aspect-ratio: 1;
   margin: 0;
   object-fit: contain;
@@ -591,14 +592,13 @@
 }
 
 .match-receipt-personal-tier {
-  display: block; width: 84%; height: 100%; min-height: 0;
-  object-fit: contain; opacity: 0.48; filter: contrast(1.15) saturate(1.08);
+  display: block; width: 88%; height: 100%; min-height: 0;
+  object-fit: contain; opacity: 0.64; filter: contrast(1.15) saturate(1.08);
 }
 
 .match-receipt-personal-tier-label {
-  display: block;
-  max-width: 100%; overflow: hidden; color: #8f6032;
-  font-size: clamp(5px, 1.65cqw, 8px); font-weight: 900;
+  display: block; max-width: 100%; overflow: hidden; color: #71451f;
+  font-size: clamp(6px, 1.9cqw, 9px); font-weight: 900;
   letter-spacing: 0.04em; line-height: 1; text-overflow: ellipsis; white-space: nowrap;
 }
 
@@ -623,8 +623,8 @@
 .match-receipt-ticket-qr { gap: 5%; }
 
 .match-receipt-ticket-qr .match-receipt-qr {
-  width: 60%;
-  max-height: 68%;
+  width: 60%; max-height: 68%; border-radius: 3%;
+  box-shadow: inset 0 0 0 var(--ui-stroke-width) rgba(32, 25, 21, 0.28), 0 1px 0 rgba(255, 255, 255, 0.36);
 }
 
 .match-receipt-locked-note {

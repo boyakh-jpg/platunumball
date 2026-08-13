@@ -75,15 +75,16 @@ test("receipt ownership capability is secret, hashed, and cookie-scoped", () => 
 });
 
 test("receipt photo editing stays in the preview and reference dividers remain", async () => {
-  const [page, qrComponent, styles, tokens, renderer, homeNeutralMark, awayNeutralMark, anton, blackHanSans] = await Promise.all([
+  const [page, qrComponent, styles, tokens, renderer, homeNeutralMark, awayNeutralMark, bebasNeue, bebasLicense, blackHanSans] = await Promise.all([
     readFile(new URL("../src/pages/MatchReceipt.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/components/common/QrCode.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/styles/features/match-receipt.css", import.meta.url), "utf8"),
     readFile(new URL("../src/styles/tokens.css", import.meta.url), "utf8"),
     readFile(new URL("../src/lib/matchReceipt.js", import.meta.url), "utf8"),
-    readFile(new URL("../public/assets/tier-emblems/tier-neutral-home-outline-v4.png", import.meta.url)),
-    readFile(new URL("../public/assets/tier-emblems/tier-neutral-away-outline-v4.png", import.meta.url)),
-    readFile(new URL("../public/assets/fonts/Anton-Regular.ttf", import.meta.url)),
+    readFile(new URL("../public/assets/tier-emblems/tier-neutral-home-outline-v5.png", import.meta.url)),
+    readFile(new URL("../public/assets/tier-emblems/tier-neutral-away-outline-v5.png", import.meta.url)),
+    readFile(new URL("../public/assets/fonts/BebasNeue-Regular.ttf", import.meta.url)),
+    readFile(new URL("../public/assets/fonts/BebasNeue-OFL.txt", import.meta.url), "utf8"),
     readFile(new URL("../public/assets/fonts/BlackHanSans-Regular.ttf", import.meta.url)),
   ]);
 
@@ -110,47 +111,64 @@ test("receipt photo editing stays in the preview and reference dividers remain",
   assert.match(page, /normalizeMatchReceiptDraft\(\{ \.\.\.current, venue, address \}\)/);
   assert.match(page, /model\.comment \|\| "내 경기 기록"/);
   assert.match(page, /className="match-receipt-qr" branded/);
+  assert.match(page, /match-receipt-photo-backdrop/);
+  assert.doesNotMatch(page, /index \? "AWAY" : "HOME"/);
   assert.match(page, /maxLength=\{MATCH_RECEIPT_LIMITS\.comment\} disabled=\{readOnlyReceipt\}/);
   assert.doesNotMatch(page, /match-receipt-color-input/);
   assert.match(qrComponent, /branded \? "#f1e8db" : "#fff"/);
+  assert.match(qrComponent, /finderCenterPositions/);
   assert.match(qrComponent, />\s*B\s*<\/text>/);
   assert.match(styles, /\.match-receipt-photo\.is-editable[\s\S]*touch-action: none/);
-  assert.match(styles, /\.match-receipt-poster-score > span[\s\S]*font-variation-settings: "wght" 300/);
+  assert.match(styles, /\.match-receipt-poster-score > span[\s\S]*font-family: "Bebas Neue"/);
   assert.match(styles, /font-size: clamp\(10px, 3\.3cqw, 16px\)/);
+  assert.match(styles, /\.match-receipt-verified\.is-receipt[\s\S]*font-family: "Bebas Neue"/);
   assert.match(styles, /background: var\(--receipt-paper-texture\)/);
-  assert.match(styles, /font-family: "Anton", "KBO Dia Gothic", sans-serif/);
+  assert.match(styles, /auto 240% repeat-x/);
+  assert.doesNotMatch(styles, /text-shadow: 0 4px 16px rgba\(0, 0, 0, 0\.42\)/);
+  assert.match(styles, /font-family: "Bebas Neue", "Anton", "KBO Dia Gothic", sans-serif/);
   assert.match(styles, /font-family: "Black Han Sans", "KBO Dia Gothic", sans-serif/);
+  assert.match(styles, /transform: scaleX\(0\.92\)/);
+  assert.match(styles, /scale\(calc\(var\(--receipt-photo-scale\) \* 0\.92\)\)/);
   assert.match(styles, /\.match-receipt-team-watermarks[\s\S]*height: 27%/);
-  assert.match(styles, /\.match-receipt-team-tier[\s\S]*width: 38%/);
+  assert.match(styles, /\.match-receipt-team-tier[\s\S]*width: 50%/);
   assert.match(styles, /inset: auto 3\.1% 1\.8%/);
   assert.match(styles, /height: 19\.9%/);
   assert.match(styles, /\.match-receipt-team-tier\.is-neutral[\s\S]*opacity: 0\.9/);
-  assert.match(styles, /\.match-receipt-personal-tier[\s\S]*opacity: 0\.48/);
+  assert.match(styles, /\.match-receipt-personal-tier[\s\S]*opacity: 0\.64/);
   assert.match(styles, /\.match-receipt-ticket-date[\s\S]*border-top/);
   assert.match(styles, /\.match-receipt-personal-stats b \+ b[\s\S]*border-left/);
   assert.match(renderer, /const receiptTop = compact \? 1010 : 1504/);
-  assert.match(renderer, /compact \? 142 : 258/);
-  assert.match(renderer, /const teamWatermarkSize = compact \? 360 : 470/);
-  assert.match(renderer, /const teamTierSize = compact \? 124 : 174/);
+  assert.match(renderer, /paper\.naturalHeight \* 0\.36/);
+  assert.doesNotMatch(renderer, /ctx\.shadowColor = "rgba\(0,0,0,\.42\)"/);
+  assert.match(renderer, /compact \? 154 : 278/);
+  assert.match(renderer, /const teamWatermarkSize = compact \? 450 : 600/);
+  assert.match(renderer, /const teamTierSize = compact \? 152 : 218/);
+  assert.match(renderer, /defaultPhoto: !options\.photoBlob/);
+  assert.match(renderer, /MATCH_RECEIPT_DEFAULT_PHOTO_FOCUS = Object\.freeze\(\{ x: 0, y: 82 \}\)/);
+  assert.match(renderer, /const foregroundScale = options\.defaultPhoto \? 0\.92 : 1/);
   assert.match(renderer, /const footerLeftDivider = compact \? 386 : 414/);
   assert.match(renderer, /ctx\.moveTo\(footerMiddleX, footerY \+ \(compact \? 30 : 70\)\)/);
   assert.match(renderer, /createCanvasPaperPattern/);
   assert.match(renderer, /wrapCanvasText/);
-  assert.match(renderer, /tier-neutral-home-outline-v4\.png/);
-  assert.match(renderer, /tier-neutral-away-outline-v4\.png/);
+  assert.match(renderer, /tier-neutral-home-outline-v5\.png/);
+  assert.match(renderer, /tier-neutral-away-outline-v5\.png/);
   assert.match(renderer, /getTierDivisionNumber/);
   assert.match(renderer, /`\$\{tier\.name\}\$\{division \? ` \$\{division\}` : ""\}`\.toUpperCase\(\)/);
   assert.match(renderer, /rankball-record-create-night-v5\.webp/);
-  assert.match(renderer, /document\.fonts\.load\('900 270px "Anton"'\)/);
+  assert.match(renderer, /document\.fonts\.load\('900 270px "Bebas Neue"'\)/);
   assert.match(renderer, /document\.fonts\.load\('900 58px "Black Han Sans"'\)/);
   assert.match(renderer, /TEAM TIER · \$\{team\.tier\.label\}/);
+  assert.doesNotMatch(renderer, /index \? "AWAY" : "HOME"/);
+  assert.match(renderer, /label: `\$\{winner\.name\} WIN`/);
   assert.match(renderer, /MY TIER · \$\{model\.personalTier\.label\}/);
   assert.match(renderer, /const badgeSize = actualSize \* 0\.14/);
   assert.match(renderer, /model\.comment \|\| "내 경기 기록"/);
   assert.equal(homeNeutralMark.subarray(1, 4).toString("ascii"), "PNG");
   assert.equal(awayNeutralMark.subarray(1, 4).toString("ascii"), "PNG");
-  assert.match(tokens, /font-family: "Anton"/);
+  assert.match(tokens, /font-family: "Bebas Neue"/);
+  assert.match(tokens, /BebasNeue-Regular\.ttf/);
   assert.match(tokens, /font-family: "Black Han Sans"/);
-  assert.ok(anton.length > 100_000);
+  assert.ok(bebasNeue.length > 50_000);
+  assert.match(bebasLicense, /SIL OPEN FONT LICENSE Version 1\.1/);
   assert.ok(blackHanSans.length > 500_000);
 });
