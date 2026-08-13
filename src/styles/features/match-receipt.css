@@ -364,22 +364,16 @@
   justify-content: center;
   gap: 3%;
   color: var(--receipt-orange);
+  font-family: "Bebas Neue", sans-serif;
   font-size: clamp(8px, 3.1cqw, 15px);
   font-weight: 900;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.025em;
   white-space: nowrap;
 }
 
 .match-receipt-verified i {
-  width: 20%;
-  height: 1px;
-  background: currentColor;
+  width: 20%; height: 0.5px; background: currentColor;
 }
-
-.match-receipt-verified.is-receipt {
-  font-family: "Bebas Neue", sans-serif; font-weight: 900; letter-spacing: 0.025em;
-}
-.match-receipt-verified.is-receipt i { height: 0.5px; }
 .match-receipt-team-watermarks {
   position: absolute; z-index: 1; inset: 44.5% 0 auto;
   display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -561,6 +555,8 @@
   -webkit-line-clamp: 2;
 }
 
+.match-receipt-ticket-place strong { -webkit-line-clamp: 3; }
+
 .match-receipt-ticket-place > span,
 .match-receipt-ticket-game > strong,
 .match-receipt-ticket-qr strong {
@@ -666,9 +662,13 @@
   font-size: clamp(6px, 2.1cqw, 10px);
   font-weight: 900;
   line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .match-receipt-ticket-qr { gap: 5%; }
+
+.match-receipt-ticket-qr > a { display: grid; width: 100%; min-height: 0; place-items: center; }
 
 .match-receipt-ticket-qr .match-receipt-qr {
   width: 62%; max-height: 70%; overflow: visible;

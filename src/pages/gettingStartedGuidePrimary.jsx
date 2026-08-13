@@ -60,7 +60,7 @@ export const GUIDE_CHAPTERS = [
     },
     actions: [
       { to: "/app/guide/practice", label: "연습 경기 시작", Icon: FlaskConical, primary: true },
-      { to: "/app/create?intent=record", label: "경기 기록하기", Icon: ClipboardCheck },
+      { to: "/app/create?intent=record", label: "기록하기", Icon: ClipboardCheck },
     ],
   },
   {
@@ -106,7 +106,7 @@ export const GUIDE_CHAPTERS = [
       Icon: CheckCircle2,
     },
     actions: [
-      { to: "/app/create", label: "매칭 만들기", Icon: Swords, primary: true },
+      { to: "/app/create", label: "방 만들기", Icon: Swords, primary: true },
       { to: "/app/recruiting", label: "매칭 보기", Icon: ArrowRight },
     ],
   },
@@ -251,7 +251,7 @@ export const GUIDE_CHAPTERS = [
       Icon: BookOpenCheck,
     },
     actions: [
-      { to: "/app/create?intent=record", label: "경기 기록", Icon: ClipboardCheck, primary: true },
+      { to: "/app/create?intent=record", label: "기록하기", Icon: ClipboardCheck, primary: true },
       { to: "/app/recorder", label: "기록 보기", Icon: ArrowRight },
     ],
   },

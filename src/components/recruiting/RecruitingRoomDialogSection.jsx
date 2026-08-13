@@ -182,7 +182,7 @@ export function RecruitingRoomDialogSection({ context }) {
                     variant="primary"
                     onClick={() => navigate(`/app/receipt?match=${encodeURIComponent(sourceMatch.id)}`)}
                   >
-                    경기 영수증 만들기
+                    영수증 발급
                   </Button>
                 ) : null}
                 <Button

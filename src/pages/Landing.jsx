@@ -166,7 +166,7 @@ export default function Landing({ state, authenticated = false }) {
                     <strong>첫 매칭을 직접 열어보세요.</strong>
                     <small><MapPin size={14} /> 구장과 시간을 선택할 수 있습니다.</small>
                   </span>
-                  <span className="ui-design-availability">매칭 만들기</span>
+                  <span className="ui-design-availability">방 만들기</span>
                   <ChevronRight size={18} />
                 </Link>
               )}

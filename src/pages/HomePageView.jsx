@@ -43,9 +43,9 @@ function GuestHomePage() {
       <Card className="home-search-panel rank-search-card">
         <SearchPicker value={query} onChange={setQuery} placeholder="선수명, 팀명, 해시태그를 바로 검색" items={[]} remoteSearchType={["profile", "team"]} remoteSearchPublic mapRemoteItem={mapGuestSearchItem} renderItem={renderGuestSearchItem} floating fieldClassName="home-search-box" resultsClassName="home-global-search-results" />
         <div className="home-search-actions">
-          <Button as={Link} to="/app/create" className="home-search-create ui-button-block"><PlusCircle size={18} /> 매칭 만들기</Button>
-          <Button as={Link} to="/app/create?intent=record" variant="secondary" className="home-search-create ui-button-block"><ClipboardCheck size={18} /> 경기 기록하기</Button>
-          <Button as={Link} to="/app/receipt" variant="secondary" className="home-search-create ui-button-block"><ReceiptText size={18} /> 경기 영수증 만들기</Button>
+          <Button as={Link} to="/app/create" className="home-search-create ui-button-block"><PlusCircle size={18} /> 방 만들기</Button>
+          <Button as={Link} to="/app/create?intent=record" variant="secondary" className="home-search-create ui-button-block"><ClipboardCheck size={18} /> 기록하기</Button>
+          <Button as={Link} to="/app/receipt" variant="secondary" className="home-search-create ui-button-block"><ReceiptText size={18} /> 영수증 발급</Button>
         </div>
       </Card>
 
@@ -131,9 +131,9 @@ export default function HomePageView({
           resultsClassName="home-global-search-results"
         />
         <div className="home-search-actions">
-          <Button as={Link} to="/app/create" className="home-search-create ui-button-block"><PlusCircle size={18} /> 매칭 만들기</Button>
-          <Button as={Link} to="/app/create?intent=record" variant="secondary" className="home-search-create ui-button-block"><ClipboardCheck size={18} /> 경기 기록하기</Button>
-          <Button as={Link} to="/app/receipt" variant="secondary" className="home-search-create ui-button-block"><ReceiptText size={18} /> 경기 영수증 만들기</Button>
+          <Button as={Link} to="/app/create" className="home-search-create ui-button-block"><PlusCircle size={18} /> 방 만들기</Button>
+          <Button as={Link} to="/app/create?intent=record" variant="secondary" className="home-search-create ui-button-block"><ClipboardCheck size={18} /> 기록하기</Button>
+          <Button as={Link} to="/app/receipt" variant="secondary" className="home-search-create ui-button-block"><ReceiptText size={18} /> 영수증 발급</Button>
         </div>
       </Card>
 

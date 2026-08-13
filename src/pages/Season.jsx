@@ -183,8 +183,8 @@ export default function Season({ app }) {
           <span><strong>{activity.primaryMode}</strong>주 플레이</span>
         </div>
         <div className="ui-action-row">
-          <Button as={Link} to="/app/create"><Swords size={18} /> 매칭 만들기</Button>
-          <Button as={Link} to="/app/create?intent=record" variant="secondary"><ClipboardCheck size={18} /> 경기 기록하기</Button>
+          <Button as={Link} to="/app/create"><Swords size={18} /> 방 만들기</Button>
+          <Button as={Link} to="/app/create?intent=record" variant="secondary"><ClipboardCheck size={18} /> 기록하기</Button>
         </div>
       </Card>
 
@@ -341,10 +341,10 @@ export default function Season({ app }) {
                   state={{ challengeTeamAId: myTeam.id, challengeTeamBId: opponentTeam.id }}
                   size="sm"
                 >
-                  매칭 만들기 <ArrowRight size={16} />
+                  방 만들기 <ArrowRight size={16} />
                 </Button>
                 <Button as={Link} to="/app/create?intent=record" variant="secondary" size="sm">
-                  경기 기록하기 <ClipboardCheck size={16} />
+                  기록하기 <ClipboardCheck size={16} />
                 </Button>
               </div>
             </article>

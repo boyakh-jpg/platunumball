@@ -57,8 +57,8 @@ function ClassicLandingPreview() {
           <Badge tone="green">Season Zero</Badge>
           <div className="landing-actions">
             <div className="landing-primary-actions">
-              <Button type="button" className="landing-create-action">매칭 만들기</Button>
-              <Button type="button" variant="secondary" className="landing-create-action">경기 기록하기</Button>
+              <Button type="button" className="landing-create-action">방 만들기</Button>
+              <Button type="button" variant="secondary" className="landing-create-action">기록하기</Button>
             </div>
           </div>
           <div className="landing-stat-grid">

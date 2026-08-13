@@ -4,6 +4,7 @@ export const RECEIPT_CAPABILITY_COOKIE = "boxtier_receipt_capability";
 export const RECEIPT_DRAFT_TTL_SECONDS = 30 * 24 * 60 * 60;
 
 const TEXT_LIMITS = Object.freeze({
+  serialSeed: 96,
   homeTeam: 24,
   awayTeam: 24,
   playedOn: 10,
@@ -12,7 +13,7 @@ const TEXT_LIMITS = Object.freeze({
   originalAddress: 96,
   format: 5,
   matchNature: 11,
-  comment: 60,
+  comment: 10,
 });
 
 function cleanText(value, maxLength) {
@@ -38,12 +39,18 @@ function cleanColor(value, fallback) {
   return /^#[0-9a-f]{6}$/i.test(String(value ?? "")) ? String(value).toLowerCase() : fallback;
 }
 
+function cleanSerialSeed(value) {
+  const seed = cleanText(value, TEXT_LIMITS.serialSeed);
+  return /^[A-Za-z0-9:_-]{8,96}$/.test(seed) ? seed : randomBytes(16).toString("hex");
+}
+
 export function sanitizeReceiptDraftPayload(value = {}) {
   const format = ["3v3", "5v5", "other"].includes(value.format) ? value.format : "3v3";
   const matchNature = ["friendly", "competitive", "revenge", "semifinal", "final"].includes(value.matchNature)
     ? value.matchNature
     : "competitive";
   return {
+    serialSeed: cleanSerialSeed(value.serialSeed),
     homeTeam: cleanText(value.homeTeam, TEXT_LIMITS.homeTeam),
     awayTeam: cleanText(value.awayTeam, TEXT_LIMITS.awayTeam),
     homeScore: Math.round(cleanNumber(value.homeScore, 0, 999)),

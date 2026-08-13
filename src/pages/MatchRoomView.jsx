@@ -84,7 +84,7 @@ return (
         </div>
         {match.result ? (
           <Button as={Link} to={`/app/receipt?match=${encodeURIComponent(match.id)}`} variant="secondary" className="gm-receipt-action">
-            <ReceiptText size={17} /> 경기 영수증 만들기
+            <ReceiptText size={17} /> 영수증 발급
           </Button>
         ) : null}
       </section>

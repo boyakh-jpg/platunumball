@@ -57,8 +57,8 @@ return (
             <span><strong>{displayScheduledCount}</strong>SOON</span>
           </div>
           <div className="om-match-actions">
-            <Button as={Link} to="/app/create" className="ui-button-block"><PlusCircle size={18} /> 매칭 만들기</Button>
-            <Button as={Link} to="/app/create?intent=record" variant="secondary" className="ui-button-block"><ClipboardCheck size={18} /> 경기 기록하기</Button>
+            <Button as={Link} to="/app/create" className="ui-button-block"><PlusCircle size={18} /> 방 만들기</Button>
+            <Button as={Link} to="/app/create?intent=record" variant="secondary" className="ui-button-block"><ClipboardCheck size={18} /> 기록하기</Button>
           </div>
         </div>
       </section>

@@ -2,8 +2,12 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import {
+  createDefaultMatchReceiptDraft,
   createMatchReceiptViewModel,
+  getMatchReceiptDraftFromMatch,
   getMatchReceiptFormatLabel,
+  normalizeMatchReceiptDraft,
+  renewMatchReceiptDraft,
 } from "../src/lib/matchReceipt.js";
 import {
   createReceiptCapability,
@@ -58,7 +62,7 @@ test("public receipt draft rejects unknown match nature", () => {
   assert.equal(sanitizeReceiptDraftPayload({ matchNature: "championship" }).matchNature, "competitive");
 });
 
-test("receipt view model uses compact game labels, address fallback, and a safe hashtag", () => {
+test("receipt view model uses compact game labels, venue fallback, and a safe hashtag", () => {
   const draft = {
     playedOn: "2026-08-11",
     homeTeam: "HOME",
@@ -66,6 +70,7 @@ test("receipt view model uses compact game labels, address fallback, and a safe 
     homeScore: 60,
     awayScore: 46,
     address: "마포구",
+    venue: "망원한강공원 농구장",
     originalAddress: "서울특별시 마포구 망원동",
   };
   const model = createMatchReceiptViewModel(draft, { publicId: "public-receipt-id" });
@@ -73,10 +78,28 @@ test("receipt view model uses compact game labels, address fallback, and a safe 
   assert.equal(getMatchReceiptFormatLabel("3v3"), "3v3");
   assert.equal(getMatchReceiptFormatLabel("5v5"), "5v5");
   assert.equal(getMatchReceiptFormatLabel("other"), "OTHER");
-  assert.equal(model.displayAddress, "마포구");
-  assert.equal(createMatchReceiptViewModel({ ...draft, address: "" }).displayAddress, draft.originalAddress);
+  assert.equal(model.locationLabel, "마포구");
+  assert.equal(createMatchReceiptViewModel({ ...draft, address: "" }).locationLabel, draft.venue);
+  assert.notEqual(createMatchReceiptViewModel({ ...draft, address: "" }).locationLabel, draft.originalAddress);
   assert.match(model.serial, /^#BT-[A-Z0-9]{6}$/);
   assert.equal(model.serial.includes("public-receipt-id"), false);
+});
+
+test("receipt serial stays stable until a new receipt is explicitly started", () => {
+  const draft = createDefaultMatchReceiptDraft();
+  const edited = normalizeMatchReceiptDraft({ ...draft, homeTeam: "EDITED", homeScore: 99 });
+  const renewed = renewMatchReceiptDraft(edited);
+  const match = { id: "match-123", home_team_name: "HOME", away_team_name: "AWAY" };
+  const canonicalA = getMatchReceiptDraftFromMatch(match);
+  const canonicalB = getMatchReceiptDraftFromMatch({ ...match, home_team_name: "CHANGED" });
+
+  assert.equal(edited.serialSeed, draft.serialSeed);
+  assert.equal(createMatchReceiptViewModel(edited).serial, createMatchReceiptViewModel(draft).serial);
+  assert.notEqual(renewed.serialSeed, edited.serialSeed);
+  assert.notEqual(createMatchReceiptViewModel(renewed).serial, createMatchReceiptViewModel(edited).serial);
+  assert.equal(canonicalA.serialSeed, "match:match-123");
+  assert.equal(canonicalB.serialSeed, canonicalA.serialSeed);
+  assert.equal(createMatchReceiptViewModel(canonicalA).serial, createMatchReceiptViewModel(canonicalB).serial);
 });
 
 test("receipt ownership capability is secret, hashed, and cookie-scoped", () => {
@@ -155,11 +178,12 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(page, /직접 입력 또는 지도에서 선택/);
   assert.match(page, /RECEIPT_TEXT_FIELDS\.has\(name\)/);
   assert.match(page, /normalizeMatchReceiptDraft\(\{ \.\.\.current, venue, address, originalAddress \}\)/);
-  assert.match(page, /model\.comment \|\| "내 경기 기록"/);
+  assert.match(page, /\{model\.comment \? <span/);
+  assert.doesNotMatch(page, /model\.comment \|\| "내 경기 기록"/);
   assert.match(page, /className="match-receipt-qr" branded/);
   assert.match(page, /match-receipt-photo-backdrop/);
   assert.doesNotMatch(page, /index \? "AWAY" : "HOME"/);
-  assert.match(page, /maxLength=\{MATCH_RECEIPT_LIMITS\.comment\} disabled=\{readOnlyReceipt\}/);
+  assert.match(page, /maxLength=\{MATCH_RECEIPT_LIMITS\.comment\} disabled=\{isFieldReadOnly\("comment"\)\}/);
   assert.doesNotMatch(page, /match-receipt-color-input/);
   assert.match(qrComponent, /branded \? null : <rect/);
   assert.match(qrComponent, /qr\.matrix\.flatMap/);
@@ -173,7 +197,8 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(styles, /\.match-receipt-game-info/);
   assert.match(styles, /\.match-receipt-poster-score > span[\s\S]*font-family: "Bebas Neue"/);
   assert.match(styles, /font-size: clamp\(10px, 3\.3cqw, 16px\)/);
-  assert.match(styles, /\.match-receipt-verified\.is-receipt[\s\S]*font-family: "Bebas Neue"/);
+  assert.match(styles, /\.match-receipt-verified[\s\S]*font-family: "Bebas Neue"/);
+  assert.doesNotMatch(styles, /\.match-receipt-verified\.is-receipt/);
   assert.match(styles, /background: var\(--receipt-paper-texture\)/);
   assert.match(styles, /auto 240% repeat-x/);
   assert.doesNotMatch(styles, /text-shadow: 0 4px 16px rgba\(0, 0, 0, 0\.42\)/);
@@ -224,7 +249,7 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.doesNotMatch(renderer, /index \? "AWAY" : "HOME"/);
   assert.match(roomDialog, /sourceMatch\?\.status === "confirmed"/);
   assert.match(roomDialog, /\/app\/receipt\?match=/);
-  assert.match(roomDialog, /경기 영수증 만들기/);
+  assert.match(roomDialog, /영수증 발급/);
   assert.match(digitGenerator, /const CELL_WIDTH = 196/);
   assert.match(digitGenerator, /const DIGIT_WIDTH = 176/);
   assert.match(digitGenerator, /const DIGIT_HEIGHT = 372/);
@@ -240,7 +265,13 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.doesNotMatch(renderer, /ctx\.fillRect\(x, y, actualSize, actualSize\)/);
   assert.match(renderer, /model\.hasPersonalStats \? "MY GAME" : "GAME INFO"/);
   assert.match(renderer, /ctx\.fillText\(model\.matchNatureLabel/);
-  assert.match(renderer, /model\.comment \|\| "내 경기 기록"/);
+  assert.match(renderer, /if \(model\.comment\)/);
+  assert.doesNotMatch(renderer, /model\.comment \|\| "내 경기 기록"/);
+  assert.match(renderer, /renderMatchReceiptPng\(value, "story", options\)/);
+  assert.match(renderer, /getMatchReceiptCanvasSize\("feed"\)/);
+  assert.match(renderer, /const targetHeight = height/);
+  assert.match(renderer, /const targetX = \(width - targetWidth\) \/ 2/);
+  assert.match(renderer, /ctx\.drawImage\(story, targetX, 0, targetWidth, targetHeight\)/);
   assert.equal(homeNeutralMark.subarray(1, 4).toString("ascii"), "PNG");
   assert.equal(awayNeutralMark.subarray(1, 4).toString("ascii"), "PNG");
   assert.equal(paperGrain.subarray(1, 4).toString("ascii"), "PNG");

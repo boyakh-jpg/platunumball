@@ -13,11 +13,12 @@ const PHOTO_STORE_NAME = "photos";
 const PHOTO_KEY = "current";
 
 export const MATCH_RECEIPT_LIMITS = Object.freeze({
+  serialSeed: 96,
   teamName: 24,
   venue: 36,
   address: 48,
   originalAddress: 96,
-  comment: 60,
+  comment: 10,
   score: 999,
 });
 
@@ -134,8 +135,19 @@ function cleanColor(value, fallback) {
   return /^#[0-9a-f]{6}$/i.test(String(value ?? "")) ? String(value).toLowerCase() : fallback;
 }
 
+export function createMatchReceiptSerialSeed() {
+  if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+}
+
+function cleanSerialSeed(value) {
+  const seed = cleanText(value, MATCH_RECEIPT_LIMITS.serialSeed);
+  return /^[A-Za-z0-9:_-]{8,96}$/.test(seed) ? seed : createMatchReceiptSerialSeed();
+}
+
 export function createDefaultMatchReceiptDraft() {
   return {
+    serialSeed: createMatchReceiptSerialSeed(),
     homeTeam: "",
     awayTeam: "",
     homeScore: 0,
@@ -169,6 +181,7 @@ export function normalizeMatchReceiptDraft(value = {}) {
     ? value.matchNature
     : "competitive";
   return {
+    serialSeed: cleanSerialSeed(value.serialSeed),
     homeTeam: cleanText(value.homeTeam, MATCH_RECEIPT_LIMITS.teamName),
     awayTeam: cleanText(value.awayTeam, MATCH_RECEIPT_LIMITS.teamName),
     homeScore: cleanScore(value.homeScore),
@@ -340,7 +353,15 @@ export function validateMatchReceiptDraft(value) {
   const errors = {};
   if (!draft.homeTeam.trim()) errors.homeTeam = "홈팀 이름을 입력해 주세요.";
   if (!draft.awayTeam.trim()) errors.awayTeam = "원정팀 이름을 입력해 주세요.";
+  if (!draft.venue.trim()) errors.venue = "경기 장소를 입력해 주세요.";
   return { draft, errors, valid: Object.keys(errors).length === 0 };
+}
+
+export function renewMatchReceiptDraft(value) {
+  return normalizeMatchReceiptDraft({
+    ...normalizeMatchReceiptDraft(value),
+    serialSeed: createMatchReceiptSerialSeed(),
+  });
 }
 
 export function getMatchReceiptCreateDraft(value) {
@@ -363,10 +384,10 @@ export function getMatchReceiptCreateDraft(value) {
 
 export function getMatchReceiptDraftFromMatch(match = {}, style = {}, court = null) {
   const summary = match.rules?.recordSummary ?? {};
-  const memo = match.memo === "혼자 저장한 개인 기록입니다." ? "" : match.memo;
   const playerStats = match.result?.playerStats?.[style.currentUserId] ?? {};
   const verified = match.status === "confirmed" && match.recordType !== RECORD_TYPES.personalRecord;
   return normalizeMatchReceiptDraft({
+    serialSeed: match.id ? `match:${match.id}` : style.serialSeed,
     homeTeam: match.teamA?.name || summary.teamAName || "",
     awayTeam: match.teamB?.name || summary.teamBName || "",
     homeScore: match.result?.scoreA ?? match.teamA?.score ?? 0,
@@ -375,9 +396,9 @@ export function getMatchReceiptDraftFromMatch(match = {}, style = {}, court = nu
     format: MATCH_RECEIPT_FORMATS.some(({ value }) => value === match.mode) ? match.mode : "other",
     matchNature: inferMatchReceiptNature(match, style.tournament),
     venue: court?.name ?? (match.court && match.court !== "미정" ? match.court : ""),
-    address: court?.region ?? style.address ?? "",
+    address: style.address ?? "",
     originalAddress: court?.address ?? style.originalAddress ?? "",
-    comment: memo,
+    comment: style.comment ?? "",
     homeColor: style.homeColor,
     awayColor: style.awayColor,
     photoZoom: style.photoZoom,
@@ -425,10 +446,8 @@ export function getMatchReceiptNatureLabel(matchNature) {
   return MATCH_RECEIPT_NATURES.find((item) => item.value === matchNature)?.label ?? "COMPETITIVE";
 }
 
-function receiptHashtag(draft, publicId = "") {
-  const input = publicId
-    ? `${publicId}|${draft.playedOn}`
-    : `${draft.playedOn}|${draft.homeTeam}|${draft.awayTeam}|${draft.homeScore}|${draft.awayScore}`;
+function receiptHashtag(draft) {
+  const input = draft.serialSeed;
   let hash = 2166136261;
   for (let index = 0; index < input.length; index += 1) {
     hash ^= input.charCodeAt(index);
@@ -454,8 +473,8 @@ export function createMatchReceiptViewModel(value, options = {}) {
   return {
     ...draft,
     outcome: getMatchReceiptOutcome(draft),
-    serial: receiptHashtag(draft, options.publicId),
-    displayAddress: draft.address || draft.originalAddress,
+    serial: receiptHashtag(draft),
+    locationLabel: draft.address || draft.venue,
     matchUrl: String(options.matchUrl ?? ""),
     logoUrl: BOXTIER_LOGO_URL,
     wordmarkUrl: BOXTIER_LETTER_DARK_URL,
@@ -698,6 +717,23 @@ function drawQrCode(ctx, value, x, y, size) {
 
 export async function renderMatchReceiptPng(value, preset = "story", options = {}) {
   if (typeof document === "undefined") throw new Error("match_receipt_canvas_unavailable");
+  if (preset === "feed") {
+    const storyBlob = await renderMatchReceiptPng(value, "story", options);
+    const story = await loadCanvasImage(storyBlob);
+    const { width, height } = getMatchReceiptCanvasSize("feed");
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("match_receipt_canvas_unavailable");
+    ctx.fillStyle = "#111111";
+    ctx.fillRect(0, 0, width, height);
+    const targetHeight = height;
+    const targetWidth = targetHeight * story.naturalWidth / story.naturalHeight;
+    const targetX = (width - targetWidth) / 2;
+    ctx.drawImage(story, targetX, 0, targetWidth, targetHeight);
+    return canvasToBlob(canvas, "image/png");
+  }
   const model = createMatchReceiptViewModel(value, options);
   const { width, height } = getMatchReceiptCanvasSize(preset);
   const compact = preset === "feed";
@@ -787,7 +823,7 @@ export async function renderMatchReceiptPng(value, preset = "story", options = {
 
   const verifiedY = compact ? 440 : 780;
   ctx.strokeStyle = "#f05a2a";
-  ctx.lineWidth = model.verified ? 2 : 1;
+  ctx.lineWidth = 1;
   ctx.beginPath();
   ctx.moveTo(175, verifiedY);
   ctx.lineTo(370, verifiedY);
@@ -796,9 +832,7 @@ export async function renderMatchReceiptPng(value, preset = "story", options = {
   ctx.stroke();
   ctx.fillStyle = "#f05a2a";
   ctx.textAlign = "center";
-  ctx.font = model.verified
-    ? '900 30px "KBO Dia Gothic", sans-serif'
-    : '900 30px "Bebas Neue", sans-serif';
+  ctx.font = '900 30px "Bebas Neue", sans-serif';
   ctx.letterSpacing = "1px";
   ctx.fillText(model.verified ? "★  BOXTIER VERIFIED  ★" : "★  MATCH RECEIPT  ★", width / 2, verifiedY + 11);
   ctx.letterSpacing = "0px";
@@ -921,8 +955,10 @@ export async function renderMatchReceiptPng(value, preset = "story", options = {
   ctx.fillStyle = "#151515";
   ctx.textAlign = "center";
   ctx.font = '900 25px "KBO Dia Gothic", sans-serif';
-  ctx.fillText(model.displayAddress || "경기 장소", 220, footerY + (compact ? 64 : 94), 320);
-  ctx.fillText(model.venue || "", 220, footerY + (compact ? 96 : 138), 320);
+  const locationLines = wrapCanvasText(ctx, model.locationLabel || "경기 장소", 320, 3);
+  const locationLineHeight = compact ? 28 : 34;
+  const locationStartY = footerY + (compact ? 54 : 76) - (locationLines.length - 1) * locationLineHeight / 2;
+  locationLines.forEach((line, index) => ctx.fillText(line, 220, locationStartY + index * locationLineHeight, 320));
   ctx.font = '900 27px "KBO Dia Gothic", sans-serif';
   ctx.fillText(model.playedOn.replaceAll("-", "."), 220, footerY + (compact ? 174 : 255));
 
@@ -955,7 +991,7 @@ export async function renderMatchReceiptPng(value, preset = "story", options = {
     ctx.setLineDash([]);
     ctx.fillStyle = "#151515";
     ctx.font = '900 18px "KBO Dia Gothic", sans-serif';
-    ctx.fillText(model.comment || "내 경기 기록", footerMiddleX, footerY + (compact ? 176 : 278), 260);
+    if (model.comment) ctx.fillText(model.comment, footerMiddleX, footerY + (compact ? 176 : 278), 260);
   } else {
     ctx.fillStyle = "#151515";
     ctx.font = `900 ${compact ? 36 : 42}px "Bebas Neue", "KBO Dia Gothic", sans-serif`;
