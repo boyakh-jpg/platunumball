@@ -1,4 +1,4 @@
-import { createHash, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 
 export const RECEIPT_CAPABILITY_COOKIE = "boxtier_receipt_capability";
 export const RECEIPT_DRAFT_TTL_SECONDS = 30 * 24 * 60 * 60;
@@ -75,6 +75,18 @@ export function sanitizeReceiptDraftPayload(value = {}, options = {}) {
   };
 }
 
+export function projectPublicReceiptDraft(value = {}) {
+  const { originalAddress, personalMmr, ...publicDraft } = sanitizeReceiptDraftPayload(value, {
+    trustedCanonical: value?._canonicalReceipt === true,
+  });
+  return publicDraft;
+}
+
+export function createCanonicalReceiptSerialSeed(matchId, secret = process.env.MATCH_RECEIPT_SERIAL_SALT || process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  if (!matchId || !secret) throw new Error("receipt_serial_seed_unavailable");
+  return `canonical:${createHmac("sha256", String(secret)).update(String(matchId)).digest("hex").slice(0, 32)}`;
+}
+
 export function createReceiptCapability() {
   return {
     publicId: randomUUID(),
@@ -92,13 +104,25 @@ export function receiptCapabilityMatches(secret = "", expectedHash = "") {
   return actual.length === expected.length && timingSafeEqual(actual, expected);
 }
 
-export function getReceiptCapabilityCookie(request) {
+function getReceiptCapabilityCookieName(publicId = "") {
+  const suffix = String(publicId).replace(/[^A-Za-z0-9-]/g, "");
+  return suffix ? `${RECEIPT_CAPABILITY_COOKIE}_${suffix}` : RECEIPT_CAPABILITY_COOKIE;
+}
+
+export function getReceiptCapabilityCookie(request, publicId = "") {
   const header = String(request.headers?.cookie ?? "");
-  const raw = header.split(";").map((part) => part.trim()).find((part) => part.startsWith(`${RECEIPT_CAPABILITY_COOKIE}=`));
+  const names = publicId
+    ? [getReceiptCapabilityCookieName(publicId), RECEIPT_CAPABILITY_COOKIE]
+    : [RECEIPT_CAPABILITY_COOKIE];
+  const parts = header.split(";").map((part) => part.trim());
+  const raw = names
+    .map((name) => parts.find((part) => part.startsWith(`${name}=`)))
+    .find(Boolean);
   if (!raw) return null;
   try {
-    const [publicId, secret] = decodeURIComponent(raw.slice(RECEIPT_CAPABILITY_COOKIE.length + 1)).split(".");
-    return publicId && secret ? { publicId, secret } : null;
+    const encoded = raw.slice(raw.indexOf("=") + 1);
+    const [cookiePublicId, secret] = decodeURIComponent(encoded).split(".");
+    return cookiePublicId && secret ? { publicId: cookiePublicId, secret } : null;
   } catch {
     return null;
   }
@@ -106,7 +130,8 @@ export function getReceiptCapabilityCookie(request) {
 
 export function setReceiptCapabilityCookie(response, capability) {
   const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
-  response.setHeader("Set-Cookie", `${RECEIPT_CAPABILITY_COOKIE}=${encodeURIComponent(`${capability.publicId}.${capability.secret}`)}; HttpOnly; SameSite=Lax${secure}; Path=/api/match-receipts; Max-Age=${RECEIPT_DRAFT_TTL_SECONDS}`);
+  const name = getReceiptCapabilityCookieName(capability.publicId);
+  response.setHeader("Set-Cookie", `${name}=${encodeURIComponent(`${capability.publicId}.${capability.secret}`)}; HttpOnly; SameSite=Lax${secure}; Path=/api/match-receipts; Max-Age=${RECEIPT_DRAFT_TTL_SECONDS}`);
 }
 
 export function getReceiptRequestHash(request) {

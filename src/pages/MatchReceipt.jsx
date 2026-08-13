@@ -277,6 +277,7 @@ export default function MatchReceipt({ auth, app }) {
   const photoRotationRef = useRef(null);
   const photoTransformRef = useRef(null);
   const publicDraftRequestRef = useRef(null);
+  const publicDraftSerialSeedRef = useRef("");
   const canonicalSnapshotCreatedRef = useRef("");
   const draftRevisionRef = useRef(0);
   photoTransformRef.current = {
@@ -384,6 +385,7 @@ export default function MatchReceipt({ auth, app }) {
       })
       .then((result) => {
         if (!active) return;
+        publicDraftSerialSeedRef.current = result.draft?.serialSeed ?? "";
         setDraft(normalizeMatchReceiptDraft(result.draft));
         setGenerated(true);
         setRequestedDraftCanClaim(Boolean(result.canClaim));
@@ -576,6 +578,7 @@ export default function MatchReceipt({ auth, app }) {
       setRequestedDraftCanClaim(false);
       draftRevisionRef.current += 1;
       publicDraftRequestRef.current = null;
+      publicDraftSerialSeedRef.current = "";
       canonicalSnapshotCreatedRef.current = "";
       setSelectedCourtId("");
       setErrors({});
@@ -727,6 +730,13 @@ export default function MatchReceipt({ auth, app }) {
     }).then((result) => {
       if (!result?.publicId) throw new Error("receipt_draft_create_failed");
       if (requestRevision !== draftRevisionRef.current) throw new Error("receipt_draft_stale");
+      if (result.serialSeed) {
+        publicDraftSerialSeedRef.current = result.serialSeed;
+        setDraft((current) => normalizeMatchReceiptDraft({
+          ...current,
+          serialSeed: result.serialSeed,
+        }));
+      }
       setPublicDraftId(result.publicId);
       return result.publicId;
     }).finally(() => {
@@ -786,7 +796,10 @@ export default function MatchReceipt({ auth, app }) {
     }
     const publicId = await ensurePublicDraft(result.draft);
     const publicMatchUrl = new URL(`/app/receipt?draft=${encodeURIComponent(publicId)}`, window.location.origin).toString();
-    return renderMatchReceiptPng(result.draft, preset, {
+    const renderDraft = publicDraftSerialSeedRef.current
+      ? normalizeMatchReceiptDraft({ ...result.draft, serialSeed: publicDraftSerialSeedRef.current })
+      : result.draft;
+    return renderMatchReceiptPng(renderDraft, preset, {
       publicId,
       matchUrl: publicMatchUrl,
       photoBlob,

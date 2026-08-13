@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import {
+  canCreatePublicMatchReceiptSnapshot,
   createDefaultMatchReceiptDraft,
   createMatchReceiptViewModel,
   getMatchReceiptDraftFromMatch,
@@ -11,13 +12,16 @@ import {
   renewMatchReceiptDraft,
 } from "../src/lib/matchReceipt.js";
 import {
+  createCanonicalReceiptSerialSeed,
   createReceiptCapability,
   getReceiptCapabilityCookie,
   hashReceiptCapability,
+  projectPublicReceiptDraft,
   receiptCapabilityMatches,
   sanitizeReceiptDraftPayload,
   setReceiptCapabilityCookie,
 } from "../server/api/match-receipts/_draftSecurity.js";
+import { RECORD_TYPES } from "../src/lib/constants.js";
 import { getTierDivision, getTierLabel } from "../shared/lib/tier.js";
 
 test("public receipt draft keeps only bounded safe fields", () => {
@@ -83,6 +87,42 @@ test("only trusted canonical receipt payload keeps server-only fields", () => {
   assert.equal(untrusted.verified, false);
 });
 
+test("public receipt projection omits internal address and exact personal rating", () => {
+  const projected = projectPublicReceiptDraft({
+    _canonicalReceipt: true,
+    serialSeed: "canonical:0123456789abcdef",
+    originalAddress: "서울특별시 마포구 전체 원주소",
+    personalMmr: 1400,
+    personalPoints: 12,
+    verified: true,
+    hasCanonicalTeamMatch: true,
+  });
+
+  assert.equal("originalAddress" in projected, false);
+  assert.equal("personalMmr" in projected, false);
+  assert.equal(projected.personalPoints, 12);
+  assert.equal(projected.verified, true);
+  assert.equal(projected.hasCanonicalTeamMatch, true);
+});
+
+test("only confirmed public team matches can create canonical public receipt snapshots", () => {
+  const match = {
+    id: "match-123",
+    status: "confirmed",
+    visibility: "public",
+    rules: { recordType: RECORD_TYPES.match },
+  };
+
+  assert.equal(canCreatePublicMatchReceiptSnapshot(match), true);
+  assert.equal(canCreatePublicMatchReceiptSnapshot({ ...match, visibility: "private" }), false);
+  assert.equal(canCreatePublicMatchReceiptSnapshot({
+    ...match,
+    rules: { recordType: RECORD_TYPES.personalRecord },
+  }), false);
+  assert.equal(canCreatePublicMatchReceiptSnapshot({ ...match, status: "pending" }), false);
+  assert.equal(canCreatePublicMatchReceiptSnapshot({ ...match, visibility: undefined }), false);
+});
+
 test("receipt view model uses compact game labels, venue fallback, and a safe hashtag", () => {
   const draft = {
     playedOn: "2026-08-11",
@@ -115,18 +155,41 @@ test("receipt serial stays stable until a new receipt is explicitly started", ()
     comment: "123456789012345",
   });
   const renewed = renewMatchReceiptDraft(edited);
-  const match = { id: "match-123", home_team_name: "HOME", away_team_name: "AWAY" };
-  const canonicalA = getMatchReceiptDraftFromMatch(match);
-  const canonicalB = getMatchReceiptDraftFromMatch({ ...match, home_team_name: "CHANGED" });
+  const match = {
+    id: "match-123",
+    status: "confirmed",
+    visibility: "public",
+    rules: {
+      recordType: RECORD_TYPES.match,
+      recordSummary: { teamAName: "HOME", teamBName: "AWAY" },
+    },
+  };
+  const canonicalA = getMatchReceiptDraftFromMatch(match, { serialSeed: "canonical:opaque-seed" });
+  const canonicalB = getMatchReceiptDraftFromMatch({
+    ...match,
+    rules: {
+      ...match.rules,
+      recordSummary: { ...match.rules.recordSummary, teamAName: "CHANGED" },
+    },
+  }, { serialSeed: "canonical:opaque-seed" });
 
   assert.equal(edited.serialSeed, draft.serialSeed);
   assert.equal(edited.comment, "123456789012");
   assert.equal(createMatchReceiptViewModel(edited).serial, createMatchReceiptViewModel(draft).serial);
   assert.notEqual(renewed.serialSeed, edited.serialSeed);
   assert.notEqual(createMatchReceiptViewModel(renewed).serial, createMatchReceiptViewModel(edited).serial);
-  assert.equal(canonicalA.serialSeed, "match:match-123");
+  assert.equal(canonicalA.serialSeed, "canonical:opaque-seed");
   assert.equal(canonicalB.serialSeed, canonicalA.serialSeed);
   assert.equal(createMatchReceiptViewModel(canonicalA).serial, createMatchReceiptViewModel(canonicalB).serial);
+});
+
+test("canonical receipt serial seed is stable and does not expose the match id", () => {
+  const seed = createCanonicalReceiptSerialSeed("private-personal", "test-secret");
+
+  assert.equal(seed, createCanonicalReceiptSerialSeed("private-personal", "test-secret"));
+  assert.notEqual(seed, createCanonicalReceiptSerialSeed("another-match", "test-secret"));
+  assert.match(seed, /^canonical:[a-f0-9]{32}$/);
+  assert.equal(seed.includes("private-personal"), false);
 });
 
 test("canonical tier labels use uppercase English", () => {
@@ -145,7 +208,7 @@ test("receipt ownership capability is secret, hashed, and cookie-scoped", () => 
   setReceiptCapabilityCookie(response, capability);
   const cookie = response.headers["Set-Cookie"];
   const request = { headers: { cookie: cookie.split(";")[0] } };
-  const parsed = getReceiptCapabilityCookie(request);
+  const parsed = getReceiptCapabilityCookie(request, capability.publicId);
 
   assert.deepEqual(parsed, capability);
   assert.equal(receiptCapabilityMatches(capability.secret, hash), true);
@@ -154,6 +217,28 @@ test("receipt ownership capability is secret, hashed, and cookie-scoped", () => 
   assert.match(cookie, /SameSite=Lax/);
   assert.match(cookie, /Path=\/api\/match-receipts/);
   assert.equal(cookie.includes(hash), false);
+});
+
+test("receipt capability cookies stay isolated when creation responses arrive out of order", () => {
+  const first = createReceiptCapability();
+  const second = createReceiptCapability();
+  const createResponse = () => ({
+    headers: {},
+    setHeader(name, value) { this.headers[name] = value; },
+  });
+  const firstResponse = createResponse();
+  const secondResponse = createResponse();
+
+  setReceiptCapabilityCookie(firstResponse, first);
+  setReceiptCapabilityCookie(secondResponse, second);
+  const cookieHeader = [
+    secondResponse.headers["Set-Cookie"].split(";")[0],
+    firstResponse.headers["Set-Cookie"].split(";")[0],
+  ].join("; ");
+  const request = { headers: { cookie: cookieHeader } };
+
+  assert.deepEqual(getReceiptCapabilityCookie(request, first.publicId), first);
+  assert.deepEqual(getReceiptCapabilityCookie(request, second.publicId), second);
 });
 
 test("receipt photo tools stay outside the export card and reference dividers remain", async () => {

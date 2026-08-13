@@ -1,4 +1,5 @@
 import { RECORD_TYPES } from "./constants.js";
+import { getMatchRecordType } from "../../shared/lib/matchRecordTypes.js";
 import { assetUrl, BOXTIER_LETTER_DARK_URL, BOXTIER_LOGO_URL } from "./assets.js";
 import { createQrMatrix } from "./qrCode.js";
 import { getTier, getTierDivisionNumber } from "./tier.js";
@@ -382,12 +383,19 @@ export function getMatchReceiptCreateDraft(value) {
   };
 }
 
+export function canCreatePublicMatchReceiptSnapshot(match = {}) {
+  const visibility = match?.visibility ?? match?.rules?.visibility;
+  return match?.status === "confirmed"
+    && visibility === "public"
+    && getMatchRecordType(match) !== RECORD_TYPES.personalRecord;
+}
+
 export function getMatchReceiptDraftFromMatch(match = {}, style = {}, court = null) {
   const summary = match.rules?.recordSummary ?? {};
   const playerStats = match.result?.playerStats?.[style.currentUserId] ?? {};
-  const verified = match.status === "confirmed" && match.recordType !== RECORD_TYPES.personalRecord;
+  const verified = canCreatePublicMatchReceiptSnapshot(match);
   return normalizeMatchReceiptDraft({
-    serialSeed: match.id ? `match:${match.id}` : style.serialSeed,
+    serialSeed: style.serialSeed,
     homeTeam: match.teamA?.name || summary.teamAName || "",
     awayTeam: match.teamB?.name || summary.teamBName || "",
     homeScore: match.result?.scoreA ?? match.teamA?.score ?? 0,

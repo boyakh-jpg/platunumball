@@ -10,7 +10,7 @@ export default async function handler(request, response) {
   const context = await getAuthenticatedContext(request);
   const body = await readJsonBody(request, { maxBytes: 4_096, maxStringLength: 256 });
   const publicId = String(body.publicId ?? "").trim();
-  const capability = getReceiptCapabilityCookie(request);
+  const capability = getReceiptCapabilityCookie(request, publicId);
   if (!publicId || capability?.publicId !== publicId) return sendJson(response, 403, { error: "receipt_capability_required" });
 
   const { data: current, error: loadError } = await context.supabase

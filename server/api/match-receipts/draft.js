@@ -8,12 +8,17 @@ import {
 } from "../_supabaseAdmin.js";
 import { loadAuthoritativeState } from "../_authoritativeState.js";
 import { filterStateForProfile } from "../../lib/stateVisibility.js";
-import { getMatchReceiptDraftFromMatch } from "../../../src/lib/matchReceipt.js";
 import {
+  canCreatePublicMatchReceiptSnapshot,
+  getMatchReceiptDraftFromMatch,
+} from "../../../src/lib/matchReceipt.js";
+import {
+  createCanonicalReceiptSerialSeed,
   createReceiptCapability,
   getReceiptCapabilityCookie,
   getReceiptRequestHash,
   hashReceiptCapability,
+  projectPublicReceiptDraft,
   receiptCapabilityMatches,
   sanitizeReceiptDraftPayload,
   setReceiptCapabilityCookie,
@@ -42,13 +47,14 @@ async function createCanonicalPayload(request, sourceMatchId, styleDraft) {
   const profileId = context.profileId ?? rawState?.currentUserId ?? "";
   const state = filterStateForProfile(rawState ?? {}, profileId, adminLevel >= 30);
   const match = (state.matches ?? []).find((item) => String(item.id) === sourceMatchId);
-  if (!match || match.status !== "confirmed") return null;
+  if (!canCreatePublicMatchReceiptSnapshot(match)) return null;
 
   const currentUser = (state.users ?? []).find((item) => String(item.id) === String(profileId));
   const tournament = (state.tournaments ?? []).find((item) => item.id === match.tournamentId) ?? null;
   const safeStyle = sanitizeReceiptDraftPayload(styleDraft);
   const canonicalDraft = getMatchReceiptDraftFromMatch(match, {
     ...safeStyle,
+    serialSeed: createCanonicalReceiptSerialSeed(sourceMatchId),
     currentUserId: profileId,
     personalMmr: currentUser?.ratings?.integrated,
     tournament,
@@ -71,7 +77,7 @@ async function clonePublicPayload(supabase, publicId) {
     .maybeSingle();
   if (error) throw error;
   if (!data) return null;
-  return sanitizeReceiptDraftPayload(data.payload);
+  return sanitizeReceiptDraftPayload(projectPublicReceiptDraft(data.payload));
 }
 
 export default async function handler(request, response) {
@@ -90,16 +96,14 @@ export default async function handler(request, response) {
       .maybeSingle();
     if (error) throw error;
     if (!data) return sendJson(response, 404, { error: "receipt_draft_not_found" });
-    const capability = getReceiptCapabilityCookie(request);
+    const capability = getReceiptCapabilityCookie(request, data.public_id);
     const canClaim = !data.claimed_at
       && capability?.publicId === data.public_id
       && receiptCapabilityMatches(capability.secret, data.capability_hash);
     response.setHeader("Cache-Control", "private, no-store");
     return sendJson(response, 200, {
       publicId: data.public_id,
-      draft: sanitizeReceiptDraftPayload(data.payload, {
-        trustedCanonical: data.payload?._canonicalReceipt === true,
-      }),
+      draft: projectPublicReceiptDraft(data.payload),
       expiresAt: data.expires_at,
       claimed: Boolean(data.claimed_at),
       canClaim,
@@ -138,5 +142,9 @@ export default async function handler(request, response) {
   if (error) throw error;
 
   setReceiptCapabilityCookie(response, capability);
-  return sendJson(response, 201, { publicId: data.public_id, expiresAt: data.expires_at });
+  return sendJson(response, 201, {
+    publicId: data.public_id,
+    serialSeed: payload.serialSeed,
+    expiresAt: data.expires_at,
+  });
 }
