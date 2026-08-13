@@ -68,6 +68,14 @@ export function getMatchReceiptPhotoStyle(value, aspect = MATCH_RECEIPT_PHOTO_AS
   };
 }
 
+export function getMatchReceiptTeamNameScale(value) {
+  const length = Array.from(String(value ?? "").trim()).length;
+  if (length > 20) return 0.68;
+  if (length > 16) return 0.78;
+  if (length > 12) return 0.88;
+  return 1;
+}
+
 const DEFAULT_COLORS = Object.freeze({ home: "#f05a46", away: "#27354d" });
 const TIER_EMBLEMS = Object.freeze({
   Rookie: "/assets/tier-emblems/tier-rookie-v5.webp",
@@ -908,21 +916,22 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
 
   const teamTop = compact ? 779 : 1113;
   const teamFontSize = compact ? 40 : 52;
-  const teamTierY = compact ? 820 : 1210;
-  const teamTierSize = compact ? 140 : 200;
-  const teamLabelY = compact ? 973 : 1432;
+  const teamTierY = compact ? 838 : 1255;
+  const teamTierSize = compact ? 116 : 176;
+  const teamLabelY = compact ? 982 : 1462;
   teams.forEach((team, index) => {
+    const scaledTeamFontSize = teamFontSize * getMatchReceiptTeamNameScale(team.name);
     ctx.textAlign = "center";
-    ctx.font = `900 ${teamFontSize}px "Black Han Sans", "KBO Dia Gothic", sans-serif`;
+    ctx.font = `900 ${scaledTeamFontSize}px "Black Han Sans", "KBO Dia Gothic", sans-serif`;
     ctx.fillStyle = paperTextPattern;
     const teamLines = wrapCanvasText(ctx, team.name, 430).slice(0, 2);
-    const teamLineHeight = teamFontSize * 1.04;
+    const teamLineHeight = scaledTeamFontSize * 1.04;
     const teamTextTop = teamTop + (2 - teamLines.length) * teamLineHeight / 2;
     teamLines.forEach((line, lineIndex) => {
       ctx.save();
       ctx.translate(columns[index], 0);
       ctx.scale(0.92, 1);
-      ctx.fillText(line, 0, teamTextTop + teamFontSize + lineIndex * teamLineHeight);
+      ctx.fillText(line, 0, teamTextTop + scaledTeamFontSize + lineIndex * teamLineHeight);
       ctx.restore();
     });
     if (team.image) {
@@ -933,7 +942,7 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
     }
     if (model.showTeamTierEmblems && team.tier) {
       ctx.fillStyle = "#c69a4b";
-      ctx.font = '900 23px "KBO Dia Gothic", sans-serif';
+      ctx.font = '900 18px "KBO Dia Gothic", sans-serif';
       ctx.fillText(`TEAM TIER · ${team.tier.label}`, columns[index], teamLabelY);
     }
   });

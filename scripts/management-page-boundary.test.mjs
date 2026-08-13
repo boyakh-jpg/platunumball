@@ -871,18 +871,19 @@ test("게스트는 실제 공개 매칭을 보고 개인 메뉴는 안내 상태
   assert.match(bootstrap, /regionScope: "all", startFilter: "all"/u);
 });
 
-test("비로그인 랜딩은 실제 영수증과 네 구역만 표시한다", async () => {
+test("비로그인 랜딩은 실제 영수증 한 장과 서비스 기록 흐름만 표시한다", async () => {
   const [landing, publicShell, attribution] = await Promise.all([
     read("src/pages/Landing.jsx"),
     read("src/components/layout/PublicShell.jsx"),
     read("src/components/layout/DataAttribution.jsx"),
   ]);
-  assert.match(landing, /농구 기록을[\s\S]*영수증으로 남기세요/u);
-  assert.match(landing, /경기는 끝나도[\s\S]*기록은 남습니다/u);
+  assert.match(landing, /농구 기록을[\s\S]*쌓고 연결하세요/u);
+  assert.match(landing, /경기 전부터 종료 후까지[\s\S]*하나의 기록으로 이어집니다/u);
   assert.match(landing, /한 경기로 끝내지 않으려면[\s\S]*기록을 이어가세요/u);
-  assert.match(landing, /오늘 경기도[\s\S]*단톡방에서 사라지기 전에/u);
   assert.match(landing, /homeTeam: "NEW COURT CREW"[\s\S]*homeScore: 60[\s\S]*awayScore: 46/u);
-  assert.match(landing, /<MatchReceiptPreview/u);
+  assert.equal(landing.match(/<MatchReceiptPreview/gu)?.length, 1);
+  assert.match(landing, /경기 준비[\s\S]*경기 기록[\s\S]*기록 연결/u);
+  assert.doesNotMatch(landing, /guest-landing-mobile-cta|guest-landing-final-cta/u);
   assert.doesNotMatch(landing, /fetch\(|openRecruiting|completedMatches|landing-stat-grid/u);
   assert.match(publicShell, /compactFooter = location\.pathname === "\/" \|\| location\.pathname === "\/start"/u);
   assert.match(attribution, /compact \? " is-compact" : ""/u);

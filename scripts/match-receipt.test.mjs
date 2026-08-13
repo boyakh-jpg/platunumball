@@ -7,10 +7,18 @@ import {
   createMatchReceiptViewModel,
   getMatchReceiptDraftFromMatch,
   getMatchReceiptFormatLabel,
+  getMatchReceiptTeamNameScale,
   MATCH_RECEIPT_PHOTO_ASPECT,
   normalizeMatchReceiptDraft,
   renewMatchReceiptDraft,
 } from "../src/lib/matchReceipt.js";
+
+test("receipt team names shrink before they can overflow", () => {
+  assert.equal(getMatchReceiptTeamNameScale("SHORT TEAM"), 1);
+  assert.equal(getMatchReceiptTeamNameScale("ABCDEFGHIJKLM"), 0.88);
+  assert.equal(getMatchReceiptTeamNameScale("ABCDEFGHIJKLMNOPQ"), 0.78);
+  assert.equal(getMatchReceiptTeamNameScale("ABCDEFGHIJKLMNOPQRSTU"), 0.68);
+});
 import {
   createCanonicalReceiptSerialSeed,
   createReceiptCapability,
@@ -374,7 +382,9 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(styles, /transform: scaleX\(0\.92\)/);
   assert.match(styles, /scale\(calc\(var\(--receipt-photo-scale\) \* 0\.92\)\)/);
   assert.match(styles, /\.match-receipt-team-watermarks[\s\S]*height: 34%/);
-  assert.match(styles, /\.match-receipt-team-tier[\s\S]*top: 36%[\s\S]*width: 46%/);
+  assert.match(styles, /\.match-receipt-team-tier[\s\S]*top: 39%[\s\S]*width: 38%/);
+  assert.match(styles, /--receipt-team-name-size/);
+  assert.match(styles, /font-size: clamp\(6px, 1\.9cqw, 9px\)/);
   assert.match(styles, /inset: auto 3\.1% 1\.8%/);
   assert.match(styles, /height: 19\.9%/);
   assert.match(styles, /\.match-receipt-team-tier\.is-neutral[\s\S]*opacity: 0\.76/);
@@ -393,9 +403,11 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.doesNotMatch(renderer, /ctx\.shadowColor = "rgba\(0,0,0,\.42\)"/);
   assert.match(renderer, /compact \? 154 : 278/);
   assert.match(renderer, /const teamWatermarkSize = compact \? 450 : 600/);
-  assert.match(renderer, /const teamTierY = compact \? 820 : 1210/);
-  assert.match(renderer, /const teamTierSize = compact \? 140 : 200/);
-  assert.match(renderer, /const teamLabelY = compact \? 973 : 1432/);
+  assert.match(renderer, /const teamTierY = compact \? 838 : 1255/);
+  assert.match(renderer, /const teamTierSize = compact \? 116 : 176/);
+  assert.match(renderer, /const teamLabelY = compact \? 982 : 1462/);
+  assert.match(renderer, /teamFontSize \* getMatchReceiptTeamNameScale\(team\.name\)/);
+  assert.match(renderer, /ctx\.font = '900 18px "KBO Dia Gothic", sans-serif'/);
   assert.match(renderer, /defaultPhoto: !options\.photoBlob/);
   assert.match(renderer, /const shiftX = rect\.width \* panRange \* photoX \/ 100/);
   assert.match(renderer, /MATCH_RECEIPT_DEFAULT_PHOTO_FOCUS = Object\.freeze\(\{ x: 0, y: 82 \}\)/);
@@ -461,11 +473,12 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(renderer, /const targetX = \(width - targetWidth\) \/ 2/);
   assert.match(renderer, /ctx\.drawImage\(story, targetX, 0, targetWidth, targetHeight\)/);
   assert.match(renderer, /canvasToBlob\(canvas, "image\/png"\)/);
-  assert.match(landing, /농구 기록을<br \/>영수증으로 남기세요\./u);
+  assert.match(landing, /농구 기록을<br \/>쌓고 연결하세요\./u);
   assert.match(landing, /가입 없이 영수증 만들기/u);
   assert.match(landing, /Google로 로그인/u);
   assert.match(landing, /to="\/app\/receipt"/u);
   assert.match(landing, /<MatchReceiptPreview draft=\{LANDING_RECEIPT_DRAFT\}/u);
+  assert.equal(landing.match(/<MatchReceiptPreview/gu)?.length, 1);
   assert.match(appSource, /path="\/start"/);
   assert.equal(homeNeutralMark.subarray(1, 4).toString("ascii"), "PNG");
   assert.equal(awayNeutralMark.subarray(1, 4).toString("ascii"), "PNG");

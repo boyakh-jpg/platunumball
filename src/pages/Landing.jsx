@@ -62,10 +62,10 @@ export default function Landing({ auth }) {
       <section className="guest-landing-hero">
         <div className="guest-landing-hero-copy">
           <p className="guest-landing-eyebrow">PLAY REAL. RANK REAL.</p>
-          <h1>농구 기록을<br />영수증으로 남기세요.</h1>
+          <h1>농구 기록을<br />쌓고 연결하세요.</h1>
           <p className="guest-landing-lead">
-            날짜, 구장, 점수와 참가자를 입력하면<br />
-            공유할 수 있는 경기 영수증이 완성됩니다.
+            경기방, 출석, 점수와 개인 기록까지 한곳에 쌓고<br />
+            끝난 경기는 영수증으로 저장·공유하세요.
           </p>
           <div className="guest-landing-primary-actions">
             <Button as={Link} to="/app/receipt" className="guest-landing-primary-cta">
@@ -89,27 +89,18 @@ export default function Landing({ auth }) {
         </div>
       </section>
 
-      <section className="guest-landing-section guest-landing-receipt-section">
+      <section className="guest-landing-section guest-landing-record-section">
         <div className="guest-landing-section-heading">
-          <p className="guest-landing-eyebrow">MATCH RECEIPT</p>
-          <h2>경기는 끝나도<br />기록은 남습니다.</h2>
-          <p>경기방을 미리 만들지 않았어도 괜찮습니다.<br />끝난 경기의 결과를 바로 영수증으로 만들 수 있습니다.</p>
+          <p className="guest-landing-eyebrow">HOW BOXTIER WORKS</p>
+          <h2>경기 전부터 종료 후까지<br />하나의 기록으로 이어집니다.</h2>
+          <p>BOXTIER는 영수증 제작만 하는 서비스가 아닙니다.<br />경기 운영과 결과, 팀·개인 기록을 연결합니다.</p>
         </div>
 
-        <div className="guest-landing-receipt-guide">
-          <div className="guest-landing-guide-receipt">
-            <MatchReceiptPreview draft={LANDING_RECEIPT_DRAFT} matchUrl={receiptUrl} />
-          </div>
-          <ol className="guest-landing-receipt-points">
-            <li className="is-info"><b>① 경기 정보</b><span>날짜·시간·구장</span></li>
-            <li className="is-result"><b>② 경기 결과</b><span>팀명·점수·참가자</span></li>
-            <li className="is-share"><b>③ 저장과 공유</b><span>이미지 저장·공유 링크·QR</span></li>
-          </ol>
-        </div>
-
-        <Button as={Link} to="/app/receipt" className="guest-landing-section-cta">
-          내 경기 영수증 만들기 <ArrowRight aria-hidden="true" size={18} />
-        </Button>
+        <ol className="guest-landing-record-flow">
+          <li><b>01</b><strong>경기 준비</strong><span>경기방·일정·참가자</span></li>
+          <li><b>02</b><strong>경기 기록</strong><span>점수·개인 기록·승패</span></li>
+          <li><b>03</b><strong>기록 연결</strong><span>전적·티어·팀 기록</span></li>
+        </ol>
       </section>
 
       <section className="guest-landing-section guest-landing-account-section">
@@ -126,24 +117,6 @@ export default function Landing({ auth }) {
         <small>처음 이용해도 별도의 가입 양식 없이<br />Google 계정으로 바로 시작할 수 있습니다.</small>
       </section>
 
-      <section className="guest-landing-final-cta">
-        <h2>오늘 경기도<br />단톡방에서 사라지기 전에.</h2>
-        <Button as={Link} to="/app/receipt">
-          가입 없이 영수증 만들기 <ArrowRight aria-hidden="true" size={18} />
-        </Button>
-        <button
-          type="button"
-          className="guest-landing-text-login"
-          onClick={() => auth?.signInWithProvider?.("google", "/app")}
-          disabled={auth?.authActionPending}
-        >
-          기록을 계속 쌓고 싶다면 Google로 로그인 <ArrowRight aria-hidden="true" size={16} />
-        </button>
-      </section>
-
-      <Button as={Link} to="/app/receipt" className="guest-landing-mobile-cta">
-        영수증 만들기
-      </Button>
     </main>
   );
 }

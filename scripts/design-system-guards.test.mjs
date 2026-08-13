@@ -1256,7 +1256,8 @@ test("hero inner boards share one readable liquid-glass system", () => {
   assert.match(visualSystemStyles, /\.home-hero-next > strong,[\s\S]*?\.arena-hero-stats strong[\s\S]*?color:\s*var\(--hero-title-color\);/);
   assert.match(landingGuestStyles, /\.guest-landing-header\s*\{[^}]*position:\s*sticky;[^}]*height:\s*64px;/);
   assert.match(landingGuestStyles, /@media \(max-width:\s*760px\)[\s\S]*?\.guest-landing-hero\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\);/);
-  assert.match(landingGuestStyles, /\.guest-landing-mobile-cta\s*\{[^}]*position:\s*fixed;/);
+  assert.match(landingGuestStyles, /\.guest-landing-record-flow\s*\{[^}]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\);/);
+  assert.doesNotMatch(landingGuestStyles, /\.guest-landing-mobile-cta|position:\s*fixed;/);
   assert.equal(count(primitiveStyles, "-webkit-mask-composite: xor;"), 1);
   assert.equal(count(primitiveStyles, "mask-composite: exclude;"), 1);
 });

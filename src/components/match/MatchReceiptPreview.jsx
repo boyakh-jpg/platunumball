@@ -3,6 +3,7 @@ import {
   createMatchReceiptViewModel,
   getMatchReceiptFormatLabel,
   getMatchReceiptPhotoStyle,
+  getMatchReceiptTeamNameScale,
 } from "../../lib/matchReceipt.js";
 import QrCode from "../common/QrCode.jsx";
 
@@ -97,7 +98,7 @@ export default function MatchReceiptPreview({
       </section>
       <section className="match-receipt-poster-teams">
         {posterTeams.map((team, index) => (
-          <div key={index}>
+          <div key={index} style={{ "--receipt-team-name-size": `${4.8 * getMatchReceiptTeamNameScale(team.name)}cqw` }}>
             <strong>{team.name || (index ? "AWAY TEAM" : "HOME TEAM")}</strong>
             <img
               className={`match-receipt-team-tier${model.showTeamTierEmblems && team.tier ? "" : " is-neutral"}`}
