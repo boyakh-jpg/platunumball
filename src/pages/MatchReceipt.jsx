@@ -19,7 +19,6 @@ import {
   clearMatchReceiptPhoto,
   createMatchReceiptViewModel,
   createDefaultMatchReceiptDraft,
-  getMatchReceiptCreateDraft,
   getMatchReceiptDraftFromMatch,
   getMatchReceiptFileName,
   getMatchReceiptFormatLabel,
@@ -153,8 +152,14 @@ function ReceiptPreview({
             src={model.wordmarkUrl}
             alt="BOXTIER"
             onError={(event) => {
-              event.currentTarget.hidden = true;
-              event.currentTarget.nextElementSibling?.removeAttribute("hidden");
+              const image = event.currentTarget;
+              if (image.dataset.localFallback !== "true") {
+                image.dataset.localFallback = "true";
+                image.src = "/assets/boxtier_letter_dark.png";
+                return;
+              }
+              image.hidden = true;
+              image.nextElementSibling?.removeAttribute("hidden");
             }}
           />
           <strong hidden>BOXTIER</strong>
@@ -258,7 +263,8 @@ export default function MatchReceipt({ auth, app }) {
   const [status, setStatus] = useState("");
   const [photoBlob, setPhotoBlob] = useState(null);
   const [photoUrl, setPhotoUrl] = useState("");
-  const [publicDraftId, setPublicDraftId] = useState(requestedPublicDraftId);
+  const [publicDraftId, setPublicDraftId] = useState("");
+  const [requestedDraftCanClaim, setRequestedDraftCanClaim] = useState(false);
   const [courtMapOpen, setCourtMapOpen] = useState(false);
   const [selectedCourtId, setSelectedCourtId] = useState("");
   const [discoveredCourts, setDiscoveredCourts] = useState([]);
@@ -270,6 +276,9 @@ export default function MatchReceipt({ auth, app }) {
   const photoGestureRef = useRef({ pointers: new Map(), baseline: null });
   const photoRotationRef = useRef(null);
   const photoTransformRef = useRef(null);
+  const publicDraftRequestRef = useRef(null);
+  const canonicalSnapshotCreatedRef = useRef("");
+  const draftRevisionRef = useRef(0);
   photoTransformRef.current = {
     photoX: draft.photoX,
     photoY: draft.photoY,
@@ -317,14 +326,13 @@ export default function MatchReceipt({ auth, app }) {
       ?? registeredCourts.find((court) => court.name === draft.venue)
       ?? null
   ), [draft.venue, registeredCourts, selectedCourtId]);
+  const activePublicDraftId = publicDraftId || requestedPublicDraftId;
   const matchUrl = useMemo(() => (
-    typeof window !== "undefined" && (canonicalMatchId || publicDraftId)
-      ? new URL(canonicalMatchId
-        ? `/app/matches?match=${encodeURIComponent(canonicalMatchId)}`
-        : `/app/receipt?draft=${encodeURIComponent(publicDraftId)}`, window.location.origin).toString()
+    typeof window !== "undefined" && activePublicDraftId
+      ? new URL(`/app/receipt?draft=${encodeURIComponent(activePublicDraftId)}`, window.location.origin).toString()
       : ""
-  ), [canonicalMatchId, publicDraftId]);
-  const receiptPublicId = canonicalMatchId || publicDraftId || requestedPublicDraftId;
+  ), [activePublicDraftId]);
+  const receiptPublicId = activePublicDraftId;
 
   useEffect(() => {
     if (!matchId) return;
@@ -378,6 +386,7 @@ export default function MatchReceipt({ auth, app }) {
         if (!active) return;
         setDraft(normalizeMatchReceiptDraft(result.draft));
         setGenerated(true);
+        setRequestedDraftCanClaim(Boolean(result.canClaim));
         setStatus(result.claimed ? "내 기록으로 전환된 경기 영수증입니다." : "공유된 경기 영수증입니다.");
       })
       .catch(() => {
@@ -463,7 +472,11 @@ export default function MatchReceipt({ auth, app }) {
       }
       : normalizeMatchReceiptDraft({ ...current, [name]: value }));
     if (name === "venue") setSelectedCourtId("");
-    if (publicDraftId && !requestedPublicDraftId) setPublicDraftId("");
+    draftRevisionRef.current += 1;
+    if (publicDraftId && !requestedPublicDraftId) {
+      setPublicDraftId("");
+    }
+    publicDraftRequestRef.current = null;
     setErrors((current) => (current[name] ? { ...current, [name]: "" } : current));
     setGenerated(Boolean(canonicalMatchId));
     setStatus("");
@@ -477,7 +490,11 @@ export default function MatchReceipt({ auth, app }) {
     const originalAddress = courtAddress === "주소 미등록" ? "" : courtAddress;
     setSelectedCourtId(String(court.id ?? ""));
     setDraft((current) => normalizeMatchReceiptDraft({ ...current, venue, address, originalAddress }));
-    if (publicDraftId && !requestedPublicDraftId) setPublicDraftId("");
+    draftRevisionRef.current += 1;
+    if (publicDraftId && !requestedPublicDraftId) {
+      setPublicDraftId("");
+    }
+    publicDraftRequestRef.current = null;
     setErrors((current) => ({ ...current, venue: "", address: "" }));
     setGenerated(Boolean(canonicalMatchId));
     setStatus("");
@@ -556,6 +573,10 @@ export default function MatchReceipt({ auth, app }) {
       setPhotoBlob(null);
       setGenerated(false);
       setPublicDraftId("");
+      setRequestedDraftCanClaim(false);
+      draftRevisionRef.current += 1;
+      publicDraftRequestRef.current = null;
+      canonicalSnapshotCreatedRef.current = "";
       setSelectedCourtId("");
       setErrors({});
       setStatus("새 일련번호로 영수증을 시작했습니다.");
@@ -690,19 +711,42 @@ export default function MatchReceipt({ auth, app }) {
     });
   }
 
-  async function ensurePublicDraft(value = draft) {
-    if (canonicalMatchId || publicDraftId) return publicDraftId;
-    const response = await fetch("/api/match-receipts/draft", {
-      method: "POST",
-      credentials: "same-origin",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ draft: value }),
+  async function ensurePublicDraft(value = draft, { forClaim = false } = {}) {
+    if (publicDraftId) return publicDraftId;
+    if (requestedPublicDraftId && (!forClaim || requestedDraftCanClaim)) return requestedPublicDraftId;
+    if (publicDraftRequestRef.current) return publicDraftRequestRef.current;
+
+    const requestRevision = draftRevisionRef.current;
+    const request = postServerAction("/api/match-receipts/draft", {
+      draft: value,
+      ...(canonicalMatchId ? { sourceMatchId: canonicalMatchId } : {}),
+      ...(requestedPublicDraftId ? { clonePublicId: requestedPublicDraftId } : {}),
+    }, {
+      allowAnonymous: !canonicalMatchId,
+      allowWhenDisabled: true,
+    }).then((result) => {
+      if (!result?.publicId) throw new Error("receipt_draft_create_failed");
+      if (requestRevision !== draftRevisionRef.current) throw new Error("receipt_draft_stale");
+      setPublicDraftId(result.publicId);
+      return result.publicId;
+    }).finally(() => {
+      if (publicDraftRequestRef.current === request) publicDraftRequestRef.current = null;
     });
-    if (!response.ok) throw new Error(response.status === 429 ? "receipt_draft_rate_limited" : "receipt_draft_create_failed");
-    const result = await response.json();
-    setPublicDraftId(result.publicId);
-    return result.publicId;
+    publicDraftRequestRef.current = request;
+    return request;
   }
+
+  useEffect(() => {
+    if (!canonicalMatchId || !generated || publicDraftId
+      || canonicalSnapshotCreatedRef.current === canonicalMatchId) return;
+    canonicalSnapshotCreatedRef.current = canonicalMatchId;
+    void ensurePublicDraft(draft).catch((error) => {
+      if (error.message !== "receipt_draft_stale") {
+        canonicalSnapshotCreatedRef.current = "";
+        setStatus("공개 영수증 링크를 만들지 못했습니다.");
+      }
+    });
+  }, [canonicalMatchId, draft, generated, publicDraftId]);
 
   async function completeReceipt(event) {
     event.preventDefault();
@@ -740,10 +784,11 @@ export default function MatchReceipt({ auth, app }) {
       setStatus("영수증을 먼저 완성해 주세요.");
       throw new Error("match_receipt_invalid");
     }
+    const publicId = await ensurePublicDraft(result.draft);
+    const publicMatchUrl = new URL(`/app/receipt?draft=${encodeURIComponent(publicId)}`, window.location.origin).toString();
     return renderMatchReceiptPng(result.draft, preset, {
-      matchId: canonicalMatchId,
-      publicId: receiptPublicId,
-      matchUrl,
+      publicId,
+      matchUrl: publicMatchUrl,
       photoBlob,
     });
   }
@@ -805,7 +850,7 @@ export default function MatchReceipt({ auth, app }) {
     setBusy("login");
     trackMatchReceiptEvent("receipt_save_login_started", { loggedIn: false, matchType: draft.format });
     try {
-      const publicId = await ensurePublicDraft();
+      const publicId = await ensurePublicDraft(draft, { forClaim: true });
       const returnTo = `${MATCH_RECEIPT_CREATE_RETURN_TO}&receiptDraft=${encodeURIComponent(publicId)}`;
       await auth?.signInWithProvider?.("google", returnTo);
     } catch (error) {
@@ -817,20 +862,22 @@ export default function MatchReceipt({ auth, app }) {
     }
   }
 
-  function continueToRecord() {
+  async function continueToRecord() {
     if (!auth?.session) {
-      void continueWithGoogle();
+      await continueWithGoogle();
       return;
     }
-    const returnTo = publicDraftId
-      ? `${MATCH_RECEIPT_CREATE_RETURN_TO}&receiptDraft=${encodeURIComponent(publicDraftId)}`
-      : MATCH_RECEIPT_CREATE_RETURN_TO;
-    navigate(returnTo, {
-      state: {
-        receiptDraft: getMatchReceiptCreateDraft(draft),
-        receiptSourceDraft: draft,
-      },
-    });
+    setBusy("continue");
+    try {
+      const publicId = await ensurePublicDraft(draft, { forClaim: true });
+      navigate(`${MATCH_RECEIPT_CREATE_RETURN_TO}&receiptDraft=${encodeURIComponent(publicId)}`);
+    } catch (error) {
+      setStatus(error.message === "receipt_draft_rate_limited"
+        ? "공유 영수증 생성 시도를 초과했습니다. 잠시 후 다시 시도해 주세요."
+        : "기록으로 이어갈 영수증 초안을 만들지 못했습니다.");
+    } finally {
+      setBusy("");
+    }
   }
 
   return (
@@ -986,7 +1033,7 @@ export default function MatchReceipt({ auth, app }) {
               <h2>{canonicalMatchId ? "내 기록에 저장됨" : "이 경기를 내 기록으로 가져가기"}</h2>
               {canonicalMatchId ? (
                 <>
-                  <p>실제 경기 ID가 연결됐습니다. QR 코드는 이 경기 기록을 엽니다.</p>
+                  <p>실제 경기 ID가 연결됐습니다. QR 코드는 누구나 볼 수 있는 공개 영수증을 엽니다.</p>
                   <button type="button" className="button ui-button button-secondary ui-button-secondary button-md ui-button-md" onClick={() => navigate("/app/profile/records")}>내 기록 보기</button>
                 </>
               ) : auth?.session ? (

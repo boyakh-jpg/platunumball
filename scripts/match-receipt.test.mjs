@@ -6,6 +6,7 @@ import {
   createMatchReceiptViewModel,
   getMatchReceiptDraftFromMatch,
   getMatchReceiptFormatLabel,
+  MATCH_RECEIPT_PHOTO_ASPECT,
   normalizeMatchReceiptDraft,
   renewMatchReceiptDraft,
 } from "../src/lib/matchReceipt.js";
@@ -63,6 +64,23 @@ test("public receipt draft keeps only bounded safe fields", () => {
 
 test("public receipt draft rejects unknown match nature", () => {
   assert.equal(sanitizeReceiptDraftPayload({ matchNature: "championship" }).matchNature, "competitive");
+});
+
+test("only trusted canonical receipt payload keeps server-only fields", () => {
+  const source = {
+    personalMmr: 1400,
+    hasCanonicalTeamMatch: true,
+    verified: true,
+  };
+  const trusted = sanitizeReceiptDraftPayload(source, { trustedCanonical: true });
+  const untrusted = sanitizeReceiptDraftPayload(source);
+
+  assert.equal(trusted.personalMmr, 1400);
+  assert.equal(trusted.hasCanonicalTeamMatch, true);
+  assert.equal(trusted.verified, true);
+  assert.equal("personalMmr" in untrusted, false);
+  assert.equal("hasCanonicalTeamMatch" in untrusted, false);
+  assert.equal(untrusted.verified, false);
 });
 
 test("receipt view model uses compact game labels, venue fallback, and a safe hashtag", () => {
@@ -139,7 +157,7 @@ test("receipt ownership capability is secret, hashed, and cookie-scoped", () => 
 });
 
 test("receipt photo tools stay outside the export card and reference dividers remain", async () => {
-  const [page, qrComponent, styles, tokens, renderer, roomDialog, digitGenerator, landing, appSource, homeNeutralMark, awayNeutralMark, paperGrain, scoreDigitSource, scoreDigits, bebasNeue, bebasLicense, blackHanSans] = await Promise.all([
+  const [page, qrComponent, styles, tokens, renderer, roomDialog, digitGenerator, syncScript, draftApi, landing, appSource, homeNeutralMark, awayNeutralMark, paperGrain, scoreDigitSource, scoreDigits, wordmark, bebasNeue, bebasLicense, blackHanSans] = await Promise.all([
     readFile(new URL("../src/pages/MatchReceipt.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/components/common/QrCode.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/styles/features/match-receipt.css", import.meta.url), "utf8"),
@@ -147,13 +165,16 @@ test("receipt photo tools stay outside the export card and reference dividers re
     readFile(new URL("../src/lib/matchReceipt.js", import.meta.url), "utf8"),
     readFile(new URL("../src/components/recruiting/RecruitingRoomDialogSection.jsx", import.meta.url), "utf8"),
     readFile(new URL("../scripts/generate-receipt-score-digits.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../scripts/sync-receipt-assets-to-r2.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../server/api/match-receipts/draft.js", import.meta.url), "utf8"),
     readFile(new URL("../src/pages/Landing.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/App.jsx", import.meta.url), "utf8"),
     readFile(new URL("../public/assets/tier-emblems/tier-neutral-home-outline-v5.png", import.meta.url)),
     readFile(new URL("../public/assets/tier-emblems/tier-neutral-away-outline-v5.png", import.meta.url)),
     readFile(new URL("../public/assets/match-receipt-paper-grain-v1.png", import.meta.url)),
     readFile(new URL("../public/assets/match-receipt-score-digits-source-v1.png", import.meta.url)),
-    readFile(new URL("../public/assets/match-receipt-score-digits-v1.png", import.meta.url)),
+    readFile(new URL("../public/assets/match-receipt-score-digits-v2.png", import.meta.url)),
+    readFile(new URL("../public/assets/boxtier_letter_dark.png", import.meta.url)),
     readFile(new URL("../public/assets/fonts/BebasNeue-Regular.ttf", import.meta.url)),
     readFile(new URL("../public/assets/fonts/BebasNeue-OFL.txt", import.meta.url), "utf8"),
     readFile(new URL("../public/assets/fonts/BlackHanSans-Regular.ttf", import.meta.url)),
@@ -207,6 +228,14 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(page, /\{model\.comment \? <span/);
   assert.doesNotMatch(page, /model\.comment \|\| "내 경기 기록"/);
   assert.match(page, /className="match-receipt-qr" branded/);
+  assert.match(page, /\/app\/receipt\?draft=/);
+  assert.doesNotMatch(page, /\/app\/matches\?match=/);
+  assert.match(page, /sourceMatchId: canonicalMatchId/);
+  assert.match(page, /clonePublicId: requestedPublicDraftId/);
+  assert.match(page, /requestedDraftCanClaim/);
+  assert.match(page, /draftRevisionRef/);
+  assert.match(page, /receipt_draft_stale/);
+  assert.doesNotMatch(page, /state:\s*\{\s*receiptDraft: getMatchReceiptCreateDraft\(draft\)/);
   assert.match(page, /match-receipt-photo-backdrop/);
   assert.doesNotMatch(page, /index \? "AWAY" : "HOME"/);
   assert.match(page, /maxLength=\{MATCH_RECEIPT_LIMITS\.comment\} disabled=\{isFieldReadOnly\("comment"\)\}/);
@@ -217,6 +246,8 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(qrComponent, /finderCenterPositions/);
   assert.match(qrComponent, />\s*B\s*<\/text>/);
   assert.match(styles, /\.match-receipt-photo\.is-editable[\s\S]*touch-action: none/);
+  assert.match(styles, /\.match-receipt-photo \{[\s\S]*height: 46\.09375%/);
+  assert.match(styles, /\.match-receipt-poster-teams strong[\s\S]*overflow-wrap: anywhere[\s\S]*word-break: normal/);
   assert.match(styles, /\.match-receipt-photo-rotate-handle/);
   assert.match(styles, /\.match-receipt-photo-rotate-handle[\s\S]*position: absolute[\s\S]*top: 0[\s\S]*right: 0[\s\S]*cursor: grab[\s\S]*touch-action: none/);
   assert.match(styles, /\.match-receipt-photo-tools/);
@@ -250,6 +281,8 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(styles, /\.match-receipt-ticket-date[\s\S]*border-top/);
   assert.match(styles, /\.match-receipt-personal-stats b \+ b[\s\S]*border-left/);
   assert.match(renderer, /const receiptTop = compact \? 1010 : 1504/);
+  assert.equal(MATCH_RECEIPT_PHOTO_ASPECT, 1080 / 885);
+  assert.match(renderer, /match-receipt-score-digits-v2\.png/);
   assert.match(renderer, /createCanvasPaperPattern\(ctx, paperGrain\)/);
   assert.doesNotMatch(renderer, /ctx\.shadowColor = "rgba\(0,0,0,\.42\)"/);
   assert.match(renderer, /compact \? 154 : 278/);
@@ -292,11 +325,19 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(digitGenerator, /const DIGIT_WIDTH = 176/);
   assert.match(digitGenerator, /const DIGIT_HEIGHT = 372/);
   assert.match(digitGenerator, /match-receipt-score-digits-source-v1\.png/);
+  assert.match(digitGenerator, /match-receipt-score-digits-v2\.png/);
   assert.match(digitGenerator, /const SOURCE_COLUMNS = 5/);
   assert.match(digitGenerator, /greenExcess/);
   assert.doesNotMatch(digitGenerator, /fontfile:/);
   assert.doesNotMatch(digitGenerator, /const DIGIT_PATHS =/);
   assert.doesNotMatch(digitGenerator, /<svg/);
+  assert.match(syncScript, /match-receipt-score-digits-v2\.png/);
+  assert.match(syncScript, /boxtier_letter_dark\.png/);
+  assert.match(draftApi, /allowRequestMethod\(request, response, \["GET", "POST"\]\)/);
+  assert.match(draftApi, /sourceMatchId/);
+  assert.match(draftApi, /clonePublicId/);
+  assert.match(draftApi, /canClaim/);
+  assert.match(draftApi, /trustedCanonical/);
   assert.match(renderer, /label: `\$\{winner\.name\} WIN`/);
   assert.match(renderer, /MY TIER · \$\{model\.personalTier\.label\}/);
   assert.match(renderer, /const badgeSize = actualSize \* 0\.14/);
@@ -325,9 +366,11 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.equal(paperGrain.subarray(1, 4).toString("ascii"), "PNG");
   assert.equal(scoreDigitSource.subarray(1, 4).toString("ascii"), "PNG");
   assert.equal(scoreDigits.subarray(1, 4).toString("ascii"), "PNG");
+  assert.equal(wordmark.subarray(1, 4).toString("ascii"), "PNG");
   assert.ok(scoreDigitSource.length > 1_000_000);
   assert.ok(paperGrain.length > 1_000_000);
   assert.ok(scoreDigits.length > 500_000);
+  assert.ok(wordmark.length > 10_000);
   assert.match(tokens, /font-family: "Bebas Neue"/);
   assert.match(tokens, /BebasNeue-Regular\.ttf/);
   assert.match(tokens, /font-family: "Black Han Sans"/);

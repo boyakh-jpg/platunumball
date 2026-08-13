@@ -4,7 +4,7 @@ import sharp from "sharp";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const SOURCE_FILE = resolve(ROOT, "public/assets/match-receipt-score-digits-source-v1.png");
-const OUTPUT_FILE = resolve(ROOT, "public/assets/match-receipt-score-digits-v1.png");
+const OUTPUT_FILE = resolve(ROOT, "public/assets/match-receipt-score-digits-v2.png");
 const SOURCE_COLUMNS = 5;
 const SOURCE_ROWS = 2;
 const CELL_WIDTH = 196;

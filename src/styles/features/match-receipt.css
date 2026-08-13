@@ -211,7 +211,7 @@
   position: absolute;
   z-index: 0;
   inset: 0 0 auto;
-  height: 46%;
+  height: 46.09375%;
   overflow: hidden;
   background: #202220;
 }
@@ -441,7 +441,7 @@
 
 .match-receipt-poster-teams strong {
   display: -webkit-box; align-content: center;
-  height: 38%; overflow: hidden;
+  height: 38%; overflow: hidden; overflow-wrap: anywhere; word-break: normal;
   font-family: "Black Han Sans", "KBO Dia Gothic", sans-serif;
   font-size: clamp(12px, 4.8cqw, 23px);
   font-weight: 900;

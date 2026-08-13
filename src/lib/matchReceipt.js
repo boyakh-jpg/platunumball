@@ -41,7 +41,7 @@ export const MATCH_RECEIPT_CANVAS_SIZES = Object.freeze({
   feed: Object.freeze({ width: 1080, height: 1350, label: "Feed 1080×1350" }),
 });
 
-export const MATCH_RECEIPT_PHOTO_ASPECT = 1080 / 860;
+export const MATCH_RECEIPT_PHOTO_ASPECT = 1080 / 885;
 const MATCH_RECEIPT_DEFAULT_PHOTO_FOCUS = Object.freeze({ x: 0, y: 82 });
 
 export function getMatchReceiptRotationCoverScale(rotation, aspect = MATCH_RECEIPT_PHOTO_ASPECT) {
@@ -94,7 +94,7 @@ const MATCH_RECEIPT_NEUTRAL_TEAM_MARK_URLS = Object.freeze({
 });
 const MATCH_RECEIPT_PAPER_URL = assetUrl("/assets/match-receipt-paper-torn-v1.png");
 const MATCH_RECEIPT_PAPER_GRAIN_URL = assetUrl("/assets/match-receipt-paper-grain-v1.png");
-const MATCH_RECEIPT_SCORE_DIGITS_URL = assetUrl("/assets/match-receipt-score-digits-v1.png");
+const MATCH_RECEIPT_SCORE_DIGITS_URL = assetUrl("/assets/match-receipt-score-digits-v2.png");
 
 function todayInKorea() {
   const parts = new Intl.DateTimeFormat("en-CA", {

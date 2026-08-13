@@ -1,9 +1,20 @@
 import { getSupabaseAdminClient } from "../_supabaseAuth.js";
-import { readJsonBody, sendJson } from "../_supabaseAdmin.js";
+import {
+  allowRequestMethod,
+  getAdminLevel,
+  getAuthenticatedContext,
+  readJsonBody,
+  sendJson,
+} from "../_supabaseAdmin.js";
+import { loadAuthoritativeState } from "../_authoritativeState.js";
+import { filterStateForProfile } from "../../lib/stateVisibility.js";
+import { getMatchReceiptDraftFromMatch } from "../../../src/lib/matchReceipt.js";
 import {
   createReceiptCapability,
+  getReceiptCapabilityCookie,
   getReceiptRequestHash,
   hashReceiptCapability,
+  receiptCapabilityMatches,
   sanitizeReceiptDraftPayload,
   setReceiptCapabilityCookie,
 } from "./_draftSecurity.js";
@@ -12,7 +23,60 @@ function getPublicId(request) {
   return String(request.query?.publicId ?? "").trim();
 }
 
+function getMatchSideTeamId(match, side) {
+  return match?.[side]?.teamId ?? match?.[`${side}Id`] ?? "";
+}
+
+function getCanonicalTeamMmr(teams, teamId) {
+  const team = teams?.find((item) => String(item.id) === String(teamId));
+  const mmr = Number(team?.mmr);
+  return Number.isFinite(mmr) ? mmr : undefined;
+}
+
+async function createCanonicalPayload(request, sourceMatchId, styleDraft) {
+  const context = await getAuthenticatedContext(request, { allowMissingProfile: true });
+  const adminLevel = context.profileId ? await getAdminLevel(context) : 0;
+  const rawState = await loadAuthoritativeState(context, {
+    operation: { action: "loadMatch", matchId: sourceMatchId },
+  });
+  const profileId = context.profileId ?? rawState?.currentUserId ?? "";
+  const state = filterStateForProfile(rawState ?? {}, profileId, adminLevel >= 30);
+  const match = (state.matches ?? []).find((item) => String(item.id) === sourceMatchId);
+  if (!match || match.status !== "confirmed") return null;
+
+  const currentUser = (state.users ?? []).find((item) => String(item.id) === String(profileId));
+  const tournament = (state.tournaments ?? []).find((item) => item.id === match.tournamentId) ?? null;
+  const safeStyle = sanitizeReceiptDraftPayload(styleDraft);
+  const canonicalDraft = getMatchReceiptDraftFromMatch(match, {
+    ...safeStyle,
+    currentUserId: profileId,
+    personalMmr: currentUser?.ratings?.integrated,
+    tournament,
+    homeMmr: getCanonicalTeamMmr(state.teams, getMatchSideTeamId(match, "teamA")),
+    awayMmr: getCanonicalTeamMmr(state.teams, getMatchSideTeamId(match, "teamB")),
+  });
+  return {
+    ...sanitizeReceiptDraftPayload(canonicalDraft, { trustedCanonical: true }),
+    _canonicalReceipt: true,
+  };
+}
+
+async function clonePublicPayload(supabase, publicId) {
+  if (!publicId) return null;
+  const { data, error } = await supabase
+    .from("match_receipt_drafts")
+    .select("payload")
+    .eq("public_id", publicId)
+    .gt("expires_at", new Date().toISOString())
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  return sanitizeReceiptDraftPayload(data.payload);
+}
+
 export default async function handler(request, response) {
+  if (!allowRequestMethod(request, response, ["GET", "POST"])) return;
+
   const supabase = getSupabaseAdminClient();
 
   if (request.method === "GET") {
@@ -20,23 +84,39 @@ export default async function handler(request, response) {
     if (!publicId) return sendJson(response, 400, { error: "receipt_public_id_required" });
     const { data, error } = await supabase
       .from("match_receipt_drafts")
-      .select("public_id,payload,expires_at,claimed_at")
+      .select("public_id,capability_hash,payload,expires_at,claimed_at")
       .eq("public_id", publicId)
       .gt("expires_at", new Date().toISOString())
       .maybeSingle();
     if (error) throw error;
     if (!data) return sendJson(response, 404, { error: "receipt_draft_not_found" });
-    response.setHeader("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
+    const capability = getReceiptCapabilityCookie(request);
+    const canClaim = !data.claimed_at
+      && capability?.publicId === data.public_id
+      && receiptCapabilityMatches(capability.secret, data.capability_hash);
+    response.setHeader("Cache-Control", "private, no-store");
     return sendJson(response, 200, {
       publicId: data.public_id,
-      draft: sanitizeReceiptDraftPayload(data.payload),
+      draft: sanitizeReceiptDraftPayload(data.payload, {
+        trustedCanonical: data.payload?._canonicalReceipt === true,
+      }),
       expiresAt: data.expires_at,
       claimed: Boolean(data.claimed_at),
+      canClaim,
     });
   }
 
   const body = await readJsonBody(request, { maxBytes: 16_384, maxStringLength: 1_000 });
-  const payload = sanitizeReceiptDraftPayload(body.draft);
+  const sourceMatchId = String(body.sourceMatchId ?? "").trim();
+  const clonePublicId = String(body.clonePublicId ?? "").trim();
+  const payload = sourceMatchId
+    ? await createCanonicalPayload(request, sourceMatchId, body.draft)
+    : clonePublicId
+      ? await clonePublicPayload(supabase, clonePublicId)
+      : sanitizeReceiptDraftPayload(body.draft);
+  if (!payload) return sendJson(response, 404, {
+    error: sourceMatchId ? "receipt_source_match_not_found" : "receipt_draft_not_found",
+  });
   if (!payload.homeTeam || !payload.awayTeam) return sendJson(response, 400, { error: "receipt_draft_invalid" });
 
   const { data: allowed, error: rateError } = await supabase.rpc("consume_match_receipt_draft_quota", {

@@ -44,7 +44,8 @@ function cleanSerialSeed(value) {
   return /^[A-Za-z0-9:_-]{8,96}$/.test(seed) ? seed : randomBytes(16).toString("hex");
 }
 
-export function sanitizeReceiptDraftPayload(value = {}) {
+export function sanitizeReceiptDraftPayload(value = {}, options = {}) {
+  const trustedCanonical = options.trustedCanonical === true;
   const format = ["3v3", "5v5", "other"].includes(value.format) ? value.format : "3v3";
   const matchNature = ["friendly", "competitive", "revenge", "semifinal", "final"].includes(value.matchNature)
     ? value.matchNature
@@ -66,9 +67,11 @@ export function sanitizeReceiptDraftPayload(value = {}) {
     comment: cleanText(value.comment, TEXT_LIMITS.comment),
     homeMmr: cleanOptionalNumber(value.homeMmr),
     awayMmr: cleanOptionalNumber(value.awayMmr),
+    ...(trustedCanonical ? { personalMmr: cleanOptionalNumber(value.personalMmr) } : {}),
     personalPoints: cleanOptionalNumber(value.personalPoints),
     personalRebounds: cleanOptionalNumber(value.personalRebounds),
-    verified: false,
+    ...(trustedCanonical ? { hasCanonicalTeamMatch: Boolean(value.hasCanonicalTeamMatch) } : {}),
+    verified: trustedCanonical && value.verified === true,
   };
 }
 
