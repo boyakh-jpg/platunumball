@@ -324,6 +324,9 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(page, /className="page-header match-receipt-page-head ui-page-hero ui-design-app-hero"/);
   assert.match(page, /> 뒤로가기/);
   assert.match(page, /> 홈으로/);
+  assert.match(styles, /\.match-receipt-page\s*\{[^}]*width:\s*100%;[^}]*padding:\s*0 0 72px;/);
+  assert.match(styles, /\.match-receipt-workspace\s*\{[^}]*width:\s*min\(1180px, calc\(100% - 32px\)\);[^}]*margin:\s*0 auto;/);
+  assert.doesNotMatch(styles, /match-receipt-page-head\.ui-design-app-hero\s*\{[^}]*margin-block-start:\s*0;/);
   assert.match(preview, /model\.hasPersonalStats \? "MY GAME" : "GAME INFO"/);
   assert.match(preview, /match-receipt-personal-stats/);
   assert.match(preview, /neutralTeamMarkUrls\.home/);

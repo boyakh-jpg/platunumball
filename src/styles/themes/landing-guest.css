@@ -158,25 +158,6 @@
   line-height: 1.55;
 }
 
-.guest-landing-explore-nav {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-3) var(--space-5);
-}
-
-.guest-landing-explore-nav a {
-  color: var(--rb-muted);
-  font-size: 0.76rem;
-  font-weight: 800;
-  text-decoration: none;
-}
-
-.guest-landing-explore-nav a:hover,
-.guest-landing-explore-nav a:focus-visible {
-  color: var(--rb-text);
-}
-
 .guest-landing-auth-error {
   margin: 0;
   color: var(--rb-danger);

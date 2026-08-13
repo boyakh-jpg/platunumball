@@ -202,13 +202,7 @@ test("앱은 분류 박스 없는 표준 디자인을 사용하고 비교 데모
   assert.match(pageSources.landing, /children = "로그인"/);
   assert.match(pageSources.landing, /가입 없이 Google로 로그인/);
   assert.equal(count(pageSources.landing, "<GoogleLoginButton"), 2);
-  assert.match(pageSources.landing, /className="guest-landing-explore-nav"/);
-  assert.match(pageSources.landing, /to="\/app">홈 구경하기/);
-  assert.match(pageSources.landing, /to="\/app\/matches">일정/);
-  assert.match(pageSources.landing, /to="\/app\/recruiting">매칭/);
-  assert.match(pageSources.landing, /to="\/app\/recorder">플레이/);
-  assert.match(pageSources.landing, /to="\/app\/teams">팀/);
-  assert.match(pageSources.landing, /to="\/app\/community">게시판/);
+  assert.doesNotMatch(pageSources.landing, /guest-landing-explore-nav|홈 구경하기/);
   assert.doesNotMatch(pageSources.landing, /guest-landing-text-login|guest-landing-account-login/);
   assert.doesNotMatch(pageSources.landing, /Recent games|지금 열려 있는 경기|Team basketball|Season ranking|ui-design-spotlight|landing-stat-grid/);
   assert.match(editorialDesignStyles, /\.ui-design-spotlight__stats > div\s*\{[^}]*color:\s*var\(--text\);/);
