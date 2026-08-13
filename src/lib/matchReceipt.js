@@ -16,6 +16,7 @@ export const MATCH_RECEIPT_LIMITS = Object.freeze({
   teamName: 24,
   venue: 36,
   address: 48,
+  originalAddress: 96,
   comment: 60,
   score: 999,
 });
@@ -139,6 +140,7 @@ export function createDefaultMatchReceiptDraft() {
     playedOn: todayInKorea(),
     venue: "",
     address: "",
+    originalAddress: "",
     format: "3v3",
     matchNature: "competitive",
     homeColor: DEFAULT_COLORS.home,
@@ -171,6 +173,7 @@ export function normalizeMatchReceiptDraft(value = {}) {
     playedOn: /^\d{4}-\d{2}-\d{2}$/.test(String(value.playedOn ?? "")) ? String(value.playedOn) : todayInKorea(),
     venue: cleanText(value.venue, MATCH_RECEIPT_LIMITS.venue),
     address: cleanText(value.address, MATCH_RECEIPT_LIMITS.address),
+    originalAddress: cleanText(value.originalAddress, MATCH_RECEIPT_LIMITS.originalAddress),
     format,
     matchNature,
     homeColor: cleanColor(value.homeColor, DEFAULT_COLORS.home),
@@ -369,7 +372,8 @@ export function getMatchReceiptDraftFromMatch(match = {}, style = {}, court = nu
     format: MATCH_RECEIPT_FORMATS.some(({ value }) => value === match.mode) ? match.mode : "other",
     matchNature: inferMatchReceiptNature(match, style.tournament),
     venue: court?.name ?? (match.court && match.court !== "미정" ? match.court : ""),
-    address: court?.address ?? style.address ?? "",
+    address: court?.region ?? style.address ?? "",
+    originalAddress: court?.address ?? style.originalAddress ?? "",
     comment: memo,
     homeColor: style.homeColor,
     awayColor: style.awayColor,
@@ -409,21 +413,25 @@ export function getMatchReceiptFileName(value, preset = "story") {
 }
 
 export function getMatchReceiptFormatLabel(format) {
-  return MATCH_RECEIPT_FORMATS.find((item) => item.value === format)?.label ?? "기타";
+  if (format === "3v3") return "3v3";
+  if (format === "5v5") return "5v5";
+  return "OTHER";
 }
 
 export function getMatchReceiptNatureLabel(matchNature) {
   return MATCH_RECEIPT_NATURES.find((item) => item.value === matchNature)?.label ?? "COMPETITIVE";
 }
 
-function receiptNumber(draft) {
-  const input = `${draft.playedOn}|${draft.homeTeam}|${draft.awayTeam}|${draft.homeScore}|${draft.awayScore}`;
+function receiptHashtag(draft, publicId = "") {
+  const input = publicId
+    ? `${publicId}|${draft.playedOn}`
+    : `${draft.playedOn}|${draft.homeTeam}|${draft.awayTeam}|${draft.homeScore}|${draft.awayScore}`;
   let hash = 2166136261;
   for (let index = 0; index < input.length; index += 1) {
     hash ^= input.charCodeAt(index);
     hash = Math.imul(hash, 16777619);
   }
-  return `BT-${draft.playedOn.replaceAll("-", "")}-${(hash >>> 0).toString(36).toUpperCase().padStart(4, "0").slice(-4)}`;
+  return `#BT-${(hash >>> 0).toString(36).toUpperCase().padStart(6, "0").slice(-6)}`;
 }
 
 function getTierVisual(mmr) {
@@ -443,7 +451,8 @@ export function createMatchReceiptViewModel(value, options = {}) {
   return {
     ...draft,
     outcome: getMatchReceiptOutcome(draft),
-    serial: options.publicId ? `NO. ${options.publicId}` : receiptNumber(draft),
+    serial: receiptHashtag(draft, options.publicId),
+    displayAddress: draft.address || draft.originalAddress,
     matchUrl: String(options.matchUrl ?? ""),
     logoUrl: BOXTIER_LOGO_URL,
     wordmarkUrl: BOXTIER_LETTER_DARK_URL,
@@ -551,10 +560,27 @@ function createCanvasPaperPattern(ctx, paperGrain) {
 
 function drawCanvasPaperGrain(ctx, paperGrain, rect, options = {}) {
   if (!paperGrain) return;
+  let source = paperGrain;
+  if (options.fadeIn) {
+    const layer = document.createElement("canvas");
+    layer.width = Math.ceil(rect.width);
+    layer.height = Math.ceil(rect.height);
+    const layerContext = layer.getContext("2d");
+    if (layerContext) {
+      layerContext.drawImage(paperGrain, 0, 0, layer.width, layer.height);
+      layerContext.globalCompositeOperation = "destination-in";
+      const fade = layerContext.createLinearGradient(0, 0, 0, layer.height * options.fadeIn);
+      fade.addColorStop(0, "rgba(0,0,0,0)");
+      fade.addColorStop(1, "rgba(0,0,0,1)");
+      layerContext.fillStyle = fade;
+      layerContext.fillRect(0, 0, layer.width, layer.height);
+      source = layer;
+    }
+  }
   ctx.save();
   ctx.globalAlpha = options.alpha ?? 0.2;
   ctx.globalCompositeOperation = options.blend ?? "soft-light";
-  ctx.drawImage(paperGrain, rect.x, rect.y, rect.width, rect.height);
+  ctx.drawImage(source, rect.x, rect.y, rect.width, rect.height);
   ctx.restore();
 }
 
@@ -705,28 +731,36 @@ export async function renderMatchReceiptPng(value, preset = "story", options = {
   const blurredPhoto = document.createElement("canvas");
   blurredPhoto.width = width;
   blurredPhoto.height = photoHeight;
-  blurredPhoto.getContext("2d")?.drawImage(canvas, 0, 0, width, photoHeight, 0, 0, width, photoHeight);
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(0, photoHeight * 0.58, width, photoHeight * 0.42);
-  ctx.clip();
-  ctx.filter = "blur(14px)";
-  ctx.drawImage(blurredPhoto, 0, 0);
-  ctx.restore();
+  const blurredPhotoContext = blurredPhoto.getContext("2d");
+  if (blurredPhotoContext) {
+    blurredPhotoContext.filter = "blur(18px)";
+    blurredPhotoContext.drawImage(canvas, 0, 0, width, photoHeight, 0, 0, width, photoHeight);
+    blurredPhotoContext.filter = "none";
+    blurredPhotoContext.globalCompositeOperation = "destination-in";
+    const blurFade = blurredPhotoContext.createLinearGradient(0, photoHeight * 0.42, 0, photoHeight);
+    blurFade.addColorStop(0, "rgba(0,0,0,0)");
+    blurFade.addColorStop(0.24, "rgba(0,0,0,0.18)");
+    blurFade.addColorStop(0.68, "rgba(0,0,0,0.72)");
+    blurFade.addColorStop(1, "rgba(0,0,0,1)");
+    blurredPhotoContext.fillStyle = blurFade;
+    blurredPhotoContext.fillRect(0, photoHeight * 0.42, width, photoHeight * 0.58);
+    ctx.drawImage(blurredPhoto, 0, 0);
+  }
 
-  const photoFade = ctx.createLinearGradient(0, photoHeight * 0.5, 0, photoHeight + 60);
+  const photoFade = ctx.createLinearGradient(0, photoHeight * 0.42, 0, photoHeight);
   photoFade.addColorStop(0, "rgba(12,12,12,0)");
-  photoFade.addColorStop(0.42, "rgba(12,12,12,.16)");
-  photoFade.addColorStop(0.76, "rgba(12,12,12,.64)");
+  photoFade.addColorStop(0.3, "rgba(12,12,12,.12)");
+  photoFade.addColorStop(0.68, "rgba(12,12,12,.58)");
+  photoFade.addColorStop(0.92, "rgba(12,12,12,.92)");
   photoFade.addColorStop(1, "#111111");
   ctx.fillStyle = photoFade;
-  ctx.fillRect(0, photoHeight * 0.5, width, photoHeight * 0.6);
+  ctx.fillRect(0, photoHeight * 0.42, width, photoHeight * 0.58);
   drawCanvasPaperGrain(ctx, paperGrain, {
     x: 0,
     y: height * 0.35,
     width,
     height: receiptTop - height * 0.35,
-  }, { alpha: 0.2 });
+  }, { alpha: 0.2, fadeIn: 0.24 });
 
   ctx.fillStyle = "#f05a2a";
   ctx.textAlign = "left";
@@ -817,7 +851,7 @@ export async function renderMatchReceiptPng(value, preset = "story", options = {
     });
     if (team.image) {
       ctx.save();
-      if (!(model.showTeamTierEmblems && team.tier)) ctx.globalAlpha = 0.9;
+      ctx.globalAlpha = model.showTeamTierEmblems && team.tier ? 0.82 : 0.76;
       ctx.drawImage(team.image, columns[index] - teamTierSize / 2, teamTierY, teamTierSize, teamTierSize);
       ctx.restore();
     }
@@ -881,7 +915,7 @@ export async function renderMatchReceiptPng(value, preset = "story", options = {
   ctx.fillStyle = "#151515";
   ctx.textAlign = "center";
   ctx.font = '900 25px "KBO Dia Gothic", sans-serif';
-  ctx.fillText(model.address || "경기 장소", 220, footerY + (compact ? 64 : 94), 320);
+  ctx.fillText(model.displayAddress || "경기 장소", 220, footerY + (compact ? 64 : 94), 320);
   ctx.fillText(model.venue || "", 220, footerY + (compact ? 96 : 138), 320);
   ctx.font = '900 27px "KBO Dia Gothic", sans-serif';
   ctx.fillText(model.playedOn.replaceAll("-", "."), 220, footerY + (compact ? 174 : 255));
@@ -918,7 +952,7 @@ export async function renderMatchReceiptPng(value, preset = "story", options = {
     ctx.fillText(model.comment || "내 경기 기록", footerMiddleX, footerY + (compact ? 176 : 278), 260);
   } else {
     ctx.fillStyle = "#151515";
-    ctx.font = '600 25px "Bebas Neue", "KBO Dia Gothic", sans-serif';
+    ctx.font = `900 ${compact ? 36 : 42}px "Bebas Neue", "KBO Dia Gothic", sans-serif`;
     ctx.fillText(getMatchReceiptFormatLabel(model.format), footerMiddleX, footerY + (compact ? 64 : 104), 260);
     ctx.fillStyle = "#71451f";
     ctx.font = '900 18px "KBO Dia Gothic", sans-serif';

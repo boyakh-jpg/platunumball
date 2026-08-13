@@ -2,6 +2,10 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import {
+  createMatchReceiptViewModel,
+  getMatchReceiptFormatLabel,
+} from "../src/lib/matchReceipt.js";
+import {
   createReceiptCapability,
   getReceiptCapabilityCookie,
   hashReceiptCapability,
@@ -18,6 +22,7 @@ test("public receipt draft keeps only bounded safe fields", () => {
     awayScore: -3,
     playedOn: "2026-08-11",
     venue: "Court",
+    originalAddress: `Seoul ${"B".repeat(120)}`,
     format: "invalid",
     matchNature: "semifinal",
     homeColor: "red",
@@ -35,6 +40,7 @@ test("public receipt draft keeps only bounded safe fields", () => {
   assert.equal(payload.homeTeam.includes("<"), false);
   assert.equal(payload.homeScore, 999);
   assert.equal(payload.awayScore, 0);
+  assert.equal(payload.originalAddress.length, 96);
   assert.equal(payload.format, "3v3");
   assert.equal(payload.matchNature, "semifinal");
   assert.equal(payload.homeColor, "#f05a46");
@@ -50,6 +56,27 @@ test("public receipt draft keeps only bounded safe fields", () => {
 
 test("public receipt draft rejects unknown match nature", () => {
   assert.equal(sanitizeReceiptDraftPayload({ matchNature: "championship" }).matchNature, "competitive");
+});
+
+test("receipt view model uses compact game labels, address fallback, and a safe hashtag", () => {
+  const draft = {
+    playedOn: "2026-08-11",
+    homeTeam: "HOME",
+    awayTeam: "AWAY",
+    homeScore: 60,
+    awayScore: 46,
+    address: "마포구",
+    originalAddress: "서울특별시 마포구 망원동",
+  };
+  const model = createMatchReceiptViewModel(draft, { publicId: "public-receipt-id" });
+
+  assert.equal(getMatchReceiptFormatLabel("3v3"), "3v3");
+  assert.equal(getMatchReceiptFormatLabel("5v5"), "5v5");
+  assert.equal(getMatchReceiptFormatLabel("other"), "OTHER");
+  assert.equal(model.displayAddress, "마포구");
+  assert.equal(createMatchReceiptViewModel({ ...draft, address: "" }).displayAddress, draft.originalAddress);
+  assert.match(model.serial, /^#BT-[A-Z0-9]{6}$/);
+  assert.equal(model.serial.includes("public-receipt-id"), false);
 });
 
 test("receipt ownership capability is secret, hashed, and cookie-scoped", () => {
@@ -117,7 +144,7 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(page, /loadError=\{courtMapDirectoryStatus\.error\}/);
   assert.match(page, /직접 입력 또는 지도에서 선택/);
   assert.match(page, /RECEIPT_TEXT_FIELDS\.has\(name\)/);
-  assert.match(page, /normalizeMatchReceiptDraft\(\{ \.\.\.current, venue, address \}\)/);
+  assert.match(page, /normalizeMatchReceiptDraft\(\{ \.\.\.current, venue, address, originalAddress \}\)/);
   assert.match(page, /model\.comment \|\| "내 경기 기록"/);
   assert.match(page, /className="match-receipt-qr" branded/);
   assert.match(page, /match-receipt-photo-backdrop/);
@@ -146,11 +173,11 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(styles, /font-family: "Black Han Sans", "KBO Dia Gothic", sans-serif/);
   assert.match(styles, /transform: scaleX\(0\.92\)/);
   assert.match(styles, /scale\(calc\(var\(--receipt-photo-scale\) \* 0\.92\)\)/);
-  assert.match(styles, /\.match-receipt-team-watermarks[\s\S]*height: 27%/);
+  assert.match(styles, /\.match-receipt-team-watermarks[\s\S]*height: 34%/);
   assert.match(styles, /\.match-receipt-team-tier[\s\S]*width: 50%/);
   assert.match(styles, /inset: auto 3\.1% 1\.8%/);
   assert.match(styles, /height: 19\.9%/);
-  assert.match(styles, /\.match-receipt-team-tier\.is-neutral[\s\S]*opacity: 0\.9/);
+  assert.match(styles, /\.match-receipt-team-tier\.is-neutral[\s\S]*opacity: 0\.76/);
   assert.match(styles, /\.match-receipt-personal-tier[\s\S]*opacity: 0\.64/);
   assert.match(styles, /\.match-receipt-ticket-date[\s\S]*border-top/);
   assert.match(styles, /\.match-receipt-personal-stats b \+ b[\s\S]*border-left/);
@@ -163,6 +190,9 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(renderer, /defaultPhoto: !options\.photoBlob/);
   assert.match(renderer, /MATCH_RECEIPT_DEFAULT_PHOTO_FOCUS = Object\.freeze\(\{ x: 0, y: 82 \}\)/);
   assert.match(renderer, /const foregroundScale = options\.defaultPhoto \? 0\.92 : 1/);
+  assert.match(renderer, /photoHeight \* 0\.42/);
+  assert.match(renderer, /blurFade\.addColorStop\(0\.68, "rgba\(0,0,0,0\.72\)"\)/);
+  assert.match(renderer, /fadeIn: 0\.24/);
   assert.match(renderer, /const footerLeftDivider = compact \? 386 : 414/);
   assert.match(renderer, /ctx\.moveTo\(footerMiddleX, footerY \+ \(compact \? 30 : 70\)\)/);
   assert.match(renderer, /createCanvasPaperPattern/);

@@ -211,15 +211,15 @@
   content: "";
   position: absolute;
   z-index: 1;
-  inset: 35% 0 0;
+  inset: 28% 0 0;
   background:
     linear-gradient(180deg, transparent, #101110 18%),
     radial-gradient(circle at 50% 42%, rgba(237, 90, 44, 0.09), transparent 35%),
     repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.016) 0 1px, transparent 1px 5px);
-  pointer-events: none;
+  -webkit-mask-image: linear-gradient(180deg, transparent, #000 18%); mask-image: linear-gradient(180deg, transparent, #000 18%); pointer-events: none;
 }
 
-.match-receipt-card::after { content: ""; position: absolute; z-index: 1; inset: 35% 0 0; background: var(--receipt-paper-grain) center / cover no-repeat; filter: grayscale(1) contrast(1.4); mix-blend-mode: soft-light; opacity: 0.24; pointer-events: none; }
+.match-receipt-card::after { content: ""; position: absolute; z-index: 1; inset: 28% 0 0; background: var(--receipt-paper-grain) center / cover no-repeat; filter: grayscale(1) contrast(1.4); mix-blend-mode: soft-light; opacity: 0.24; -webkit-mask-image: linear-gradient(180deg, transparent, #000 18%); mask-image: linear-gradient(180deg, transparent, #000 18%); pointer-events: none; }
 
 .match-receipt-photo {
   position: absolute;
@@ -275,16 +275,15 @@
 }
 
 .match-receipt-photo::before {
-  z-index: 1;
-  inset: 58% 0 0;
-  background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.56));
-  backdrop-filter: blur(8px);
-  mask-image: linear-gradient(180deg, transparent, #000 46%);
+  z-index: 1; inset: 44% 0 0;
+  background: linear-gradient(180deg, transparent 0%, rgba(16, 17, 16, 0.12) 32%, rgba(16, 17, 16, 0.74) 100%);
+  backdrop-filter: blur(12px);
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.28) 24%, #000 68%);
+  mask-image: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.28) 24%, #000 68%);
 }
 
 .match-receipt-photo::after {
-  z-index: 2;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0.08) 50%, rgba(0, 0, 0, 0.16) 64%, rgba(0, 0, 0, 0.62) 84%, #101110 100%);
+  z-index: 2; background: linear-gradient(180deg, transparent 42%, rgba(16, 17, 16, 0.12) 58%, rgba(16, 17, 16, 0.58) 78%, rgba(16, 17, 16, 0.92) 94%, #101110 100%);
 }
 
 .match-receipt-photo-image,
@@ -384,13 +383,13 @@
 .match-receipt-team-watermarks {
   position: absolute; z-index: 1; inset: 44.5% 0 auto;
   display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
-  height: 27%; overflow: hidden; pointer-events: none;
+  height: 34%; overflow: hidden; pointer-events: none;
 }
 
 .match-receipt-team-watermarks > span { position: relative; min-width: 0; overflow: hidden; }
 
 .match-receipt-team-watermarks img {
-  position: absolute; top: 5%; display: block;
+  position: absolute; top: 0; display: block;
   width: 118%; aspect-ratio: 1; object-fit: contain; opacity: 0.24;
   filter: grayscale(1) sepia(0.55) brightness(0.48);
 }
@@ -480,12 +479,13 @@
   aspect-ratio: 1;
   margin: 0;
   object-fit: contain;
+  opacity: 0.82;
   filter: drop-shadow(0 0 5px rgba(198, 154, 75, 0.24));
   transform: translateX(-50%);
 }
 
 .match-receipt-poster-teams .match-receipt-team-tier.is-neutral {
-  opacity: 0.9;
+  opacity: 0.76;
 }
 
 .match-receipt-poster-teams span {
@@ -597,8 +597,8 @@
 }
 
 .match-receipt-game-info b {
-  font-size: clamp(11px, 3.4cqw, 16px); font-weight: 600;
-  letter-spacing: 0.04em;
+  font-family: "KBO Dia Gothic", sans-serif; font-size: clamp(15px, 4.6cqw, 22px); font-weight: 900;
+  letter-spacing: 0.02em;
 }
 .match-receipt-game-info small {
   color: #71451f;

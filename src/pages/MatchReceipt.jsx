@@ -48,6 +48,7 @@ const CANONICAL_RECEIPT_FIELDS = new Set([
   "matchNature",
   "venue",
   "address",
+  "originalAddress",
   "comment",
 ]);
 
@@ -103,10 +104,11 @@ function ReceiptPreview({
   draft,
   photoUrl = "",
   matchUrl = "",
+  publicId = "",
   photoGestureHandlers = {},
   photoRotationHandleHandlers = {},
 }) {
-  const model = createMatchReceiptViewModel(draft, { matchUrl });
+  const model = createMatchReceiptViewModel(draft, { matchUrl, publicId });
   const backgroundUrl = photoUrl || model.defaultPhotoUrl;
   const posterTeams = [
     { name: model.homeTeam, tier: model.homeTier, neutralMarkUrl: model.neutralTeamMarkUrls.home },
@@ -197,7 +199,7 @@ function ReceiptPreview({
         <img className="match-receipt-ticket-paper" src={model.paperUrl} alt="" aria-hidden="true" />
         <div className="match-receipt-ticket-place">
           <MapPin aria-hidden="true" />
-          <strong>{[model.address, model.venue].filter(Boolean).join(" · ") || "경기 장소"}</strong>
+          <strong>{[model.displayAddress, model.venue].filter(Boolean).join(" · ") || "경기 장소"}</strong>
           <span className="match-receipt-ticket-date">{model.playedOn.replaceAll("-", ".")}</span>
         </div>
         <div className="match-receipt-ticket-game">
@@ -312,6 +314,7 @@ export default function MatchReceipt({ auth, app }) {
         : `/app/receipt?draft=${encodeURIComponent(publicDraftId)}`, window.location.origin).toString()
       : ""
   ), [canonicalMatchId, publicDraftId]);
+  const receiptPublicId = canonicalMatchId || publicDraftId || requestedPublicDraftId;
 
   useEffect(() => {
     if (!matchId) return;
@@ -432,8 +435,13 @@ export default function MatchReceipt({ auth, app }) {
       trackMatchReceiptEvent("receipt_started", { loggedIn: Boolean(auth?.session) });
     }
     setDraft((current) => RECEIPT_TEXT_FIELDS.has(name)
-      ? { ...current, [name]: String(value ?? "") }
+      ? {
+        ...current,
+        [name]: String(value ?? ""),
+        ...(name === "venue" ? { originalAddress: "" } : {}),
+      }
       : normalizeMatchReceiptDraft({ ...current, [name]: value }));
+    if (name === "venue") setSelectedCourtId("");
     if (publicDraftId && !requestedPublicDraftId) setPublicDraftId("");
     setErrors((current) => (current[name] ? { ...current, [name]: "" } : current));
     setGenerated(Boolean(canonicalMatchId));
@@ -444,9 +452,10 @@ export default function MatchReceipt({ auth, app }) {
     if (!court || readOnlyReceipt) return;
     const courtAddress = getCourtAddress(court);
     const venue = court.name ?? "";
-    const address = court.region || (courtAddress === "주소 미등록" ? "" : courtAddress);
+    const address = court.region || "";
+    const originalAddress = courtAddress === "주소 미등록" ? "" : courtAddress;
     setSelectedCourtId(String(court.id ?? ""));
-    setDraft((current) => normalizeMatchReceiptDraft({ ...current, venue, address }));
+    setDraft((current) => normalizeMatchReceiptDraft({ ...current, venue, address, originalAddress }));
     if (publicDraftId && !requestedPublicDraftId) setPublicDraftId("");
     setErrors((current) => ({ ...current, venue: "", address: "" }));
     setGenerated(Boolean(canonicalMatchId));
@@ -675,7 +684,12 @@ export default function MatchReceipt({ auth, app }) {
       setStatus("영수증을 먼저 완성해 주세요.");
       throw new Error("match_receipt_invalid");
     }
-    return renderMatchReceiptPng(result.draft, preset, { matchId: canonicalMatchId, matchUrl, photoBlob });
+    return renderMatchReceiptPng(result.draft, preset, {
+      matchId: canonicalMatchId,
+      publicId: receiptPublicId,
+      matchUrl,
+      photoBlob,
+    });
   }
 
   async function handleDownload(preset) {
@@ -838,6 +852,7 @@ export default function MatchReceipt({ auth, app }) {
               draft={draft}
               photoUrl={photoUrl}
               matchUrl={matchUrl}
+              publicId={receiptPublicId}
               photoGestureHandlers={{
                 onPointerDown: beginPhotoGesture,
                 onPointerMove: movePhotoGesture,
