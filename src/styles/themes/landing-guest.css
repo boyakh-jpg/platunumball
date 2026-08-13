@@ -122,12 +122,18 @@
   font-size: clamp(3.15rem, 6.8vw, 5.5rem);
 }
 
-.guest-landing-lead,
-.guest-landing-section-heading > p:not(.guest-landing-eyebrow) {
+.guest-landing-lead {
   margin: 0;
   color: var(--rb-muted);
   font-size: clamp(1rem, 1.6vw, 1.16rem);
   line-height: 1.72;
+}
+
+.guest-landing-section-heading > p:not(.guest-landing-eyebrow) {
+  margin: 0;
+  color: var(--rb-muted);
+  font-size: clamp(0.72rem, 1vw, 0.8rem);
+  line-height: 1.62;
 }
 
 .guest-landing-primary-actions {
@@ -141,36 +147,9 @@
   padding-inline: 22px;
 }
 
-.guest-landing-text-login {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  border: 0;
-  background: transparent;
-  color: var(--rb-text);
-  padding: 2px 0;
-  font: inherit;
-  font-size: 0.88rem;
-  font-weight: 850;
-  text-align: left;
-  text-decoration: none;
-  cursor: pointer;
-}
-
-.guest-landing-text-login:hover,
-.guest-landing-text-login:focus-visible {
-  color: var(--rb-orange-2);
-}
-
-.guest-landing-text-login:disabled {
-  cursor: wait;
-  opacity: 0.58;
-}
-
-.guest-landing-hero-copy > small,
-.guest-landing-account-section > small {
+.guest-landing-hero-copy > small {
   color: var(--rb-soft);
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   font-weight: 700;
   line-height: 1.55;
 }
@@ -198,9 +177,9 @@
   display: grid;
   width: min(100%, 1180px);
   justify-items: center;
-  gap: clamp(40px, 6vw, 72px);
+  gap: clamp(36px, 5vw, 56px);
   margin-inline: auto;
-  padding: clamp(84px, 10vw, 132px) var(--page-gutter);
+  padding: clamp(72px, 8vw, 108px) var(--page-gutter);
 }
 
 .guest-landing-section-heading {
@@ -212,7 +191,11 @@
 }
 
 .guest-landing-section h2 {
-  font-size: clamp(2.35rem, 5vw, 4.2rem);
+  font-size: clamp(1.55rem, 2.6vw, 2.25rem);
+}
+
+.guest-landing-section .guest-landing-eyebrow {
+  font-size: 0.68rem;
 }
 
 .guest-landing-record-flow {
@@ -245,13 +228,70 @@
 }
 
 .guest-landing-record-flow strong {
-  font-size: clamp(1.18rem, 2vw, 1.48rem);
+  font-size: clamp(0.94rem, 1.4vw, 1.08rem);
 }
 
 .guest-landing-record-flow span {
   color: var(--rb-muted);
-  font-size: 0.88rem;
+  font-size: 0.72rem;
   font-weight: 700;
+}
+
+.guest-landing-experience {
+  display: grid;
+  width: min(100%, 900px);
+  grid-template-columns: minmax(0, 1.15fr) minmax(250px, 0.85fr);
+  align-items: center;
+  gap: clamp(var(--space-12), 4vw, var(--space-24));
+}
+
+.guest-landing-mobile-scoreboard {
+  min-width: 0;
+  padding: clamp(8px, 1.5vw, 14px);
+  border: var(--ui-stroke-width) solid var(--rb-line);
+  border-radius: var(--radius-md);
+  background: var(--rb-bg-2);
+  container-type: inline-size;
+}
+
+.guest-landing-mobile-scoreboard .ui-match-clock-scoreboard {
+  --match-clock-display-height: 176px;
+}
+
+.guest-landing-mobile-scoreboard .ui-match-clock-scoreboard > div {
+  min-height: 176px;
+  padding: 10px;
+}
+
+.guest-landing-mobile-scoreboard .ui-match-clock-team-label {
+  font-size: clamp(0.58rem, 2.8cqw, 0.78rem);
+}
+
+.guest-landing-experience-copy {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-4);
+}
+
+.guest-landing-experience-copy h3 {
+  margin: 0;
+  font-size: clamp(1.08rem, 1.8vw, 1.3rem);
+}
+
+.guest-landing-experience-copy > p:not(.guest-landing-eyebrow) {
+  margin: 0;
+  color: var(--rb-muted);
+  font-size: 0.72rem;
+  line-height: 1.65;
+}
+
+.guest-landing-experience-actions {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.guest-landing-experience-actions .ui-button {
+  width: 100%;
 }
 
 .guest-landing-account-section {
@@ -278,6 +318,7 @@
   gap: var(--space-3);
   border-right: var(--ui-stroke-width) solid var(--rb-line);
   padding: 14px 24px;
+  font-size: 0.78rem;
   font-weight: 850;
   text-align: center;
 }
@@ -289,10 +330,6 @@
 .guest-landing-benefits svg {
   flex: none;
   color: var(--rb-orange-2);
-}
-
-.guest-landing-account-login {
-  min-width: 210px;
 }
 
 .site-data-footer.is-compact {
@@ -358,8 +395,8 @@
   }
 
   .guest-landing-section {
-    gap: 44px;
-    padding-block: 84px;
+    gap: 38px;
+    padding-block: 68px;
   }
 
   .guest-landing-section-heading {
@@ -368,7 +405,7 @@
   }
 
   .guest-landing-section h2 {
-    font-size: clamp(2.35rem, 11vw, 3.3rem);
+    font-size: clamp(1.45rem, 6.5vw, 1.85rem);
   }
 
   .guest-landing-record-flow {
@@ -383,6 +420,19 @@
 
   .guest-landing-record-flow li:last-child {
     border-bottom: 0;
+  }
+
+  .guest-landing-experience {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .guest-landing-mobile-scoreboard .ui-match-clock-scoreboard {
+    grid-template-columns: minmax(0, 1fr) minmax(110px, 1.15fr) minmax(0, 1fr);
+  }
+
+  .guest-landing-mobile-scoreboard .ui-match-clock-scoreboard > div {
+    min-height: 148px;
+    padding: 8px;
   }
 
   .guest-landing-benefits {
@@ -402,7 +452,4 @@
     border-bottom: 0;
   }
 
-  .guest-landing-account-login {
-    width: 100%;
-  }
 }

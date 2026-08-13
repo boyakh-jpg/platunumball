@@ -6,6 +6,7 @@ import LandingLoading from "../components/common/LandingLoading.jsx";
 import MatchReceiptPreview from "../components/match/MatchReceiptPreview.jsx";
 import { BRAND_NAME } from "../lib/brand.js";
 import { normalizeMatchReceiptDraft } from "../lib/matchReceipt.js";
+import "../styles/features/match-clock-shell-controls.css";
 
 const LANDING_RECEIPT_DRAFT = normalizeMatchReceiptDraft({
   serialSeed: "landing-receipt",
@@ -71,14 +72,6 @@ export default function Landing({ auth }) {
             <Button as={Link} to="/app/receipt" className="guest-landing-primary-cta">
               가입 없이 영수증 만들기 <ArrowRight aria-hidden="true" size={18} />
             </Button>
-            <button
-              type="button"
-              className="guest-landing-text-login"
-              onClick={() => auth?.signInWithProvider?.("google", "/app")}
-              disabled={auth?.authActionPending}
-            >
-              이미 회원이신가요? Google로 로그인 <ArrowRight aria-hidden="true" size={16} />
-            </button>
           </div>
           <small>로그인 없이 제작·저장·공유할 수 있어요.</small>
           {auth?.error ? <p className="guest-landing-auth-error">Google 로그인을 완료하지 못했습니다. 다시 시도해주세요.</p> : null}
@@ -101,6 +94,41 @@ export default function Landing({ auth }) {
           <li><b>02</b><strong>경기 기록</strong><span>점수·개인 기록·승패</span></li>
           <li><b>03</b><strong>기록 연결</strong><span>전적·티어·팀 기록</span></li>
         </ol>
+
+        <div className="guest-landing-experience">
+          <div className="guest-landing-mobile-scoreboard" aria-label="모바일 전광판 예시">
+            <div className="ui-match-clock-scoreboard">
+              <span className="ui-match-clock-scoreboard-label">MOBILE SCOREBOARD</span>
+              <div className="ui-match-clock-team ui-match-clock-team-a">
+                <span className="ui-match-clock-team-label">{LANDING_RECEIPT_DRAFT.homeTeam}</span>
+                <strong className="ui-match-clock-team-score">{LANDING_RECEIPT_DRAFT.homeScore}</strong>
+              </div>
+              <div className="ui-match-clock-main-time">
+                <span className="ui-match-clock-main-time-label">GAME CLOCK</span>
+                <strong className="ui-match-clock-period">2Q</strong>
+                <time dateTime="PT7M32S">07:32</time>
+              </div>
+              <div className="ui-match-clock-team ui-match-clock-team-b">
+                <span className="ui-match-clock-team-label">{LANDING_RECEIPT_DRAFT.awayTeam}</span>
+                <strong className="ui-match-clock-team-score">{LANDING_RECEIPT_DRAFT.awayScore}</strong>
+              </div>
+            </div>
+          </div>
+
+          <div className="guest-landing-experience-copy">
+            <p className="guest-landing-eyebrow">TRY THE FLOW</p>
+            <h3>휴대폰 하나로 경기 운영</h3>
+            <p>연습경기에서 모바일 전광판을 체험하고, 쌓인 기록은 랭크보드에서 확인하세요.</p>
+            <div className="guest-landing-experience-actions">
+              <Button as={Link} to="/app/guide/practice" variant="secondary">
+                연습경기 체험하기 <ArrowRight aria-hidden="true" size={17} />
+              </Button>
+              <Button as={Link} to="/app/rankings" variant="secondary">
+                랭크보드 보기 <ArrowRight aria-hidden="true" size={17} />
+              </Button>
+            </div>
+          </div>
+        </div>
       </section>
 
       <section className="guest-landing-section guest-landing-account-section">
@@ -113,8 +141,6 @@ export default function Landing({ auth }) {
           <li><Check aria-hidden="true" /> 승패와 개인 기록 누적</li>
           <li><Check aria-hidden="true" /> 전적·티어·팀 기록 연결</li>
         </ul>
-        <GoogleLoginButton auth={auth} variant="primary" className="guest-landing-account-login" />
-        <small>처음 이용해도 별도의 가입 양식 없이<br />Google 계정으로 바로 시작할 수 있습니다.</small>
       </section>
 
     </main>

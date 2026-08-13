@@ -382,7 +382,7 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(styles, /transform: scaleX\(0\.92\)/);
   assert.match(styles, /scale\(calc\(var\(--receipt-photo-scale\) \* 0\.92\)\)/);
   assert.match(styles, /\.match-receipt-team-watermarks[\s\S]*height: 34%/);
-  assert.match(styles, /\.match-receipt-team-tier[\s\S]*top: 39%[\s\S]*width: 38%/);
+  assert.match(styles, /\.match-receipt-poster-teams \.match-receipt-team-tier\s*\{[\s\S]*top: 42%;[\s\S]*width: 30%;/);
   assert.match(styles, /--receipt-team-name-size/);
   assert.match(styles, /font-size: clamp\(6px, 1\.9cqw, 9px\)/);
   assert.match(styles, /inset: auto 3\.1% 1\.8%/);
@@ -402,12 +402,14 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(renderer, /createCanvasPaperPattern\(ctx, paperGrain\)/);
   assert.doesNotMatch(renderer, /ctx\.shadowColor = "rgba\(0,0,0,\.42\)"/);
   assert.match(renderer, /compact \? 154 : 278/);
+  assert.match(renderer, /const scoreBaseline = compact \? scoreTop \+ 132 : 1163/);
   assert.match(renderer, /const teamWatermarkSize = compact \? 450 : 600/);
-  assert.match(renderer, /const teamTierY = compact \? 838 : 1255/);
-  assert.match(renderer, /const teamTierSize = compact \? 116 : 176/);
-  assert.match(renderer, /const teamLabelY = compact \? 982 : 1462/);
+  assert.match(renderer, /const teamTop = compact \? 779 : 1192/);
+  assert.match(renderer, /const teamTierY = compact \? 838 : 1311/);
+  assert.match(renderer, /const teamTierSize = compact \? 116 : 140/);
+  assert.match(renderer, /const teamLabelY = compact \? 982 : 1474/);
   assert.match(renderer, /teamFontSize \* getMatchReceiptTeamNameScale\(team\.name\)/);
-  assert.match(renderer, /ctx\.font = '900 18px "KBO Dia Gothic", sans-serif'/);
+  assert.match(renderer, /ctx\.font = `900 \$\{compact \? 14 : 15\}px "KBO Dia Gothic", sans-serif`/);
   assert.match(renderer, /defaultPhoto: !options\.photoBlob/);
   assert.match(renderer, /const shiftX = rect\.width \* panRange \* photoX \/ 100/);
   assert.match(renderer, /MATCH_RECEIPT_DEFAULT_PHOTO_FOCUS = Object\.freeze\(\{ x: 0, y: 82 \}\)/);

@@ -419,9 +419,9 @@
 }
 
 .match-receipt-poster-teams {
-  position: absolute; z-index: 2; inset: 58.1% 7% auto;
+  position: absolute; z-index: 2; inset: 62.1% 7% auto;
   display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0; height: 18.8%;
+  gap: 0; height: 14.8%;
 }
 
 .match-receipt-poster-teams::after {
@@ -442,7 +442,7 @@
 .match-receipt-poster-teams strong {
   display: -webkit-box; align-content: center;
   width: 100%; max-width: 100%; box-sizing: border-box; padding-inline: 2%;
-  height: 38%; overflow: hidden; overflow-wrap: anywhere; word-break: normal;
+  height: 42%; overflow: hidden; overflow-wrap: anywhere; word-break: normal;
   font-family: "Black Han Sans", "KBO Dia Gothic", sans-serif;
   font-size: clamp(9px, var(--receipt-team-name-size, 4.8cqw), 23px);
   font-weight: 900;
@@ -453,10 +453,10 @@
 
 .match-receipt-poster-teams .match-receipt-team-tier {
   position: absolute;
-  top: 39%;
+  top: 42%;
   left: 50%;
   display: block;
-  width: 38%;
+  width: 30%;
   aspect-ratio: 1;
   margin: 0;
   object-fit: contain;
@@ -471,12 +471,12 @@
 
 .match-receipt-poster-teams span {
   position: absolute;
-  bottom: 1.5%; left: 0; width: 100%;
+  bottom: 0.8%; left: 0; width: 100%;
   overflow: hidden;
   max-width: 100%;
   color: #d59c50;
-  font-size: clamp(6px, 1.9cqw, 9px);
-  letter-spacing: 0.035em;
+  font-size: clamp(5px, 1.55cqw, 8px);
+  letter-spacing: 0.025em;
   text-overflow: ellipsis;
   white-space: nowrap;
 }

@@ -900,7 +900,7 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
 
   const scoreTop = verifiedY + 70;
   const scoreDigitHeight = compact ? 154 : 278;
-  const scoreBaseline = compact ? scoreTop + 132 : 1086;
+  const scoreBaseline = compact ? scoreTop + 132 : 1163;
   drawCanvasScoreDigits(ctx, scoreDigits, model.homeScore, columns[0], scoreBaseline - scoreDigitHeight, scoreDigitHeight, 430);
   drawCanvasScoreDigits(ctx, scoreDigits, model.awayScore, columns[1], scoreBaseline - scoreDigitHeight, scoreDigitHeight, 430);
   ctx.save();
@@ -914,11 +914,11 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
   ctx.fillText(model.matchNatureLabel, width / 2, scoreTop + (compact ? 7 : 17));
   ctx.letterSpacing = "0px";
 
-  const teamTop = compact ? 779 : 1113;
+  const teamTop = compact ? 779 : 1192;
   const teamFontSize = compact ? 40 : 52;
-  const teamTierY = compact ? 838 : 1255;
-  const teamTierSize = compact ? 116 : 176;
-  const teamLabelY = compact ? 982 : 1462;
+  const teamTierY = compact ? 838 : 1311;
+  const teamTierSize = compact ? 116 : 140;
+  const teamLabelY = compact ? 982 : 1474;
   teams.forEach((team, index) => {
     const scaledTeamFontSize = teamFontSize * getMatchReceiptTeamNameScale(team.name);
     ctx.textAlign = "center";
@@ -942,7 +942,7 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
     }
     if (model.showTeamTierEmblems && team.tier) {
       ctx.fillStyle = "#c69a4b";
-      ctx.font = '900 18px "KBO Dia Gothic", sans-serif';
+      ctx.font = `900 ${compact ? 14 : 15}px "KBO Dia Gothic", sans-serif`;
       ctx.fillText(`TEAM TIER · ${team.tier.label}`, columns[index], teamLabelY);
     }
   });
