@@ -205,12 +205,12 @@ export default function VisualDirectionDemo() {
           <div className="ui-design-spotlight__intro">
             <img
               src={assetUrl("/assets/tier-emblems/tier-gold-v5.webp")}
-              alt="골드 티어 엠블럼"
+              alt="GOLD 티어 엠블럼"
             />
             <div>
               <p className="eyebrow">My season</p>
               <h2>이번 시즌, 꽤 잘하고 있어요.</h2>
-              <p>실력 점수 1217 · 골드 4</p>
+              <p>실력 점수 1217 · GOLD 4</p>
             </div>
           </div>
           <dl className="ui-design-stat-strip ui-design-spotlight__stats">

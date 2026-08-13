@@ -49,9 +49,10 @@
 .match-receipt-team-fields fieldset {
   display: grid; grid-template-columns: minmax(0, 1fr) 84px;
   align-items: end; gap: var(--space-4); min-width: 0;
-  margin: 0; padding: 0;
+  margin: 0; padding: 14px;
   border: 0;
-  background: transparent;
+  border-radius: 16px;
+  background: var(--surface-2);
 }
 
 .match-receipt-team-fields legend { padding: 0 6px; color: var(--rb-orange); font-weight: 900; }
@@ -92,6 +93,21 @@
 }
 
 .match-receipt-info-fields .is-wide { grid-column: 1 / -1; }
+
+.match-receipt-info-fields > label { min-width: 0; }
+
+.match-receipt-info-fields input[type="date"] {
+  display: block;
+  box-sizing: border-box;
+  inline-size: 100%;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+}
+
+.match-receipt-info-fields input[type="date"]::-webkit-date-and-time-value {
+  min-width: 0;
+  text-align: left;
+}
 
 .match-receipt-venue-control {
   display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-4);
@@ -436,10 +452,10 @@
 
 .match-receipt-poster-teams .match-receipt-team-tier {
   position: absolute;
-  top: 39%;
+  top: 36%;
   left: 50%;
   display: block;
-  width: 50%;
+  width: 46%;
   aspect-ratio: 1;
   margin: 0;
   object-fit: contain;
@@ -671,12 +687,11 @@
   display: grid; gap: var(--space-3);
 }
 .match-receipt-photo-actions {
-  display: flex; flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--space-3);
-  justify-content: center;
+  width: 100%;
 }
-
-.match-receipt-hard-reset { margin-left: auto; }
 
 .match-receipt-field-heading {
   display: flex; align-items: center; justify-content: space-between;
@@ -688,11 +703,13 @@
 }
 
 .match-receipt-photo-actions .button {
+  min-width: 0;
+  justify-content: center;
   gap: var(--space-3);
+  padding-inline: 8px;
 }
 
 .match-receipt-photo-actions svg { width: 16px; height: 16px; }
-
 .match-receipt-photo-actions input[type="file"] {
   position: absolute;
   width: 1px;

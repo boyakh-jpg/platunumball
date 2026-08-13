@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Copy, Download, FilePlus2, ImagePlus, MapPin, RotateCcw, Share2, Trash2 } from "lucide-react";
+import { Copy, Download, ImagePlus, MapPin, RotateCcw, Share2, Trash2 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Button from "../components/common/Button.jsx";
 import QrCode from "../components/common/QrCode.jsx";
@@ -29,7 +29,6 @@ import {
   loadMatchReceiptDraft,
   normalizeMatchReceiptPhotoFile,
   normalizeMatchReceiptDraft,
-  renewMatchReceiptDraft,
   renderMatchReceiptPng,
   saveMatchReceiptPhoto,
   saveMatchReceiptDraft,
@@ -39,6 +38,16 @@ import {
 
 function loadDraft() {
   return loadMatchReceiptDraft() ?? createDefaultMatchReceiptDraft();
+}
+
+function getMatchSideTeamId(match, side) {
+  return match?.[side]?.teamId ?? match?.[`${side}Id`] ?? "";
+}
+
+function getCanonicalTeamMmr(teams, teamId) {
+  const team = teams?.find((item) => String(item.id) === String(teamId));
+  const mmr = Number(team?.mmr);
+  return Number.isFinite(mmr) ? mmr : undefined;
 }
 
 const CANONICAL_RECEIPT_FIELDS = new Set([
@@ -277,6 +286,14 @@ export default function MatchReceipt({ auth, app }) {
     () => app?.state?.tournaments?.find((tournament) => tournament.id === canonicalMatch?.tournamentId) ?? null,
     [app?.state?.tournaments, canonicalMatch?.tournamentId],
   );
+  const canonicalHomeTeamMmr = useMemo(
+    () => getCanonicalTeamMmr(app?.state?.teams, getMatchSideTeamId(canonicalMatch, "teamA")),
+    [app?.state?.teams, canonicalMatch],
+  );
+  const canonicalAwayTeamMmr = useMemo(
+    () => getCanonicalTeamMmr(app?.state?.teams, getMatchSideTeamId(canonicalMatch, "teamB")),
+    [app?.state?.teams, canonicalMatch],
+  );
   const currentUserId = auth?.session?.user?.id ?? "";
   const currentUserMmr = Number(app?.currentUser?.ratings?.integrated);
   const personalMmr = currentUserId && Number.isFinite(currentUserMmr) ? currentUserMmr : null;
@@ -317,6 +334,8 @@ export default function MatchReceipt({ auth, app }) {
         currentUserId,
         personalMmr,
         tournament: canonicalTournament,
+        homeMmr: canonicalHomeTeamMmr,
+        awayMmr: canonicalAwayTeamMmr,
       }));
       setGenerated(true);
       setStatus("");
@@ -327,7 +346,16 @@ export default function MatchReceipt({ auth, app }) {
     Promise.resolve(app?.actions?.loadMatchDetail?.(matchId)).then((loaded) => {
       if (!loaded) setStatus("저장된 경기 기록을 불러오지 못했습니다.");
     });
-  }, [app?.actions, canonicalMatch, canonicalTournament, currentUserId, matchId, personalMmr]);
+  }, [
+    app?.actions,
+    canonicalAwayTeamMmr,
+    canonicalHomeTeamMmr,
+    canonicalMatch,
+    canonicalTournament,
+    currentUserId,
+    matchId,
+    personalMmr,
+  ]);
 
   useEffect(() => {
     if (requestedPublicDraftId || canonicalMatchId) return;
@@ -460,22 +488,6 @@ export default function MatchReceipt({ auth, app }) {
     return Boolean(requestedPublicDraftId || (canonicalMatchId && CANONICAL_RECEIPT_FIELDS.has(name)));
   }
 
-  function startNewReceipt() {
-    const next = renewMatchReceiptDraft({
-      ...draft,
-      verified: false,
-      hasCanonicalTeamMatch: false,
-      personalPoints: null,
-      personalRebounds: null,
-    });
-    setDraft(next);
-    setGenerated(false);
-    setPublicDraftId("");
-    setErrors({});
-    setStatus("새 일련번호로 영수증을 시작했습니다.");
-    navigate("/app/receipt", { replace: true, state: { receiptDraft: next } });
-  }
-
   async function handlePhotoChange(event) {
     const file = event.target.files?.[0];
     event.target.value = "";
@@ -523,24 +535,34 @@ export default function MatchReceipt({ auth, app }) {
     setStatus("");
   }
 
-  async function hardRefreshReceipt() {
-    if (!window.confirm("입력값과 선택 사진을 지우고 새로고침할까요?")) return;
+  async function resetReceipt() {
+    if (!window.confirm("입력값과 선택 사진을 지우고 새 일련번호로 시작할까요?")) return;
 
     setBusy("reset");
-    clearMatchReceiptDraft();
-    await clearMatchReceiptPhoto();
-
     try {
-      if ("caches" in window) {
-        const cacheNames = await window.caches.keys();
-        await Promise.all(cacheNames.map((name) => window.caches.delete(name)));
-      }
-      await fetch(window.location.href, { cache: "reload" });
-    } catch {
-      // 캐시 API를 사용할 수 없어도 아래 새로고침은 실행한다.
+      clearMatchReceiptDraft();
+      await clearMatchReceiptPhoto();
+      const next = normalizeMatchReceiptDraft({
+        ...createDefaultMatchReceiptDraft(),
+        personalMmr,
+      });
+      photoTransformRef.current = {
+        photoX: next.photoX,
+        photoY: next.photoY,
+        photoZoom: next.photoZoom,
+        photoRotation: next.photoRotation,
+      };
+      setDraft(next);
+      setPhotoBlob(null);
+      setGenerated(false);
+      setPublicDraftId("");
+      setSelectedCourtId("");
+      setErrors({});
+      setStatus("새 일련번호로 영수증을 시작했습니다.");
+      navigate("/app/receipt", { replace: true, state: { receiptDraft: next } });
+    } finally {
+      setBusy("");
     }
-
-    window.location.reload();
   }
 
   function updatePhotoTransform(values) {
@@ -735,7 +757,10 @@ export default function MatchReceipt({ auth, app }) {
       setStatus(`${MATCH_RECEIPT_CANVAS_SIZES[preset].label} 이미지를 저장했습니다.`);
       trackMatchReceiptEvent("receipt_downloaded", { loggedIn: Boolean(auth?.session), imagePreset: preset });
     } catch (error) {
-      if (error.message !== "match_receipt_invalid") setStatus("이미지를 만들지 못했습니다. 다시 시도해 주세요.");
+      if (error.message !== "match_receipt_invalid") {
+        console.error("[match-receipt] image export failed", { preset, error });
+        setStatus("이미지를 만들지 못했습니다. 다시 시도해 주세요.");
+      }
     } finally {
       setBusy("");
     }
@@ -759,6 +784,7 @@ export default function MatchReceipt({ auth, app }) {
       }
     } catch (error) {
       if (error.name !== "AbortError" && error.message !== "match_receipt_invalid") {
+        console.error("[match-receipt] image share failed", error);
         setStatus("공유하지 못했습니다. 이미지 저장을 이용해 주세요.");
       }
     } finally {
@@ -928,14 +954,13 @@ export default function MatchReceipt({ auth, app }) {
                 <ImagePlus aria-hidden="true" /> 사진 선택
                 <input type="file" accept="image/jpeg,image/png,image/webp" disabled={busy === "photo"} onChange={handlePhotoChange} />
               </Button>
-              <Button variant="secondary" onClick={() => updateField("photoRotation", draft.photoRotation + 90)}><RotateCcw aria-hidden="true" /> 90° 회전</Button>
-              {photoUrl ? <Button variant="danger" onClick={removePhoto}><Trash2 aria-hidden="true" /> 제거</Button> : null}
+              <Button variant="secondary" disabled={!photoUrl || Boolean(busy)} onClick={() => updateField("photoRotation", draft.photoRotation + 90)}><RotateCcw aria-hidden="true" /> 90° 회전</Button>
+              <Button variant="danger" disabled={!photoUrl || Boolean(busy)} onClick={removePhoto}><Trash2 aria-hidden="true" /> 제거</Button>
               <Button
                 variant="secondary"
-                className="match-receipt-hard-reset"
-                disabled={busy === "reset"}
-                title="입력값·사진·캐시 초기화 후 새로고침"
-                onClick={hardRefreshReceipt}
+                disabled={Boolean(busy)}
+                title="입력값·사진 초기화 후 새 일련번호 시작"
+                onClick={resetReceipt}
               >
                 <RotateCcw aria-hidden="true" /> 초기화
               </Button>
@@ -953,7 +978,6 @@ export default function MatchReceipt({ auth, app }) {
               <button type="button" className="button ui-button button-secondary ui-button-secondary button-md ui-button-md" disabled={Boolean(busy)} onClick={() => handleDownload("story")}><Download aria-hidden="true" /> Story 저장</button>
               <button type="button" className="button ui-button button-secondary ui-button-secondary button-md ui-button-md" disabled={Boolean(busy)} onClick={() => handleDownload("feed")}><Download aria-hidden="true" /> Feed 저장</button>
               <button type="button" className="button ui-button button-secondary ui-button-secondary button-md ui-button-md" disabled={Boolean(busy)} onClick={copyCreatorLink}><Copy aria-hidden="true" /> 만들기 링크 복사</button>
-              <button type="button" className="button ui-button button-secondary ui-button-secondary button-md ui-button-md" disabled={Boolean(busy)} onClick={startNewReceipt}><FilePlus2 aria-hidden="true" /> 새 영수증 만들기</button>
             </div>
           ) : null}
 

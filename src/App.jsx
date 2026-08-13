@@ -222,6 +222,7 @@ export default function App() {
         <Routes>
         <Route element={<PublicShell />}>
           <Route path="/" element={<Landing state={app.state} authenticated={Boolean(auth.user)} />} />
+          <Route path="/start" element={<Landing state={app.state} authenticated={Boolean(auth.user)} />} />
           <Route path="/login" element={<Login auth={auth} app={app} />} />
           <Route path="/data-sources" element={<DataSources />} />
           <Route path="/privacy" element={<Privacy />} />

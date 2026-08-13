@@ -17,6 +17,7 @@ import {
   sanitizeReceiptDraftPayload,
   setReceiptCapabilityCookie,
 } from "../server/api/match-receipts/_draftSecurity.js";
+import { getTierDivision, getTierLabel } from "../shared/lib/tier.js";
 
 test("public receipt draft keeps only bounded safe fields", () => {
   const payload = sanitizeReceiptDraftPayload({
@@ -110,6 +111,11 @@ test("receipt serial stays stable until a new receipt is explicitly started", ()
   assert.equal(createMatchReceiptViewModel(canonicalA).serial, createMatchReceiptViewModel(canonicalB).serial);
 });
 
+test("canonical tier labels use uppercase English", () => {
+  assert.equal(getTierLabel(1250), "GOLD");
+  assert.equal(getTierDivision(1250), "GOLD 3");
+});
+
 test("receipt ownership capability is secret, hashed, and cookie-scoped", () => {
   const capability = createReceiptCapability();
   const hash = hashReceiptCapability(capability.secret);
@@ -133,7 +139,7 @@ test("receipt ownership capability is secret, hashed, and cookie-scoped", () => 
 });
 
 test("receipt photo tools stay outside the export card and reference dividers remain", async () => {
-  const [page, qrComponent, styles, tokens, renderer, roomDialog, digitGenerator, homeNeutralMark, awayNeutralMark, paperGrain, scoreDigitSource, scoreDigits, bebasNeue, bebasLicense, blackHanSans] = await Promise.all([
+  const [page, qrComponent, styles, tokens, renderer, roomDialog, digitGenerator, landing, appSource, homeNeutralMark, awayNeutralMark, paperGrain, scoreDigitSource, scoreDigits, bebasNeue, bebasLicense, blackHanSans] = await Promise.all([
     readFile(new URL("../src/pages/MatchReceipt.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/components/common/QrCode.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/styles/features/match-receipt.css", import.meta.url), "utf8"),
@@ -141,6 +147,8 @@ test("receipt photo tools stay outside the export card and reference dividers re
     readFile(new URL("../src/lib/matchReceipt.js", import.meta.url), "utf8"),
     readFile(new URL("../src/components/recruiting/RecruitingRoomDialogSection.jsx", import.meta.url), "utf8"),
     readFile(new URL("../scripts/generate-receipt-score-digits.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../src/pages/Landing.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/App.jsx", import.meta.url), "utf8"),
     readFile(new URL("../public/assets/tier-emblems/tier-neutral-home-outline-v5.png", import.meta.url)),
     readFile(new URL("../public/assets/tier-emblems/tier-neutral-away-outline-v5.png", import.meta.url)),
     readFile(new URL("../public/assets/match-receipt-paper-grain-v1.png", import.meta.url)),
@@ -160,14 +168,14 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(page, /className="match-receipt-photo-rotate-handle"/);
   assert.doesNotMatch(page, /<RotateCcw aria-hidden="true" \/> 자유 회전/);
   assert.match(page, /<Button as="label" variant="secondary">/);
-  assert.match(page, /<Button variant="danger" onClick=\{removePhoto\}>/);
+  assert.match(page, /<Button variant="danger" disabled=\{!photoUrl \|\| Boolean\(busy\)\} onClick=\{removePhoto\}>/);
   assert.match(page, /\{draft\.comment\.length\}\/\{MATCH_RECEIPT_LIMITS\.comment\}/);
   assert.match(page, /placeholder="선택 · 12자 이내"/);
-  assert.match(page, /className="match-receipt-hard-reset"/);
-  assert.match(page, /onClick=\{hardRefreshReceipt\}/);
+  assert.match(page, /onClick=\{resetReceipt\}/);
   assert.match(page, /clearMatchReceiptDraft\(\)/);
-  assert.match(page, /window\.caches\.keys\(\)/);
-  assert.match(page, /cache: "reload"/);
+  assert.match(page, /clearMatchReceiptPhoto\(\)/);
+  assert.match(page, /createDefaultMatchReceiptDraft\(\)/);
+  assert.doesNotMatch(page, /hardRefreshReceipt|match-receipt-hard-reset|window\.caches|cache: "reload"|location\.reload|FilePlus2|startNewReceipt/);
   assert.match(page, /onWheel: zoomPhotoWithWheel/);
   assert.match(page, /onDoubleClick: resetPhotoTransform/);
   assert.match(page, /className="match-receipt-photo-tools"/);
@@ -175,6 +183,9 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(page, /match-receipt-personal-stats/);
   assert.match(page, /neutralTeamMarkUrls\.home/);
   assert.match(page, /neutralTeamMarkUrls\.away/);
+  assert.match(page, /canonicalHomeTeamMmr/);
+  assert.match(page, /app\?\.state\?\.teams/);
+  assert.match(page, /homeMmr: canonicalHomeTeamMmr/);
   assert.match(page, /TEAM TIER · \$\{team\.tier\.label\}/);
   assert.match(page, /--receipt-paper-texture/);
   assert.match(page, /--receipt-paper-grain/);
@@ -226,14 +237,15 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(styles, /transform: scaleX\(0\.92\)/);
   assert.match(styles, /scale\(calc\(var\(--receipt-photo-scale\) \* 0\.92\)\)/);
   assert.match(styles, /\.match-receipt-team-watermarks[\s\S]*height: 34%/);
-  assert.match(styles, /\.match-receipt-team-tier[\s\S]*width: 50%/);
+  assert.match(styles, /\.match-receipt-team-tier[\s\S]*top: 36%[\s\S]*width: 46%/);
   assert.match(styles, /inset: auto 3\.1% 1\.8%/);
   assert.match(styles, /height: 19\.9%/);
   assert.match(styles, /\.match-receipt-team-tier\.is-neutral[\s\S]*opacity: 0\.76/);
   assert.match(styles, /\.match-receipt-personal-tier[\s\S]*opacity: 0\.64/);
   assert.match(styles, /\.match-receipt-ticket-qr \.match-receipt-qr[\s\S]*width: 72%[\s\S]*max-height: 78%/);
-  assert.match(styles, /\.match-receipt-team-fields fieldset[\s\S]*border: 0;[\s\S]*background: transparent;/);
-  assert.match(styles, /\.match-receipt-hard-reset[\s\S]*margin-left: auto/);
+  assert.match(styles, /\.match-receipt-team-fields fieldset[\s\S]*background: var\(--surface-2\)[\s\S]*border: 0;/);
+  assert.match(styles, /\.match-receipt-photo-tools[\s\S]*grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/);
+  assert.match(styles, /input\[type="date"\][\s\S]*min-width: 0[\s\S]*max-width: 100%/);
   assert.match(styles, /@media \(max-width: 900px\)[\s\S]*?\.match-receipt-editor \{[\s\S]*?display: contents;[\s\S]*?\.match-receipt-preview-panel \{[\s\S]*?order: 2;[\s\S]*?\.match-receipt-complete \{[\s\S]*?order: 3;/);
   assert.match(styles, /\.match-receipt-ticket-date[\s\S]*border-top/);
   assert.match(styles, /\.match-receipt-personal-stats b \+ b[\s\S]*border-left/);
@@ -242,7 +254,9 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.doesNotMatch(renderer, /ctx\.shadowColor = "rgba\(0,0,0,\.42\)"/);
   assert.match(renderer, /compact \? 154 : 278/);
   assert.match(renderer, /const teamWatermarkSize = compact \? 450 : 600/);
-  assert.match(renderer, /const teamTierSize = compact \? 152 : 218/);
+  assert.match(renderer, /const teamTierY = compact \? 820 : 1210/);
+  assert.match(renderer, /const teamTierSize = compact \? 140 : 200/);
+  assert.match(renderer, /const teamLabelY = compact \? 973 : 1432/);
   assert.match(renderer, /defaultPhoto: !options\.photoBlob/);
   assert.match(renderer, /const shiftX = rect\.width \* panRange \* photoX \/ 100/);
   assert.match(renderer, /MATCH_RECEIPT_DEFAULT_PHOTO_FOCUS = Object\.freeze\(\{ x: 0, y: 82 \}\)/);
@@ -257,6 +271,10 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(renderer, /drawCanvasPaperGrain/);
   assert.match(renderer, /drawCanvasScoreDigits/);
   assert.match(renderer, /loadCanvasImage\(model\.scoreDigitsUrl\)/);
+  assert.match(renderer, /function getCanvasImageSources\(source\)/);
+  assert.match(renderer, /parsed\.pathname\.startsWith\("\/assets\/"\)/);
+  assert.match(renderer, /const photoPromise = loadCanvasImage\(options\.photoBlob \|\| model\.defaultPhotoUrl\)/);
+  assert.match(renderer, /options\.photoBlob \? loadCanvasImage\(model\.defaultPhotoUrl\)/);
   assert.match(renderer, /wrapCanvasText/);
   assert.match(renderer, /tier-neutral-home-outline-v5\.png/);
   assert.match(renderer, /tier-neutral-away-outline-v5\.png/);
@@ -296,6 +314,12 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(renderer, /const targetX = \(width - targetWidth\) \/ 2/);
   assert.match(renderer, /ctx\.drawImage\(story, targetX, 0, targetWidth, targetHeight\)/);
   assert.match(renderer, /canvasToBlob\(canvas, "image\/png"\)/);
+  assert.match(landing, /경기 끝나면<br \/>기록도 끝나나요\?/);
+  assert.match(landing, /가입 없이 열린 경기 보기/);
+  assert.match(landing, /30초 연습경기 만들기/);
+  assert.match(landing, /Google로 시작하기/);
+  assert.match(landing, /\/app\/receipt\?match=/);
+  assert.match(appSource, /path="\/start"/);
   assert.equal(homeNeutralMark.subarray(1, 4).toString("ascii"), "PNG");
   assert.equal(awayNeutralMark.subarray(1, 4).toString("ascii"), "PNG");
   assert.equal(paperGrain.subarray(1, 4).toString("ascii"), "PNG");

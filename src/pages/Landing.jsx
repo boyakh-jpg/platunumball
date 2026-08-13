@@ -1,9 +1,6 @@
 import {
   ArrowRight,
-  CalendarDays,
   ChevronRight,
-  House,
-  LogIn,
   MapPin,
   Trophy,
   Users,
@@ -100,25 +97,26 @@ export default function Landing({ state, authenticated = false }) {
             }}
           >
             <div className="ui-design-hero__copy ui-page-hero__copy">
-              <Badge tone="green">Season Zero</Badge>
-              <h1>오늘,<br />농구할 사람?</h1>
+              <Badge tone="green">BOXTIER</Badge>
+              <h1>경기 끝나면<br />기록도 끝나나요?</h1>
+              <p>출석부터 점수·개인 기록·전적·티어까지 남기는 생활체육 농구 서비스</p>
               <div className="ui-action-row ui-design-actions">
                 {authenticated ? (
                   <>
                     <Button as={Link} to="/app/recruiting">
-                      경기 찾기 <ArrowRight size={18} />
+                      열린 경기 보기 <ArrowRight size={18} />
                     </Button>
-                    <Button as={Link} to="/app" variant="secondary">
-                      홈 <House size={18} />
+                    <Button as={Link} to="/app/create?intent=record" variant="secondary">
+                      기록하기
                     </Button>
                   </>
                 ) : (
                   <>
-                    <Button as={Link} to="/app">
-                      홈 <House size={18} />
+                    <Button as={Link} to="/app/recruiting">
+                      가입 없이 열린 경기 보기 <ArrowRight size={18} />
                     </Button>
-                    <Button as={Link} to="/login" variant="secondary">
-                      로그인 <LogIn size={18} />
+                    <Button as={Link} to="/app/guide/practice" variant="secondary">
+                      30초 연습경기 만들기
                     </Button>
                   </>
                 )}
@@ -223,15 +221,15 @@ export default function Landing({ state, authenticated = false }) {
             <div className="section-title-row ui-design-section-heading">
               <div>
                 <p className="eyebrow">Recent games</p>
-                <h2>최근 경기</h2>
+                <h2>실제 경기 영수증 예시</h2>
               </div>
-              <Link to="/app/matches" className="ui-design-text-action">
-                경기 일정 <CalendarDays size={17} />
+              <Link to="/app/receipt" className="ui-design-text-action">
+                영수증 발급 <ChevronRight size={17} />
               </Link>
             </div>
             <div className="ui-design-list ui-design-result-list">
               {completedMatches.length ? completedMatches.map((match) => (
-                <Link to={`/app/matches?match=${encodeURIComponent(match.id)}`} className="ui-design-result-row" key={match.id}>
+                <Link to={`/app/receipt?match=${encodeURIComponent(match.id)}`} className="ui-design-result-row" key={match.id}>
                   <span className="is-win">완료</span>
                   <strong>{getSideName(match, "teamA")} vs {getSideName(match, "teamB")}</strong>
                   <b>{match.scoreA ?? match.result?.scoreA ?? match.teamA?.score ?? 0} : {match.scoreB ?? match.result?.scoreB ?? match.teamB?.score ?? 0}</b>
@@ -241,6 +239,25 @@ export default function Landing({ state, authenticated = false }) {
               )}
             </div>
           </section>
+
+          {!authenticated ? (
+            <section className="ui-design-section">
+              <div className="section-title-row ui-design-section-heading">
+                <div>
+                  <p className="eyebrow">Keep your record</p>
+                  <h2>경기 기록을 내 전적과 티어로 이어가세요.</h2>
+                </div>
+                <div className="ui-action-row ui-design-actions">
+                  <Button as={Link} to="/login">
+                    Google로 시작하기 <ArrowRight size={18} />
+                  </Button>
+                  <Link to="/app" className="ui-design-text-action">
+                    홈
+                  </Link>
+                </div>
+              </div>
+            </section>
+          ) : null}
         </div>
       </div>
     </main>

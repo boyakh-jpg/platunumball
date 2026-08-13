@@ -492,20 +492,47 @@ export function createMatchReceiptViewModel(value, options = {}) {
   };
 }
 
+function getCanvasImageSources(source) {
+  if (source instanceof Blob) return [{ url: URL.createObjectURL(source), temporary: true }];
+  const primary = String(source ?? "");
+  const sources = [{ url: primary, temporary: false }];
+  const origin = globalThis.location?.origin ?? "";
+  if (!origin) return sources;
+  try {
+    const parsed = new URL(primary, origin);
+    if (parsed.origin !== origin && parsed.pathname.startsWith("/assets/")) {
+      sources.push({ url: `${origin}${parsed.pathname}${parsed.search}`, temporary: false });
+    }
+  } catch {
+    // Invalid image URLs fail through the regular image error path.
+  }
+  return sources;
+}
+
 function loadCanvasImage(source) {
+  const sources = getCanvasImageSources(source);
   return new Promise((resolve, reject) => {
-    const image = new Image();
-    image.crossOrigin = "anonymous";
-    const temporaryUrl = source instanceof Blob ? URL.createObjectURL(source) : "";
-    image.onload = () => {
-      if (temporaryUrl) URL.revokeObjectURL(temporaryUrl);
-      resolve(image);
-    };
-    image.onerror = () => {
-      if (temporaryUrl) URL.revokeObjectURL(temporaryUrl);
-      reject(new Error("match_receipt_image_failed"));
-    };
-    image.src = temporaryUrl || source;
+    let index = 0;
+    function tryNext() {
+      const sourceItem = sources[index];
+      index += 1;
+      if (!sourceItem?.url) {
+        reject(new Error("match_receipt_image_failed"));
+        return;
+      }
+      const image = new Image();
+      if (!sourceItem.url.startsWith("blob:")) image.crossOrigin = "anonymous";
+      image.onload = () => {
+        if (sourceItem.temporary) URL.revokeObjectURL(sourceItem.url);
+        resolve(image);
+      };
+      image.onerror = () => {
+        if (sourceItem.temporary) URL.revokeObjectURL(sourceItem.url);
+        tryNext();
+      };
+      image.src = sourceItem.url;
+    }
+    tryNext();
   });
 }
 
@@ -751,8 +778,10 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
 
   const photoHeight = compact ? 610 : 885;
   const receiptTop = compact ? 1010 : 1504;
+  const photoPromise = loadCanvasImage(options.photoBlob || model.defaultPhotoUrl)
+    .catch((error) => (options.photoBlob ? loadCanvasImage(model.defaultPhotoUrl) : Promise.reject(error)));
   const [photo, wordmark, homeTier, awayTier, homeNeutralTeamMark, awayNeutralTeamMark, personalTier, paper, paperGrain, scoreDigits] = await Promise.all([
-    loadCanvasImage(options.photoBlob || model.defaultPhotoUrl),
+    photoPromise,
     loadCanvasImage(model.wordmarkUrl).catch(() => null),
     model.showTeamTierEmblems && model.homeTier ? loadCanvasImage(model.homeTier.outlineSrc).catch(() => null) : null,
     model.showTeamTierEmblems && model.awayTier ? loadCanvasImage(model.awayTier.outlineSrc).catch(() => null) : null,
@@ -871,9 +900,9 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
 
   const teamTop = compact ? 779 : 1113;
   const teamFontSize = compact ? 40 : 52;
-  const teamTierY = compact ? 834 : 1234;
-  const teamTierSize = compact ? 152 : 218;
-  const teamLabelY = compact ? 994 : 1462;
+  const teamTierY = compact ? 820 : 1210;
+  const teamTierSize = compact ? 140 : 200;
+  const teamLabelY = compact ? 973 : 1432;
   teams.forEach((team, index) => {
     ctx.textAlign = "center";
     ctx.font = `900 ${teamFontSize}px "Black Han Sans", "KBO Dia Gothic", sans-serif`;

@@ -10,24 +10,12 @@ export const TIERS = [
   { name: "Legend", min: 2000, max: 9999, color: "#ff6f61" },
 ];
 
-const TIER_LABELS = {
-  Rookie: "루키",
-  Bronze: "브론즈",
-  Silver: "실버",
-  Gold: "골드",
-  Platinum: "플래티넘",
-  Diamond: "다이아몬드",
-  Master: "마스터",
-  Legend: "레전드",
-};
-
 export function getTier(mmr = 0) {
   return TIERS.find((tier) => mmr >= tier.min && mmr <= tier.max) ?? TIERS[0];
 }
 
 export function getTierLabel(mmr = 0) {
-  const tier = getTier(mmr);
-  return TIER_LABELS[tier.name] ?? tier.name;
+  return getTier(mmr).name.toUpperCase();
 }
 
 export function getTierDivisionNumber(mmr = 0) {
