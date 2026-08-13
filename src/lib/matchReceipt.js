@@ -88,6 +88,8 @@ const MATCH_RECEIPT_NEUTRAL_TEAM_MARK_URLS = Object.freeze({
   away: assetUrl("/assets/tier-emblems/tier-neutral-away-outline-v5.png"),
 });
 const MATCH_RECEIPT_PAPER_URL = assetUrl("/assets/match-receipt-paper-torn-v1.png");
+const MATCH_RECEIPT_PAPER_GRAIN_URL = assetUrl("/assets/match-receipt-paper-grain-v1.png");
+const MATCH_RECEIPT_SCORE_DIGITS_URL = assetUrl("/assets/match-receipt-score-digits-v1.png");
 
 function todayInKorea() {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -447,6 +449,8 @@ export function createMatchReceiptViewModel(value, options = {}) {
     wordmarkUrl: BOXTIER_LETTER_DARK_URL,
     defaultPhotoUrl: assetUrl("/assets/rankball-record-create-night-v5.webp"),
     paperUrl: MATCH_RECEIPT_PAPER_URL,
+    paperGrainUrl: MATCH_RECEIPT_PAPER_GRAIN_URL,
+    scoreDigitsUrl: MATCH_RECEIPT_SCORE_DIGITS_URL,
     neutralTeamMarkUrls: MATCH_RECEIPT_NEUTRAL_TEAM_MARK_URLS,
     homeTier: getTierVisual(draft.homeMmr),
     awayTier: getTierVisual(draft.awayMmr),
@@ -525,25 +529,63 @@ function drawCoverPhoto(ctx, image, rect, draft, options = {}) {
   ctx.restore();
 }
 
-function createCanvasPaperPattern(ctx, paper) {
+function createCanvasPaperPattern(ctx, paperGrain) {
   const texture = document.createElement("canvas");
   texture.width = 256;
   texture.height = 256;
   const textureCtx = texture.getContext("2d");
   if (!textureCtx) return "#f1e8db";
-  const sourceSize = Math.min(paper.naturalWidth, paper.naturalHeight * 0.36);
   textureCtx.drawImage(
-    paper,
-    (paper.naturalWidth - sourceSize) / 2,
-    paper.naturalHeight * 0.2,
-    sourceSize,
-    sourceSize,
+    paperGrain,
+    0,
+    0,
+    paperGrain.naturalWidth,
+    paperGrain.naturalHeight,
     0,
     0,
     texture.width,
     texture.height,
   );
   return ctx.createPattern(texture, "repeat") || "#f1e8db";
+}
+
+function drawCanvasPaperGrain(ctx, paperGrain, rect, options = {}) {
+  if (!paperGrain) return;
+  ctx.save();
+  ctx.globalAlpha = options.alpha ?? 0.2;
+  ctx.globalCompositeOperation = options.blend ?? "soft-light";
+  ctx.drawImage(paperGrain, rect.x, rect.y, rect.width, rect.height);
+  ctx.restore();
+}
+
+function drawCanvasScoreDigits(ctx, atlas, value, centerX, top, height, maxWidth) {
+  const digits = Array.from(String(value));
+  const cellWidth = atlas.naturalWidth / 10;
+  const cellHeight = atlas.naturalHeight;
+  const naturalDigitWidth = height * cellWidth / cellHeight;
+  const naturalGap = height * 0.005;
+  const naturalWidth = digits.length * naturalDigitWidth + Math.max(0, digits.length - 1) * naturalGap;
+  const scale = Math.min(1, maxWidth / naturalWidth);
+  const digitWidth = naturalDigitWidth * scale;
+  const digitHeight = height * scale;
+  const gap = naturalGap * scale;
+  let x = centerX - (digits.length * digitWidth + Math.max(0, digits.length - 1) * gap) / 2;
+
+  digits.forEach((digit) => {
+    const index = Number(digit);
+    ctx.drawImage(
+      atlas,
+      index * cellWidth,
+      0,
+      cellWidth,
+      cellHeight,
+      x,
+      top + (height - digitHeight) / 2,
+      digitWidth,
+      digitHeight,
+    );
+    x += digitWidth + gap;
+  });
 }
 
 function wrapCanvasText(ctx, text, maxWidth, maxLines = 2) {
@@ -644,7 +686,7 @@ export async function renderMatchReceiptPng(value, preset = "story", options = {
 
   const photoHeight = compact ? 610 : 885;
   const receiptTop = compact ? 1010 : 1504;
-  const [photo, wordmark, homeTier, awayTier, homeNeutralTeamMark, awayNeutralTeamMark, personalTier, paper] = await Promise.all([
+  const [photo, wordmark, homeTier, awayTier, homeNeutralTeamMark, awayNeutralTeamMark, personalTier, paper, paperGrain, scoreDigits] = await Promise.all([
     loadCanvasImage(options.photoBlob || model.defaultPhotoUrl),
     loadCanvasImage(model.wordmarkUrl).catch(() => null),
     model.showTeamTierEmblems && model.homeTier ? loadCanvasImage(model.homeTier.outlineSrc).catch(() => null) : null,
@@ -653,8 +695,10 @@ export async function renderMatchReceiptPng(value, preset = "story", options = {
     loadCanvasImage(model.neutralTeamMarkUrls.away).catch(() => null),
     model.personalTier ? loadCanvasImage(model.personalTier.outlineSrc).catch(() => null) : null,
     loadCanvasImage(model.paperUrl),
+    loadCanvasImage(model.paperGrainUrl),
+    loadCanvasImage(model.scoreDigitsUrl),
   ]);
-  const paperTextPattern = createCanvasPaperPattern(ctx, paper);
+  const paperTextPattern = createCanvasPaperPattern(ctx, paperGrain);
 
   ctx.fillStyle = "#111111";
   ctx.fillRect(0, 0, width, height);
@@ -679,6 +723,12 @@ export async function renderMatchReceiptPng(value, preset = "story", options = {
   photoFade.addColorStop(1, "#111111");
   ctx.fillStyle = photoFade;
   ctx.fillRect(0, photoHeight * 0.5, width, photoHeight * 0.6);
+  drawCanvasPaperGrain(ctx, paperGrain, {
+    x: 0,
+    y: height * 0.35,
+    width,
+    height: receiptTop - height * 0.35,
+  }, { alpha: 0.2 });
 
   ctx.fillStyle = "#f05a2a";
   ctx.textAlign = "left";
@@ -733,12 +783,13 @@ export async function renderMatchReceiptPng(value, preset = "story", options = {
   });
 
   const scoreTop = verifiedY + 70;
+  const scoreDigitHeight = compact ? 154 : 278;
+  const scoreBaseline = compact ? scoreTop + 132 : 1086;
+  drawCanvasScoreDigits(ctx, scoreDigits, model.homeScore, columns[0], scoreBaseline - scoreDigitHeight, scoreDigitHeight, 430);
+  drawCanvasScoreDigits(ctx, scoreDigits, model.awayScore, columns[1], scoreBaseline - scoreDigitHeight, scoreDigitHeight, 430);
   ctx.save();
   ctx.fillStyle = paperTextPattern;
-  ctx.font = `900 ${compact ? 154 : 278}px "Bebas Neue", "Anton", "KBO Dia Gothic", sans-serif`;
-  const scoreBaseline = compact ? scoreTop + 132 : 1086;
-  ctx.fillText(String(model.homeScore), columns[0], scoreBaseline);
-  ctx.fillText(String(model.awayScore), columns[1], scoreBaseline);
+  ctx.font = `900 ${scoreDigitHeight}px "Anton", "Bebas Neue", sans-serif`;
   ctx.fillText(":", width / 2, scoreBaseline);
   ctx.restore();
   ctx.fillStyle = "#f05a2a";
@@ -792,6 +843,12 @@ export async function renderMatchReceiptPng(value, preset = "story", options = {
   ctx.shadowOffsetY = 6;
   ctx.drawImage(paper, 28, receiptTop, width - 56, height - receiptTop - (compact ? 26 : 34));
   ctx.restore();
+  drawCanvasPaperGrain(ctx, paperGrain, {
+    x: 40,
+    y: receiptTop + 20,
+    width: width - 80,
+    height: height - receiptTop - (compact ? 45 : 55),
+  }, { alpha: 0.24, blend: "multiply" });
   const footerY = receiptTop + (compact ? 78 : 66);
   const footerLeftDivider = compact ? 386 : 414;
   const footerRightDivider = compact ? 690 : 711;

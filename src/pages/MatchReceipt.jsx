@@ -85,6 +85,20 @@ function getPhotoGestureSnapshot(pointers) {
   };
 }
 
+function ReceiptScoreDigits({ value }) {
+  return (
+    <strong className="match-receipt-score-digits" aria-hidden="true">
+      {Array.from(String(value)).map((digit, index) => (
+        <i
+          className="match-receipt-score-digit"
+          key={`${digit}-${index}`}
+          style={{ "--receipt-score-digit": Number(digit) }}
+        />
+      ))}
+    </strong>
+  );
+}
+
 function ReceiptPreview({ draft, photoUrl = "", matchUrl = "", photoGestureHandlers = {} }) {
   const model = createMatchReceiptViewModel(draft, { matchUrl });
   const backgroundUrl = photoUrl || model.defaultPhotoUrl;
@@ -99,7 +113,9 @@ function ReceiptPreview({ draft, photoUrl = "", matchUrl = "", photoGestureHandl
       style={{
         "--receipt-home": model.homeColor,
         "--receipt-away": model.awayColor,
-        "--receipt-paper-texture": `url("${model.paperUrl}")`,
+        "--receipt-paper-texture": `url("${model.paperGrainUrl}")`,
+        "--receipt-paper-grain": `url("${model.paperGrainUrl}")`,
+        "--receipt-score-digits": `url("${model.scoreDigitsUrl}")`,
         ...getMatchReceiptPhotoStyle(model, undefined, { defaultPhoto: !photoUrl }),
       }}
       aria-label="경기 영수증 미리보기"
@@ -141,9 +157,9 @@ function ReceiptPreview({ draft, photoUrl = "", matchUrl = "", photoGestureHandl
       <section className="match-receipt-poster-score">
         <span>{model.matchNatureLabel}</span>
         <div aria-label={`${model.homeScore} 대 ${model.awayScore}`}>
-          <strong>{model.homeScore}</strong>
+          <ReceiptScoreDigits value={model.homeScore} />
           <span>:</span>
-          <strong>{model.awayScore}</strong>
+          <ReceiptScoreDigits value={model.awayScore} />
         </div>
       </section>
       <section className="match-receipt-poster-teams">

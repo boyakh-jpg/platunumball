@@ -219,6 +219,8 @@
   pointer-events: none;
 }
 
+.match-receipt-card::after { content: ""; position: absolute; z-index: 1; inset: 35% 0 0; background: var(--receipt-paper-grain) center / cover no-repeat; filter: grayscale(1) contrast(1.4); mix-blend-mode: soft-light; opacity: 0.24; pointer-events: none; }
+
 .match-receipt-photo {
   position: absolute;
   z-index: 0;
@@ -394,7 +396,6 @@
 
 .match-receipt-poster-score > div > span { position: absolute; left: 50%; transform: translateX(-50%); }
 
-.match-receipt-poster-score strong,
 .match-receipt-poster-score > div > span,
 .match-receipt-poster-teams strong {
   background: var(--receipt-paper-texture) center / auto 240% repeat-x;
@@ -404,11 +405,8 @@
   -webkit-text-fill-color: transparent;
 }
 
-.match-receipt-poster-score strong {
-  overflow: hidden;
-  font-family: "Bebas Neue", "Anton", "KBO Dia Gothic", sans-serif;
-  font-size: clamp(72px, 26cqw, 125px); font-weight: 900; letter-spacing: 0.005em;
-}
+.match-receipt-score-digits { display: flex; align-items: center; justify-content: center; gap: clamp(0px, 0.3cqw, 1px); height: clamp(72px, 26cqw, 125px); overflow: visible; }
+.match-receipt-score-digit { display: block; flex: 0 0 auto; height: 100%; aspect-ratio: 196 / 400; background: var(--receipt-score-digits) calc(var(--receipt-score-digit) * 11.111111%) center / 1000% 100% no-repeat; }
 
 .match-receipt-poster-score > div > span {
   color: #d7c8b5;
@@ -501,6 +499,8 @@
   pointer-events: none;
   filter: drop-shadow(0 5px 8px rgba(0, 0, 0, 0.42));
 }
+
+.match-receipt-ticket::after { content: ""; position: absolute; z-index: 0; inset: 3% 1.2%; background: var(--receipt-paper-grain) center / 100% 100% no-repeat; mix-blend-mode: multiply; opacity: 0.24; pointer-events: none; }
 
 .match-receipt-ticket > div {
   position: relative;

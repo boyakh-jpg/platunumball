@@ -75,7 +75,7 @@ test("receipt ownership capability is secret, hashed, and cookie-scoped", () => 
 });
 
 test("receipt photo editing stays in the preview and reference dividers remain", async () => {
-  const [page, qrComponent, styles, tokens, renderer, homeNeutralMark, awayNeutralMark, bebasNeue, bebasLicense, blackHanSans] = await Promise.all([
+  const [page, qrComponent, styles, tokens, renderer, homeNeutralMark, awayNeutralMark, paperGrain, scoreDigits, bebasNeue, bebasLicense, blackHanSans] = await Promise.all([
     readFile(new URL("../src/pages/MatchReceipt.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/components/common/QrCode.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/styles/features/match-receipt.css", import.meta.url), "utf8"),
@@ -83,6 +83,8 @@ test("receipt photo editing stays in the preview and reference dividers remain",
     readFile(new URL("../src/lib/matchReceipt.js", import.meta.url), "utf8"),
     readFile(new URL("../public/assets/tier-emblems/tier-neutral-home-outline-v5.png", import.meta.url)),
     readFile(new URL("../public/assets/tier-emblems/tier-neutral-away-outline-v5.png", import.meta.url)),
+    readFile(new URL("../public/assets/match-receipt-paper-grain-v1.png", import.meta.url)),
+    readFile(new URL("../public/assets/match-receipt-score-digits-v1.png", import.meta.url)),
     readFile(new URL("../public/assets/fonts/BebasNeue-Regular.ttf", import.meta.url)),
     readFile(new URL("../public/assets/fonts/BebasNeue-OFL.txt", import.meta.url), "utf8"),
     readFile(new URL("../public/assets/fonts/BlackHanSans-Regular.ttf", import.meta.url)),
@@ -95,6 +97,9 @@ test("receipt photo editing stays in the preview and reference dividers remain",
   assert.match(page, /neutralTeamMarkUrls\.away/);
   assert.match(page, /TEAM TIER · \$\{team\.tier\.label\}/);
   assert.match(page, /--receipt-paper-texture/);
+  assert.match(page, /--receipt-paper-grain/);
+  assert.match(page, /--receipt-score-digits/);
+  assert.match(page, /ReceiptScoreDigits/);
   assert.match(page, /model\.personalTier && model\.hasPersonalStats/);
   assert.match(page, /match-receipt-team-watermarks/);
   assert.match(page, /MY TIER · \{model\.personalTier\.label\}/);
@@ -125,7 +130,10 @@ test("receipt photo editing stays in the preview and reference dividers remain",
   assert.match(styles, /background: var\(--receipt-paper-texture\)/);
   assert.match(styles, /auto 240% repeat-x/);
   assert.doesNotMatch(styles, /text-shadow: 0 4px 16px rgba\(0, 0, 0, 0\.42\)/);
-  assert.match(styles, /font-family: "Bebas Neue", "Anton", "KBO Dia Gothic", sans-serif/);
+  assert.match(styles, /\.match-receipt-score-digit[\s\S]*var\(--receipt-score-digits\)/);
+  assert.match(styles, /1000% 100% no-repeat/);
+  assert.match(styles, /\.match-receipt-card::after[\s\S]*var\(--receipt-paper-grain\)/);
+  assert.match(styles, /\.match-receipt-ticket::after[\s\S]*var\(--receipt-paper-grain\)/);
   assert.match(styles, /font-family: "Black Han Sans", "KBO Dia Gothic", sans-serif/);
   assert.match(styles, /transform: scaleX\(0\.92\)/);
   assert.match(styles, /scale\(calc\(var\(--receipt-photo-scale\) \* 0\.92\)\)/);
@@ -138,7 +146,7 @@ test("receipt photo editing stays in the preview and reference dividers remain",
   assert.match(styles, /\.match-receipt-ticket-date[\s\S]*border-top/);
   assert.match(styles, /\.match-receipt-personal-stats b \+ b[\s\S]*border-left/);
   assert.match(renderer, /const receiptTop = compact \? 1010 : 1504/);
-  assert.match(renderer, /paper\.naturalHeight \* 0\.36/);
+  assert.match(renderer, /createCanvasPaperPattern\(ctx, paperGrain\)/);
   assert.doesNotMatch(renderer, /ctx\.shadowColor = "rgba\(0,0,0,\.42\)"/);
   assert.match(renderer, /compact \? 154 : 278/);
   assert.match(renderer, /const teamWatermarkSize = compact \? 450 : 600/);
@@ -149,6 +157,9 @@ test("receipt photo editing stays in the preview and reference dividers remain",
   assert.match(renderer, /const footerLeftDivider = compact \? 386 : 414/);
   assert.match(renderer, /ctx\.moveTo\(footerMiddleX, footerY \+ \(compact \? 30 : 70\)\)/);
   assert.match(renderer, /createCanvasPaperPattern/);
+  assert.match(renderer, /drawCanvasPaperGrain/);
+  assert.match(renderer, /drawCanvasScoreDigits/);
+  assert.match(renderer, /loadCanvasImage\(model\.scoreDigitsUrl\)/);
   assert.match(renderer, /wrapCanvasText/);
   assert.match(renderer, /tier-neutral-home-outline-v5\.png/);
   assert.match(renderer, /tier-neutral-away-outline-v5\.png/);
@@ -165,6 +176,10 @@ test("receipt photo editing stays in the preview and reference dividers remain",
   assert.match(renderer, /model\.comment \|\| "내 경기 기록"/);
   assert.equal(homeNeutralMark.subarray(1, 4).toString("ascii"), "PNG");
   assert.equal(awayNeutralMark.subarray(1, 4).toString("ascii"), "PNG");
+  assert.equal(paperGrain.subarray(1, 4).toString("ascii"), "PNG");
+  assert.equal(scoreDigits.subarray(1, 4).toString("ascii"), "PNG");
+  assert.ok(paperGrain.length > 1_000_000);
+  assert.ok(scoreDigits.length > 500_000);
   assert.match(tokens, /font-family: "Bebas Neue"/);
   assert.match(tokens, /BebasNeue-Regular\.ttf/);
   assert.match(tokens, /font-family: "Black Han Sans"/);
