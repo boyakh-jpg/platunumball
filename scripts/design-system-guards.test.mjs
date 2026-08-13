@@ -192,11 +192,10 @@ test("앱은 분류 박스 없는 표준 디자인을 사용하고 비교 데모
   assert.doesNotMatch(pageSources.settings, /화면 구성|분류 박스 없음 사용 중|selectDesignMode/);
   assert.match(pageSources.landing, /className="ui-design-host ui-design-public-main" data-design="editorial"/);
   assert.match(pageSources.landing, /className="ui-design-hero ui-design-main-hero ui-page-hero"/);
-  assert.match(pageSources.landing, /지금 열려 있는 경기/);
-  assert.match(pageSources.landing, /Team basketball/);
-  assert.match(pageSources.landing, /Season ranking/);
   assert.match(pageSources.landing, /Recent games/);
-assert.match(editorialDesignStyles, /\.ui-design-spotlight__stats > div\s*\{[^}]*color:\s*var\(--text\);/);
+  assert.match(pageSources.landing, /실제 경기 영수증 예시/);
+  assert.doesNotMatch(pageSources.landing, /지금 열려 있는 경기|Team basketball|Season ranking|ui-design-spotlight/);
+  assert.match(editorialDesignStyles, /\.ui-design-spotlight__stats > div\s*\{[^}]*color:\s*var\(--text\);/);
   assert.doesNotMatch(pageSources.landing, /ui-design-preference-list|화면 설정/);
   assert.doesNotMatch(pageSources.landing, /ui-design-main-brand|brand-logo-frame|brand-letter-wrap/);
   assert.match(pageSources.landing, /to="\/app"[\s\S]*?>\s*홈\s*</);
