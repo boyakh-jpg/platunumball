@@ -87,6 +87,7 @@ const matchCreateOperationsStyles = read("src/styles/features/match-create-opera
 const globalWorkflowStyles = readCssTree("src/styles/global-workflows.css");
 const globalSurfaceStyles = readCssTree("src/styles/global-surfaces.css");
 const landingScoreThemeStyles = read("src/styles/themes/landing-score-theme.css");
+const landingGuestStyles = read("src/styles/themes/landing-guest.css");
 const classicDesignStyles = readCssTree("src/styles/design-classic.css");
 const editorialDesignStyles = readCssTree("src/styles/design-editorial.css");
 const visualDirectionDemoSource = read("src/pages/VisualDirectionDemo.jsx");
@@ -190,15 +191,16 @@ test("앱은 분류 박스 없는 표준 디자인을 사용하고 비교 데모
     pageSources.settings,
   ].forEach((source) => assert.match(source, /ui-design-app-hero/));
   assert.doesNotMatch(pageSources.settings, /화면 구성|분류 박스 없음 사용 중|selectDesignMode/);
-  assert.match(pageSources.landing, /className="ui-design-host ui-design-public-main" data-design="editorial"/);
-  assert.match(pageSources.landing, /className="ui-design-hero ui-design-main-hero ui-page-hero"/);
-  assert.match(pageSources.landing, /Recent games/);
-  assert.match(pageSources.landing, /실제 경기 영수증 예시/);
-  assert.doesNotMatch(pageSources.landing, /지금 열려 있는 경기|Team basketball|Season ranking|ui-design-spotlight/);
+  assert.match(pageSources.landing, /className="guest-landing"/);
+  assert.match(pageSources.landing, /if \(auth\?\.loading\) return <LandingLoading \/>;/);
+  assert.match(pageSources.landing, /if \(auth\?\.user\) return <Navigate to="\/app" replace \/>;/);
+  assert.match(pageSources.landing, /<MatchReceiptPreview/);
+  assert.match(pageSources.landing, /가입 없이 영수증 만들기/);
+  assert.doesNotMatch(pageSources.landing, /Recent games|지금 열려 있는 경기|Team basketball|Season ranking|ui-design-spotlight|landing-stat-grid/);
   assert.match(editorialDesignStyles, /\.ui-design-spotlight__stats > div\s*\{[^}]*color:\s*var\(--text\);/);
   assert.doesNotMatch(pageSources.landing, /ui-design-preference-list|화면 설정/);
   assert.doesNotMatch(pageSources.landing, /ui-design-main-brand|brand-logo-frame|brand-letter-wrap/);
-  assert.match(pageSources.landing, /to="\/app"[\s\S]*?>\s*홈\s*</);
+  assert.match(pageSources.landing, /<BrandLockup\s*\/>/);
   assert.match(brandLockupSource, /BOXTIER_LETTER_DARK_URL/);
   assert.match(brandLockupSource, /BOXTIER_LETTER_LIGHT_URL/);
   assert.match(brandLockupSource, /brand-letter-fallback/);
@@ -850,13 +852,8 @@ test("같은 정책 행은 명시형 선택 필드와 중앙 control 정렬을 �
   );
 });
 
-test("같은 행의 랜딩 칸과 생성 control은 같은 폭과 높이를 사용한다", () => {
-  const landingStats = getRuleBody(globalWorkflowStyles, ".landing-stat-grid");
-
+test("생성 control은 공용 폭과 높이를 사용한다", () => {
   assert.match(tokenStyles, /--ui-segmented-field-height:\s*calc\(/);
-  assert.match(globalWorkflowStyles, /\.landing-actions > \.button\s*\{[^}]*flex:\s*1 1 0;[^}]*min-width:\s*0;/);
-  assert.match(landingStats, /width:\s*100%;/);
-  assert.match(landingStats, /max-width:\s*none;/);
   assert.match(
     courtControlStyles,
     /\.create-match-info-grid\.is-standard-room input:not\(\[type="checkbox"\]\):not\(\[type="radio"\]\):not\(\[type="color"\]\)\s*\{[^}]*min-height:\s*var\(--ui-button-height\);/,
@@ -1257,11 +1254,9 @@ test("hero inner boards share one readable liquid-glass system", () => {
   assert.match(visualSystemStyles, /html\[data-theme="light"\] \.app-main \.rank-home \.ui-page-hero\s*\{[^}]*--hero-title-color:\s*var\(--rb-orange-pressed\);[^}]*--hero-eyebrow-color:\s*var\(--rb-cream\);/);
   assert.match(visualSystemStyles, /html\[data-theme\] \.app-main \.ui-page-hero \.ui-liquid-glass :where\(\*\)\s*\{[^}]*color:\s*var\(--rb-cream\);/);
   assert.match(visualSystemStyles, /\.home-hero-next > strong,[\s\S]*?\.arena-hero-stats strong[\s\S]*?color:\s*var\(--hero-title-color\);/);
-  assert.doesNotMatch(pageSources.landing, /landing-compact-summary/);
-  assert.match(
-    visualSystemStyles,
-    /@media \(max-width:\s*720px\)[\s\S]*?--landing-hero-size:\s*auto min\(58svh,\s*620px\);[\s\S]*?--landing-hero-position:\s*54% 8%;/,
-  );
+  assert.match(landingGuestStyles, /\.guest-landing-header\s*\{[^}]*position:\s*sticky;[^}]*height:\s*64px;/);
+  assert.match(landingGuestStyles, /@media \(max-width:\s*760px\)[\s\S]*?\.guest-landing-hero\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\);/);
+  assert.match(landingGuestStyles, /\.guest-landing-mobile-cta\s*\{[^}]*position:\s*fixed;/);
   assert.equal(count(primitiveStyles, "-webkit-mask-composite: xor;"), 1);
   assert.equal(count(primitiveStyles, "mask-composite: exclude;"), 1);
 });
@@ -1288,7 +1283,6 @@ test("page heroes keep shared eyebrows without implementation copy", () => {
   assert.doesNotMatch(heroSources, /공용 방 모달|저장 통로|같은 값|현재 알파 테스트|서버 원본|내부 보정값|실제 공용 방 모달|현재 서비스 화면/);
 
   const standardizedHeroSources = [
-    pageSources.landing,
     pageSources.home,
     pageSources.profile,
     pageSources.profileRecords,

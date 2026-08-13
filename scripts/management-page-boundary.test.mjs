@@ -789,17 +789,24 @@ test("인증 저장소와 링크 복사 실패는 로그인 화면을 멈추지 
   assert.match(login, /navigator\.clipboard\.writeText\(browserOpenUrl\)[\s\S]{0,220}catch \{[\s\S]{0,180}링크를 복사하지 못했습니다/u);
 });
 
-test("랜딩의 모집방·대표팀·최근 경기는 선택 대상을 유지한다", async () => {
+test("비로그인 랜딩은 인증 확인 후 안전하게 분기한다", async () => {
   const landing = await read("src/pages/Landing.jsx");
   const app = await read("src/App.jsx");
+  const profileSetup = await read("src/lib/profileSetup.js");
+  const receipt = await read("src/pages/MatchReceipt.jsx");
   const authGuard = await read("src/components/auth/RequireAuth.jsx");
   const runtime = await read("src/hooks/appData/orchestrator/runtime.js");
   const hydration = await read("src/hooks/appData/orchestrator/runtimeHydration.js");
-  assert.match(landing, /`\/app\/recruiting\?post=\$\{encodeURIComponent\(post\.id\)\}`/u);
-  assert.match(landing, /`\/app\/teams\/\$\{encodeURIComponent\(featuredTeam\.id\)\}`/u);
-  assert.match(landing, /`\/app\/matches\?match=\$\{encodeURIComponent\(match\.id\)\}`/u);
-  assert.match(app, /<Landing state=\{app\.state\} authenticated=\{Boolean\(auth\.user\)\} \/>/u);
-  assert.match(landing, /authenticated \? \([\s\S]*?경기 찾기[\s\S]*?홈[\s\S]*?\) : \([\s\S]*?to="\/app"[\s\S]*?홈[\s\S]*?to="\/login"[\s\S]*?로그인/u);
+  assert.match(landing, /if \(auth\?\.loading\) return <LandingLoading \/>;/u);
+  assert.match(landing, /if \(auth\?\.user\) return <Navigate to="\/app" replace \/>;/u);
+  assert.match(landing, /signInWithProvider\?\.\("google", "\/app"\)/u);
+  assert.match(app, /path="\/"[\s\S]*?<Landing auth=\{auth\} \/>/u);
+  assert.match(app, /path="\/start"[\s\S]*?<Landing auth=\{auth\} \/>/u);
+  assert.match(profileSetup, /if \(url\.origin !== "https:\/\/boxtier\.local"\) return safeFallback;/u);
+  assert.match(profileSetup, /if \(!redirectPath\.startsWith\("\/app"\)\) return safeFallback;/u);
+  assert.match(receipt, /ensurePublicDraft\(draft, \{ forClaim: true \}\)/u);
+  assert.match(receipt, /returnTo = `\$\{MATCH_RECEIPT_CREATE_RETURN_TO\}&receiptDraft=\$\{encodeURIComponent\(publicId\)\}`/u);
+  assert.match(receipt, /clonePublicId: requestedPublicDraftId/u);
   assert.match(app, /function isGuestPublicAppPath\(pathname = ""\)[\s\S]*GUEST_PUBLIC_APP_PREFIXES\.some[\s\S]*isGuestPublicAppPath\(location\.pathname\)[\s\S]*useAppData\(auth\.user \?\? null, location, \{ demoPreview: guestPreview \}\)/u);
   assert.match(authGuard, /!auth\.session && !allowGuestHome/u);
   assert.doesNotMatch(runtime, /ensureLocalDemoInitialState\(\{ preview: true \}\)/u);
@@ -864,16 +871,21 @@ test("게스트는 실제 공개 매칭을 보고 개인 메뉴는 안내 상태
   assert.match(bootstrap, /regionScope: "all", startFilter: "all"/u);
 });
 
-test("랜딩은 공개 피드와 전체 통계를 분리하고 공개 경기 점수를 표시한다", async () => {
-  const landing = await read("src/pages/Landing.jsx");
-  assert.match(landing, /const openRecruiting = publicFeed\?\.openRecruiting \?\? openRecruitingPosts\.slice\(0, 3\)/u);
-  assert.match(landing, /const completedMatches = publicFeed\?\.recentMatches \?\? confirmedMatches\.slice\(-3\)\.reverse\(\)/u);
-  assert.match(landing, /post\.status === "open" && post\.visibility !== "private"/u);
-  assert.match(landing, /match\.status === "confirmed" && match\.visibility !== "private"/u);
-  assert.match(landing, /openRecruiting: openRecruitingPosts\.length/u);
-  assert.match(landing, /completedMatches: confirmedMatches\.length/u);
-  assert.match(landing, /match\.scoreA \?\? match\.result\?\.scoreA \?\? match\.teamA\?\.score \?\? 0/u);
-  assert.match(landing, /match\.scoreB \?\? match\.result\?\.scoreB \?\? match\.teamB\?\.score \?\? 0/u);
+test("비로그인 랜딩은 실제 영수증과 네 구역만 표시한다", async () => {
+  const [landing, publicShell, attribution] = await Promise.all([
+    read("src/pages/Landing.jsx"),
+    read("src/components/layout/PublicShell.jsx"),
+    read("src/components/layout/DataAttribution.jsx"),
+  ]);
+  assert.match(landing, /농구 기록을[\s\S]*영수증으로 남기세요/u);
+  assert.match(landing, /경기는 끝나도[\s\S]*기록은 남습니다/u);
+  assert.match(landing, /한 경기로 끝내지 않으려면[\s\S]*기록을 이어가세요/u);
+  assert.match(landing, /오늘 경기도[\s\S]*단톡방에서 사라지기 전에/u);
+  assert.match(landing, /homeTeam: "NEW COURT CREW"[\s\S]*homeScore: 60[\s\S]*awayScore: 46/u);
+  assert.match(landing, /<MatchReceiptPreview/u);
+  assert.doesNotMatch(landing, /fetch\(|openRecruiting|completedMatches|landing-stat-grid/u);
+  assert.match(publicShell, /compactFooter = location\.pathname === "\/" \|\| location\.pathname === "\/start"/u);
+  assert.match(attribution, /compact \? " is-compact" : ""/u);
 });
 
 test("경로 없는 검색과 방 팝업은 키보드 이동과 조회 실패 복구를 제공한다", async () => {

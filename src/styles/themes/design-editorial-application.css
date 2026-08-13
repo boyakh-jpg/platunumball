@@ -17,19 +17,6 @@
     flex-direction: column-reverse;
   }
 
-  [data-design="editorial"] .ui-design-main-page {
-    --ui-design-page-padding-x: 0;
-  }
-
-  [data-design="editorial"] .ui-design-main-flow > :not(.ui-design-main-hero) {
-    width: calc(100% - (2 * var(--page-gutter)));
-    margin-inline: auto;
-  }
-
-  [data-design="editorial"] .ui-design-main-hero {
-    border-radius: 0;
-  }
-
   [data-design="editorial"] .ui-design-hero {
     min-height: 610px;
     align-content: end;

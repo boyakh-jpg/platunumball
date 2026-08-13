@@ -1,124 +1,149 @@
-import { ArrowRight, ChevronRight } from "lucide-react";
-import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import Badge from "../components/common/Badge.jsx";
+import { ArrowRight, Check } from "lucide-react";
+import { Link, Navigate } from "react-router-dom";
+import BrandLockup from "../components/common/BrandLockup.jsx";
 import Button from "../components/common/Button.jsx";
-import { MATCH_SIDE_FALLBACK_NAMES } from "../lib/constants.js";
+import LandingLoading from "../components/common/LandingLoading.jsx";
+import MatchReceiptPreview from "../components/match/MatchReceiptPreview.jsx";
+import { BRAND_NAME } from "../lib/brand.js";
+import { normalizeMatchReceiptDraft } from "../lib/matchReceipt.js";
 
-function getSideName(match = {}, sideName) {
-  return match?.[sideName]?.name || match?.[`${sideName}Name`] || MATCH_SIDE_FALLBACK_NAMES[sideName];
-}
+const LANDING_RECEIPT_DRAFT = normalizeMatchReceiptDraft({
+  serialSeed: "landing-receipt",
+  homeTeam: "NEW COURT CREW",
+  awayTeam: "마포 러너스",
+  homeScore: 60,
+  awayScore: 46,
+  playedOn: "2026-08-11",
+  venue: "마포구 와우근린공원 농구장",
+  format: "5v5",
+  matchNature: "competitive",
+  comment: "오늘도 농구",
+  homeMmr: 1540,
+  awayMmr: 1490,
+  hasCanonicalTeamMatch: true,
+  verified: true,
+});
 
-function normalizeRecentMatches(value = {}) {
-  if (!Array.isArray(value?.recentMatches)) return null;
-  return value.recentMatches.filter((item) => typeof item?.id === "string").slice(0, 1);
-}
-
-export default function Landing({ state, authenticated = false }) {
-  const [publicMatches, setPublicMatches] = useState(null);
-  const matches = state?.matches ?? [];
-  const confirmedMatches = matches.filter((match) => match.status === "confirmed" && match.visibility !== "private");
-  const completedMatches = publicMatches ?? confirmedMatches.slice(-1).reverse();
-
-  useEffect(() => {
-    const controller = new AbortController();
-    fetch("/api/landing/stats", {
-      method: "GET",
-      headers: { Accept: "application/json" },
-      signal: controller.signal,
-    })
-      .then((response) => (response.ok ? response.json() : null))
-      .then((payload) => {
-        const nextMatches = normalizeRecentMatches(payload?.feed);
-        if (nextMatches) setPublicMatches(nextMatches);
-      })
-      .catch(() => {});
-    return () => controller.abort();
-  }, []);
+function GoogleLoginButton({ auth, compact = false, className = "", variant = "secondary" }) {
+  const signIn = () => auth?.signInWithProvider?.("google", "/app");
 
   return (
-    <main className="ui-design-host ui-design-public-main" data-design="editorial">
-      <div className="ui-design-page ui-design-main-page">
-        <div className="ui-design-flow ui-design-main-flow">
-          <section
-            className="ui-design-hero ui-design-main-hero ui-page-hero"
-            style={{
-              "--ui-design-media": "var(--bg-action)",
-              "--ui-design-media-position": "center 36%",
-              "--ui-design-media-position-mobile": "62% center",
-            }}
-          >
-            <div className="ui-design-hero__copy ui-page-hero__copy">
-              <Badge tone="green">BOXTIER</Badge>
-              <h1>경기 끝나면<br />기록도 끝나나요?</h1>
-              <p>출석부터 점수·개인 기록·전적·티어까지 남기는 생활체육 농구 서비스</p>
-              <div className="ui-action-row ui-design-actions">
-                {authenticated ? (
-                  <>
-                    <Button as={Link} to="/app/recruiting">
-                      열린 경기 보기 <ArrowRight size={18} />
-                    </Button>
-                    <Button as={Link} to="/app" variant="secondary">
-                      홈
-                    </Button>
-                  </>
-                ) : (
-                  <>
-                    <Button as={Link} to="/app/recruiting">
-                      가입 없이 열린 경기 보기 <ArrowRight size={18} />
-                    </Button>
-                    <Button as={Link} to="/app/guide/practice" variant="secondary">
-                      30초 연습경기 만들기
-                    </Button>
-                  </>
-                )}
-              </div>
-            </div>
-          </section>
+    <Button
+      type="button"
+      variant={variant}
+      className={className}
+      onClick={signIn}
+      disabled={auth?.authActionPending}
+      aria-label="Google로 로그인"
+    >
+      <span aria-hidden="true" className="guest-landing-login-long">Google로 로그인</span>
+      {compact ? <span aria-hidden="true" className="guest-landing-login-short">로그인</span> : null}
+    </Button>
+  );
+}
 
-          <section className="ui-design-section">
-            <div className="section-title-row ui-design-section-heading">
-              <div>
-                <p className="eyebrow">Recent games</p>
-                <h2>실제 경기 영수증 예시</h2>
-              </div>
-              <Link to="/app/receipt" className="ui-design-text-action">
-                영수증 발급 <ChevronRight size={17} />
-              </Link>
-            </div>
-            <div className="ui-design-list ui-design-result-list">
-              {completedMatches.length ? completedMatches.map((match) => (
-                <Link to={`/app/receipt?match=${encodeURIComponent(match.id)}`} className="ui-design-result-row" key={match.id}>
-                  <span className="is-win">완료</span>
-                  <strong>{getSideName(match, "teamA")} vs {getSideName(match, "teamB")}</strong>
-                  <b>{match.scoreA ?? match.result?.scoreA ?? match.teamA?.score ?? 0} : {match.scoreB ?? match.result?.scoreB ?? match.teamB?.score ?? 0}</b>
-                </Link>
-              )) : (
-                <div className="ui-empty-state-compact">아직 공개된 경기 기록이 없습니다.</div>
-              )}
-            </div>
-          </section>
+export default function Landing({ auth }) {
+  if (auth?.loading) return <LandingLoading />;
+  if (auth?.user) return <Navigate to="/app" replace />;
 
-          {!authenticated ? (
-            <section className="ui-design-section">
-              <div className="section-title-row ui-design-section-heading">
-                <div>
-                  <p className="eyebrow">Keep your record</p>
-                  <h2>경기 기록을 내 전적과 티어로 이어가세요.</h2>
-                </div>
-                <div className="ui-action-row ui-design-actions">
-                  <Button as={Link} to="/login">
-                    Google로 시작하기 <ArrowRight size={18} />
-                  </Button>
-                  <Button as={Link} to="/app" variant="secondary">
-                    홈
-                  </Button>
-                </div>
-              </div>
-            </section>
-          ) : null}
+  const receiptUrl = new URL("/app/receipt", window.location.origin).toString();
+
+  return (
+    <main className="guest-landing">
+      <header className="guest-landing-header">
+        <div className="guest-landing-header-inner">
+          <Link to="/" className="brand guest-landing-brand" aria-label={BRAND_NAME}>
+            <BrandLockup />
+          </Link>
+          <GoogleLoginButton auth={auth} compact className="guest-landing-header-login" />
         </div>
-      </div>
+      </header>
+
+      <section className="guest-landing-hero">
+        <div className="guest-landing-hero-copy">
+          <p className="guest-landing-eyebrow">PLAY REAL. RANK REAL.</p>
+          <h1>농구 기록을<br />영수증으로 남기세요.</h1>
+          <p className="guest-landing-lead">
+            날짜, 구장, 점수와 참가자를 입력하면<br />
+            공유할 수 있는 경기 영수증이 완성됩니다.
+          </p>
+          <div className="guest-landing-primary-actions">
+            <Button as={Link} to="/app/receipt" className="guest-landing-primary-cta">
+              가입 없이 영수증 만들기 <ArrowRight aria-hidden="true" size={18} />
+            </Button>
+            <button
+              type="button"
+              className="guest-landing-text-login"
+              onClick={() => auth?.signInWithProvider?.("google", "/app")}
+              disabled={auth?.authActionPending}
+            >
+              이미 회원이신가요? Google로 로그인 <ArrowRight aria-hidden="true" size={16} />
+            </button>
+          </div>
+          <small>로그인 없이 제작·저장·공유할 수 있어요.</small>
+          {auth?.error ? <p className="guest-landing-auth-error">Google 로그인을 완료하지 못했습니다. 다시 시도해주세요.</p> : null}
+        </div>
+
+        <div className="guest-landing-hero-receipt" aria-label="박스티어 경기 영수증 예시">
+          <MatchReceiptPreview draft={LANDING_RECEIPT_DRAFT} matchUrl={receiptUrl} />
+        </div>
+      </section>
+
+      <section className="guest-landing-section guest-landing-receipt-section">
+        <div className="guest-landing-section-heading">
+          <p className="guest-landing-eyebrow">MATCH RECEIPT</p>
+          <h2>경기는 끝나도<br />기록은 남습니다.</h2>
+          <p>경기방을 미리 만들지 않았어도 괜찮습니다.<br />끝난 경기의 결과를 바로 영수증으로 만들 수 있습니다.</p>
+        </div>
+
+        <div className="guest-landing-receipt-guide">
+          <div className="guest-landing-guide-receipt">
+            <MatchReceiptPreview draft={LANDING_RECEIPT_DRAFT} matchUrl={receiptUrl} />
+          </div>
+          <ol className="guest-landing-receipt-points">
+            <li className="is-info"><b>① 경기 정보</b><span>날짜·시간·구장</span></li>
+            <li className="is-result"><b>② 경기 결과</b><span>팀명·점수·참가자</span></li>
+            <li className="is-share"><b>③ 저장과 공유</b><span>이미지 저장·공유 링크·QR</span></li>
+          </ol>
+        </div>
+
+        <Button as={Link} to="/app/receipt" className="guest-landing-section-cta">
+          내 경기 영수증 만들기 <ArrowRight aria-hidden="true" size={18} />
+        </Button>
+      </section>
+
+      <section className="guest-landing-section guest-landing-account-section">
+        <div className="guest-landing-section-heading">
+          <p className="guest-landing-eyebrow">KEEP YOUR RECORD</p>
+          <h2>한 경기로 끝내지 않으려면<br />기록을 이어가세요.</h2>
+        </div>
+        <ul className="guest-landing-benefits">
+          <li><Check aria-hidden="true" /> 경기 영수증 자동 보관</li>
+          <li><Check aria-hidden="true" /> 승패와 개인 기록 누적</li>
+          <li><Check aria-hidden="true" /> 전적·티어·팀 기록 연결</li>
+        </ul>
+        <GoogleLoginButton auth={auth} variant="primary" className="guest-landing-account-login" />
+        <small>처음 이용해도 별도의 가입 양식 없이<br />Google 계정으로 바로 시작할 수 있습니다.</small>
+      </section>
+
+      <section className="guest-landing-final-cta">
+        <h2>오늘 경기도<br />단톡방에서 사라지기 전에.</h2>
+        <Button as={Link} to="/app/receipt">
+          가입 없이 영수증 만들기 <ArrowRight aria-hidden="true" size={18} />
+        </Button>
+        <button
+          type="button"
+          className="guest-landing-text-login"
+          onClick={() => auth?.signInWithProvider?.("google", "/app")}
+          disabled={auth?.authActionPending}
+        >
+          기록을 계속 쌓고 싶다면 Google로 로그인 <ArrowRight aria-hidden="true" size={16} />
+        </button>
+      </section>
+
+      <Button as={Link} to="/app/receipt" className="guest-landing-mobile-cta">
+        영수증 만들기
+      </Button>
     </main>
   );
 }

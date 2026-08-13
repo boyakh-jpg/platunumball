@@ -1,0 +1,501 @@
+/* 2026-08-13 guest-only landing. */
+.landing-auth-loading {
+  display: grid;
+  min-height: 100svh;
+  place-content: center;
+  justify-items: center;
+  gap: var(--space-5);
+  background: var(--rb-bg);
+  color: var(--rb-text);
+  padding: var(--page-gutter);
+  text-align: center;
+}
+
+.landing-auth-loading p {
+  margin: 0;
+  color: var(--rb-muted);
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.public-shell:has(.landing-auth-loading) > .site-data-footer {
+  display: none;
+}
+
+.guest-landing {
+  min-height: 100vh;
+  overflow: clip;
+  background:
+    radial-gradient(circle at 76% 9%, color-mix(in srgb, var(--rb-orange) 10%, transparent), transparent 28rem),
+    var(--rb-bg);
+  color: var(--rb-text);
+}
+
+.guest-landing-header {
+  position: sticky;
+  z-index: 30;
+  top: 0;
+  height: 64px;
+  border-bottom: var(--ui-stroke-width) solid var(--rb-line);
+  background: color-mix(in srgb, var(--rb-bg) 88%, transparent);
+  backdrop-filter: blur(16px);
+}
+
+.guest-landing-header-inner {
+  display: flex;
+  width: min(100%, 1180px);
+  height: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-6);
+  margin-inline: auto;
+  padding-inline: var(--page-gutter);
+}
+
+.guest-landing-brand {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-3);
+  color: inherit;
+  text-decoration: none;
+}
+
+.guest-landing-brand .brand-logo-frame {
+  width: 34px;
+  height: 34px;
+  padding: 2px;
+  border-radius: var(--radius-xs);
+}
+
+.guest-landing-brand .brand-letter-wrap {
+  width: 118px;
+  max-width: 118px;
+  flex-basis: 118px;
+}
+
+.guest-landing-header-login {
+  min-height: 38px;
+  padding-inline: 16px;
+}
+
+.guest-landing-login-short {
+  display: none;
+}
+
+.guest-landing-hero {
+  display: grid;
+  width: min(100%, 1180px);
+  min-height: calc(100svh - 64px);
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 430px);
+  align-items: center;
+  gap: clamp(var(--space-16), 8vw, 112px);
+  margin-inline: auto;
+  padding: clamp(52px, 7vw, 96px) var(--page-gutter);
+}
+
+.guest-landing-hero-copy {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-6);
+}
+
+.guest-landing-eyebrow {
+  margin: 0;
+  color: var(--rb-orange-2);
+  font-family: var(--sports-display-font), sans-serif;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+
+.guest-landing-hero h1,
+.guest-landing-section h2,
+.guest-landing-final-cta h2 {
+  margin: 0;
+  font-family: var(--sports-display-font), sans-serif;
+  letter-spacing: -0.045em;
+  line-height: 0.98;
+}
+
+.guest-landing-hero h1 {
+  max-width: 700px;
+  font-size: clamp(3.15rem, 6.8vw, 5.5rem);
+}
+
+.guest-landing-lead,
+.guest-landing-section-heading > p:not(.guest-landing-eyebrow) {
+  margin: 0;
+  color: var(--rb-muted);
+  font-size: clamp(1rem, 1.6vw, 1.16rem);
+  line-height: 1.72;
+}
+
+.guest-landing-primary-actions {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-4);
+}
+
+.guest-landing-primary-cta,
+.guest-landing-section-cta {
+  min-height: 50px;
+  padding-inline: 22px;
+}
+
+.guest-landing-text-login {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  border: 0;
+  background: transparent;
+  color: var(--rb-text);
+  padding: 2px 0;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 850;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.guest-landing-text-login:hover,
+.guest-landing-text-login:focus-visible {
+  color: var(--rb-orange-2);
+}
+
+.guest-landing-text-login:disabled {
+  cursor: wait;
+  opacity: 0.58;
+}
+
+.guest-landing-hero-copy > small,
+.guest-landing-account-section > small {
+  color: var(--rb-soft);
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.55;
+}
+
+.guest-landing-auth-error {
+  margin: 0;
+  color: var(--rb-danger);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.guest-landing-hero-receipt {
+  width: min(100%, 410px);
+  justify-self: center;
+  transform: rotate(1.25deg);
+  transform-origin: 50% 50%;
+}
+
+.guest-landing-hero-receipt .match-receipt-card,
+.guest-landing-guide-receipt .match-receipt-card {
+  width: 100%;
+  max-width: none;
+}
+
+.guest-landing-section {
+  display: grid;
+  width: min(100%, 1180px);
+  justify-items: center;
+  gap: clamp(40px, 6vw, 72px);
+  margin-inline: auto;
+  padding: clamp(84px, 10vw, 132px) var(--page-gutter);
+}
+
+.guest-landing-section-heading {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-5);
+  max-width: 680px;
+  text-align: center;
+}
+
+.guest-landing-section h2,
+.guest-landing-final-cta h2 {
+  font-size: clamp(2.35rem, 5vw, 4.2rem);
+}
+
+.guest-landing-receipt-guide {
+  position: relative;
+  width: min(100%, 920px);
+  min-height: 880px;
+}
+
+.guest-landing-guide-receipt {
+  width: min(54vw, 480px);
+  margin-inline: auto;
+}
+
+.guest-landing-receipt-points {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.guest-landing-receipt-points li {
+  position: absolute;
+  display: grid;
+  gap: var(--space-2);
+  width: 190px;
+  color: var(--rb-text);
+}
+
+.guest-landing-receipt-points li::after {
+  content: "";
+  position: absolute;
+  top: 14px;
+  width: clamp(58px, 8vw, 110px);
+  border-top: var(--ui-stroke-width) solid var(--rb-orange);
+}
+
+.guest-landing-receipt-points b {
+  font-size: 1rem;
+}
+
+.guest-landing-receipt-points span {
+  color: var(--rb-muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.guest-landing-receipt-points .is-info {
+  top: 17%;
+  left: 0;
+  text-align: right;
+}
+
+.guest-landing-receipt-points .is-info::after,
+.guest-landing-receipt-points .is-share::after {
+  left: calc(100% + 16px);
+}
+
+.guest-landing-receipt-points .is-result {
+  top: 43%;
+  right: 0;
+}
+
+.guest-landing-receipt-points .is-result::after {
+  right: calc(100% + 16px);
+}
+
+.guest-landing-receipt-points .is-share {
+  bottom: 11%;
+  left: 0;
+  text-align: right;
+}
+
+.guest-landing-account-section {
+  width: 100%;
+  max-width: none;
+  border-block: var(--ui-stroke-width) solid var(--rb-line);
+  background: color-mix(in srgb, var(--rb-bg-2) 88%, var(--rb-bg));
+}
+
+.guest-landing-benefits {
+  display: grid;
+  width: min(100%, 900px);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.guest-landing-benefits li {
+  display: flex;
+  min-height: 76px;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  border-right: var(--ui-stroke-width) solid var(--rb-line);
+  padding: 14px 24px;
+  font-weight: 850;
+  text-align: center;
+}
+
+.guest-landing-benefits li:last-child {
+  border-right: 0;
+}
+
+.guest-landing-benefits svg {
+  flex: none;
+  color: var(--rb-orange-2);
+}
+
+.guest-landing-account-login {
+  min-width: 210px;
+}
+
+.guest-landing-final-cta {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-7);
+  padding: clamp(90px, 12vw, 150px) var(--page-gutter);
+  text-align: center;
+}
+
+.guest-landing-mobile-cta {
+  display: none;
+}
+
+.site-data-footer.is-compact {
+  padding-block: 22px max(14px, env(safe-area-inset-bottom));
+}
+
+@media (max-width: 760px) {
+  .guest-landing {
+    padding-bottom: calc(68px + env(safe-area-inset-bottom));
+  }
+
+  .guest-landing-brand {
+    gap: var(--space-2);
+  }
+
+  .guest-landing-brand .brand-logo-frame {
+    width: 30px;
+    height: 30px;
+  }
+
+  .guest-landing-brand .brand-letter-wrap {
+    width: 92px;
+    max-width: 92px;
+    flex-basis: 92px;
+  }
+
+  .guest-landing-header-login {
+    min-height: 36px;
+    padding-inline: 14px;
+  }
+
+  .guest-landing-header-login .guest-landing-login-long {
+    display: none;
+  }
+
+  .guest-landing-header-login .guest-landing-login-short {
+    display: inline;
+  }
+
+  .guest-landing-hero {
+    min-height: auto;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 44px;
+    padding-top: 56px;
+    padding-bottom: 72px;
+  }
+
+  .guest-landing-hero-copy {
+    gap: var(--space-5);
+  }
+
+  .guest-landing-hero h1 {
+    font-size: clamp(2.75rem, 13vw, 4rem);
+  }
+
+  .guest-landing-lead br,
+  .guest-landing-section-heading br:not(:first-of-type) {
+    display: none;
+  }
+
+  .guest-landing-primary-cta {
+    width: 100%;
+  }
+
+  .guest-landing-hero-receipt {
+    width: min(92%, 360px);
+    transform: rotate(0.75deg);
+  }
+
+  .guest-landing-section {
+    gap: 44px;
+    padding-block: 84px;
+  }
+
+  .guest-landing-section-heading {
+    justify-items: start;
+    text-align: left;
+  }
+
+  .guest-landing-section h2,
+  .guest-landing-final-cta h2 {
+    font-size: clamp(2.35rem, 11vw, 3.3rem);
+  }
+
+  .guest-landing-receipt-guide {
+    display: grid;
+    min-height: 0;
+    gap: var(--space-8);
+  }
+
+  .guest-landing-guide-receipt {
+    width: min(92%, 390px);
+  }
+
+  .guest-landing-receipt-points {
+    display: grid;
+    gap: var(--space-5);
+  }
+
+  .guest-landing-receipt-points li {
+    position: static;
+    width: auto;
+    grid-template-columns: 110px minmax(0, 1fr);
+    align-items: baseline;
+    text-align: left;
+  }
+
+  .guest-landing-receipt-points li::after {
+    display: none;
+  }
+
+  .guest-landing-benefits {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .guest-landing-benefits li {
+    min-height: 58px;
+    justify-content: flex-start;
+    border-right: 0;
+    border-bottom: var(--ui-stroke-width) solid var(--rb-line);
+    padding-inline: 0;
+    text-align: left;
+  }
+
+  .guest-landing-benefits li:last-child {
+    border-bottom: 0;
+  }
+
+  .guest-landing-account-login,
+  .guest-landing-section-cta,
+  .guest-landing-final-cta > .ui-button {
+    width: 100%;
+  }
+
+  .guest-landing-final-cta {
+    justify-items: stretch;
+    text-align: left;
+  }
+
+  .guest-landing-mobile-cta {
+    position: fixed;
+    z-index: 40;
+    right: var(--page-gutter);
+    bottom: max(10px, env(safe-area-inset-bottom));
+    left: var(--page-gutter);
+    display: inline-flex;
+    min-height: 50px;
+    box-shadow: var(--shadow-strong);
+  }
+
+  .site-data-footer.is-compact {
+    padding-bottom: calc(80px + env(safe-area-inset-bottom));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .guest-landing-hero-receipt {
+    transform: none;
+  }
+}

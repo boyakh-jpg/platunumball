@@ -24,20 +24,6 @@
   gap: var(--ui-design-flow-gap);
 }
 
-[data-design="editorial"].ui-design-public-main {
-  min-height: 100vh;
-  min-height: 100dvh;
-  background: var(--bg);
-}
-
-[data-design="editorial"] .ui-design-main-page {
-  padding-top: 0;
-}
-
-[data-design="editorial"] .ui-design-main-hero {
-  border-radius: 0 0 var(--ui-design-media-radius) var(--ui-design-media-radius);
-}
-
 [data-design="editorial"] :is(
   .ui-design-toolbar,
   .ui-design-section-heading

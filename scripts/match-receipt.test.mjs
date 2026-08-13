@@ -261,8 +261,9 @@ test("receipt capability cookies stay isolated when creation responses arrive ou
 });
 
 test("receipt photo tools stay outside the export card and reference dividers remain", async () => {
-  const [page, qrComponent, styles, tokens, renderer, roomDialog, digitGenerator, syncScript, draftApi, landing, appSource, homeNeutralMark, awayNeutralMark, paperGrain, scoreDigitSource, scoreDigits, wordmark, bebasNeue, bebasLicense, blackHanSans] = await Promise.all([
+  const [page, preview, qrComponent, styles, tokens, renderer, roomDialog, digitGenerator, syncScript, draftApi, landing, appSource, homeNeutralMark, awayNeutralMark, paperGrain, scoreDigitSource, scoreDigits, wordmark, bebasNeue, bebasLicense, blackHanSans] = await Promise.all([
     readFile(new URL("../src/pages/MatchReceipt.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/match/MatchReceiptPreview.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/components/common/QrCode.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/styles/features/match-receipt.css", import.meta.url), "utf8"),
     readFile(new URL("../src/styles/tokens.css", import.meta.url), "utf8"),
@@ -283,6 +284,7 @@ test("receipt photo tools stay outside the export card and reference dividers re
     readFile(new URL("../public/assets/fonts/BebasNeue-OFL.txt", import.meta.url), "utf8"),
     readFile(new URL("../public/assets/fonts/BlackHanSans-Regular.ttf", import.meta.url)),
   ]);
+  const receiptSources = `${page}\n${preview}`;
 
   assert.doesNotMatch(page, /match-receipt-photo-editor|match-receipt-photo-crop/);
   assert.match(page, /photoGestureHandlers/);
@@ -304,20 +306,20 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(page, /onWheel: zoomPhotoWithWheel/);
   assert.match(page, /onDoubleClick: resetPhotoTransform/);
   assert.match(page, /className="match-receipt-photo-tools"/);
-  assert.match(page, /model\.hasPersonalStats \? "MY GAME" : "GAME INFO"/);
-  assert.match(page, /match-receipt-personal-stats/);
-  assert.match(page, /neutralTeamMarkUrls\.home/);
-  assert.match(page, /neutralTeamMarkUrls\.away/);
+  assert.match(preview, /model\.hasPersonalStats \? "MY GAME" : "GAME INFO"/);
+  assert.match(preview, /match-receipt-personal-stats/);
+  assert.match(preview, /neutralTeamMarkUrls\.home/);
+  assert.match(preview, /neutralTeamMarkUrls\.away/);
   assert.match(page, /canonicalHomeTeamMmr/);
   assert.match(page, /app\?\.state\?\.teams/);
   assert.match(page, /homeMmr: canonicalHomeTeamMmr/);
-  assert.match(page, /TEAM TIER · \$\{team\.tier\.label\}/);
-  assert.match(page, /--receipt-paper-texture/);
-  assert.match(page, /--receipt-paper-grain/);
-  assert.match(page, /--receipt-score-digits/);
-  assert.match(page, /ReceiptScoreDigits/);
-  assert.match(page, /match-receipt-team-watermarks/);
-  assert.match(page, /MY TIER · \{model\.personalTier\.label\}/);
+  assert.match(preview, /TEAM TIER · \$\{team\.tier\.label\}/);
+  assert.match(preview, /--receipt-paper-texture/);
+  assert.match(preview, /--receipt-paper-grain/);
+  assert.match(preview, /--receipt-score-digits/);
+  assert.match(preview, /ReceiptScoreDigits/);
+  assert.match(preview, /match-receipt-team-watermarks/);
+  assert.match(preview, /MY TIER · \{model\.personalTier\.label\}/);
   assert.match(page, /CourtMapPicker/);
   assert.match(page, /getRegisteredCourts/);
   assert.match(page, /mergeCourtSearchCourts/);
@@ -329,19 +331,19 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(page, /직접 입력 또는 지도에서 선택/);
   assert.match(page, /RECEIPT_TEXT_FIELDS\.has\(name\)/);
   assert.match(page, /normalizeMatchReceiptDraft\(\{ \.\.\.current, venue, address, originalAddress \}\)/);
-  assert.match(page, /\{model\.comment \? <span/);
+  assert.match(preview, /\{model\.comment \? <span/);
   assert.doesNotMatch(page, /model\.comment \|\| "내 경기 기록"/);
-  assert.match(page, /className="match-receipt-qr" branded/);
-  assert.match(page, /\/app\/receipt\?draft=/);
-  assert.doesNotMatch(page, /\/app\/matches\?match=/);
+  assert.match(preview, /className="match-receipt-qr" branded/);
+  assert.match(receiptSources, /\/app\/receipt\?draft=/);
+  assert.doesNotMatch(receiptSources, /\/app\/matches\?match=/);
   assert.match(page, /sourceMatchId: canonicalMatchId/);
   assert.match(page, /clonePublicId: requestedPublicDraftId/);
   assert.match(page, /requestedDraftCanClaim/);
   assert.match(page, /draftRevisionRef/);
   assert.match(page, /receipt_draft_stale/);
   assert.doesNotMatch(page, /state:\s*\{\s*receiptDraft: getMatchReceiptCreateDraft\(draft\)/);
-  assert.match(page, /match-receipt-photo-backdrop/);
-  assert.doesNotMatch(page, /index \? "AWAY" : "HOME"/);
+  assert.match(preview, /match-receipt-photo-backdrop/);
+  assert.doesNotMatch(receiptSources, /index \? "AWAY" : "HOME"/);
   assert.match(page, /maxLength=\{MATCH_RECEIPT_LIMITS\.comment\} disabled=\{isFieldReadOnly\("comment"\)\}/);
   assert.doesNotMatch(page, /match-receipt-color-input/);
   assert.match(qrComponent, /branded \? null : <rect/);
@@ -459,11 +461,11 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(renderer, /const targetX = \(width - targetWidth\) \/ 2/);
   assert.match(renderer, /ctx\.drawImage\(story, targetX, 0, targetWidth, targetHeight\)/);
   assert.match(renderer, /canvasToBlob\(canvas, "image\/png"\)/);
-  assert.match(landing, /경기 끝나면<br \/>기록도 끝나나요\?/);
-  assert.match(landing, /가입 없이 열린 경기 보기/);
-  assert.match(landing, /30초 연습경기 만들기/);
-  assert.match(landing, /Google로 시작하기/);
-  assert.match(landing, /\/app\/receipt\?match=/);
+  assert.match(landing, /농구 기록을<br \/>영수증으로 남기세요\./u);
+  assert.match(landing, /가입 없이 영수증 만들기/u);
+  assert.match(landing, /Google로 로그인/u);
+  assert.match(landing, /to="\/app\/receipt"/u);
+  assert.match(landing, /<MatchReceiptPreview draft=\{LANDING_RECEIPT_DRAFT\}/u);
   assert.match(appSource, /path="\/start"/);
   assert.equal(homeNeutralMark.subarray(1, 4).toString("ascii"), "PNG");
   assert.equal(awayNeutralMark.subarray(1, 4).toString("ascii"), "PNG");

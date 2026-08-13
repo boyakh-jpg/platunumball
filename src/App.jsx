@@ -4,6 +4,7 @@ import RequireAdmin from "./components/auth/RequireAdmin.jsx";
 import RequireAuth from "./components/auth/RequireAuth.jsx";
 import GuestAccessNotice from "./components/auth/GuestAccessNotice.jsx";
 import BasketballLoader from "./components/common/BasketballLoader.jsx";
+import LandingLoading from "./components/common/LandingLoading.jsx";
 import AppShell from "./components/layout/AppShell.jsx";
 import PublicShell from "./components/layout/PublicShell.jsx";
 import { useAuthSession } from "./hooks/useAuthSession.js";
@@ -218,11 +219,13 @@ export default function App() {
         </defs>
       </svg>
 
-      <Suspense fallback={<BasketballLoader overlay label="페이지 불러오는 중" />}>
+      <Suspense fallback={location.pathname === "/" || location.pathname === "/start"
+        ? <LandingLoading />
+        : <BasketballLoader overlay label="페이지 불러오는 중" />}>
         <Routes>
         <Route element={<PublicShell />}>
-          <Route path="/" element={<Landing state={app.state} authenticated={Boolean(auth.user)} />} />
-          <Route path="/start" element={<Landing state={app.state} authenticated={Boolean(auth.user)} />} />
+          <Route path="/" element={<Landing auth={auth} />} />
+          <Route path="/start" element={<Landing auth={auth} />} />
           <Route path="/login" element={<Login auth={auth} app={app} />} />
           <Route path="/data-sources" element={<DataSources />} />
           <Route path="/privacy" element={<Privacy />} />
