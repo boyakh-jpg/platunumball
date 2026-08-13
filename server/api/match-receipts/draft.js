@@ -15,6 +15,7 @@ import {
 import {
   createCanonicalReceiptSerialSeed,
   createReceiptCapability,
+  getLegacyCanonicalReceiptMatchId,
   getReceiptCapabilityCookie,
   getReceiptRequestHash,
   hashReceiptCapability,
@@ -77,7 +78,20 @@ async function clonePublicPayload(supabase, publicId) {
     .maybeSingle();
   if (error) throw error;
   if (!data) return null;
+  if (!await canExposeStoredReceiptDraft(supabase, data.payload)) return null;
   return sanitizeReceiptDraftPayload(projectPublicReceiptDraft(data.payload));
+}
+
+async function canExposeStoredReceiptDraft(supabase, payload) {
+  const sourceMatchId = getLegacyCanonicalReceiptMatchId(payload);
+  if (!sourceMatchId) return true;
+  const { data, error } = await supabase
+    .from("matches")
+    .select("id,status,visibility,rules")
+    .eq("id", sourceMatchId)
+    .maybeSingle();
+  if (error) throw error;
+  return canCreatePublicMatchReceiptSnapshot(data);
 }
 
 export default async function handler(request, response) {
@@ -96,6 +110,9 @@ export default async function handler(request, response) {
       .maybeSingle();
     if (error) throw error;
     if (!data) return sendJson(response, 404, { error: "receipt_draft_not_found" });
+    if (!await canExposeStoredReceiptDraft(supabase, data.payload)) {
+      return sendJson(response, 404, { error: "receipt_draft_not_found" });
+    }
     const capability = getReceiptCapabilityCookie(request, data.public_id);
     const canClaim = !data.claimed_at
       && capability?.publicId === data.public_id

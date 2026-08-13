@@ -14,6 +14,7 @@ import {
 import {
   createCanonicalReceiptSerialSeed,
   createReceiptCapability,
+  getLegacyCanonicalReceiptMatchId,
   getReceiptCapabilityCookie,
   hashReceiptCapability,
   projectPublicReceiptDraft,
@@ -105,6 +106,20 @@ test("public receipt projection omits internal address and exact personal rating
   assert.equal(projected.hasCanonicalTeamMatch, true);
 });
 
+test("legacy canonical receipt projection hides the source match id", () => {
+  const payload = {
+    _canonicalReceipt: true,
+    serialSeed: "match:private-personal",
+    verified: true,
+  };
+  const projected = projectPublicReceiptDraft(payload, { serialSecret: "test-secret" });
+
+  assert.equal(getLegacyCanonicalReceiptMatchId(payload), "private-personal");
+  assert.equal(getLegacyCanonicalReceiptMatchId({ ...payload, _canonicalReceipt: false }), "");
+  assert.match(projected.serialSeed, /^canonical:[a-f0-9]{32}$/);
+  assert.equal(projected.serialSeed.includes("private-personal"), false);
+});
+
 test("only confirmed public team matches can create canonical public receipt snapshots", () => {
   const match = {
     id: "match-123",
@@ -118,6 +133,10 @@ test("only confirmed public team matches can create canonical public receipt sna
   assert.equal(canCreatePublicMatchReceiptSnapshot({
     ...match,
     rules: { recordType: RECORD_TYPES.personalRecord },
+  }), false);
+  assert.equal(canCreatePublicMatchReceiptSnapshot({
+    ...match,
+    rules: { recordType: "personal_record" },
   }), false);
   assert.equal(canCreatePublicMatchReceiptSnapshot({ ...match, status: "pending" }), false);
   assert.equal(canCreatePublicMatchReceiptSnapshot({ ...match, visibility: undefined }), false);

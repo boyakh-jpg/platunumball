@@ -8,7 +8,9 @@ export function getMatchRecordType(match = {}) {
 }
 
 export function isPersonalRecordMatch(match = {}) {
-  return getMatchRecordType(match) === RECORD_TYPES.personalRecord;
+  const recordType = String(getMatchRecordType(match)).trim().toLowerCase();
+  return recordType === RECORD_TYPES.personalRecord
+    || recordType === ROOM_KINDS.personalRecord;
 }
 
 export function isMatchRecordMatch(match = {}) {

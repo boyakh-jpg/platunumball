@@ -2931,6 +2931,7 @@ test("경기 영수증 입력은 안전하게 정규화하고 이미지 규격�
 
   const canonicalDraft = getMatchReceiptDraftFromMatch({
     status: "confirmed",
+    visibility: "public",
     teamA: { teamId: "team-a", name: "HOME", mmr: 1300 },
     teamB: { teamId: "team-b", name: "AWAY", mmr: 1200 },
     result: { scoreA: 21, scoreB: 18, playerStats: { userA: { points: 8, rebounds: 4 } } },
@@ -2952,7 +2953,7 @@ test("경기 영수증 입력은 안전하게 정규화하고 이미지 규격�
 test("경기 영수증은 필수값과 승패를 실행형 정책으로 판정한다", () => {
   const missing = validateMatchReceiptDraft({ homeTeam: "", awayTeam: "", venue: "" });
   assert.equal(missing.valid, false);
-  assert.deepEqual(Object.keys(missing.errors).sort(), ["awayTeam", "homeTeam"]);
+  assert.deepEqual(Object.keys(missing.errors).sort(), ["awayTeam", "homeTeam", "venue"]);
 
   const base = { homeTeam: "A", awayTeam: "B", venue: "코트" };
   assert.equal(validateMatchReceiptDraft(base).valid, true);

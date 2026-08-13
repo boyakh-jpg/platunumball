@@ -75,11 +75,22 @@ export function sanitizeReceiptDraftPayload(value = {}, options = {}) {
   };
 }
 
-export function projectPublicReceiptDraft(value = {}) {
+export function getLegacyCanonicalReceiptMatchId(value = {}) {
+  if (value?._canonicalReceipt !== true) return "";
+  const serialSeed = cleanText(value.serialSeed, TEXT_LIMITS.serialSeed);
+  if (!serialSeed.startsWith("match:")) return "";
+  const matchId = serialSeed.slice("match:".length);
+  return /^[A-Za-z0-9:_-]{1,90}$/.test(matchId) ? matchId : "";
+}
+
+export function projectPublicReceiptDraft(value = {}, options = {}) {
+  const legacyMatchId = getLegacyCanonicalReceiptMatchId(value);
   const { originalAddress, personalMmr, ...publicDraft } = sanitizeReceiptDraftPayload(value, {
     trustedCanonical: value?._canonicalReceipt === true,
   });
-  return publicDraft;
+  return legacyMatchId
+    ? { ...publicDraft, serialSeed: createCanonicalReceiptSerialSeed(legacyMatchId, options.serialSecret) }
+    : publicDraft;
 }
 
 export function createCanonicalReceiptSerialSeed(matchId, secret = process.env.MATCH_RECEIPT_SERIAL_SALT || process.env.SUPABASE_SERVICE_ROLE_KEY) {

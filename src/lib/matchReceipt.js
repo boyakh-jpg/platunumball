@@ -1,5 +1,5 @@
 import { RECORD_TYPES } from "./constants.js";
-import { getMatchRecordType } from "../../shared/lib/matchRecordTypes.js";
+import { isPersonalRecordMatch } from "../../shared/lib/matchRecordTypes.js";
 import { assetUrl, BOXTIER_LETTER_DARK_URL, BOXTIER_LOGO_URL } from "./assets.js";
 import { createQrMatrix } from "./qrCode.js";
 import { getTier, getTierDivisionNumber } from "./tier.js";
@@ -387,7 +387,7 @@ export function canCreatePublicMatchReceiptSnapshot(match = {}) {
   const visibility = match?.visibility ?? match?.rules?.visibility;
   return match?.status === "confirmed"
     && visibility === "public"
-    && getMatchRecordType(match) !== RECORD_TYPES.personalRecord;
+    && !isPersonalRecordMatch(match);
 }
 
 export function getMatchReceiptDraftFromMatch(match = {}, style = {}, court = null) {
