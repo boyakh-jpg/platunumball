@@ -319,8 +319,11 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(preview, /addEventListener\("gesturechange", preventBrowserGesture, \{ passive: false \}\)/);
   assert.match(styles, /\.match-receipt-info-fields > label\s*\{[^}]*contain:\s*inline-size;/);
   assert.match(styles, /\.match-receipt-info-fields input\[type="date"\]\s*\{[^}]*min-inline-size:\s*0;[^}]*max-inline-size:\s*100%;/);
-  assert.match(landing, /별도 가입 없이 Google로 로그인/);
-  assert.match(landing, /가입 없이 로그인/);
+  assert.match(landing, /children = "로그인"/);
+  assert.match(landing, /가입 없이 Google로 로그인/);
+  assert.match(page, /className="page-header match-receipt-page-head ui-page-hero ui-design-app-hero"/);
+  assert.match(page, /> 뒤로가기/);
+  assert.match(page, /> 홈으로/);
   assert.match(preview, /model\.hasPersonalStats \? "MY GAME" : "GAME INFO"/);
   assert.match(preview, /match-receipt-personal-stats/);
   assert.match(preview, /neutralTeamMarkUrls\.home/);

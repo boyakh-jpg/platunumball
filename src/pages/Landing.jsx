@@ -25,7 +25,7 @@ const LANDING_RECEIPT_DRAFT = normalizeMatchReceiptDraft({
   verified: true,
 });
 
-function GoogleLoginButton({ auth, compact = false, className = "", variant = "secondary" }) {
+function GoogleLoginButton({ auth, children = "로그인", className = "", variant = "secondary" }) {
   const signIn = () => auth?.signInWithProvider?.("google", "/app");
 
   return (
@@ -37,8 +37,7 @@ function GoogleLoginButton({ auth, compact = false, className = "", variant = "s
       disabled={auth?.authActionPending}
       aria-label="Google로 로그인"
     >
-      <span aria-hidden="true" className="guest-landing-login-long">별도 가입 없이 Google로 로그인</span>
-      {compact ? <span aria-hidden="true" className="guest-landing-login-short">가입 없이 로그인</span> : null}
+      {children}
     </Button>
   );
 }
@@ -56,7 +55,7 @@ export default function Landing({ auth }) {
           <Link to="/" className="brand guest-landing-brand" aria-label={BRAND_NAME}>
             <BrandLockup />
           </Link>
-          <GoogleLoginButton auth={auth} compact className="guest-landing-header-login" />
+          <GoogleLoginButton auth={auth} className="guest-landing-header-login" />
         </div>
       </header>
 
@@ -72,8 +71,20 @@ export default function Landing({ auth }) {
             <Button as={Link} to="/app/receipt" className="guest-landing-primary-cta">
               가입 없이 영수증 만들기 <ArrowRight aria-hidden="true" size={18} />
             </Button>
+            <GoogleLoginButton auth={auth} className="guest-landing-hero-login">
+              가입 없이 Google로 로그인
+            </GoogleLoginButton>
           </div>
           <small>로그인 없이 제작·저장·공유할 수 있어요.</small>
+          <nav className="guest-landing-explore-nav" aria-label="BOXTIER 둘러보기">
+            <Link to="/app">홈 구경하기</Link>
+            <Link to="/app/matches">일정</Link>
+            <Link to="/app/recruiting">매칭</Link>
+            <Link to="/app/recorder">플레이</Link>
+            <Link to="/app/teams">팀</Link>
+            <Link to="/app/community">게시판</Link>
+            <Link to="/app/rankings">랭크보드</Link>
+          </nav>
           {auth?.error ? <p className="guest-landing-auth-error">Google 로그인을 완료하지 못했습니다. 다시 시도해주세요.</p> : null}
         </div>
 

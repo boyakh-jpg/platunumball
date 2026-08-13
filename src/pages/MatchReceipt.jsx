@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Copy, Download, ImagePlus, MapPin, RotateCcw, Share2, Trash2 } from "lucide-react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { ArrowLeft, Copy, Download, House, ImagePlus, MapPin, RotateCcw, Share2, Trash2 } from "lucide-react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import Button from "../components/common/Button.jsx";
 import CourtMapPicker from "../components/court/CourtMapPicker.jsx";
 import MatchReceiptPreview from "../components/match/MatchReceiptPreview.jsx";
@@ -746,12 +746,30 @@ export default function MatchReceipt({ auth, app }) {
     }
   }
 
+  function returnFromReceipt() {
+    if (location.key === "default") {
+      navigate("/app", { replace: true });
+      return;
+    }
+    navigate(-1);
+  }
+
   return (
     <section className="match-receipt-page">
-      <header className="match-receipt-page-head">
-        <p className="eyebrow">MATCH RECEIPT</p>
-        <h1>경기 영수증</h1>
-        <p>오늘 경기 결과를 입력하고 바로 자랑할 이미지로 저장하세요.</p>
+      <header className="page-header match-receipt-page-head ui-page-hero ui-design-app-hero">
+        <div className="ui-page-hero__copy">
+          <p className="eyebrow">MATCH RECEIPT</p>
+          <h1>경기 영수증</h1>
+          <p>오늘 경기 결과를 입력하고 바로 자랑할 이미지로 저장하세요.</p>
+        </div>
+        <nav className="match-receipt-page-head-nav" aria-label="영수증 페이지 이동">
+          <Button variant="secondary" onClick={returnFromReceipt}>
+            <ArrowLeft aria-hidden="true" size={17} /> 뒤로가기
+          </Button>
+          <Button as={Link} to="/app" variant="secondary">
+            <House aria-hidden="true" size={17} /> 홈으로
+          </Button>
+        </nav>
       </header>
 
       <div className="match-receipt-workspace">
