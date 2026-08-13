@@ -55,9 +55,12 @@ export function getMatchReceiptPhotoStyle(value, aspect = MATCH_RECEIPT_PHOTO_AS
   const draft = normalizeMatchReceiptDraft(value);
   const photoX = options.defaultPhoto ? MATCH_RECEIPT_DEFAULT_PHOTO_FOCUS.x : draft.photoX;
   const photoY = options.defaultPhoto ? MATCH_RECEIPT_DEFAULT_PHOTO_FOCUS.y : draft.photoY;
+  const panRange = Math.max(0, draft.photoZoom - 1) * 50;
   return {
     "--receipt-photo-position-x": `${50 - photoX / 2}%`,
     "--receipt-photo-position-y": `${50 - photoY / 2}%`,
+    "--receipt-photo-shift-x": `${photoX / 100 * panRange}%`,
+    "--receipt-photo-shift-y": `${photoY / 100 * panRange}%`,
     "--receipt-photo-scale": getMatchReceiptRotationCoverScale(draft.photoRotation, aspect) * draft.photoZoom,
     "--receipt-photo-rotation": `${draft.photoRotation}deg`,
   };
@@ -530,7 +533,10 @@ function drawCoverPhoto(ctx, image, rect, draft, options = {}) {
   ctx.beginPath();
   ctx.rect(rect.x, rect.y, rect.width, rect.height);
   ctx.clip();
-  ctx.translate(rect.x + rect.width / 2, rect.y + rect.height / 2);
+  const panRange = Math.max(0, draft.photoZoom - 1) / 2;
+  const shiftX = rect.width * panRange * photoX / 100;
+  const shiftY = rect.height * panRange * photoY / 100;
+  ctx.translate(rect.x + rect.width / 2 + shiftX, rect.y + rect.height / 2 + shiftY);
   ctx.rotate(rotation);
   const scale = getMatchReceiptRotationCoverScale(draft.photoRotation, rect.width / rect.height) * draft.photoZoom;
   ctx.scale(scale, scale);

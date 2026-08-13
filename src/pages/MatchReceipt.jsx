@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Copy, Download, ImagePlus, MapPin, RotateCcw, Share2, Trash2 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
+import Button from "../components/common/Button.jsx";
 import QrCode from "../components/common/QrCode.jsx";
 import CourtMapPicker from "../components/court/CourtMapPicker.jsx";
 import { getCourtAddress, getRegisteredCourts, mergeCourtSearchCourts } from "../lib/courts.js";
@@ -106,7 +107,6 @@ function ReceiptPreview({
   matchUrl = "",
   publicId = "",
   photoGestureHandlers = {},
-  photoRotationHandleHandlers = {},
 }) {
   const model = createMatchReceiptViewModel(draft, { matchUrl, publicId });
   const backgroundUrl = photoUrl || model.defaultPhotoUrl;
@@ -135,17 +135,6 @@ function ReceiptPreview({
       >
         {!photoUrl ? <img className="match-receipt-photo-backdrop" src={backgroundUrl} alt="" aria-hidden="true" /> : null}
         <img className="match-receipt-photo-image" src={backgroundUrl} alt="" />
-        {photoUrl ? (
-          <button
-            type="button"
-            className="match-receipt-photo-rotate-handle"
-            aria-label="사진 자유 회전 손잡이"
-            title="드래그해 회전 · 방향키로 미세 조정"
-            {...photoRotationHandleHandlers}
-          >
-            <RotateCcw aria-hidden="true" />
-          </button>
-        ) : null}
       </div>
       <header className="match-receipt-poster-head">
         <span className="match-receipt-wordmark">
@@ -595,7 +584,8 @@ export default function MatchReceipt({ auth, app }) {
     if (!photoUrl) return;
     event.preventDefault();
     event.stopPropagation();
-    const bounds = event.currentTarget.parentElement.getBoundingClientRect();
+    const bounds = previewRef.current?.querySelector(".match-receipt-photo")?.getBoundingClientRect();
+    if (!bounds) return;
     const centerX = bounds.left + bounds.width / 2;
     const centerY = bounds.top + bounds.height / 2;
     photoRotationRef.current = {
@@ -862,25 +852,33 @@ export default function MatchReceipt({ auth, app }) {
                 onWheel: zoomPhotoWithWheel,
                 onDoubleClick: resetPhotoTransform,
               }}
-              photoRotationHandleHandlers={{
-                onPointerDown: beginPhotoRotation,
-                onPointerMove: movePhotoRotation,
-                onPointerUp: endPhotoRotation,
-                onPointerCancel: endPhotoRotation,
-                onLostPointerCapture: endPhotoRotation,
-                onKeyDown: nudgePhotoRotation,
-              }}
             />
           </div>
           <div className="match-receipt-photo-tools">
             <div className="match-receipt-photo-actions" aria-label="미리보기 사진 편집">
-              <label className="button ui-button button-secondary ui-button-secondary button-md ui-button-md">
+              <Button as="label" variant="secondary">
                 <ImagePlus aria-hidden="true" /> 사진 선택
                 <input type="file" accept="image/jpeg,image/png,image/webp" disabled={busy === "photo"} onChange={handlePhotoChange} />
-              </label>
-              <button type="button" className="button ui-button button-secondary ui-button-secondary button-md ui-button-md" onClick={() => updateField("photoRotation", draft.photoRotation + 90)}><RotateCcw aria-hidden="true" /> 90° 회전</button>
-              <button type="button" className="button ui-button button-secondary ui-button-secondary button-md ui-button-md" onClick={resetPhotoTransform}>초기화</button>
-              {photoUrl ? <button type="button" className="button ui-button button-secondary ui-button-secondary button-md ui-button-md is-danger" onClick={removePhoto}><Trash2 aria-hidden="true" /> 제거</button> : null}
+              </Button>
+              <Button variant="secondary" onClick={() => updateField("photoRotation", draft.photoRotation + 90)}><RotateCcw aria-hidden="true" /> 90° 회전</Button>
+              {photoUrl ? (
+                <Button
+                  variant="secondary"
+                  className="match-receipt-photo-rotate-handle"
+                  aria-label="사진 자유 회전"
+                  title="드래그해 자유 회전 · 방향키로 미세 조정"
+                  onPointerDown={beginPhotoRotation}
+                  onPointerMove={movePhotoRotation}
+                  onPointerUp={endPhotoRotation}
+                  onPointerCancel={endPhotoRotation}
+                  onLostPointerCapture={endPhotoRotation}
+                  onKeyDown={nudgePhotoRotation}
+                >
+                  <RotateCcw aria-hidden="true" /> 자유 회전
+                </Button>
+              ) : null}
+              <Button variant="secondary" onClick={resetPhotoTransform}>초기화</Button>
+              {photoUrl ? <Button variant="danger" onClick={removePhoto}><Trash2 aria-hidden="true" /> 제거</Button> : null}
             </div>
             <p className="match-receipt-photo-note">
               {photoUrl

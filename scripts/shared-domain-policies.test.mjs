@@ -2917,9 +2917,14 @@ test("경기 영수증 입력은 안전하게 정규화하고 이미지 규격�
   assert.deepEqual(getMatchReceiptPhotoStyle({ photoX: 40, photoY: -20, photoZoom: 1, photoRotation: 0 }), {
     "--receipt-photo-position-x": "30%",
     "--receipt-photo-position-y": "60%",
+    "--receipt-photo-shift-x": "0%",
+    "--receipt-photo-shift-y": "0%",
     "--receipt-photo-scale": 1,
     "--receipt-photo-rotation": "0deg",
   });
+  const pannedPhotoStyle = getMatchReceiptPhotoStyle({ photoX: 40, photoY: -20, photoZoom: 2, photoRotation: 0 });
+  assert.equal(pannedPhotoStyle["--receipt-photo-shift-x"], "20%");
+  assert.equal(pannedPhotoStyle["--receipt-photo-shift-y"], "-10%");
   const viewModel = createMatchReceiptViewModel({ homeMmr: 1300 });
   assert.match(viewModel.paperUrl, /match-receipt-paper-torn-v1\.png$/);
   assert.match(viewModel.homeTier.outlineSrc, /tier-[a-z]+-outline-v1\.png$/);
@@ -2951,8 +2956,8 @@ test("경기 영수증은 필수값과 승패를 실행형 정책으로 판정�
 
   const base = { homeTeam: "A", awayTeam: "B", venue: "코트" };
   assert.equal(validateMatchReceiptDraft(base).valid, true);
-  assert.deepEqual(getMatchReceiptOutcome({ ...base, homeScore: 21, awayScore: 18 }), { key: "home", label: "HOME WIN" });
-  assert.deepEqual(getMatchReceiptOutcome({ ...base, homeScore: 18, awayScore: 21 }), { key: "away", label: "AWAY WIN" });
+  assert.deepEqual(getMatchReceiptOutcome({ ...base, homeScore: 21, awayScore: 18 }), { key: "home", label: "A WIN" });
+  assert.deepEqual(getMatchReceiptOutcome({ ...base, homeScore: 18, awayScore: 21 }), { key: "away", label: "B WIN" });
   assert.deepEqual(getMatchReceiptOutcome({ ...base, homeScore: 21, awayScore: 21 }), { key: "draw", label: "DRAW" });
 });
 

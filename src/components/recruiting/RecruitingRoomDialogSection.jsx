@@ -4,7 +4,7 @@ export function RecruitingRoomDialogSection({ context }) {
     getMatchRoomPhase,
     createPortal, finalizeMatchPending, finalizeMatchTarget, roomCancellationPending, roomCancellationPolicy, roomCancellationTarget,
     roomHelpOpen, selectedPost, setFinalizeMatchTarget, setInviteDraft, setRoomCancellationTarget, setRoomHelpOpen, setSoloRecordDeleteTarget,
-    soloRecordDeleteTarget, sourceManualFinalizationStatus, sourceMatch, sourceOpenDisputes, submitRoomCancellation,
+    navigate, soloRecordDeleteTarget, sourceManualFinalizationStatus, sourceMatch, sourceOpenDisputes, submitRoomCancellation,
   } = context;
   const roomPhase = sourceMatch ? getMatchRoomPhase(sourceMatch).phase : "recruiting";
   const recordType = sourceMatch?.rules?.recordType ?? "match";
@@ -176,6 +176,15 @@ export function RecruitingRoomDialogSection({ context }) {
                 onConfirm={confirmSourceMatchFinalization}
               />
               <div className="arena-modal-close-row">
+                {sourceMatch?.status === "confirmed" && sourceMatch.id ? (
+                  <Button
+                    type="button"
+                    variant="primary"
+                    onClick={() => navigate(`/app/receipt?match=${encodeURIComponent(sourceMatch.id)}`)}
+                  >
+                    경기 영수증 만들기
+                  </Button>
+                ) : null}
                 <Button
                   type="button"
                   variant="secondary"

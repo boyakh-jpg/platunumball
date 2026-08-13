@@ -13,6 +13,8 @@ const DIGIT_HEIGHT = 372;
 
 const glyphs = await Promise.all(
   Array.from({ length: 10 }, async (_, digit) => {
+    // Bake the approved display face into one raster sheet. Runtime rendering
+    // only crops this PNG, so every score uses the same unwarped glyph master.
     const rendered = await sharp({
       text: {
         text: String(digit),

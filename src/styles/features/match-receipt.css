@@ -241,28 +241,17 @@
 }
 
 .match-receipt-photo-rotate-handle {
-  display: none;
+  cursor: grab;
+  touch-action: none;
 }
+
+.match-receipt-photo-rotate-handle:active {
+  cursor: grabbing;
+}
+
 @media (hover: hover) and (pointer: fine) {
   .match-receipt-photo.is-editable {
     box-shadow: inset 0 0 0 2px rgba(237, 90, 44, 0.72);
-  }
-  .match-receipt-photo-rotate-handle {
-    position: absolute; z-index: 5; top: 50%; right: 5px;
-    display: grid; place-items: center;
-    width: 30px; height: 30px; padding: 0;
-    border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.68);
-    border-radius: 50%;
-    background: var(--receipt-orange); color: #fff;
-    transform: translateY(-50%);
-    cursor: grab; touch-action: none;
-  }
-  .match-receipt-photo-rotate-handle:active {
-    cursor: grabbing;
-  }
-  .match-receipt-photo-rotate-handle svg {
-    width: 16px;
-    height: 16px;
   }
 }
 
@@ -295,17 +284,17 @@
 }
 
 .match-receipt-photo-image {
-  transform: translate(-50%, -50%) rotate(var(--receipt-photo-rotation)) scale(var(--receipt-photo-scale));
+  transform: translate(calc(-50% + var(--receipt-photo-shift-x)), calc(-50% + var(--receipt-photo-shift-y))) rotate(var(--receipt-photo-rotation)) scale(var(--receipt-photo-scale));
   filter: brightness(0.78) contrast(1.08) saturate(0.92);
 }
 
 .match-receipt-photo-backdrop {
-  transform: translate(-50%, -50%) rotate(var(--receipt-photo-rotation)) scale(calc(var(--receipt-photo-scale) * 1.08));
+  transform: translate(calc(-50% + var(--receipt-photo-shift-x)), calc(-50% + var(--receipt-photo-shift-y))) rotate(var(--receipt-photo-rotation)) scale(calc(var(--receipt-photo-scale) * 1.08));
   filter: blur(12px) brightness(0.62) contrast(1.08) saturate(0.92);
 }
 
 .match-receipt-photo.is-default .match-receipt-photo-image {
-  transform: translate(-50%, -50%) rotate(var(--receipt-photo-rotation)) scale(calc(var(--receipt-photo-scale) * 0.92));
+  transform: translate(calc(-50% + var(--receipt-photo-shift-x)), calc(-50% + var(--receipt-photo-shift-y))) rotate(var(--receipt-photo-rotation)) scale(calc(var(--receipt-photo-scale) * 0.92));
 }
 
 .match-receipt-poster-head {
@@ -708,7 +697,6 @@
 
 .match-receipt-photo-actions .button {
   gap: var(--space-3);
-  cursor: pointer;
 }
 
 .match-receipt-photo-actions svg {
@@ -722,10 +710,6 @@
   height: 1px;
   overflow: hidden;
   clip: rect(0 0 0 0);
-}
-
-.match-receipt-photo-actions .is-danger {
-  color: var(--danger);
 }
 
 .match-receipt-photo-note {
