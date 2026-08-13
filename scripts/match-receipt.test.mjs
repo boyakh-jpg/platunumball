@@ -100,6 +100,7 @@ test("receipt photo editing stays in the preview and reference dividers remain",
   assert.match(page, /CourtMapPicker/);
   assert.match(page, /getRegisteredCourts/);
   assert.match(page, /mergeCourtSearchCourts/);
+  assert.match(page, /inferRegionSelection\(courtMapRegionSource\)/);
   assert.match(page, /COURT_MAP_SEARCH_PURPOSE/);
   assert.match(page, /allowWhenDisabled: true, allowAnonymous: true/);
   assert.match(page, /loading=\{courtMapDirectoryStatus\.loading\}/);

@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import QrCode from "../components/common/QrCode.jsx";
 import CourtMapPicker from "../components/court/CourtMapPicker.jsx";
 import { getCourtAddress, getRegisteredCourts, mergeCourtSearchCourts } from "../lib/courts.js";
+import { inferRegionSelection } from "../lib/profileSetup.js";
 import { COURT_MAP_SEARCH_LIMIT, COURT_MAP_SEARCH_PURPOSE } from "../lib/queryPolicy.js";
 import { postServerAction } from "../lib/serverActions.js";
 import {
@@ -252,7 +253,12 @@ export default function MatchReceipt({ auth, app }) {
     [app?.currentUser?.regionSido, app?.currentUser?.regionDistrict].filter(Boolean).join(" ").trim()
       || String(app?.currentUser?.region ?? "").trim()
   ), [app?.currentUser?.region, app?.currentUser?.regionDistrict, app?.currentUser?.regionSido]);
-  const courtMapRegion = String(draft.address || profileCourtRegion).trim();
+  const courtMapRegionSource = String(draft.address || profileCourtRegion).trim();
+  const courtMapRegion = useMemo(() => {
+    if (!courtMapRegionSource) return "";
+    const selection = inferRegionSelection(courtMapRegionSource);
+    return [selection.sido, selection.district].filter(Boolean).join(" ");
+  }, [courtMapRegionSource]);
   const selectedCourt = useMemo(() => (
     registeredCourts.find((court) => String(court.id) === selectedCourtId)
       ?? registeredCourts.find((court) => court.name === draft.venue)
