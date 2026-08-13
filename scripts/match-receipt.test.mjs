@@ -74,7 +74,7 @@ test("receipt ownership capability is secret, hashed, and cookie-scoped", () => 
   assert.equal(cookie.includes(hash), false);
 });
 
-test("receipt photo editing stays in the preview and reference dividers remain", async () => {
+test("receipt photo tools stay outside the export card and reference dividers remain", async () => {
   const [page, qrComponent, styles, tokens, renderer, homeNeutralMark, awayNeutralMark, paperGrain, scoreDigits, bebasNeue, bebasLicense, blackHanSans] = await Promise.all([
     readFile(new URL("../src/pages/MatchReceipt.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/components/common/QrCode.jsx", import.meta.url), "utf8"),
@@ -92,6 +92,11 @@ test("receipt photo editing stays in the preview and reference dividers remain",
 
   assert.doesNotMatch(page, /match-receipt-photo-editor|match-receipt-photo-crop/);
   assert.match(page, /photoGestureHandlers/);
+  assert.match(page, /photoRotationHandleHandlers/);
+  assert.match(page, /onWheel: zoomPhotoWithWheel/);
+  assert.match(page, /onDoubleClick: resetPhotoTransform/);
+  assert.match(page, /className="match-receipt-photo-tools"/);
+  assert.match(page, /model\.hasPersonalStats \? "MY GAME" : "GAME INFO"/);
   assert.match(page, /match-receipt-personal-stats/);
   assert.match(page, /neutralTeamMarkUrls\.home/);
   assert.match(page, /neutralTeamMarkUrls\.away/);
@@ -100,7 +105,6 @@ test("receipt photo editing stays in the preview and reference dividers remain",
   assert.match(page, /--receipt-paper-grain/);
   assert.match(page, /--receipt-score-digits/);
   assert.match(page, /ReceiptScoreDigits/);
-  assert.match(page, /model\.personalTier && model\.hasPersonalStats/);
   assert.match(page, /match-receipt-team-watermarks/);
   assert.match(page, /MY TIER · \{model\.personalTier\.label\}/);
   assert.match(page, /CourtMapPicker/);
@@ -120,10 +124,15 @@ test("receipt photo editing stays in the preview and reference dividers remain",
   assert.doesNotMatch(page, /index \? "AWAY" : "HOME"/);
   assert.match(page, /maxLength=\{MATCH_RECEIPT_LIMITS\.comment\} disabled=\{readOnlyReceipt\}/);
   assert.doesNotMatch(page, /match-receipt-color-input/);
-  assert.match(qrComponent, /branded \? "#f1e8db" : "#fff"/);
+  assert.match(qrComponent, /branded \? null : <rect/);
+  assert.match(qrComponent, /qr\.matrix\.flatMap/);
+  assert.match(qrComponent, /rx="0\.18"/);
   assert.match(qrComponent, /finderCenterPositions/);
   assert.match(qrComponent, />\s*B\s*<\/text>/);
   assert.match(styles, /\.match-receipt-photo\.is-editable[\s\S]*touch-action: none/);
+  assert.match(styles, /\.match-receipt-photo-rotate-handle/);
+  assert.match(styles, /\.match-receipt-photo-tools/);
+  assert.match(styles, /\.match-receipt-game-info/);
   assert.match(styles, /\.match-receipt-poster-score > span[\s\S]*font-family: "Bebas Neue"/);
   assert.match(styles, /font-size: clamp\(10px, 3\.3cqw, 16px\)/);
   assert.match(styles, /\.match-receipt-verified\.is-receipt[\s\S]*font-family: "Bebas Neue"/);
@@ -173,6 +182,9 @@ test("receipt photo editing stays in the preview and reference dividers remain",
   assert.match(renderer, /label: `\$\{winner\.name\} WIN`/);
   assert.match(renderer, /MY TIER · \$\{model\.personalTier\.label\}/);
   assert.match(renderer, /const badgeSize = actualSize \* 0\.14/);
+  assert.doesNotMatch(renderer, /ctx\.fillRect\(x, y, actualSize, actualSize\)/);
+  assert.match(renderer, /model\.hasPersonalStats \? "MY GAME" : "GAME INFO"/);
+  assert.match(renderer, /ctx\.fillText\(model\.matchNatureLabel/);
   assert.match(renderer, /model\.comment \|\| "내 경기 기록"/);
   assert.equal(homeNeutralMark.subarray(1, 4).toString("ascii"), "PNG");
   assert.equal(awayNeutralMark.subarray(1, 4).toString("ascii"), "PNG");

@@ -617,15 +617,13 @@ function drawQrCode(ctx, value, x, y, size) {
   const quietZone = 4;
   const scale = Math.max(1, Math.floor(size / (matrix.length + quietZone * 2)));
   const actualSize = (matrix.length + quietZone * 2) * scale;
-  ctx.fillStyle = "#f1e8db";
-  ctx.fillRect(x, y, actualSize, actualSize);
   ctx.fillStyle = "#111111";
   matrix.forEach((row, rowIndex) => row.forEach((cell, columnIndex) => {
     if (!cell) return;
     const moduleX = x + (columnIndex + quietZone) * scale;
     const moduleY = y + (rowIndex + quietZone) * scale;
     ctx.beginPath();
-    ctx.roundRect(moduleX, moduleY, scale, scale, scale * 0.12);
+    ctx.roundRect(moduleX + scale * 0.03, moduleY + scale * 0.03, scale * 0.94, scale * 0.94, scale * 0.18);
     ctx.fill();
   }));
   ctx.fillStyle = "#d4582b";
@@ -896,11 +894,9 @@ export async function renderMatchReceiptPng(value, preset = "story", options = {
     ctx.restore();
   }
 
-  if (personalTier && model.hasPersonalStats) {
-    ctx.fillStyle = "#d4582b";
-    ctx.font = '900 25px "KBO Dia Gothic", sans-serif';
-    ctx.fillText("MY GAME", footerMiddleX, footerY + (compact ? 10 : 30));
-  }
+  ctx.fillStyle = "#d4582b";
+  ctx.font = '900 25px "KBO Dia Gothic", sans-serif';
+  ctx.fillText(model.hasPersonalStats ? "MY GAME" : "GAME INFO", footerMiddleX, footerY + (compact ? 10 : 30));
 
   if (model.hasPersonalStats) {
     ctx.fillStyle = "#151515";
@@ -920,13 +916,13 @@ export async function renderMatchReceiptPng(value, preset = "story", options = {
     ctx.fillStyle = "#151515";
     ctx.font = '900 18px "KBO Dia Gothic", sans-serif';
     ctx.fillText(model.comment || "내 경기 기록", footerMiddleX, footerY + (compact ? 176 : 278), 260);
-  } else if (!personalTier) {
-    ctx.fillStyle = "#d4582b";
-    ctx.font = '900 25px "KBO Dia Gothic", sans-serif';
-    ctx.fillText(getMatchReceiptFormatLabel(model.format), footerMiddleX, footerY + 55);
+  } else {
     ctx.fillStyle = "#151515";
-    ctx.font = '900 22px "KBO Dia Gothic", sans-serif';
-    ctx.fillText(model.outcome.label, footerMiddleX, footerY + 100, 260);
+    ctx.font = '600 25px "Bebas Neue", "KBO Dia Gothic", sans-serif';
+    ctx.fillText(getMatchReceiptFormatLabel(model.format), footerMiddleX, footerY + (compact ? 64 : 104), 260);
+    ctx.fillStyle = "#71451f";
+    ctx.font = '900 18px "KBO Dia Gothic", sans-serif';
+    ctx.fillText(model.matchNatureLabel, footerMiddleX, footerY + (compact ? 101 : 150), 260);
   }
 
   if (!model.hasPersonalStats && model.comment) {

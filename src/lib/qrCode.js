@@ -416,5 +416,7 @@ export function createQrPath(value, quietZone = 4) {
   return {
     path: path.join(""),
     size: matrix.length + offset * 2,
+    matrix,
+    offset,
   };
 }

@@ -21,10 +21,23 @@ function QrGraphic({ qr, label, className = "", branded = false }) {
       viewBox={`0 0 ${qr.size} ${qr.size}`}
       role="img"
       aria-label={label}
-      shapeRendering="crispEdges"
+      shapeRendering={branded ? "geometricPrecision" : "crispEdges"}
     >
-      <rect width={qr.size} height={qr.size} fill={branded ? "#f1e8db" : "#fff"} />
-      <path d={qr.path} fill="#111" stroke="#111" strokeWidth="0.1" strokeLinejoin="round" />
+      {branded ? null : <rect width={qr.size} height={qr.size} fill="#fff" />}
+      {branded ? (
+        <g fill="#111" aria-hidden="true">
+          {qr.matrix.flatMap((row, rowIndex) => row.map((dark, columnIndex) => (dark ? (
+            <rect
+              key={`${rowIndex}-${columnIndex}`}
+              x={columnIndex + qr.offset + 0.03}
+              y={rowIndex + qr.offset + 0.03}
+              width="0.94"
+              height="0.94"
+              rx="0.18"
+            />
+          ) : null)))}
+        </g>
+      ) : <path d={qr.path} fill="#111" stroke="#111" strokeWidth="0.1" strokeLinejoin="round" />}
       {branded ? (
         <g aria-hidden="true">
           {finderCenterPositions.map(([x, y]) => (

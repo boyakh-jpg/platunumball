@@ -240,6 +240,32 @@
   cursor: grabbing;
 }
 
+.match-receipt-photo-rotate-handle {
+  display: none;
+}
+@media (hover: hover) and (pointer: fine) {
+  .match-receipt-photo.is-editable {
+    box-shadow: inset 0 0 0 2px rgba(237, 90, 44, 0.72);
+  }
+  .match-receipt-photo-rotate-handle {
+    position: absolute; z-index: 5; top: 50%; right: 5px;
+    display: grid; place-items: center;
+    width: 30px; height: 30px; padding: 0;
+    border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.68);
+    border-radius: 50%;
+    background: var(--receipt-orange); color: #fff;
+    transform: translateY(-50%);
+    cursor: grab; touch-action: none;
+  }
+  .match-receipt-photo-rotate-handle:active {
+    cursor: grabbing;
+  }
+  .match-receipt-photo-rotate-handle svg {
+    width: 16px;
+    height: 16px;
+  }
+}
+
 .match-receipt-photo::before,
 .match-receipt-photo::after {
   content: "";
@@ -559,6 +585,28 @@
   width: 100%;
 }
 
+.match-receipt-ticket-game > .match-receipt-game-info {
+  position: relative;
+  z-index: 1;
+  display: grid; justify-items: center;
+  width: 100%;
+  gap: 0.28em;
+  color: #181513;
+  font-family: "Bebas Neue", "KBO Dia Gothic", sans-serif;
+  line-height: 1;
+}
+
+.match-receipt-game-info b {
+  font-size: clamp(11px, 3.4cqw, 16px); font-weight: 600;
+  letter-spacing: 0.04em;
+}
+.match-receipt-game-info small {
+  color: #71451f;
+  font-family: "KBO Dia Gothic", sans-serif;
+  font-size: clamp(7px, 2cqw, 10px); font-weight: 900;
+  letter-spacing: 0.04em;
+}
+
 .match-receipt-personal-stats b {
   display: grid;
   justify-items: center;
@@ -623,8 +671,7 @@
 .match-receipt-ticket-qr { gap: 5%; }
 
 .match-receipt-ticket-qr .match-receipt-qr {
-  width: 60%; max-height: 68%; border-radius: 3%;
-  box-shadow: inset 0 0 0 var(--ui-stroke-width) rgba(32, 25, 21, 0.28), 0 1px 0 rgba(255, 255, 255, 0.36);
+  width: 62%; max-height: 70%; overflow: visible;
 }
 
 .match-receipt-locked-note {
@@ -650,39 +697,23 @@
   width: 100%;
 }
 
+.match-receipt-photo-tools {
+  display: grid; gap: var(--space-3);
+}
 .match-receipt-photo-actions {
-  position: absolute;
-  z-index: 6;
-  top: 7.2%;
-  left: 50%;
-  display: flex;
-  flex-wrap: wrap;
-  width: max-content;
-  max-width: 92%;
+  display: flex; flex-wrap: wrap;
   gap: var(--space-3);
   justify-content: center;
-  opacity: 0;
-  transform: translateX(-50%) translateY(-4px);
-  transition: opacity 140ms ease, transform 140ms ease;
 }
 
 .match-receipt-photo-actions .button {
-  display: inline-flex;
-  align-items: center;
   gap: var(--space-3);
-  min-height: 32px;
-  padding: 6px 9px;
-  border-color: rgba(255, 255, 255, 0.2);
-  background: rgba(16, 17, 16, 0.82);
-  color: #fff;
-  font-size: 10px;
-  backdrop-filter: blur(8px);
   cursor: pointer;
 }
 
 .match-receipt-photo-actions svg {
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
 }
 
 .match-receipt-photo-actions input[type="file"] {
@@ -698,33 +729,10 @@
 }
 
 .match-receipt-photo-note {
-  position: absolute;
-  z-index: 6;
-  top: 34.5%;
-  left: 50%;
-  width: max-content;
-  max-width: 90%;
   margin: 0;
-  padding: 5px 9px;
-  border-radius: 999px;
-  background: rgba(16, 17, 16, 0.76);
-  color: rgba(255, 255, 255, 0.9);
-  font-size: 9px;
-  font-weight: 700;
-  line-height: 1.45;
+  color: var(--rb-muted);
+  font-size: 12px; line-height: 1.5;
   text-align: center;
-  opacity: 0;
-  transform: translateX(-50%) translateY(4px);
-  transition: opacity 140ms ease, transform 140ms ease;
-  pointer-events: none;
-}
-
-.match-receipt-preview-stage:hover .match-receipt-photo-actions,
-.match-receipt-preview-stage:hover .match-receipt-photo-note,
-.match-receipt-preview-stage:focus-within .match-receipt-photo-actions,
-.match-receipt-preview-stage:focus-within .match-receipt-photo-note {
-  opacity: 1;
-  transform: translateX(-50%);
 }
 
 .match-receipt-actions {
@@ -787,13 +795,5 @@
 
   .match-receipt-card {
     border-radius: 0;
-  }
-}
-
-@media (hover: none) {
-  .match-receipt-photo-actions,
-  .match-receipt-photo-note {
-    opacity: 1;
-    transform: translateX(-50%);
   }
 }

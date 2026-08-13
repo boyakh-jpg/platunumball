@@ -99,7 +99,13 @@ function ReceiptScoreDigits({ value }) {
   );
 }
 
-function ReceiptPreview({ draft, photoUrl = "", matchUrl = "", photoGestureHandlers = {} }) {
+function ReceiptPreview({
+  draft,
+  photoUrl = "",
+  matchUrl = "",
+  photoGestureHandlers = {},
+  photoRotationHandleHandlers = {},
+}) {
   const model = createMatchReceiptViewModel(draft, { matchUrl });
   const backgroundUrl = photoUrl || model.defaultPhotoUrl;
   const posterTeams = [
@@ -127,6 +133,17 @@ function ReceiptPreview({ draft, photoUrl = "", matchUrl = "", photoGestureHandl
       >
         {!photoUrl ? <img className="match-receipt-photo-backdrop" src={backgroundUrl} alt="" aria-hidden="true" /> : null}
         <img className="match-receipt-photo-image" src={backgroundUrl} alt="" />
+        {photoUrl ? (
+          <button
+            type="button"
+            className="match-receipt-photo-rotate-handle"
+            aria-label="사진 자유 회전 손잡이"
+            title="드래그해 회전 · 방향키로 미세 조정"
+            {...photoRotationHandleHandlers}
+          >
+            <RotateCcw aria-hidden="true" />
+          </button>
+        ) : null}
       </div>
       <header className="match-receipt-poster-head">
         <span className="match-receipt-wordmark">
@@ -190,13 +207,18 @@ function ReceiptPreview({ draft, photoUrl = "", matchUrl = "", photoGestureHandl
               <small className="match-receipt-personal-tier-label">MY TIER · {model.personalTier.label}</small>
             </div>
           ) : null}
-          {model.personalTier && model.hasPersonalStats ? <strong>MY GAME</strong> : !model.personalTier ? <strong>{getMatchReceiptFormatLabel(model.format)}</strong> : null}
+          <strong>{model.hasPersonalStats ? "MY GAME" : "GAME INFO"}</strong>
           {model.hasPersonalStats ? (
             <span className="match-receipt-personal-stats">
               <b><em>{model.personalPoints ?? 0}</em><small>PTS</small></b>
               <b><em>{model.personalRebounds ?? 0}</em><small>REB</small></b>
             </span>
-          ) : model.personalTier ? null : <span>{model.outcome.label}</span>}
+          ) : (
+            <span className="match-receipt-game-info">
+              <b>{getMatchReceiptFormatLabel(model.format)}</b>
+              <small>{model.matchNatureLabel}</small>
+            </span>
+          )}
           {model.comment || model.hasPersonalStats ? (
             <span className="match-receipt-ticket-caption">{model.comment || "내 경기 기록"}</span>
           ) : null}
@@ -241,6 +263,7 @@ export default function MatchReceipt({ auth, app }) {
   const courtMapRequestIdRef = useRef(0);
   const previewRef = useRef(null);
   const photoGestureRef = useRef({ pointers: new Map(), baseline: null });
+  const photoRotationRef = useRef(null);
   const photoTransformRef = useRef(null);
   photoTransformRef.current = {
     photoX: draft.photoX,
@@ -478,6 +501,19 @@ export default function MatchReceipt({ auth, app }) {
     setStatus("");
   }
 
+  function updatePhotoTransform(values) {
+    setDraft((current) => {
+      const next = normalizeMatchReceiptDraft({ ...current, ...values });
+      photoTransformRef.current = {
+        photoX: next.photoX,
+        photoY: next.photoY,
+        photoZoom: next.photoZoom,
+        photoRotation: next.photoRotation,
+      };
+      return next;
+    });
+  }
+
   function getPhotoGestureBaseline(target, pointers) {
     const snapshot = getPhotoGestureSnapshot(pointers);
     if (!snapshot) return null;
@@ -538,6 +574,55 @@ export default function MatchReceipt({ auth, app }) {
     if (!gesture.pointers.has(event.pointerId)) return;
     gesture.pointers.delete(event.pointerId);
     gesture.baseline = getPhotoGestureBaseline(event.currentTarget, gesture.pointers);
+  }
+
+  function zoomPhotoWithWheel(event) {
+    if (!photoUrl) return;
+    event.preventDefault();
+    updatePhotoTransform({ photoZoom: photoTransformRef.current.photoZoom * Math.exp(-event.deltaY * 0.0015) });
+  }
+
+  function beginPhotoRotation(event) {
+    if (!photoUrl) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const bounds = event.currentTarget.parentElement.getBoundingClientRect();
+    const centerX = bounds.left + bounds.width / 2;
+    const centerY = bounds.top + bounds.height / 2;
+    photoRotationRef.current = {
+      pointerId: event.pointerId,
+      centerX,
+      centerY,
+      angle: Math.atan2(event.clientY - centerY, event.clientX - centerX) * 180 / Math.PI,
+      photoRotation: photoTransformRef.current.photoRotation,
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function movePhotoRotation(event) {
+    const rotation = photoRotationRef.current;
+    if (!rotation || rotation.pointerId !== event.pointerId) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const angle = Math.atan2(event.clientY - rotation.centerY, event.clientX - rotation.centerX) * 180 / Math.PI;
+    const angleDelta = ((angle - rotation.angle + 540) % 360) - 180;
+    updatePhotoTransform({ photoRotation: rotation.photoRotation + angleDelta });
+  }
+
+  function endPhotoRotation(event) {
+    if (photoRotationRef.current?.pointerId !== event.pointerId) return;
+    event.stopPropagation();
+    photoRotationRef.current = null;
+  }
+
+  function nudgePhotoRotation(event) {
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    event.preventDefault();
+    event.stopPropagation();
+    const direction = event.key === "ArrowLeft" ? -1 : 1;
+    updatePhotoTransform({
+      photoRotation: photoTransformRef.current.photoRotation + direction * (event.shiftKey ? 15 : 5),
+    });
   }
 
   async function ensurePublicDraft(value = draft) {
@@ -759,8 +844,20 @@ export default function MatchReceipt({ auth, app }) {
                 onPointerUp: endPhotoGesture,
                 onPointerCancel: endPhotoGesture,
                 onLostPointerCapture: endPhotoGesture,
+                onWheel: zoomPhotoWithWheel,
+                onDoubleClick: resetPhotoTransform,
+              }}
+              photoRotationHandleHandlers={{
+                onPointerDown: beginPhotoRotation,
+                onPointerMove: movePhotoRotation,
+                onPointerUp: endPhotoRotation,
+                onPointerCancel: endPhotoRotation,
+                onLostPointerCapture: endPhotoRotation,
+                onKeyDown: nudgePhotoRotation,
               }}
             />
+          </div>
+          <div className="match-receipt-photo-tools">
             <div className="match-receipt-photo-actions" aria-label="미리보기 사진 편집">
               <label className="button ui-button button-secondary ui-button-secondary button-md ui-button-md">
                 <ImagePlus aria-hidden="true" /> 사진 선택
@@ -771,7 +868,9 @@ export default function MatchReceipt({ auth, app }) {
               {photoUrl ? <button type="button" className="button ui-button button-secondary ui-button-secondary button-md ui-button-md is-danger" onClick={removePhoto}><Trash2 aria-hidden="true" /> 제거</button> : null}
             </div>
             <p className="match-receipt-photo-note">
-              {photoUrl ? "사진을 직접 이동 · 두 손가락 확대·축소·회전" : "사진을 선택하면 이 영역에서 바로 편집"} · 서버 미업로드
+              {photoUrl
+                ? "사진 안쪽 드래그 이동 · 휠 확대·축소 · 테두리 손잡이 회전 · 더블클릭 초기화 · 모바일 두 손가락 편집"
+                : "사진을 선택하면 미리보기 안에서 바로 편집"} · 사진은 서버에 업로드하지 않음
             </p>
           </div>
 
