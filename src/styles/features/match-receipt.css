@@ -394,7 +394,7 @@
 .match-receipt-poster-score strong,
 .match-receipt-poster-score > div > span,
 .match-receipt-poster-teams strong {
-  background: var(--receipt-paper-texture) center / auto 240% repeat-x;
+  background: var(--receipt-paper-texture) center / auto 185% repeat-x;
   background-clip: text;
   color: transparent;
   -webkit-background-clip: text;
@@ -403,9 +403,10 @@
 
 .match-receipt-poster-score strong {
   overflow: hidden;
-  font-size: clamp(68px, 25cqw, 120px);
-  font-weight: 1000;
-  letter-spacing: -0.06em;
+  font-family: "Anton", "KBO Dia Gothic", sans-serif;
+  font-size: clamp(66px, 23.8cqw, 114px);
+  font-weight: 900;
+  letter-spacing: -0.035em;
   text-shadow: 0 4px 16px rgba(0, 0, 0, 0.42);
 }
 
@@ -415,7 +416,7 @@
 }
 
 .match-receipt-poster-teams {
-  position: absolute; z-index: 2; inset: 58.4% 7% auto;
+  position: absolute; z-index: 2; inset: 58.1% 7% auto;
   display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0; height: 18.8%;
 }
@@ -437,16 +438,17 @@
 
 .match-receipt-poster-teams strong {
   display: -webkit-box; align-content: center;
-  height: 40%; overflow: hidden;
-  font-size: clamp(13px, 5.4cqw, 26px);
-  font-weight: 1000;
-  line-height: 1.04;
+  height: 38%; overflow: hidden;
+  font-family: "Black Han Sans", "KBO Dia Gothic", sans-serif;
+  font-size: clamp(12px, 4.8cqw, 23px);
+  font-weight: 900;
+  line-height: 1.08;
   -webkit-box-orient: vertical; -webkit-box-pack: center; -webkit-line-clamp: 2;
 }
 
 .match-receipt-poster-teams .match-receipt-team-tier {
   position: absolute;
-  top: 40%;
+  top: 39%;
   left: 50%;
   display: block;
   width: 38%;
@@ -773,9 +775,7 @@
     grid-template-columns: 1fr;
   }
 
-  .match-receipt-info-fields .is-wide {
-    grid-column: auto;
-  }
+  .match-receipt-info-fields .is-wide { grid-column: auto; }
 
   .match-receipt-venue-control { grid-template-columns: 1fr; }
 

@@ -3,7 +3,9 @@ import { Copy, Download, ImagePlus, MapPin, RotateCcw, Share2, Trash2 } from "lu
 import { useLocation, useNavigate } from "react-router-dom";
 import QrCode from "../components/common/QrCode.jsx";
 import CourtMapPicker from "../components/court/CourtMapPicker.jsx";
-import { getCourtAddress, getRegisteredCourts } from "../lib/courts.js";
+import { getCourtAddress, getRegisteredCourts, mergeCourtSearchCourts } from "../lib/courts.js";
+import { COURT_MAP_SEARCH_LIMIT, COURT_MAP_SEARCH_PURPOSE } from "../lib/queryPolicy.js";
+import { postServerAction } from "../lib/serverActions.js";
 import {
   MATCH_RECEIPT_CANVAS_SIZES,
   MATCH_RECEIPT_CREATE_RETURN_TO,
@@ -48,6 +50,14 @@ const CANONICAL_RECEIPT_FIELDS = new Set([
   "comment",
 ]);
 
+const RECEIPT_TEXT_FIELDS = new Set([
+  "homeTeam",
+  "awayTeam",
+  "venue",
+  "address",
+  "comment",
+]);
+
 function downloadBlob(blob, fileName) {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
@@ -78,8 +88,8 @@ function ReceiptPreview({ draft, photoUrl = "", matchUrl = "", photoGestureHandl
   const model = createMatchReceiptViewModel(draft, { matchUrl });
   const backgroundUrl = photoUrl || model.defaultPhotoUrl;
   const posterTeams = [
-    { name: model.homeTeam, tier: model.homeTier },
-    { name: model.awayTeam, tier: model.awayTier },
+    { name: model.homeTeam, tier: model.homeTier, neutralMarkUrl: model.neutralTeamMarkUrls.home },
+    { name: model.awayTeam, tier: model.awayTier, neutralMarkUrl: model.neutralTeamMarkUrls.away },
   ];
 
   return (
@@ -120,7 +130,7 @@ function ReceiptPreview({ draft, photoUrl = "", matchUrl = "", photoGestureHandl
           <span key={index}>
             <img
               className={model.showTeamTierEmblems && team.tier ? "" : "is-neutral"}
-              src={model.showTeamTierEmblems && team.tier ? team.tier.outlineSrc : model.neutralTeamMarkUrl}
+              src={model.showTeamTierEmblems && team.tier ? team.tier.outlineSrc : team.neutralMarkUrl}
               alt=""
             />
           </span>
@@ -140,7 +150,7 @@ function ReceiptPreview({ draft, photoUrl = "", matchUrl = "", photoGestureHandl
             <strong>{team.name || (index ? "AWAY TEAM" : "HOME TEAM")}</strong>
             <img
               className={`match-receipt-team-tier${model.showTeamTierEmblems && team.tier ? "" : " is-neutral"}`}
-              src={model.showTeamTierEmblems && team.tier ? team.tier.outlineSrc : model.neutralTeamMarkUrl}
+              src={model.showTeamTierEmblems && team.tier ? team.tier.outlineSrc : team.neutralMarkUrl}
               alt=""
               aria-hidden="true"
             />
@@ -168,12 +178,14 @@ function ReceiptPreview({ draft, photoUrl = "", matchUrl = "", photoGestureHandl
               <b><em>{model.personalPoints ?? 0}</em><small>PTS</small></b>
               <b><em>{model.personalRebounds ?? 0}</em><small>REB</small></b>
             </span>
-          ) : model.personalTier ? null : <span>{model.comment || model.outcome.label}</span>}
-          {model.hasPersonalStats ? <span className="match-receipt-ticket-caption">내 경기 기록</span> : null}
+          ) : model.personalTier ? null : <span>{model.outcome.label}</span>}
+          {model.comment || model.hasPersonalStats ? (
+            <span className="match-receipt-ticket-caption">{model.comment || "내 경기 기록"}</span>
+          ) : null}
         </div>
         <div className="match-receipt-ticket-qr">
           <strong>{matchUrl ? "경기 기록 보기" : "boxtier.kr"}</strong>
-          {matchUrl ? <QrCode value={matchUrl} label="경기 열기 QR 코드" className="match-receipt-qr" /> : null}
+          {matchUrl ? <QrCode value={matchUrl} label="경기 열기 QR 코드" className="match-receipt-qr" branded /> : null}
         </div>
       </footer>
     </article>
@@ -204,8 +216,11 @@ export default function MatchReceipt({ auth, app }) {
   const [publicDraftId, setPublicDraftId] = useState(requestedPublicDraftId);
   const [courtMapOpen, setCourtMapOpen] = useState(false);
   const [selectedCourtId, setSelectedCourtId] = useState("");
+  const [discoveredCourts, setDiscoveredCourts] = useState([]);
+  const [courtMapDirectoryStatus, setCourtMapDirectoryStatus] = useState({ loading: false, error: "" });
   const startedRef = useRef(false);
   const requestedMatchIdRef = useRef("");
+  const courtMapRequestIdRef = useRef(0);
   const previewRef = useRef(null);
   const photoGestureRef = useRef({ pointers: new Map(), baseline: null });
   const photoTransformRef = useRef(null);
@@ -228,7 +243,16 @@ export default function MatchReceipt({ auth, app }) {
   const currentUserId = auth?.session?.user?.id ?? "";
   const currentUserMmr = Number(app?.currentUser?.ratings?.integrated);
   const personalMmr = currentUserId && Number.isFinite(currentUserMmr) ? currentUserMmr : null;
-  const registeredCourts = useMemo(() => getRegisteredCourts(app?.state ?? {}), [app?.state]);
+  const directoryCourts = useMemo(() => getRegisteredCourts(app?.state ?? {}), [app?.state]);
+  const registeredCourts = useMemo(
+    () => mergeCourtSearchCourts(directoryCourts, discoveredCourts),
+    [directoryCourts, discoveredCourts],
+  );
+  const profileCourtRegion = useMemo(() => (
+    [app?.currentUser?.regionSido, app?.currentUser?.regionDistrict].filter(Boolean).join(" ").trim()
+      || String(app?.currentUser?.region ?? "").trim()
+  ), [app?.currentUser?.region, app?.currentUser?.regionDistrict, app?.currentUser?.regionSido]);
+  const courtMapRegion = String(draft.address || profileCourtRegion).trim();
   const selectedCourt = useMemo(() => (
     registeredCourts.find((court) => String(court.id) === selectedCourtId)
       ?? registeredCourts.find((court) => court.name === draft.venue)
@@ -306,6 +330,38 @@ export default function MatchReceipt({ auth, app }) {
   }, [requestedPublicDraftId]);
 
   useEffect(() => {
+    if (!courtMapOpen) return undefined;
+    if (!courtMapRegion) {
+      setCourtMapDirectoryStatus({ loading: false, error: "주소를 입력하거나 프로필 지역을 설정해 주세요." });
+      return undefined;
+    }
+
+    const requestId = courtMapRequestIdRef.current + 1;
+    courtMapRequestIdRef.current = requestId;
+    setCourtMapDirectoryStatus({ loading: true, error: "" });
+    postServerAction("/api/search", {
+      query: courtMapRegion,
+      type: "court",
+      limit: COURT_MAP_SEARCH_LIMIT,
+      context: { purpose: COURT_MAP_SEARCH_PURPOSE },
+      force: true,
+    }, { allowWhenDisabled: true, allowAnonymous: true }).then((result) => {
+      if (courtMapRequestIdRef.current !== requestId) return;
+      const courts = (Array.isArray(result?.items) ? result.items : [])
+        .filter((court) => court?.kind === "court" && court?.id);
+      setDiscoveredCourts((current) => mergeCourtSearchCourts(current, courts));
+      setCourtMapDirectoryStatus({ loading: false, error: "" });
+    }).catch(() => {
+      if (courtMapRequestIdRef.current !== requestId) return;
+      setCourtMapDirectoryStatus({ loading: false, error: "등록 구장을 불러오지 못했습니다. 다시 열어 주세요." });
+    });
+
+    return () => {
+      if (courtMapRequestIdRef.current === requestId) courtMapRequestIdRef.current += 1;
+    };
+  }, [courtMapOpen, courtMapRegion]);
+
+  useEffect(() => {
     if (!photoBlob) {
       setPhotoUrl("");
       return undefined;
@@ -329,7 +385,9 @@ export default function MatchReceipt({ auth, app }) {
       startedRef.current = true;
       trackMatchReceiptEvent("receipt_started", { loggedIn: Boolean(auth?.session) });
     }
-    setDraft((current) => normalizeMatchReceiptDraft({ ...current, [name]: value }));
+    setDraft((current) => RECEIPT_TEXT_FIELDS.has(name)
+      ? { ...current, [name]: String(value ?? "") }
+      : normalizeMatchReceiptDraft({ ...current, [name]: value }));
     if (publicDraftId && !requestedPublicDraftId) setPublicDraftId("");
     setErrors((current) => (current[name] ? { ...current, [name]: "" } : current));
     setGenerated(Boolean(canonicalMatchId));
@@ -339,9 +397,14 @@ export default function MatchReceipt({ auth, app }) {
   function selectCourt(court) {
     if (!court || readOnlyReceipt) return;
     const courtAddress = getCourtAddress(court);
+    const venue = court.name ?? "";
+    const address = court.region || (courtAddress === "주소 미등록" ? "" : courtAddress);
     setSelectedCourtId(String(court.id ?? ""));
-    updateField("venue", court.name ?? "");
-    updateField("address", court.region || (courtAddress === "주소 미등록" ? "" : courtAddress));
+    setDraft((current) => normalizeMatchReceiptDraft({ ...current, venue, address }));
+    if (publicDraftId && !requestedPublicDraftId) setPublicDraftId("");
+    setErrors((current) => ({ ...current, venue: "", address: "" }));
+    setGenerated(Boolean(canonicalMatchId));
+    setStatus("");
     setCourtMapOpen(false);
   }
 
@@ -648,7 +711,7 @@ export default function MatchReceipt({ auth, app }) {
                 </span>
               </label>
               <label className="is-wide">짧은 주소 <input value={draft.address} maxLength={MATCH_RECEIPT_LIMITS.address} disabled={readOnlyReceipt} placeholder="선택 · 예: 서울 서대문구" onChange={(event) => updateField("address", event.target.value)} /></label>
-              <label className="is-wide">한 줄 코멘트 <input value={draft.comment} maxLength={MATCH_RECEIPT_LIMITS.comment} placeholder="선택 · 예: 마지막 3점으로 역전" onChange={(event) => updateField("comment", event.target.value)} /></label>
+              <label className="is-wide">한 줄 코멘트 <input value={draft.comment} maxLength={MATCH_RECEIPT_LIMITS.comment} disabled={readOnlyReceipt} placeholder="선택 · 예: 마지막 3점으로 역전" onChange={(event) => updateField("comment", event.target.value)} /></label>
             </div>
             <p className="match-receipt-map-note"><MapPin aria-hidden="true" /> 이미지에는 장소명과 짧은 주소만 들어갑니다. 지도 화면은 포함하지 않습니다.</p>
           </section>
@@ -725,7 +788,9 @@ export default function MatchReceipt({ auth, app }) {
         open={courtMapOpen}
         courts={registeredCourts}
         selectedCourt={selectedCourt}
-        currentRegion={app?.currentUser?.region ?? ""}
+        currentRegion={courtMapRegion}
+        loading={courtMapDirectoryStatus.loading}
+        loadError={courtMapDirectoryStatus.error}
         onSelect={selectCourt}
         onClose={() => setCourtMapOpen(false)}
       />
