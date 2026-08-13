@@ -102,7 +102,7 @@ test("receipt ownership capability is secret, hashed, and cookie-scoped", () => 
 });
 
 test("receipt photo tools stay outside the export card and reference dividers remain", async () => {
-  const [page, qrComponent, styles, tokens, renderer, roomDialog, digitGenerator, homeNeutralMark, awayNeutralMark, paperGrain, scoreDigits, bebasNeue, bebasLicense, blackHanSans] = await Promise.all([
+  const [page, qrComponent, styles, tokens, renderer, roomDialog, digitGenerator, homeNeutralMark, awayNeutralMark, paperGrain, scoreDigitSource, scoreDigits, bebasNeue, bebasLicense, blackHanSans] = await Promise.all([
     readFile(new URL("../src/pages/MatchReceipt.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/components/common/QrCode.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/styles/features/match-receipt.css", import.meta.url), "utf8"),
@@ -113,6 +113,7 @@ test("receipt photo tools stay outside the export card and reference dividers re
     readFile(new URL("../public/assets/tier-emblems/tier-neutral-home-outline-v5.png", import.meta.url)),
     readFile(new URL("../public/assets/tier-emblems/tier-neutral-away-outline-v5.png", import.meta.url)),
     readFile(new URL("../public/assets/match-receipt-paper-grain-v1.png", import.meta.url)),
+    readFile(new URL("../public/assets/match-receipt-score-digits-source-v1.png", import.meta.url)),
     readFile(new URL("../public/assets/match-receipt-score-digits-v1.png", import.meta.url)),
     readFile(new URL("../public/assets/fonts/BebasNeue-Regular.ttf", import.meta.url)),
     readFile(new URL("../public/assets/fonts/BebasNeue-OFL.txt", import.meta.url), "utf8"),
@@ -125,6 +126,8 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.doesNotMatch(page, /getPhotoRotationHandleStyle/);
   assert.match(page, /querySelector\("\.match-receipt-photo"\)/);
   assert.match(page, /사진 자유 회전/);
+  assert.match(page, /className="match-receipt-photo-rotate-handle"/);
+  assert.doesNotMatch(page, /<RotateCcw aria-hidden="true" \/> 자유 회전/);
   assert.match(page, /<Button as="label" variant="secondary">/);
   assert.match(page, /<Button variant="danger" onClick=\{removePhoto\}>/);
   assert.match(page, /onWheel: zoomPhotoWithWheel/);
@@ -165,7 +168,7 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(qrComponent, />\s*B\s*<\/text>/);
   assert.match(styles, /\.match-receipt-photo\.is-editable[\s\S]*touch-action: none/);
   assert.match(styles, /\.match-receipt-photo-rotate-handle/);
-  assert.match(styles, /\.match-receipt-photo-rotate-handle[\s\S]*cursor: grab[\s\S]*touch-action: none/);
+  assert.match(styles, /\.match-receipt-photo-rotate-handle[\s\S]*position: absolute[\s\S]*top: 0[\s\S]*right: 0[\s\S]*cursor: grab[\s\S]*touch-action: none/);
   assert.match(styles, /\.match-receipt-photo-tools/);
   assert.match(styles, /\.match-receipt-game-info/);
   assert.match(styles, /\.match-receipt-poster-score > span[\s\S]*font-family: "Bebas Neue"/);
@@ -225,7 +228,10 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(digitGenerator, /const CELL_WIDTH = 196/);
   assert.match(digitGenerator, /const DIGIT_WIDTH = 176/);
   assert.match(digitGenerator, /const DIGIT_HEIGHT = 372/);
-  assert.match(digitGenerator, /fontfile: FONT_FILE/);
+  assert.match(digitGenerator, /match-receipt-score-digits-source-v1\.png/);
+  assert.match(digitGenerator, /const SOURCE_COLUMNS = 5/);
+  assert.match(digitGenerator, /greenExcess/);
+  assert.doesNotMatch(digitGenerator, /fontfile:/);
   assert.doesNotMatch(digitGenerator, /const DIGIT_PATHS =/);
   assert.doesNotMatch(digitGenerator, /<svg/);
   assert.match(renderer, /label: `\$\{winner\.name\} WIN`/);
@@ -238,7 +244,9 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.equal(homeNeutralMark.subarray(1, 4).toString("ascii"), "PNG");
   assert.equal(awayNeutralMark.subarray(1, 4).toString("ascii"), "PNG");
   assert.equal(paperGrain.subarray(1, 4).toString("ascii"), "PNG");
+  assert.equal(scoreDigitSource.subarray(1, 4).toString("ascii"), "PNG");
   assert.equal(scoreDigits.subarray(1, 4).toString("ascii"), "PNG");
+  assert.ok(scoreDigitSource.length > 1_000_000);
   assert.ok(paperGrain.length > 1_000_000);
   assert.ok(scoreDigits.length > 500_000);
   assert.match(tokens, /font-family: "Bebas Neue"/);

@@ -853,6 +853,22 @@ export default function MatchReceipt({ auth, app }) {
                 onDoubleClick: resetPhotoTransform,
               }}
             />
+            {photoUrl ? (
+              <Button
+                variant="secondary"
+                className="match-receipt-photo-rotate-handle"
+                aria-label="사진 자유 회전"
+                title="드래그해 자유 회전 · 방향키로 미세 조정"
+                onPointerDown={beginPhotoRotation}
+                onPointerMove={movePhotoRotation}
+                onPointerUp={endPhotoRotation}
+                onPointerCancel={endPhotoRotation}
+                onLostPointerCapture={endPhotoRotation}
+                onKeyDown={nudgePhotoRotation}
+              >
+                <RotateCcw aria-hidden="true" />
+              </Button>
+            ) : null}
           </div>
           <div className="match-receipt-photo-tools">
             <div className="match-receipt-photo-actions" aria-label="미리보기 사진 편집">
@@ -861,22 +877,6 @@ export default function MatchReceipt({ auth, app }) {
                 <input type="file" accept="image/jpeg,image/png,image/webp" disabled={busy === "photo"} onChange={handlePhotoChange} />
               </Button>
               <Button variant="secondary" onClick={() => updateField("photoRotation", draft.photoRotation + 90)}><RotateCcw aria-hidden="true" /> 90° 회전</Button>
-              {photoUrl ? (
-                <Button
-                  variant="secondary"
-                  className="match-receipt-photo-rotate-handle"
-                  aria-label="사진 자유 회전"
-                  title="드래그해 자유 회전 · 방향키로 미세 조정"
-                  onPointerDown={beginPhotoRotation}
-                  onPointerMove={movePhotoRotation}
-                  onPointerUp={endPhotoRotation}
-                  onPointerCancel={endPhotoRotation}
-                  onLostPointerCapture={endPhotoRotation}
-                  onKeyDown={nudgePhotoRotation}
-                >
-                  <RotateCcw aria-hidden="true" /> 자유 회전
-                </Button>
-              ) : null}
               <Button variant="secondary" onClick={resetPhotoTransform}>초기화</Button>
               {photoUrl ? <Button variant="danger" onClick={removePhoto}><Trash2 aria-hidden="true" /> 제거</Button> : null}
             </div>
