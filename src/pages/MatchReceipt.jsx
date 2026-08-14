@@ -166,6 +166,11 @@ export default function MatchReceipt({ auth, app }) {
   const canonicalSnapshotCreatedRef = useRef("");
   const draftRevisionRef = useRef(0);
   const publicDraftLoadedRevisionRef = useRef(0);
+  const publicDraftSavedRevisionRef = useRef(-1);
+  const draftRef = useRef(draft);
+  const publicDraftIdRef = useRef("");
+  draftRef.current = draft;
+  publicDraftIdRef.current = publicDraftId;
   photoTransformRef.current = {
     photoX: draft.photoX,
     photoY: draft.photoY,
@@ -308,9 +313,16 @@ export default function MatchReceipt({ auth, app }) {
       })
       .then((result) => {
         if (!active) return;
+        const normalizedDraft = normalizeMatchReceiptDraft(result.draft);
         publicDraftSerialSeedRef.current = result.draft?.serialSeed ?? "";
         publicDraftLoadedRevisionRef.current = draftRevisionRef.current;
-        setDraft(normalizeMatchReceiptDraft(result.draft));
+        publicDraftSavedRevisionRef.current = draftRevisionRef.current;
+        draftRef.current = normalizedDraft;
+        if (result.canClaim) {
+          publicDraftIdRef.current = result.publicId;
+          setPublicDraftId(result.publicId);
+        }
+        setDraft(normalizedDraft);
         setGenerated(true);
         setRequestedDraftCanClaim(Boolean(result.canClaim));
         setStatus(result.claimed ? "내 기록으로 전환된 경기 영수증입니다." : "공유된 경기 영수증입니다.");
@@ -390,17 +402,17 @@ export default function MatchReceipt({ auth, app }) {
       startedRef.current = true;
       trackMatchReceiptEvent("receipt_started", { loggedIn: Boolean(auth?.session) });
     }
-    setDraft((current) => RECEIPT_TEXT_FIELDS.has(name)
-      ? {
-        ...current,
-        [name]: String(value ?? ""),
-      }
-      : normalizeMatchReceiptDraft({ ...current, [name]: value }));
+    setDraft((current) => {
+      const next = RECEIPT_TEXT_FIELDS.has(name)
+        ? {
+          ...current,
+          [name]: String(value ?? ""),
+        }
+        : normalizeMatchReceiptDraft({ ...current, [name]: value });
+      draftRef.current = next;
+      return next;
+    });
     draftRevisionRef.current += 1;
-    if (publicDraftId) {
-      setPublicDraftId("");
-    }
-    publicDraftRequestRef.current = null;
     setErrors((current) => (name === "address" && current.venue
       ? { ...current, address: "", venue: "" }
       : current[name] ? { ...current, [name]: "" } : current));
@@ -415,12 +427,12 @@ export default function MatchReceipt({ auth, app }) {
     const address = "";
     const originalAddress = courtAddress === "주소 미등록" ? "" : courtAddress;
     setSelectedCourtId(String(court.id ?? ""));
-    setDraft((current) => normalizeMatchReceiptDraft({ ...current, venue, address, originalAddress }));
+    setDraft((current) => {
+      const next = normalizeMatchReceiptDraft({ ...current, venue, address, originalAddress });
+      draftRef.current = next;
+      return next;
+    });
     draftRevisionRef.current += 1;
-    if (publicDraftId) {
-      setPublicDraftId("");
-    }
-    publicDraftRequestRef.current = null;
     setErrors((current) => ({ ...current, venue: "", address: "" }));
     setGenerated(Boolean(canonicalMatchId));
     setStatus("");
@@ -550,6 +562,13 @@ export default function MatchReceipt({ auth, app }) {
 
     setBusy("reset");
     try {
+      if (publicDraftRequestRef.current) {
+        try {
+          await publicDraftRequestRef.current;
+        } catch {
+          // A failed previous save must not prevent a local reset.
+        }
+      }
       clearMatchReceiptDraft();
       await clearMatchReceiptPhoto();
       const next = normalizeMatchReceiptDraft({
@@ -563,6 +582,7 @@ export default function MatchReceipt({ auth, app }) {
         photoZoom: next.photoZoom,
         photoRotation: next.photoRotation,
       };
+      draftRef.current = next;
       setDraft(next);
       setPhotoBlob(null);
       setCroppedTeamEmblemUrls(EMPTY_TEAM_EMBLEM_URLS);
@@ -572,10 +592,12 @@ export default function MatchReceipt({ auth, app }) {
       setEmblemCropCandidate(null);
       setEmblemCropError("");
       setGenerated(false);
+      publicDraftIdRef.current = "";
       setPublicDraftId("");
       setRequestedDraftCanClaim(false);
       draftRevisionRef.current += 1;
-      publicDraftRequestRef.current = null;
+      publicDraftLoadedRevisionRef.current = draftRevisionRef.current;
+      publicDraftSavedRevisionRef.current = -1;
       publicDraftSerialSeedRef.current = "";
       canonicalSnapshotCreatedRef.current = "";
       setSelectedCourtId("");
@@ -712,39 +734,55 @@ export default function MatchReceipt({ auth, app }) {
     });
   }
 
-  async function ensurePublicDraft(value = draft, { forClaim = false } = {}) {
-    const publicDraftHasLocalEdits = Boolean(
+  async function ensurePublicDraft(value = draftRef.current, { forClaim = false } = {}) {
+    const hasLocalEdits = () => Boolean(
       requestedPublicDraftId
       && draftRevisionRef.current !== publicDraftLoadedRevisionRef.current,
     );
-    if (publicDraftId) return publicDraftId;
-    if (requestedPublicDraftId && !publicDraftHasLocalEdits
+    if (publicDraftIdRef.current
+      && publicDraftSavedRevisionRef.current === draftRevisionRef.current) {
+      return publicDraftIdRef.current;
+    }
+    if (requestedPublicDraftId && !hasLocalEdits() && !publicDraftIdRef.current
       && (!forClaim || requestedDraftCanClaim)) return requestedPublicDraftId;
     if (publicDraftRequestRef.current) return publicDraftRequestRef.current;
 
-    const requestRevision = draftRevisionRef.current;
-    const request = postServerAction("/api/match-receipts/draft", {
-      draft: value,
-      ...(canonicalMatchId ? { sourceMatchId: canonicalMatchId } : {}),
-      ...(requestedPublicDraftId && !publicDraftHasLocalEdits
-        ? { clonePublicId: requestedPublicDraftId }
-        : {}),
-    }, {
-      allowAnonymous: !canonicalMatchId,
-      allowWhenDisabled: true,
-    }).then((result) => {
-      if (!result?.publicId) throw new Error("receipt_draft_create_failed");
-      if (requestRevision !== draftRevisionRef.current) throw new Error("receipt_draft_stale");
-      if (result.serialSeed) {
-        publicDraftSerialSeedRef.current = result.serialSeed;
-        setDraft((current) => normalizeMatchReceiptDraft({
-          ...current,
-          serialSeed: result.serialSeed,
-        }));
+    const request = (async () => {
+      let nextDraft = value;
+      while (true) {
+        const requestRevision = draftRevisionRef.current;
+        const ownedPublicId = publicDraftIdRef.current;
+        const result = await postServerAction("/api/match-receipts/draft", {
+          draft: nextDraft,
+          ...(ownedPublicId ? { publicId: ownedPublicId } : {}),
+          ...(!ownedPublicId && canonicalMatchId ? { sourceMatchId: canonicalMatchId } : {}),
+          ...(!ownedPublicId && requestedPublicDraftId && !hasLocalEdits()
+            ? { clonePublicId: requestedPublicDraftId }
+            : {}),
+        }, {
+          allowAnonymous: !canonicalMatchId,
+          allowWhenDisabled: true,
+        });
+        if (!result?.publicId) throw new Error("receipt_draft_create_failed");
+
+        publicDraftIdRef.current = result.publicId;
+        publicDraftSavedRevisionRef.current = requestRevision;
+        setPublicDraftId(result.publicId);
+        if (result.serialSeed) {
+          publicDraftSerialSeedRef.current = result.serialSeed;
+          setDraft((current) => {
+            const normalized = normalizeMatchReceiptDraft({
+              ...current,
+              serialSeed: result.serialSeed,
+            });
+            draftRef.current = normalized;
+            return normalized;
+          });
+        }
+        if (requestRevision === draftRevisionRef.current) return result.publicId;
+        nextDraft = draftRef.current;
       }
-      setPublicDraftId(result.publicId);
-      return result.publicId;
-    }).finally(() => {
+    })().finally(() => {
       if (publicDraftRequestRef.current === request) publicDraftRequestRef.current = null;
     });
     publicDraftRequestRef.current = request;
@@ -755,11 +793,9 @@ export default function MatchReceipt({ auth, app }) {
     if (!canonicalMatchId || !generated || publicDraftId
       || canonicalSnapshotCreatedRef.current === canonicalMatchId) return;
     canonicalSnapshotCreatedRef.current = canonicalMatchId;
-    void ensurePublicDraft(draft).catch((error) => {
-      if (error.message !== "receipt_draft_stale") {
-        canonicalSnapshotCreatedRef.current = "";
-        setStatus("공개 영수증 링크를 만들지 못했습니다.");
-      }
+    void ensurePublicDraft(draft).catch(() => {
+      canonicalSnapshotCreatedRef.current = "";
+      setStatus("공개 영수증 링크를 만들지 못했습니다.");
     });
   }, [canonicalMatchId, draft, generated, publicDraftId]);
 

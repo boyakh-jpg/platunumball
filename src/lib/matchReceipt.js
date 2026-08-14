@@ -1,5 +1,5 @@
 import { RECORD_TYPES } from "./constants.js";
-import { isPersonalRecordMatch } from "../../shared/lib/matchRecordTypes.js";
+import { isPersonalRecordMatch, isPubliclyReadableConfirmedMatch } from "../../shared/lib/matchRecordTypes.js";
 import { hasVerifiedPlayerStats } from "../../shared/lib/matchSummary.js";
 import { assetUrl, BOXTIER_LETTER_DARK_URL, BOXTIER_LOGO_URL } from "./assets.js";
 import { createQrMatrix } from "./qrCode.js";
@@ -462,8 +462,7 @@ export function getMatchReceiptCreateDraft(value) {
 }
 
 export function canCreatePublicMatchReceiptSnapshot(match = {}) {
-  return match?.status === "confirmed"
-    && !isPersonalRecordMatch(match);
+  return isPubliclyReadableConfirmedMatch(match);
 }
 
 export function getMatchReceiptSideTeamId(match = {}, side = "") {
@@ -479,7 +478,7 @@ export function getMatchReceiptDraftFromMatch(match = {}, style = {}, court = nu
   const summary = match.rules?.recordSummary ?? {};
   const currentUserId = String(style.currentUserId ?? "");
   const playerStats = match.result?.playerStats?.[currentUserId] ?? {};
-  const verified = canCreatePublicMatchReceiptSnapshot(match);
+  const verified = canCreatePublicMatchReceiptSnapshot(match) && !isPersonalRecordMatch(match);
   const personalStatsEligible = match.status === "confirmed" && (
     hasVerifiedPlayerStats(match, currentUserId)
     || (isPersonalRecordMatch(match) && match.createdBy === currentUserId)

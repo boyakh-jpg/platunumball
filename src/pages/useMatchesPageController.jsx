@@ -198,7 +198,7 @@ const location = useLocation();
     setSearchParams(next, { replace: true });
   };
   const requestMatchDetail = (matchId) => {
-    if (!matchId || app.remoteReady === false || !app.currentUser.id || requestedMatchDetailsRef.current.has(matchId)) return;
+    if (!matchId || app.remoteReady === false || requestedMatchDetailsRef.current.has(matchId)) return;
     setSelectedMatchDetailFailedId((currentId) => currentId === matchId ? null : currentId);
     setSelectedMatchDetailLoadingId(matchId);
     requestMatchDetailOnce({

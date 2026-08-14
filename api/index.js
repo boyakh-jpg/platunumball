@@ -32,6 +32,7 @@ import matchReceiptClaim from "../server/api/match-receipts/claim.js";
 import matchReceiptDraft from "../server/api/match-receipts/draft.js";
 import matchAttendanceQr from "../server/api/matches/attendance-qr.js";
 import matchDetail from "../server/api/matches/detail.js";
+import matchPublicDetail from "../server/api/matches/public-detail.js";
 import matchClock from "../server/api/matches/clock.js";
 import matchList from "../server/api/matches/list.js";
 import matchSyncMatch from "../server/api/matches/sync-match.js";
@@ -46,6 +47,7 @@ import profileMe from "../server/api/profile/me.js";
 import profileUpsert from "../server/api/profile/upsert.js";
 import profileWithdraw from "../server/api/profile/withdraw.js";
 import recordList from "../server/api/records/list.js";
+import recordPublicList from "../server/api/records/public-list.js";
 import refereeSync from "../server/api/referee/sync.js";
 import refereeDetail from "../server/api/referees/detail.js";
 import recruitingList from "../server/api/recruiting/list.js";
@@ -105,6 +107,7 @@ export const API_ROUTES = new Map([
   ["/match-receipts/draft", route(matchReceiptDraft, ["GET", "POST"], "publicRead")],
   ["/matches/attendance-qr", route(matchAttendanceQr, ["POST"], "user")],
   ["/matches/detail", route(matchDetail, ["POST"], "user")],
+  ["/matches/public-detail", route(matchPublicDetail, ["POST"], "publicRead")],
   ["/matches/clock", route(matchClock, ["POST"], "user")],
   ["/matches/list", route(matchList, ["POST"], "user")],
   ["/matches/sync-match", route(matchSyncMatch, ["POST"], "user")],
@@ -119,6 +122,7 @@ export const API_ROUTES = new Map([
   ["/profile/upsert", route(profileUpsert, ["POST"], "user")],
   ["/profile/withdraw", route(profileWithdraw, ["POST"], "user")],
   ["/records/list", route(recordList, ["POST"], "user")],
+  ["/records/public-list", route(recordPublicList, ["POST"], "publicRead")],
   ["/referee/sync", route(refereeSync, ["POST"], "user")],
   ["/referees/detail", route(refereeDetail, ["POST"], "user")],
   ["/recruiting/list", route(recruitingList, ["POST"], "user")],

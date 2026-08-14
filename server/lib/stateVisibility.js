@@ -2,6 +2,7 @@ import {
   flattenIdValues as toArray,
   uniqueValues as unique,
 } from "../api/_supabaseAdmin.js";
+import { isPubliclyReadableConfirmedMatch } from "../../shared/lib/matchRecordTypes.js";
 
 function getMatchActorIds(match = {}) {
   return unique([
@@ -28,6 +29,7 @@ function isUserTeamMatch(match = {}, userTeamIds = []) {
 
 function canReadMatch(match = {}, profileId = "", isAdmin = false, userTeamIds = []) {
   if (isAdmin) return true;
+  if (isPubliclyReadableConfirmedMatch(match)) return true;
   if ((match.visibility ?? "public") !== "private") return true;
   if (["solo", "personal_record"].includes(String(match.rules?.recordType ?? "").trim().toLowerCase())) {
     return match.createdBy === profileId;
@@ -46,6 +48,65 @@ function sanitizeMatch(match = {}, profileId = "", isAdmin = false, userTeamIds 
     disputeDraftResult: null,
     disputeDraftUpdatedAt: null,
     disputeResolvedAt: null,
+  };
+}
+
+export function projectPublicMatch(match = {}) {
+  if (!isPubliclyReadableConfirmedMatch(match)) return null;
+
+  const publicFields = [
+    "id",
+    "title",
+    "mode",
+    "courtId",
+    "court",
+    "visibility",
+    "scheduledDate",
+    "scheduledTime",
+    "scheduledAt",
+    "timingType",
+    "status",
+    "official",
+    "preRegistered",
+    "ranked",
+    "ratingScale",
+    "refereeId",
+    "tournamentId",
+    "tournamentFormat",
+    "tournamentRound",
+    "tournamentFixture",
+    "tournamentMmrPolicy",
+    "forfeitSide",
+    "forfeitReason",
+    "forfeitedAt",
+    "voidReason",
+    "voidedAt",
+    "teamA",
+    "teamB",
+    "playedPlayerIds",
+    "reservePlayers",
+    "anonymousPlayers",
+    "ratingResult",
+    "teamRatingResult",
+    "createdAt",
+    "updatedAt",
+    "confirmedAt",
+    "completedAt",
+  ];
+  const publicMatch = Object.fromEntries(
+    publicFields
+      .filter((field) => Object.prototype.hasOwnProperty.call(match, field))
+      .map((field) => [field, match[field]]),
+  );
+  const result = match.result && typeof match.result === "object" ? { ...match.result } : match.result;
+  if (result && typeof result === "object") delete result.submittedBy;
+  const rules = match.rules && typeof match.rules === "object" ? { ...match.rules } : match.rules;
+  if (rules && typeof rules === "object") delete rules.tournamentOrganizerId;
+
+  return {
+    ...publicMatch,
+    ...(result === undefined ? {} : { result }),
+    ...(rules === undefined ? {} : { rules }),
   };
 }
 
@@ -98,6 +159,41 @@ function sanitizeUser(user = {}, profileId = "", isAdmin = false) {
     birthYear: _birthYear,
     ...publicUser
   } = user;
+  return publicUser;
+}
+
+export function projectPublicUser(user = {}) {
+  const publicUser = {};
+  [
+    "id",
+    "name",
+    "handle",
+    "hashtag",
+    "position",
+    "region",
+    "regionSido",
+    "regionDistrict",
+    "trustScore",
+    "streak",
+    "avatarColor",
+    "ratings",
+    "ageGroup",
+    "ageGroupCheckedSeason",
+    "onboardingComplete",
+    "updatedAt",
+    "avatarKey",
+    "avatarSource",
+    "avatarIconKey",
+    "avatarUpdatedAt",
+    "avatarBackgroundEnabled",
+    "avatarBorderEnabled",
+    "avatarBorderColor",
+    "discordAvatarUrl",
+    "affiliationId",
+    "foundingPlayer",
+  ].forEach((key) => {
+    if (user[key] !== undefined) publicUser[key] = user[key];
+  });
   return publicUser;
 }
 

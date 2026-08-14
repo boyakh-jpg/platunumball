@@ -15,6 +15,7 @@ import {
 } from "../../../src/lib/matchReceipt.js";
 import { getUserHashtag } from "../../../shared/lib/handles.js";
 import {
+  createReceiptClonePayload,
   createCanonicalReceiptSerialSeed,
   createReceiptCapability,
   getLegacyCanonicalReceiptMatchId,
@@ -29,6 +30,55 @@ import {
 
 function getPublicId(request) {
   return String(request.query?.publicId ?? "").trim();
+}
+
+const RECEIPT_PUBLIC_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const CANONICAL_RECEIPT_FIELDS = [
+  "serialSeed",
+  "homeTeam",
+  "awayTeam",
+  "homeScore",
+  "awayScore",
+  "playedOn",
+  "venue",
+  "originalAddress",
+  "format",
+  "matchNature",
+  "tournamentName",
+  "periodScores",
+  "q1Home",
+  "q1Away",
+  "q2Home",
+  "q2Away",
+  "q3Home",
+  "q3Away",
+  "q4Home",
+  "q4Away",
+  "otHome",
+  "otAway",
+  "homeMmr",
+  "awayMmr",
+  "personalMmr",
+  "profileHashtag",
+  "personalPoints",
+  "personalRebounds",
+  "personalStatsEligible",
+  "hasCanonicalTeamMatch",
+  "homeEmblemKey",
+  "awayEmblemKey",
+  "verified",
+];
+
+function isValidPublicId(value) {
+  return RECEIPT_PUBLIC_ID_PATTERN.test(String(value ?? "").trim());
+}
+
+function mergeOwnedDraftPayload(storedPayload, draft) {
+  const nextPayload = sanitizeReceiptDraftPayload(draft);
+  if (storedPayload?._canonicalReceipt !== true) return nextPayload;
+  const canonicalPayload = sanitizeReceiptDraftPayload(storedPayload, { trustedCanonical: true });
+  for (const field of CANONICAL_RECEIPT_FIELDS) nextPayload[field] = canonicalPayload[field];
+  return { ...nextPayload, _canonicalReceipt: true };
 }
 
 function getCanonicalTeam(teams, teamId) {
@@ -85,9 +135,7 @@ async function clonePublicPayload(supabase, publicId) {
   if (error) throw error;
   if (!data) return null;
   if (!await canExposeStoredReceiptDraft(supabase, data.payload)) return null;
-  return sanitizeReceiptDraftPayload(projectPublicReceiptDraft(data.payload), {
-    trustedCanonical: data.payload?._canonicalReceipt === true,
-  });
+  return createReceiptClonePayload(data.payload);
 }
 
 async function canExposeStoredReceiptDraft(supabase, payload) {
@@ -110,6 +158,12 @@ export default async function handler(request, response) {
   if (request.method === "GET") {
     const publicId = getPublicId(request);
     if (!publicId) return sendJson(response, 400, { error: "receipt_public_id_required" });
+    if (!isValidPublicId(publicId)) return sendJson(response, 400, { error: "receipt_public_id_invalid" });
+    const { data: allowed, error: rateError } = await supabase.rpc("consume_match_receipt_draft_read_quota", {
+      p_request_hash: getReceiptRequestHash(request),
+    });
+    if (rateError) throw rateError;
+    if (!allowed) return sendJson(response, 429, { error: "receipt_draft_rate_limited" });
     const { data, error } = await supabase
       .from("match_receipt_drafts")
       .select("public_id,capability_hash,payload,expires_at,claimed_at")
@@ -136,8 +190,50 @@ export default async function handler(request, response) {
   }
 
   const body = await readJsonBody(request, { maxBytes: 16_384, maxStringLength: 1_000 });
+  const publicId = String(body.publicId ?? "").trim();
   const sourceMatchId = String(body.sourceMatchId ?? "").trim();
   const clonePublicId = String(body.clonePublicId ?? "").trim();
+  if (publicId && !isValidPublicId(publicId)) {
+    return sendJson(response, 400, { error: "receipt_public_id_invalid" });
+  }
+  if (clonePublicId && !isValidPublicId(clonePublicId)) {
+    return sendJson(response, 400, { error: "receipt_public_id_invalid" });
+  }
+
+  if (publicId) {
+    const { data: existing, error: existingError } = await supabase
+      .from("match_receipt_drafts")
+      .select("id,public_id,capability_hash,payload,expires_at,claimed_at")
+      .eq("public_id", publicId)
+      .gt("expires_at", new Date().toISOString())
+      .maybeSingle();
+    if (existingError) throw existingError;
+    const capability = existing && getReceiptCapabilityCookie(request, existing.public_id);
+    if (!existing || existing.claimed_at || !capability
+      || capability.publicId !== existing.public_id
+      || !receiptCapabilityMatches(capability.secret, existing.capability_hash)) {
+      return sendJson(response, 403, { error: "receipt_capability_required" });
+    }
+    const payload = mergeOwnedDraftPayload(existing.payload, body.draft);
+    if (!payload.homeTeam || !payload.awayTeam) {
+      return sendJson(response, 400, { error: "receipt_draft_invalid" });
+    }
+    const { data, error } = await supabase
+      .from("match_receipt_drafts")
+      .update({ payload, updated_at: new Date().toISOString() })
+      .eq("id", existing.id)
+      .is("claimed_at", null)
+      .select("public_id,expires_at")
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) return sendJson(response, 409, { error: "receipt_draft_claimed" });
+    return sendJson(response, 200, {
+      publicId: data.public_id,
+      serialSeed: payload.serialSeed,
+      expiresAt: data.expires_at,
+    });
+  }
+
   const payload = sourceMatchId
     ? await createCanonicalPayload(request, sourceMatchId, body.draft)
     : clonePublicId

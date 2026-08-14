@@ -102,6 +102,10 @@ function GuestRecruiting({ app }) {
   const [regionFilterDistrict, setRegionFilterDistrict] = useState("");
   const [feed, setFeed] = useState({ loading: true, error: false, openCount: 0, posts: [], requestedRecruiting: null });
   const targetPostId = searchParams.get("post") ?? "";
+  const selectedRegionGroup = REGION_TREE.find((region) => region.sido === regionFilterSido) ?? REGION_TREE[0] ?? { districts: [] };
+  const regionDistrictOptions = regionFilterSido === REGION_FILTER_ALL ? [] : selectedRegionGroup.districts ?? [];
+  const selectedRegionDistrict = regionDistrictOptions.includes(regionFilterDistrict) ? regionFilterDistrict : regionDistrictOptions[0] ?? "";
+  const selectedRegionKey = stripRegionSuffix(selectedRegionDistrict);
   const target = resolveGuestRecruitingTarget(feed, targetPostId);
   const selectedPost = target.post;
   const unavailableCopy = targetPostId && !selectedPost && !["", "loading"].includes(target.status)
@@ -116,6 +120,7 @@ function GuestRecruiting({ app }) {
     setFeed((current) => ({ ...current, loading: true, error: false, requestedRecruiting: null }));
     const requestParams = new URLSearchParams({ recruitingLimit: String(REMOTE_CLIENT_RECRUITING_LIMIT) });
     if (targetPostId) requestParams.set("recruitingPostId", targetPostId);
+    if (selectedRegionKey) requestParams.set("recruitingRegion", selectedRegionKey);
     fetch(`/api/landing/stats?${requestParams.toString()}`, {
       method: "GET",
       headers: { Accept: "application/json" },
@@ -150,7 +155,7 @@ function GuestRecruiting({ app }) {
       window.clearTimeout(timeoutId);
       controller.abort();
     };
-  }, [reloadKey, targetPostId]);
+  }, [reloadKey, selectedRegionKey, targetPostId]);
 
   const loginPath = getLoginPath(`${location.pathname}${location.search}${location.hash}`);
   const openRoom = (post) => {
@@ -163,13 +168,7 @@ function GuestRecruiting({ app }) {
     next.delete("post");
     setSearchParams(next, { replace: true });
   };
-  const selectedRegionGroup = REGION_TREE.find((region) => region.sido === regionFilterSido) ?? REGION_TREE[0] ?? { districts: [] };
-  const regionDistrictOptions = regionFilterSido === REGION_FILTER_ALL ? [] : selectedRegionGroup.districts ?? [];
-  const selectedRegionDistrict = regionDistrictOptions.includes(regionFilterDistrict) ? regionFilterDistrict : regionDistrictOptions[0] ?? "";
-  const selectedRegionKey = stripRegionSuffix(selectedRegionDistrict);
-  const posts = regionFilterSido === REGION_FILTER_ALL
-    ? feed.posts
-    : feed.posts.filter((post) => isRegionRecruitingPost(post, selectedRegionKey));
+  const posts = feed.posts;
   const rankedCount = posts.filter((post) => post.ranked !== false).length;
   const selectRegionSido = (event) => {
     const nextSido = event.target.value;

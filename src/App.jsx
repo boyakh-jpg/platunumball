@@ -83,8 +83,9 @@ const GUEST_PUBLIC_APP_PREFIXES = [
 ];
 
 export function isGuestPublicAppPath(pathname = "") {
-  return GUEST_PUBLIC_APP_PATHS.has(pathname)
-    || GUEST_PUBLIC_APP_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+  const normalizedPathname = pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname;
+  return GUEST_PUBLIC_APP_PATHS.has(normalizedPathname)
+    || GUEST_PUBLIC_APP_PREFIXES.some((prefix) => normalizedPathname.startsWith(prefix));
 }
 
 function LegacyMatchRoomRedirect() {

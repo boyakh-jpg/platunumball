@@ -117,7 +117,7 @@ export function MatchRoomModal({
       setSelectedMatchDetailLoadingId(null);
       return;
     }
-    if (app.remoteReady === false || !app.currentUser.id) return;
+    if (app.remoteReady === false) return;
     if (requestedMatchDetailsRef.current.has(matchId)) {
       setOpenedMatchId(matchId);
       return;
@@ -161,6 +161,7 @@ export function MatchRoomModal({
         app={app}
         post={selectedMatchRoom.post}
         sourceMatch={selectedMatch}
+        readOnly={!app.currentUser.id}
         entryPoint={entryPoint}
         contextPanel={contextPanel}
         clockClient={clockClient}

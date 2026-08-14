@@ -46,6 +46,7 @@ test("saved team receipt emblems require an explicit receipt load and lock repla
   assert.match(migration, /role = 'captain'/u);
 });
 import {
+  createReceiptClonePayload,
   createCanonicalReceiptSerialSeed,
   createReceiptCapability,
   getLegacyCanonicalReceiptMatchId,
@@ -186,7 +187,7 @@ test("legacy canonical receipt projection hides the source match id", () => {
   assert.equal(projected.serialSeed.includes("private-personal"), false);
 });
 
-test("only confirmed non-personal matches can create canonical public receipt snapshots", () => {
+test("confirmed public matches create snapshots while private personal records do not", () => {
   const match = {
     id: "match-123",
     status: "confirmed",
@@ -199,13 +200,45 @@ test("only confirmed non-personal matches can create canonical public receipt sn
   assert.equal(canCreatePublicMatchReceiptSnapshot({
     ...match,
     rules: { recordType: RECORD_TYPES.personalRecord },
-  }), false);
+  }), true);
   assert.equal(canCreatePublicMatchReceiptSnapshot({
     ...match,
     rules: { recordType: "personal_record" },
+  }), true);
+  assert.equal(canCreatePublicMatchReceiptSnapshot({
+    ...match,
+    visibility: "private",
+    rules: { recordType: RECORD_TYPES.personalRecord },
   }), false);
   assert.equal(canCreatePublicMatchReceiptSnapshot({ ...match, status: "pending" }), false);
   assert.equal(canCreatePublicMatchReceiptSnapshot({ ...match, visibility: undefined }), true);
+});
+
+test("public receipt clones never inherit official verification or identity", () => {
+  const cloned = createReceiptClonePayload({
+    _canonicalReceipt: true,
+    verified: true,
+    personalMmr: 1640,
+    profileHashtag: "#1234567",
+    personalStatsEligible: true,
+    hasCanonicalTeamMatch: true,
+    homeTeamEmblemKey: "tier-emblems/gold-3.png",
+    awayTeamEmblemKey: "tier-emblems/silver-2.png",
+    homeTeam: "HOME",
+    awayTeam: "AWAY",
+    homeScore: 60,
+    awayScore: 46,
+  });
+
+  assert.equal(cloned.verified, false);
+  assert.equal("personalMmr" in cloned, false);
+  assert.equal("profileHashtag" in cloned, false);
+  assert.equal(cloned.personalStatsEligible, false);
+  assert.equal("hasCanonicalTeamMatch" in cloned, false);
+  assert.equal("homeTeamEmblemKey" in cloned, false);
+  assert.equal("awayTeamEmblemKey" in cloned, false);
+  assert.equal(cloned.homeTeam, "HOME");
+  assert.equal(cloned.awayTeam, "AWAY");
 });
 
 test("canonical receipt team ids include record summaries", () => {
@@ -463,6 +496,7 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(page, /\{draft\.comment\.length\}\/\{MATCH_RECEIPT_LIMITS\.comment\}/);
   assert.match(page, /placeholder="선택 · 11자 이내"/);
   assert.match(page, /onClick=\{resetReceipt\}/);
+  assert.match(page, /await publicDraftRequestRef\.current/);
   assert.match(page, /clearMatchReceiptDraft\(\)/);
   assert.match(page, /clearMatchReceiptPhoto\(\)/);
   assert.match(page, /createDefaultMatchReceiptDraft\(\)/);
@@ -555,11 +589,14 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(page, /requestedDraftCanClaim/);
   assert.match(page, /draftRevisionRef/);
   assert.match(page, /publicDraftLoadedRevisionRef/);
-  assert.match(page, /const publicDraftHasLocalEdits = Boolean/);
+  assert.match(page, /publicDraftSavedRevisionRef/);
+  assert.match(page, /while \(true\)/);
+  assert.match(page, /ownedPublicId \? \{ publicId: ownedPublicId \} : \{\}/);
+  assert.match(page, /requestRevision === draftRevisionRef\.current/);
   assert.match(page, /return Boolean\(canonicalMatchId && CANONICAL_RECEIPT_FIELDS\.has\(name\)\)/);
   assert.doesNotMatch(page, /return Boolean\(requestedPublicDraftId \|\|/);
   assert.doesNotMatch(page, /publicDraftId && !requestedPublicDraftId/);
-  assert.match(page, /receipt_draft_stale/);
+  assert.doesNotMatch(page, /receipt_draft_stale/);
   assert.doesNotMatch(page, /state:\s*\{\s*receiptDraft: getMatchReceiptCreateDraft\(draft\)/);
   assert.match(preview, /match-receipt-photo-backdrop/);
   assert.doesNotMatch(receiptSources, /index \? "AWAY" : "HOME"/);

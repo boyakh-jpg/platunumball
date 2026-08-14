@@ -468,7 +468,24 @@ return (
             />
           );
         })}
-        {scheduleError || matchPagination.error ? <div className="om-load-more"><span>최신 경기 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</span></div> : null}
+        {scheduleError || matchPagination.error ? (
+          <div className="om-load-more">
+            <span>최신 경기 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</span>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                if (scheduleError) {
+                  if (panelMode === "team") app.actions.loadMatchTeamSchedule?.({ force: true });
+                  else app.actions.loadMatchRecruitingSchedule?.({ force: true });
+                }
+                if (matchPagination.error) app.actions.loadMoreMatches?.({ force: true });
+              }}
+            >
+              다시 시도
+            </Button>
+          </div>
+        ) : null}
           </>
         ) : scheduleLoading ? null : (
           <EmptyState

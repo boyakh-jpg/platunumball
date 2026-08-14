@@ -221,9 +221,9 @@ export default function TeamDetail({ app }) {
   }, [app.remoteReady, refreshTeamDetail, teamId]);
 
   useEffect(() => {
-    if (app.demoPreview || app.remoteReady === false || !team?.id || !loadTeamRecords || teamRecordArchive.loaded || teamRecordArchive.loading || teamRecordArchive.error) return;
+    if (app.remoteReady === false || !team?.id || !loadTeamRecords || teamRecordArchive.loaded || teamRecordArchive.loading || teamRecordArchive.error) return;
     loadTeamRecords(team.id);
-  }, [app.demoPreview, app.remoteReady, loadTeamRecords, team?.id, teamRecordArchive.error, teamRecordArchive.loaded, teamRecordArchive.loading]);
+  }, [app.remoteReady, loadTeamRecords, team?.id, teamRecordArchive.error, teamRecordArchive.loaded, teamRecordArchive.loading]);
 
   const directoryPending = app.remoteReady === false
     || teamDetailLoad.loading

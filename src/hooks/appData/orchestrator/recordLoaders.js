@@ -102,8 +102,8 @@ export function useRecordLoaders(context) {
 
   const loadPublicProfileRecords = useCallback(async (profileId, options = {}) => {
     const safeProfileId = String(profileId ?? "").trim();
-    if (!isSupabaseConfigured || !authUserId || !safeProfileId) return false;
-    if (safeProfileId === currentUserId) return loadProfileRecords(options);
+    if (!isSupabaseConfigured || !safeProfileId) return false;
+    if (authUserId && safeProfileId === currentUserId) return loadProfileRecords(options);
     const requestGeneration = authGenerationRef.current;
     const isRequestCurrent = () => requestGeneration === authGenerationRef.current;
     const currentArchive = publicProfileRecordArchivesRef.current[safeProfileId] ?? EMPTY_RECORD_ARCHIVE;
@@ -116,9 +116,9 @@ export function useRecordLoaders(context) {
     const promise = (async () => {
       try {
         const result = await trackedPostServerAction(
-          "/api/records/list",
+          authUserId ? "/api/records/list" : "/api/records/public-list",
           { authUserId, authEmail, scope: "profile", profileId: safeProfileId, detailLimit: REMOTE_CLIENT_RECORD_MATCH_LIMIT, archiveLimit: REMOTE_CLIENT_RECORD_ARCHIVE_LIMIT, includeDetail: true, includeArchive: true },
-          { allowWhenDisabled: true },
+          { allowWhenDisabled: true, allowAnonymous: !authUserId },
         );
         if (!isRequestCurrent()) return false;
         const remoteState = normalizeServerState(result?.state ?? {});
@@ -161,7 +161,7 @@ export function useRecordLoaders(context) {
 
   const loadTeamRecords = useCallback(async (teamId, options = {}) => {
     const safeTeamId = String(teamId ?? "").trim();
-    if (!isSupabaseConfigured || !authUserId || !safeTeamId) return false;
+    if (!isSupabaseConfigured || !safeTeamId) return false;
     const requestGeneration = authGenerationRef.current;
     const isRequestCurrent = () => requestGeneration === authGenerationRef.current;
     const currentArchive = teamRecordArchivesRef.current[safeTeamId] ?? EMPTY_RECORD_ARCHIVE;
@@ -184,7 +184,7 @@ export function useRecordLoaders(context) {
     const promise = (async () => {
       try {
         const result = await trackedPostServerAction(
-          "/api/records/list",
+          authUserId ? "/api/records/list" : "/api/records/public-list",
           {
             authUserId,
             authEmail,
@@ -197,7 +197,7 @@ export function useRecordLoaders(context) {
             includeDetail: !loadMoreArchive,
             includeArchive: !loadMoreDetail,
           },
-          { allowWhenDisabled: true },
+          { allowWhenDisabled: true, allowAnonymous: !authUserId },
         );
         if (!isRequestCurrent()) return false;
         const remoteState = normalizeServerState(result?.state ?? {});

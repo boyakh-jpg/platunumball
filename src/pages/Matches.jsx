@@ -1,6 +1,7 @@
 import GuestAccessNotice from "../components/auth/GuestAccessNotice.jsx";
 import useMatchesPageController from "./useMatchesPageController.jsx";
 import MatchesPageView from "./MatchesPageView.jsx";
+import { useSearchParams } from "react-router-dom";
 import "../styles/recruiting-arena.css";
 import "../styles/matches-arena.css";
 import "../styles/match-list-card.css";
@@ -13,7 +14,8 @@ function AuthenticatedMatches(props) {
 }
 
 export default function Matches(props) {
-  if (!props.app?.demoPreview) return <AuthenticatedMatches {...props} />;
+  const [searchParams] = useSearchParams();
+  if (!props.app?.demoPreview || searchParams.has("match")) return <AuthenticatedMatches {...props} />;
   return (
     <div className="page-stack">
       <GuestAccessNotice

@@ -21,6 +21,12 @@ export function isRecordKindMatch(match = {}) {
   return isPersonalRecordMatch(match) || isMatchRecordMatch(match);
 }
 
+export function isPubliclyReadableConfirmedMatch(match = {}) {
+  if (String(match?.status ?? "").trim().toLowerCase() !== "confirmed") return false;
+  if (!isPersonalRecordMatch(match)) return true;
+  return (match?.visibility ?? match?.rules?.visibility ?? "public") !== "private";
+}
+
 export function getRoomKindFromMatch(match = {}) {
   if (isPersonalRecordMatch(match)) return ROOM_KINDS.personalRecord;
   if (isMatchRecordMatch(match)) return ROOM_KINDS.matchRecord;

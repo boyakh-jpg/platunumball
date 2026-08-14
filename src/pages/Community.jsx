@@ -36,8 +36,21 @@ export default function Community({ app }) {
     }
     if (openedPostIdRef.current === linkedPostId) return;
     openedPostIdRef.current = linkedPostId;
-    void controller.openPost({ id: linkedPostId });
+    void controller.openPost({ id: linkedPostId }).then((opened) => {
+      if (!opened && openedPostIdRef.current === linkedPostId) openedPostIdRef.current = "";
+    });
   }, [linkedPostId]);
+
+  const retryLoad = () => {
+    if (!linkedPostId) {
+      void controller.retryList();
+      return;
+    }
+    openedPostIdRef.current = linkedPostId;
+    void controller.openPost({ id: linkedPostId }).then((opened) => {
+      if (!opened && openedPostIdRef.current === linkedPostId) openedPostIdRef.current = "";
+    });
+  };
 
   const closePost = () => {
     if (linkedPostId) {
@@ -99,7 +112,12 @@ export default function Community({ app }) {
             }}
           />
         ) : null}
-        {controller.error && !controller.selectedPost ? <small className="form-warning" role="status">{controller.error}</small> : null}
+        {controller.error && !controller.selectedPost ? (
+          <div className="form-warning" role="status">
+            <span>{controller.error}</span>
+            <Button type="button" variant="secondary" size="sm" onClick={retryLoad}>다시 시도</Button>
+          </div>
+        ) : null}
 
         <div className="community-post-list">
           {controller.posts.length ? (

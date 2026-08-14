@@ -36,9 +36,12 @@ import {
 } from "../server/api/admin/review-action.js";
 import { isActiveReferee } from "../server/lib/refereeEligibilityPolicy.js";
 import {
+  getPublicRosterIds,
   projectPublicRecruitingRoomState,
   resolveRequestedRecruitingResult,
 } from "../server/api/landing/stats.js";
+import { createPublicMatchState } from "../server/api/matches/detail.js";
+import { projectPublicMatch } from "../server/lib/stateVisibility.js";
 
 const root = new URL("../", import.meta.url);
 const readSource = (path) => readFile(new URL(path, root), "utf8");
@@ -225,7 +228,9 @@ test("public landing exposes aggregate counts and a roster-only public room proj
   assert.match(source, /\.select\(PUBLIC_RECRUITING_COLUMNS\)[\s\S]*?\.eq\("id", requestedPostId\)[\s\S]*?\.limit\(1\)/);
   assert.match(source, /party_reserves:room_state->partyReserves/);
   assert.doesNotMatch(source, /\.select\("[^"]*(?:^|,)room_state(?:,|$)[^"]*"\)/);
-  assert.match(source, /from\("recruiting_applications"\)[\s\S]*?\.select\("post_id,kind,team_id,player_id,side,status,reserve,position,player_ids,source_team_id,source_entry_id,created_at,updated_at"\)/);
+  assert.doesNotMatch(source, /from\("recruiting_applications"\)/);
+  assert.match(source, /request\.query\?\.recruitingRegion/);
+  assert.match(source, /\.ilike\("region", `%\$\{recruitingRegion\}%`\)/);
   assert.match(source, /Math\.min\(limit, REMOTE_CLIENT_RECRUITING_LIMIT\)/);
   assert.match(source, /select\("id,title,team_a_id,team_b_id,score_a,score_b"\)[\s\S]*?\.limit\(3\)/);
   assert.match(source, /from\("teams"\)\.select\(TEAM_COLUMNS\)/);
@@ -250,6 +255,17 @@ test("public landing exposes aggregate counts and a roster-only public room proj
     assert.equal(Object.hasOwn(publicRoomState, key), false);
   });
 
+  const rosterIds = getPublicRosterIds({
+    player_id: "host",
+    referee_id: "referee",
+    player_ids: ["starter"],
+    party_reserves: { host: ["reserve"] },
+    pinned_reserve_players: { host: ["pinned"] },
+    applications: [{ player_id: "pending" }],
+  });
+  assert.deepEqual(new Set(rosterIds), new Set(["host", "referee", "starter", "reserve", "pinned"]));
+  assert.equal(rosterIds.includes("pending"), false);
+
   assert.equal(resolveRequestedRecruitingResult("", null), null);
   assert.deepEqual(resolveRequestedRecruitingResult("room-1", null), { status: "not_found", post: null });
   assert.deepEqual(resolveRequestedRecruitingResult("room-1", { id: "room-1", visibility: "private", status: "open" }), {
@@ -265,6 +281,57 @@ test("public landing exposes aggregate counts and a roster-only public room proj
     status: "open",
     post: openRoom,
   });
+});
+
+test("public match detail projects only public match, user, and team-member fields", () => {
+  const match = projectPublicMatch({
+    id: "match-1",
+    status: "confirmed",
+    visibility: "private",
+    rules: { recordType: "normal" },
+    teamA: { teamId: "team-1", players: ["player-1"] },
+    teamB: { teamId: "team-2", players: [] },
+    scoreA: 60,
+    scoreB: 58,
+    recruitingPostId: "private-room",
+    attendance: { token: "private-attendance" },
+    parties: [{ id: "private-party" }],
+    memo: "private memo",
+    evidence: [{ key: "private" }],
+  });
+  const state = createPublicMatchState({
+    users: [{
+      id: "player-1",
+      name: "공개 선수",
+      handle: "public-player",
+      email: "private@example.com",
+      discordId: "private-discord",
+    }],
+    teams: [{
+      id: "team-1",
+      name: "공개 팀",
+      members: [{ userId: "player-1", role: "player", invitationCode: "private-code" }],
+    }],
+    matches: [{ id: "other-match" }],
+    recruitingPosts: [{ id: "private-room" }],
+    notifications: [{ id: "private-notification" }],
+  }, match);
+
+  assert.equal(match.visibility, "private");
+  assert.equal(Object.hasOwn(match, "memo"), false);
+  assert.equal(Object.hasOwn(match, "evidence"), false);
+  assert.equal(Object.hasOwn(match, "recruitingPostId"), false);
+  assert.equal(Object.hasOwn(match, "attendance"), false);
+  assert.equal(Object.hasOwn(match, "parties"), false);
+  assert.equal(Object.hasOwn(match, "scoreA"), false);
+  assert.equal(Object.hasOwn(match, "scoreB"), false);
+  assert.deepEqual(state.matches, [match]);
+  assert.equal(state.users[0].name, "공개 선수");
+  assert.equal(Object.hasOwn(state.users[0], "email"), false);
+  assert.equal(Object.hasOwn(state.users[0], "discordId"), false);
+  assert.deepEqual(state.teams[0].members, [{ userId: "player-1", role: "player" }]);
+  assert.deepEqual(state.recruitingPosts, []);
+  assert.deepEqual(state.notifications, []);
 });
 
 test("Discord delivery cron uses Vault and stays separate from system maintenance", async () => {

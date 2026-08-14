@@ -127,13 +127,15 @@ test("instant and rescheduled records use the actual played date", () => {
   }), "2026-07-18");
 });
 
-test("team record visibility keeps public rows readable and private rows scoped", () => {
+test("team records expose confirmed matches and scope only private personal rows", () => {
   assert.equal(canReadTeamRecord({ visibility: "public", team_id: "team-a" }, "viewer", new Set()), true);
-  assert.equal(canReadTeamRecord({ visibility: "private", team_id: "team-a", reader_ids: [] }, "viewer", new Set()), false);
-  assert.equal(canReadTeamRecord({ visibility: "private", team_id: "team-a", reader_ids: ["viewer"] }, "viewer", new Set()), true);
-  assert.equal(canReadTeamRecord({ visibility: "private", team_id: "team-a", reader_ids: [] }, "viewer", new Set(["team-a"])), true);
-  assert.equal(canReadTeamRecord({ visibility: "private", team_id: "team-a", opponent_team_id: "team-b", reader_ids: [] }, "viewer", new Set(["team-b"])), true);
-  assert.equal(canReadTeamRecord({ visibility: "private", team_id: "team-a", reader_ids: [] }, "viewer", new Set(), true), true);
+  assert.equal(canReadTeamRecord({ visibility: "private", team_id: "team-a", reader_ids: [] }, "viewer", new Set()), true);
+  const privatePersonal = { record_type: "personal_record", visibility: "private", team_id: "team-a", reader_ids: [] };
+  assert.equal(canReadTeamRecord(privatePersonal, "viewer", new Set()), false);
+  assert.equal(canReadTeamRecord({ ...privatePersonal, reader_ids: ["viewer"] }, "viewer", new Set()), true);
+  assert.equal(canReadTeamRecord(privatePersonal, "viewer", new Set(["team-a"])), true);
+  assert.equal(canReadTeamRecord({ ...privatePersonal, opponent_team_id: "team-b" }, "viewer", new Set(["team-b"])), true);
+  assert.equal(canReadTeamRecord(privatePersonal, "viewer", new Set(), true), true);
 });
 
 test("profile records expose public rows and only owned personal rows to other users", () => {
@@ -144,7 +146,7 @@ test("profile records expose public rows and only owned personal rows to other u
   assert.equal(canReadProfileRecord({ ...publicPersonal, visibility: "private", owner_profile_id: "other" }, "owner", "owner"), false);
   assert.equal(canReadProfileRecord({ ...publicPersonal, record_type: "match" }, "owner", "owner"), true);
   assert.equal(canReadProfileRecord({ ...publicPersonal, record_type: "match" }, "viewer", "owner"), true);
-  assert.equal(canReadProfileRecord({ ...publicPersonal, record_type: "match", visibility: "private" }, "viewer", "owner"), false);
+  assert.equal(canReadProfileRecord({ ...publicPersonal, record_type: "match", visibility: "private" }, "viewer", "owner"), true);
   assert.equal(canReadProfileRecord({ ...publicPersonal, owner_profile_id: "other" }, "viewer", "owner"), false);
 });
 
@@ -298,7 +300,7 @@ test("profile and team records use the dedicated archive-backed API", async () =
   assert.doesNotMatch(profileSource, /날짜별 기록 수|const dateRows/);
   assert.match(apiSource, /publicSummary/);
   assert.match(apiSource, /publicProfileOnly/);
-  assert.match(apiSource, /query = query\.eq\("visibility", "public"\)/);
+  assert.match(apiSource, /canReadProfileRecord/);
   assert.match(apiSource, /\.select\(`\$\{PROFILE_CARD_COLUMNS\},app_settings`\)/);
   assert.match(apiSource, /privacy:\s*toPublicProfilePrivacy\(row\.app_settings\)/);
   assert.match(apiSource, /profilePrivacy\?\.statSummary === true/);

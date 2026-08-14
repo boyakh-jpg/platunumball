@@ -151,23 +151,25 @@ export default function useCommunityController(app) {
       setLocalPosts((current) => current.map((item) => item.id === post.id ? nextPost : item));
       setSelectedPost(nextPost);
       setComments(localComments.filter((comment) => comment.postId === post.id));
-      return;
+      return true;
     }
     setDetailLoading(true);
     try {
       const result = await communityAction("detail", { postId: post.id });
       if (!result || result.ok === false) throw new Error(result?.error || "community_detail_failed");
-      if (!isLatestRequest(detailRequestRef.current, requestId)) return;
+      if (!isLatestRequest(detailRequestRef.current, requestId)) return false;
       setRemotePosts((current) => current.map((item) => item.id === post.id ? { ...item, ...result.post } : item));
       setRemotePopularPosts((current) => current.map((item) => item.id === post.id ? { ...item, ...result.post } : item));
       setSelectedPost(result.post);
       setComments(result.comments ?? []);
       setCanModerate(result.canModerate === true);
+      return true;
     } catch (detailError) {
       if (isLatestRequest(detailRequestRef.current, requestId)) {
         setError(getCommunityErrorMessage(detailError.message));
         setSelectedPost(null);
       }
+      return false;
     } finally {
       if (isLatestRequest(detailRequestRef.current, requestId)) setDetailLoading(false);
     }
@@ -329,6 +331,7 @@ export default function useCommunityController(app) {
     canWriteCategory: !app.demoPreview && (canModerate || !COMMUNITY_POST_ADMIN_CATEGORIES.includes(category)),
     loading, detailLoading, pending, error, setError,
     requireLogin,
+    retryList: () => loadPosts(pageIndex),
     openPost, closePost,
     goToPage: (targetPage) => {
       const maxPage = Math.max(0, Math.ceil(currentPage.total / COMMUNITY_PAGE_SIZE) - 1);

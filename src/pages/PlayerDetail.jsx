@@ -83,9 +83,9 @@ export default function PlayerDetail({ app }) {
     return () => { cancelled = true; };
   }, [app.remoteReady, loadDirectory, playerId, profileLoadAttempt]);
   useEffect(() => {
-    if (app.demoPreview || !app.remoteReady || !playerId || !loadPublicProfileRecords) return;
+    if (!app.remoteReady || !playerId || !loadPublicProfileRecords) return;
     void loadPublicProfileRecords(playerId);
-  }, [app.demoPreview, app.remoteReady, loadPublicProfileRecords, playerId]);
+  }, [app.remoteReady, loadPublicProfileRecords, playerId]);
   const previewPlayer = location.state?.playerPreview?.id === playerId
     ? location.state.playerPreview
     : null;

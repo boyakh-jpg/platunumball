@@ -87,7 +87,8 @@ export function canReadProfileRecord(row = {}, viewerProfileId = "", subjectId =
   const personalRecord = ["solo", "personal_record"].includes(String(row.record_type ?? "").trim().toLowerCase());
   const ownsProfile = Boolean(viewerProfileId && viewerProfileId === subjectId);
   if (personalRecord && row.owner_profile_id !== subjectId) return false;
-  return ownsProfile || (row.visibility ?? "private") === "public";
+  if (ownsProfile) return true;
+  return personalRecord ? (row.visibility ?? "private") === "public" : true;
 }
 
 export function mapPersonalRecordMetrics(row = {}, prefix = "") {
@@ -153,6 +154,8 @@ export function mapPersonalRecordSummary(row = {}, publicOnly = false) {
 
 export function canReadTeamRecord(row = {}, profileId = "", viewerTeamIds = new Set(), isAdmin = false) {
   if (isAdmin) return true;
+  const personalRecord = ["solo", "personal_record"].includes(String(row.record_type ?? "").trim().toLowerCase());
+  if (!personalRecord) return true;
   if ((row.visibility ?? "public") !== "private") return true;
   if (viewerTeamIds.has(row.team_id) || viewerTeamIds.has(row.opponent_team_id)) return true;
   return asArray(row.reader_ids).includes(profileId);

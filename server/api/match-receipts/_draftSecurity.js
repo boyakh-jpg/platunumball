@@ -144,6 +144,10 @@ export function projectPublicReceiptDraft(value = {}, options = {}) {
     : publicDraft;
 }
 
+export function createReceiptClonePayload(value = {}) {
+  return sanitizeReceiptDraftPayload(projectPublicReceiptDraft(value));
+}
+
 export function createCanonicalReceiptSerialSeed(matchId, secret = process.env.MATCH_RECEIPT_SERIAL_SALT || process.env.SUPABASE_SERVICE_ROLE_KEY) {
   if (!matchId || !secret) throw new Error("receipt_serial_seed_unavailable");
   return `canonical:${createHmac("sha256", String(secret)).update(String(matchId)).digest("hex").slice(0, 32)}`;

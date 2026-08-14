@@ -5,6 +5,7 @@ import { collectUniqueRoomFeedCards, readRoomFeedCard } from "../../lib/roomFeed
 import { getReadableMatchStatRows, getReadableMatchStatSubmissions, getRemoteMatchActivePlayerIds, getRemoteMatchPlayerTeams, normalizeMatchParties } from "../../../shared/lib/matchMappers.js";
 import { MATCH_SIDE_FALLBACK_NAMES, normalizeDisputeWindowMinutes } from "../../../shared/lib/constants.js";
 import { getMatchRoomPhase, isMatchClosedNotice, isMatchInScheduleMenu, isMatchRecordMatch, isPersonalRecordMatch, isSeedSampleMatch } from "../../../shared/lib/matchUtils.js";
+import { isPubliclyReadableConfirmedMatch } from "../../../shared/lib/matchRecordTypes.js";
 
 const ACTIVE_MATCH_EXCLUDED_PHASES = new Set(["record"]);
 
@@ -189,6 +190,7 @@ export function getMatchRowActorIds(row = {}, players = []) {
 
 export function canReadMatchRow(row = {}, players = [], profileId = "", isAdmin = false) {
   if (isAdmin) return true;
+  if (isPubliclyReadableConfirmedMatch(row)) return true;
   if ((row.visibility ?? row.rules?.visibility ?? "public") !== "private") return true;
   if (["solo", "personal_record"].includes(String(row.rules?.recordType ?? "").trim().toLowerCase())) return row.created_by === profileId;
   return getMatchRowActorIds(row, players).includes(profileId);

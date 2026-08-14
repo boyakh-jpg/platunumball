@@ -6,7 +6,7 @@ import { RecruitingRoomLoadFailedView } from "./RecruitingRoomStatusViews.jsx";
 export { RecruitingRoomLoadFailedView } from "./RecruitingRoomStatusViews.jsx";
 
 export function RecruitingRoomModal(props) {
-  if (!props.app?.currentUser?.id) {
+  if (!props.app?.currentUser?.id && !props.sourceMatch) {
     return null;
   }
   return (

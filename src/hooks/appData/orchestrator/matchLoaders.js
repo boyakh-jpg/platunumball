@@ -220,8 +220,9 @@ export function useMatchLoaders(context) {
   }, [authEmail, authUserId, setState, trackedPostServerAction]);
 
   const loadMatchDetail = useCallback(async (matchId) => {
-    if (!isSupabaseConfigured || !authUserId || !matchId) return false;
+    if (!isSupabaseConfigured || !matchId) return false;
     const safeMatchId = String(matchId);
+    const anonymous = !authUserId;
     const currentPromise = matchDetailPromiseRef.current.get(safeMatchId);
     if (currentPromise) return currentPromise;
     const promise = (async () => {
@@ -229,9 +230,9 @@ export function useMatchLoaders(context) {
       const roomMutationPending = pendingMatchIdsRef.current.size > 0 || pendingRecruitingPostIdsRef.current.size > 0;
       try {
         const result = await trackedPostServerAction(
-          "/api/matches/detail",
-          { authUserId, authEmail, matchId: safeMatchId },
-          { allowWhenDisabled: true },
+          anonymous ? "/api/matches/public-detail" : "/api/matches/detail",
+          anonymous ? { matchId: safeMatchId } : { authUserId, authEmail, matchId: safeMatchId },
+          { allowWhenDisabled: true, allowAnonymous: anonymous },
         );
         const preserveCurrentRoomState = roomMutationPending || roomMutationVersion !== roomMutationVersionRef.current;
         const remoteState = normalizeServerState(filterPendingMatches(result?.state ?? {}, pendingMatchIdsRef.current, recentMatchMutationTimesRef.current));

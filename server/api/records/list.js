@@ -3,6 +3,7 @@ import {
   flattenIdValues,
   getAdminLevel,
   getAuthenticatedContext,
+  getSupabaseAdminClient,
   readJsonBody,
   sendJson,
   toClientTeamWithMembers as toClientTeam,
@@ -12,7 +13,7 @@ import { normalizeState } from "../../../shared/lib/stateNormalizer.js";
 import { fromRemoteMatch } from "../../../shared/lib/matchMappers.js";
 import { createProfileShell, fromRemoteProfile, getRemoteAppSettings } from "../../../shared/lib/profileMappers.js";
 import { DEFAULT_SETTINGS } from "../../../shared/lib/repositoryDefaults.js";
-import { filterStateForProfile } from "../../lib/stateVisibility.js";
+import { filterStateForProfile, projectPublicMatch, projectPublicUser } from "../../lib/stateVisibility.js";
 import {
   PROFILE_CARD_COLUMNS,
   PROFILE_ME_COLUMNS,
@@ -111,7 +112,10 @@ function buildArchiveMatchState(context, archiveRows = [], profileRows = [], vie
   }));
   const currentUser = context.profile
     ? fromRemoteProfile(context.profile)
-    : createProfileShell(context.authUserId, context.authUser?.email ?? "");
+    : createProfileShell(
+        context.authUserId || "__public_record_viewer__",
+        context.authUser?.email ?? "",
+      );
   const userById = new Map(users.map((user) => [user.id, user]));
   userById.set(currentUser.id, { ...(userById.get(currentUser.id) ?? {}), ...currentUser });
   const teams = Object.values(teamById).map((teamRow) => ({
@@ -148,11 +152,7 @@ async function loadSubjectRows(client, options) {
   const subjectColumn = options.scope === RECORD_SCOPE_TEAM ? "team_id" : "profile_id";
   const columns = options.scope === RECORD_SCOPE_TEAM ? TEAM_RECORD_INDEX_COLUMNS : PROFILE_RECORD_INDEX_COLUMNS;
   const base = () => {
-    let query = client.from(table).select(columns).eq(subjectColumn, options.subjectId);
-    if (options.publicProfileOnly) {
-      query = query.eq("visibility", "public");
-    }
-    return query
+    return client.from(table).select(columns).eq(subjectColumn, options.subjectId)
       .order("record_date", { ascending: false })
       .order("occurred_at", { ascending: false })
       .order("match_id", { ascending: false });
@@ -268,7 +268,10 @@ async function loadProfileRows(client, archiveRows = []) {
   return rows;
 }
 
-export default async function handler(request, response) {
+export async function handleRecordList(request, response, {
+  publicRead = false,
+  authenticatedContext = null,
+} = {}) {
   if (!allowRequestMethod(request, response)) return;
 
   try {
@@ -278,10 +281,18 @@ export default async function handler(request, response) {
       sendJson(response, 400, { error: "record_scope_invalid" });
       return;
     }
-    const context = await getAuthenticatedContext(request, {
-      allowMissingProfile: true,
-      profileSelect: PROFILE_ME_COLUMNS,
-    });
+    const context = publicRead
+      ? {
+        supabase: getSupabaseAdminClient(),
+        authUserId: "",
+        authUser: null,
+        profileId: "",
+        profile: null,
+      }
+      : authenticatedContext ?? await getAuthenticatedContext(request, {
+        allowMissingProfile: true,
+        profileSelect: PROFILE_ME_COLUMNS,
+      });
     const subjectId = scope === RECORD_SCOPE_TEAM
       ? String(body.teamId ?? "").trim()
       : String(body.profileId ?? context.profileId ?? "").trim();
@@ -289,7 +300,7 @@ export default async function handler(request, response) {
       sendJson(response, 400, { error: scope === RECORD_SCOPE_TEAM ? "team_id_required" : "profile_required" });
       return;
     }
-    const publicProfileOnly = scope === RECORD_SCOPE_PROFILE && subjectId !== context.profileId;
+    const publicProjection = publicRead || (scope === RECORD_SCOPE_PROFILE && subjectId !== context.profileId);
     let subjectProfileRow = null;
     if (scope === RECORD_SCOPE_PROFILE) {
       const { data: profileRow, error: profileError } = await context.supabase
@@ -345,7 +356,7 @@ export default async function handler(request, response) {
       archiveOffset,
       includeDetail,
       includeArchive,
-      publicProfileOnly,
+      publicProfileOnly: publicProjection,
     });
     const readableRecentRows = scope === RECORD_SCOPE_TEAM
       ? subjectRows.recentRows.filter((row) => canReadTeamRecord(row, context.profileId, viewerTeamIds, isAdmin))
@@ -366,19 +377,26 @@ export default async function handler(request, response) {
       : null;
     const rawState = buildArchiveMatchState(context, archivePayloads, profileRows, viewerTeamIds);
     const readableState = filterStateForProfile(rawState, context.profileId, isAdmin);
-    const state = publicProfileOnly
-      ? limitPublicProfileStats(readableState, subjectId, profilePrivacy?.statSummary === true)
+    const projectedState = publicProjection
+      ? {
+        ...readableState,
+        users: (readableState.users ?? []).map(projectPublicUser),
+        matches: (readableState.matches ?? []).map(projectPublicMatch).filter(Boolean),
+      }
       : readableState;
+    const state = publicProjection && scope === RECORD_SCOPE_PROFILE
+      ? limitPublicProfileStats(projectedState, subjectId, profilePrivacy?.statSummary === true)
+      : projectedState;
     const archiveRecords = readableArchiveRows.map((row) => {
       const record = mapCompactRecord(row);
-      return publicProfileOnly && profilePrivacy?.statSummary !== true
+      return publicProjection && scope === RECORD_SCOPE_PROFILE && profilePrivacy?.statSummary !== true
         ? { ...record, stats: {} }
         : record;
     });
     const rawPersonalSummary = scope === RECORD_SCOPE_PROFILE
-      ? await loadPersonalRecordSummary(context.supabase, subjectId, publicProfileOnly)
+      ? await loadPersonalRecordSummary(context.supabase, subjectId, publicProjection)
       : null;
-    const personalSummary = publicProfileOnly
+    const personalSummary = publicProjection
       ? limitPublicPersonalSummary(rawPersonalSummary, profilePrivacy?.statSummary === true)
       : rawPersonalSummary;
 
@@ -395,6 +413,7 @@ export default async function handler(request, response) {
       },
       state: {
         ...state,
+        users: (state.users ?? []).filter((user) => user?.id !== "__public_record_viewer__"),
         teams: [],
         recruitingPosts: [],
         tournaments: [],
@@ -415,6 +434,18 @@ export default async function handler(request, response) {
         archiveOffset,
       }),
     });
+  } catch (error) {
+    sendJson(response, error.statusCode || 500, { error: error.message || "record_list_failed" });
+  }
+}
+
+export default async function handler(request, response) {
+  try {
+    const authenticatedContext = await getAuthenticatedContext(request, {
+      allowMissingProfile: true,
+      profileSelect: PROFILE_ME_COLUMNS,
+    });
+    return handleRecordList(request, response, { authenticatedContext });
   } catch (error) {
     sendJson(response, error.statusCode || 500, { error: error.message || "record_list_failed" });
   }

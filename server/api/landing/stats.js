@@ -35,6 +35,16 @@ function getRequestedRecruitingPostId(request) {
   return postId && postId.length <= 128 ? postId : "";
 }
 
+function getRecruitingRegion(request) {
+  const rawRegion = Array.isArray(request.query?.recruitingRegion)
+    ? request.query.recruitingRegion[0]
+    : request.query?.recruitingRegion;
+  const region = typeof rawRegion === "string"
+    ? rawRegion.trim().replace(/[%_,]/g, "")
+    : "";
+  return region && region.length <= 40 ? region : "";
+}
+
 export function resolveRequestedRecruitingResult(requestedPostId, row = null, post = null) {
   if (!requestedPostId) return null;
   if (!row) return { status: "not_found", post: null };
@@ -110,23 +120,21 @@ function getRowPublicRoomState(row = {}) {
   };
 }
 
-function getPublicRosterIds(row = {}, applications = []) {
+export function getPublicRosterIds(row = {}) {
   const roomState = projectPublicRecruitingRoomState(getRowPublicRoomState(row), row.player_id);
   return [...new Set([
     row.player_id,
     row.referee_id,
     ...stringArray(row.player_ids),
-    ...applications.flatMap((application) => [application.player_id, ...stringArray(application.player_ids)]),
     ...Object.values(roomState.partyReserves).flat(),
     ...Object.values(roomState.pinnedReservePlayers).flat(),
   ].filter(Boolean))];
 }
 
-function getPublicRosterTeamIds(row = {}, applications = []) {
+function getPublicRosterTeamIds(row = {}) {
   return [...new Set([
     row.team_id,
     row.target_team_id,
-    ...applications.flatMap((application) => [application.team_id, application.source_team_id]),
   ].filter(Boolean))];
 }
 
@@ -171,17 +179,17 @@ export async function loadLandingStats(supabase) {
   return { openRecruiting, completedMatches, activeTeams, players };
 }
 
-export async function loadLandingFeed(supabase, recruitingLimit = LANDING_RECRUITING_LIMIT, requestedPostId = "") {
+export async function loadLandingFeed(supabase, recruitingLimit = LANDING_RECRUITING_LIMIT, requestedPostId = "", recruitingRegion = "") {
+  let recruitingQuery = supabase
+    .from("recruiting_posts")
+    .select(PUBLIC_RECRUITING_COLUMNS)
+    .eq("status", "open")
+    .eq("visibility", "public")
+    .order("updated_at", { ascending: false })
+    .limit(recruitingLimit);
+  if (recruitingRegion) recruitingQuery = recruitingQuery.ilike("region", `%${recruitingRegion}%`);
   const [recruitingRows, matchRows, requestedRows] = await Promise.all([
-    readRows(
-      supabase
-        .from("recruiting_posts")
-        .select(PUBLIC_RECRUITING_COLUMNS)
-        .eq("status", "open")
-        .eq("visibility", "public")
-        .order("updated_at", { ascending: false })
-        .limit(recruitingLimit),
-    ),
+    readRows(recruitingQuery),
     readRows(
       supabase
         .from("matches")
@@ -206,26 +214,13 @@ export async function loadLandingFeed(supabase, recruitingLimit = LANDING_RECRUI
   const publicRecruitingRows = requestedPublicRow && !recruitingRows.some((row) => row.id === requestedPublicRow.id)
     ? [...recruitingRows, requestedPublicRow]
     : recruitingRows;
-  const postIds = publicRecruitingRows.map((row) => row.id).filter(Boolean);
-  const applicationRows = postIds.length
-    ? await readRows(supabase
-      .from("recruiting_applications")
-      .select("post_id,kind,team_id,player_id,side,status,reserve,position,player_ids,source_team_id,source_entry_id,created_at,updated_at")
-      .in("post_id", postIds))
-    : [];
-  const applicationsByPost = applicationRows.reduce((map, application) => {
-    const list = map.get(application.post_id) ?? [];
-    list.push(application);
-    map.set(application.post_id, list);
-    return map;
-  }, new Map());
   const rosterIdsByPost = new Map(publicRecruitingRows.map((row) => [
     row.id,
-    getPublicRosterIds(row, applicationsByPost.get(row.id) ?? []),
+    getPublicRosterIds(row),
   ]));
   const rosterTeamIdsByPost = new Map(publicRecruitingRows.map((row) => [
     row.id,
-    getPublicRosterTeamIds(row, applicationsByPost.get(row.id) ?? []),
+    getPublicRosterTeamIds(row),
   ]));
   const profileIds = [...new Set([...rosterIdsByPost.values()].flat())];
   const teamIds = [...new Set([
@@ -249,7 +244,7 @@ export async function loadLandingFeed(supabase, recruitingLimit = LANDING_RECRUI
         ...row,
         status: "open",
         room_state: projectPublicRecruitingRoomState(getRowPublicRoomState(row), row.player_id),
-      }, { applicationsByPost }),
+      }),
       publicParticipants: rosterIds.map((id) => publicProfileById.get(id)).filter(Boolean),
       publicTeams: rosterTeamIds.map((id) => publicTeamById.get(id)).filter(Boolean),
     };
@@ -277,7 +272,12 @@ export default async function handler(request, response) {
     const supabase = getSupabaseAdminClient();
     const [stats, feed] = await Promise.all([
       loadLandingStats(supabase),
-      loadLandingFeed(supabase, getRecruitingLimit(request), getRequestedRecruitingPostId(request)),
+      loadLandingFeed(
+        supabase,
+        getRecruitingLimit(request),
+        getRequestedRecruitingPostId(request),
+        getRecruitingRegion(request),
+      ),
     ]);
     sendJson(response, 200, { ok: true, stats, feed });
   } catch (error) {
