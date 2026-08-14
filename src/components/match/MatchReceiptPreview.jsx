@@ -30,6 +30,7 @@ export default function MatchReceiptPreview({
   photoUrl = "",
   matchUrl = "",
   publicId = "",
+  showPersonalTierIdentity = true,
   photoGestureHandlers = {},
   teamLineArtUrls = EMPTY_TEAM_LINE_ART_URLS,
 }) {
@@ -55,7 +56,7 @@ export default function MatchReceiptPreview({
     };
   }, [photoUrl]);
 
-  const model = createMatchReceiptViewModel(draft, { matchUrl, publicId });
+  const model = createMatchReceiptViewModel(draft, { matchUrl, publicId, showPersonalTierIdentity });
   useEffect(() => {
     let active = true;
     Promise.all([

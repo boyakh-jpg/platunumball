@@ -275,6 +275,9 @@ test("receipt view model uses compact game labels, venue fallback, and a safe ha
   assert.equal(identifiedTier.showPersonalTierIdentity, true);
   assert.equal(identifiedTier.profileHashtag, "#1234567");
   assert.equal(Boolean(identifiedTier.personalTier), true);
+  assert.equal(createMatchReceiptViewModel(identifiedTier, {
+    showPersonalTierIdentity: false,
+  }).showPersonalTierIdentity, false);
 });
 
 test("receipt optional details and team line art stay user controlled", () => {
@@ -525,6 +528,11 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(page, /clonePublicId: requestedPublicDraftId/);
   assert.match(page, /requestedDraftCanClaim/);
   assert.match(page, /draftRevisionRef/);
+  assert.match(page, /publicDraftLoadedRevisionRef/);
+  assert.match(page, /const publicDraftHasLocalEdits = Boolean/);
+  assert.match(page, /return Boolean\(canonicalMatchId && CANONICAL_RECEIPT_FIELDS\.has\(name\)\)/);
+  assert.doesNotMatch(page, /return Boolean\(requestedPublicDraftId \|\|/);
+  assert.doesNotMatch(page, /publicDraftId && !requestedPublicDraftId/);
   assert.match(page, /receipt_draft_stale/);
   assert.doesNotMatch(page, /state:\s*\{\s*receiptDraft: getMatchReceiptCreateDraft\(draft\)/);
   assert.match(preview, /match-receipt-photo-backdrop/);
@@ -585,15 +593,15 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(styles, /font-size: clamp\(7px, 2\.1cqw, 10px\)/);
   assert.match(styles, /height: 19\.9%/);
   assert.match(styles, /\.match-receipt-team-tier\.is-neutral[\s\S]*opacity: 0\.76/);
-  assert.match(styles, /\.match-receipt-personal-tier[\s\S]*opacity: 0\.64/);
+  assert.match(styles, /\.match-receipt-personal-tier[\s\S]*width: 92%[\s\S]*opacity: 0\.64/);
   assert.match(styles, /\.match-receipt-ticket-qr \.match-receipt-qr[\s\S]*width: 94%[\s\S]*max-height: 94%/);
   assert.match(styles, /\.match-receipt-game-info b\s*\{[^}]*font-family: "Bebas Neue"/);
-  assert.match(styles, /\.match-receipt-ticket-game > \.match-receipt-ticket-caption\s*\{[^}]*padding-top: 2%;[^}]*font-size: clamp\(8px, 2\.5cqw, 12px\)/);
+  assert.match(styles, /\.match-receipt-ticket-game > \.match-receipt-ticket-caption\s*\{[^}]*padding-top: 5%;[^}]*font-size: clamp\(8px, 2\.5cqw, 12px\)/);
   assert.doesNotMatch(styles, /\.match-receipt-ticket-game > \.match-receipt-ticket-caption\s*\{[^}]*margin-top:\s*auto/);
   assert.match(styles, /--receipt-ticket-divider-y:\s*58%/);
   assert.match(styles, /\.match-receipt-ticket-date[\s\S]*top:\s*var\(--receipt-ticket-divider-y\)/);
   assert.match(styles, /\.match-receipt-ticket-game > \.match-receipt-ticket-caption[\s\S]*top:\s*var\(--receipt-ticket-divider-y\)/);
-  assert.match(styles, /\.match-receipt-personal-tier-label[\s\S]*top:\s*72%/);
+  assert.match(styles, /\.match-receipt-personal-tier-label[\s\S]*top:\s*78%/);
   assert.match(styles, /\.match-receipt-team-fields fieldset[\s\S]*background: var\(--surface-2\)[\s\S]*border: 0;/);
   assert.match(styles, /\.match-receipt-photo-tools[\s\S]*grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/);
   assert.match(detailStyles, /input\[type="date"\][\s\S]*min-inline-size: 0[\s\S]*max-inline-size: 100%/);
@@ -637,8 +645,9 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(renderer, /const footerRightX = compact \? 850 : 862/);
   assert.match(renderer, /drawCanvasMapPin\(ctx, footerLeftX/);
   assert.match(renderer, /const qrSize = compact \? 216 : 270/);
-  assert.match(renderer, /const footerCommentOffset = footerMiddleDividerOffset \+ \(compact \? 14 : 18\)/);
-  assert.match(renderer, /const footerTierLabelOffset = compact \? 163 : 216/);
+  assert.match(renderer, /const footerCommentOffset = footerMiddleDividerOffset \+ \(compact \? 24 : 30\)/);
+  assert.match(renderer, /const footerTierLabelOffset = compact \? 184 : 246/);
+  assert.match(renderer, /const tierSize = compact \? 150 : 192/);
   assert.match(renderer, /ctx\.moveTo\(footerMiddleX, footerY \+ \(compact \? 30 : 70\)\)/);
   assert.match(renderer, /createCanvasPaperPattern/);
   assert.match(renderer, /drawCanvasPaperGrain/);

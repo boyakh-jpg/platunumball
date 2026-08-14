@@ -561,7 +561,8 @@ export function createMatchReceiptViewModel(value, options = {}) {
   const hasPersonalStats = draft.personalStatsEligible
     && (draft.personalPoints !== null || draft.personalRebounds !== null);
   const personalTier = getTierVisual(draft.personalMmr);
-  const showPersonalTierIdentity = Boolean(personalTier && draft.profileHashtag);
+  const showPersonalTierIdentity = options.showPersonalTierIdentity !== false
+    && Boolean(personalTier && draft.profileHashtag);
   return {
     ...draft,
     outcome: getMatchReceiptOutcome(draft),
@@ -1122,8 +1123,8 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
   const footerMiddleX = compact ? 540 : 558;
   const footerRightX = compact ? 850 : 862;
   const footerMiddleDividerOffset = compact ? 126 : 177;
-  const footerCommentOffset = footerMiddleDividerOffset + (compact ? 14 : 18);
-  const footerTierLabelOffset = compact ? 163 : 216;
+  const footerCommentOffset = footerMiddleDividerOffset + (compact ? 24 : 30);
+  const footerTierLabelOffset = compact ? 184 : 246;
 
   ctx.strokeStyle = "rgba(195,74,37,.7)";
   ctx.lineWidth = 2;
@@ -1153,7 +1154,7 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
   ctx.fillText(model.playedOn.replaceAll("-", "."), footerLeftX, footerY + (compact ? 174 : 244));
 
   if (personalTier) {
-    const tierSize = compact ? 134 : 172;
+    const tierSize = compact ? 150 : 192;
     ctx.save();
     ctx.globalAlpha = 0.64;
     ctx.drawImage(personalTier, footerMiddleX - tierSize / 2, footerY - 16, tierSize, tierSize);

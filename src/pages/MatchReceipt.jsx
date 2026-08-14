@@ -163,6 +163,7 @@ export default function MatchReceipt({ auth, app }) {
   const publicDraftSerialSeedRef = useRef("");
   const canonicalSnapshotCreatedRef = useRef("");
   const draftRevisionRef = useRef(0);
+  const publicDraftLoadedRevisionRef = useRef(0);
   photoTransformRef.current = {
     photoX: draft.photoX,
     photoY: draft.photoY,
@@ -191,7 +192,7 @@ export default function MatchReceipt({ auth, app }) {
   const canonicalAwayTeamMmr = getCanonicalTeamMmr(canonicalAwayTeam);
   const currentUserId = app?.currentUser?.id ?? "";
   const currentUserMmr = Number(app?.currentUser?.ratings?.integrated);
-  const canShowCurrentUserIdentity = Boolean(currentUserId && !requestedPublicDraftId);
+  const canShowCurrentUserIdentity = Boolean(auth?.session && currentUserId && !requestedPublicDraftId);
   const personalMmr = canShowCurrentUserIdentity && Number.isFinite(currentUserMmr) ? currentUserMmr : null;
   const profileHashtag = canShowCurrentUserIdentity && app?.currentUser
     ? getUserHashtag(app.currentUser)
@@ -286,6 +287,7 @@ export default function MatchReceipt({ auth, app }) {
       .then((result) => {
         if (!active) return;
         publicDraftSerialSeedRef.current = result.draft?.serialSeed ?? "";
+        publicDraftLoadedRevisionRef.current = draftRevisionRef.current;
         setDraft(normalizeMatchReceiptDraft(result.draft));
         setGenerated(true);
         setRequestedDraftCanClaim(Boolean(result.canClaim));
@@ -373,7 +375,7 @@ export default function MatchReceipt({ auth, app }) {
       }
       : normalizeMatchReceiptDraft({ ...current, [name]: value }));
     draftRevisionRef.current += 1;
-    if (publicDraftId && !requestedPublicDraftId) {
+    if (publicDraftId) {
       setPublicDraftId("");
     }
     publicDraftRequestRef.current = null;
@@ -391,7 +393,7 @@ export default function MatchReceipt({ auth, app }) {
     setSelectedCourtId(String(court.id ?? ""));
     setDraft((current) => normalizeMatchReceiptDraft({ ...current, venue, address, originalAddress }));
     draftRevisionRef.current += 1;
-    if (publicDraftId && !requestedPublicDraftId) {
+    if (publicDraftId) {
       setPublicDraftId("");
     }
     publicDraftRequestRef.current = null;
@@ -402,7 +404,7 @@ export default function MatchReceipt({ auth, app }) {
   }
 
   function isFieldReadOnly(name) {
-    return Boolean(requestedPublicDraftId || (canonicalMatchId && CANONICAL_RECEIPT_FIELDS.has(name)));
+    return Boolean(canonicalMatchId && CANONICAL_RECEIPT_FIELDS.has(name));
   }
 
   async function handlePhotoChange(event) {
@@ -672,15 +674,22 @@ export default function MatchReceipt({ auth, app }) {
   }
 
   async function ensurePublicDraft(value = draft, { forClaim = false } = {}) {
+    const publicDraftHasLocalEdits = Boolean(
+      requestedPublicDraftId
+      && draftRevisionRef.current !== publicDraftLoadedRevisionRef.current,
+    );
     if (publicDraftId) return publicDraftId;
-    if (requestedPublicDraftId && (!forClaim || requestedDraftCanClaim)) return requestedPublicDraftId;
+    if (requestedPublicDraftId && !publicDraftHasLocalEdits
+      && (!forClaim || requestedDraftCanClaim)) return requestedPublicDraftId;
     if (publicDraftRequestRef.current) return publicDraftRequestRef.current;
 
     const requestRevision = draftRevisionRef.current;
     const request = postServerAction("/api/match-receipts/draft", {
       draft: value,
       ...(canonicalMatchId ? { sourceMatchId: canonicalMatchId } : {}),
-      ...(requestedPublicDraftId ? { clonePublicId: requestedPublicDraftId } : {}),
+      ...(requestedPublicDraftId && !publicDraftHasLocalEdits
+        ? { clonePublicId: requestedPublicDraftId }
+        : {}),
     }, {
       allowAnonymous: !canonicalMatchId,
       allowWhenDisabled: true,
@@ -761,6 +770,7 @@ export default function MatchReceipt({ auth, app }) {
       matchUrl: publicMatchUrl,
       photoBlob,
       teamLineArtUrls: selectedTeamLineArtUrls,
+      showPersonalTierIdentity: canShowCurrentUserIdentity,
     });
   }
 
@@ -1001,6 +1011,7 @@ export default function MatchReceipt({ auth, app }) {
               photoUrl={photoUrl}
               matchUrl={matchUrl}
               publicId={receiptPublicId}
+              showPersonalTierIdentity={canShowCurrentUserIdentity}
               teamLineArtUrls={selectedTeamLineArtUrls}
               photoGestureHandlers={{
                 onPointerDown: beginPhotoGesture,
