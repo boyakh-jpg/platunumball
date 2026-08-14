@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Copy, Download, House, ImagePlus, MapPin, RotateCcw, Share2, Trash2 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import Button from "../components/common/Button.jsx";
+import EmblemCropEditor from "../components/common/EmblemCropEditor.jsx";
 import CourtMapPicker from "../components/court/CourtMapPicker.jsx";
 import MatchReceiptPreview from "../components/match/MatchReceiptPreview.jsx";
 import { getCourtAddress, getRegisteredCourts, mergeCourtSearchCourts } from "../lib/courts.js";
@@ -9,6 +10,8 @@ import { inferRegionSelection } from "../lib/profileSetup.js";
 import { COURT_MAP_SEARCH_LIMIT, COURT_MAP_SEARCH_PURPOSE } from "../lib/queryPolicy.js";
 import { postServerAction } from "../lib/serverActions.js";
 import { getUserHashtag } from "../lib/handles.js";
+import { createMatchReceiptLineArt } from "../lib/matchReceiptEmblem.js";
+import { getTeamEmblemErrorMessage, prepareTeamEmblemUpload } from "../lib/teamEmblem.js";
 import {
   MATCH_RECEIPT_CANVAS_SIZES,
   MATCH_RECEIPT_CREATE_RETURN_TO,
@@ -62,7 +65,6 @@ const CANONICAL_RECEIPT_FIELDS = new Set([
 const RECEIPT_TEXT_FIELDS = new Set([
   "homeTeam",
   "awayTeam",
-  "venue",
   "address",
   "comment",
   "tournamentName",
@@ -75,6 +77,19 @@ const RECEIPT_PERIOD_FIELDS = [
   ["4Q", "q4Home", "q4Away"],
   ["OT", "otHome", "otAway"],
 ];
+
+const EMPTY_TEAM_LINE_ART_URLS = Object.freeze({ home: "", away: "" });
+const EMPTY_TEAM_EMBLEM_URLS = Object.freeze({ home: "", away: "" });
+const TEAM_EMBLEM_LINE_ART_PROMPT = `첨부한 팀 엠블럼의 형태, 비율, 글자, 상징을 바꾸거나 재디자인하지 마세요.
+출력 조건:
+- 정사각형 PNG
+- 배경은 완전 투명(alpha 0)
+- 엠블럼은 불투명 단색 검정(#000000)의 고대비 선화
+- 닫힌 면과 윤곽을 또렷하게 유지
+- 그림자, 그라데이션, 광택, 발광, 질감, 입체 효과, 배경 없음
+- 중앙 정렬, 사방 15% 안전 여백, 잘림 없음
+- 새 글자나 도형 추가 금지
+- 투명 PNG 출력이 불가능한 경우에만 배경을 균일한 순수 #00FF00으로 사용하고, 다른 초록색, 그림자, 반사, 색 번짐은 넣지 마세요.`;
 
 function downloadBlob(blob, fileName) {
   const url = URL.createObjectURL(blob);
@@ -126,6 +141,11 @@ export default function MatchReceipt({ auth, app }) {
   const [status, setStatus] = useState("");
   const [photoBlob, setPhotoBlob] = useState(null);
   const [photoUrl, setPhotoUrl] = useState("");
+  const [croppedTeamEmblemUrls, setCroppedTeamEmblemUrls] = useState(EMPTY_TEAM_EMBLEM_URLS);
+  const [localTeamLineArtUrls, setLocalTeamLineArtUrls] = useState(EMPTY_TEAM_LINE_ART_URLS);
+  const [emblemCropTarget, setEmblemCropTarget] = useState(null);
+  const [emblemCropError, setEmblemCropError] = useState("");
+  const [emblemCropCandidate, setEmblemCropCandidate] = useState(null);
   const [publicDraftId, setPublicDraftId] = useState("");
   const [requestedDraftCanClaim, setRequestedDraftCanClaim] = useState(false);
   const [courtMapOpen, setCourtMapOpen] = useState(false);
@@ -185,7 +205,7 @@ export default function MatchReceipt({ auth, app }) {
     [app?.currentUser?.regionSido, app?.currentUser?.regionDistrict].filter(Boolean).join(" ").trim()
       || String(app?.currentUser?.region ?? "").trim()
   ), [app?.currentUser?.region, app?.currentUser?.regionDistrict, app?.currentUser?.regionSido]);
-  const courtMapRegionSource = String(draft.address || profileCourtRegion).trim();
+  const courtMapRegionSource = String(draft.originalAddress || profileCourtRegion).trim();
   const courtMapRegion = useMemo(() => {
     if (!courtMapRegionSource) return "";
     const selection = inferRegionSelection(courtMapRegionSource);
@@ -197,12 +217,17 @@ export default function MatchReceipt({ auth, app }) {
       ?? null
   ), [draft.venue, registeredCourts, selectedCourtId]);
   const activePublicDraftId = publicDraftId || requestedPublicDraftId;
-  const matchUrl = useMemo(() => (
-    typeof window !== "undefined" && activePublicDraftId
-      ? new URL(`/app/receipt?draft=${encodeURIComponent(activePublicDraftId)}`, window.location.origin).toString()
-      : ""
-  ), [activePublicDraftId]);
+  const matchUrl = useMemo(() => {
+    if (typeof window === "undefined") return "";
+    const url = new URL("/app/receipt", window.location.origin);
+    if (activePublicDraftId) url.searchParams.set("draft", activePublicDraftId);
+    return url.toString();
+  }, [activePublicDraftId]);
   const receiptPublicId = activePublicDraftId;
+  const selectedTeamLineArtUrls = useMemo(() => ({
+    home: draft.homeUseLineArt ? localTeamLineArtUrls.home : "",
+    away: draft.awayUseLineArt ? localTeamLineArtUrls.away : "",
+  }), [draft.awayUseLineArt, draft.homeUseLineArt, localTeamLineArtUrls.away, localTeamLineArtUrls.home]);
 
   useEffect(() => {
     if (!matchId) return;
@@ -288,7 +313,7 @@ export default function MatchReceipt({ auth, app }) {
   useEffect(() => {
     if (!courtMapOpen) return undefined;
     if (!courtMapRegion) {
-      setCourtMapDirectoryStatus({ loading: false, error: "주소를 입력하거나 프로필 지역을 설정해 주세요." });
+      setCourtMapDirectoryStatus({ loading: false, error: "지도 검색 지역이 없습니다. 프로필 지역을 설정해 주세요." });
       return undefined;
     }
 
@@ -345,10 +370,8 @@ export default function MatchReceipt({ auth, app }) {
       ? {
         ...current,
         [name]: String(value ?? ""),
-        ...(name === "venue" ? { originalAddress: "" } : {}),
       }
       : normalizeMatchReceiptDraft({ ...current, [name]: value }));
-    if (name === "venue") setSelectedCourtId("");
     draftRevisionRef.current += 1;
     if (publicDraftId && !requestedPublicDraftId) {
       setPublicDraftId("");
@@ -403,6 +426,59 @@ export default function MatchReceipt({ auth, app }) {
     }
   }
 
+  function handleTeamEmblemChange(side, event) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    setEmblemCropError("");
+    setEmblemCropCandidate(null);
+    setEmblemCropTarget({ side, file });
+  }
+
+  async function convertTeamEmblemCrop(crop) {
+    if (!emblemCropTarget) return;
+    const { side, file } = emblemCropTarget;
+    setBusy(`emblem-crop-${side}`);
+    setStatus("");
+    setEmblemCropError("");
+    try {
+      const prepared = await prepareTeamEmblemUpload(file, crop);
+      const croppedUrl = `data:image/webp;base64,${prepared.imageBase64}`;
+      const lineArtUrl = await createMatchReceiptLineArt(croppedUrl);
+      if (!lineArtUrl) {
+        setEmblemCropError("대비가 부족해 선화로 바꾸지 못했습니다. 대비가 강한 이미지를 선택해 주세요.");
+        return;
+      }
+      setEmblemCropCandidate({ side, croppedUrl, lineArtUrl, width: prepared.width, height: prepared.height });
+    } catch (error) {
+      setEmblemCropError(getTeamEmblemErrorMessage(error?.code ?? error?.message));
+    } finally {
+      setBusy("");
+    }
+  }
+
+  function confirmTeamEmblemCrop() {
+    if (!emblemCropTarget || !emblemCropCandidate || emblemCropCandidate.side !== emblemCropTarget.side) return;
+    const { side, croppedUrl, lineArtUrl, width, height } = emblemCropCandidate;
+    const field = side === "home" ? "homeUseLineArt" : "awayUseLineArt";
+    setCroppedTeamEmblemUrls((current) => ({ ...current, [side]: croppedUrl }));
+    setLocalTeamLineArtUrls((current) => ({ ...current, [side]: lineArtUrl }));
+    updateField(field, true);
+    setEmblemCropTarget(null);
+    setEmblemCropCandidate(null);
+    setEmblemCropError("");
+    setStatus(`${side === "home" ? "홈팀" : "원정팀"} 엠블럼을 ${width}×${height}px 선화로 영수증에 적용했습니다.`);
+  }
+
+  async function copyTeamEmblemPrompt() {
+    try {
+      await navigator.clipboard.writeText(TEAM_EMBLEM_LINE_ART_PROMPT);
+      setStatus("AI 선화 변환 프롬프트를 복사했습니다.");
+    } catch {
+      setStatus("프롬프트를 복사하지 못했습니다.");
+    }
+  }
+
   async function removePhoto() {
     await clearMatchReceiptPhoto();
     setPhotoBlob(null);
@@ -449,6 +525,11 @@ export default function MatchReceipt({ auth, app }) {
       };
       setDraft(next);
       setPhotoBlob(null);
+      setCroppedTeamEmblemUrls(EMPTY_TEAM_EMBLEM_URLS);
+      setLocalTeamLineArtUrls(EMPTY_TEAM_LINE_ART_URLS);
+      setEmblemCropTarget(null);
+      setEmblemCropCandidate(null);
+      setEmblemCropError("");
       setGenerated(false);
       setPublicDraftId("");
       setRequestedDraftCanClaim(false);
@@ -679,6 +760,7 @@ export default function MatchReceipt({ auth, app }) {
       publicId,
       matchUrl: publicMatchUrl,
       photoBlob,
+      teamLineArtUrls: selectedTeamLineArtUrls,
     });
   }
 
@@ -800,14 +882,13 @@ export default function MatchReceipt({ auth, app }) {
           <section className="ui-panel">
             <h2>경기 결과</h2>
             {requestedPublicDraftId ? <p className="match-receipt-locked-note">공유 영수증은 읽기 전용입니다.</p> : null}
-            {canonicalMatchId ? <p className="match-receipt-locked-note">확정 기록의 팀·점수·날짜·장소는 원본을 사용합니다. 짧은 주소와 코멘트는 편집할 수 있습니다.</p> : null}
+            {canonicalMatchId ? <p className="match-receipt-locked-note">확정 기록의 팀·점수·날짜·장소는 원본을 사용합니다. 짧은 장소와 코멘트는 편집할 수 있습니다.</p> : null}
             <div className="match-receipt-team-fields">
               <fieldset>
                 <legend>홈팀</legend>
                 <label>
                   팀 이름
-                  <input value={draft.homeTeam} maxLength={MATCH_RECEIPT_LIMITS.teamName} disabled={isFieldReadOnly("homeTeam")} onChange={(event) => updateField("homeTeam", event.target.value)} aria-invalid={Boolean(errors.homeTeam)} />
-                  {errors.homeTeam ? <small className="field-error">{errors.homeTeam}</small> : null}
+                  <input value={draft.homeTeam} maxLength={MATCH_RECEIPT_LIMITS.teamName} disabled={isFieldReadOnly("homeTeam")} placeholder={errors.homeTeam ? "필수 · 홈팀 이름을 입력하세요" : "홈팀 이름"} onChange={(event) => updateField("homeTeam", event.target.value)} aria-invalid={Boolean(errors.homeTeam)} />
                 </label>
                 <label className="match-receipt-score-input">
                   점수
@@ -819,8 +900,7 @@ export default function MatchReceipt({ auth, app }) {
                 <legend>원정팀</legend>
                 <label>
                   팀 이름
-                  <input value={draft.awayTeam} maxLength={MATCH_RECEIPT_LIMITS.teamName} disabled={isFieldReadOnly("awayTeam")} onChange={(event) => updateField("awayTeam", event.target.value)} aria-invalid={Boolean(errors.awayTeam)} />
-                  {errors.awayTeam ? <small className="field-error">{errors.awayTeam}</small> : null}
+                  <input value={draft.awayTeam} maxLength={MATCH_RECEIPT_LIMITS.teamName} disabled={isFieldReadOnly("awayTeam")} placeholder={errors.awayTeam ? "필수 · 원정팀 이름을 입력하세요" : "원정팀 이름"} onChange={(event) => updateField("awayTeam", event.target.value)} aria-invalid={Boolean(errors.awayTeam)} />
                 </label>
                 <label className="match-receipt-score-input">
                   점수
@@ -839,25 +919,50 @@ export default function MatchReceipt({ auth, app }) {
               <label className="is-wide">
                 경기 장소
                 <span className="match-receipt-venue-control">
-                  <input value={draft.venue} maxLength={MATCH_RECEIPT_LIMITS.venue} disabled={isFieldReadOnly("venue")} placeholder="직접 입력 또는 지도에서 선택" onChange={(event) => updateField("venue", event.target.value)} aria-invalid={Boolean(errors.venue)} />
+                  <input value={draft.venue} maxLength={MATCH_RECEIPT_LIMITS.venue} disabled={isFieldReadOnly("venue")} readOnly placeholder={errors.venue ? "필수 · 지도에서 경기 장소를 선택하세요" : "지도에서 선택 · 자유 입력은 짧은 장소에 작성"} aria-invalid={Boolean(errors.venue)} />
                   {!isFieldReadOnly("venue") ? (
                     <button type="button" className="button ui-button button-secondary ui-button-secondary button-md ui-button-md match-receipt-map-button" onClick={() => setCourtMapOpen(true)}>
                       <MapPin aria-hidden="true" /> 지도에서 선택
                     </button>
                   ) : null}
                 </span>
-                {errors.venue ? <small className="field-error">{errors.venue}</small> : null}
               </label>
-              <label className="is-wide">짧은 주소 <input value={draft.address} maxLength={MATCH_RECEIPT_LIMITS.address} disabled={isFieldReadOnly("address")} placeholder="선택 · 예: 마포구 와우근린공원 농구장" onChange={(event) => updateField("address", event.target.value)} /></label>
+              <label className="is-wide">짧은 장소 <input value={draft.address} maxLength={MATCH_RECEIPT_LIMITS.address} disabled={isFieldReadOnly("address")} placeholder="선택 · 주소나 장소를 자유롭게 입력" onChange={(event) => updateField("address", event.target.value)} /></label>
               <label className="is-wide">대회·리그 이름 <input value={draft.tournamentName} maxLength={MATCH_RECEIPT_LIMITS.tournamentName} disabled={isFieldReadOnly("tournamentName")} placeholder="선택 · 팀 엠블럼 사이 위쪽에 표시" onChange={(event) => updateField("tournamentName", event.target.value)} /></label>
-              {draft.homeEmblemKey || draft.awayEmblemKey ? (
-                <fieldset className="match-receipt-line-art-fields is-wide">
-                  <legend>팀 엠블럼 선화 <small>선택</small></legend>
-                  {draft.homeEmblemKey ? <label><input type="checkbox" checked={draft.homeUseLineArt} onChange={(event) => updateField("homeUseLineArt", event.target.checked)} /> 홈팀 선화 사용</label> : null}
-                  {draft.awayEmblemKey ? <label><input type="checkbox" checked={draft.awayUseLineArt} onChange={(event) => updateField("awayUseLineArt", event.target.checked)} /> 원정팀 선화 사용</label> : null}
-                  <small>미리보기에서 확인 후 선택하세요. 변환 품질이 부족하면 중립 엠블럼이 유지됩니다.</small>
-                </fieldset>
-              ) : null}
+              <fieldset className="match-receipt-line-art-fields is-wide">
+                <legend>팀 엠블럼 선화 <small>선택</small></legend>
+                <div className="match-receipt-emblem-upload-grid">
+                  {[["home", "홈팀"], ["away", "원정팀"]].map(([side, label]) => {
+                    return (
+                      <div className="match-receipt-emblem-upload" key={side}>
+                        <Button as="label" variant="secondary" size="sm">
+                          <ImagePlus aria-hidden="true" /> {label} 엠블럼 넣기
+                          <input type="file" accept="image/png,image/jpeg,image/webp" disabled={Boolean(requestedPublicDraftId) || Boolean(busy)} onChange={(event) => handleTeamEmblemChange(side, event)} />
+                        </Button>
+                        {croppedTeamEmblemUrls[side] || localTeamLineArtUrls[side] ? (
+                          <div className="match-receipt-emblem-candidates" aria-label={`${label} 엠블럼 후보`}>
+                            {croppedTeamEmblemUrls[side] ? <img src={croppedTeamEmblemUrls[side]} alt={`${label} 크롭 원본`} /> : null}
+                            {localTeamLineArtUrls[side] ? <img src={localTeamLineArtUrls[side]} alt={`${label} 선화 후보`} /> : null}
+                          </div>
+                        ) : null}
+                        {localTeamLineArtUrls[side] ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            disabled={Boolean(requestedPublicDraftId)}
+                            onClick={() => updateField(`${side}UseLineArt`, !draft[`${side}UseLineArt`])}
+                          >
+                            {draft[`${side}UseLineArt`] ? "선화 사용 해제" : "선화 다시 사용"}
+                          </Button>
+                        ) : null}
+                      </div>
+                    );
+                  })}
+                </div>
+                <Button type="button" variant="secondary" size="sm" onClick={copyTeamEmblemPrompt}><Copy aria-hidden="true" /> AI 선화 변환 프롬프트 복사</Button>
+                <small>대비가 강하고 배경이 투명하거나 단색인 엠블럼만 권장합니다. 기계 변환 결과는 자동 적용하지 않으며, 미리보기 확인 후 직접 선택합니다.</small>
+              </fieldset>
               <fieldset className="match-receipt-period-fields is-wide">
                 <legend>쿼터별 점수 <small>선택</small></legend>
                 {RECEIPT_PERIOD_FIELDS.map(([label, homeField, awayField]) => (
@@ -877,7 +982,7 @@ export default function MatchReceipt({ auth, app }) {
                 <input value={draft.comment} maxLength={MATCH_RECEIPT_LIMITS.comment} disabled={isFieldReadOnly("comment")} placeholder="선택 · 11자 이내" onChange={(event) => updateField("comment", event.target.value)} />
               </label>
             </div>
-            <p className="match-receipt-map-note"><MapPin aria-hidden="true" /> 이미지에는 장소명과 짧은 주소만 들어갑니다. 지도 화면은 포함하지 않습니다.</p>
+            <p className="match-receipt-map-note"><MapPin aria-hidden="true" /> 이미지에는 경기 장소 또는 짧은 장소만 들어갑니다. 지도 화면은 포함하지 않습니다.</p>
           </section>
 
           <button type="submit" className="button ui-button button-primary ui-button-primary button-md ui-button-md match-receipt-complete">영수증 완성하기</button>
@@ -895,6 +1000,7 @@ export default function MatchReceipt({ auth, app }) {
               photoUrl={photoUrl}
               matchUrl={matchUrl}
               publicId={receiptPublicId}
+              teamLineArtUrls={selectedTeamLineArtUrls}
               photoGestureHandlers={{
                 onPointerDown: beginPhotoGesture,
                 onPointerMove: movePhotoGesture,
@@ -978,6 +1084,27 @@ export default function MatchReceipt({ auth, app }) {
           ) : null}
         </aside>
       </div>
+      <EmblemCropEditor
+        file={emblemCropTarget?.file}
+        pending={busy === `emblem-crop-${emblemCropTarget?.side}`}
+        convertedPreview={emblemCropCandidate && emblemCropTarget && emblemCropCandidate.side === emblemCropTarget.side
+          ? emblemCropCandidate.lineArtUrl
+          : ""}
+        warning="가운데 원 안에 엠블럼을 맞춘 뒤 선화로 변경하세요. 결과를 확인하고 확인을 눌러야 영수증에 적용됩니다."
+        error={emblemCropError}
+        onCancel={() => {
+          if (busy) return;
+          setEmblemCropTarget(null);
+          setEmblemCropCandidate(null);
+          setEmblemCropError("");
+        }}
+        onCropChange={() => {
+          setEmblemCropCandidate(null);
+          setEmblemCropError("");
+        }}
+        onConvert={convertTeamEmblemCrop}
+        onConfirm={confirmTeamEmblemCrop}
+      />
       <CourtMapPicker
         open={courtMapOpen}
         courts={registeredCourts}

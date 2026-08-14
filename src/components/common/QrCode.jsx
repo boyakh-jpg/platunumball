@@ -1,10 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { assetUrl } from "../../lib/assets.js";
 import { createQrPath } from "../../lib/qrCode.js";
 import useBodyScrollLock from "../../hooks/useBodyScrollLock.js";
 import Button from "./Button.jsx";
 
+const QR_BRAND_BADGE_URL = assetUrl("/assets/qr-boxtier-badge-v1.png");
+
 function QrGraphic({ qr, label, className = "", branded = false }) {
+  const badgeClearSize = 5;
+  const badgeSize = 5;
+  const badgeStart = Math.floor((qr.matrix.length - badgeClearSize) / 2);
   const finderCenterPositions = [
     [6, 6],
     [qr.size - 9, 6],
@@ -22,7 +28,10 @@ function QrGraphic({ qr, label, className = "", branded = false }) {
       {branded ? null : <rect width={qr.size} height={qr.size} fill="#fff" />}
       {branded ? (
         <g fill="#111" aria-hidden="true">
-          {qr.matrix.flatMap((row, rowIndex) => row.map((dark, columnIndex) => (dark ? (
+          {qr.matrix.flatMap((row, rowIndex) => row.map((dark, columnIndex) => {
+            const isBadgeModule = rowIndex >= badgeStart && rowIndex < badgeStart + badgeClearSize
+              && columnIndex >= badgeStart && columnIndex < badgeStart + badgeClearSize;
+            return dark && !isBadgeModule ? (
             <rect
               key={`${rowIndex}-${columnIndex}`}
               x={columnIndex + qr.offset + 0.03}
@@ -31,7 +40,8 @@ function QrGraphic({ qr, label, className = "", branded = false }) {
               height="0.94"
               rx="0.18"
             />
-          ) : null)))}
+            ) : null;
+          }))}
         </g>
       ) : <path d={qr.path} fill="#111" stroke="#111" strokeWidth="0.1" strokeLinejoin="round" />}
       {branded ? (
@@ -39,6 +49,14 @@ function QrGraphic({ qr, label, className = "", branded = false }) {
           {finderCenterPositions.map(([x, y]) => (
             <rect key={`${x}-${y}`} x={x} y={y} width="3" height="3" rx="0.45" fill="#d4582b" />
           ))}
+          <image
+            href={QR_BRAND_BADGE_URL}
+            x={badgeStart + qr.offset}
+            y={badgeStart + qr.offset}
+            width={badgeSize}
+            height={badgeSize}
+            preserveAspectRatio="xMidYMid meet"
+          />
         </g>
       ) : null}
     </svg>

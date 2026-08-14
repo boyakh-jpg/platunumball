@@ -9,6 +9,8 @@ import {
 import { createMatchReceiptLineArt } from "../../lib/matchReceiptEmblem.js";
 import QrCode from "../common/QrCode.jsx";
 
+const EMPTY_TEAM_LINE_ART_URLS = Object.freeze({ home: "", away: "" });
+
 function ReceiptScoreDigits({ value }) {
   return (
     <strong className="match-receipt-score-digits" aria-hidden="true">
@@ -29,6 +31,7 @@ export default function MatchReceiptPreview({
   matchUrl = "",
   publicId = "",
   photoGestureHandlers = {},
+  teamLineArtUrls = EMPTY_TEAM_LINE_ART_URLS,
 }) {
   const photoElementRef = useRef(null);
   const [lineArtUrls, setLineArtUrls] = useState({ home: "", away: "" });
@@ -56,13 +59,13 @@ export default function MatchReceiptPreview({
   useEffect(() => {
     let active = true;
     Promise.all([
-      createMatchReceiptLineArt(model.teamEmblemUrls.home),
-      createMatchReceiptLineArt(model.teamEmblemUrls.away),
+      teamLineArtUrls.home || createMatchReceiptLineArt(model.teamEmblemUrls.home),
+      teamLineArtUrls.away || createMatchReceiptLineArt(model.teamEmblemUrls.away),
     ]).then(([home, away]) => {
       if (active) setLineArtUrls({ home, away });
     });
     return () => { active = false; };
-  }, [model.teamEmblemUrls.away, model.teamEmblemUrls.home]);
+  }, [model.teamEmblemUrls.away, model.teamEmblemUrls.home, teamLineArtUrls.away, teamLineArtUrls.home]);
   const backgroundUrl = photoUrl || model.defaultPhotoUrl;
   const posterTeams = [
     { name: model.homeTeam, tier: model.homeTier, neutralMarkUrl: model.neutralTeamMarkUrls.home, lineArtUrl: lineArtUrls.home },

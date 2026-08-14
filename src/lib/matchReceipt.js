@@ -108,6 +108,7 @@ const MATCH_RECEIPT_NEUTRAL_TEAM_MARK_URLS = Object.freeze({
 const MATCH_RECEIPT_PAPER_URL = assetUrl("/assets/match-receipt-paper-torn-v1.png");
 const MATCH_RECEIPT_PAPER_GRAIN_URL = assetUrl("/assets/match-receipt-paper-grain-v1.png");
 const MATCH_RECEIPT_SCORE_DIGITS_URL = assetUrl("/assets/match-receipt-score-digits-v2.png");
+const MATCH_RECEIPT_QR_BADGE_URL = assetUrl("/assets/qr-boxtier-badge-v1.png");
 
 function todayInKorea() {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -403,7 +404,7 @@ export function validateMatchReceiptDraft(value) {
   const errors = {};
   if (!draft.homeTeam.trim()) errors.homeTeam = "홈팀 이름을 입력해 주세요.";
   if (!draft.awayTeam.trim()) errors.awayTeam = "원정팀 이름을 입력해 주세요.";
-  if (!draft.venue.trim()) errors.venue = "경기 장소를 입력해 주세요.";
+  if (!draft.venue.trim()) errors.venue = "지도에서 경기 장소를 선택해 주세요.";
   return { draft, errors, valid: Object.keys(errors).length === 0 };
 }
 
@@ -783,14 +784,19 @@ function wrapCanvasText(ctx, text, maxWidth, maxLines = 2) {
   return lines.slice(0, maxLines);
 }
 
-function drawQrCode(ctx, value, x, y, size) {
+function drawQrCode(ctx, value, x, y, size, brandBadge) {
   const matrix = createQrMatrix(value);
   const quietZone = 4;
   const scale = Math.max(1, Math.floor(size / (matrix.length + quietZone * 2)));
   const actualSize = (matrix.length + quietZone * 2) * scale;
+  const badgeClearSize = 5;
+  const badgeSize = 5;
+  const badgeStart = Math.floor((matrix.length - badgeClearSize) / 2);
   ctx.fillStyle = "#111111";
   matrix.forEach((row, rowIndex) => row.forEach((cell, columnIndex) => {
-    if (!cell) return;
+    const isBadgeModule = rowIndex >= badgeStart && rowIndex < badgeStart + badgeClearSize
+      && columnIndex >= badgeStart && columnIndex < badgeStart + badgeClearSize;
+    if (!cell || isBadgeModule) return;
     const moduleX = x + (columnIndex + quietZone) * scale;
     const moduleY = y + (rowIndex + quietZone) * scale;
     ctx.beginPath();
@@ -813,6 +819,9 @@ function drawQrCode(ctx, value, x, y, size) {
     );
     ctx.fill();
   });
+  const badgeX = x + (badgeStart + quietZone) * scale;
+  const badgeY = y + (badgeStart + quietZone) * scale;
+  ctx.drawImage(brandBadge, badgeX, badgeY, badgeSize * scale, badgeSize * scale);
   return actualSize;
 }
 
@@ -875,7 +884,7 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
   const receiptTop = compact ? 1010 : 1504;
   const photoPromise = loadCanvasImage(options.photoBlob || model.defaultPhotoUrl)
     .catch((error) => (options.photoBlob ? loadCanvasImage(model.defaultPhotoUrl) : Promise.reject(error)));
-  const [photo, wordmark, homeTier, awayTier, homeNeutralTeamMark, awayNeutralTeamMark, personalTier, paper, paperGrain, scoreDigits, homeLineArtUrl, awayLineArtUrl] = await Promise.all([
+  const [photo, wordmark, homeTier, awayTier, homeNeutralTeamMark, awayNeutralTeamMark, personalTier, paper, paperGrain, scoreDigits, qrBrandBadge, homeLineArtUrl, awayLineArtUrl] = await Promise.all([
     photoPromise,
     loadCanvasImage(model.wordmarkUrl).catch(() => null),
     model.showTeamTierEmblems && model.homeTier ? loadCanvasImage(model.homeTier.outlineSrc).catch(() => null) : null,
@@ -886,8 +895,9 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
     loadCanvasImage(model.paperUrl),
     loadCanvasImage(model.paperGrainUrl),
     loadCanvasImage(model.scoreDigitsUrl),
-    createMatchReceiptLineArt(model.teamEmblemUrls.home),
-    createMatchReceiptLineArt(model.teamEmblemUrls.away),
+    loadCanvasImage(MATCH_RECEIPT_QR_BADGE_URL),
+    options.teamLineArtUrls?.home || createMatchReceiptLineArt(model.teamEmblemUrls.home),
+    options.teamLineArtUrls?.away || createMatchReceiptLineArt(model.teamEmblemUrls.away),
   ]);
   const [homeLineArt, awayLineArt] = await Promise.all([
     homeLineArtUrl ? loadCanvasImage(homeLineArtUrl).catch(() => null) : null,
@@ -1066,12 +1076,6 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
   ctx.shadowOffsetY = 6;
   ctx.drawImage(paper, 0, receiptTop, width, height - receiptTop - (compact ? 26 : 34));
   ctx.restore();
-  drawCanvasPaperGrain(ctx, paperGrain, {
-    x: 40,
-    y: receiptTop + 20,
-    width: width - 80,
-    height: height - receiptTop - (compact ? 45 : 55),
-  }, { alpha: 0.24, blend: "multiply" });
   const footerY = receiptTop + (compact ? 78 : 66);
   const footerLeftDivider = compact ? 386 : 409;
   const footerRightDivider = compact ? 690 : 708;
@@ -1079,8 +1083,8 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
   const footerMiddleX = compact ? 540 : 558;
   const footerRightX = compact ? 850 : 862;
   const footerMiddleDividerOffset = compact ? 126 : 177;
-  const footerCommentOffset = footerMiddleDividerOffset + (compact ? 20 : 26);
-  const footerTierLabelOffset = compact ? 170 : 228;
+  const footerCommentOffset = footerMiddleDividerOffset + (compact ? 14 : 18);
+  const footerTierLabelOffset = compact ? 163 : 216;
 
   ctx.strokeStyle = "rgba(195,74,37,.7)";
   ctx.lineWidth = 2;
@@ -1097,14 +1101,14 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
   ctx.stroke();
   ctx.setLineDash([]);
 
-  drawCanvasMapPin(ctx, footerLeftX, footerY + (compact ? -5 : 50), compact ? 34 : 50);
+  drawCanvasMapPin(ctx, footerLeftX, footerY + (compact ? -5 : 18), compact ? 34 : 50);
 
   ctx.fillStyle = "#151515";
   ctx.textAlign = "center";
-  ctx.font = '900 25px "KBO Dia Gothic", sans-serif';
-  const locationLines = wrapCanvasText(ctx, model.locationLabel || "경기 장소", 320, 3);
-  const locationLineHeight = compact ? 28 : 34;
-  const locationStartY = footerY + (compact ? 54 : 140) - (locationLines.length - 1) * locationLineHeight / 2;
+  ctx.font = `900 ${compact ? 22 : 25}px "KBO Dia Gothic", sans-serif`;
+  const locationLines = wrapCanvasText(ctx, model.locationLabel || "경기 장소", compact ? 292 : 310, 3);
+  const locationLineHeight = compact ? 23 : 32;
+  const locationStartY = footerY + (compact ? 58 : 112) - (locationLines.length - 1) * locationLineHeight / 2;
   locationLines.forEach((line, index) => ctx.fillText(line, footerLeftX, locationStartY + index * locationLineHeight, 320));
   ctx.font = '900 27px "KBO Dia Gothic", sans-serif';
   ctx.fillText(model.playedOn.replaceAll("-", "."), footerLeftX, footerY + (compact ? 174 : 244));
@@ -1161,11 +1165,11 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
   }
 
   if (model.matchUrl) {
-    const qrSize = compact ? 200 : 250;
+    const qrSize = compact ? 216 : 270;
     ctx.fillStyle = "#d4582b";
     ctx.font = '900 22px "KBO Dia Gothic", sans-serif';
-    ctx.fillText("경기 기록 보기", footerRightX, footerY + (compact ? 6 : 30));
-    drawQrCode(ctx, model.matchUrl, footerRightX - qrSize / 2, footerY + (compact ? 16 : 42), qrSize);
+    ctx.fillText("경기 기록 보기", footerRightX, footerY + gameTitleOffset);
+    drawQrCode(ctx, model.matchUrl, footerRightX - qrSize / 2, footerY + (compact ? 6 : 28), qrSize, qrBrandBadge);
   } else {
     ctx.fillStyle = "#d4582b";
     ctx.font = '900 23px "KBO Dia Gothic", sans-serif';

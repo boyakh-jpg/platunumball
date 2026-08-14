@@ -9,7 +9,17 @@ function getRangeProgress(value, min, max) {
   return `${Math.max(0, Math.min(100, ((Number(value) - min) / (max - min)) * 100))}%`;
 }
 
-export default function EmblemCropEditor({ file, pending = false, warning = "", error = "", onCancel, onConfirm }) {
+export default function EmblemCropEditor({
+  file,
+  pending = false,
+  convertedPreview = "",
+  warning = "",
+  error = "",
+  onCancel,
+  onConvert,
+  onConfirm,
+  onCropChange,
+}) {
   const canvasRef = useRef(null);
   const [image, setImage] = useState(null);
   const [crop, setCrop] = useState(DEFAULT_CROP);
@@ -34,6 +44,11 @@ export default function EmblemCropEditor({ file, pending = false, warning = "", 
     drawEmblemCrop(canvasRef.current, image, image.naturalWidth, image.naturalHeight, crop, 320);
   }, [crop, image]);
 
+  function updateCrop(name, value) {
+    setCrop((current) => ({ ...current, [name]: Number(value) }));
+    onCropChange?.();
+  }
+
   if (!file) return null;
 
   return (
@@ -44,29 +59,36 @@ export default function EmblemCropEditor({ file, pending = false, warning = "", 
           <p>미리보기를 보면서 위치와 크기를 조정해 주세요.</p>
         </header>
         <div className="emblem-crop-preview">
-          {loadFailed ? <span>이미지를 읽지 못했습니다.</span> : <canvas ref={canvasRef} aria-label="엠블럼 크롭 미리보기" />}
+          {convertedPreview ? (
+            <img src={convertedPreview} alt="변환된 선화 미리보기" />
+          ) : loadFailed ? (
+            <span>이미지를 읽지 못했습니다.</span>
+          ) : (
+            <canvas ref={canvasRef} aria-label="엠블럼 크롭 미리보기" />
+          )}
         </div>
         <div className="emblem-crop-controls">
           <label>
             확대·축소
-            <input type="range" min="0.5" max="3" step="0.05" value={crop.zoom} style={{ "--emblem-range-progress": getRangeProgress(crop.zoom, 0.5, 3) }} onChange={(event) => setCrop((current) => ({ ...current, zoom: Number(event.target.value) }))} />
+            <input type="range" min="0.5" max="3" step="0.05" value={crop.zoom} style={{ "--emblem-range-progress": getRangeProgress(crop.zoom, 0.5, 3) }} onChange={(event) => updateCrop("zoom", event.target.value)} />
           </label>
           <label>
             가로 위치
-            <input type="range" min="0" max="100" step="1" value={crop.x} style={{ "--emblem-range-progress": getRangeProgress(crop.x, 0, 100) }} onChange={(event) => setCrop((current) => ({ ...current, x: Number(event.target.value) }))} />
+            <input type="range" min="0" max="100" step="1" value={crop.x} style={{ "--emblem-range-progress": getRangeProgress(crop.x, 0, 100) }} onChange={(event) => updateCrop("x", event.target.value)} />
           </label>
           <label>
             세로 위치
-            <input type="range" min="0" max="100" step="1" value={crop.y} style={{ "--emblem-range-progress": getRangeProgress(crop.y, 0, 100) }} onChange={(event) => setCrop((current) => ({ ...current, y: Number(event.target.value) }))} />
+            <input type="range" min="0" max="100" step="1" value={crop.y} style={{ "--emblem-range-progress": getRangeProgress(crop.y, 0, 100) }} onChange={(event) => updateCrop("y", event.target.value)} />
           </label>
         </div>
         {warning ? <p className="form-warning">{warning}</p> : null}
         {error ? <p className="emblem-crop-feedback" role="alert">{error}</p> : null}
         <div className="ui-action-row app-confirm-actions">
           <Button type="button" variant="secondary" disabled={pending} onClick={onCancel}>취소</Button>
-          <Button type="button" disabled={pending || !image || loadFailed} onClick={() => onConfirm?.(crop)}>
-            {pending ? "저장 중" : "저장"}
+          <Button type="button" variant="secondary" disabled={pending || !image || loadFailed} onClick={() => onConvert?.(crop)}>
+            {pending ? "변환 중" : "선화로 변경"}
           </Button>
+          <Button type="button" disabled={pending || !convertedPreview} onClick={onConfirm}>확인</Button>
         </div>
       </section>
     </div>

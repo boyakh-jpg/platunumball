@@ -74,8 +74,6 @@
 .match-receipt-editor input:focus-visible,
 .match-receipt-editor select:focus-visible { outline: var(--ui-stroke-width-strong) solid var(--rb-orange); outline-offset: 2px; }
 
-.match-receipt-editor input[aria-invalid="true"] { border-color: var(--danger); }
-
 .match-receipt-score-input input {
   text-align: center;
   font-size: 26px;
@@ -83,31 +81,6 @@
 }
 
 .match-receipt-info-fields .is-wide { grid-column: 1 / -1; }
-
-.match-receipt-info-fields > label {
-  width: 100%; min-width: 0; max-width: 100%; contain: inline-size;
-}
-
-.match-receipt-info-fields input[type="date"] {
-  display: block; box-sizing: border-box; overflow: hidden;
-  inline-size: 100%; min-inline-size: 0; max-inline-size: 100%;
-}
-
-.match-receipt-info-fields input[type="date"]::-webkit-date-and-time-value {
-  min-width: 0; text-align: left;
-}
-
-.match-receipt-venue-control {
-  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-4);
-}
-
-.match-receipt-map-button {
-  display: inline-flex; align-items: center; gap: var(--space-3);
-  min-height: 44px; white-space: nowrap;
-}
-.match-receipt-map-button svg { width: 16px; height: 16px; }
-
-.field-error { color: var(--danger); }
 
 .match-receipt-map-note,
 .match-receipt-status {
@@ -498,8 +471,6 @@
   filter: drop-shadow(0 5px 8px rgba(0, 0, 0, 0.42));
 }
 
-.match-receipt-ticket::after { content: ""; position: absolute; z-index: 0; inset: 3% 1.2%; background: var(--receipt-paper-grain) center / 100% 100% no-repeat; mix-blend-mode: multiply; opacity: 0.24; pointer-events: none; }
-
 .match-receipt-ticket > div {
   position: relative;
   z-index: 1;
@@ -518,7 +489,9 @@
 }
 
 .match-receipt-ticket-place svg {
-  width: 17%;
+  position: absolute;
+  top: 0;
+  width: 14%;
   height: auto;
   color: var(--receipt-orange);
 }
@@ -533,7 +506,15 @@
   -webkit-line-clamp: 2;
 }
 
-.match-receipt-ticket-place strong { -webkit-line-clamp: 3; }
+.match-receipt-ticket-place strong {
+  position: absolute;
+  top: 24%;
+  left: 6%;
+  width: 88%;
+  max-height: 28%;
+  font-size: clamp(6px, 2.25cqw, 11px);
+  -webkit-line-clamp: 3;
+}
 
 .match-receipt-ticket-place > span,
 .match-receipt-ticket-game > strong,
@@ -622,7 +603,7 @@
 }
 
 .match-receipt-personal-tier-label {
-  position: absolute; z-index: 1; top: 78%; left: 6%; display: block; width: 88%; overflow: hidden; color: #71451f;
+  position: absolute; z-index: 1; top: 72%; left: 6%; display: block; width: 88%; overflow: hidden; color: #71451f;
   font-size: clamp(7px, 2.1cqw, 10px); font-weight: 900;
   letter-spacing: 0.04em; line-height: 1; text-overflow: ellipsis; white-space: nowrap;
 }
@@ -640,7 +621,7 @@
   left: 8%;
   display: block;
   width: 84%;
-  padding-top: 3.2%;
+  padding-top: 2%;
   border-top: var(--ui-stroke-width) dotted rgba(32, 25, 21, 0.55);
   font-size: clamp(8px, 2.5cqw, 12px);
   font-weight: 900;
@@ -649,12 +630,29 @@
   white-space: nowrap;
 }
 
-.match-receipt-ticket-qr { gap: 5%; }
+.match-receipt-ticket-game > strong,
+.match-receipt-ticket-qr > strong {
+  position: absolute;
+  top: 0;
+  left: 4%;
+  width: 92%;
+}
 
-.match-receipt-ticket-qr > a { display: grid; width: 100%; min-height: 0; place-items: center; }
+.match-receipt-ticket-qr { gap: 0; }
+
+.match-receipt-ticket-qr > a {
+  position: absolute;
+  top: 12%;
+  left: 3%;
+  display: grid;
+  width: 94%;
+  height: 85%;
+  min-height: 0;
+  place-items: center;
+}
 
 .match-receipt-ticket-qr .match-receipt-qr {
-  width: 84%; max-height: 88%; overflow: visible;
+  width: 94%; max-height: 94%; overflow: visible;
 }
 
 .match-receipt-locked-note {

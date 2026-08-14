@@ -343,7 +343,7 @@ test("receipt capability cookies stay isolated when creation responses arrive ou
 });
 
 test("receipt photo tools stay outside the export card and reference dividers remain", async () => {
-  const [page, preview, qrComponent, styles, tokens, renderer, roomDialog, digitGenerator, syncScript, draftApi, landing, appSource, homeNeutralMark, awayNeutralMark, paperGrain, scoreDigitSource, scoreDigits, wordmark, bebasNeue, bebasLicense, blackHanSans] = await Promise.all([
+  const [page, preview, qrComponent, styles, tokens, renderer, roomDialog, digitGenerator, syncScript, draftApi, landing, appSource, homeNeutralMark, awayNeutralMark, paperGrain, scoreDigitSource, scoreDigits, wordmark, bebasNeue, bebasLicense, blackHanSans, detailStyles, emblemCropEditor] = await Promise.all([
     readFile(new URL("../src/pages/MatchReceipt.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/components/match/MatchReceiptPreview.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/components/common/QrCode.jsx", import.meta.url), "utf8"),
@@ -365,6 +365,8 @@ test("receipt photo tools stay outside the export card and reference dividers re
     readFile(new URL("../public/assets/fonts/BebasNeue-Regular.ttf", import.meta.url)),
     readFile(new URL("../public/assets/fonts/BebasNeue-OFL.txt", import.meta.url), "utf8"),
     readFile(new URL("../public/assets/fonts/BlackHanSans-Regular.ttf", import.meta.url)),
+    readFile(new URL("../src/styles/features/match-receipt-details.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/common/EmblemCropEditor.jsx", import.meta.url), "utf8"),
   ]);
   const receiptSources = `${page}\n${preview}`;
 
@@ -391,8 +393,8 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(preview, /addEventListener\("touchmove", preventBrowserGesture, \{ passive: false \}\)/);
   assert.match(preview, /addEventListener\("gesturestart", preventBrowserGesture, \{ passive: false \}\)/);
   assert.match(preview, /addEventListener\("gesturechange", preventBrowserGesture, \{ passive: false \}\)/);
-  assert.match(styles, /\.match-receipt-info-fields > label\s*\{[^}]*contain:\s*inline-size;/);
-  assert.match(styles, /\.match-receipt-info-fields input\[type="date"\]\s*\{[^}]*min-inline-size:\s*0;[^}]*max-inline-size:\s*100%;/);
+  assert.match(detailStyles, /\.match-receipt-info-fields > label\s*\{[^}]*contain:\s*inline-size;/);
+  assert.match(detailStyles, /\.match-receipt-info-fields input\[type="date"\]\s*\{[^}]*min-inline-size:\s*0;[^}]*max-inline-size:\s*100%;/);
   assert.match(landing, /children = "로그인"/);
   assert.match(landing, /가입 없이 Google로 로그인/);
   assert.match(page, /className="page-stack match-receipt-page"/);
@@ -411,7 +413,13 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(page, /homeMmr: canonicalHomeTeamMmr/);
   assert.match(page, /RECEIPT_PERIOD_FIELDS/);
   assert.match(page, /homeUseLineArt/);
+  assert.match(page, /TEAM_EMBLEM_LINE_ART_PROMPT/);
+  assert.match(page, /배경은 완전 투명\(alpha 0\)/);
+  assert.match(page, /순수 #00FF00/);
+  assert.match(page, /copyTeamEmblemPrompt/);
+  assert.match(page, /selectedTeamLineArtUrls/);
   assert.match(preview, /createMatchReceiptLineArt/);
+  assert.match(preview, /teamLineArtUrls\.home \|\| createMatchReceiptLineArt/);
   assert.match(preview, /match-receipt-game-detail/);
   assert.match(renderer, /homeLineArt \|\| homeTier \|\| homeNeutralTeamMark/);
   assert.match(draftApi, /homeTeamRecord/);
@@ -424,6 +432,16 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(preview, /MY TIER · \{model\.personalTier\.label\}/);
   assert.match(preview, /model\.showPersonalTierIdentity \? <span className="match-receipt-poster-profile">/);
   assert.match(page, /CourtMapPicker/);
+  assert.match(page, /EmblemCropEditor/);
+  assert.match(page, /prepareTeamEmblemUpload\(file, crop\)/);
+  assert.match(page, /setCroppedTeamEmblemUrls/);
+  assert.match(page, /setEmblemCropCandidate\(\{ side, croppedUrl, lineArtUrl, width: prepared\.width, height: prepared\.height \}\)/);
+  assert.match(page, /convertedPreview=\{emblemCropCandidate && emblemCropTarget && emblemCropCandidate\.side === emblemCropTarget\.side/);
+  assert.match(page, /onConvert=\{convertTeamEmblemCrop\}/);
+  assert.doesNotMatch(page, /lineArtPreview|convertTeamEmblemToLineArt|confirmTeamLineArt/);
+  assert.match(emblemCropEditor, /선화로 변경/);
+  assert.match(emblemCropEditor, /disabled=\{pending \|\| !convertedPreview\}/);
+  assert.match(emblemCropEditor, /onClick=\{onConfirm\}>확인</);
   assert.match(page, /getRegisteredCourts/);
   assert.match(page, /mergeCourtSearchCourts/);
   assert.match(page, /inferRegionSelection\(courtMapRegionSource\)/);
@@ -431,12 +449,18 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(page, /allowWhenDisabled: true, allowAnonymous: true/);
   assert.match(page, /loading=\{courtMapDirectoryStatus\.loading\}/);
   assert.match(page, /loadError=\{courtMapDirectoryStatus\.error\}/);
-  assert.match(page, /직접 입력 또는 지도에서 선택/);
+  assert.match(page, /readOnly placeholder=\{errors\.venue \? "필수 · 지도에서 경기 장소를 선택하세요" : "지도에서 선택 · 자유 입력은 짧은 장소에 작성"\}/);
+  assert.doesNotMatch(page, /updateField\("venue", event\.target\.value\)/);
+  assert.doesNotMatch(page, /name === "venue"/);
+  assert.match(page, />짧은 장소 <input[^>]+placeholder="선택 · 주소나 장소를 자유롭게 입력"/);
+  assert.match(page, /draft\.originalAddress \|\| profileCourtRegion/);
   assert.match(page, /RECEIPT_TEXT_FIELDS\.has\(name\)/);
   assert.match(page, /normalizeMatchReceiptDraft\(\{ \.\.\.current, venue, address, originalAddress \}\)/);
   assert.match(preview, /<span className="match-receipt-ticket-caption">\{model\.comment \|\| "\\u00a0"\}<\/span>/);
   assert.doesNotMatch(page, /model\.comment \|\| "내 경기 기록"/);
   assert.match(preview, /className="match-receipt-qr" branded/);
+  assert.match(page, /new URL\("\/app\/receipt", window\.location\.origin\)/);
+  assert.match(page, /if \(activePublicDraftId\) url\.searchParams\.set\("draft", activePublicDraftId\)/);
   assert.match(receiptSources, /\/app\/receipt\?draft=/);
   assert.doesNotMatch(receiptSources, /\/app\/matches\?match=/);
   assert.match(page, /sourceMatchId: canonicalMatchId/);
@@ -454,8 +478,10 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(qrComponent, /rx="0\.18"/);
   assert.match(qrComponent, /finderCenterPositions/);
   assert.doesNotMatch(qrComponent, /badgeInset/);
-  assert.doesNotMatch(qrComponent, />\s*B\s*<\/text>/);
-  assert.doesNotMatch(renderer, /fillText\("B"/);
+  assert.match(qrComponent, /const badgeSize = 5/);
+  assert.match(qrComponent, /qr-boxtier-badge-v1\.png/);
+  assert.doesNotMatch(qrComponent, /fill="#fff"[^>]*badge/);
+  assert.match(renderer, /ctx\.drawImage\(brandBadge/);
   assert.match(styles, /\.match-receipt-photo\.is-editable[\s\S]*touch-action: none/);
   assert.match(styles, /\.match-receipt-photo \{[\s\S]*height: 46\.09375%/);
   assert.match(styles, /\.match-receipt-poster-teams > div:not\(\.match-receipt-game-detail\) > strong[\s\S]*overflow-wrap: anywhere[\s\S]*word-break: normal/);
@@ -474,7 +500,7 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(styles, /aspect-ratio: 196 \/ 400/);
   assert.match(styles, /1000% 100% no-repeat/);
   assert.match(styles, /\.match-receipt-card::after[\s\S]*var\(--receipt-paper-grain\)/);
-  assert.match(styles, /\.match-receipt-ticket::after[\s\S]*var\(--receipt-paper-grain\)/);
+  assert.doesNotMatch(styles, /\.match-receipt-ticket::after/);
   assert.match(styles, /font-family: "Black Han Sans", "KBO Dia Gothic", sans-serif/);
   assert.match(styles, /transform: scaleX\(0\.92\)/);
   assert.match(styles, /scale\(calc\(var\(--receipt-photo-scale\) \* 0\.92\)\)/);
@@ -485,17 +511,17 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(styles, /height: 19\.9%/);
   assert.match(styles, /\.match-receipt-team-tier\.is-neutral[\s\S]*opacity: 0\.76/);
   assert.match(styles, /\.match-receipt-personal-tier[\s\S]*opacity: 0\.64/);
-  assert.match(styles, /\.match-receipt-ticket-qr \.match-receipt-qr[\s\S]*width: 84%[\s\S]*max-height: 88%/);
+  assert.match(styles, /\.match-receipt-ticket-qr \.match-receipt-qr[\s\S]*width: 94%[\s\S]*max-height: 94%/);
   assert.match(styles, /\.match-receipt-game-info b\s*\{[^}]*font-family: "Bebas Neue"/);
-  assert.match(styles, /\.match-receipt-ticket-game > \.match-receipt-ticket-caption\s*\{[^}]*padding-top: 3\.2%;[^}]*font-size: clamp\(8px, 2\.5cqw, 12px\)/);
+  assert.match(styles, /\.match-receipt-ticket-game > \.match-receipt-ticket-caption\s*\{[^}]*padding-top: 2%;[^}]*font-size: clamp\(8px, 2\.5cqw, 12px\)/);
   assert.doesNotMatch(styles, /\.match-receipt-ticket-game > \.match-receipt-ticket-caption\s*\{[^}]*margin-top:\s*auto/);
   assert.match(styles, /--receipt-ticket-divider-y:\s*58%/);
   assert.match(styles, /\.match-receipt-ticket-date[\s\S]*top:\s*var\(--receipt-ticket-divider-y\)/);
   assert.match(styles, /\.match-receipt-ticket-game > \.match-receipt-ticket-caption[\s\S]*top:\s*var\(--receipt-ticket-divider-y\)/);
-  assert.match(styles, /\.match-receipt-personal-tier-label[\s\S]*top:\s*78%/);
+  assert.match(styles, /\.match-receipt-personal-tier-label[\s\S]*top:\s*72%/);
   assert.match(styles, /\.match-receipt-team-fields fieldset[\s\S]*background: var\(--surface-2\)[\s\S]*border: 0;/);
   assert.match(styles, /\.match-receipt-photo-tools[\s\S]*grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/);
-  assert.match(styles, /input\[type="date"\][\s\S]*min-width: 0[\s\S]*max-width: 100%/);
+  assert.match(detailStyles, /input\[type="date"\][\s\S]*min-inline-size: 0[\s\S]*max-inline-size: 100%/);
   assert.match(styles, /@media \(max-width: 900px\)[\s\S]*?\.match-receipt-editor \{[\s\S]*?display: contents;[\s\S]*?\.match-receipt-preview-panel \{[\s\S]*?order: 2;[\s\S]*?\.match-receipt-complete \{[\s\S]*?order: 3;/);
   assert.match(styles, /\.match-receipt-ticket-date[\s\S]*border-top/);
   assert.match(styles, /\.match-receipt-ticket\s*\{[^}]*inset:\s*auto 0 1\.8%;/);
@@ -529,9 +555,9 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(renderer, /const footerMiddleX = compact \? 540 : 558/);
   assert.match(renderer, /const footerRightX = compact \? 850 : 862/);
   assert.match(renderer, /drawCanvasMapPin\(ctx, footerLeftX/);
-  assert.match(renderer, /const qrSize = compact \? 200 : 250/);
-  assert.match(renderer, /const footerCommentOffset = footerMiddleDividerOffset \+ \(compact \? 20 : 26\)/);
-  assert.match(renderer, /const footerTierLabelOffset = compact \? 170 : 228/);
+  assert.match(renderer, /const qrSize = compact \? 216 : 270/);
+  assert.match(renderer, /const footerCommentOffset = footerMiddleDividerOffset \+ \(compact \? 14 : 18\)/);
+  assert.match(renderer, /const footerTierLabelOffset = compact \? 163 : 216/);
   assert.match(renderer, /ctx\.moveTo\(footerMiddleX, footerY \+ \(compact \? 30 : 70\)\)/);
   assert.match(renderer, /createCanvasPaperPattern/);
   assert.match(renderer, /drawCanvasPaperGrain/);
@@ -574,6 +600,7 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(renderer, /label: `\$\{winner\.name\} WIN`/);
   assert.match(renderer, /MY TIER · \$\{model\.personalTier\.label\}/);
   assert.doesNotMatch(renderer, /const badgeSize = actualSize \* 0\.14/);
+  assert.match(renderer, /const badgeSize = 5/);
   assert.doesNotMatch(renderer, /ctx\.fillRect\(x, y, actualSize, actualSize\)/);
   assert.match(renderer, /model\.hasPersonalStats \? "MY GAME" : "GAME INFO"/);
   assert.match(renderer, /ctx\.fillText\(model\.matchNatureLabel/);
