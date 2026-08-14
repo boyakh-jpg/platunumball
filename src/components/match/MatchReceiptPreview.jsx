@@ -57,6 +57,8 @@ export default function MatchReceiptPreview({
   }, [photoUrl]);
 
   const model = createMatchReceiptViewModel(draft, { matchUrl, publicId, showPersonalTierIdentity });
+  const hasSingleGameInfoMeta = !model.hasPersonalStats
+    && Boolean(model.comment) !== Boolean(model.personalTier);
   useEffect(() => {
     let active = true;
     Promise.all([
@@ -168,7 +170,7 @@ export default function MatchReceiptPreview({
           <strong>{model.locationLabel || "경기 장소"}</strong>
           <span className="match-receipt-ticket-date">{model.playedOn.replaceAll("-", ".")}</span>
         </div>
-        <div className={`match-receipt-ticket-game${model.hasPersonalStats ? "" : " match-receipt-ticket-game--info"}`}>
+        <div className={`match-receipt-ticket-game${model.hasPersonalStats ? "" : " match-receipt-ticket-game--info"}${hasSingleGameInfoMeta ? " match-receipt-ticket-game--single-meta" : ""}`}>
           {model.personalTier ? (
             <div className="match-receipt-personal-tier-mark" aria-hidden="true">
               <img className="match-receipt-personal-tier is-watermark" src={model.personalTier.outlineSrc} alt="" />

@@ -539,6 +539,8 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(page, /draft\.originalAddress \|\| profileCourtRegion/);
   assert.match(page, /RECEIPT_TEXT_FIELDS\.has\(name\)/);
   assert.match(page, /normalizeMatchReceiptDraft\(\{ \.\.\.current, venue, address, originalAddress \}\)/);
+  assert.match(preview, /const hasSingleGameInfoMeta = !model\.hasPersonalStats[\s\S]*Boolean\(model\.comment\) !== Boolean\(model\.personalTier\)/);
+  assert.match(preview, /hasSingleGameInfoMeta \? " match-receipt-ticket-game--single-meta" : ""/);
   assert.match(preview, /<span className="match-receipt-ticket-caption">\{model\.comment \|\| "\\u00a0"\}<\/span>/);
   assert.doesNotMatch(page, /model\.comment \|\| "내 경기 기록"/);
   assert.match(preview, /className="match-receipt-qr" branded/);
@@ -626,6 +628,7 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(styles, /\.match-receipt-ticket-date[\s\S]*top:\s*var\(--receipt-ticket-divider-y\)/);
   assert.match(styles, /\.match-receipt-ticket-game > \.match-receipt-ticket-caption[\s\S]*top:\s*var\(--receipt-ticket-divider-y\)/);
   assert.match(styles, /\.match-receipt-personal-tier-label[\s\S]*top:\s*78%/);
+  assert.match(styles, /\.match-receipt-ticket-game--single-meta > :is\(\.match-receipt-ticket-caption, \.match-receipt-personal-tier-label\) \{ top: var\(--receipt-ticket-divider-y\); padding-top: 7%; \}/);
   assert.match(styles, /\.match-receipt-team-fields fieldset[\s\S]*background: var\(--surface-2\)[\s\S]*border: 0;/);
   assert.match(styles, /\.match-receipt-photo-tools[\s\S]*grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/);
   assert.match(detailStyles, /input\[type="date"\][\s\S]*min-inline-size: 0[\s\S]*max-inline-size: 100%/);
@@ -671,6 +674,10 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(renderer, /const qrSize = compact \? 216 : 270/);
   assert.match(renderer, /const footerCommentOffset = footerMiddleDividerOffset \+ \(compact \? 24 : 30\)/);
   assert.match(renderer, /const footerTierLabelOffset = compact \? 184 : 246/);
+  assert.match(renderer, /const footerDateOffset = compact \? 174 : 244/);
+  assert.match(renderer, /const hasSingleGameInfoMeta = !model\.hasPersonalStats[\s\S]*Boolean\(model\.comment\) !== Boolean\(personalTier\)/);
+  assert.match(renderer, /hasSingleGameInfoMeta \? footerDateOffset : footerCommentOffset/);
+  assert.match(renderer, /hasSingleGameInfoMeta \? footerDateOffset : footerTierLabelOffset/);
   assert.match(renderer, /const tierSize = compact \? 150 : 192/);
   assert.match(renderer, /ctx\.moveTo\(footerMiddleX, footerY \+ \(compact \? 30 : 70\)\)/);
   assert.match(renderer, /createCanvasPaperPattern/);

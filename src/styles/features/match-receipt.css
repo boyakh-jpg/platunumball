@@ -630,6 +630,7 @@
   white-space: nowrap;
 }
 
+.match-receipt-ticket-game--single-meta > :is(.match-receipt-ticket-caption, .match-receipt-personal-tier-label) { top: var(--receipt-ticket-divider-y); padding-top: 7%; }
 .match-receipt-ticket-game:not(.match-receipt-ticket-game--info) > .match-receipt-ticket-caption { border-top: 0; }
 
 .match-receipt-ticket-game > strong,

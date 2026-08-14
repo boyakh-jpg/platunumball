@@ -1149,8 +1149,11 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
   const footerMiddleX = compact ? 540 : 558;
   const footerRightX = compact ? 850 : 862;
   const footerMiddleDividerOffset = compact ? 126 : 177;
+  const footerDateOffset = compact ? 174 : 244;
   const footerCommentOffset = footerMiddleDividerOffset + (compact ? 24 : 30);
   const footerTierLabelOffset = compact ? 184 : 246;
+  const hasSingleGameInfoMeta = !model.hasPersonalStats
+    && Boolean(model.comment) !== Boolean(personalTier);
 
   ctx.strokeStyle = "rgba(195,74,37,.7)";
   ctx.lineWidth = 2;
@@ -1177,7 +1180,7 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
   const locationStartY = footerY + (compact ? 58 : 112) - (locationLines.length - 1) * locationLineHeight / 2;
   locationLines.forEach((line, index) => ctx.fillText(line, footerLeftX, locationStartY + index * locationLineHeight, 320));
   ctx.font = '900 27px "KBO Dia Gothic", sans-serif';
-  ctx.fillText(model.playedOn.replaceAll("-", "."), footerLeftX, footerY + (compact ? 174 : 244));
+  ctx.fillText(model.playedOn.replaceAll("-", "."), footerLeftX, footerY + footerDateOffset);
 
   if (personalTier) {
     const tierSize = compact ? 150 : 192;
@@ -1221,13 +1224,13 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
   if (model.comment) {
     ctx.fillStyle = "#151515";
     ctx.font = '900 22px "KBO Dia Gothic", sans-serif';
-    ctx.fillText(model.comment, footerMiddleX, footerY + footerCommentOffset, 260);
+    ctx.fillText(model.comment, footerMiddleX, footerY + (hasSingleGameInfoMeta ? footerDateOffset : footerCommentOffset), 260);
   }
 
   if (personalTier) {
     ctx.fillStyle = "#71451f";
     ctx.font = `900 ${compact ? 17 : 20}px "KBO Dia Gothic", sans-serif`;
-    ctx.fillText(`MY TIER · ${model.personalTier.label}`, footerMiddleX, footerY + footerTierLabelOffset, 250);
+    ctx.fillText(`MY TIER · ${model.personalTier.label}`, footerMiddleX, footerY + (hasSingleGameInfoMeta ? footerDateOffset : footerTierLabelOffset), 250);
   }
 
   if (model.matchUrl) {
