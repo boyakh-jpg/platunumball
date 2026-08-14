@@ -750,17 +750,6 @@ function drawQrCode(ctx, value, x, y, size) {
     );
     ctx.fill();
   });
-  const badgeSize = actualSize * 0.14;
-  const badgeX = x + (actualSize - badgeSize) / 2;
-  const badgeY = y + (actualSize - badgeSize) / 2;
-  ctx.fillStyle = "#d4582b";
-  ctx.fillRect(badgeX, badgeY, badgeSize, badgeSize);
-  ctx.fillStyle = "#f1e8db";
-  ctx.font = `900 ${badgeSize * 0.58}px Arial, sans-serif`;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText("B", x + actualSize / 2, y + actualSize / 2 + badgeSize * 0.04);
-  ctx.textBaseline = "alphabetic";
   return actualSize;
 }
 
@@ -1005,6 +994,13 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
   const footerLeftX = compact ? 220 : 236;
   const footerMiddleX = compact ? 540 : 558;
   const footerRightX = compact ? 850 : 862;
+  const footerMiddleDividerOffset = compact
+    ? (model.hasPersonalStats ? 137 : 116)
+    : (model.hasPersonalStats ? 209 : 162);
+  const footerCommentOffset = footerMiddleDividerOffset + (compact ? 30 : 39);
+  const footerTierLabelOffset = compact
+    ? (model.hasPersonalStats ? 207 : 178)
+    : (model.hasPersonalStats ? 284 : 228);
 
   ctx.strokeStyle = "rgba(195,74,37,.7)";
   ctx.lineWidth = 2;
@@ -1016,8 +1012,8 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
   ctx.lineTo(footerRightDivider, height - 58);
   ctx.moveTo(compact ? 70 : 80, footerY + (compact ? 126 : 177));
   ctx.lineTo(compact ? 362 : 380, footerY + (compact ? 126 : 177));
-  ctx.moveTo(compact ? 420 : 445, footerY + (compact ? 137 : 209));
-  ctx.lineTo(compact ? 660 : 680, footerY + (compact ? 137 : 209));
+  ctx.moveTo(compact ? 420 : 445, footerY + footerMiddleDividerOffset);
+  ctx.lineTo(compact ? 660 : 680, footerY + footerMiddleDividerOffset);
   ctx.stroke();
   ctx.setLineDash([]);
 
@@ -1075,13 +1071,13 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
   if (model.comment) {
     ctx.fillStyle = "#151515";
     ctx.font = '900 22px "KBO Dia Gothic", sans-serif';
-    ctx.fillText(model.comment, footerMiddleX, footerY + (compact ? 176 : 264), 260);
+    ctx.fillText(model.comment, footerMiddleX, footerY + footerCommentOffset, 260);
   }
 
   if (personalTier) {
     ctx.fillStyle = "#71451f";
     ctx.font = `900 ${compact ? 17 : 20}px "KBO Dia Gothic", sans-serif`;
-    ctx.fillText(`MY TIER · ${model.personalTier.label}`, footerMiddleX, footerY + (compact ? 153 : 184), 250);
+    ctx.fillText(`MY TIER · ${model.personalTier.label}`, footerMiddleX, footerY + footerTierLabelOffset, 250);
   }
 
   if (model.matchUrl) {

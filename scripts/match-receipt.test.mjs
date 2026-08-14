@@ -387,7 +387,7 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(page, /직접 입력 또는 지도에서 선택/);
   assert.match(page, /RECEIPT_TEXT_FIELDS\.has\(name\)/);
   assert.match(page, /normalizeMatchReceiptDraft\(\{ \.\.\.current, venue, address, originalAddress \}\)/);
-  assert.match(preview, /\{model\.comment \? <span/);
+  assert.match(preview, /<span className="match-receipt-ticket-caption">\{model\.comment \|\| "\\u00a0"\}<\/span>/);
   assert.doesNotMatch(page, /model\.comment \|\| "내 경기 기록"/);
   assert.match(preview, /className="match-receipt-qr" branded/);
   assert.match(receiptSources, /\/app\/receipt\?draft=/);
@@ -407,7 +407,8 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(qrComponent, /rx="0\.18"/);
   assert.match(qrComponent, /finderCenterPositions/);
   assert.doesNotMatch(qrComponent, /badgeInset/);
-  assert.match(qrComponent, />\s*B\s*<\/text>/);
+  assert.doesNotMatch(qrComponent, />\s*B\s*<\/text>/);
+  assert.doesNotMatch(renderer, /fillText\("B"/);
   assert.match(styles, /\.match-receipt-photo\.is-editable[\s\S]*touch-action: none/);
   assert.match(styles, /\.match-receipt-photo \{[\s\S]*height: 46\.09375%/);
   assert.match(styles, /\.match-receipt-poster-teams strong[\s\S]*overflow-wrap: anywhere[\s\S]*word-break: normal/);
@@ -439,7 +440,8 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(styles, /\.match-receipt-personal-tier[\s\S]*opacity: 0\.64/);
   assert.match(styles, /\.match-receipt-ticket-qr \.match-receipt-qr[\s\S]*width: 84%[\s\S]*max-height: 88%/);
   assert.match(styles, /\.match-receipt-game-info b\s*\{[^}]*font-family: "Bebas Neue"/);
-  assert.match(styles, /\.match-receipt-ticket-game > \.match-receipt-ticket-caption[\s\S]*margin-top: auto[\s\S]*font-size: clamp\(8px, 2\.5cqw, 12px\)/);
+  assert.match(styles, /\.match-receipt-ticket-game > \.match-receipt-ticket-caption\s*\{[^}]*padding-top: 5%;[^}]*font-size: clamp\(8px, 2\.5cqw, 12px\)/);
+  assert.doesNotMatch(styles, /\.match-receipt-ticket-game > \.match-receipt-ticket-caption\s*\{[^}]*margin-top:\s*auto/);
   assert.match(styles, /\.match-receipt-team-fields fieldset[\s\S]*background: var\(--surface-2\)[\s\S]*border: 0;/);
   assert.match(styles, /\.match-receipt-photo-tools[\s\S]*grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/);
   assert.match(styles, /input\[type="date"\][\s\S]*min-width: 0[\s\S]*max-width: 100%/);
@@ -477,7 +479,8 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(renderer, /const footerRightX = compact \? 850 : 862/);
   assert.match(renderer, /drawCanvasMapPin\(ctx, footerLeftX/);
   assert.match(renderer, /const qrSize = compact \? 200 : 250/);
-  assert.match(renderer, /ctx\.font = '900 22px "KBO Dia Gothic", sans-serif';[\s\S]*footerY \+ \(compact \? 176 : 264\)/);
+  assert.match(renderer, /const footerCommentOffset = footerMiddleDividerOffset \+ \(compact \? 30 : 39\)/);
+  assert.match(renderer, /const footerTierLabelOffset = compact[\s\S]*model\.hasPersonalStats \? 284 : 228/);
   assert.match(renderer, /ctx\.moveTo\(footerMiddleX, footerY \+ \(compact \? 30 : 70\)\)/);
   assert.match(renderer, /createCanvasPaperPattern/);
   assert.match(renderer, /drawCanvasPaperGrain/);
@@ -519,7 +522,7 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(draftApi, /trustedCanonical/);
   assert.match(renderer, /label: `\$\{winner\.name\} WIN`/);
   assert.match(renderer, /MY TIER · \$\{model\.personalTier\.label\}/);
-  assert.match(renderer, /const badgeSize = actualSize \* 0\.14/);
+  assert.doesNotMatch(renderer, /const badgeSize = actualSize \* 0\.14/);
   assert.doesNotMatch(renderer, /ctx\.fillRect\(x, y, actualSize, actualSize\)/);
   assert.match(renderer, /model\.hasPersonalStats \? "MY GAME" : "GAME INFO"/);
   assert.match(renderer, /ctx\.fillText\(model\.matchNatureLabel/);

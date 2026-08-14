@@ -609,7 +609,7 @@
 }
 
 .match-receipt-personal-tier-mark {
-  position: absolute; z-index: 0; inset: 1% 5% 10%; display: grid;
+  position: absolute; z-index: 0; inset: 1% 5% 24%; display: grid;
   place-items: center; min-width: 0; pointer-events: none;
 }
 
@@ -619,7 +619,7 @@
 }
 
 .match-receipt-personal-tier-label {
-  position: relative; z-index: 1; display: block; max-width: 100%; overflow: hidden; color: #71451f;
+  position: relative; z-index: 1; display: block; max-width: 100%; margin-top: auto; overflow: hidden; color: #71451f;
   font-size: clamp(7px, 2.1cqw, 10px); font-weight: 900;
   letter-spacing: 0.04em; line-height: 1; text-overflow: ellipsis; white-space: nowrap;
 }
@@ -635,7 +635,6 @@
   z-index: 1;
   display: block;
   width: 100%;
-  margin-top: auto;
   padding-top: 5%;
   border-top: var(--ui-stroke-width) dotted rgba(32, 25, 21, 0.55);
   font-size: clamp(8px, 2.5cqw, 12px);

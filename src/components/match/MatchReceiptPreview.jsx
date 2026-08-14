@@ -161,8 +161,8 @@ export default function MatchReceiptPreview({
               <small>{model.matchNatureLabel}</small>
             </span>
           )}
+          <span className="match-receipt-ticket-caption">{model.comment || "\u00a0"}</span>
           {model.personalTier ? <small className="match-receipt-personal-tier-label">MY TIER · {model.personalTier.label}</small> : null}
-          {model.comment ? <span className="match-receipt-ticket-caption">{model.comment}</span> : null}
         </div>
         <div className="match-receipt-ticket-qr">
           <strong>{matchUrl ? "경기 기록 보기" : "boxtier.kr"}</strong>

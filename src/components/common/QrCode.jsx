@@ -5,9 +5,6 @@ import useBodyScrollLock from "../../hooks/useBodyScrollLock.js";
 import Button from "./Button.jsx";
 
 function QrGraphic({ qr, label, className = "", branded = false }) {
-  const badgeSize = qr.size * 0.14;
-  const badgeX = (qr.size - badgeSize) / 2;
-  const badgeY = badgeX;
   const finderCenterPositions = [
     [6, 6],
     [qr.size - 9, 6],
@@ -42,24 +39,6 @@ function QrGraphic({ qr, label, className = "", branded = false }) {
           {finderCenterPositions.map(([x, y]) => (
             <rect key={`${x}-${y}`} x={x} y={y} width="3" height="3" rx="0.45" fill="#d4582b" />
           ))}
-          <rect
-            x={badgeX}
-            y={badgeY}
-            width={badgeSize}
-            height={badgeSize}
-            rx={badgeSize * 0.1}
-            fill="#d4582b"
-          />
-          <text
-            x={qr.size / 2}
-            y={qr.size / 2}
-            dy="0.36em"
-            fill="#f1e8db"
-            fontFamily="Arial Black, sans-serif"
-            fontSize={badgeSize * 0.58}
-            fontWeight="900"
-            textAnchor="middle"
-          >B</text>
         </g>
       ) : null}
     </svg>
