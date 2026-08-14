@@ -99,6 +99,7 @@ export function sanitizeReceiptDraftPayload(value = {}, options = {}) {
     } : {}),
     personalPoints: cleanOptionalNumber(value.personalPoints),
     personalRebounds: cleanOptionalNumber(value.personalRebounds),
+    personalStatsEligible: trustedCanonical && value.personalStatsEligible === true,
     ...(trustedCanonical ? {
       hasCanonicalTeamMatch: Boolean(value.hasCanonicalTeamMatch),
       homeEmblemKey: cleanTeamEmblemKey(value.homeEmblemKey),

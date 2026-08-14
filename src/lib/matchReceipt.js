@@ -1,5 +1,6 @@
 import { RECORD_TYPES } from "./constants.js";
 import { isPersonalRecordMatch } from "../../shared/lib/matchRecordTypes.js";
+import { hasVerifiedPlayerStats } from "../../shared/lib/matchSummary.js";
 import { assetUrl, BOXTIER_LETTER_DARK_URL, BOXTIER_LOGO_URL } from "./assets.js";
 import { createQrMatrix } from "./qrCode.js";
 import { getTier, getTierDivisionNumber } from "./tier.js";
@@ -21,7 +22,7 @@ export const MATCH_RECEIPT_LIMITS = Object.freeze({
   address: 48,
   originalAddress: 96,
   comment: 11,
-  tournamentName: 32,
+  tournamentName: 20,
   profileHashtag: 32,
   score: 999,
 });
@@ -108,7 +109,6 @@ const MATCH_RECEIPT_NEUTRAL_TEAM_MARK_URLS = Object.freeze({
 const MATCH_RECEIPT_PAPER_URL = assetUrl("/assets/match-receipt-paper-torn-v1.png");
 const MATCH_RECEIPT_PAPER_GRAIN_URL = assetUrl("/assets/match-receipt-paper-grain-v1.png");
 const MATCH_RECEIPT_SCORE_DIGITS_URL = assetUrl("/assets/match-receipt-score-digits-v2.png");
-const MATCH_RECEIPT_QR_BADGE_URL = assetUrl("/assets/qr-boxtier-badge-v1.png");
 
 function todayInKorea() {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -205,6 +205,7 @@ export function createDefaultMatchReceiptDraft() {
     profileHashtag: "",
     personalPoints: null,
     personalRebounds: null,
+    personalStatsEligible: false,
     hasCanonicalTeamMatch: false,
     verified: false,
   };
@@ -255,6 +256,7 @@ export function normalizeMatchReceiptDraft(value = {}) {
     profileHashtag: cleanText(value.profileHashtag, MATCH_RECEIPT_LIMITS.profileHashtag),
     personalPoints: cleanOptionalNumber(value.personalPoints),
     personalRebounds: cleanOptionalNumber(value.personalRebounds),
+    personalStatsEligible: Boolean(value.personalStatsEligible),
     hasCanonicalTeamMatch: Boolean(value.hasCanonicalTeamMatch),
     verified: Boolean(value.verified),
   };
@@ -449,8 +451,13 @@ export function getMatchReceiptSideTeamId(match = {}, side = "") {
 
 export function getMatchReceiptDraftFromMatch(match = {}, style = {}, court = null) {
   const summary = match.rules?.recordSummary ?? {};
-  const playerStats = match.result?.playerStats?.[style.currentUserId] ?? {};
+  const currentUserId = String(style.currentUserId ?? "");
+  const playerStats = match.result?.playerStats?.[currentUserId] ?? {};
   const verified = canCreatePublicMatchReceiptSnapshot(match);
+  const personalStatsEligible = match.status === "confirmed" && (
+    hasVerifiedPlayerStats(match, currentUserId)
+    || (isPersonalRecordMatch(match) && match.createdBy === currentUserId)
+  );
   return normalizeMatchReceiptDraft({
     serialSeed: style.serialSeed,
     homeTeam: match.teamA?.name || summary.teamAName || "",
@@ -489,8 +496,9 @@ export function getMatchReceiptDraftFromMatch(match = {}, style = {}, court = nu
     awayMmr: style.awayMmr ?? match.teamB?.mmr,
     personalMmr: style.personalMmr,
     profileHashtag: style.profileHashtag,
-    personalPoints: verified ? playerStats.points : null,
-    personalRebounds: verified ? playerStats.rebounds : null,
+    personalPoints: personalStatsEligible ? playerStats.points : null,
+    personalRebounds: personalStatsEligible ? playerStats.rebounds : null,
+    personalStatsEligible,
     hasCanonicalTeamMatch: Boolean(
       getMatchReceiptSideTeamId(match, "teamA")
       && getMatchReceiptSideTeamId(match, "teamB")
@@ -548,7 +556,8 @@ function getTierVisual(mmr) {
 
 export function createMatchReceiptViewModel(value, options = {}) {
   const draft = normalizeMatchReceiptDraft(value);
-  const hasPersonalStats = draft.verified && (draft.personalPoints !== null || draft.personalRebounds !== null);
+  const hasPersonalStats = draft.personalStatsEligible
+    && (draft.personalPoints !== null || draft.personalRebounds !== null);
   const personalTier = getTierVisual(draft.personalMmr);
   const showPersonalTierIdentity = Boolean(personalTier && draft.profileHashtag);
   return {
@@ -784,7 +793,36 @@ function wrapCanvasText(ctx, text, maxWidth, maxLines = 2) {
   return lines.slice(0, maxLines);
 }
 
-function drawQrCode(ctx, value, x, y, size, brandBadge) {
+function drawQrBrandBadge(ctx, x, y, scale, size) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(scale, scale);
+  ctx.fillStyle = "#fa5030";
+  ctx.beginPath();
+  ctx.roundRect(0, 0, size, size, 0.8);
+  ctx.fill();
+  ctx.strokeStyle = "#fff3df";
+  ctx.lineWidth = 0.58;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.beginPath();
+  ctx.moveTo(1.7, 1.3);
+  ctx.lineTo(1.7, 3.7);
+  ctx.moveTo(1.7, 1.3);
+  ctx.lineTo(2.5, 1.3);
+  ctx.bezierCurveTo(3.02, 1.3, 3.3, 1.52, 3.3, 1.9);
+  ctx.bezierCurveTo(3.3, 2.28, 3.02, 2.5, 2.5, 2.5);
+  ctx.lineTo(1.7, 2.5);
+  ctx.moveTo(1.7, 2.5);
+  ctx.lineTo(2.58, 2.5);
+  ctx.bezierCurveTo(3.14, 2.5, 3.45, 2.72, 3.45, 3.1);
+  ctx.bezierCurveTo(3.45, 3.48, 3.14, 3.7, 2.58, 3.7);
+  ctx.lineTo(1.7, 3.7);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawQrCode(ctx, value, x, y, size) {
   const matrix = createQrMatrix(value);
   const quietZone = 4;
   const scale = Math.max(1, Math.floor(size / (matrix.length + quietZone * 2)));
@@ -821,7 +859,7 @@ function drawQrCode(ctx, value, x, y, size, brandBadge) {
   });
   const badgeX = x + (badgeStart + quietZone) * scale;
   const badgeY = y + (badgeStart + quietZone) * scale;
-  ctx.drawImage(brandBadge, badgeX, badgeY, badgeSize * scale, badgeSize * scale);
+  drawQrBrandBadge(ctx, badgeX, badgeY, scale, badgeSize);
   return actualSize;
 }
 
@@ -884,7 +922,7 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
   const receiptTop = compact ? 1010 : 1504;
   const photoPromise = loadCanvasImage(options.photoBlob || model.defaultPhotoUrl)
     .catch((error) => (options.photoBlob ? loadCanvasImage(model.defaultPhotoUrl) : Promise.reject(error)));
-  const [photo, wordmark, homeTier, awayTier, homeNeutralTeamMark, awayNeutralTeamMark, personalTier, paper, paperGrain, scoreDigits, qrBrandBadge, homeLineArtUrl, awayLineArtUrl] = await Promise.all([
+  const [photo, wordmark, homeTier, awayTier, homeNeutralTeamMark, awayNeutralTeamMark, personalTier, paper, paperGrain, scoreDigits, homeLineArtUrl, awayLineArtUrl] = await Promise.all([
     photoPromise,
     loadCanvasImage(model.wordmarkUrl).catch(() => null),
     model.showTeamTierEmblems && model.homeTier ? loadCanvasImage(model.homeTier.outlineSrc).catch(() => null) : null,
@@ -895,7 +933,6 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
     loadCanvasImage(model.paperUrl),
     loadCanvasImage(model.paperGrainUrl),
     loadCanvasImage(model.scoreDigitsUrl),
-    loadCanvasImage(MATCH_RECEIPT_QR_BADGE_URL),
     options.teamLineArtUrls?.home || createMatchReceiptLineArt(model.teamEmblemUrls.home),
     options.teamLineArtUrls?.away || createMatchReceiptLineArt(model.teamEmblemUrls.away),
   ]);
@@ -992,8 +1029,8 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
   teams.forEach((team, index) => {
     if (!team.image) return;
     ctx.save();
-    ctx.globalAlpha = model.showTeamTierEmblems && team.tier ? 0.24 : 0.2;
-    ctx.filter = "grayscale(1) sepia(.55) brightness(.48)";
+    ctx.globalAlpha = 0.12;
+    ctx.filter = "grayscale(1) brightness(0) invert(1)";
     const centerX = index ? width - 72 : 72;
     ctx.drawImage(team.image, centerX - teamWatermarkSize / 2, teamWatermarkY, teamWatermarkSize, teamWatermarkSize);
     ctx.restore();
@@ -1049,7 +1086,7 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
   });
   const hasGameDetail = Boolean(model.tournamentName || model.periodScores.length);
   if (hasGameDetail) {
-    const centerTop = compact ? 840 : 1265;
+    const centerTop = compact ? 900 : 1350;
     ctx.textAlign = "center";
     ctx.fillStyle = "#d6a522";
     ctx.font = `900 ${compact ? 13 : 16}px "KBO Dia Gothic", sans-serif`;
@@ -1169,7 +1206,7 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
     ctx.fillStyle = "#d4582b";
     ctx.font = '900 22px "KBO Dia Gothic", sans-serif';
     ctx.fillText("경기 기록 보기", footerRightX, footerY + gameTitleOffset);
-    drawQrCode(ctx, model.matchUrl, footerRightX - qrSize / 2, footerY + (compact ? 6 : 28), qrSize, qrBrandBadge);
+    drawQrCode(ctx, model.matchUrl, footerRightX - qrSize / 2, footerY + (compact ? 6 : 28), qrSize);
   } else {
     ctx.fillStyle = "#d4582b";
     ctx.font = '900 23px "KBO Dia Gothic", sans-serif';

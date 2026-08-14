@@ -1,11 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { assetUrl } from "../../lib/assets.js";
 import { createQrPath } from "../../lib/qrCode.js";
 import useBodyScrollLock from "../../hooks/useBodyScrollLock.js";
 import Button from "./Button.jsx";
-
-const QR_BRAND_BADGE_URL = assetUrl("/assets/qr-boxtier-badge-v1.png");
 
 function QrGraphic({ qr, label, className = "", branded = false }) {
   const badgeClearSize = 5;
@@ -49,14 +46,17 @@ function QrGraphic({ qr, label, className = "", branded = false }) {
           {finderCenterPositions.map(([x, y]) => (
             <rect key={`${x}-${y}`} x={x} y={y} width="3" height="3" rx="0.45" fill="#d4582b" />
           ))}
-          <image
-            href={QR_BRAND_BADGE_URL}
-            x={badgeStart + qr.offset}
-            y={badgeStart + qr.offset}
-            width={badgeSize}
-            height={badgeSize}
-            preserveAspectRatio="xMidYMid meet"
-          />
+          <g transform={`translate(${badgeStart + qr.offset} ${badgeStart + qr.offset})`}>
+            <rect width={badgeSize} height={badgeSize} rx="0.8" fill="#fa5030" />
+            <path
+              d="M1.7 1.3V3.7M1.7 1.3H2.5C3.02 1.3 3.3 1.52 3.3 1.9C3.3 2.28 3.02 2.5 2.5 2.5H1.7M1.7 2.5H2.58C3.14 2.5 3.45 2.72 3.45 3.1C3.45 3.48 3.14 3.7 2.58 3.7H1.7"
+              fill="none"
+              stroke="#fff3df"
+              strokeWidth="0.58"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </g>
         </g>
       ) : null}
     </svg>

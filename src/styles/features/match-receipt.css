@@ -331,14 +331,14 @@
 
 .match-receipt-team-watermarks img {
   position: absolute; top: 0; display: block;
-  width: 118%; aspect-ratio: 1; object-fit: contain; opacity: 0.24;
-  filter: grayscale(1) sepia(0.55) brightness(0.48);
+  width: 118%; aspect-ratio: 1; object-fit: contain; opacity: 0.12;
+  filter: grayscale(1) brightness(0) invert(1);
 }
 
 .match-receipt-team-watermarks span:first-child img { left: -41% }
 .match-receipt-team-watermarks span:last-child img { right: -41% }
 
-.match-receipt-team-watermarks img.is-neutral { opacity: 0.2 }
+.match-receipt-team-watermarks img.is-neutral { opacity: 0.12 }
 .match-receipt-poster-score {
   position: absolute;
   z-index: 2;

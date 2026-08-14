@@ -9,6 +9,7 @@ import {
   getMatchReceiptFormatLabel,
   getMatchReceiptSideTeamId,
   getMatchReceiptTeamNameScale,
+  MATCH_RECEIPT_LIMITS,
   MATCH_RECEIPT_PHOTO_ASPECT,
   normalizeMatchReceiptDraft,
   renewMatchReceiptDraft,
@@ -58,6 +59,7 @@ test("public receipt draft keeps only bounded safe fields", () => {
     personalMmr: 1400,
     profileHashtag: "#1234567",
     hasCanonicalTeamMatch: true,
+    personalStatsEligible: true,
     photo: "data:image/jpeg;base64,private",
     photoZoom: 2,
     verified: "yes",
@@ -81,6 +83,7 @@ test("public receipt draft keeps only bounded safe fields", () => {
   assert.equal(payload.homeMmr, 1300);
   assert.equal(payload.awayMmr, 1250);
   assert.equal(payload.verified, false);
+  assert.equal(payload.personalStatsEligible, false);
   assert.equal("photo" in payload, false);
   assert.equal("photoZoom" in payload, false);
   assert.equal("personalMmr" in payload, false);
@@ -101,6 +104,7 @@ test("only trusted canonical receipt payload keeps server-only fields", () => {
     profileHashtag: "#1234567",
     hasCanonicalTeamMatch: true,
     verified: true,
+    personalStatsEligible: true,
     homeEmblemKey: "team-emblems/home/logo.png",
     awayEmblemKey: "../private.png",
   };
@@ -111,12 +115,14 @@ test("only trusted canonical receipt payload keeps server-only fields", () => {
   assert.equal(trusted.profileHashtag, "#1234567");
   assert.equal(trusted.hasCanonicalTeamMatch, true);
   assert.equal(trusted.verified, true);
+  assert.equal(trusted.personalStatsEligible, true);
   assert.equal(trusted.homeEmblemKey, "team-emblems/home/logo.png");
   assert.equal(trusted.awayEmblemKey, "");
   assert.equal("personalMmr" in untrusted, false);
   assert.equal("profileHashtag" in untrusted, false);
   assert.equal("hasCanonicalTeamMatch" in untrusted, false);
   assert.equal(untrusted.verified, false);
+  assert.equal(untrusted.personalStatsEligible, false);
   assert.equal("homeEmblemKey" in untrusted, false);
 });
 
@@ -128,6 +134,7 @@ test("public receipt projection omits internal address and exact personal rating
     personalMmr: 1400,
     profileHashtag: "#1234567",
     personalPoints: 12,
+    personalStatsEligible: true,
     verified: true,
     hasCanonicalTeamMatch: true,
   });
@@ -136,6 +143,7 @@ test("public receipt projection omits internal address and exact personal rating
   assert.equal("personalMmr" in projected, false);
   assert.equal("profileHashtag" in projected, false);
   assert.equal(projected.personalPoints, 12);
+  assert.equal(projected.personalStatsEligible, true);
   assert.equal(projected.verified, true);
   assert.equal(projected.hasCanonicalTeamMatch, true);
 });
@@ -188,6 +196,51 @@ test("canonical receipt team ids include record summaries", () => {
 
   assert.equal(getMatchReceiptSideTeamId(match, "teamA"), "home-summary");
   assert.equal(getMatchReceiptSideTeamId(match, "teamB"), "away-summary");
+});
+
+test("receipt shows only the current user's eligible personal stats", () => {
+  const baseMatch = {
+    id: "match-stats",
+    status: "confirmed",
+    mode: "3v3",
+    createdBy: "host",
+    teamA: { name: "HOME" },
+    teamB: { name: "AWAY" },
+    result: {
+      scoreA: 60,
+      scoreB: 50,
+      playerStats: { player: { points: 18, rebounds: 7 } },
+    },
+    rules: { recordType: RECORD_TYPES.match },
+  };
+
+  const refereeDraft = getMatchReceiptDraftFromMatch({ ...baseMatch, refereeId: "referee" }, {
+    currentUserId: "player",
+  });
+  assert.equal(refereeDraft.personalPoints, 18);
+  assert.equal(refereeDraft.personalRebounds, 7);
+  assert.equal(createMatchReceiptViewModel(refereeDraft).hasPersonalStats, true);
+
+  const personalDraft = getMatchReceiptDraftFromMatch({
+    ...baseMatch,
+    createdBy: "player",
+    rules: { recordType: RECORD_TYPES.personalRecord },
+  }, { currentUserId: "player" });
+  assert.equal(personalDraft.verified, false);
+  assert.equal(personalDraft.personalStatsEligible, true);
+  assert.equal(createMatchReceiptViewModel(personalDraft).hasPersonalStats, true);
+
+  const noRefereeDraft = getMatchReceiptDraftFromMatch(baseMatch, { currentUserId: "player" });
+  assert.equal(noRefereeDraft.personalStatsEligible, false);
+  assert.equal(createMatchReceiptViewModel(noRefereeDraft).hasPersonalStats, false);
+
+  const otherOwnerDraft = getMatchReceiptDraftFromMatch({
+    ...baseMatch,
+    createdBy: "other",
+    rules: { recordType: RECORD_TYPES.personalRecord },
+  }, { currentUserId: "player" });
+  assert.equal(otherOwnerDraft.personalStatsEligible, false);
+  assert.equal(createMatchReceiptViewModel(otherOwnerDraft).hasPersonalStats, false);
 });
 
 test("receipt view model uses compact game labels, venue fallback, and a safe hashtag", () => {
@@ -442,6 +495,9 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(emblemCropEditor, /선화로 변경/);
   assert.match(emblemCropEditor, /disabled=\{pending \|\| !convertedPreview\}/);
   assert.match(emblemCropEditor, /onClick=\{onConfirm\}>확인</);
+  assert.match(page, /자동 변환 결과가 좋지 않으면 AI를 이용해 투명 배경 선화로 바꾼 뒤 다시 업로드하세요/);
+  assert.match(page, /자동 변환 결과는 자동 적용하지 않으며, 미리보기 확인 후 직접 선택합니다/);
+  assert.doesNotMatch(page, /기계 변환/);
   assert.match(page, /getRegisteredCourts/);
   assert.match(page, /mergeCourtSearchCourts/);
   assert.match(page, /inferRegionSelection\(courtMapRegionSource\)/);
@@ -472,6 +528,8 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(preview, /match-receipt-photo-backdrop/);
   assert.doesNotMatch(receiptSources, /index \? "AWAY" : "HOME"/);
   assert.match(page, /maxLength=\{MATCH_RECEIPT_LIMITS\.comment\} disabled=\{isFieldReadOnly\("comment"\)\}/);
+  assert.equal(MATCH_RECEIPT_LIMITS.tournamentName, 20);
+  assert.match(page, /draft\.tournamentName\} maxLength=\{MATCH_RECEIPT_LIMITS\.tournamentName\}/);
   assert.doesNotMatch(page, /match-receipt-color-input/);
   assert.match(qrComponent, /branded \? null : <rect/);
   assert.match(qrComponent, /qr\.matrix\.flatMap/);
@@ -479,9 +537,11 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(qrComponent, /finderCenterPositions/);
   assert.doesNotMatch(qrComponent, /badgeInset/);
   assert.match(qrComponent, /const badgeSize = 5/);
-  assert.match(qrComponent, /qr-boxtier-badge-v1\.png/);
-  assert.doesNotMatch(qrComponent, /fill="#fff"[^>]*badge/);
-  assert.match(renderer, /ctx\.drawImage\(brandBadge/);
+  assert.doesNotMatch(qrComponent, /assetUrl|<image/);
+  assert.match(qrComponent, /stroke="#fff3df"/);
+  assert.match(qrComponent, /strokeLinecap="round"/);
+  assert.doesNotMatch(renderer, /MATCH_RECEIPT_QR_BADGE_URL|qrBrandBadge|ctx\.drawImage\(brandBadge/);
+  assert.match(renderer, /function drawQrBrandBadge/);
   assert.match(styles, /\.match-receipt-photo\.is-editable[\s\S]*touch-action: none/);
   assert.match(styles, /\.match-receipt-photo \{[\s\S]*height: 46\.09375%/);
   assert.match(styles, /\.match-receipt-poster-teams > div:not\(\.match-receipt-game-detail\) > strong[\s\S]*overflow-wrap: anywhere[\s\S]*word-break: normal/);
@@ -505,6 +565,8 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(styles, /transform: scaleX\(0\.92\)/);
   assert.match(styles, /scale\(calc\(var\(--receipt-photo-scale\) \* 0\.92\)\)/);
   assert.match(styles, /\.match-receipt-team-watermarks[\s\S]*height: 34%/);
+  assert.match(styles, /\.match-receipt-team-watermarks img \{[\s\S]*opacity: 0\.12;[\s\S]*filter: grayscale\(1\) brightness\(0\) invert\(1\)/);
+  assert.doesNotMatch(detailStyles, /\.match-receipt-team-watermarks img\.is-custom/);
   assert.match(styles, /\.match-receipt-poster-teams \.match-receipt-team-tier\s*\{[\s\S]*top: 42%;[\s\S]*width: 30%;/);
   assert.match(styles, /--receipt-team-name-size/);
   assert.match(styles, /font-size: clamp\(7px, 2\.1cqw, 10px\)/);
@@ -522,6 +584,10 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(styles, /\.match-receipt-team-fields fieldset[\s\S]*background: var\(--surface-2\)[\s\S]*border: 0;/);
   assert.match(styles, /\.match-receipt-photo-tools[\s\S]*grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/);
   assert.match(detailStyles, /input\[type="date"\][\s\S]*min-inline-size: 0[\s\S]*max-inline-size: 100%/);
+  assert.match(detailStyles, /\.match-receipt-period-fields input\[type="number"\][\s\S]*appearance: textfield/);
+  assert.match(detailStyles, /::-webkit-inner-spin-button,[\s\S]*::-webkit-outer-spin-button[\s\S]*-webkit-appearance: none/);
+  assert.match(detailStyles, /\.match-receipt-game-detail[\s\S]*top: 76%/);
+  assert.match(renderer, /const centerTop = compact \? 900 : 1350/);
   assert.match(styles, /@media \(max-width: 900px\)[\s\S]*?\.match-receipt-editor \{[\s\S]*?display: contents;[\s\S]*?\.match-receipt-preview-panel \{[\s\S]*?order: 2;[\s\S]*?\.match-receipt-complete \{[\s\S]*?order: 3;/);
   assert.match(styles, /\.match-receipt-ticket-date[\s\S]*border-top/);
   assert.match(styles, /\.match-receipt-ticket\s*\{[^}]*inset:\s*auto 0 1\.8%;/);
@@ -535,6 +601,7 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(renderer, /compact \? 154 : 278/);
   assert.match(renderer, /const scoreBaseline = compact \? scoreTop \+ 132 : 1163/);
   assert.match(renderer, /const teamWatermarkSize = compact \? 450 : 600/);
+  assert.match(renderer, /ctx\.globalAlpha = 0\.12;\s*ctx\.filter = "grayscale\(1\) brightness\(0\) invert\(1\)"/);
   assert.match(renderer, /const teamTop = compact \? 779 : 1192/);
   assert.match(renderer, /const teamTierY = compact \? 838 : 1311/);
   assert.match(renderer, /const teamTierSize = compact \? 116 : 140/);

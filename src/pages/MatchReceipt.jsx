@@ -928,7 +928,7 @@ export default function MatchReceipt({ auth, app }) {
                 </span>
               </label>
               <label className="is-wide">짧은 장소 <input value={draft.address} maxLength={MATCH_RECEIPT_LIMITS.address} disabled={isFieldReadOnly("address")} placeholder="선택 · 주소나 장소를 자유롭게 입력" onChange={(event) => updateField("address", event.target.value)} /></label>
-              <label className="is-wide">대회·리그 이름 <input value={draft.tournamentName} maxLength={MATCH_RECEIPT_LIMITS.tournamentName} disabled={isFieldReadOnly("tournamentName")} placeholder="선택 · 팀 엠블럼 사이 위쪽에 표시" onChange={(event) => updateField("tournamentName", event.target.value)} /></label>
+              <label className="is-wide">대회·리그 이름 <input value={draft.tournamentName} maxLength={MATCH_RECEIPT_LIMITS.tournamentName} disabled={isFieldReadOnly("tournamentName")} placeholder="선택 · 20자 이내" onChange={(event) => updateField("tournamentName", event.target.value)} /></label>
               <fieldset className="match-receipt-line-art-fields is-wide">
                 <legend>팀 엠블럼 선화 <small>선택</small></legend>
                 <div className="match-receipt-emblem-upload-grid">
@@ -961,7 +961,8 @@ export default function MatchReceipt({ auth, app }) {
                   })}
                 </div>
                 <Button type="button" variant="secondary" size="sm" onClick={copyTeamEmblemPrompt}><Copy aria-hidden="true" /> AI 선화 변환 프롬프트 복사</Button>
-                <small>대비가 강하고 배경이 투명하거나 단색인 엠블럼만 권장합니다. 기계 변환 결과는 자동 적용하지 않으며, 미리보기 확인 후 직접 선택합니다.</small>
+                <small>자동 변환 결과가 좋지 않으면 AI를 이용해 투명 배경 선화로 바꾼 뒤 다시 업로드하세요.</small>
+                <small>대비가 강하고 배경이 투명하거나 단색인 엠블럼만 권장합니다. 자동 변환 결과는 자동 적용하지 않으며, 미리보기 확인 후 직접 선택합니다.</small>
               </fieldset>
               <fieldset className="match-receipt-period-fields is-wide">
                 <legend>쿼터별 점수 <small>선택</small></legend>

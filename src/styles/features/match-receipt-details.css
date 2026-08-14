@@ -52,17 +52,27 @@
 .match-receipt-period-fields legend small { color: var(--rb-muted); font-size: 0.72em; }
 .match-receipt-period-fields label { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 5px; }
 .match-receipt-period-fields label > span { grid-column: 1 / -1; color: var(--rb-muted); font-size: 12px; font-weight: 900; text-align: center; }
-.match-receipt-period-fields input { min-width: 0; padding-inline: var(--space-3); text-align: center; }
+.match-receipt-period-fields input[type="number"] {
+  min-width: 0;
+  padding-inline: var(--space-3);
+  text-align: center;
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+.match-receipt-period-fields input[type="number"]::-webkit-inner-spin-button,
+.match-receipt-period-fields input[type="number"]::-webkit-outer-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}
 .match-receipt-period-fields i { color: var(--rb-muted); font-style: normal; font-weight: 900; }
 
-.match-receipt-team-watermarks img.is-custom { opacity: 0.24; filter: none; }
 .match-receipt-poster-teams.has-game-detail::after { display: none; }
 .match-receipt-poster-teams .match-receipt-team-tier.is-custom { width: 34%; max-width: 86px; max-height: 86px; object-fit: contain; opacity: 0.9; filter: none; }
 
 .match-receipt-game-detail {
   position: absolute;
   z-index: 3;
-  top: 44%;
+  top: 76%;
   left: 50%;
   display: grid;
   width: max-content;
