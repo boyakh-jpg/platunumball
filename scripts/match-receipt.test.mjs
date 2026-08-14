@@ -185,9 +185,11 @@ test("receipt view model uses compact game labels, venue fallback, and a safe ha
   };
   const model = createMatchReceiptViewModel(draft, { publicId: "public-receipt-id" });
 
+  assert.equal(getMatchReceiptFormatLabel("1v1"), "1v1");
+  assert.equal(getMatchReceiptFormatLabel("2v2"), "2v2");
   assert.equal(getMatchReceiptFormatLabel("3v3"), "3v3");
   assert.equal(getMatchReceiptFormatLabel("5v5"), "5v5");
-  assert.equal(getMatchReceiptFormatLabel("other"), "OTHER");
+  assert.equal(getMatchReceiptFormatLabel("other"), "3v3");
   assert.equal(model.locationLabel, "마포구");
   assert.equal(createMatchReceiptViewModel({ ...draft, address: "" }).locationLabel, draft.venue);
   assert.notEqual(createMatchReceiptViewModel({ ...draft, address: "" }).locationLabel, draft.originalAddress);
@@ -356,7 +358,7 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(page, /className="page-header match-receipt-page-head ui-page-hero ui-design-app-hero"/);
   assert.match(page, /> 뒤로가기/);
   assert.match(page, /> 홈으로/);
-  assert.match(styles, /\.match-receipt-page\s*\{[^}]*width:\s*100%;[^}]*padding-block-end:\s*72px;/);
+  assert.match(styles, /\.match-receipt-page\s*\{[^}]*width:\s*min\(100%, var\(--page-content-max\)\);[^}]*max-width:\s*var\(--page-content-max\);[^}]*margin-inline:\s*auto;[^}]*padding-block-end:\s*72px;/);
   assert.match(styles, /\.match-receipt-workspace\s*\{[^}]*width:\s*min\(1180px, 100%\);[^}]*margin:\s*0 auto;/);
   assert.doesNotMatch(styles, /match-receipt-page-head\.ui-design-app-hero\s*\{[^}]*margin-block-start:\s*0;/);
   assert.match(preview, /model\.hasPersonalStats \? "MY GAME" : "GAME INFO"/);
@@ -404,6 +406,7 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(qrComponent, /qr\.matrix\.flatMap/);
   assert.match(qrComponent, /rx="0\.18"/);
   assert.match(qrComponent, /finderCenterPositions/);
+  assert.doesNotMatch(qrComponent, /badgeInset/);
   assert.match(qrComponent, />\s*B\s*<\/text>/);
   assert.match(styles, /\.match-receipt-photo\.is-editable[\s\S]*touch-action: none/);
   assert.match(styles, /\.match-receipt-photo \{[\s\S]*height: 46\.09375%/);
@@ -430,11 +433,13 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(styles, /\.match-receipt-team-watermarks[\s\S]*height: 34%/);
   assert.match(styles, /\.match-receipt-poster-teams \.match-receipt-team-tier\s*\{[\s\S]*top: 42%;[\s\S]*width: 30%;/);
   assert.match(styles, /--receipt-team-name-size/);
-  assert.match(styles, /font-size: clamp\(6px, 1\.9cqw, 9px\)/);
+  assert.match(styles, /font-size: clamp\(7px, 2\.1cqw, 10px\)/);
   assert.match(styles, /height: 19\.9%/);
   assert.match(styles, /\.match-receipt-team-tier\.is-neutral[\s\S]*opacity: 0\.76/);
   assert.match(styles, /\.match-receipt-personal-tier[\s\S]*opacity: 0\.64/);
-  assert.match(styles, /\.match-receipt-ticket-qr \.match-receipt-qr[\s\S]*width: 72%[\s\S]*max-height: 78%/);
+  assert.match(styles, /\.match-receipt-ticket-qr \.match-receipt-qr[\s\S]*width: 84%[\s\S]*max-height: 88%/);
+  assert.match(styles, /\.match-receipt-game-info b\s*\{[^}]*font-family: "Bebas Neue"/);
+  assert.match(styles, /\.match-receipt-ticket-game > \.match-receipt-ticket-caption[\s\S]*margin-top: auto[\s\S]*font-size: clamp\(8px, 2\.5cqw, 12px\)/);
   assert.match(styles, /\.match-receipt-team-fields fieldset[\s\S]*background: var\(--surface-2\)[\s\S]*border: 0;/);
   assert.match(styles, /\.match-receipt-photo-tools[\s\S]*grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/);
   assert.match(styles, /input\[type="date"\][\s\S]*min-width: 0[\s\S]*max-width: 100%/);
@@ -471,7 +476,8 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(renderer, /const footerMiddleX = compact \? 540 : 558/);
   assert.match(renderer, /const footerRightX = compact \? 850 : 862/);
   assert.match(renderer, /drawCanvasMapPin\(ctx, footerLeftX/);
-  assert.match(renderer, /const qrSize = compact \? 176 : 218/);
+  assert.match(renderer, /const qrSize = compact \? 200 : 250/);
+  assert.match(renderer, /ctx\.font = '900 22px "KBO Dia Gothic", sans-serif';[\s\S]*footerY \+ \(compact \? 176 : 264\)/);
   assert.match(renderer, /ctx\.moveTo\(footerMiddleX, footerY \+ \(compact \? 30 : 70\)\)/);
   assert.match(renderer, /createCanvasPaperPattern/);
   assert.match(renderer, /drawCanvasPaperGrain/);

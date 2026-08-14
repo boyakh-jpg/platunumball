@@ -147,7 +147,6 @@ export default function MatchReceiptPreview({
           {model.personalTier ? (
             <div className="match-receipt-personal-tier-mark" aria-hidden="true">
               <img className="match-receipt-personal-tier is-watermark" src={model.personalTier.outlineSrc} alt="" />
-              <small className="match-receipt-personal-tier-label">MY TIER · {model.personalTier.label}</small>
             </div>
           ) : null}
           <strong>{model.hasPersonalStats ? "MY GAME" : "GAME INFO"}</strong>
@@ -162,6 +161,7 @@ export default function MatchReceiptPreview({
               <small>{model.matchNatureLabel}</small>
             </span>
           )}
+          {model.personalTier ? <small className="match-receipt-personal-tier-label">MY TIER · {model.personalTier.label}</small> : null}
           {model.comment ? <span className="match-receipt-ticket-caption">{model.comment}</span> : null}
         </div>
         <div className="match-receipt-ticket-qr">

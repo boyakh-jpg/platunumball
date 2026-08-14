@@ -6,7 +6,6 @@ import Button from "./Button.jsx";
 
 function QrGraphic({ qr, label, className = "", branded = false }) {
   const badgeSize = qr.size * 0.14;
-  const badgeInset = badgeSize * 0.14;
   const badgeX = (qr.size - badgeSize) / 2;
   const badgeY = badgeX;
   const finderCenterPositions = [
@@ -43,12 +42,11 @@ function QrGraphic({ qr, label, className = "", branded = false }) {
           {finderCenterPositions.map(([x, y]) => (
             <rect key={`${x}-${y}`} x={x} y={y} width="3" height="3" rx="0.45" fill="#d4582b" />
           ))}
-          <rect x={badgeX} y={badgeY} width={badgeSize} height={badgeSize} rx={badgeSize * 0.16} fill="#f1e8db" />
           <rect
-            x={badgeX + badgeInset}
-            y={badgeY + badgeInset}
-            width={badgeSize - badgeInset * 2}
-            height={badgeSize - badgeInset * 2}
+            x={badgeX}
+            y={badgeY}
+            width={badgeSize}
+            height={badgeSize}
             rx={badgeSize * 0.1}
             fill="#d4582b"
           />

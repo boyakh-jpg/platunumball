@@ -25,9 +25,10 @@ export const MATCH_RECEIPT_LIMITS = Object.freeze({
 });
 
 export const MATCH_RECEIPT_FORMATS = Object.freeze([
+  { value: "1v1", label: "1대1" },
+  { value: "2v2", label: "2대2" },
   { value: "3v3", label: "3대3" },
   { value: "5v5", label: "5대5" },
-  { value: "other", label: "기타" },
 ]);
 
 export const MATCH_RECEIPT_NATURES = Object.freeze([
@@ -382,7 +383,7 @@ export function getMatchReceiptCreateDraft(value) {
     recordType: RECORD_TYPES.personalRecord,
     recordEntryMode: "quick",
     visibility: "private",
-    ...(draft.format === "3v3" || draft.format === "5v5" ? { mode: draft.format } : {}),
+    mode: draft.format,
     scheduledDate: draft.playedOn,
     soloTeamAName: draft.homeTeam,
     soloTeamBName: draft.awayTeam,
@@ -419,7 +420,7 @@ export function getMatchReceiptDraftFromMatch(match = {}, style = {}, court = nu
     homeScore: match.result?.scoreA ?? match.teamA?.score ?? 0,
     awayScore: match.result?.scoreB ?? match.teamB?.score ?? 0,
     playedOn: String(match.scheduledDate ?? "").slice(0, 10),
-    format: MATCH_RECEIPT_FORMATS.some(({ value }) => value === match.mode) ? match.mode : "other",
+    format: MATCH_RECEIPT_FORMATS.some(({ value }) => value === match.mode) ? match.mode : "3v3",
     matchNature: inferMatchReceiptNature(match, style.tournament),
     venue: court?.name ?? (match.court && match.court !== "미정" ? match.court : ""),
     address: style.address ?? "",
@@ -464,9 +465,7 @@ export function getMatchReceiptFileName(value, preset = "story") {
 }
 
 export function getMatchReceiptFormatLabel(format) {
-  if (format === "3v3") return "3v3";
-  if (format === "5v5") return "5v5";
-  return "OTHER";
+  return MATCH_RECEIPT_FORMATS.find(({ value }) => value === format)?.value ?? "3v3";
 }
 
 export function getMatchReceiptNatureLabel(matchNature) {
@@ -752,18 +751,10 @@ function drawQrCode(ctx, value, x, y, size) {
     ctx.fill();
   });
   const badgeSize = actualSize * 0.14;
-  const badgeInset = badgeSize * 0.14;
   const badgeX = x + (actualSize - badgeSize) / 2;
   const badgeY = y + (actualSize - badgeSize) / 2;
-  ctx.fillStyle = "#f1e8db";
-  ctx.fillRect(badgeX, badgeY, badgeSize, badgeSize);
   ctx.fillStyle = "#d4582b";
-  ctx.fillRect(
-    badgeX + badgeInset,
-    badgeY + badgeInset,
-    badgeSize - badgeInset * 2,
-    badgeSize - badgeInset * 2,
-  );
+  ctx.fillRect(badgeX, badgeY, badgeSize, badgeSize);
   ctx.fillStyle = "#f1e8db";
   ctx.font = `900 ${badgeSize * 0.58}px Arial, sans-serif`;
   ctx.textAlign = "center";
@@ -1052,7 +1043,7 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
 
   ctx.fillStyle = "#d4582b";
   ctx.font = '900 25px "KBO Dia Gothic", sans-serif';
-  const gameTitleOffset = model.hasPersonalStats || compact ? (compact ? 10 : 30) : (model.comment ? 70 : 98);
+  const gameTitleOffset = compact ? 10 : 30;
   ctx.fillText(model.hasPersonalStats ? "MY GAME" : "GAME INFO", footerMiddleX, footerY + gameTitleOffset);
 
   if (model.hasPersonalStats) {
@@ -1072,34 +1063,33 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
     ctx.setLineDash([]);
     ctx.fillStyle = "#151515";
     ctx.font = '900 18px "KBO Dia Gothic", sans-serif';
-    if (model.comment) ctx.fillText(model.comment, footerMiddleX, footerY + (compact ? 176 : 278), 260);
   } else {
     ctx.fillStyle = "#151515";
     ctx.font = `900 ${compact ? 36 : 42}px "Bebas Neue", "KBO Dia Gothic", sans-serif`;
-    ctx.fillText(getMatchReceiptFormatLabel(model.format), footerMiddleX, footerY + (compact ? 64 : (model.comment ? 130 : 158)), 260);
+    ctx.fillText(getMatchReceiptFormatLabel(model.format), footerMiddleX, footerY + (compact ? 64 : 96), 260);
     ctx.fillStyle = "#71451f";
     ctx.font = '900 18px "KBO Dia Gothic", sans-serif';
-    ctx.fillText(model.matchNatureLabel, footerMiddleX, footerY + (compact ? 101 : (model.comment ? 164 : 190)), 260);
+    ctx.fillText(model.matchNatureLabel, footerMiddleX, footerY + (compact ? 101 : 132), 260);
   }
 
-  if (!model.hasPersonalStats && model.comment) {
+  if (model.comment) {
     ctx.fillStyle = "#151515";
-    ctx.font = '900 18px "KBO Dia Gothic", sans-serif';
-    ctx.fillText(model.comment, footerMiddleX, footerY + (compact ? 176 : 241), 260);
+    ctx.font = '900 22px "KBO Dia Gothic", sans-serif';
+    ctx.fillText(model.comment, footerMiddleX, footerY + (compact ? 176 : 264), 260);
   }
 
   if (personalTier) {
     ctx.fillStyle = "#71451f";
     ctx.font = `900 ${compact ? 17 : 20}px "KBO Dia Gothic", sans-serif`;
-    ctx.fillText(`MY TIER · ${model.personalTier.label}`, footerMiddleX, footerY + (compact ? 153 : 225), 250);
+    ctx.fillText(`MY TIER · ${model.personalTier.label}`, footerMiddleX, footerY + (compact ? 153 : 184), 250);
   }
 
   if (model.matchUrl) {
-    const qrSize = compact ? 176 : 218;
+    const qrSize = compact ? 200 : 250;
     ctx.fillStyle = "#d4582b";
     ctx.font = '900 22px "KBO Dia Gothic", sans-serif';
     ctx.fillText("경기 기록 보기", footerRightX, footerY + (compact ? 6 : 30));
-    drawQrCode(ctx, model.matchUrl, footerRightX - qrSize / 2, footerY + (compact ? 24 : 54), qrSize);
+    drawQrCode(ctx, model.matchUrl, footerRightX - qrSize / 2, footerY + (compact ? 16 : 42), qrSize);
   } else {
     ctx.fillStyle = "#d4582b";
     ctx.font = '900 23px "KBO Dia Gothic", sans-serif';

@@ -1,4 +1,4 @@
-.match-receipt-page { width: 100%; margin: 0; padding-block-end: 72px; }
+.match-receipt-page { width: min(100%, var(--page-content-max)); max-width: var(--page-content-max); margin-inline: auto; padding-block-end: 72px; }
 
 .match-receipt-page-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: var(--space-8); }
 
@@ -571,7 +571,7 @@
 }
 
 .match-receipt-game-info b {
-  font-family: "KBO Dia Gothic", sans-serif; font-size: clamp(15px, 4.6cqw, 22px); font-weight: 900;
+  font-family: "Bebas Neue", "KBO Dia Gothic", sans-serif; font-size: clamp(15px, 4.6cqw, 22px); font-weight: 900;
   letter-spacing: 0.02em;
 }
 .match-receipt-game-info small {
@@ -600,6 +600,7 @@
 .match-receipt-ticket-game {
   position: relative;
   isolation: isolate;
+  gap: 3%;
 }
 
 .match-receipt-ticket-game > strong {
@@ -608,9 +609,8 @@
 }
 
 .match-receipt-personal-tier-mark {
-  position: absolute; z-index: 0; inset: 1% 5% 5%; display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
-  justify-items: center; min-width: 0; pointer-events: none;
+  position: absolute; z-index: 0; inset: 1% 5% 10%; display: grid;
+  place-items: center; min-width: 0; pointer-events: none;
 }
 
 .match-receipt-personal-tier {
@@ -619,8 +619,8 @@
 }
 
 .match-receipt-personal-tier-label {
-  display: block; max-width: 100%; overflow: hidden; color: #71451f;
-  font-size: clamp(6px, 1.9cqw, 9px); font-weight: 900;
+  position: relative; z-index: 1; display: block; max-width: 100%; overflow: hidden; color: #71451f;
+  font-size: clamp(7px, 2.1cqw, 10px); font-weight: 900;
   letter-spacing: 0.04em; line-height: 1; text-overflow: ellipsis; white-space: nowrap;
 }
 
@@ -635,11 +635,12 @@
   z-index: 1;
   display: block;
   width: 100%;
-  padding-top: 8%;
+  margin-top: auto;
+  padding-top: 5%;
   border-top: var(--ui-stroke-width) dotted rgba(32, 25, 21, 0.55);
-  font-size: clamp(6px, 2.1cqw, 10px);
+  font-size: clamp(8px, 2.5cqw, 12px);
   font-weight: 900;
-  line-height: 1;
+  line-height: 1.15;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -649,7 +650,7 @@
 .match-receipt-ticket-qr > a { display: grid; width: 100%; min-height: 0; place-items: center; }
 
 .match-receipt-ticket-qr .match-receipt-qr {
-  width: 72%; max-height: 78%; overflow: visible;
+  width: 84%; max-height: 88%; overflow: visible;
 }
 
 .match-receipt-locked-note {
