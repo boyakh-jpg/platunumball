@@ -112,7 +112,8 @@ const MATCH_RECEIPT_NEUTRAL_TEAM_MARK_URLS = Object.freeze({
 });
 const MATCH_RECEIPT_PAPER_URL = assetUrl("/assets/match-receipt-paper-torn-v1.png");
 const MATCH_RECEIPT_PAPER_GRAIN_URL = assetUrl("/assets/match-receipt-paper-grain-v1.png");
-const MATCH_RECEIPT_SCORE_DIGITS_URL = assetUrl("/assets/match-receipt-score-digits-v2.png");
+const MATCH_RECEIPT_SCORE_DIGITS_URL = assetUrl("/assets/match-receipt-score-digits-v3.png");
+const MATCH_RECEIPT_SCORE_GLYPH_COUNT = 11;
 
 function todayInKorea() {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -770,7 +771,7 @@ function drawCanvasPaperGrain(ctx, paperGrain, rect, options = {}) {
 
 function drawCanvasScoreDigits(ctx, atlas, value, centerX, top, height, maxWidth) {
   const digits = Array.from(String(value));
-  const cellWidth = atlas.naturalWidth / 10;
+  const cellWidth = atlas.naturalWidth / MATCH_RECEIPT_SCORE_GLYPH_COUNT;
   const cellHeight = atlas.naturalHeight;
   const naturalDigitWidth = height * cellWidth / cellHeight;
   const naturalGap = height * 0.005;
@@ -796,6 +797,21 @@ function drawCanvasScoreDigits(ctx, atlas, value, centerX, top, height, maxWidth
     );
     x += digitWidth + gap;
   });
+}
+
+function drawCanvasScoreColon(ctx, atlas, centerX, top, height) {
+  const cellWidth = atlas.naturalWidth / MATCH_RECEIPT_SCORE_GLYPH_COUNT;
+  ctx.drawImage(
+    atlas,
+    10 * cellWidth,
+    0,
+    cellWidth,
+    atlas.naturalHeight,
+    centerX - height * cellWidth / atlas.naturalHeight / 2,
+    top,
+    height * cellWidth / atlas.naturalHeight,
+    height,
+  );
 }
 
 function wrapCanvasText(ctx, text, maxWidth, maxLines = 2) {
@@ -1070,11 +1086,7 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
   const scoreBaseline = compact ? scoreTop + 132 : 1163;
   drawCanvasScoreDigits(ctx, scoreDigits, model.homeScore, columns[0], scoreBaseline - scoreDigitHeight, scoreDigitHeight, 430);
   drawCanvasScoreDigits(ctx, scoreDigits, model.awayScore, columns[1], scoreBaseline - scoreDigitHeight, scoreDigitHeight, 430);
-  ctx.save();
-  ctx.fillStyle = paperTextPattern;
-  ctx.font = `900 ${scoreDigitHeight}px "Anton", "Bebas Neue", sans-serif`;
-  ctx.fillText(":", width / 2, scoreBaseline);
-  ctx.restore();
+  drawCanvasScoreColon(ctx, scoreDigits, width / 2, scoreBaseline - scoreDigitHeight, scoreDigitHeight);
   ctx.fillStyle = "#f05a2a";
   ctx.font = `900 ${compact ? 31 : 36}px "Bebas Neue", sans-serif`;
   ctx.letterSpacing = compact ? "0.8px" : "1.2px";
@@ -1179,6 +1191,7 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
   const locationLineHeight = compact ? 23 : 32;
   const locationStartY = footerY + (compact ? 58 : 112) - (locationLines.length - 1) * locationLineHeight / 2;
   locationLines.forEach((line, index) => ctx.fillText(line, footerLeftX, locationStartY + index * locationLineHeight, 320));
+  ctx.fillStyle = "#d4582b";
   ctx.font = '900 27px "KBO Dia Gothic", sans-serif';
   ctx.fillText(model.playedOn.replaceAll("-", "."), footerLeftX, footerY + footerDateOffset);
 

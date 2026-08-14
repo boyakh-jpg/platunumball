@@ -359,9 +359,8 @@
   line-height: 0.92;
 }
 
-.match-receipt-poster-score > div > span { position: absolute; left: 50%; transform: translateX(-50%); }
+.match-receipt-score-colon { position: absolute; left: 50%; transform: translateX(-50%); }
 
-.match-receipt-poster-score > div > span,
 .match-receipt-poster-teams > div:not(.match-receipt-game-detail) > strong {
   background: var(--receipt-paper-texture) center / auto 240% repeat-x;
   background-clip: text;
@@ -371,12 +370,7 @@
 }
 
 .match-receipt-score-digits { display: flex; align-items: center; justify-content: center; gap: clamp(0px, 0.3cqw, 1px); height: clamp(72px, 26cqw, 125px); overflow: visible; }
-.match-receipt-score-digit { display: block; flex: 0 0 auto; height: 100%; aspect-ratio: 196 / 400; background: var(--receipt-score-digits) calc(var(--receipt-score-digit) * 11.111111%) center / 1000% 100% no-repeat; }
-
-.match-receipt-poster-score > div > span {
-  color: #d7c8b5;
-  font-size: clamp(28px, 10cqw, 48px);
-}
+.match-receipt-score-digit { display: block; flex: 0 0 auto; height: 100%; aspect-ratio: 196 / 400; background: var(--receipt-score-digits) calc(var(--receipt-score-digit) * 10%) center / 1100% 100% no-repeat; }
 
 .match-receipt-poster-teams {
   position: absolute; z-index: 2; inset: 62.1% 7% auto;
@@ -531,7 +525,7 @@
   width: 84%;
   padding-top: 7%;
   border-top: var(--ui-stroke-width) dotted rgba(32, 25, 21, 0.55);
-  color: #181513;
+  color: #bd4e2a;
 }
 
 .match-receipt-ticket-game > .match-receipt-personal-stats {

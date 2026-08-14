@@ -440,7 +440,7 @@ test("receipt photo tools stay outside the export card and reference dividers re
     readFile(new URL("../public/assets/tier-emblems/tier-neutral-away-outline-v5.png", import.meta.url)),
     readFile(new URL("../public/assets/match-receipt-paper-grain-v1.png", import.meta.url)),
     readFile(new URL("../public/assets/match-receipt-score-digits-source-v1.png", import.meta.url)),
-    readFile(new URL("../public/assets/match-receipt-score-digits-v2.png", import.meta.url)),
+    readFile(new URL("../public/assets/match-receipt-score-digits-v3.png", import.meta.url)),
     readFile(new URL("../public/assets/boxtier_letter_dark.png", import.meta.url)),
     readFile(new URL("../public/assets/fonts/BebasNeue-Regular.ttf", import.meta.url)),
     readFile(new URL("../public/assets/fonts/BebasNeue-OFL.txt", import.meta.url), "utf8"),
@@ -605,7 +605,7 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.doesNotMatch(styles, /text-shadow: 0 4px 16px rgba\(0, 0, 0, 0\.42\)/);
   assert.match(styles, /\.match-receipt-score-digit[\s\S]*var\(--receipt-score-digits\)/);
   assert.match(styles, /aspect-ratio: 196 \/ 400/);
-  assert.match(styles, /1000% 100% no-repeat/);
+  assert.match(styles, /1100% 100% no-repeat/);
   assert.match(styles, /\.match-receipt-card::after[\s\S]*var\(--receipt-paper-grain\)/);
   assert.doesNotMatch(styles, /\.match-receipt-ticket::after/);
   assert.match(styles, /font-family: "Black Han Sans", "KBO Dia Gothic", sans-serif/);
@@ -626,6 +626,7 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.doesNotMatch(styles, /\.match-receipt-ticket-game > \.match-receipt-ticket-caption\s*\{[^}]*margin-top:\s*auto/);
   assert.match(styles, /--receipt-ticket-divider-y:\s*58%/);
   assert.match(styles, /\.match-receipt-ticket-date[\s\S]*top:\s*var\(--receipt-ticket-divider-y\)/);
+  assert.match(styles, /\.match-receipt-ticket-date\s*\{[^}]*color:\s*#bd4e2a/);
   assert.match(styles, /\.match-receipt-ticket-game > \.match-receipt-ticket-caption[\s\S]*top:\s*var\(--receipt-ticket-divider-y\)/);
   assert.match(styles, /\.match-receipt-personal-tier-label[\s\S]*top:\s*78%/);
   assert.match(styles, /\.match-receipt-ticket-game--single-meta > :is\(\.match-receipt-ticket-caption, \.match-receipt-personal-tier-label\) \{ top: var\(--receipt-ticket-divider-y\); padding-top: 7%; \}/);
@@ -641,9 +642,12 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(styles, /\.match-receipt-ticket\s*\{[^}]*inset:\s*auto 0 1\.8%;/);
   assert.match(styles, /\.match-receipt-personal-stats b \+ b[\s\S]*border-left/);
   assert.match(renderer, /const receiptTop = compact \? 1010 : 1504/);
+  assert.match(renderer, /ctx\.fillStyle = "#d4582b";\s*ctx\.font = '900 27px "KBO Dia Gothic", sans-serif';\s*ctx\.fillText\(model\.playedOn/);
   assert.match(renderer, /ctx\.drawImage\(paper, 0, receiptTop, width, height - receiptTop - \(compact \? 26 : 34\)\)/);
   assert.equal(MATCH_RECEIPT_PHOTO_ASPECT, 1080 / 885);
-  assert.match(renderer, /match-receipt-score-digits-v2\.png/);
+  assert.match(renderer, /match-receipt-score-digits-v3\.png/);
+  assert.match(renderer, /drawCanvasScoreColon\(ctx, scoreDigits/);
+  assert.doesNotMatch(renderer, /ctx\.fillText\(":",/);
   assert.match(renderer, /createCanvasPaperPattern\(ctx, paperGrain\)/);
   assert.doesNotMatch(renderer, /ctx\.shadowColor = "rgba\(0,0,0,\.42\)"/);
   assert.match(renderer, /compact \? 154 : 278/);
@@ -705,13 +709,14 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(digitGenerator, /const DIGIT_WIDTH = 176/);
   assert.match(digitGenerator, /const DIGIT_HEIGHT = 372/);
   assert.match(digitGenerator, /match-receipt-score-digits-source-v1\.png/);
-  assert.match(digitGenerator, /match-receipt-score-digits-v2\.png/);
+  assert.match(digitGenerator, /match-receipt-score-digits-v3\.png/);
+  assert.match(digitGenerator, /const GLYPH_COUNT = 11/);
   assert.match(digitGenerator, /const SOURCE_COLUMNS = 5/);
   assert.match(digitGenerator, /greenExcess/);
   assert.doesNotMatch(digitGenerator, /fontfile:/);
   assert.doesNotMatch(digitGenerator, /const DIGIT_PATHS =/);
   assert.doesNotMatch(digitGenerator, /<svg/);
-  assert.match(syncScript, /match-receipt-score-digits-v2\.png/);
+  assert.match(syncScript, /match-receipt-score-digits-v3\.png/);
   assert.match(syncScript, /boxtier_letter_dark\.png/);
   assert.match(draftApi, /allowRequestMethod\(request, response, \["GET", "POST"\]\)/);
   assert.match(draftApi, /sourceMatchId/);

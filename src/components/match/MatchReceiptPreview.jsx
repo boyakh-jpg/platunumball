@@ -137,7 +137,11 @@ export default function MatchReceiptPreview({
         <span>{model.matchNatureLabel}</span>
         <div aria-label={`${model.homeScore} 대 ${model.awayScore}`}>
           <ReceiptScoreDigits value={model.homeScore} />
-          <span>:</span>
+          <i
+            className="match-receipt-score-digit match-receipt-score-colon"
+            style={{ "--receipt-score-digit": 10 }}
+            aria-hidden="true"
+          />
           <ReceiptScoreDigits value={model.awayScore} />
         </div>
       </section>

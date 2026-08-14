@@ -7,7 +7,7 @@ const RECEIPT_ASSETS = [
   "public/assets/rankball-record-create-night-v2.webp",
   "public/assets/match-receipt-paper-torn-v1.png",
   "public/assets/match-receipt-paper-grain-v1.png",
-  "public/assets/match-receipt-score-digits-v2.png",
+  "public/assets/match-receipt-score-digits-v3.png",
   "public/assets/boxtier_letter_dark.png",
   "public/assets/tier-emblems/tier-rookie-outline-v1.png",
   "public/assets/tier-emblems/tier-bronze-outline-v1.png",

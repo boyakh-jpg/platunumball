@@ -4,13 +4,14 @@ import sharp from "sharp";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const SOURCE_FILE = resolve(ROOT, "public/assets/match-receipt-score-digits-source-v1.png");
-const OUTPUT_FILE = resolve(ROOT, "public/assets/match-receipt-score-digits-v2.png");
+const OUTPUT_FILE = resolve(ROOT, "public/assets/match-receipt-score-digits-v3.png");
 const SOURCE_COLUMNS = 5;
 const SOURCE_ROWS = 2;
 const CELL_WIDTH = 196;
 const CELL_HEIGHT = 400;
 const DIGIT_WIDTH = 176;
 const DIGIT_HEIGHT = 372;
+const GLYPH_COUNT = 11;
 
 const { data: source, info } = await sharp(SOURCE_FILE)
   .removeAlpha()
@@ -67,7 +68,16 @@ const glyphs = await Promise.all(
   }),
 );
 
-const atlasWidth = CELL_WIDTH * 10;
+const colonDot = await sharp(glyphs[0].input)
+  .extract({ left: 24, top: 130, width: 32, height: 38 })
+  .png()
+  .toBuffer();
+glyphs.push(
+  { input: colonDot, left: 10 * CELL_WIDTH + 82, top: 139 },
+  { input: colonDot, left: 10 * CELL_WIDTH + 82, top: 223 },
+);
+
+const atlasWidth = CELL_WIDTH * GLYPH_COUNT;
 await mkdir(dirname(OUTPUT_FILE), { recursive: true });
 await sharp({
   create: {
