@@ -11,7 +11,9 @@ import { filterStateForProfile } from "../../lib/stateVisibility.js";
 import {
   canCreatePublicMatchReceiptSnapshot,
   getMatchReceiptDraftFromMatch,
+  getMatchReceiptSideTeamId,
 } from "../../../src/lib/matchReceipt.js";
+import { getUserHashtag } from "../../../shared/lib/handles.js";
 import {
   createCanonicalReceiptSerialSeed,
   createReceiptCapability,
@@ -29,13 +31,9 @@ function getPublicId(request) {
   return String(request.query?.publicId ?? "").trim();
 }
 
-function getMatchSideTeamId(match, side) {
-  return match?.[side]?.teamId ?? match?.[`${side}Id`] ?? "";
-}
-
 function getCanonicalTeamMmr(teams, teamId) {
   const team = teams?.find((item) => String(item.id) === String(teamId));
-  const mmr = Number(team?.mmr);
+  const mmr = Number(team?.mmr ?? team?.rosterMmr);
   return Number.isFinite(mmr) ? mmr : undefined;
 }
 
@@ -58,9 +56,10 @@ async function createCanonicalPayload(request, sourceMatchId, styleDraft) {
     serialSeed: createCanonicalReceiptSerialSeed(sourceMatchId),
     currentUserId: profileId,
     personalMmr: currentUser?.ratings?.integrated,
+    profileHashtag: currentUser ? getUserHashtag(currentUser) : "",
     tournament,
-    homeMmr: getCanonicalTeamMmr(state.teams, getMatchSideTeamId(match, "teamA")),
-    awayMmr: getCanonicalTeamMmr(state.teams, getMatchSideTeamId(match, "teamB")),
+    homeMmr: getCanonicalTeamMmr(state.teams, getMatchReceiptSideTeamId(match, "teamA")),
+    awayMmr: getCanonicalTeamMmr(state.teams, getMatchReceiptSideTeamId(match, "teamB")),
   });
   return {
     ...sanitizeReceiptDraftPayload(canonicalDraft, { trustedCanonical: true }),

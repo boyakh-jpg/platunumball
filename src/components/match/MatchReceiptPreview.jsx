@@ -97,7 +97,10 @@ export default function MatchReceiptPreview({
           />
           <strong hidden>BOXTIER</strong>
         </span>
-        <span>{model.serial}</span>
+        <span className="match-receipt-poster-id">
+          <span>{model.serial}</span>
+          {model.showPersonalTierIdentity ? <span className="match-receipt-poster-profile">{model.profileHashtag}</span> : null}
+        </span>
       </header>
       <div className="match-receipt-verified">★ <i /> {model.verified ? "BOXTIER VERIFIED" : "MATCH RECEIPT"} <i /> ★</div>
       <div className="match-receipt-team-watermarks" aria-hidden="true">

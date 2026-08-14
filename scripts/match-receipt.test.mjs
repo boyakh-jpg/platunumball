@@ -7,6 +7,7 @@ import {
   createMatchReceiptViewModel,
   getMatchReceiptDraftFromMatch,
   getMatchReceiptFormatLabel,
+  getMatchReceiptSideTeamId,
   getMatchReceiptTeamNameScale,
   MATCH_RECEIPT_PHOTO_ASPECT,
   normalizeMatchReceiptDraft,
@@ -50,6 +51,7 @@ test("public receipt draft keeps only bounded safe fields", () => {
     homeMmr: 1300,
     awayMmr: 1250,
     personalMmr: 1400,
+    profileHashtag: "#1234567",
     hasCanonicalTeamMatch: true,
     photo: "data:image/jpeg;base64,private",
     photoZoom: 2,
@@ -63,7 +65,7 @@ test("public receipt draft keeps only bounded safe fields", () => {
   assert.equal(payload.originalAddress.length, 96);
   assert.equal(payload.format, "3v3");
   assert.equal(payload.matchNature, "semifinal");
-  assert.equal(payload.comment, "123456789012");
+  assert.equal(payload.comment, "12345678901");
   assert.equal(payload.homeColor, "#f05a46");
   assert.equal(payload.awayColor, "#abcdef");
   assert.equal(payload.homeMmr, 1300);
@@ -72,6 +74,7 @@ test("public receipt draft keeps only bounded safe fields", () => {
   assert.equal("photo" in payload, false);
   assert.equal("photoZoom" in payload, false);
   assert.equal("personalMmr" in payload, false);
+  assert.equal("profileHashtag" in payload, false);
   assert.equal("hasCanonicalTeamMatch" in payload, false);
 });
 
@@ -82,6 +85,7 @@ test("public receipt draft rejects unknown match nature", () => {
 test("only trusted canonical receipt payload keeps server-only fields", () => {
   const source = {
     personalMmr: 1400,
+    profileHashtag: "#1234567",
     hasCanonicalTeamMatch: true,
     verified: true,
   };
@@ -89,9 +93,11 @@ test("only trusted canonical receipt payload keeps server-only fields", () => {
   const untrusted = sanitizeReceiptDraftPayload(source);
 
   assert.equal(trusted.personalMmr, 1400);
+  assert.equal(trusted.profileHashtag, "#1234567");
   assert.equal(trusted.hasCanonicalTeamMatch, true);
   assert.equal(trusted.verified, true);
   assert.equal("personalMmr" in untrusted, false);
+  assert.equal("profileHashtag" in untrusted, false);
   assert.equal("hasCanonicalTeamMatch" in untrusted, false);
   assert.equal(untrusted.verified, false);
 });
@@ -102,6 +108,7 @@ test("public receipt projection omits internal address and exact personal rating
     serialSeed: "canonical:0123456789abcdef",
     originalAddress: "서울특별시 마포구 전체 원주소",
     personalMmr: 1400,
+    profileHashtag: "#1234567",
     personalPoints: 12,
     verified: true,
     hasCanonicalTeamMatch: true,
@@ -109,6 +116,7 @@ test("public receipt projection omits internal address and exact personal rating
 
   assert.equal("originalAddress" in projected, false);
   assert.equal("personalMmr" in projected, false);
+  assert.equal("profileHashtag" in projected, false);
   assert.equal(projected.personalPoints, 12);
   assert.equal(projected.verified, true);
   assert.equal(projected.hasCanonicalTeamMatch, true);
@@ -128,7 +136,7 @@ test("legacy canonical receipt projection hides the source match id", () => {
   assert.equal(projected.serialSeed.includes("private-personal"), false);
 });
 
-test("only confirmed public team matches can create canonical public receipt snapshots", () => {
+test("only confirmed non-personal matches can create canonical public receipt snapshots", () => {
   const match = {
     id: "match-123",
     status: "confirmed",
@@ -137,7 +145,7 @@ test("only confirmed public team matches can create canonical public receipt sna
   };
 
   assert.equal(canCreatePublicMatchReceiptSnapshot(match), true);
-  assert.equal(canCreatePublicMatchReceiptSnapshot({ ...match, visibility: "private" }), false);
+  assert.equal(canCreatePublicMatchReceiptSnapshot({ ...match, visibility: "private" }), true);
   assert.equal(canCreatePublicMatchReceiptSnapshot({
     ...match,
     rules: { recordType: RECORD_TYPES.personalRecord },
@@ -147,7 +155,21 @@ test("only confirmed public team matches can create canonical public receipt sna
     rules: { recordType: "personal_record" },
   }), false);
   assert.equal(canCreatePublicMatchReceiptSnapshot({ ...match, status: "pending" }), false);
-  assert.equal(canCreatePublicMatchReceiptSnapshot({ ...match, visibility: undefined }), false);
+  assert.equal(canCreatePublicMatchReceiptSnapshot({ ...match, visibility: undefined }), true);
+});
+
+test("canonical receipt team ids include record summaries", () => {
+  const match = {
+    rules: {
+      recordSummary: {
+        teamATeamId: "home-summary",
+        teamBId: "away-summary",
+      },
+    },
+  };
+
+  assert.equal(getMatchReceiptSideTeamId(match, "teamA"), "home-summary");
+  assert.equal(getMatchReceiptSideTeamId(match, "teamB"), "away-summary");
 });
 
 test("receipt view model uses compact game labels, venue fallback, and a safe hashtag", () => {
@@ -171,6 +193,15 @@ test("receipt view model uses compact game labels, venue fallback, and a safe ha
   assert.notEqual(createMatchReceiptViewModel({ ...draft, address: "" }).locationLabel, draft.originalAddress);
   assert.match(model.serial, /^#BT-[A-Z0-9]{6}$/);
   assert.equal(model.serial.includes("public-receipt-id"), false);
+  assert.equal(createMatchReceiptViewModel({ ...draft, personalMmr: 1400 }).showPersonalTierIdentity, false);
+  const identifiedTier = createMatchReceiptViewModel({
+    ...draft,
+    personalMmr: 1400,
+    profileHashtag: "#1234567",
+  });
+  assert.equal(identifiedTier.showPersonalTierIdentity, true);
+  assert.equal(identifiedTier.profileHashtag, "#1234567");
+  assert.equal(Boolean(identifiedTier.personalTier), true);
 });
 
 test("receipt serial stays stable until a new receipt is explicitly started", () => {
@@ -201,7 +232,7 @@ test("receipt serial stays stable until a new receipt is explicitly started", ()
   }, { serialSeed: "canonical:opaque-seed" });
 
   assert.equal(edited.serialSeed, draft.serialSeed);
-  assert.equal(edited.comment, "123456789012");
+  assert.equal(edited.comment, "12345678901");
   assert.equal(createMatchReceiptViewModel(edited).serial, createMatchReceiptViewModel(draft).serial);
   assert.notEqual(renewed.serialSeed, edited.serialSeed);
   assert.notEqual(createMatchReceiptViewModel(renewed).serial, createMatchReceiptViewModel(edited).serial);
@@ -305,7 +336,7 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(page, /<Button as="label" variant="secondary">/);
   assert.match(page, /<Button variant="danger" disabled=\{!photoUrl \|\| Boolean\(busy\)\} onClick=\{removePhoto\}>/);
   assert.match(page, /\{draft\.comment\.length\}\/\{MATCH_RECEIPT_LIMITS\.comment\}/);
-  assert.match(page, /placeholder="선택 · 12자 이내"/);
+  assert.match(page, /placeholder="선택 · 11자 이내"/);
   assert.match(page, /onClick=\{resetReceipt\}/);
   assert.match(page, /clearMatchReceiptDraft\(\)/);
   assert.match(page, /clearMatchReceiptPhoto\(\)/);
@@ -321,11 +352,12 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(styles, /\.match-receipt-info-fields input\[type="date"\]\s*\{[^}]*min-inline-size:\s*0;[^}]*max-inline-size:\s*100%;/);
   assert.match(landing, /children = "로그인"/);
   assert.match(landing, /가입 없이 Google로 로그인/);
+  assert.match(page, /className="page-stack match-receipt-page"/);
   assert.match(page, /className="page-header match-receipt-page-head ui-page-hero ui-design-app-hero"/);
   assert.match(page, /> 뒤로가기/);
   assert.match(page, /> 홈으로/);
-  assert.match(styles, /\.match-receipt-page\s*\{[^}]*width:\s*100%;[^}]*padding:\s*0 0 72px;/);
-  assert.match(styles, /\.match-receipt-workspace\s*\{[^}]*width:\s*min\(1180px, calc\(100% - 32px\)\);[^}]*margin:\s*0 auto;/);
+  assert.match(styles, /\.match-receipt-page\s*\{[^}]*width:\s*100%;[^}]*padding-block-end:\s*72px;/);
+  assert.match(styles, /\.match-receipt-workspace\s*\{[^}]*width:\s*min\(1180px, 100%\);[^}]*margin:\s*0 auto;/);
   assert.doesNotMatch(styles, /match-receipt-page-head\.ui-design-app-hero\s*\{[^}]*margin-block-start:\s*0;/);
   assert.match(preview, /model\.hasPersonalStats \? "MY GAME" : "GAME INFO"/);
   assert.match(preview, /match-receipt-personal-stats/);
@@ -341,6 +373,7 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(preview, /ReceiptScoreDigits/);
   assert.match(preview, /match-receipt-team-watermarks/);
   assert.match(preview, /MY TIER · \{model\.personalTier\.label\}/);
+  assert.match(preview, /model\.showPersonalTierIdentity \? <span className="match-receipt-poster-profile">/);
   assert.match(page, /CourtMapPicker/);
   assert.match(page, /getRegisteredCourts/);
   assert.match(page, /mergeCourtSearchCourts/);
@@ -398,7 +431,6 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(styles, /\.match-receipt-poster-teams \.match-receipt-team-tier\s*\{[\s\S]*top: 42%;[\s\S]*width: 30%;/);
   assert.match(styles, /--receipt-team-name-size/);
   assert.match(styles, /font-size: clamp\(6px, 1\.9cqw, 9px\)/);
-  assert.match(styles, /inset: auto 3\.1% 1\.8%/);
   assert.match(styles, /height: 19\.9%/);
   assert.match(styles, /\.match-receipt-team-tier\.is-neutral[\s\S]*opacity: 0\.76/);
   assert.match(styles, /\.match-receipt-personal-tier[\s\S]*opacity: 0\.64/);
@@ -408,8 +440,10 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(styles, /input\[type="date"\][\s\S]*min-width: 0[\s\S]*max-width: 100%/);
   assert.match(styles, /@media \(max-width: 900px\)[\s\S]*?\.match-receipt-editor \{[\s\S]*?display: contents;[\s\S]*?\.match-receipt-preview-panel \{[\s\S]*?order: 2;[\s\S]*?\.match-receipt-complete \{[\s\S]*?order: 3;/);
   assert.match(styles, /\.match-receipt-ticket-date[\s\S]*border-top/);
+  assert.match(styles, /\.match-receipt-ticket\s*\{[^}]*inset:\s*auto 0 1\.8%;/);
   assert.match(styles, /\.match-receipt-personal-stats b \+ b[\s\S]*border-left/);
   assert.match(renderer, /const receiptTop = compact \? 1010 : 1504/);
+  assert.match(renderer, /ctx\.drawImage\(paper, 0, receiptTop, width, height - receiptTop - \(compact \? 26 : 34\)\)/);
   assert.equal(MATCH_RECEIPT_PHOTO_ASPECT, 1080 / 885);
   assert.match(renderer, /match-receipt-score-digits-v2\.png/);
   assert.match(renderer, /createCanvasPaperPattern\(ctx, paperGrain\)/);

@@ -19,7 +19,8 @@ export const MATCH_RECEIPT_LIMITS = Object.freeze({
   venue: 36,
   address: 48,
   originalAddress: 96,
-  comment: 12,
+  comment: 11,
+  profileHashtag: 32,
   score: 999,
 });
 
@@ -177,6 +178,7 @@ export function createDefaultMatchReceiptDraft() {
     homeMmr: null,
     awayMmr: null,
     personalMmr: null,
+    profileHashtag: "",
     personalPoints: null,
     personalRebounds: null,
     hasCanonicalTeamMatch: false,
@@ -211,6 +213,7 @@ export function normalizeMatchReceiptDraft(value = {}) {
     homeMmr: cleanOptionalNumber(value.homeMmr),
     awayMmr: cleanOptionalNumber(value.awayMmr),
     personalMmr: cleanOptionalNumber(value.personalMmr),
+    profileHashtag: cleanText(value.profileHashtag, MATCH_RECEIPT_LIMITS.profileHashtag),
     personalPoints: cleanOptionalNumber(value.personalPoints),
     personalRebounds: cleanOptionalNumber(value.personalRebounds),
     hasCanonicalTeamMatch: Boolean(value.hasCanonicalTeamMatch),
@@ -392,10 +395,17 @@ export function getMatchReceiptCreateDraft(value) {
 }
 
 export function canCreatePublicMatchReceiptSnapshot(match = {}) {
-  const visibility = match?.visibility ?? match?.rules?.visibility;
   return match?.status === "confirmed"
-    && visibility === "public"
     && !isPersonalRecordMatch(match);
+}
+
+export function getMatchReceiptSideTeamId(match = {}, side = "") {
+  const summary = match?.rules?.recordSummary ?? {};
+  return match?.[side]?.teamId
+    ?? match?.[`${side}Id`]
+    ?? summary?.[`${side}TeamId`]
+    ?? summary?.[`${side}Id`]
+    ?? "";
 }
 
 export function getMatchReceiptDraftFromMatch(match = {}, style = {}, court = null) {
@@ -424,11 +434,12 @@ export function getMatchReceiptDraftFromMatch(match = {}, style = {}, court = nu
     homeMmr: style.homeMmr ?? match.teamA?.mmr,
     awayMmr: style.awayMmr ?? match.teamB?.mmr,
     personalMmr: style.personalMmr,
+    profileHashtag: style.profileHashtag,
     personalPoints: verified ? playerStats.points : null,
     personalRebounds: verified ? playerStats.rebounds : null,
     hasCanonicalTeamMatch: Boolean(
-      (match.teamA?.teamId ?? match.teamAId)
-      && (match.teamB?.teamId ?? match.teamBId)
+      getMatchReceiptSideTeamId(match, "teamA")
+      && getMatchReceiptSideTeamId(match, "teamB")
     ),
     verified,
   });
@@ -486,6 +497,8 @@ function getTierVisual(mmr) {
 export function createMatchReceiptViewModel(value, options = {}) {
   const draft = normalizeMatchReceiptDraft(value);
   const hasPersonalStats = draft.verified && (draft.personalPoints !== null || draft.personalRebounds !== null);
+  const personalTier = getTierVisual(draft.personalMmr);
+  const showPersonalTierIdentity = Boolean(personalTier && draft.profileHashtag);
   return {
     ...draft,
     outcome: getMatchReceiptOutcome(draft),
@@ -501,7 +514,9 @@ export function createMatchReceiptViewModel(value, options = {}) {
     neutralTeamMarkUrls: MATCH_RECEIPT_NEUTRAL_TEAM_MARK_URLS,
     homeTier: getTierVisual(draft.homeMmr),
     awayTier: getTierVisual(draft.awayMmr),
-    personalTier: getTierVisual(draft.personalMmr),
+    personalTier: showPersonalTierIdentity ? personalTier : null,
+    profileHashtag: showPersonalTierIdentity ? draft.profileHashtag : "",
+    showPersonalTierIdentity,
     matchNatureLabel: getMatchReceiptNatureLabel(draft.matchNature),
     hasPersonalStats,
     showTeamTierEmblems: draft.verified && draft.hasCanonicalTeamMatch,
@@ -864,6 +879,12 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
   ctx.textAlign = "right";
   ctx.font = '900 25px "KBO Dia Gothic", sans-serif';
   ctx.fillText(model.serial, width - 48, 80);
+  if (model.showPersonalTierIdentity) {
+    ctx.globalAlpha = 0.82;
+    ctx.font = '900 18px "KBO Dia Gothic", sans-serif';
+    ctx.fillText(model.profileHashtag, width - 48, 106);
+    ctx.globalAlpha = 1;
+  }
 
   const verifiedY = compact ? 440 : 780;
   ctx.strokeStyle = "#f05a2a";
@@ -958,7 +979,7 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
   ctx.shadowColor = "rgba(0,0,0,.45)";
   ctx.shadowBlur = 18;
   ctx.shadowOffsetY = 6;
-  ctx.drawImage(paper, 28, receiptTop, width - 56, height - receiptTop - (compact ? 26 : 34));
+  ctx.drawImage(paper, 0, receiptTop, width, height - receiptTop - (compact ? 26 : 34));
   ctx.restore();
   drawCanvasPaperGrain(ctx, paperGrain, {
     x: 40,

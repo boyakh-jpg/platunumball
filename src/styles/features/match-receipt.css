@@ -1,6 +1,6 @@
-.match-receipt-page { width: 100%; margin: 0; padding: 0 0 72px; }
+.match-receipt-page { width: 100%; margin: 0; padding-block-end: 72px; }
 
-.match-receipt-page-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: var(--space-8); margin-bottom: 24px; }
+.match-receipt-page-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: var(--space-8); }
 
 .match-receipt-page-head h1 { margin: 0; font-size: clamp(30px, 4vw, 44px); }
 
@@ -9,7 +9,7 @@
 .match-receipt-page-head-nav { display: flex; flex-wrap: wrap; gap: var(--space-3); }
 .match-receipt-page-head-nav .ui-button { gap: var(--space-3); }
 
-.match-receipt-workspace { display: grid; width: min(1180px, calc(100% - 32px)); grid-template-columns: minmax(0, 0.92fr) minmax(360px, 1.08fr); gap: var(--space-12); align-items: start; margin: 0 auto; }
+.match-receipt-workspace { display: grid; width: min(1180px, 100%); grid-template-columns: minmax(0, 0.92fr) minmax(360px, 1.08fr); gap: var(--space-12); align-items: start; margin: 0 auto; }
 
 .match-receipt-editor,
 .match-receipt-preview-panel { min-width: 0; }
@@ -469,15 +469,19 @@
   white-space: nowrap;
 }
 
+.match-receipt-poster-id { display: grid; justify-items: end; gap: 0.2em; line-height: 1; }
+
+.match-receipt-poster-profile { font-size: 0.72em; letter-spacing: 0.04em; opacity: 0.8; }
+
 .match-receipt-ticket {
   position: absolute;
   z-index: 3;
-  inset: auto 3.1% 1.8%;
+  inset: auto 0 1.8%;
   display: grid;
   grid-template-columns: 1.12fr 0.97fr 1fr;
   align-items: stretch;
   height: 19.9%;
-  padding: 6.4% 3% 4.2%;
+  padding: 6.4% 5.9% 4.2%;
   color: #181513;
   isolation: isolate;
 }
@@ -757,7 +761,7 @@
 }
 
 @media (max-width: 560px) {
-  .match-receipt-workspace { width: min(calc(100% - 20px), 520px); }
+  .match-receipt-workspace { width: min(520px, 100%); }
 
   .match-receipt-page-head-nav { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
   .match-receipt-page-head-nav .ui-button { width: 100%; }

@@ -13,7 +13,8 @@ const TEXT_LIMITS = Object.freeze({
   originalAddress: 96,
   format: 5,
   matchNature: 11,
-  comment: 12,
+  comment: 11,
+  profileHashtag: 32,
 });
 
 function cleanText(value, maxLength) {
@@ -67,7 +68,10 @@ export function sanitizeReceiptDraftPayload(value = {}, options = {}) {
     comment: cleanText(value.comment, TEXT_LIMITS.comment),
     homeMmr: cleanOptionalNumber(value.homeMmr),
     awayMmr: cleanOptionalNumber(value.awayMmr),
-    ...(trustedCanonical ? { personalMmr: cleanOptionalNumber(value.personalMmr) } : {}),
+    ...(trustedCanonical ? {
+      personalMmr: cleanOptionalNumber(value.personalMmr),
+      profileHashtag: cleanText(value.profileHashtag, TEXT_LIMITS.profileHashtag),
+    } : {}),
     personalPoints: cleanOptionalNumber(value.personalPoints),
     personalRebounds: cleanOptionalNumber(value.personalRebounds),
     ...(trustedCanonical ? { hasCanonicalTeamMatch: Boolean(value.hasCanonicalTeamMatch) } : {}),
@@ -85,7 +89,7 @@ export function getLegacyCanonicalReceiptMatchId(value = {}) {
 
 export function projectPublicReceiptDraft(value = {}, options = {}) {
   const legacyMatchId = getLegacyCanonicalReceiptMatchId(value);
-  const { originalAddress, personalMmr, ...publicDraft } = sanitizeReceiptDraftPayload(value, {
+  const { originalAddress, personalMmr, profileHashtag, ...publicDraft } = sanitizeReceiptDraftPayload(value, {
     trustedCanonical: value?._canonicalReceipt === true,
   });
   return legacyMatchId

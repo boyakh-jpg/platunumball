@@ -8,6 +8,7 @@ import { getCourtAddress, getRegisteredCourts, mergeCourtSearchCourts } from "..
 import { inferRegionSelection } from "../lib/profileSetup.js";
 import { COURT_MAP_SEARCH_LIMIT, COURT_MAP_SEARCH_PURPOSE } from "../lib/queryPolicy.js";
 import { postServerAction } from "../lib/serverActions.js";
+import { getUserHashtag } from "../lib/handles.js";
 import {
   MATCH_RECEIPT_CANVAS_SIZES,
   MATCH_RECEIPT_CREATE_RETURN_TO,
@@ -21,6 +22,7 @@ import {
   getMatchReceiptDraftFromMatch,
   getMatchReceiptFileName,
   getMatchReceiptOutcome,
+  getMatchReceiptSideTeamId,
   loadMatchReceiptPhoto,
   loadMatchReceiptDraft,
   normalizeMatchReceiptPhotoFile,
@@ -36,13 +38,9 @@ function loadDraft() {
   return loadMatchReceiptDraft() ?? createDefaultMatchReceiptDraft();
 }
 
-function getMatchSideTeamId(match, side) {
-  return match?.[side]?.teamId ?? match?.[`${side}Id`] ?? "";
-}
-
 function getCanonicalTeamMmr(teams, teamId) {
   const team = teams?.find((item) => String(item.id) === String(teamId));
-  const mmr = Number(team?.mmr);
+  const mmr = Number(team?.mmr ?? team?.rosterMmr);
   return Number.isFinite(mmr) ? mmr : undefined;
 }
 
@@ -150,16 +148,20 @@ export default function MatchReceipt({ auth, app }) {
     [app?.state?.tournaments, canonicalMatch?.tournamentId],
   );
   const canonicalHomeTeamMmr = useMemo(
-    () => getCanonicalTeamMmr(app?.state?.teams, getMatchSideTeamId(canonicalMatch, "teamA")),
+    () => getCanonicalTeamMmr(app?.state?.teams, getMatchReceiptSideTeamId(canonicalMatch, "teamA")),
     [app?.state?.teams, canonicalMatch],
   );
   const canonicalAwayTeamMmr = useMemo(
-    () => getCanonicalTeamMmr(app?.state?.teams, getMatchSideTeamId(canonicalMatch, "teamB")),
+    () => getCanonicalTeamMmr(app?.state?.teams, getMatchReceiptSideTeamId(canonicalMatch, "teamB")),
     [app?.state?.teams, canonicalMatch],
   );
   const currentUserId = auth?.session?.user?.id ?? "";
   const currentUserMmr = Number(app?.currentUser?.ratings?.integrated);
-  const personalMmr = currentUserId && Number.isFinite(currentUserMmr) ? currentUserMmr : null;
+  const canShowCurrentUserIdentity = Boolean(currentUserId && !requestedPublicDraftId);
+  const personalMmr = canShowCurrentUserIdentity && Number.isFinite(currentUserMmr) ? currentUserMmr : null;
+  const profileHashtag = canShowCurrentUserIdentity && app?.currentUser
+    ? getUserHashtag(app.currentUser)
+    : "";
   const directoryCourts = useMemo(() => getRegisteredCourts(app?.state ?? {}), [app?.state]);
   const registeredCourts = useMemo(
     () => mergeCourtSearchCourts(directoryCourts, discoveredCourts),
@@ -195,6 +197,7 @@ export default function MatchReceipt({ auth, app }) {
         ...current,
         currentUserId,
         personalMmr,
+        profileHashtag,
         tournament: canonicalTournament,
         homeMmr: canonicalHomeTeamMmr,
         awayMmr: canonicalAwayTeamMmr,
@@ -217,14 +220,15 @@ export default function MatchReceipt({ auth, app }) {
     currentUserId,
     matchId,
     personalMmr,
+    profileHashtag,
   ]);
 
   useEffect(() => {
     if (requestedPublicDraftId || canonicalMatchId) return;
-    setDraft((current) => current.personalMmr === personalMmr
+    setDraft((current) => current.personalMmr === personalMmr && current.profileHashtag === profileHashtag
       ? current
-      : normalizeMatchReceiptDraft({ ...current, personalMmr }));
-  }, [canonicalMatchId, personalMmr, requestedPublicDraftId]);
+      : normalizeMatchReceiptDraft({ ...current, personalMmr, profileHashtag }));
+  }, [canonicalMatchId, personalMmr, profileHashtag, requestedPublicDraftId]);
 
   useEffect(() => {
     if (!requestedPublicDraftId || canonicalMatchId) return;
@@ -417,6 +421,7 @@ export default function MatchReceipt({ auth, app }) {
       const next = normalizeMatchReceiptDraft({
         ...createDefaultMatchReceiptDraft(),
         personalMmr,
+        profileHashtag,
       });
       photoTransformRef.current = {
         photoX: next.photoX,
@@ -755,7 +760,7 @@ export default function MatchReceipt({ auth, app }) {
   }
 
   return (
-    <section className="match-receipt-page">
+    <section className="page-stack match-receipt-page">
       <header className="page-header match-receipt-page-head ui-page-hero ui-design-app-hero">
         <div className="ui-page-hero__copy">
           <p className="eyebrow">MATCH RECEIPT</p>
@@ -831,7 +836,7 @@ export default function MatchReceipt({ auth, app }) {
                   <span>한 줄 코멘트</span>
                   <span className="match-receipt-field-count">{draft.comment.length}/{MATCH_RECEIPT_LIMITS.comment}</span>
                 </span>
-                <input value={draft.comment} maxLength={MATCH_RECEIPT_LIMITS.comment} disabled={isFieldReadOnly("comment")} placeholder="선택 · 12자 이내" onChange={(event) => updateField("comment", event.target.value)} />
+                <input value={draft.comment} maxLength={MATCH_RECEIPT_LIMITS.comment} disabled={isFieldReadOnly("comment")} placeholder="선택 · 11자 이내" onChange={(event) => updateField("comment", event.target.value)} />
               </label>
             </div>
             <p className="match-receipt-map-note"><MapPin aria-hidden="true" /> 이미지에는 장소명과 짧은 주소만 들어갑니다. 지도 화면은 포함하지 않습니다.</p>
