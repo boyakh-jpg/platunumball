@@ -513,7 +513,6 @@
   width: 88%;
   max-height: 28%;
   font-size: clamp(6px, 2.25cqw, 11px);
-  -webkit-line-clamp: 3;
 }
 
 .match-receipt-ticket-place > span,
@@ -541,6 +540,7 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   width: 100%;
+  transform: translateY(-6%);
 }
 
 .match-receipt-ticket-game > .match-receipt-game-info {
@@ -594,7 +594,7 @@
 
 .match-receipt-personal-tier-mark {
   position: absolute; z-index: 0; inset: 0 13% 34%; display: grid;
-  place-items: center; min-width: 0; pointer-events: none;
+  place-items: center; min-width: 0; pointer-events: none; transform: translateY(5%);
 }
 
 .match-receipt-personal-tier {
@@ -630,6 +630,8 @@
   white-space: nowrap;
 }
 
+.match-receipt-ticket-game:not(.match-receipt-ticket-game--info) > .match-receipt-ticket-caption { border-top: 0; }
+
 .match-receipt-ticket-game > strong,
 .match-receipt-ticket-qr > strong {
   position: absolute;
@@ -642,7 +644,7 @@
 
 .match-receipt-ticket-qr > a {
   position: absolute;
-  top: 12%;
+  top: 6%;
   left: 3%;
   display: grid;
   width: 94%;
