@@ -773,6 +773,27 @@ function drawQrCode(ctx, value, x, y, size) {
   return actualSize;
 }
 
+function drawCanvasMapPin(ctx, centerX, topY, size) {
+  const half = size / 2;
+  const centerY = topY + size * 0.37;
+  ctx.save();
+  ctx.strokeStyle = "#d4582b";
+  ctx.lineWidth = Math.max(3, size * 0.08);
+  ctx.lineJoin = "round";
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(centerX, topY + size);
+  ctx.bezierCurveTo(centerX - half * 0.18, topY + size * 0.78, centerX - half * 0.72, topY + size * 0.62, centerX - half * 0.72, centerY);
+  ctx.bezierCurveTo(centerX - half * 0.72, topY + size * 0.15, centerX - half * 0.36, topY, centerX, topY);
+  ctx.bezierCurveTo(centerX + half * 0.36, topY, centerX + half * 0.72, topY + size * 0.15, centerX + half * 0.72, centerY);
+  ctx.bezierCurveTo(centerX + half * 0.72, topY + size * 0.62, centerX + half * 0.18, topY + size * 0.78, centerX, topY + size);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, size * 0.12, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+}
+
 async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
   if (typeof document === "undefined") throw new Error("match_receipt_canvas_unavailable");
   if (preset === "feed") {
@@ -988,10 +1009,11 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
     height: height - receiptTop - (compact ? 45 : 55),
   }, { alpha: 0.24, blend: "multiply" });
   const footerY = receiptTop + (compact ? 78 : 66);
-  const footerLeftDivider = compact ? 386 : 414;
-  const footerRightDivider = compact ? 690 : 711;
-  const footerMiddleX = compact ? 540 : 562;
-  const footerRightX = compact ? 850 : 876;
+  const footerLeftDivider = compact ? 386 : 409;
+  const footerRightDivider = compact ? 690 : 708;
+  const footerLeftX = compact ? 220 : 236;
+  const footerMiddleX = compact ? 540 : 558;
+  const footerRightX = compact ? 850 : 862;
 
   ctx.strokeStyle = "rgba(195,74,37,.7)";
   ctx.lineWidth = 2;
@@ -1008,25 +1030,17 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
   ctx.stroke();
   ctx.setLineDash([]);
 
-  ctx.strokeStyle = "#d4582b";
-  ctx.lineWidth = 5;
-  ctx.beginPath();
-  ctx.arc(220, footerY + (compact ? 12 : 28), 15, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.fillStyle = "#d4582b";
-  ctx.beginPath();
-  ctx.arc(220, footerY + (compact ? 12 : 28), 4, 0, Math.PI * 2);
-  ctx.fill();
+  drawCanvasMapPin(ctx, footerLeftX, footerY + (compact ? -5 : 50), compact ? 34 : 50);
 
   ctx.fillStyle = "#151515";
   ctx.textAlign = "center";
   ctx.font = '900 25px "KBO Dia Gothic", sans-serif';
   const locationLines = wrapCanvasText(ctx, model.locationLabel || "경기 장소", 320, 3);
   const locationLineHeight = compact ? 28 : 34;
-  const locationStartY = footerY + (compact ? 54 : 76) - (locationLines.length - 1) * locationLineHeight / 2;
-  locationLines.forEach((line, index) => ctx.fillText(line, 220, locationStartY + index * locationLineHeight, 320));
+  const locationStartY = footerY + (compact ? 54 : 140) - (locationLines.length - 1) * locationLineHeight / 2;
+  locationLines.forEach((line, index) => ctx.fillText(line, footerLeftX, locationStartY + index * locationLineHeight, 320));
   ctx.font = '900 27px "KBO Dia Gothic", sans-serif';
-  ctx.fillText(model.playedOn.replaceAll("-", "."), 220, footerY + (compact ? 174 : 255));
+  ctx.fillText(model.playedOn.replaceAll("-", "."), footerLeftX, footerY + (compact ? 174 : 244));
 
   if (personalTier) {
     const tierSize = compact ? 158 : 208;
@@ -1038,7 +1052,8 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
 
   ctx.fillStyle = "#d4582b";
   ctx.font = '900 25px "KBO Dia Gothic", sans-serif';
-  ctx.fillText(model.hasPersonalStats ? "MY GAME" : "GAME INFO", footerMiddleX, footerY + (compact ? 10 : 30));
+  const gameTitleOffset = model.hasPersonalStats || compact ? (compact ? 10 : 30) : (model.comment ? 70 : 98);
+  ctx.fillText(model.hasPersonalStats ? "MY GAME" : "GAME INFO", footerMiddleX, footerY + gameTitleOffset);
 
   if (model.hasPersonalStats) {
     ctx.fillStyle = "#151515";
@@ -1061,16 +1076,16 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
   } else {
     ctx.fillStyle = "#151515";
     ctx.font = `900 ${compact ? 36 : 42}px "Bebas Neue", "KBO Dia Gothic", sans-serif`;
-    ctx.fillText(getMatchReceiptFormatLabel(model.format), footerMiddleX, footerY + (compact ? 64 : 104), 260);
+    ctx.fillText(getMatchReceiptFormatLabel(model.format), footerMiddleX, footerY + (compact ? 64 : (model.comment ? 130 : 158)), 260);
     ctx.fillStyle = "#71451f";
     ctx.font = '900 18px "KBO Dia Gothic", sans-serif';
-    ctx.fillText(model.matchNatureLabel, footerMiddleX, footerY + (compact ? 101 : 150), 260);
+    ctx.fillText(model.matchNatureLabel, footerMiddleX, footerY + (compact ? 101 : (model.comment ? 164 : 190)), 260);
   }
 
   if (!model.hasPersonalStats && model.comment) {
     ctx.fillStyle = "#151515";
     ctx.font = '900 18px "KBO Dia Gothic", sans-serif';
-    ctx.fillText(model.comment, footerMiddleX, footerY + (compact ? 176 : 278), 260);
+    ctx.fillText(model.comment, footerMiddleX, footerY + (compact ? 176 : 241), 260);
   }
 
   if (personalTier) {

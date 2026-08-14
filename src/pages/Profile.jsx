@@ -239,7 +239,10 @@ export default function Profile({ app }) {
           <p className="eyebrow">Profile</p>
           <h1>프로필</h1>
         </div>
-        <Button as={Link} variant="secondary" to="/app/signup">가입 정보 설정</Button>
+        <div className="ui-action-row">
+          <Button as={Link} className="ui-liquid-glass" variant="secondary" to={`/app/players/${user.id}`}>내 프로필 페이지</Button>
+          <Button as={Link} className="ui-liquid-glass" variant="secondary" to="/app/signup">가입 정보 설정</Button>
+        </div>
       </header>
       <div className="content-grid profile-overview-grid">
         <div className="page-stack profile-main-stack">

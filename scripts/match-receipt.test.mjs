@@ -464,7 +464,13 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(renderer, /photoHeight \* 0\.42/);
   assert.match(renderer, /blurFade\.addColorStop\(0\.68, "rgba\(0,0,0,0\.72\)"\)/);
   assert.match(renderer, /fadeIn: 0\.24/);
-  assert.match(renderer, /const footerLeftDivider = compact \? 386 : 414/);
+  assert.match(styles, /\.match-receipt-ticket\s*\{[^}]*font-family:\s*"KBO Dia Gothic"/);
+  assert.match(renderer, /function drawCanvasMapPin/);
+  assert.match(renderer, /const footerLeftDivider = compact \? 386 : 409/);
+  assert.match(renderer, /const footerLeftX = compact \? 220 : 236/);
+  assert.match(renderer, /const footerMiddleX = compact \? 540 : 558/);
+  assert.match(renderer, /const footerRightX = compact \? 850 : 862/);
+  assert.match(renderer, /drawCanvasMapPin\(ctx, footerLeftX/);
   assert.match(renderer, /const qrSize = compact \? 176 : 218/);
   assert.match(renderer, /ctx\.moveTo\(footerMiddleX, footerY \+ \(compact \? 30 : 70\)\)/);
   assert.match(renderer, /createCanvasPaperPattern/);
