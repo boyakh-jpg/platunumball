@@ -2957,6 +2957,7 @@ test("경기 영수증은 필수값과 승패를 실행형 정책으로 판정�
 
   const base = { homeTeam: "A", awayTeam: "B", venue: "코트" };
   assert.equal(validateMatchReceiptDraft(base).valid, true);
+  assert.equal(validateMatchReceiptDraft({ ...base, venue: "", address: "잠실 1코트" }).valid, true);
   assert.deepEqual(getMatchReceiptOutcome({ ...base, homeScore: 21, awayScore: 18 }), { key: "home", label: "A WIN" });
   assert.deepEqual(getMatchReceiptOutcome({ ...base, homeScore: 18, awayScore: 21 }), { key: "away", label: "B WIN" });
   assert.deepEqual(getMatchReceiptOutcome({ ...base, homeScore: 21, awayScore: 21 }), { key: "draw", label: "DRAW" });

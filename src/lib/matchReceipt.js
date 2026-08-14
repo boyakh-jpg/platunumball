@@ -428,7 +428,9 @@ export function validateMatchReceiptDraft(value) {
   const errors = {};
   if (!draft.homeTeam.trim()) errors.homeTeam = "TEAM A 이름을 입력해 주세요.";
   if (!draft.awayTeam.trim()) errors.awayTeam = "TEAM B 이름을 입력해 주세요.";
-  if (!draft.venue.trim()) errors.venue = "지도에서 경기 장소를 선택해 주세요.";
+  if (!draft.venue.trim() && !draft.address.trim()) {
+    errors.venue = "경기 장소를 선택하거나 짧은 장소를 입력해 주세요.";
+  }
   return { draft, errors, valid: Object.keys(errors).length === 0 };
 }
 

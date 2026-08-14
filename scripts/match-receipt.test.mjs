@@ -532,10 +532,10 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(page, /allowWhenDisabled: true, allowAnonymous: true/);
   assert.match(page, /loading=\{courtMapDirectoryStatus\.loading\}/);
   assert.match(page, /loadError=\{courtMapDirectoryStatus\.error\}/);
-  assert.match(page, /readOnly placeholder=\{errors\.venue \? "필수 · 지도에서 경기 장소를 선택하세요" : "지도에서 선택 · 자유 입력은 짧은 장소에 작성"\}/);
+  assert.match(page, /readOnly placeholder=\{errors\.venue \? "경기 장소 또는 짧은 장소가 필요합니다" : "지도에서 선택 · 자유 입력은 짧은 장소에 작성"\}/);
   assert.doesNotMatch(page, /updateField\("venue", event\.target\.value\)/);
   assert.doesNotMatch(page, /name === "venue"/);
-  assert.match(page, />짧은 장소 <input[^>]+placeholder="선택 · 주소나 장소를 자유롭게 입력"/);
+  assert.match(page, />짧은 장소 <input[^>]+placeholder="경기 장소 대신 주소나 장소를 입력 가능"/);
   assert.match(page, /draft\.originalAddress \|\| profileCourtRegion/);
   assert.match(page, /RECEIPT_TEXT_FIELDS\.has\(name\)/);
   assert.match(page, /normalizeMatchReceiptDraft\(\{ \.\.\.current, venue, address, originalAddress \}\)/);

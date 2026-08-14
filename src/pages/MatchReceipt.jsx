@@ -401,7 +401,9 @@ export default function MatchReceipt({ auth, app }) {
       setPublicDraftId("");
     }
     publicDraftRequestRef.current = null;
-    setErrors((current) => (current[name] ? { ...current, [name]: "" } : current));
+    setErrors((current) => (name === "address" && current.venue
+      ? { ...current, address: "", venue: "" }
+      : current[name] ? { ...current, [name]: "" } : current));
     setGenerated(Boolean(canonicalMatchId));
     setStatus("");
   }
@@ -966,7 +968,7 @@ export default function MatchReceipt({ auth, app }) {
               <label className="is-wide">
                 경기 장소
                 <span className="match-receipt-venue-control">
-                  <input value={draft.venue} maxLength={MATCH_RECEIPT_LIMITS.venue} disabled={isFieldReadOnly("venue")} readOnly placeholder={errors.venue ? "필수 · 지도에서 경기 장소를 선택하세요" : "지도에서 선택 · 자유 입력은 짧은 장소에 작성"} aria-invalid={Boolean(errors.venue)} />
+                  <input value={draft.venue} maxLength={MATCH_RECEIPT_LIMITS.venue} disabled={isFieldReadOnly("venue")} readOnly placeholder={errors.venue ? "경기 장소 또는 짧은 장소가 필요합니다" : "지도에서 선택 · 자유 입력은 짧은 장소에 작성"} aria-invalid={Boolean(errors.venue)} />
                   {!isFieldReadOnly("venue") ? (
                     <button type="button" className="button ui-button button-secondary ui-button-secondary button-md ui-button-md match-receipt-map-button" onClick={() => setCourtMapOpen(true)}>
                       <MapPin aria-hidden="true" /> 지도에서 선택
@@ -974,7 +976,7 @@ export default function MatchReceipt({ auth, app }) {
                   ) : null}
                 </span>
               </label>
-              <label className="is-wide">짧은 장소 <input value={draft.address} maxLength={MATCH_RECEIPT_LIMITS.address} disabled={isFieldReadOnly("address")} placeholder="선택 · 주소나 장소를 자유롭게 입력" onChange={(event) => updateField("address", event.target.value)} /></label>
+              <label className="is-wide">짧은 장소 <input value={draft.address} maxLength={MATCH_RECEIPT_LIMITS.address} disabled={isFieldReadOnly("address")} placeholder="경기 장소 대신 주소나 장소를 입력 가능" onChange={(event) => updateField("address", event.target.value)} /></label>
               <label className="is-wide">대회·리그 이름 <input value={draft.tournamentName} maxLength={MATCH_RECEIPT_LIMITS.tournamentName} disabled={isFieldReadOnly("tournamentName")} placeholder="선택 · 20자 이내" onChange={(event) => updateField("tournamentName", event.target.value)} /></label>
               <fieldset className="match-receipt-line-art-fields is-wide">
                 <legend>팀 엠블럼 선화 <small>선택</small></legend>
