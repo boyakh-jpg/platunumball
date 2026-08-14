@@ -366,7 +366,6 @@
 .match-receipt-team-watermarks span:last-child img { right: -41% }
 
 .match-receipt-team-watermarks img.is-neutral { opacity: 0.2 }
-
 .match-receipt-poster-score {
   position: absolute;
   z-index: 2;
@@ -390,7 +389,7 @@
 .match-receipt-poster-score > div > span { position: absolute; left: 50%; transform: translateX(-50%); }
 
 .match-receipt-poster-score > div > span,
-.match-receipt-poster-teams strong {
+.match-receipt-poster-teams > div:not(.match-receipt-game-detail) > strong {
   background: var(--receipt-paper-texture) center / auto 240% repeat-x;
   background-clip: text;
   color: transparent;
@@ -421,13 +420,13 @@
   border-left: var(--ui-stroke-width) dotted var(--receipt-orange);
 }
 
-.match-receipt-poster-teams > div {
+.match-receipt-poster-teams > div:not(.match-receipt-game-detail) {
   position: relative;
   min-width: 0;
   text-align: center;
 }
 
-.match-receipt-poster-teams strong {
+.match-receipt-poster-teams > div:not(.match-receipt-game-detail) > strong {
   display: -webkit-box; align-content: center;
   width: 100%; max-width: 100%; box-sizing: border-box; padding-inline: 2%;
   height: 42%; overflow: hidden; overflow-wrap: anywhere; word-break: normal;
@@ -457,7 +456,7 @@
   opacity: 0.76;
 }
 
-.match-receipt-poster-teams span {
+.match-receipt-poster-teams > div:not(.match-receipt-game-detail) > span {
   position: absolute;
   bottom: 0.8%; left: 0; width: 100%;
   overflow: hidden;
@@ -474,6 +473,7 @@
 .match-receipt-poster-profile { font-size: 0.72em; letter-spacing: 0.04em; opacity: 0.8; }
 
 .match-receipt-ticket {
+  --receipt-ticket-divider-y: 58%;
   position: absolute;
   z-index: 3;
   inset: auto 0 1.8%;
@@ -545,8 +545,11 @@
 }
 
 .match-receipt-ticket-date {
-  width: 100%;
-  padding-top: 8%;
+  position: absolute;
+  top: var(--receipt-ticket-divider-y);
+  left: 8%;
+  width: 84%;
+  padding-top: 7%;
   border-top: var(--ui-stroke-width) dotted rgba(32, 25, 21, 0.55);
   color: #181513;
 }
@@ -609,17 +612,17 @@
 }
 
 .match-receipt-personal-tier-mark {
-  position: absolute; z-index: 0; inset: 1% 5% 24%; display: grid;
+  position: absolute; z-index: 0; inset: 0 13% 34%; display: grid;
   place-items: center; min-width: 0; pointer-events: none;
 }
 
 .match-receipt-personal-tier {
-  display: block; width: 88%; height: 100%; min-height: 0;
+  display: block; width: 82%; height: 100%; min-height: 0;
   object-fit: contain; opacity: 0.64; filter: contrast(1.15) saturate(1.08);
 }
 
 .match-receipt-personal-tier-label {
-  position: relative; z-index: 1; display: block; max-width: 100%; margin-top: auto; overflow: hidden; color: #71451f;
+  position: absolute; z-index: 1; top: 78%; left: 6%; display: block; width: 88%; overflow: hidden; color: #71451f;
   font-size: clamp(7px, 2.1cqw, 10px); font-weight: 900;
   letter-spacing: 0.04em; line-height: 1; text-overflow: ellipsis; white-space: nowrap;
 }
@@ -631,11 +634,13 @@
 }
 
 .match-receipt-ticket-game > .match-receipt-ticket-caption {
-  position: relative;
+  position: absolute;
   z-index: 1;
+  top: var(--receipt-ticket-divider-y);
+  left: 8%;
   display: block;
-  width: 100%;
-  padding-top: 5%;
+  width: 84%;
+  padding-top: 3.2%;
   border-top: var(--ui-stroke-width) dotted rgba(32, 25, 21, 0.55);
   font-size: clamp(8px, 2.5cqw, 12px);
   font-weight: 900;

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { MapPin } from "lucide-react";
 import {
   createMatchReceiptViewModel,
@@ -6,6 +6,7 @@ import {
   getMatchReceiptPhotoStyle,
   getMatchReceiptTeamNameScale,
 } from "../../lib/matchReceipt.js";
+import { createMatchReceiptLineArt } from "../../lib/matchReceiptEmblem.js";
 import QrCode from "../common/QrCode.jsx";
 
 function ReceiptScoreDigits({ value }) {
@@ -30,6 +31,7 @@ export default function MatchReceiptPreview({
   photoGestureHandlers = {},
 }) {
   const photoElementRef = useRef(null);
+  const [lineArtUrls, setLineArtUrls] = useState({ home: "", away: "" });
 
   useEffect(() => {
     const photoElement = photoElementRef.current;
@@ -51,11 +53,22 @@ export default function MatchReceiptPreview({
   }, [photoUrl]);
 
   const model = createMatchReceiptViewModel(draft, { matchUrl, publicId });
+  useEffect(() => {
+    let active = true;
+    Promise.all([
+      createMatchReceiptLineArt(model.teamEmblemUrls.home),
+      createMatchReceiptLineArt(model.teamEmblemUrls.away),
+    ]).then(([home, away]) => {
+      if (active) setLineArtUrls({ home, away });
+    });
+    return () => { active = false; };
+  }, [model.teamEmblemUrls.away, model.teamEmblemUrls.home]);
   const backgroundUrl = photoUrl || model.defaultPhotoUrl;
   const posterTeams = [
-    { name: model.homeTeam, tier: model.homeTier, neutralMarkUrl: model.neutralTeamMarkUrls.home },
-    { name: model.awayTeam, tier: model.awayTier, neutralMarkUrl: model.neutralTeamMarkUrls.away },
+    { name: model.homeTeam, tier: model.homeTier, neutralMarkUrl: model.neutralTeamMarkUrls.home, lineArtUrl: lineArtUrls.home },
+    { name: model.awayTeam, tier: model.awayTier, neutralMarkUrl: model.neutralTeamMarkUrls.away, lineArtUrl: lineArtUrls.away },
   ];
+  const hasGameDetail = Boolean(model.tournamentName || model.periodScores.length);
 
   return (
     <article
@@ -107,8 +120,8 @@ export default function MatchReceiptPreview({
         {posterTeams.map((team, index) => (
           <span key={index}>
             <img
-              className={model.showTeamTierEmblems && team.tier ? "" : "is-neutral"}
-              src={model.showTeamTierEmblems && team.tier ? team.tier.outlineSrc : team.neutralMarkUrl}
+              className={team.lineArtUrl ? "is-custom" : model.showTeamTierEmblems && team.tier ? "" : "is-neutral"}
+              src={team.lineArtUrl || (model.showTeamTierEmblems && team.tier ? team.tier.outlineSrc : team.neutralMarkUrl)}
               alt=""
             />
           </span>
@@ -122,19 +135,27 @@ export default function MatchReceiptPreview({
           <ReceiptScoreDigits value={model.awayScore} />
         </div>
       </section>
-      <section className="match-receipt-poster-teams">
+      <section className={`match-receipt-poster-teams${hasGameDetail ? " has-game-detail" : ""}`}>
         {posterTeams.map((team, index) => (
           <div key={index} style={{ "--receipt-team-name-size": `${4.8 * getMatchReceiptTeamNameScale(team.name)}cqw` }}>
             <strong>{team.name || (index ? "AWAY TEAM" : "HOME TEAM")}</strong>
             <img
-              className={`match-receipt-team-tier${model.showTeamTierEmblems && team.tier ? "" : " is-neutral"}`}
-              src={model.showTeamTierEmblems && team.tier ? team.tier.outlineSrc : team.neutralMarkUrl}
+              className={`match-receipt-team-tier${team.lineArtUrl ? " is-custom" : model.showTeamTierEmblems && team.tier ? "" : " is-neutral"}`}
+              src={team.lineArtUrl || (model.showTeamTierEmblems && team.tier ? team.tier.outlineSrc : team.neutralMarkUrl)}
               alt=""
               aria-hidden="true"
             />
-            {model.showTeamTierEmblems && team.tier ? <span>{`TEAM TIER · ${team.tier.label}`}</span> : null}
+            {!team.lineArtUrl && model.showTeamTierEmblems && team.tier ? <span>{`TEAM TIER · ${team.tier.label}`}</span> : null}
           </div>
         ))}
+        {hasGameDetail ? (
+          <div className="match-receipt-game-detail">
+            {model.tournamentName ? <strong>{model.tournamentName}</strong> : null}
+            {model.periodScores.map(([label, home, away]) => (
+              <span key={label}><b>{label}</b><em>{home ?? "-"} : {away ?? "-"}</em></span>
+            ))}
+          </div>
+        ) : null}
       </section>
       <footer className="match-receipt-ticket">
         <img className="match-receipt-ticket-paper" src={model.paperUrl} alt="" aria-hidden="true" />
@@ -143,7 +164,7 @@ export default function MatchReceiptPreview({
           <strong>{model.locationLabel || "경기 장소"}</strong>
           <span className="match-receipt-ticket-date">{model.playedOn.replaceAll("-", ".")}</span>
         </div>
-        <div className="match-receipt-ticket-game">
+        <div className={`match-receipt-ticket-game${model.hasPersonalStats ? "" : " match-receipt-ticket-game--info"}`}>
           {model.personalTier ? (
             <div className="match-receipt-personal-tier-mark" aria-hidden="true">
               <img className="match-receipt-personal-tier is-watermark" src={model.personalTier.outlineSrc} alt="" />

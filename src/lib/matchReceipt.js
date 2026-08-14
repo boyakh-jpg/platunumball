@@ -3,6 +3,7 @@ import { isPersonalRecordMatch } from "../../shared/lib/matchRecordTypes.js";
 import { assetUrl, BOXTIER_LETTER_DARK_URL, BOXTIER_LOGO_URL } from "./assets.js";
 import { createQrMatrix } from "./qrCode.js";
 import { getTier, getTierDivisionNumber } from "./tier.js";
+import { createMatchReceiptLineArt } from "./matchReceiptEmblem.js";
 
 export const MATCH_RECEIPT_DRAFT_STORAGE_KEY = "boxtier.match-receipt.draft.v1";
 export const MATCH_RECEIPT_CREATE_RETURN_TO = "/app/create?intent=record&source=receipt";
@@ -20,6 +21,7 @@ export const MATCH_RECEIPT_LIMITS = Object.freeze({
   address: 48,
   originalAddress: 96,
   comment: 11,
+  tournamentName: 32,
   profileHashtag: 32,
   score: 999,
 });
@@ -142,6 +144,11 @@ function cleanOptionalNumber(value) {
   return Number.isFinite(number) ? number : null;
 }
 
+function cleanOptionalScore(value) {
+  const number = cleanOptionalNumber(value);
+  return number === null ? null : Math.round(clampNumber(number, 0, MATCH_RECEIPT_LIMITS.score));
+}
+
 function cleanColor(value, fallback) {
   return /^#[0-9a-f]{6}$/i.test(String(value ?? "")) ? String(value).toLowerCase() : fallback;
 }
@@ -172,6 +179,21 @@ export function createDefaultMatchReceiptDraft() {
     homeColor: DEFAULT_COLORS.home,
     awayColor: DEFAULT_COLORS.away,
     comment: "",
+    tournamentName: "",
+    q1Home: null,
+    q1Away: null,
+    q2Home: null,
+    q2Away: null,
+    q3Home: null,
+    q3Away: null,
+    q4Home: null,
+    q4Away: null,
+    otHome: null,
+    otAway: null,
+    homeEmblemKey: "",
+    awayEmblemKey: "",
+    homeUseLineArt: false,
+    awayUseLineArt: false,
     photoZoom: 1,
     photoX: 0,
     photoY: 0,
@@ -207,6 +229,21 @@ export function normalizeMatchReceiptDraft(value = {}) {
     homeColor: cleanColor(value.homeColor, DEFAULT_COLORS.home),
     awayColor: cleanColor(value.awayColor, DEFAULT_COLORS.away),
     comment: cleanText(value.comment, MATCH_RECEIPT_LIMITS.comment),
+    tournamentName: cleanText(value.tournamentName, MATCH_RECEIPT_LIMITS.tournamentName),
+    q1Home: cleanOptionalScore(value.q1Home),
+    q1Away: cleanOptionalScore(value.q1Away),
+    q2Home: cleanOptionalScore(value.q2Home),
+    q2Away: cleanOptionalScore(value.q2Away),
+    q3Home: cleanOptionalScore(value.q3Home),
+    q3Away: cleanOptionalScore(value.q3Away),
+    q4Home: cleanOptionalScore(value.q4Home),
+    q4Away: cleanOptionalScore(value.q4Away),
+    otHome: cleanOptionalScore(value.otHome),
+    otAway: cleanOptionalScore(value.otAway),
+    homeEmblemKey: cleanText(value.homeEmblemKey, 256),
+    awayEmblemKey: cleanText(value.awayEmblemKey, 256),
+    homeUseLineArt: Boolean(value.homeUseLineArt),
+    awayUseLineArt: Boolean(value.awayUseLineArt),
     photoZoom: clampNumber(value.photoZoom, 1, 3, 1),
     photoX: clampNumber(value.photoX, -100, 100),
     photoY: clampNumber(value.photoY, -100, 100),
@@ -426,6 +463,21 @@ export function getMatchReceiptDraftFromMatch(match = {}, style = {}, court = nu
     address: style.address ?? "",
     originalAddress: court?.address ?? style.originalAddress ?? "",
     comment: style.comment ?? "",
+    tournamentName: style.tournamentName || style.tournament?.name || style.tournament?.title || "",
+    q1Home: style.q1Home,
+    q1Away: style.q1Away,
+    q2Home: style.q2Home,
+    q2Away: style.q2Away,
+    q3Home: style.q3Home,
+    q3Away: style.q3Away,
+    q4Home: style.q4Home,
+    q4Away: style.q4Away,
+    otHome: style.otHome,
+    otAway: style.otAway,
+    homeEmblemKey: style.homeTeamRecord?.emblemSource === "upload" ? style.homeTeamRecord.emblemKey : "",
+    awayEmblemKey: style.awayTeamRecord?.emblemSource === "upload" ? style.awayTeamRecord.emblemKey : "",
+    homeUseLineArt: Boolean(style.homeUseLineArt),
+    awayUseLineArt: Boolean(style.awayUseLineArt),
     homeColor: style.homeColor,
     awayColor: style.awayColor,
     photoZoom: style.photoZoom,
@@ -511,6 +563,17 @@ export function createMatchReceiptViewModel(value, options = {}) {
     paperGrainUrl: MATCH_RECEIPT_PAPER_GRAIN_URL,
     scoreDigitsUrl: MATCH_RECEIPT_SCORE_DIGITS_URL,
     neutralTeamMarkUrls: MATCH_RECEIPT_NEUTRAL_TEAM_MARK_URLS,
+    teamEmblemUrls: {
+      home: draft.homeUseLineArt && draft.homeEmblemKey ? assetUrl(`/${draft.homeEmblemKey.replace(/^\/+/, "")}`) : "",
+      away: draft.awayUseLineArt && draft.awayEmblemKey ? assetUrl(`/${draft.awayEmblemKey.replace(/^\/+/, "")}`) : "",
+    },
+    periodScores: [
+      ["1Q", draft.q1Home, draft.q1Away],
+      ["2Q", draft.q2Home, draft.q2Away],
+      ["3Q", draft.q3Home, draft.q3Away],
+      ["4Q", draft.q4Home, draft.q4Away],
+      ["OT", draft.otHome, draft.otAway],
+    ].filter(([, home, away]) => home !== null || away !== null),
     homeTier: getTierVisual(draft.homeMmr),
     awayTier: getTierVisual(draft.awayMmr),
     personalTier: showPersonalTierIdentity ? personalTier : null,
@@ -812,7 +875,7 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
   const receiptTop = compact ? 1010 : 1504;
   const photoPromise = loadCanvasImage(options.photoBlob || model.defaultPhotoUrl)
     .catch((error) => (options.photoBlob ? loadCanvasImage(model.defaultPhotoUrl) : Promise.reject(error)));
-  const [photo, wordmark, homeTier, awayTier, homeNeutralTeamMark, awayNeutralTeamMark, personalTier, paper, paperGrain, scoreDigits] = await Promise.all([
+  const [photo, wordmark, homeTier, awayTier, homeNeutralTeamMark, awayNeutralTeamMark, personalTier, paper, paperGrain, scoreDigits, homeLineArtUrl, awayLineArtUrl] = await Promise.all([
     photoPromise,
     loadCanvasImage(model.wordmarkUrl).catch(() => null),
     model.showTeamTierEmblems && model.homeTier ? loadCanvasImage(model.homeTier.outlineSrc).catch(() => null) : null,
@@ -823,6 +886,12 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
     loadCanvasImage(model.paperUrl),
     loadCanvasImage(model.paperGrainUrl),
     loadCanvasImage(model.scoreDigitsUrl),
+    createMatchReceiptLineArt(model.teamEmblemUrls.home),
+    createMatchReceiptLineArt(model.teamEmblemUrls.away),
+  ]);
+  const [homeLineArt, awayLineArt] = await Promise.all([
+    homeLineArtUrl ? loadCanvasImage(homeLineArtUrl).catch(() => null) : null,
+    awayLineArtUrl ? loadCanvasImage(awayLineArtUrl).catch(() => null) : null,
   ]);
   const paperTextPattern = createCanvasPaperPattern(ctx, paperGrain);
 
@@ -905,8 +974,8 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
 
   const columns = [270, 810];
   const teams = [
-    { name: model.homeTeam || "HOME TEAM", tier: model.homeTier, image: homeTier || homeNeutralTeamMark },
-    { name: model.awayTeam || "AWAY TEAM", tier: model.awayTier, image: awayTier || awayNeutralTeamMark },
+    { name: model.homeTeam || "HOME TEAM", tier: model.homeTier, image: homeLineArt || homeTier || homeNeutralTeamMark, custom: Boolean(homeLineArt) },
+    { name: model.awayTeam || "AWAY TEAM", tier: model.awayTier, image: awayLineArt || awayTier || awayNeutralTeamMark, custom: Boolean(awayLineArt) },
   ];
   const teamWatermarkSize = compact ? 450 : 600;
   const teamWatermarkY = compact ? 510 : 810;
@@ -962,19 +1031,34 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
       ctx.drawImage(team.image, columns[index] - teamTierSize / 2, teamTierY, teamTierSize, teamTierSize);
       ctx.restore();
     }
-    if (model.showTeamTierEmblems && team.tier) {
+    if (!team.custom && model.showTeamTierEmblems && team.tier) {
       ctx.fillStyle = "#c69a4b";
       ctx.font = `900 ${compact ? 14 : 15}px "KBO Dia Gothic", sans-serif`;
       ctx.fillText(`TEAM TIER · ${team.tier.label}`, columns[index], teamLabelY);
     }
   });
-  ctx.strokeStyle = "rgba(240,90,42,.7)";
-  ctx.setLineDash([4, 8]);
-  ctx.beginPath();
-  ctx.moveTo(width / 2, compact ? 805 : teamTop);
-  ctx.lineTo(width / 2, receiptTop - 38);
-  ctx.stroke();
-  ctx.setLineDash([]);
+  const hasGameDetail = Boolean(model.tournamentName || model.periodScores.length);
+  if (hasGameDetail) {
+    const centerTop = compact ? 840 : 1265;
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#d6a522";
+    ctx.font = `900 ${compact ? 13 : 16}px "KBO Dia Gothic", sans-serif`;
+    if (model.tournamentName) ctx.fillText(model.tournamentName, width / 2, centerTop);
+    ctx.fillStyle = "#d7c8b5";
+    ctx.font = `800 ${compact ? 12 : 15}px "KBO Dia Gothic", sans-serif`;
+    model.periodScores.forEach(([label, home, away], index) => {
+      const y = centerTop + (model.tournamentName ? 28 : 0) + index * (compact ? 22 : 27);
+      ctx.fillText(`${label}  ${home ?? "-"} : ${away ?? "-"}`, width / 2, y);
+    });
+  } else {
+    ctx.strokeStyle = "rgba(240,90,42,.7)";
+    ctx.setLineDash([4, 8]);
+    ctx.beginPath();
+    ctx.moveTo(width / 2, compact ? 805 : teamTop);
+    ctx.lineTo(width / 2, receiptTop - 38);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
 
   ctx.save();
   ctx.shadowColor = "rgba(0,0,0,.45)";
@@ -994,13 +1078,9 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
   const footerLeftX = compact ? 220 : 236;
   const footerMiddleX = compact ? 540 : 558;
   const footerRightX = compact ? 850 : 862;
-  const footerMiddleDividerOffset = compact
-    ? (model.hasPersonalStats ? 137 : 116)
-    : (model.hasPersonalStats ? 209 : 162);
-  const footerCommentOffset = footerMiddleDividerOffset + (compact ? 30 : 39);
-  const footerTierLabelOffset = compact
-    ? (model.hasPersonalStats ? 207 : 178)
-    : (model.hasPersonalStats ? 284 : 228);
+  const footerMiddleDividerOffset = compact ? 126 : 177;
+  const footerCommentOffset = footerMiddleDividerOffset + (compact ? 20 : 26);
+  const footerTierLabelOffset = compact ? 170 : 228;
 
   ctx.strokeStyle = "rgba(195,74,37,.7)";
   ctx.lineWidth = 2;
@@ -1030,10 +1110,10 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
   ctx.fillText(model.playedOn.replaceAll("-", "."), footerLeftX, footerY + (compact ? 174 : 244));
 
   if (personalTier) {
-    const tierSize = compact ? 158 : 208;
+    const tierSize = compact ? 134 : 172;
     ctx.save();
     ctx.globalAlpha = 0.64;
-    ctx.drawImage(personalTier, footerMiddleX - tierSize / 2, footerY - 12, tierSize, tierSize);
+    ctx.drawImage(personalTier, footerMiddleX - tierSize / 2, footerY - 16, tierSize, tierSize);
     ctx.restore();
   }
 

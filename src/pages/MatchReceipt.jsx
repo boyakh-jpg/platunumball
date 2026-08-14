@@ -38,8 +38,11 @@ function loadDraft() {
   return loadMatchReceiptDraft() ?? createDefaultMatchReceiptDraft();
 }
 
-function getCanonicalTeamMmr(teams, teamId) {
-  const team = teams?.find((item) => String(item.id) === String(teamId));
+function getCanonicalTeam(teams, teamId) {
+  return teams?.find((item) => String(item.id) === String(teamId)) ?? null;
+}
+
+function getCanonicalTeamMmr(team) {
   const mmr = Number(team?.mmr ?? team?.rosterMmr);
   return Number.isFinite(mmr) ? mmr : undefined;
 }
@@ -62,7 +65,16 @@ const RECEIPT_TEXT_FIELDS = new Set([
   "venue",
   "address",
   "comment",
+  "tournamentName",
 ]);
+
+const RECEIPT_PERIOD_FIELDS = [
+  ["1Q", "q1Home", "q1Away"],
+  ["2Q", "q2Home", "q2Away"],
+  ["3Q", "q3Home", "q3Away"],
+  ["4Q", "q4Home", "q4Away"],
+  ["OT", "otHome", "otAway"],
+];
 
 function downloadBlob(blob, fileName) {
   const url = URL.createObjectURL(blob);
@@ -147,14 +159,16 @@ export default function MatchReceipt({ auth, app }) {
     () => app?.state?.tournaments?.find((tournament) => tournament.id === canonicalMatch?.tournamentId) ?? null,
     [app?.state?.tournaments, canonicalMatch?.tournamentId],
   );
-  const canonicalHomeTeamMmr = useMemo(
-    () => getCanonicalTeamMmr(app?.state?.teams, getMatchReceiptSideTeamId(canonicalMatch, "teamA")),
+  const canonicalHomeTeam = useMemo(
+    () => getCanonicalTeam(app?.state?.teams, getMatchReceiptSideTeamId(canonicalMatch, "teamA")),
     [app?.state?.teams, canonicalMatch],
   );
-  const canonicalAwayTeamMmr = useMemo(
-    () => getCanonicalTeamMmr(app?.state?.teams, getMatchReceiptSideTeamId(canonicalMatch, "teamB")),
+  const canonicalAwayTeam = useMemo(
+    () => getCanonicalTeam(app?.state?.teams, getMatchReceiptSideTeamId(canonicalMatch, "teamB")),
     [app?.state?.teams, canonicalMatch],
   );
+  const canonicalHomeTeamMmr = getCanonicalTeamMmr(canonicalHomeTeam);
+  const canonicalAwayTeamMmr = getCanonicalTeamMmr(canonicalAwayTeam);
   const currentUserId = auth?.session?.user?.id ?? "";
   const currentUserMmr = Number(app?.currentUser?.ratings?.integrated);
   const canShowCurrentUserIdentity = Boolean(currentUserId && !requestedPublicDraftId);
@@ -201,6 +215,8 @@ export default function MatchReceipt({ auth, app }) {
         tournament: canonicalTournament,
         homeMmr: canonicalHomeTeamMmr,
         awayMmr: canonicalAwayTeamMmr,
+        homeTeamRecord: canonicalHomeTeam,
+        awayTeamRecord: canonicalAwayTeam,
       }));
       setGenerated(true);
       setStatus("");
@@ -214,7 +230,9 @@ export default function MatchReceipt({ auth, app }) {
   }, [
     app?.actions,
     canonicalAwayTeamMmr,
+    canonicalAwayTeam,
     canonicalHomeTeamMmr,
+    canonicalHomeTeam,
     canonicalMatch,
     canonicalTournament,
     currentUserId,
@@ -831,6 +849,26 @@ export default function MatchReceipt({ auth, app }) {
                 {errors.venue ? <small className="field-error">{errors.venue}</small> : null}
               </label>
               <label className="is-wide">짧은 주소 <input value={draft.address} maxLength={MATCH_RECEIPT_LIMITS.address} disabled={isFieldReadOnly("address")} placeholder="선택 · 예: 마포구 와우근린공원 농구장" onChange={(event) => updateField("address", event.target.value)} /></label>
+              <label className="is-wide">대회·리그 이름 <input value={draft.tournamentName} maxLength={MATCH_RECEIPT_LIMITS.tournamentName} disabled={isFieldReadOnly("tournamentName")} placeholder="선택 · 팀 엠블럼 사이 위쪽에 표시" onChange={(event) => updateField("tournamentName", event.target.value)} /></label>
+              {draft.homeEmblemKey || draft.awayEmblemKey ? (
+                <fieldset className="match-receipt-line-art-fields is-wide">
+                  <legend>팀 엠블럼 선화 <small>선택</small></legend>
+                  {draft.homeEmblemKey ? <label><input type="checkbox" checked={draft.homeUseLineArt} onChange={(event) => updateField("homeUseLineArt", event.target.checked)} /> 홈팀 선화 사용</label> : null}
+                  {draft.awayEmblemKey ? <label><input type="checkbox" checked={draft.awayUseLineArt} onChange={(event) => updateField("awayUseLineArt", event.target.checked)} /> 원정팀 선화 사용</label> : null}
+                  <small>미리보기에서 확인 후 선택하세요. 변환 품질이 부족하면 중립 엠블럼이 유지됩니다.</small>
+                </fieldset>
+              ) : null}
+              <fieldset className="match-receipt-period-fields is-wide">
+                <legend>쿼터별 점수 <small>선택</small></legend>
+                {RECEIPT_PERIOD_FIELDS.map(([label, homeField, awayField]) => (
+                  <label key={label}>
+                    <span>{label}</span>
+                    <input type="number" min="0" max={MATCH_RECEIPT_LIMITS.score} inputMode="numeric" value={draft[homeField] ?? ""} aria-label={`${label} 홈 점수`} placeholder="홈" onChange={(event) => updateField(homeField, event.target.value)} />
+                    <i>:</i>
+                    <input type="number" min="0" max={MATCH_RECEIPT_LIMITS.score} inputMode="numeric" value={draft[awayField] ?? ""} aria-label={`${label} 원정 점수`} placeholder="원정" onChange={(event) => updateField(awayField, event.target.value)} />
+                  </label>
+                ))}
+              </fieldset>
               <label className="is-wide">
                 <span className="match-receipt-field-heading">
                   <span>한 줄 코멘트</span>

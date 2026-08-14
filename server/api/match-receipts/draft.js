@@ -31,8 +31,11 @@ function getPublicId(request) {
   return String(request.query?.publicId ?? "").trim();
 }
 
-function getCanonicalTeamMmr(teams, teamId) {
-  const team = teams?.find((item) => String(item.id) === String(teamId));
+function getCanonicalTeam(teams, teamId) {
+  return teams?.find((item) => String(item.id) === String(teamId)) ?? null;
+}
+
+function getCanonicalTeamMmr(team) {
   const mmr = Number(team?.mmr ?? team?.rosterMmr);
   return Number.isFinite(mmr) ? mmr : undefined;
 }
@@ -50,6 +53,8 @@ async function createCanonicalPayload(request, sourceMatchId, styleDraft) {
 
   const currentUser = (state.users ?? []).find((item) => String(item.id) === String(profileId));
   const tournament = (state.tournaments ?? []).find((item) => item.id === match.tournamentId) ?? null;
+  const homeTeam = getCanonicalTeam(state.teams, getMatchReceiptSideTeamId(match, "teamA"));
+  const awayTeam = getCanonicalTeam(state.teams, getMatchReceiptSideTeamId(match, "teamB"));
   const safeStyle = sanitizeReceiptDraftPayload(styleDraft);
   const canonicalDraft = getMatchReceiptDraftFromMatch(match, {
     ...safeStyle,
@@ -58,8 +63,10 @@ async function createCanonicalPayload(request, sourceMatchId, styleDraft) {
     personalMmr: currentUser?.ratings?.integrated,
     profileHashtag: currentUser ? getUserHashtag(currentUser) : "",
     tournament,
-    homeMmr: getCanonicalTeamMmr(state.teams, getMatchReceiptSideTeamId(match, "teamA")),
-    awayMmr: getCanonicalTeamMmr(state.teams, getMatchReceiptSideTeamId(match, "teamB")),
+    homeMmr: getCanonicalTeamMmr(homeTeam),
+    awayMmr: getCanonicalTeamMmr(awayTeam),
+    homeTeamRecord: homeTeam,
+    awayTeamRecord: awayTeam,
   });
   return {
     ...sanitizeReceiptDraftPayload(canonicalDraft, { trustedCanonical: true }),
@@ -78,7 +85,9 @@ async function clonePublicPayload(supabase, publicId) {
   if (error) throw error;
   if (!data) return null;
   if (!await canExposeStoredReceiptDraft(supabase, data.payload)) return null;
-  return sanitizeReceiptDraftPayload(projectPublicReceiptDraft(data.payload));
+  return sanitizeReceiptDraftPayload(projectPublicReceiptDraft(data.payload), {
+    trustedCanonical: data.payload?._canonicalReceipt === true,
+  });
 }
 
 async function canExposeStoredReceiptDraft(supabase, payload) {

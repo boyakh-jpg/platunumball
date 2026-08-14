@@ -14,7 +14,9 @@ const TEXT_LIMITS = Object.freeze({
   format: 5,
   matchNature: 11,
   comment: 11,
+  tournamentName: 32,
   profileHashtag: 32,
+  assetKey: 256,
 });
 
 function cleanText(value, maxLength) {
@@ -36,6 +38,16 @@ function cleanOptionalNumber(value) {
   return Number.isFinite(number) ? number : null;
 }
 
+function cleanOptionalScore(value) {
+  const number = cleanOptionalNumber(value);
+  return number === null ? null : Math.round(Math.min(999, Math.max(0, number)));
+}
+
+function cleanTeamEmblemKey(value) {
+  const key = cleanText(value, TEXT_LIMITS.assetKey).replace(/^\/+/, "");
+  return key.startsWith("team-emblems/") && !key.includes("..") && /^[A-Za-z0-9/_.-]+$/.test(key) ? key : "";
+}
+
 function cleanColor(value, fallback) {
   return /^#[0-9a-f]{6}$/i.test(String(value ?? "")) ? String(value).toLowerCase() : fallback;
 }
@@ -47,7 +59,7 @@ function cleanSerialSeed(value) {
 
 export function sanitizeReceiptDraftPayload(value = {}, options = {}) {
   const trustedCanonical = options.trustedCanonical === true;
-  const format = ["3v3", "5v5", "other"].includes(value.format) ? value.format : "3v3";
+  const format = ["1v1", "2v2", "3v3", "5v5"].includes(value.format) ? value.format : "3v3";
   const matchNature = ["friendly", "competitive", "revenge", "semifinal", "final"].includes(value.matchNature)
     ? value.matchNature
     : "competitive";
@@ -66,6 +78,19 @@ export function sanitizeReceiptDraftPayload(value = {}, options = {}) {
     homeColor: cleanColor(value.homeColor, "#f05a46"),
     awayColor: cleanColor(value.awayColor, "#27354d"),
     comment: cleanText(value.comment, TEXT_LIMITS.comment),
+    tournamentName: cleanText(value.tournamentName, TEXT_LIMITS.tournamentName),
+    q1Home: cleanOptionalScore(value.q1Home),
+    q1Away: cleanOptionalScore(value.q1Away),
+    q2Home: cleanOptionalScore(value.q2Home),
+    q2Away: cleanOptionalScore(value.q2Away),
+    q3Home: cleanOptionalScore(value.q3Home),
+    q3Away: cleanOptionalScore(value.q3Away),
+    q4Home: cleanOptionalScore(value.q4Home),
+    q4Away: cleanOptionalScore(value.q4Away),
+    otHome: cleanOptionalScore(value.otHome),
+    otAway: cleanOptionalScore(value.otAway),
+    homeUseLineArt: Boolean(value.homeUseLineArt),
+    awayUseLineArt: Boolean(value.awayUseLineArt),
     homeMmr: cleanOptionalNumber(value.homeMmr),
     awayMmr: cleanOptionalNumber(value.awayMmr),
     ...(trustedCanonical ? {
@@ -74,7 +99,11 @@ export function sanitizeReceiptDraftPayload(value = {}, options = {}) {
     } : {}),
     personalPoints: cleanOptionalNumber(value.personalPoints),
     personalRebounds: cleanOptionalNumber(value.personalRebounds),
-    ...(trustedCanonical ? { hasCanonicalTeamMatch: Boolean(value.hasCanonicalTeamMatch) } : {}),
+    ...(trustedCanonical ? {
+      hasCanonicalTeamMatch: Boolean(value.hasCanonicalTeamMatch),
+      homeEmblemKey: cleanTeamEmblemKey(value.homeEmblemKey),
+      awayEmblemKey: cleanTeamEmblemKey(value.awayEmblemKey),
+    } : {}),
     verified: trustedCanonical && value.verified === true,
   };
 }
