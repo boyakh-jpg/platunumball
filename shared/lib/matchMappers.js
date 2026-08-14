@@ -330,6 +330,7 @@ export function fromRemoteMatch(row, context) {
       ? {
           scoreA: resultRow.score_a,
           scoreB: resultRow.score_b,
+          periodScores: resultRow.period_scores ?? [],
           revision: Number(resultRow.result_revision ?? 0),
           scoreRevisionA: Number(resultRow.score_revision_a ?? 0),
           scoreRevisionB: Number(resultRow.score_revision_b ?? 0),

@@ -160,6 +160,7 @@ export function getMatchRuleInputValidation(source = {}, { mode = source.mode ||
 export function getDefaultMatchRules(mode = "3v3") {
   const fiveOnFive = mode === "5v5";
   return {
+    ruleSet: "standard",
     gameClockEnabled: true,
     endCondition: fiveOnFive ? "time" : "target_or_time",
     targetScore: 21,
@@ -202,6 +203,7 @@ export function normalizeMatchRules(source = {}, { mode = "3v3" } = {}) {
 
   return {
     ...source,
+    ruleSet: source.ruleSet === "fiba_3x3" && mode === "3v3" ? "fiba_3x3" : "standard",
     gameClockEnabled,
     qrAttendanceEnabled,
     endCondition,
@@ -226,6 +228,7 @@ export function normalizeMatchRules(source = {}, { mode = "3v3" } = {}) {
 export function getMatchRulesPayload(source = {}, options = {}) {
   const rules = normalizeMatchRules(source, options);
   return {
+    ruleSet: rules.ruleSet,
     gameClockEnabled: rules.gameClockEnabled,
     qrAttendanceEnabled: rules.qrAttendanceEnabled,
     endCondition: rules.endCondition,
@@ -245,6 +248,22 @@ export function getMatchRulesPayload(source = {}, options = {}) {
     meetingPoint: rules.meetingPoint,
     meetBeforeMinutes: rules.meetBeforeMinutes,
   };
+}
+
+export function isFiba3x3Rules(mode = "", rules = {}) {
+  if (mode !== "3v3") return false;
+  const normalized = normalizeMatchRules(rules, { mode });
+  return normalized.ruleSet === "fiba_3x3" || (
+    Number(normalized.targetScore) === 21
+    && Number(normalized.periodCount) === 1
+    && Number(normalized.periodMinutes) === 12
+    && normalized.endCondition === "target_or_time"
+    && normalized.winByTwo === true
+  );
+}
+
+export function getMatchFormatLabel(mode = "", rules = {}) {
+  return isFiba3x3Rules(mode, rules) ? "3x3" : mode;
 }
 
 export function getMatchPeriodLabel(rules = {}, mode = "3v3") {

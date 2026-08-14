@@ -14,6 +14,7 @@ import { makeId } from "../../rowUtils.js";
 import { normalizePlayerStats } from "../../../lib/matchUtils.js";
 import { getDisciplineBlockedState } from "../guards.js";
 import { currentUserCanOperateStartedMatch } from "../matchAccess.js";
+import { validateMatchPeriodScores } from "../../../../shared/lib/matchPeriodScores.js";
 
 function getSelfDecisionId(state, match, sideName, decisionKey, playerId) {
   const currentUserId = state.currentUserId;
@@ -259,10 +260,16 @@ export function submitMatchResult(state, matchId, result) {
     !Number.isInteger(nextScoreA) || nextScoreA < 0 || nextScoreA > 999
     || !Number.isInteger(nextScoreB) || nextScoreB < 0 || nextScoreB > 999
   ) return state;
+  const periodScoreResult = validateMatchPeriodScores(result.periodScores, match.rules, {
+    scoreA: nextScoreA,
+    scoreB: nextScoreB,
+  });
+  if (!periodScoreResult.valid) return state;
   const nextResult = {
     scoreA: nextScoreA,
     scoreB: nextScoreB,
     playerStats: nextPlayerStats,
+    periodScores: periodScoreResult.periodScores,
     statSubmissions: nextSubmissions,
     submittedBy: currentUserId,
     submittedAt: (draftEntry ? match.disputeDraftResult?.submittedAt : match.result?.submittedAt) ?? now,

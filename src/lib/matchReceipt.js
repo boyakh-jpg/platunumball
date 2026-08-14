@@ -3,13 +3,14 @@ import { isPersonalRecordMatch } from "../../shared/lib/matchRecordTypes.js";
 import { hasVerifiedPlayerStats } from "../../shared/lib/matchSummary.js";
 import { assetUrl, BOXTIER_LETTER_DARK_URL, BOXTIER_LOGO_URL } from "./assets.js";
 import { createQrMatrix } from "./qrCode.js";
+import { getMatchFormatLabel } from "./matchRules.js";
 import { getTier, getTierDivisionNumber } from "./tier.js";
 import { createMatchReceiptLineArt } from "./matchReceiptEmblem.js";
 
 export const MATCH_RECEIPT_DRAFT_STORAGE_KEY = "boxtier.match-receipt.draft.v1";
 export const MATCH_RECEIPT_CREATE_RETURN_TO = "/app/create?intent=record&source=receipt";
 export const MATCH_RECEIPT_PHOTO_MAX_BYTES = 15 * 1024 * 1024;
-const MATCH_RECEIPT_DRAFT_VERSION = 2;
+const MATCH_RECEIPT_DRAFT_VERSION = 3;
 const MATCH_RECEIPT_DRAFT_TTL_MS = 24 * 60 * 60 * 1000;
 const PHOTO_DB_NAME = "boxtier-match-receipt";
 const PHOTO_STORE_NAME = "photos";
@@ -33,6 +34,7 @@ export const MATCH_RECEIPT_FORMATS = Object.freeze([
   { value: "1v1", label: "1대1" },
   { value: "2v2", label: "2대2" },
   { value: "3v3", label: "3대3" },
+  { value: "3x3", label: "FIBA 3x3" },
   { value: "5v5", label: "5대5" },
 ]);
 
@@ -152,6 +154,22 @@ function cleanOptionalScore(value) {
   return number === null ? null : Math.round(clampNumber(number, 0, MATCH_RECEIPT_LIMITS.score));
 }
 
+const MATCH_RECEIPT_PERIOD_LABELS = new Set(["1Q", "2Q", "3Q", "4Q", "1H", "2H", "REG", "OT"]);
+
+function cleanReceiptPeriodScores(value) {
+  if (!Array.isArray(value)) return [];
+  const seen = new Set();
+  return value.flatMap((item) => {
+    const label = String(item?.label ?? "").trim().toUpperCase();
+    if (!MATCH_RECEIPT_PERIOD_LABELS.has(label) || seen.has(label)) return [];
+    const scoreA = cleanOptionalScore(item?.scoreA);
+    const scoreB = cleanOptionalScore(item?.scoreB);
+    if (scoreA === null || scoreB === null) return [];
+    seen.add(label);
+    return [{ label, scoreA, scoreB }];
+  }).slice(0, 5);
+}
+
 function cleanColor(value, fallback) {
   return /^#[0-9a-f]{6}$/i.test(String(value ?? "")) ? String(value).toLowerCase() : fallback;
 }
@@ -183,6 +201,7 @@ export function createDefaultMatchReceiptDraft() {
     awayColor: DEFAULT_COLORS.away,
     comment: "",
     tournamentName: "",
+    periodScores: [],
     q1Home: null,
     q1Away: null,
     q2Home: null,
@@ -234,6 +253,7 @@ export function normalizeMatchReceiptDraft(value = {}) {
     awayColor: cleanColor(value.awayColor, DEFAULT_COLORS.away),
     comment: cleanText(value.comment, MATCH_RECEIPT_LIMITS.comment),
     tournamentName: cleanText(value.tournamentName, MATCH_RECEIPT_LIMITS.tournamentName),
+    periodScores: cleanReceiptPeriodScores(value.periodScores),
     q1Home: cleanOptionalScore(value.q1Home),
     q1Away: cleanOptionalScore(value.q1Away),
     q2Home: cleanOptionalScore(value.q2Home),
@@ -307,7 +327,7 @@ export function loadMatchReceiptDraft(storage) {
   try {
     const value = JSON.parse(target.getItem(MATCH_RECEIPT_DRAFT_STORAGE_KEY) || "null");
     const savedAt = Number(value?.savedAt);
-    if (![1, MATCH_RECEIPT_DRAFT_VERSION].includes(value?.version) || !Number.isFinite(savedAt) || Date.now() - savedAt > MATCH_RECEIPT_DRAFT_TTL_MS) {
+    if (![1, 2, MATCH_RECEIPT_DRAFT_VERSION].includes(value?.version) || !Number.isFinite(savedAt) || Date.now() - savedAt > MATCH_RECEIPT_DRAFT_TTL_MS) {
       if (value) target.removeItem(MATCH_RECEIPT_DRAFT_STORAGE_KEY);
       return null;
     }
@@ -425,7 +445,8 @@ export function getMatchReceiptCreateDraft(value) {
     recordType: RECORD_TYPES.personalRecord,
     recordEntryMode: "quick",
     visibility: "private",
-    mode: draft.format,
+    mode: draft.format === "3x3" ? "3v3" : draft.format,
+    ruleSet: draft.format === "3x3" ? "fiba_3x3" : "standard",
     scheduledDate: draft.playedOn,
     soloTeamAName: draft.homeTeam,
     soloTeamBName: draft.awayTeam,
@@ -467,13 +488,14 @@ export function getMatchReceiptDraftFromMatch(match = {}, style = {}, court = nu
     homeScore: match.result?.scoreA ?? match.teamA?.score ?? 0,
     awayScore: match.result?.scoreB ?? match.teamB?.score ?? 0,
     playedOn: String(match.scheduledDate ?? "").slice(0, 10),
-    format: MATCH_RECEIPT_FORMATS.some(({ value }) => value === match.mode) ? match.mode : "3v3",
+    format: getMatchFormatLabel(match.mode, match.rules),
     matchNature: inferMatchReceiptNature(match, style.tournament),
     venue: court?.name ?? (match.court && match.court !== "미정" ? match.court : ""),
     address: style.address ?? "",
     originalAddress: court?.address ?? style.originalAddress ?? "",
     comment: style.comment ?? "",
     tournamentName: style.tournamentName || style.tournament?.name || style.tournament?.title || "",
+    periodScores: Array.isArray(match.result?.periodScores) ? match.result.periodScores : [],
     q1Home: style.q1Home,
     q1Away: style.q1Away,
     q2Home: style.q2Home,
@@ -580,13 +602,15 @@ export function createMatchReceiptViewModel(value, options = {}) {
       home: draft.homeUseLineArt && draft.homeEmblemKey ? assetUrl(`/${draft.homeEmblemKey.replace(/^\/+/, "")}`) : "",
       away: draft.awayUseLineArt && draft.awayEmblemKey ? assetUrl(`/${draft.awayEmblemKey.replace(/^\/+/, "")}`) : "",
     },
-    periodScores: [
-      ["1Q", draft.q1Home, draft.q1Away],
-      ["2Q", draft.q2Home, draft.q2Away],
-      ["3Q", draft.q3Home, draft.q3Away],
-      ["4Q", draft.q4Home, draft.q4Away],
-      ["OT", draft.otHome, draft.otAway],
-    ].filter(([, home, away]) => home !== null || away !== null),
+    periodScores: draft.periodScores.length
+      ? draft.periodScores.map(({ label, scoreA, scoreB }) => [label, scoreA, scoreB])
+      : [
+          ["1Q", draft.q1Home, draft.q1Away],
+          ["2Q", draft.q2Home, draft.q2Away],
+          ["3Q", draft.q3Home, draft.q3Away],
+          ["4Q", draft.q4Home, draft.q4Away],
+          ["OT", draft.otHome, draft.otAway],
+        ].filter(([, home, away]) => home !== null || away !== null),
     homeTier: getTierVisual(draft.homeMmr),
     awayTier: getTierVisual(draft.awayMmr),
     personalTier: showPersonalTierIdentity ? personalTier : null,

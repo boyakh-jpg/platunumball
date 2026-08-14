@@ -127,7 +127,19 @@ export function getModeClockPreset(mode = "5v5", presetId = "community") {
   }
   if (mode !== "5v5") {
     if (presetId === "quick") return { ...defaults, targetScore: 11, periodMinutes: 8, timeLimit: 8, lastPeriodStopMinutes: 0 };
-    if (presetId === "score21") return { ...defaults, lastPeriodStopMinutes: 0 };
+    if (presetId === "score21") return {
+      ...defaults,
+      ruleSet: mode === "3v3" ? "fiba_3x3" : "standard",
+      periodCount: 1,
+      periodMinutes: mode === "3v3" ? 10 : defaults.periodMinutes,
+      timeLimit: mode === "3v3" ? 10 : defaults.timeLimit,
+      targetScore: 21,
+      endCondition: "target_or_time",
+      clockMode: "running",
+      winByTwo: true,
+      ball: mode === "3v3" ? "6호 공" : defaults.ball,
+      lastPeriodStopMinutes: 0,
+    };
     if (presetId === "extended") return { ...defaults, periodMinutes: 15, timeLimit: 15, lastPeriodStopMinutes: 0 };
     return getModeClockPreset(mode, "community");
   }
@@ -159,7 +171,7 @@ export function getMatchClockPresetOptions(mode = "5v5") {
       { id: "community", label: "기본 8분×2", patch: getModeClockPreset(mode, "community") },
       { id: "quarters", label: "4쿼터 8분×4", patch: getModeClockPreset(mode, "quarters") },
       { id: "quick", label: "빠른 11점", patch: getModeClockPreset(mode, "quick") },
-      { id: "score21", label: "기본 21점", patch: getModeClockPreset(mode, "score21") },
+      { id: "score21", label: mode === "3v3" ? "FIBA 3x3 · 21점" : "기본 21점", patch: getModeClockPreset(mode, "score21") },
       { id: "extended", label: "긴 경기 15분", patch: getModeClockPreset(mode, "extended") },
     ];
   }

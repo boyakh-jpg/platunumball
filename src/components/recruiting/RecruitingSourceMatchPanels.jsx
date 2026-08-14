@@ -7,6 +7,7 @@ import {
 import Button from "../common/Button.jsx";
 import NumericStepper from "../common/NumericStepper.jsx";
 import MatchDisputeQueue from "../match/MatchDisputeQueue.jsx";
+import MatchPeriodScoreFields from "../match/MatchPeriodScoreFields.jsx";
 import MatchVoidDialog from "../match/MatchVoidDialog.jsx";
 import {
   getTeamCaptainMemberId as getTeamCaptainId,
@@ -246,6 +247,7 @@ function makeSourceMatchDraft(match) {
   return {
     scoreA: Number(result.scoreA ?? match?.teamA?.score ?? 0),
     scoreB: Number(result.scoreB ?? match?.teamB?.score ?? 0),
+    periodScores: result.periodScores ?? [],
     playerStats: normalizePlayerStats(result.playerStats, playerIds),
     statSubmissions: result.statSubmissions ?? {},
     submittedBy: result.submittedBy,
@@ -379,6 +381,15 @@ export function SourceMatchDisputeEditor({
           <small>개인 PTS 합계 {getDerivedScore("teamB")}</small>
         </label>
       </div>
+      <MatchPeriodScoreFields
+        rules={match.rules}
+        value={draft.periodScores}
+        editableScoreSides={editableScoreSides}
+        teamALabel={match.teamA?.name ?? "TEAM A"}
+        teamBLabel={match.teamB?.name ?? "TEAM B"}
+        disabled={savePending}
+        onChange={(periodScores) => setDraft((current) => ({ ...current, periodScores }))}
+      />
       <div className="arena-dispute-stat-grid">
         {MATCH_SIDES.map((sideName) => (
           <div className="arena-dispute-side" key={sideName}>

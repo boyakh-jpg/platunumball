@@ -4,6 +4,7 @@ import BasketballLoader from "../components/common/BasketballLoader.jsx";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import { EVIDENCE_OPTIONS, PLAYER_STAT_FIELDS, REPORT_MATCH_WINDOW_MS, normalizeBenchCapacity, normalizeDisputeWindowMinutes } from "../lib/constants.js";
 import { DEFAULT_REPORT_REASON } from "../lib/reportReasons.js";
+import { normalizeMatchPeriodScores } from "../../shared/lib/matchPeriodScores.js";
 import {
   MATCH_DISPUTE_REASON_OPTIONS,
   canOperateAssignedMatchReferee,
@@ -67,6 +68,7 @@ export default function MatchRoom({ app }) {
   const [score, setScore] = useState({
     scoreA: match?.result?.scoreA ?? match?.teamA?.score ?? 21,
     scoreB: match?.result?.scoreB ?? match?.teamB?.score ?? 17,
+    periodScores: normalizeMatchPeriodScores(match?.result?.periodScores, match?.rules),
     playerStats: makeInitialStats(match),
   });
   const matchPlayerKey = match ? getMatchPlayerIds(match).join("|") : "";
@@ -142,6 +144,7 @@ export default function MatchRoom({ app }) {
     setScore({
       scoreA: sourceResult?.scoreA ?? match.teamA?.score ?? 21,
       scoreB: sourceResult?.scoreB ?? match.teamB?.score ?? 17,
+      periodScores: normalizeMatchPeriodScores(sourceResult?.periodScores, match.rules),
       playerStats: makeInitialStats(match),
     });
     setResultSaveFeedback("");

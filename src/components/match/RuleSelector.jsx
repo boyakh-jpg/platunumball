@@ -16,7 +16,7 @@ import {
 import { getMatchClockPresetOptions } from "../../lib/matchCreationPolicies.js";
 
 const PRESET_FIELDS = [
-  "gameClockEnabled", "endCondition", "targetScore", "periodCount", "periodMinutes",
+  "ruleSet", "gameClockEnabled", "endCondition", "targetScore", "periodCount", "periodMinutes",
   "periodBreakMinutes", "halftimeMinutes", "overtimeMinutes", "clockMode", "lastPeriodStopMinutes", "winByTwo",
 ];
 
@@ -32,8 +32,8 @@ export default function RuleSelector({ draft, onChange }) {
   const matchingPresetId = getMatchingPresetId(clockPresetOptions, rules);
   const activePresetId = selectedPresetId === "custom" ? "custom" : matchingPresetId || "custom";
   const customRules = activePresetId === "custom";
-  const updateRules = (patch) => {
-    const next = { ...rules, ...patch };
+  const updateRules = (patch, { preserveRuleSet = false } = {}) => {
+    const next = { ...rules, ...patch, ...(!preserveRuleSet ? { ruleSet: "standard" } : {}) };
     const payload = getMatchRulesPayload(next, { mode: draft.mode });
     const preservedRawNumbers = Object.fromEntries(
       MATCH_RULE_NUMBER_FIELDS
@@ -42,7 +42,7 @@ export default function RuleSelector({ draft, onChange }) {
     );
     onChange({ ...payload, ...preservedRawNumbers });
   };
-  const updateNumber = (key, value) => onChange({ [key]: value });
+  const updateNumber = (key, value) => onChange({ [key]: value, ruleSet: "standard" });
   const numberValue = (key) => (
     Object.prototype.hasOwnProperty.call(draft, key) ? draft[key] : rules[key]
   );
@@ -62,7 +62,7 @@ export default function RuleSelector({ draft, onChange }) {
               className={activePresetId === option.id ? "active" : ""}
               onClick={() => {
                 setSelectedPresetId(option.id);
-                updateRules(option.patch);
+                updateRules(option.patch, { preserveRuleSet: true });
               }}
             >
               {option.label}

@@ -229,6 +229,7 @@ export async function saveNormalizedRemoteState(state, options = {}) {
       submitted_by: match.result.submittedBy ?? match.refereeId ?? match.teamA?.players?.[0] ?? currentUserId,
       score_a: Number(match.result.scoreA ?? 0),
       score_b: Number(match.result.scoreB ?? 0),
+      period_scores: match.result.periodScores ?? [],
       score_revision_a: Number(match.result.scoreRevisionA ?? 0),
       score_revision_b: Number(match.result.scoreRevisionB ?? 0),
       score_submissions: match.result.scoreSubmissions ?? {},

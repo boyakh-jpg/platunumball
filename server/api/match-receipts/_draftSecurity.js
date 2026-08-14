@@ -43,6 +43,22 @@ function cleanOptionalScore(value) {
   return number === null ? null : Math.round(Math.min(999, Math.max(0, number)));
 }
 
+const RECEIPT_PERIOD_LABELS = new Set(["1Q", "2Q", "3Q", "4Q", "1H", "2H", "REG", "OT"]);
+
+function cleanPeriodScores(value) {
+  if (!Array.isArray(value)) return [];
+  const seen = new Set();
+  return value.flatMap((item) => {
+    const label = cleanText(item?.label, 3).toUpperCase();
+    if (!RECEIPT_PERIOD_LABELS.has(label) || seen.has(label)) return [];
+    const scoreA = cleanOptionalScore(item?.scoreA);
+    const scoreB = cleanOptionalScore(item?.scoreB);
+    if (scoreA === null || scoreB === null) return [];
+    seen.add(label);
+    return [{ label, scoreA, scoreB }];
+  }).slice(0, 5);
+}
+
 function cleanTeamEmblemKey(value) {
   const key = cleanText(value, TEXT_LIMITS.assetKey).replace(/^\/+/, "");
   return key.startsWith("team-emblems/") && !key.includes("..") && /^[A-Za-z0-9/_.-]+$/.test(key) ? key : "";
@@ -59,7 +75,7 @@ function cleanSerialSeed(value) {
 
 export function sanitizeReceiptDraftPayload(value = {}, options = {}) {
   const trustedCanonical = options.trustedCanonical === true;
-  const format = ["1v1", "2v2", "3v3", "5v5"].includes(value.format) ? value.format : "3v3";
+  const format = ["1v1", "2v2", "3v3", "3x3", "5v5"].includes(value.format) ? value.format : "3v3";
   const matchNature = ["friendly", "competitive", "revenge", "semifinal", "final"].includes(value.matchNature)
     ? value.matchNature
     : "competitive";
@@ -79,6 +95,7 @@ export function sanitizeReceiptDraftPayload(value = {}, options = {}) {
     awayColor: cleanColor(value.awayColor, "#27354d"),
     comment: cleanText(value.comment, TEXT_LIMITS.comment),
     tournamentName: cleanText(value.tournamentName, TEXT_LIMITS.tournamentName),
+    periodScores: cleanPeriodScores(value.periodScores),
     q1Home: cleanOptionalScore(value.q1Home),
     q1Away: cleanOptionalScore(value.q1Away),
     q2Home: cleanOptionalScore(value.q2Home),

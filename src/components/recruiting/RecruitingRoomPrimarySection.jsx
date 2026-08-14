@@ -1,4 +1,5 @@
 import { getRecruitingRoomRosterProps } from "./RecruitingRoomRosterProps.js";
+import { getMatchFormatLabel } from "../../lib/matchRules.js";
 
 function RecruitingRoomVersusSide({ context, sideName, meta }) {
   const {
@@ -29,6 +30,10 @@ function RecruitingRoomVersusSide({ context, sideName, meta }) {
     tournamentRoomOwnerName,
     userById,
   } = context;
+  const roomFormatLabel = getMatchFormatLabel(
+    sourceMatch?.mode ?? selectedPost.mode,
+    sourceMatch?.rules ?? selectedMatchRules,
+  );
   const pendingSideLeaderInvitation = !sourceMatch && selectedPost.visibility === "private"
     ? (roomState.invitations ?? []).find((invitation) => (
         invitation.status === "pending"
@@ -112,7 +117,7 @@ export function RecruitingRoomPrimarySection({ context }) {
                 <div className="arena-lobby-topline">
                   <div className="badge-row">
                     <Badge tone={roomPhaseBadge?.tone ?? "neutral"}>{roomPhaseBadge?.label ?? "대기방"}</Badge>
-                    <Badge tone="neutral">{selectedPost.mode}</Badge>
+                    <Badge tone="neutral">{roomFormatLabel}</Badge>
                     <Badge tone={roomVisibilityTone}>{roomVisibilityLabel}</Badge>
                     <Badge tone="neutral">{roomMatchTypeLabel}</Badge>
                     <Badge tone={selectedPost.ranked === false ? "neutral" : "gold"}>{roomCompetitionLabel}</Badge>

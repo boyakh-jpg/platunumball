@@ -1,4 +1,5 @@
 import { getRecruitingRoomRosterProps } from "./RecruitingRoomRosterProps.js";
+import { getMatchFormatLabel } from "../../lib/matchRules.js";
 
 export function createRecruitingRoomMatchRenderers(context) {
   const {
@@ -15,6 +16,7 @@ export function createRecruitingRoomMatchRenderers(context) {
     sourceMatchRecordBoardFirst, sourceMatchRecordWindow, sourceMatchResultSubmitLabel, sourceMatchReviewRefreshing, sourceMatchSideLeaderIds, sourceMatchSlotManagementOpen,
     runSourceMatchAction, sourceMatchResultEntryPermission, sourceRoomReadOnly, teamOnlyRoom, userById,
   } = context;
+  const roomFormatLabel = getMatchFormatLabel(sourceMatch?.mode ?? selectedPost.mode, sourceMatch?.rules ?? selectedPost.rules);
 
 const renderSourceMatchRecordBoard = () => {
           if (!sourceMatchRecordBoardFirst) return null;
@@ -112,7 +114,7 @@ const renderSourceMatchRecordBoard = () => {
         const roomCompetitionLabel = getRoomCompetitionLabel(selectedPost);
         const roomDisplayTitle = sourceMatch?.tournamentId
           ? getTournamentMatchDisplayTitle(sourceMatch, selectedPost.title)
-          : getRecruitingDisplayTitle(selectedPost, `${roomCompetitionLabel} ${selectedPost.mode || ""} 매치 큐`.trim());
+          : getRecruitingDisplayTitle(selectedPost, `${roomCompetitionLabel} ${roomFormatLabel || ""} 매치 큐`.trim());
         const roomTitleSizeClass = getRoomTitleSizeClass(roomDisplayTitle);
         const roomVisibilityLabel = sourceMatchIsPersonalRecord
           ? ((sourceMatch?.visibility ?? selectedPost.visibility) === "public" ? "공개" : "비공개")

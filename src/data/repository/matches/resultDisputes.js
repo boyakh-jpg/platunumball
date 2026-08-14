@@ -24,6 +24,7 @@ function applyDisputeRequestToResult(match = {}, baseResult = null, disputeReque
       scoreA: normalized.requestedScoreA,
       scoreB: normalized.requestedScoreB,
       revision: nextRevision,
+      periodScores: [],
       playerStats: {},
       statSubmissions: {},
       updatedAt: new Date().toISOString(),
@@ -33,11 +34,16 @@ function applyDisputeRequestToResult(match = {}, baseResult = null, disputeReque
   if (!nextResult || !normalized || !getActualMatchPlayerIds(match).includes(normalized.playerId)) return nextResult;
   const playerStats = normalizePlayerStats(nextResult.playerStats ?? {}, getActualMatchPlayerIds(match));
   playerStats[normalized.playerId] = normalized.requestedStats;
+  const scoreA = getMergedResultScore(match, playerStats, "teamA", nextResult.scoreA);
+  const scoreB = getMergedResultScore(match, playerStats, "teamB", nextResult.scoreB);
   return {
     ...nextResult,
-    scoreA: getMergedResultScore(match, playerStats, "teamA", nextResult.scoreA),
-    scoreB: getMergedResultScore(match, playerStats, "teamB", nextResult.scoreB),
+    scoreA,
+    scoreB,
     revision: nextRevision,
+    periodScores: scoreA === nextResult.scoreA && scoreB === nextResult.scoreB
+      ? nextResult.periodScores ?? []
+      : [],
     playerStats,
     updatedAt: new Date().toISOString(),
   };

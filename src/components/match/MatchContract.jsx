@@ -5,7 +5,7 @@ import PlayerHoverCard from "../profile/PlayerHoverCard.jsx";
 import RefereeHoverCard from "../referee/RefereeHoverCard.jsx";
 import { CREDIBILITY_LEVELS, EVIDENCE_OPTIONS, normalizeDisputeWindowMinutes } from "../../lib/constants.js";
 import { getMatchReferee, isPersonalRecordMatch } from "../../lib/matchUtils.js";
-import { getMatchBreakLabel, getMatchClockLabel, getMatchEndLabel, getMatchPeriodLabel, getMeetingPointSummary, normalizeMatchRules } from "../../lib/matchRules.js";
+import { getMatchBreakLabel, getMatchClockLabel, getMatchEndLabel, getMatchFormatLabel, getMatchPeriodLabel, getMeetingPointSummary, normalizeMatchRules } from "../../lib/matchRules.js";
 import { getCredibilityLevel } from "../../lib/rating.js";
 
 const mmrLimitLabels = {
@@ -73,7 +73,7 @@ export default function MatchContract({ match, users = [], teams = [], matches =
         </div>
         <div>
           <span>방식</span>
-          <strong>{match.mode}</strong>
+          <strong>{getMatchFormatLabel(match.mode, rules)}</strong>
         </div>
         <div>
           <span>경기 구성</span>

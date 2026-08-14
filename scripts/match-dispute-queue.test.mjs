@@ -94,6 +94,7 @@ test("이의제기 시간은 10, 15, 20분만 허용한다", () => {
 
 test("경기 기본 규칙은 모드별 현실적인 시간 모델을 사용한다", () => {
   assert.deepEqual(getDefaultMatchRules("5v5"), {
+    ruleSet: "standard",
     gameClockEnabled: true,
     endCondition: "time",
     targetScore: 21,
@@ -300,6 +301,7 @@ test("무심판 점수 이의 수락은 A/B 점수를 함께 바꾸고 개인 �
     refereeId: undefined,
     result: {
       ...start.matches[0].result,
+      periodScores: [{ label: "1Q", scoreA: 5, scoreB: 7 }],
       playerStats: {},
       statSubmissions: {},
     },
@@ -324,6 +326,7 @@ test("무심판 점수 이의 수락은 A/B 점수를 함께 바꾸고 개인 �
   assert.equal(finished.matches[0].status, "approval");
   assert.equal(finished.matches[0].result.scoreA, 6);
   assert.equal(finished.matches[0].result.scoreB, 10);
+  assert.deepEqual(finished.matches[0].result.periodScores, []);
   assert.deepEqual(finished.matches[0].result.playerStats, {});
   const confirmed = finalizeMatchByAuthority(
     { ...finished, currentUserId: "host" },

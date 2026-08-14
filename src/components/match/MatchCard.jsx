@@ -6,6 +6,7 @@ import Card from "../common/Card.jsx";
 import CourtHoverCard from "../court/CourtHoverCard.jsx";
 import TeamHoverCard from "../team/TeamHoverCard.jsx";
 import { getTournamentMatchDisplayTitle } from "../../lib/matchUtils.js";
+import { getMatchFormatLabel } from "../../lib/matchRules.js";
 
 const statusLabel = {
   contract: "대기",
@@ -49,7 +50,7 @@ export default function MatchCard({ match, teams = [], courts = [], onOpen = nul
     <Card className="match-card" as="article">
       <div className="match-card-header">
         <div>
-          <p className="eyebrow">{match.mode} · {match.official ? "공식경기" : "일반경기"}</p>
+          <p className="eyebrow">{getMatchFormatLabel(match.mode, match.rules)} · {match.official ? "공식경기" : "일반경기"}</p>
           <h3>{displayTitle}</h3>
         </div>
         <Badge tone={statusTone[match.status] ?? "blue"}>

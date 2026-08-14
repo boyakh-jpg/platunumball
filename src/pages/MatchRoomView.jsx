@@ -4,6 +4,7 @@ import AgreementPanel from "../components/match/AgreementPanel.jsx";
 import ApprovalPanel from "../components/match/ApprovalPanel.jsx";
 import MatchClockPanel, { MatchScoreControls } from "../components/match/MatchClockPanel.jsx";
 import MatchContract from "../components/match/MatchContract.jsx";
+import MatchPeriodScoreFields from "../components/match/MatchPeriodScoreFields.jsx";
 import MatchRecommendationPanel from "../components/match/MatchRecommendationPanel.jsx";
 import MatchVoidDialog, { MatchFinalizeDialog } from "../components/match/MatchVoidDialog.jsx";
 import Badge from "../components/common/Badge.jsx";
@@ -15,6 +16,7 @@ import MmrChange from "../components/rating/MmrChange.jsx";
 import RefereeHoverCard from "../components/referee/RefereeHoverCard.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { MATCH_SIDE_FALLBACK_NAMES, MATCH_SIDES, normalizeDisputeWindowMinutes } from "../lib/constants.js";
+import { getMatchFormatLabel } from "../lib/matchRules.js";
 import { formatMatchWindowTime, formatStatLine, getMatchSideRecordPlayerIds, getPlayerStatSubmitted } from "../lib/matchUtils.js";
 import {
   getRecordPlayerDisplayName,
@@ -38,7 +40,7 @@ return (
             <Badge tone={status.tone}>{status.label}</Badge>
             {match.preRegistered ? <Badge tone="green">사전등록</Badge> : null}
           </div>
-          <span>{match.mode}</span>
+          <span>{getMatchFormatLabel(match.mode, match.rules)}</span>
         </div>
         <div className="gm-room-title ui-page-hero__copy">
           <span className="eyebrow">{match.official ? "OFFICIAL ROOM" : "CUSTOM ROOM"}</span>
@@ -282,6 +284,14 @@ return (
                   value={draftScoreB} onChange={(event) => setScore((current) => ({ ...current, scoreB: event.target.value }))}
                 />
               </label>
+              <MatchPeriodScoreFields
+                rules={match.rules}
+                value={score.periodScores}
+                editableScoreSides={resultEntryPermission.editableScoreSides}
+                teamALabel={teamASide.name}
+                teamBLabel={teamBSide.name}
+                onChange={(periodScores) => setScore((current) => ({ ...current, periodScores }))}
+              />
               <div className="match-action-row stat-entry-actions">
                 <Button type="button" variant="secondary" disabled={matchDetailRefreshing} onClick={refreshMatchDetail}>
                   <RotateCcw size={16} />

@@ -224,6 +224,7 @@ function toClientMatchResult(resultRow = null, statRows = [], allowPersonalStats
   return {
     scoreA: Number(resultRow?.score_a ?? 0),
     scoreB: Number(resultRow?.score_b ?? 0),
+    periodScores: resultRow?.period_scores ?? [],
     revision: Number(resultRow?.result_revision ?? 0),
     scoreRevisionA: Number(resultRow?.score_revision_a ?? 0),
     scoreRevisionB: Number(resultRow?.score_revision_b ?? 0),

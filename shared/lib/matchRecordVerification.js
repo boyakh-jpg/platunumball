@@ -20,6 +20,7 @@ import {
   getMatchRecordPlayerIds,
   getMatchSideRecordPlayerIds,
 } from "./matchRoster.js";
+import { validateMatchPeriodScores } from "./matchPeriodScores.js";
 import {
   cleanRoomTitle,
   getMatchRecordWindow,
@@ -173,10 +174,20 @@ export function buildMatchResultSubmission(
       : Number(currentScore);
   };
 
+  const scoreA = getSubmittedScore("teamA");
+  const scoreB = getSubmittedScore("teamB");
+  const periodScoreResult = validateMatchPeriodScores(draft.periodScores, match.rules, { scoreA, scoreB });
+  if (!periodScoreResult.valid) {
+    const error = new Error("invalid_match_period_scores");
+    error.userMessage = periodScoreResult.error;
+    throw error;
+  }
+
   return {
-    scoreA: getSubmittedScore("teamA"),
-    scoreB: getSubmittedScore("teamB"),
+    scoreA,
+    scoreB,
     playerStats,
+    periodScores: periodScoreResult.periodScores,
   };
 }
 
