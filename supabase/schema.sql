@@ -20189,6 +20189,15 @@ create table if not exists public.community_post_views (
   primary key (post_id, user_id)
 );
 
+create table if not exists public.community_post_daily_views (
+  post_id uuid not null references public.community_posts(id) on delete cascade,
+  user_id text references public.profiles(id) on delete cascade,
+  viewer_key_hash text not null,
+  view_date date not null default (timezone('Asia/Seoul', now()))::date,
+  created_at timestamptz not null default now(),
+  primary key (post_id, viewer_key_hash, view_date)
+);
+
 create index if not exists community_posts_feed_idx
   on public.community_posts (status, pinned desc, created_at desc);
 create index if not exists community_posts_popular_idx
@@ -20201,6 +20210,8 @@ create index if not exists community_comments_author_idx
   on public.community_comments (author_id, created_at desc);
 create index if not exists community_post_views_user_idx
   on public.community_post_views (user_id);
+create index if not exists community_post_daily_views_user_idx
+  on public.community_post_daily_views (user_id);
 
 create or replace function public.rankball_refresh_community_like_count()
 returns trigger
@@ -20272,19 +20283,27 @@ create trigger community_post_views_increment_count
 after insert on public.community_post_views
 for each row execute function public.rankball_increment_community_view_count();
 
+drop trigger if exists community_post_daily_views_increment_count on public.community_post_daily_views;
+create trigger community_post_daily_views_increment_count
+after insert on public.community_post_daily_views
+for each row execute function public.rankball_increment_community_view_count();
+
 alter table public.community_posts enable row level security;
 alter table public.community_comments enable row level security;
 alter table public.community_post_likes enable row level security;
 alter table public.community_post_views enable row level security;
+alter table public.community_post_daily_views enable row level security;
 
 revoke all on table public.community_posts from public, anon, authenticated;
 revoke all on table public.community_comments from public, anon, authenticated;
 revoke all on table public.community_post_likes from public, anon, authenticated;
 revoke all on table public.community_post_views from public, anon, authenticated;
+revoke all on table public.community_post_daily_views from public, anon, authenticated;
 grant all on table public.community_posts to service_role;
 grant all on table public.community_comments to service_role;
 grant all on table public.community_post_likes to service_role;
 grant all on table public.community_post_views to service_role;
+grant all on table public.community_post_daily_views to service_role;
 
 revoke all on function public.rankball_refresh_community_like_count() from public, anon, authenticated;
 revoke all on function public.rankball_refresh_community_comment_count() from public, anon, authenticated;

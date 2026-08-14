@@ -12,6 +12,10 @@ import {
   normalizeCommunityPostDraft,
   selectPopularCommunityPosts,
 } from "../shared/lib/communityPolicy.js";
+import {
+  getCommunityViewDate,
+  getCommunityViewerIdentity,
+} from "../server/api/community/_viewIdentity.js";
 import { isLatestRequest } from "../src/lib/asyncState.js";
 
 const now = Date.parse("2026-08-05T12:00:00.000Z");
@@ -28,6 +32,31 @@ const deferred = () => {
   const promise = new Promise((nextResolve) => { resolve = nextResolve; });
   return { promise, resolve };
 };
+
+function createCookieResponse() {
+  const headers = new Map();
+  return {
+    getHeader(name) {
+      return headers.get(String(name).toLowerCase());
+    },
+    setHeader(name, value) {
+      headers.set(String(name).toLowerCase(), value);
+    },
+    get cookies() {
+      const value = headers.get("set-cookie");
+      return Array.isArray(value) ? value : [value].filter(Boolean);
+    },
+  };
+}
+
+function useCommunityViewSecret(t) {
+  const previous = process.env.COMMUNITY_VIEW_SECRET;
+  process.env.COMMUNITY_VIEW_SECRET = "community-view-test-secret";
+  t.after(() => {
+    if (previous === undefined) delete process.env.COMMUNITY_VIEW_SECRET;
+    else process.env.COMMUNITY_VIEW_SECRET = previous;
+  });
+}
 
 test("늦은 게시글 상세 응답은 새 상세와 닫힌 모달을 덮어쓰지 않는다", async () => {
   let requestId = 0;
@@ -166,7 +195,8 @@ test("게스트 커뮤니티는 실제 공개 글만 읽고 쓰기는 인증을 
   assert.match(api, /\["\/community\/posts", route\(communityPosts, \["POST"\], "publicRead"\)\]/);
   assert.match(handler, /PUBLIC_READ_OPERATIONS = new Set\(\["list", "detail", "profileActivity"\]\)/);
   assert.match(handler, /!PUBLIC_READ_OPERATIONS\.has\(operation\) && !hasBearerToken/);
-  assert.match(handler, /Boolean\(context\.profileId\)/);
+  assert.match(handler, /getCommunityViewerIdentity\(request, response, context\.profileId\)/);
+  assert.doesNotMatch(handler, /Boolean\(context\.profileId\)/);
   assert.match(controller, /const remote = isSupabaseConfigured;/);
   assert.match(controller, /canWriteCategory: !app\.demoPreview/);
   assert.match(serverActions, /options\.allowAnonymous !== true/);
@@ -216,21 +246,85 @@ test("게시글 목록은 제목 중심 열과 모바일 두 줄 구조를 사�
   assert.match(styles, /@media \(max-width: 720px\)[\s\S]*\.community-post-byline \.community-author small \{\s*display: none/);
 });
 
-test("조회수는 계정당 글별 한 번만 저장하고 모든 페이지에 숫자를 표시한다", async () => {
-  const [api, migration, pagination, editor] = await Promise.all([
+test("조회수는 방문자별 한국 날짜 하루 한 번만 저장하고 모든 페이지에 숫자를 표시한다", async () => {
+  const [api, migration, triggerMigration, pagination, editor] = await Promise.all([
     readFile(new URL("../server/api/community/posts.js", import.meta.url), "utf8"),
+    readFile(new URL("../supabase/migrations/20260814120000_community_daily_views.sql", import.meta.url), "utf8"),
     readFile(new URL("../supabase/migrations/20260805170000_community_questions_and_views.sql", import.meta.url), "utf8"),
     readFile(new URL("../src/components/common/Pagination.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/pages/CommunityPostEditor.jsx", import.meta.url), "utf8"),
   ]);
-  assert.match(api, /community_post_views/);
+  assert.match(api, /community_post_daily_views/);
+  assert.match(api, /viewer_key_hash/);
+  assert.match(api, /view_date/);
   assert.match(api, /error\.code === "23505"/);
+  assert.match(api, /community_post_view_record_failed/);
   assert.match(api, /viewCount: Number\(row\.view_count/);
-  assert.match(migration, /primary key \(post_id, user_id\)/);
-  assert.match(migration, /community_post_views_increment_count/);
-  assert.match(migration, /category in \('general', 'question', 'notice'\)/);
+  assert.match(migration, /create table if not exists public\.community_post_daily_views/);
+  assert.match(migration, /primary key \(post_id, viewer_key_hash, view_date\)/);
+  assert.doesNotMatch(migration, /alter table public\.community_post_views/);
+  assert.match(migration, /Asia\/Seoul/);
+  assert.match(triggerMigration, /community_post_views_increment_count/);
+  assert.match(triggerMigration, /category in \('general', 'question', 'notice'\)/);
   assert.doesNotMatch(pagination, /totalPages <= 1/);
   assert.match(editor, /COMMUNITY_POST_CATEGORIES\.includes\(initialCategory\)/);
+});
+
+test("익명 조회 식별자는 서명 쿠키를 재사용하고 한국 날짜가 바뀌면 다시 집계한다", (t) => {
+  useCommunityViewSecret(t);
+  assert.equal(getCommunityViewDate(new Date("2026-08-14T14:59:59.000Z")), "2026-08-14");
+  assert.equal(getCommunityViewDate(new Date("2026-08-14T15:00:00.000Z")), "2026-08-15");
+
+  const firstResponse = createCookieResponse();
+  const first = getCommunityViewerIdentity(
+    { headers: {} },
+    firstResponse,
+    "",
+    new Date("2026-08-14T14:59:59.000Z"),
+  );
+  const setCookie = firstResponse.cookies.at(-1);
+  assert.equal(first.userId, null);
+  assert.equal(first.viewDate, "2026-08-14");
+  assert.match(setCookie, /^boxtier_community_viewer=/);
+  assert.match(setCookie, /; Path=\/api\/community\/posts; HttpOnly; SameSite=Lax; Max-Age=/);
+
+  const cookie = setCookie.split(";", 1)[0];
+  const secondResponse = createCookieResponse();
+  const second = getCommunityViewerIdentity(
+    { headers: { cookie } },
+    secondResponse,
+    "",
+    new Date("2026-08-14T15:00:00.000Z"),
+  );
+  assert.equal(second.viewerKeyHash, first.viewerKeyHash);
+  assert.equal(second.viewDate, "2026-08-15");
+  assert.equal(secondResponse.cookies.length, 0);
+
+  const tamperedCookie = `${cookie.slice(0, -1)}${cookie.endsWith("A") ? "B" : "A"}`;
+  const tamperedResponse = createCookieResponse();
+  const tampered = getCommunityViewerIdentity(
+    { headers: { cookie: tamperedCookie } },
+    tamperedResponse,
+    "",
+    new Date("2026-08-14T15:00:00.000Z"),
+  );
+  assert.notEqual(tampered.viewerKeyHash, first.viewerKeyHash);
+  assert.equal(tamperedResponse.cookies.length, 1);
+});
+
+test("로그인 조회 식별자는 프로필을 HMAC하고 익명 쿠키를 만들지 않는다", (t) => {
+  useCommunityViewSecret(t);
+  const response = createCookieResponse();
+  const viewer = getCommunityViewerIdentity(
+    { headers: {} },
+    response,
+    "profile-123",
+    new Date("2026-08-14T15:00:00.000Z"),
+  );
+  assert.equal(viewer.userId, "profile-123");
+  assert.equal(viewer.viewDate, "2026-08-15");
+  assert.match(viewer.viewerKeyHash, /^[0-9a-f]{64}$/);
+  assert.equal(response.cookies.length, 0);
 });
 
 test("게시판 페이지와 프로필 활동은 같은 30개 페이지 규칙을 사용한다", async () => {

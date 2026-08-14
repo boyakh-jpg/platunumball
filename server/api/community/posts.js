@@ -19,6 +19,7 @@ import {
   normalizeCommunityPostDraft,
   selectPopularCommunityPosts,
 } from "../../../shared/lib/communityPolicy.js";
+import { getCommunityViewerIdentity } from "./_viewIdentity.js";
 
 const POST_LIST_COLUMNS = "id,author_id,category,title,status,pinned,image_path,like_count,comment_count,view_count,created_at,updated_at";
 const POST_DETAIL_COLUMNS = `${POST_LIST_COLUMNS},body`;
@@ -258,16 +259,22 @@ async function loadProfileActivity(context, body) {
   };
 }
 
-async function recordPostView(context, postId) {
+async function recordPostView(context, postId, viewer) {
   const { error } = await context.supabase
-    .from("community_post_views")
-    .insert({ post_id: postId, user_id: context.profileId });
+    .from("community_post_daily_views")
+    .insert({
+      post_id: postId,
+      user_id: viewer.userId,
+      viewer_key_hash: viewer.viewerKeyHash,
+      view_date: viewer.viewDate,
+    });
   if (!error) return true;
   if (error.code === "23505") return false;
-  throw error;
+  console.error("community_post_view_record_failed", { code: error.code ?? "unknown" });
+  return false;
 }
 
-async function loadPostDetail(context, postId, adminLevel, countView = false) {
+async function loadPostDetail(context, postId, adminLevel, viewer = null) {
   const row = await readPublishedPost(context, postId);
   const blockedIds = getBlockedUserIds(context);
   if (row.category !== "notice" && blockedIds.has(row.author_id)) throw requestError("community_post_not_found", 404);
@@ -279,7 +286,7 @@ async function loadPostDetail(context, postId, adminLevel, countView = false) {
       .eq("status", "published")
       .order("created_at", { ascending: true }),
     loadLikedPostIds(context, [postId]),
-    countView ? recordPostView(context, postId) : false,
+    viewer ? recordPostView(context, postId, viewer) : false,
   ]);
   if (commentsResult.error) throw commentsResult.error;
   const visibleComments = (commentsResult.data ?? []).filter((comment) => !blockedIds.has(comment.author_id));
@@ -451,7 +458,10 @@ export default async function handler(request, response) {
     let result;
     if (operation === "list") result = await listPosts(context, body, adminLevel);
     else if (operation === "profileActivity") result = await loadProfileActivity(context, body);
-    else if (operation === "detail") result = await loadPostDetail(context, requiredId(body.postId, "community_post_id_invalid"), adminLevel, Boolean(context.profileId));
+    else if (operation === "detail") {
+      const viewer = getCommunityViewerIdentity(request, response, context.profileId);
+      result = await loadPostDetail(context, requiredId(body.postId, "community_post_id_invalid"), adminLevel, viewer);
+    }
     else if (operation === "createPost") result = await createPost(context, body, adminLevel);
     else if (operation === "updatePost") result = await updatePost(context, body, adminLevel);
     else if (operation === "deletePost") result = await deletePost(context, body, adminLevel);
