@@ -14,6 +14,8 @@ const MATCH_RECEIPT_DRAFT_TTL_MS = 24 * 60 * 60 * 1000;
 const PHOTO_DB_NAME = "boxtier-match-receipt";
 const PHOTO_STORE_NAME = "photos";
 const PHOTO_KEY = "current";
+const MATCH_RECEIPT_QR_ACCENT = "#d4582b";
+const MATCH_RECEIPT_TEAM_WATERMARK_OPACITY = 0.08;
 
 export const MATCH_RECEIPT_LIMITS = Object.freeze({
   serialSeed: 96,
@@ -404,8 +406,8 @@ export async function normalizeMatchReceiptPhotoFile(file) {
 export function validateMatchReceiptDraft(value) {
   const draft = normalizeMatchReceiptDraft(value);
   const errors = {};
-  if (!draft.homeTeam.trim()) errors.homeTeam = "홈팀 이름을 입력해 주세요.";
-  if (!draft.awayTeam.trim()) errors.awayTeam = "원정팀 이름을 입력해 주세요.";
+  if (!draft.homeTeam.trim()) errors.homeTeam = "TEAM A 이름을 입력해 주세요.";
+  if (!draft.awayTeam.trim()) errors.awayTeam = "TEAM B 이름을 입력해 주세요.";
   if (!draft.venue.trim()) errors.venue = "지도에서 경기 장소를 선택해 주세요.";
   return { draft, errors, valid: Object.keys(errors).length === 0 };
 }
@@ -511,8 +513,8 @@ export function getMatchReceiptOutcome(value) {
   const draft = normalizeMatchReceiptDraft(value);
   if (draft.homeScore === draft.awayScore) return { key: "draw", label: "DRAW" };
   const winner = draft.homeScore > draft.awayScore
-    ? { key: "home", name: draft.homeTeam || "HOME TEAM" }
-    : { key: "away", name: draft.awayTeam || "AWAY TEAM" };
+    ? { key: "home", name: draft.homeTeam || "TEAM A" }
+    : { key: "away", name: draft.awayTeam || "TEAM B" };
   return { key: winner.key, label: `${winner.name} WIN` };
 }
 
@@ -797,7 +799,7 @@ function drawQrBrandBadge(ctx, x, y, scale, size) {
   ctx.save();
   ctx.translate(x, y);
   ctx.scale(scale, scale);
-  ctx.fillStyle = "#fa5030";
+  ctx.fillStyle = MATCH_RECEIPT_QR_ACCENT;
   ctx.beginPath();
   ctx.roundRect(0, 0, size, size, 0.8);
   ctx.fill();
@@ -841,7 +843,7 @@ function drawQrCode(ctx, value, x, y, size) {
     ctx.roundRect(moduleX + scale * 0.03, moduleY + scale * 0.03, scale * 0.94, scale * 0.94, scale * 0.18);
     ctx.fill();
   }));
-  ctx.fillStyle = "#d4582b";
+  ctx.fillStyle = MATCH_RECEIPT_QR_ACCENT;
   [
     [2, 2],
     [matrix.length - 5, 2],
@@ -1021,15 +1023,15 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
 
   const columns = [270, 810];
   const teams = [
-    { name: model.homeTeam || "HOME TEAM", tier: model.homeTier, image: homeLineArt || homeTier || homeNeutralTeamMark, custom: Boolean(homeLineArt) },
-    { name: model.awayTeam || "AWAY TEAM", tier: model.awayTier, image: awayLineArt || awayTier || awayNeutralTeamMark, custom: Boolean(awayLineArt) },
+    { name: model.homeTeam || "TEAM A", tier: model.homeTier, image: homeLineArt || homeTier || homeNeutralTeamMark, custom: Boolean(homeLineArt) },
+    { name: model.awayTeam || "TEAM B", tier: model.awayTier, image: awayLineArt || awayTier || awayNeutralTeamMark, custom: Boolean(awayLineArt) },
   ];
   const teamWatermarkSize = compact ? 450 : 600;
   const teamWatermarkY = compact ? 510 : 810;
   teams.forEach((team, index) => {
     if (!team.image) return;
     ctx.save();
-    ctx.globalAlpha = 0.12;
+    ctx.globalAlpha = MATCH_RECEIPT_TEAM_WATERMARK_OPACITY;
     ctx.filter = "grayscale(1) brightness(0) invert(1)";
     const centerX = index ? width - 72 : 72;
     ctx.drawImage(team.image, centerX - teamWatermarkSize / 2, teamWatermarkY, teamWatermarkSize, teamWatermarkSize);

@@ -141,7 +141,7 @@ export default function MatchReceiptPreview({
       <section className={`match-receipt-poster-teams${hasGameDetail ? " has-game-detail" : ""}`}>
         {posterTeams.map((team, index) => (
           <div key={index} style={{ "--receipt-team-name-size": `${4.8 * getMatchReceiptTeamNameScale(team.name)}cqw` }}>
-            <strong>{team.name || (index ? "AWAY TEAM" : "HOME TEAM")}</strong>
+            <strong>{team.name || (index ? "TEAM B" : "TEAM A")}</strong>
             <img
               className={`match-receipt-team-tier${team.lineArtUrl ? " is-custom" : model.showTeamTierEmblems && team.tier ? "" : " is-neutral"}`}
               src={team.lineArtUrl || (model.showTeamTierEmblems && team.tier ? team.tier.outlineSrc : team.neutralMarkUrl)}

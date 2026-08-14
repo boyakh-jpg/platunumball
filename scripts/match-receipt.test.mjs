@@ -520,6 +520,8 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(receiptSources, /\/app\/receipt\?draft=/);
   assert.doesNotMatch(receiptSources, /\/app\/matches\?match=/);
   assert.match(page, /sourceMatchId: canonicalMatchId/);
+  assert.match(page, /const currentUserId = app\?\.currentUser\?\.id \?\? "";/);
+  assert.doesNotMatch(page, /const currentUserId = auth\?\.session\?\.user\?\.id/);
   assert.match(page, /clonePublicId: requestedPublicDraftId/);
   assert.match(page, /requestedDraftCanClaim/);
   assert.match(page, /draftRevisionRef/);
@@ -527,6 +529,13 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.doesNotMatch(page, /state:\s*\{\s*receiptDraft: getMatchReceiptCreateDraft\(draft\)/);
   assert.match(preview, /match-receipt-photo-backdrop/);
   assert.doesNotMatch(receiptSources, /index \? "AWAY" : "HOME"/);
+  assert.match(preview, /index \? "TEAM B" : "TEAM A"/);
+  assert.doesNotMatch(preview, /HOME TEAM|AWAY TEAM/);
+  assert.match(page, /<legend>TEAM A<\/legend>/);
+  assert.match(page, /<legend>TEAM B<\/legend>/);
+  assert.doesNotMatch(page, /홈팀|원정팀/);
+  assert.doesNotMatch(page, /홈 점수|원정 점수|placeholder="홈"|placeholder="원정"/);
+  assert.doesNotMatch(renderer, /HOME TEAM|AWAY TEAM|홈팀 이름|원정팀 이름/);
   assert.match(page, /maxLength=\{MATCH_RECEIPT_LIMITS\.comment\} disabled=\{isFieldReadOnly\("comment"\)\}/);
   assert.equal(MATCH_RECEIPT_LIMITS.tournamentName, 20);
   assert.match(page, /draft\.tournamentName\} maxLength=\{MATCH_RECEIPT_LIMITS\.tournamentName\}/);
@@ -538,9 +547,13 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.doesNotMatch(qrComponent, /badgeInset/);
   assert.match(qrComponent, /const badgeSize = 5/);
   assert.doesNotMatch(qrComponent, /assetUrl|<image/);
+  assert.match(qrComponent, /const BRANDED_QR_ACCENT = "#d4582b"/);
+  assert.doesNotMatch(qrComponent, /#fa5030/);
   assert.match(qrComponent, /stroke="#fff3df"/);
   assert.match(qrComponent, /strokeLinecap="round"/);
   assert.doesNotMatch(renderer, /MATCH_RECEIPT_QR_BADGE_URL|qrBrandBadge|ctx\.drawImage\(brandBadge/);
+  assert.match(renderer, /const MATCH_RECEIPT_QR_ACCENT = "#d4582b"/);
+  assert.doesNotMatch(renderer, /#fa5030/);
   assert.match(renderer, /function drawQrBrandBadge/);
   assert.match(styles, /\.match-receipt-photo\.is-editable[\s\S]*touch-action: none/);
   assert.match(styles, /\.match-receipt-photo \{[\s\S]*height: 46\.09375%/);
@@ -565,7 +578,7 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(styles, /transform: scaleX\(0\.92\)/);
   assert.match(styles, /scale\(calc\(var\(--receipt-photo-scale\) \* 0\.92\)\)/);
   assert.match(styles, /\.match-receipt-team-watermarks[\s\S]*height: 34%/);
-  assert.match(styles, /\.match-receipt-team-watermarks img \{[\s\S]*opacity: 0\.12;[\s\S]*filter: grayscale\(1\) brightness\(0\) invert\(1\)/);
+  assert.match(styles, /\.match-receipt-team-watermarks img \{[\s\S]*opacity: 0\.08;[\s\S]*filter: grayscale\(1\) brightness\(0\) invert\(1\)/);
   assert.doesNotMatch(detailStyles, /\.match-receipt-team-watermarks img\.is-custom/);
   assert.match(styles, /\.match-receipt-poster-teams \.match-receipt-team-tier\s*\{[\s\S]*top: 42%;[\s\S]*width: 30%;/);
   assert.match(styles, /--receipt-team-name-size/);
@@ -601,7 +614,8 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(renderer, /compact \? 154 : 278/);
   assert.match(renderer, /const scoreBaseline = compact \? scoreTop \+ 132 : 1163/);
   assert.match(renderer, /const teamWatermarkSize = compact \? 450 : 600/);
-  assert.match(renderer, /ctx\.globalAlpha = 0\.12;\s*ctx\.filter = "grayscale\(1\) brightness\(0\) invert\(1\)"/);
+  assert.match(renderer, /const MATCH_RECEIPT_TEAM_WATERMARK_OPACITY = 0\.08/);
+  assert.match(renderer, /ctx\.globalAlpha = MATCH_RECEIPT_TEAM_WATERMARK_OPACITY;\s*ctx\.filter = "grayscale\(1\) brightness\(0\) invert\(1\)"/);
   assert.match(renderer, /const teamTop = compact \? 779 : 1192/);
   assert.match(renderer, /const teamTierY = compact \? 838 : 1311/);
   assert.match(renderer, /const teamTierSize = compact \? 116 : 140/);

@@ -4,6 +4,8 @@ import { createQrPath } from "../../lib/qrCode.js";
 import useBodyScrollLock from "../../hooks/useBodyScrollLock.js";
 import Button from "./Button.jsx";
 
+const BRANDED_QR_ACCENT = "#d4582b";
+
 function QrGraphic({ qr, label, className = "", branded = false }) {
   const badgeClearSize = 5;
   const badgeSize = 5;
@@ -44,10 +46,10 @@ function QrGraphic({ qr, label, className = "", branded = false }) {
       {branded ? (
         <g aria-hidden="true">
           {finderCenterPositions.map(([x, y]) => (
-            <rect key={`${x}-${y}`} x={x} y={y} width="3" height="3" rx="0.45" fill="#d4582b" />
+            <rect key={`${x}-${y}`} x={x} y={y} width="3" height="3" rx="0.45" fill={BRANDED_QR_ACCENT} />
           ))}
           <g transform={`translate(${badgeStart + qr.offset} ${badgeStart + qr.offset})`}>
-            <rect width={badgeSize} height={badgeSize} rx="0.8" fill="#fa5030" />
+            <rect width={badgeSize} height={badgeSize} rx="0.8" fill={BRANDED_QR_ACCENT} />
             <path
               d="M1.7 1.3V3.7M1.7 1.3H2.5C3.02 1.3 3.3 1.52 3.3 1.9C3.3 2.28 3.02 2.5 2.5 2.5H1.7M1.7 2.5H2.58C3.14 2.5 3.45 2.72 3.45 3.1C3.45 3.48 3.14 3.7 2.58 3.7H1.7"
               fill="none"

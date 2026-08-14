@@ -189,7 +189,7 @@ export default function MatchReceipt({ auth, app }) {
   );
   const canonicalHomeTeamMmr = getCanonicalTeamMmr(canonicalHomeTeam);
   const canonicalAwayTeamMmr = getCanonicalTeamMmr(canonicalAwayTeam);
-  const currentUserId = auth?.session?.user?.id ?? "";
+  const currentUserId = app?.currentUser?.id ?? "";
   const currentUserMmr = Number(app?.currentUser?.ratings?.integrated);
   const canShowCurrentUserIdentity = Boolean(currentUserId && !requestedPublicDraftId);
   const personalMmr = canShowCurrentUserIdentity && Number.isFinite(currentUserMmr) ? currentUserMmr : null;
@@ -467,7 +467,7 @@ export default function MatchReceipt({ auth, app }) {
     setEmblemCropTarget(null);
     setEmblemCropCandidate(null);
     setEmblemCropError("");
-    setStatus(`${side === "home" ? "홈팀" : "원정팀"} 엠블럼을 ${width}×${height}px 선화로 영수증에 적용했습니다.`);
+    setStatus(`${side === "home" ? "TEAM A" : "TEAM B"} 엠블럼을 ${width}×${height}px 선화로 영수증에 적용했습니다.`);
   }
 
   async function copyTeamEmblemPrompt() {
@@ -885,10 +885,10 @@ export default function MatchReceipt({ auth, app }) {
             {canonicalMatchId ? <p className="match-receipt-locked-note">확정 기록의 팀·점수·날짜·장소는 원본을 사용합니다. 짧은 장소와 코멘트는 편집할 수 있습니다.</p> : null}
             <div className="match-receipt-team-fields">
               <fieldset>
-                <legend>홈팀</legend>
+                <legend>TEAM A</legend>
                 <label>
                   팀 이름
-                  <input value={draft.homeTeam} maxLength={MATCH_RECEIPT_LIMITS.teamName} disabled={isFieldReadOnly("homeTeam")} placeholder={errors.homeTeam ? "필수 · 홈팀 이름을 입력하세요" : "홈팀 이름"} onChange={(event) => updateField("homeTeam", event.target.value)} aria-invalid={Boolean(errors.homeTeam)} />
+                  <input value={draft.homeTeam} maxLength={MATCH_RECEIPT_LIMITS.teamName} disabled={isFieldReadOnly("homeTeam")} placeholder={errors.homeTeam ? "필수 · TEAM A 이름을 입력하세요" : "TEAM A 이름"} onChange={(event) => updateField("homeTeam", event.target.value)} aria-invalid={Boolean(errors.homeTeam)} />
                 </label>
                 <label className="match-receipt-score-input">
                   점수
@@ -897,10 +897,10 @@ export default function MatchReceipt({ auth, app }) {
               </fieldset>
 
               <fieldset>
-                <legend>원정팀</legend>
+                <legend>TEAM B</legend>
                 <label>
                   팀 이름
-                  <input value={draft.awayTeam} maxLength={MATCH_RECEIPT_LIMITS.teamName} disabled={isFieldReadOnly("awayTeam")} placeholder={errors.awayTeam ? "필수 · 원정팀 이름을 입력하세요" : "원정팀 이름"} onChange={(event) => updateField("awayTeam", event.target.value)} aria-invalid={Boolean(errors.awayTeam)} />
+                  <input value={draft.awayTeam} maxLength={MATCH_RECEIPT_LIMITS.teamName} disabled={isFieldReadOnly("awayTeam")} placeholder={errors.awayTeam ? "필수 · TEAM B 이름을 입력하세요" : "TEAM B 이름"} onChange={(event) => updateField("awayTeam", event.target.value)} aria-invalid={Boolean(errors.awayTeam)} />
                 </label>
                 <label className="match-receipt-score-input">
                   점수
@@ -932,7 +932,7 @@ export default function MatchReceipt({ auth, app }) {
               <fieldset className="match-receipt-line-art-fields is-wide">
                 <legend>팀 엠블럼 선화 <small>선택</small></legend>
                 <div className="match-receipt-emblem-upload-grid">
-                  {[["home", "홈팀"], ["away", "원정팀"]].map(([side, label]) => {
+                  {[["home", "TEAM A"], ["away", "TEAM B"]].map(([side, label]) => {
                     return (
                       <div className="match-receipt-emblem-upload" key={side}>
                         <Button as="label" variant="secondary" size="sm">
@@ -969,9 +969,9 @@ export default function MatchReceipt({ auth, app }) {
                 {RECEIPT_PERIOD_FIELDS.map(([label, homeField, awayField]) => (
                   <label key={label}>
                     <span>{label}</span>
-                    <input type="number" min="0" max={MATCH_RECEIPT_LIMITS.score} inputMode="numeric" value={draft[homeField] ?? ""} aria-label={`${label} 홈 점수`} placeholder="홈" onChange={(event) => updateField(homeField, event.target.value)} />
+                    <input type="number" min="0" max={MATCH_RECEIPT_LIMITS.score} inputMode="numeric" value={draft[homeField] ?? ""} aria-label={`${label} TEAM A 점수`} placeholder="TEAM A" onChange={(event) => updateField(homeField, event.target.value)} />
                     <i>:</i>
-                    <input type="number" min="0" max={MATCH_RECEIPT_LIMITS.score} inputMode="numeric" value={draft[awayField] ?? ""} aria-label={`${label} 원정 점수`} placeholder="원정" onChange={(event) => updateField(awayField, event.target.value)} />
+                    <input type="number" min="0" max={MATCH_RECEIPT_LIMITS.score} inputMode="numeric" value={draft[awayField] ?? ""} aria-label={`${label} TEAM B 점수`} placeholder="TEAM B" onChange={(event) => updateField(awayField, event.target.value)} />
                   </label>
                 ))}
               </fieldset>
