@@ -398,6 +398,60 @@
   text-align: center;
 }
 
+.team-receipt-emblem-editor {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-5);
+  padding-top: var(--space-6);
+  border-top: var(--ui-card-border-width) solid var(--line);
+}
+
+.team-receipt-emblem-preview {
+  display: grid;
+  width: 64px;
+  aspect-ratio: 1;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.team-receipt-emblem-preview img {
+  width: 88%;
+  height: 88%;
+  object-fit: contain;
+}
+
+.team-receipt-emblem-copy {
+  display: grid;
+  gap: 3px;
+}
+
+.team-receipt-emblem-copy small,
+.team-receipt-emblem-copy em {
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-style: normal;
+}
+
+@media (max-width: 640px) {
+  .team-receipt-emblem-editor {
+    grid-template-columns: 56px minmax(0, 1fr);
+  }
+
+  .team-receipt-emblem-preview {
+    width: 56px;
+  }
+
+  .team-receipt-emblem-editor > .ui-action-row {
+    grid-column: 1 / -1;
+  }
+}
+
 .profile-icon-catalog-item.active {
   border-color: var(--ui-button-bg-active);
   background: color-mix(in srgb, var(--ui-button-bg-active) 12%, var(--ui-control-bg));

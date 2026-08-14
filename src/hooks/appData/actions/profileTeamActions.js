@@ -365,6 +365,27 @@ setProfileAffiliation: async ({ affiliationId = "", name = "" } = {}) => {
     }
     return { ...result, sourceByteSize: prepared.sourceByteSize, byteSize: result?.byteSize ?? prepared.byteSize };
   },
+  uploadTeamReceiptEmblem: async (teamId, file) => {
+    const serverReady = await ensureServerActionAvailable("/api/teams/emblem", "영수증 엠블럼 저장");
+    if (serverReady !== true) return serverReady;
+    if (!ensureRemoteReady("영수증 엠블럼 저장")) return { ok: false, error: "remote_not_ready" };
+    const prepared = await prepareTeamEmblemUpload(file);
+    const result = await runServerAction("/api/teams/emblem", {
+      action: "receipt-upload",
+      teamId,
+      imageBase64: prepared.imageBase64,
+    });
+    if (!result || result.ok === false) return result;
+    setState((prev) => ({
+      ...prev,
+      teams: (prev.teams ?? []).map((team) => team.id === teamId ? {
+        ...team,
+        receiptEmblemKey: result.receiptEmblemKey ?? null,
+        receiptEmblemUpdatedAt: result.receiptEmblemUpdatedAt ?? new Date().toISOString(),
+      } : team),
+    }));
+    return { ...result, sourceByteSize: prepared.sourceByteSize, byteSize: result?.byteSize ?? prepared.byteSize };
+  },
   restoreTeamEmblem: async (teamId) => {
     const serverReady = await ensureServerActionAvailable("/api/teams/emblem", "이전 팀 엠블럼 복원");
     if (serverReady !== true) return serverReady;
@@ -450,6 +471,23 @@ setProfileAffiliation: async ({ affiliationId = "", name = "" } = {}) => {
           emblemUploadCount: Number(result.emblemUploadCount ?? team.emblemUploadCount ?? 0),
           emblemViolationCount: Number(result.emblemViolationCount ?? team.emblemViolationCount ?? 0),
           emblemUploadBlockedUntil: result.emblemUploadBlockedUntil ?? team.emblemUploadBlockedUntil ?? null,
+        } : team),
+      }));
+    }
+    return result;
+  },
+  removeTeamReceiptEmblem: async (teamId) => {
+    const serverReady = await ensureServerActionAvailable("/api/teams/emblem", "영수증 엠블럼 삭제");
+    if (serverReady !== true) return serverReady;
+    if (!ensureRemoteReady("영수증 엠블럼 삭제")) return { ok: false, error: "remote_not_ready" };
+    const result = await runServerAction("/api/teams/emblem", { action: "receipt-remove", teamId });
+    if (result?.ok !== false && result?.teamId === teamId) {
+      setState((prev) => ({
+        ...prev,
+        teams: (prev.teams ?? []).map((team) => team.id === teamId ? {
+          ...team,
+          receiptEmblemKey: null,
+          receiptEmblemUpdatedAt: result.receiptEmblemUpdatedAt ?? null,
         } : team),
       }));
     }

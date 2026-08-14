@@ -50,6 +50,8 @@ export function mapRemoteTeamEmblem(row = {}) {
     emblemTextMode: normalizeTeamEmblemTextMode(row.emblem_text_mode),
     emblemAbbreviation: row.emblem_abbreviation ?? "",
     emblemFont: row.emblem_font ?? "sport",
+    receiptEmblemKey: row.receipt_emblem_key ?? null,
+    receiptEmblemUpdatedAt: row.receipt_emblem_updated_at ?? null,
   };
 }
 
@@ -67,6 +69,8 @@ export function mapClientTeamEmblem(team = {}) {
     emblemTextMode: normalizeTeamEmblemTextMode(team.emblemTextMode),
     emblemAbbreviation: team.emblemAbbreviation ?? "",
     emblemFont: team.emblemFont ?? "sport",
+    receiptEmblemKey: team.receiptEmblemKey ?? null,
+    receiptEmblemUpdatedAt: team.receiptEmblemUpdatedAt ?? null,
   };
 }
 

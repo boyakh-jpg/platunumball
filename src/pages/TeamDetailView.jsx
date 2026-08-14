@@ -22,6 +22,7 @@ import {
 } from "../lib/teamEmblem.js";
 import { formatEmblemDate, getEmblemUploadWarning } from "../lib/emblemPolicy.js";
 import { getUserHashtag } from "../lib/handles.js";
+import { assetUrl } from "../lib/assets.js";
 import { MatchRoomModal } from "./Matches.jsx";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 
@@ -37,7 +38,7 @@ function getManagedRoleOptions(member, captainId) {
 }
 
 export default function TeamDetailView({ controller }) {
-  const { addUserId, app, archivedHistory, availableUsers, approveTeamJoinRequest, canAddMember, canManage, cancelPendingTeamInvitation, cancelTeamJoinRequest, captain, changeTeamMemberRole, confirmEmblemUpload, confirmedCount, cooldownNextAt, currentUserIsMember, deleteTeam, detailHistory, directoryPending, declineTeamJoinRequest, emblemAbbreviationCharacterCount, emblemCanRestore, emblemFeedback, emblemFile, emblemInputRef, emblemPending, emblemSource, emblemStatusError, emblemStatusRequestRef, emblemStyleDraft, emblemUploadLocked, excludeTeamMember, favoriteError, favoritePending, favoriteTeamIds, history, historyCount, historyIds, inviteMember, isFavoriteTeam, joinApplicationOpen, loadDirectory, loadTeamEmblemStatus, loadTeamRecords, loadedLosses, loadedWins, losses, memberDraft, memberQuery, membershipCounts, moderationBlockedAt, moderationLocked, nextEmblemUploadAt, openTeamJoinApplication, pendingOwnJoinRequest, pendingOwnTeamInvite, pendingTargetIds, pendingTeamInvitations, refreshTeamDetail, regularMembers, renderInviteSearchItem, renderMembers, requestTeamMembership, reserveMembers, restorePreviousEmblem, retryTeamEmblemStatus, reviewedJoinApplication, saveEmblemStyle, saveTeamDescription, selectEmblemSource, selectedCount, selectedHistoryMatchId, selectedInviteProfile, selectedInviteUser, selectedRemoteUser, setEmblemCanRestore, setEmblemFeedback, setEmblemFile, setEmblemPending, setEmblemStyleDraft, setJoinApplicationOpen, setMemberDraft, setMemberQuery, setReviewedJoinApplication, setSelectedHistoryMatchId, setSelectedInviteProfile, setTeamDescriptionDraft, setTeamInviteError, team, teamDescriptionDraft, teamDetailError, teamFull, teamId, teamInviteError, teamInvitePending, teamManagementError, teamManagementPending, teamRecordArchive, teamScoreSummary, toggleTeamFavorite, uploadEmblem, userMap, winRate, wins } = controller;
+  const { addUserId, app, archivedHistory, availableUsers, approveTeamJoinRequest, canAddMember, canManage, cancelPendingTeamInvitation, cancelReceiptEmblemEditor, cancelTeamJoinRequest, captain, changeTeamMemberRole, confirmEmblemUpload, confirmReceiptEmblem, confirmedCount, convertReceiptEmblem, cooldownNextAt, currentUserIsMember, deleteTeam, detailHistory, directoryPending, declineTeamJoinRequest, emblemAbbreviationCharacterCount, emblemCanRestore, emblemFeedback, emblemFile, emblemInputRef, emblemPending, emblemSource, emblemStatusError, emblemStatusRequestRef, emblemStyleDraft, emblemUploadLocked, excludeTeamMember, favoriteError, favoritePending, favoriteTeamIds, history, historyCount, historyIds, inviteMember, isFavoriteTeam, joinApplicationOpen, loadDirectory, loadTeamEmblemStatus, loadTeamRecords, loadedLosses, loadedWins, losses, memberDraft, memberQuery, membershipCounts, moderationBlockedAt, moderationLocked, nextEmblemUploadAt, openTeamJoinApplication, pendingOwnJoinRequest, pendingOwnTeamInvite, pendingTargetIds, pendingTeamInvitations, refreshTeamDetail, regularMembers, removeReceiptEmblem, renderInviteSearchItem, renderMembers, requestTeamMembership, reserveMembers, restorePreviousEmblem, retryTeamEmblemStatus, reviewedJoinApplication, receiptEmblemFeedback, receiptEmblemFile, receiptEmblemInputRef, receiptEmblemPending, receiptEmblemPreview, saveEmblemStyle, saveTeamDescription, selectEmblemSource, selectedCount, selectedHistoryMatchId, selectedInviteProfile, selectedInviteUser, selectedRemoteUser, setEmblemCanRestore, setEmblemFeedback, setEmblemFile, setEmblemPending, setEmblemStyleDraft, setJoinApplicationOpen, setMemberDraft, setMemberQuery, setReceiptEmblemPreview, setReviewedJoinApplication, setSelectedHistoryMatchId, setSelectedInviteProfile, setTeamDescriptionDraft, setTeamInviteError, team, teamDescriptionDraft, teamDetailError, teamFull, teamId, teamInviteError, teamInvitePending, teamManagementError, teamManagementPending, teamRecordArchive, teamScoreSummary, toggleTeamFavorite, uploadEmblem, uploadReceiptEmblem, userMap, winRate, wins } = controller;
   const teamControlPending = teamInvitePending || teamManagementPending;
   const [dangerAction, setDangerAction] = useState(null);
   const [dangerAcknowledged, setDangerAcknowledged] = useState(false);
@@ -538,6 +539,34 @@ export default function TeamDetailView({ controller }) {
                   <ImageUp size={16} /> {team.emblemKey ? "사진 변경" : "사진 선택"}
                 </Button>
               </div>
+              <div className="team-receipt-emblem-editor">
+                <div className="team-receipt-emblem-preview" aria-hidden="true">
+                  {team.receiptEmblemKey ? <img src={assetUrl(team.receiptEmblemKey)} alt="" /> : <span>없음</span>}
+                </div>
+                <span className="team-receipt-emblem-copy">
+                  <strong>영수증 엠블럼</strong>
+                  <small>사진을 크롭하고 자동 선화 결과를 확인한 뒤 팀에 저장합니다.</small>
+                  {receiptEmblemFeedback ? <em role="status">{receiptEmblemFeedback}</em> : null}
+                </span>
+                <input
+                  ref={receiptEmblemInputRef}
+                  hidden
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/avif,image/heic,image/heif"
+                  disabled={receiptEmblemPending}
+                  onChange={uploadReceiptEmblem}
+                />
+                <div className="ui-action-row">
+                  {team.receiptEmblemKey ? (
+                    <Button type="button" size="sm" variant="secondary" disabled={receiptEmblemPending} onClick={() => { void removeReceiptEmblem(); }}>
+                      <Trash2 size={16} /> 삭제
+                    </Button>
+                  ) : null}
+                  <Button type="button" size="sm" disabled={receiptEmblemPending} onClick={() => receiptEmblemInputRef.current?.click()}>
+                    <ImageUp size={16} /> {team.receiptEmblemKey ? "영수증 엠블럼 변경" : "영수증 엠블럼 만들기"}
+                  </Button>
+                </div>
+              </div>
             </Card>
           ) : null}
         </aside>
@@ -583,6 +612,17 @@ export default function TeamDetailView({ controller }) {
         error={emblemFeedback}
         onCancel={() => setEmblemFile(null)}
         onConfirm={confirmEmblemUpload}
+      />
+      <EmblemCropEditor
+        file={receiptEmblemFile}
+        pending={receiptEmblemPending}
+        convertedPreview={receiptEmblemPreview}
+        warning="대비가 강하고 배경이 투명하거나 단색인 엠블럼을 권장합니다. 결과가 좋지 않으면 AI로 선화 PNG를 만든 뒤 다시 선택해 주세요."
+        error={receiptEmblemFile ? receiptEmblemFeedback : ""}
+        onCropChange={() => setReceiptEmblemPreview("")}
+        onCancel={cancelReceiptEmblemEditor}
+        onConvert={convertReceiptEmblem}
+        onConfirm={confirmReceiptEmblem}
       />
     </div>
   );

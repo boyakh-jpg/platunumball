@@ -21,6 +21,30 @@ test("receipt team names shrink before they can overflow", () => {
   assert.equal(getMatchReceiptTeamNameScale("ABCDEFGHIJKLMNOPQ"), 0.78);
   assert.equal(getMatchReceiptTeamNameScale("ABCDEFGHIJKLMNOPQRSTU"), 0.68);
 });
+
+test("saved team receipt emblems require an explicit receipt load and lock replacement uploads", async () => {
+  const [receiptPage, teamPage, teamView, teamActions, teamApi, teamColumns, migration] = await Promise.all([
+    readFile(new URL("../src/pages/MatchReceipt.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/pages/TeamDetail.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/pages/TeamDetailView.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/hooks/appData/actions/profileTeamActions.js", import.meta.url), "utf8"),
+    readFile(new URL("../server/api/teams/emblem.js", import.meta.url), "utf8"),
+    readFile(new URL("../shared/lib/repositoryColumns.js", import.meta.url), "utf8"),
+    readFile(new URL("../supabase/migrations/20260814143000_team_receipt_emblem.sql", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(receiptPage, /팀 엠블럼 불러오기/u);
+  assert.match(receiptPage, /팀 저장 엠블럼이 있어 사진 업로드를 사용할 수 없습니다\./u);
+  assert.match(receiptPage, /disabled>\s*<ImagePlus[^>]*\/> \{label\} 사진 올리기/u);
+  assert.match(teamView, /영수증 엠블럼 만들기/u);
+  assert.match(teamView, /영수증 엠블럼 변경/u);
+  assert.match(teamPage, /createMatchReceiptLineArt/u);
+  assert.match(teamActions, /action: "receipt-upload"/u);
+  assert.match(teamApi, /rankball_update_team_receipt_emblem/u);
+  assert.match(teamColumns, /receipt_emblem_key,receipt_emblem_updated_at/u);
+  assert.match(migration, /create or replace function public\.rankball_update_team_receipt_emblem/u);
+  assert.match(migration, /role = 'captain'/u);
+});
 import {
   createCanonicalReceiptSerialSeed,
   createReceiptCapability,
@@ -496,8 +520,8 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(page, /onConvert=\{convertTeamEmblemCrop\}/);
   assert.doesNotMatch(page, /lineArtPreview|convertTeamEmblemToLineArt|confirmTeamLineArt/);
   assert.match(emblemCropEditor, /선화로 변경/);
-  assert.match(emblemCropEditor, /disabled=\{pending \|\| !convertedPreview\}/);
-  assert.match(emblemCropEditor, /onClick=\{onConfirm\}>확인</);
+  assert.match(emblemCropEditor, /disabled=\{pending \|\| \(Boolean\(onConvert\) && !convertedPreview\)\}/);
+  assert.match(emblemCropEditor, /onClick=\{\(\) => onConfirm\?\.\(crop\)\}>확인</);
   assert.match(page, /자동 변환 결과가 좋지 않으면 AI를 이용해 투명 배경 선화로 바꾼 뒤 다시 업로드하세요/);
   assert.match(page, /자동 변환 결과는 자동 적용하지 않으며, 미리보기 확인 후 직접 선택합니다/);
   assert.doesNotMatch(page, /기계 변환/);

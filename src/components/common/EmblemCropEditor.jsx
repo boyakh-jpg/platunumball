@@ -85,10 +85,12 @@ export default function EmblemCropEditor({
         {error ? <p className="emblem-crop-feedback" role="alert">{error}</p> : null}
         <div className="ui-action-row app-confirm-actions">
           <Button type="button" variant="secondary" disabled={pending} onClick={onCancel}>취소</Button>
-          <Button type="button" variant="secondary" disabled={pending || !image || loadFailed} onClick={() => onConvert?.(crop)}>
-            {pending ? "변환 중" : "선화로 변경"}
-          </Button>
-          <Button type="button" disabled={pending || !convertedPreview} onClick={onConfirm}>확인</Button>
+          {onConvert ? (
+            <Button type="button" variant="secondary" disabled={pending || !image || loadFailed} onClick={() => onConvert(crop)}>
+              {pending ? "변환 중" : "선화로 변경"}
+            </Button>
+          ) : null}
+          <Button type="button" disabled={pending || (Boolean(onConvert) && !convertedPreview)} onClick={() => onConfirm?.(crop)}>확인</Button>
         </div>
       </section>
     </div>

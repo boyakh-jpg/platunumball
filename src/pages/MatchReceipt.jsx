@@ -5,6 +5,7 @@ import Button from "../components/common/Button.jsx";
 import EmblemCropEditor from "../components/common/EmblemCropEditor.jsx";
 import CourtMapPicker from "../components/court/CourtMapPicker.jsx";
 import MatchReceiptPreview from "../components/match/MatchReceiptPreview.jsx";
+import { assetUrl } from "../lib/assets.js";
 import { getCourtAddress, getRegisteredCourts, mergeCourtSearchCourts } from "../lib/courts.js";
 import { inferRegionSelection } from "../lib/profileSetup.js";
 import { COURT_MAP_SEARCH_LIMIT, COURT_MAP_SEARCH_PURPOSE } from "../lib/queryPolicy.js";
@@ -143,6 +144,7 @@ export default function MatchReceipt({ auth, app }) {
   const [photoUrl, setPhotoUrl] = useState("");
   const [croppedTeamEmblemUrls, setCroppedTeamEmblemUrls] = useState(EMPTY_TEAM_EMBLEM_URLS);
   const [localTeamLineArtUrls, setLocalTeamLineArtUrls] = useState(EMPTY_TEAM_LINE_ART_URLS);
+  const [loadedTeamLineArtUrls, setLoadedTeamLineArtUrls] = useState(EMPTY_TEAM_LINE_ART_URLS);
   const [emblemCropTarget, setEmblemCropTarget] = useState(null);
   const [emblemCropError, setEmblemCropError] = useState("");
   const [emblemCropCandidate, setEmblemCropCandidate] = useState(null);
@@ -225,10 +227,30 @@ export default function MatchReceipt({ auth, app }) {
     return url.toString();
   }, [activePublicDraftId]);
   const receiptPublicId = activePublicDraftId;
+  const canonicalTeamReceiptEmblemUrls = useMemo(() => ({
+    home: canonicalHomeTeam?.receiptEmblemKey ? assetUrl(canonicalHomeTeam.receiptEmblemKey) : "",
+    away: canonicalAwayTeam?.receiptEmblemKey ? assetUrl(canonicalAwayTeam.receiptEmblemKey) : "",
+  }), [canonicalAwayTeam?.receiptEmblemKey, canonicalHomeTeam?.receiptEmblemKey]);
   const selectedTeamLineArtUrls = useMemo(() => ({
-    home: draft.homeUseLineArt ? localTeamLineArtUrls.home : "",
-    away: draft.awayUseLineArt ? localTeamLineArtUrls.away : "",
-  }), [draft.awayUseLineArt, draft.homeUseLineArt, localTeamLineArtUrls.away, localTeamLineArtUrls.home]);
+    home: draft.homeUseLineArt ? (loadedTeamLineArtUrls.home || localTeamLineArtUrls.home) : "",
+    away: draft.awayUseLineArt ? (loadedTeamLineArtUrls.away || localTeamLineArtUrls.away) : "",
+  }), [
+    draft.awayUseLineArt,
+    draft.homeUseLineArt,
+    loadedTeamLineArtUrls.away,
+    loadedTeamLineArtUrls.home,
+    localTeamLineArtUrls.away,
+    localTeamLineArtUrls.home,
+  ]);
+
+  useEffect(() => {
+    setLoadedTeamLineArtUrls(EMPTY_TEAM_LINE_ART_URLS);
+  }, [
+    canonicalAwayTeam?.id,
+    canonicalAwayTeam?.receiptEmblemKey,
+    canonicalHomeTeam?.id,
+    canonicalHomeTeam?.receiptEmblemKey,
+  ]);
 
   useEffect(() => {
     if (!matchId) return;
@@ -432,9 +454,23 @@ export default function MatchReceipt({ auth, app }) {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
+    if (canonicalTeamReceiptEmblemUrls[side]) {
+      setStatus("저장된 팀 엠블럼을 불러와 사용해 주세요.");
+      return;
+    }
     setEmblemCropError("");
     setEmblemCropCandidate(null);
     setEmblemCropTarget({ side, file });
+  }
+
+  function loadSavedTeamReceiptEmblem(side) {
+    const savedUrl = canonicalTeamReceiptEmblemUrls[side];
+    if (!savedUrl) return;
+    setLoadedTeamLineArtUrls((current) => ({ ...current, [side]: savedUrl }));
+    setCroppedTeamEmblemUrls((current) => ({ ...current, [side]: "" }));
+    setLocalTeamLineArtUrls((current) => ({ ...current, [side]: "" }));
+    updateField(`${side}UseLineArt`, true);
+    setStatus(`${side === "home" ? "TEAM A" : "TEAM B"} 저장 엠블럼을 영수증에 적용했습니다.`);
   }
 
   async function convertTeamEmblemCrop(crop) {
@@ -529,6 +565,7 @@ export default function MatchReceipt({ auth, app }) {
       setPhotoBlob(null);
       setCroppedTeamEmblemUrls(EMPTY_TEAM_EMBLEM_URLS);
       setLocalTeamLineArtUrls(EMPTY_TEAM_LINE_ART_URLS);
+      setLoadedTeamLineArtUrls(EMPTY_TEAM_LINE_ART_URLS);
       setEmblemCropTarget(null);
       setEmblemCropCandidate(null);
       setEmblemCropError("");
@@ -943,19 +980,44 @@ export default function MatchReceipt({ auth, app }) {
                 <legend>팀 엠블럼 선화 <small>선택</small></legend>
                 <div className="match-receipt-emblem-upload-grid">
                   {[["home", "TEAM A"], ["away", "TEAM B"]].map(([side, label]) => {
+                    const savedUrl = canonicalTeamReceiptEmblemUrls[side];
+                    const activeLineArtUrl = loadedTeamLineArtUrls[side] || localTeamLineArtUrls[side];
                     return (
                       <div className="match-receipt-emblem-upload" key={side}>
-                        <Button as="label" variant="secondary" size="sm">
-                          <ImagePlus aria-hidden="true" /> {label} 엠블럼 넣기
-                          <input type="file" accept="image/png,image/jpeg,image/webp" disabled={Boolean(requestedPublicDraftId) || Boolean(busy)} onChange={(event) => handleTeamEmblemChange(side, event)} />
-                        </Button>
-                        {croppedTeamEmblemUrls[side] || localTeamLineArtUrls[side] ? (
+                        {savedUrl ? (
+                          <Button
+                            type="button"
+                            variant="primary"
+                            size="sm"
+                            disabled={Boolean(requestedPublicDraftId) || Boolean(busy)}
+                            onClick={() => loadSavedTeamReceiptEmblem(side)}
+                          >
+                            <Download aria-hidden="true" /> {label} 팀 엠블럼 불러오기
+                          </Button>
+                        ) : null}
+                        {savedUrl ? (
+                          <Button type="button" variant="secondary" size="sm" disabled>
+                            <ImagePlus aria-hidden="true" /> {label} 사진 올리기
+                          </Button>
+                        ) : (
+                          <Button as="label" variant="secondary" size="sm">
+                            <ImagePlus aria-hidden="true" /> {label} 사진 올리기
+                            <input
+                              type="file"
+                              accept="image/png,image/jpeg,image/webp"
+                              disabled={Boolean(requestedPublicDraftId) || Boolean(busy)}
+                              onChange={(event) => handleTeamEmblemChange(side, event)}
+                            />
+                          </Button>
+                        )}
+                        {savedUrl ? <small>팀 저장 엠블럼이 있어 사진 업로드를 사용할 수 없습니다.</small> : null}
+                        {croppedTeamEmblemUrls[side] || activeLineArtUrl ? (
                           <div className="match-receipt-emblem-candidates" aria-label={`${label} 엠블럼 후보`}>
                             {croppedTeamEmblemUrls[side] ? <img src={croppedTeamEmblemUrls[side]} alt={`${label} 크롭 원본`} /> : null}
-                            {localTeamLineArtUrls[side] ? <img src={localTeamLineArtUrls[side]} alt={`${label} 선화 후보`} /> : null}
+                            {activeLineArtUrl ? <img src={activeLineArtUrl} alt={`${label} 선화 후보`} /> : null}
                           </div>
                         ) : null}
-                        {localTeamLineArtUrls[side] ? (
+                        {activeLineArtUrl ? (
                           <Button
                             type="button"
                             variant="ghost"
