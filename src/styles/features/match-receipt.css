@@ -441,6 +441,8 @@
 
 .match-receipt-ticket {
   --receipt-ticket-divider-y: 58%;
+  --receipt-ticket-meta-y: 65%;
+  --receipt-ticket-meta-line-height: clamp(12px, 3cqw, 16px);
   position: absolute;
   z-index: 3;
   inset: auto 0 1.8%;
@@ -520,12 +522,19 @@
 
 .match-receipt-ticket-date {
   position: absolute;
+  top: var(--receipt-ticket-meta-y);
+  left: 8%;
+  width: 84%;
+  color: #bd4e2a;
+  line-height: var(--receipt-ticket-meta-line-height);
+}
+.match-receipt-ticket-place::after, .match-receipt-ticket-game--info::after {
+  position: absolute;
   top: var(--receipt-ticket-divider-y);
   left: 8%;
   width: 84%;
-  padding-top: 7%;
   border-top: var(--ui-stroke-width) dotted rgba(32, 25, 21, 0.55);
-  color: #bd4e2a;
+  content: "";
 }
 
 .match-receipt-ticket-game > .match-receipt-personal-stats {
@@ -611,21 +620,18 @@
 .match-receipt-ticket-game > .match-receipt-ticket-caption {
   position: absolute;
   z-index: 1;
-  top: var(--receipt-ticket-divider-y);
+  top: var(--receipt-ticket-meta-y);
   left: 8%;
   display: block;
   width: 84%;
-  padding-top: 7%;
-  border-top: var(--ui-stroke-width) dotted rgba(32, 25, 21, 0.55);
   font-size: clamp(8px, 2.5cqw, 12px);
   font-weight: 900;
-  line-height: 1.15;
+  line-height: var(--receipt-ticket-meta-line-height);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.match-receipt-ticket-game--single-meta > :is(.match-receipt-ticket-caption, .match-receipt-personal-tier-label) { top: var(--receipt-ticket-divider-y); padding-top: 7%; }
-.match-receipt-ticket-game:not(.match-receipt-ticket-game--info) > .match-receipt-ticket-caption { border-top: 0; }
+.match-receipt-ticket-game--single-meta > :is(.match-receipt-ticket-caption, .match-receipt-personal-tier-label) { top: var(--receipt-ticket-meta-y); line-height: var(--receipt-ticket-meta-line-height); }
 
 .match-receipt-ticket-game > strong,
 .match-receipt-ticket-qr > strong {
