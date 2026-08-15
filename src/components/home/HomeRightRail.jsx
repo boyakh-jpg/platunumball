@@ -48,7 +48,6 @@ export default function HomeRightRail({
         <div className="rank-tier-rail">
           <Card className="section-card rank-profile-card rank-spotlight-card">
             <div className="rank-spotlight-content">
-              <p className="eyebrow">My Rank</p>
               <div className="rank-spotlight-main">
                 <TierEmblem mmr={user.ratings.integrated} ratings={user.ratings} size="md" />
                 <div>
@@ -68,7 +67,6 @@ export default function HomeRightRail({
         <Card className="section-card home-action-card">
           <div className="section-title-row">
             <div>
-              <p className="eyebrow">Action Queue</p>
               <h2>내가 처리할 일</h2>
             </div>
             <Badge tone={actionItems.length ? "orange" : "neutral"}>{actionItems.length}개</Badge>
@@ -137,7 +135,6 @@ export default function HomeRightRail({
         <Card className="section-card home-alert-card">
           <div className="section-title-row">
             <div>
-              <p className="eyebrow">Alerts</p>
               <h2>알림</h2>
             </div>
             <div className="ui-action-row home-alert-heading-actions">
@@ -203,7 +200,6 @@ export default function HomeRightRail({
         <Card className="section-card rank-leaderboard-card home-side-wide-card">
           <div className="section-title-row">
             <div>
-              <p className="eyebrow">Local Ranking</p>
               <h2>{user.region} 랭킹</h2>
             </div>
           </div>
@@ -223,7 +219,6 @@ export default function HomeRightRail({
         <Card className="section-card season-mini-card">
           <div className="section-title-row">
             <div>
-              <p className="eyebrow">Season Race</p>
               <h2>{user.region} 시즌 레이스</h2>
             </div>
           </div>
@@ -246,7 +241,6 @@ export default function HomeRightRail({
         <Card className="section-card">
           <div className="section-title-row">
             <div>
-              <p className="eyebrow">Local Rivalry</p>
               <h2>{user.region} 라이벌</h2>
             </div>
           </div>
@@ -267,7 +261,6 @@ export default function HomeRightRail({
         <Card className="section-card home-side-wide-card">
           <div className="section-title-row">
             <div>
-              <p className="eyebrow">My Teams</p>
               <h2>내 소속 팀</h2>
             </div>
             <Badge tone={myTeamCount > MAX_TEAM_MEMBERSHIPS ? "orange" : myTeamCount ? "green" : "neutral"}>{myTeamCount}/{MAX_TEAM_MEMBERSHIPS}</Badge>

@@ -73,11 +73,11 @@ function GuestHomePage() {
 
         <div className="content-grid home-dashboard-grid rank-dashboard-grid"><div className="page-stack home-primary-stack">
           <Card className="match-focus-card home-upcoming-card ui-design-category-surface is-empty">
-            <div className="section-title-row"><div><p className="eyebrow">Upcoming</p><h2>내 확정 경기</h2></div></div>
+            <div className="section-title-row"><h2>내 확정 경기</h2></div>
             <GuestAccessNotice title="일정은 로그인 후 확인할 수 있습니다" description="로그인하면 내 참가 경기와 팀 일정을 불러옵니다." returnTo="/app/matches" showActions={false} />
           </Card>
           <Card className="section-card home-recent-card">
-            <div className="section-title-row"><div><p className="eyebrow">Recent Matches</p><h2>내 최근 전적</h2></div></div>
+            <div className="section-title-row"><h2>내 최근 전적</h2></div>
             <GuestAccessNotice title="최근 전적은 로그인 후 확인할 수 있습니다" description="로그인하면 내 공개·비공개 경기 기록을 불러옵니다." returnTo="/app/profile/records" showPublicMatches={false} showActions={false} />
           </Card>
         </div></div>
@@ -85,8 +85,8 @@ function GuestHomePage() {
 
       <aside className="page-stack home-right-rail">
         <aside className="page-stack home-top-rail">
-          <Card className="section-card"><div className="section-title-row"><div><p className="eyebrow">My Rank</p><h2>공개 랭크보드</h2></div></div><p className="muted">전체 선수·팀 순위를 지금 볼 수 있습니다.</p><Button as={Link} to="/app/rankings" variant="secondary" className="ui-button-block"><Trophy size={17} /> 전체 랭크보드</Button></Card>
-          <Card className="section-card home-action-card"><div className="section-title-row"><div><p className="eyebrow">Action Queue</p><h2>내가 처리할 일</h2></div></div><div className="home-action-list ui-design-borderless-list"><div className="home-action-row priority-5"><span className="home-action-icon"><Bell size={18} /></span><span className="home-action-main"><strong>개인 알림</strong><em>로그인 후 초대와 경기 요청이 여기에 표시됩니다.</em></span></div></div></Card>
+          <Card className="section-card"><div className="section-title-row"><h2>공개 랭크보드</h2></div><p className="muted">전체 선수·팀 순위를 지금 볼 수 있습니다.</p><Button as={Link} to="/app/rankings" variant="secondary" className="ui-button-block"><Trophy size={17} /> 전체 랭크보드</Button></Card>
+          <Card className="section-card home-action-card"><div className="section-title-row"><h2>내가 처리할 일</h2></div><div className="home-action-list ui-design-borderless-list"><div className="home-action-row priority-5"><span className="home-action-icon"><Bell size={18} /></span><span className="home-action-main"><strong>개인 알림</strong><em>로그인 후 초대와 경기 요청이 여기에 표시됩니다.</em></span></div></div></Card>
         </aside>
         <aside className="page-stack home-side-stack"><Card className="section-card home-side-wide-card"><div className="section-title-row"><div><p className="eyebrow">Public</p><h2>로그인 없이 둘러보기</h2></div></div><div className="ui-action-row home-public-actions"><Button as={Link} to="/app/teams" variant="secondary"><UsersRound size={17} /> 팀</Button><Button as={Link} to="/app/community" variant="secondary"><MessageSquareText size={17} /> 커뮤니티</Button><Button as={Link} to="/app/guide/practice"><FlaskConical size={17} /> 연습경기 해보기</Button></div></Card></aside>
       </aside>
@@ -229,7 +229,6 @@ export default function HomePageView({
             <Card className={`match-focus-card home-upcoming-card ui-design-category-surface${upcomingItems.length ? "" : " is-empty"}`}>
               <div className="section-title-row">
                 <div>
-                  <p className="eyebrow">Upcoming</p>
                   <h2>내 확정 경기</h2>
                 </div>
                 <Badge tone={upcomingItems.length ? "orange" : "neutral"}>{upcomingItems.length}개</Badge>
@@ -251,7 +250,6 @@ export default function HomePageView({
             <Card className="section-card home-recent-card">
               <div className="section-title-row">
                 <div>
-                  <p className="eyebrow">Recent Matches</p>
                   <h2>내 최근 전적</h2>
                 </div>
                 <Badge tone={myCompletedMatches.length ? "green" : "neutral"}>{myCompletedMatches.length}경기</Badge>

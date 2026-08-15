@@ -43,7 +43,7 @@ html[data-theme="light"] .profile-side-grid > .card {
 .arena-start-date-filter button {
   border-radius: var(--control-radius);
   font-size: var(--control-font-size);
-  font-weight: 900;
+  font-weight: var(--font-weight-control);
 }
 .rank-home .home-rank-board-head .button,
 .provider-test {
@@ -192,7 +192,7 @@ button.ui-choice-tile,
   color: var(--rb-text);
   box-shadow: none;
   font-size: var(--control-font-size);
-  font-weight: 900;
+  font-weight: var(--font-weight-control);
   letter-spacing: 0;
 }
 button.ui-choice-tile:is(.active, .selected),
@@ -224,18 +224,22 @@ button.ui-choice-tile:is(.active, .selected) :is(svg, strong, span, em) {
   text-shadow: var(--hero-copy-shadow);
 }
 .ui-page-hero__copy h1 {
+  max-width: 100%;
   color: var(--hero-title-color);
   text-shadow: var(--hero-title-shadow);
   font-family: var(--hero-title-font);
   font-size: var(--hero-title-size);
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
   line-height: var(--hero-title-line-height);
   letter-spacing: var(--hero-title-letter-spacing);
   text-transform: uppercase;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
 }
 .ui-page-hero__copy p:not(.eyebrow) {
   color: var(--hero-copy-color);
   text-shadow: var(--hero-copy-shadow);
+  overflow-wrap: anywhere;
 }
 @media (max-width: 720px) {
   .ui-page-hero__copy h1 {

@@ -422,7 +422,8 @@ test("guest shell replaces the demo identity with login actions", () => {
   assert.match(homePageSource, /<GuestAccessNotice title="일정은 로그인 후 확인할 수 있습니다"[\s\S]*returnTo="\/app\/matches"/);
   assert.match(homePageSource, /<GuestAccessNotice title="최근 전적은 로그인 후 확인할 수 있습니다"[\s\S]*showPublicMatches=\{false\}/);
   assert.equal((homePageSource.match(/showActions=\{false\}/g) ?? []).length, 2);
-  assert.equal((teamsSource.match(/showActions=\{false\}/g) ?? []).length, 2);
+  assert.equal((teamsSource.match(/showActions=\{false\}/g) ?? []).length, 1);
+  assert.doesNotMatch(teamsSource, /title="팀 생성은 로그인 후 사용할 수 있습니다"/);
   assert.doesNotMatch(homePageSource, /<Badge tone="neutral">로그인<\/Badge>/);
   assert.match(homePageSource, /to="\/app\/profile"[^>]*aria-label="FOUNDING PLAYER 특전 알아보기"/);
   assert.match(homePageSource, /<h2>공개 랭크보드<\/h2>/);
@@ -632,12 +633,16 @@ test("개인 기록 숫자 입력칸은 별도 테두리를 표시하지 않는�
   );
 });
 
-test("모든 페이지 기본 본문은 800이며 명시형 굵기는 600 이상을 유지한다", () => {
+test("모든 페이지는 공용 의미 굵기 위계를 사용하고 명시형 굵기는 500 이상을 유지한다", () => {
   const foundationStyles = readCssTree("src/styles/global-foundation.css");
   const bodyRule = getRuleBody(foundationStyles, "body");
   const forbiddenWeights = [];
 
-  assert.match(tokenStyles, /--font-weight-body:\s*800;/);
+  assert.match(tokenStyles, /--font-weight-min:\s*500;/);
+  assert.match(tokenStyles, /--font-weight-support:\s*600;/);
+  assert.match(tokenStyles, /--font-weight-body:\s*700;/);
+  assert.match(tokenStyles, /--font-weight-control:\s*800;/);
+  assert.match(tokenStyles, /--font-weight-title:\s*900;/);
   assert.match(bodyRule, /font-weight:\s*var\(--font-weight-body\);/);
 
   for (const file of styleFiles) {
@@ -646,7 +651,7 @@ test("모든 페이지 기본 본문은 800이며 명시형 굵기는 600 이상
       const value = match[1].trim();
       const numericWeight = Number(value);
       if (
-        (Number.isFinite(numericWeight) && numericWeight < 600)
+        (Number.isFinite(numericWeight) && numericWeight < 500)
         || /^(?:normal|lighter|initial|unset|revert|revert-layer)$/i.test(value)
       ) {
         forbiddenWeights.push(`${file}: ${value}`);
@@ -660,7 +665,7 @@ test("모든 페이지 기본 본문은 800이며 명시형 굵기는 600 이상
       const value = match[1].trim();
       const numericWeight = Number(value);
       if (
-        (Number.isFinite(numericWeight) && numericWeight < 600)
+        (Number.isFinite(numericWeight) && numericWeight < 500)
         || /^(?:normal|lighter|initial|unset|revert|revert-layer)$/i.test(value)
       ) {
         forbiddenWeights.push(`${file}: ${value}`);
@@ -672,10 +677,10 @@ test("모든 페이지 기본 본문은 800이며 명시형 굵기는 600 이상
 });
 
 test("KBO는 스포츠 표시, Pretendard는 읽기와 조작 UI에 사용한다", () => {
-  assert.match(tokenStyles, /--font-weight-min:\s*600;/);
-  assert.match(tokenStyles, /--font-weight-support:\s*700;/);
-  assert.match(tokenStyles, /--font-weight-body:\s*800;/);
-  assert.match(tokenStyles, /--font-weight-control:\s*900;/);
+  assert.match(tokenStyles, /--font-weight-min:\s*500;/);
+  assert.match(tokenStyles, /--font-weight-support:\s*600;/);
+  assert.match(tokenStyles, /--font-weight-body:\s*700;/);
+  assert.match(tokenStyles, /--font-weight-control:\s*800;/);
   assert.match(tokenStyles, /--font-weight-title:\s*900;/);
   assert.match(tokenStyles, /--font-weight-sports:\s*700;/);
   assert.match(tokenStyles, /--font-size-caption:\s*0\.72rem;/);

@@ -42,10 +42,10 @@
   color-scheme: dark;
   --font-body:
     "Pretendard Variable", Pretendard, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-weight-min: 600;
-  --font-weight-support: 700;
-  --font-weight-body: 800;
-  --font-weight-control: 900;
+  --font-weight-min: 500;
+  --font-weight-support: 600;
+  --font-weight-body: 700;
+  --font-weight-control: 800;
   --font-weight-title: 900;
   --font-weight-sports: 700;
   --font-size-caption: 0.72rem;

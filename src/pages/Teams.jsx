@@ -116,7 +116,7 @@ export default function Teams({ app }) {
     referenceTeam: representativeTeam,
   }), [app.currentUser, app.state.users, myTeams, rankingTeams, representativeTeam]);
   const teamDirectoryError = app.directoryStatus?.error ?? "";
-  const teamDirectoryPending = app.remoteReady === false || app.directoryStatus?.loading || (app.directoryStatus?.loaded === false && !teamDirectoryError);
+  const teamDirectoryPending = !teamDirectoryError && (app.remoteReady === false || app.directoryStatus?.loading || app.directoryStatus?.loaded === false);
   const myTeamCountPending = teamDirectoryPending && !myTeams.length;
   const myTeamCountLabel = myTeamCountPending ? "..." : `${myTeams.length}/${MAX_TEAM_MEMBERSHIPS}`;
   const myTeamCountTone = myTeamCountPending ? "neutral" : myTeams.length > MAX_TEAM_MEMBERSHIPS ? "orange" : myTeams.length ? "green" : "neutral";
@@ -235,7 +235,6 @@ export default function Teams({ app }) {
 
   return (
     <div className="page-stack teams-page">
-      {teamDirectoryPending ? <BasketballLoader overlay label="팀 맞추는 중" /> : null}
       <section className="team-hub-hero ui-page-hero ui-design-app-hero">
         <div className="ui-page-hero__copy">
           <p className="eyebrow">Team Hub</p>
@@ -263,9 +262,9 @@ export default function Teams({ app }) {
           </div>
         ) : null}
       </section>
-      {teamDirectoryError ? <Card className="section-card"><div className="section-title-row"><span className="form-warning">팀 목록을 불러오지 못했습니다.</span><Button type="button" variant="secondary" onClick={() => void loadDirectory?.({ force: true, kind: "teams", filter: directoryFilter, region: directoryRegion, limit: DIRECTORY_TEAM_PAGE_LIMIT, offset: 0, includeTeamMemberProfiles: true })}>다시 시도</Button></div></Card> : null}
-
-      <div className="team-workspace-grid">
+      {teamDirectoryPending ? <BasketballLoader overlay label="팀 맞추는 중" /> : teamDirectoryError ? (
+        <Card className="section-card"><div className="section-title-row"><span className="form-warning">팀 목록을 불러오지 못했습니다.</span><Button type="button" variant="secondary" onClick={() => void loadDirectory?.({ force: true, kind: "teams", filter: directoryFilter, region: directoryRegion, limit: DIRECTORY_TEAM_PAGE_LIMIT, offset: 0, includeTeamMemberProfiles: true })}>다시 시도</Button></div></Card>
+      ) : <div className="team-workspace-grid">
         <section className="team-overview-grid">
         <Card className="section-card my-team-management-card">
           <div className="section-title-row">
@@ -277,7 +276,7 @@ export default function Teams({ app }) {
           </div>
           <div className="my-team-list ui-design-borderless-list">
             {readOnly ? (
-              <GuestAccessNotice title="내 팀은 로그인 후 확인할 수 있습니다" description="공개 팀 검색과 랭킹은 지금 둘러볼 수 있습니다. 로그인하면 내 소속 팀과 초대를 불러옵니다." returnTo="/app/teams" showPublicMatches={false} showActions={false} />
+              <GuestAccessNotice title="내 팀은 로그인 후 확인할 수 있습니다" description="로그인하면 내 소속 팀과 초대를 불러옵니다." returnTo="/app/teams" showPublicMatches={false} showActions={false} />
             ) : myTeams.length ? myTeams.map((team) => {
               const winRate = team.played ? Math.round((team.wins / team.played) * 100) : 0;
               const isCaptain = team.myRole === "captain";
@@ -425,15 +424,7 @@ export default function Teams({ app }) {
             <div className="ui-empty-state-compact">추천할 팀이 아직 없습니다.</div>
           )}
         </div>
-        {readOnly ? (
-          <Card className="section-card team-create-panel">
-            <div className="section-title-row">
-              <div><p className="eyebrow">Create Squad</p><h2>팀 만들기</h2></div>
-              <PlusCircle size={22} />
-            </div>
-            <GuestAccessNotice title="팀 생성은 로그인 후 사용할 수 있습니다" description="먼저 공개 팀을 검색해 분위기와 활동 지역을 확인할 수 있습니다. 로그인하면 팀 정보를 입력해 바로 만들 수 있습니다." returnTo="/app/teams" showPublicMatches={false} showActions={false} />
-          </Card>
-        ) : <Card className="section-card team-create-panel">
+        {readOnly ? null : <Card className="section-card team-create-panel">
           <div className="section-title-row">
             <div>
               <p className="eyebrow">Create Squad</p>
@@ -511,7 +502,7 @@ export default function Teams({ app }) {
           </form>
         </Card>}
         </div>
-      </div>
+      </div>}
     </div>
   );
 }

@@ -112,14 +112,16 @@ export default function Community({ app }) {
             }}
           />
         ) : null}
-        {controller.error && !controller.selectedPost ? (
+        {controller.loading ? (
+          <div className="community-post-list"><div className="ui-empty-state">게시글 불러오는 중</div></div>
+        ) : controller.error && !controller.selectedPost ? (
           <div className="form-warning" role="status">
             <span>{controller.error}</span>
             <Button type="button" variant="secondary" size="sm" onClick={retryLoad}>다시 시도</Button>
           </div>
-        ) : null}
-
-        <div className="community-post-list">
+        ) : (
+          <>
+          <div className="community-post-list">
           {controller.posts.length ? (
             <div className="community-post-list-head" aria-hidden="true">
               <span>분류</span>
@@ -154,9 +156,11 @@ export default function Community({ app }) {
               </span>
             </article>
           ))}
-          {!controller.loading && !controller.posts.length ? <div className="ui-empty-state">등록된 게시글이 없습니다.</div> : null}
+          {!controller.posts.length ? <div className="ui-empty-state">등록된 게시글이 없습니다.</div> : null}
         </div>
         <Pagination page={controller.pageIndex} totalPages={totalPages} disabled={controller.loading} onChange={controller.goToPage} />
+          </>
+        )}
       </Card>
 
       <CommunityPostDialog app={app} controller={{ ...controller, closePost }} />
