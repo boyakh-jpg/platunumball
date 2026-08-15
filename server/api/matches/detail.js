@@ -108,7 +108,7 @@ export async function handleMatchDetail(request, response, { publicRead = false,
         : {
           ...state,
           matches: [match],
-          recruitingPosts: [],
+          recruitingPosts: (state.recruitingPosts ?? []).filter((post) => post.id === match.recruitingPostId),
           tournaments: [],
           reports: [],
           discordNotificationDeliveries: [],

@@ -68,6 +68,7 @@ function getAuthoritativeLoadScope(operation = {}) {
   return {
     scope,
     includeCurrentUserTeams: needsCurrentUserTeams,
+    includeLinkedRecruitingPost: action === "loadMatch",
     matchIds,
     teamIds: [
       operation.teamId,

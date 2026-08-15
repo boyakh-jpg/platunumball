@@ -2929,6 +2929,7 @@ flowchart TD
 - Discord-origin room chat also lands in `room_chat_messages`, keeps the same one-line 60-character body rule, and must carry a unique Discord message ID to avoid duplicate imports.
 - 모집 확정 뒤에도 연결 경기의 `locked`, `checkin`, `live`, `postgame` 단계에서는 같은 방 채팅을 유지한다. `dispute`, `record`, `cancelled`, `void` 단계부터 입력을 잠그며 DB guard/RLS도 같은 단계 경계를 적용한다.
 - 모집 확정 transaction은 `matches.rules.recruitingPostId`에 원본 모집방 ID를 반드시 저장한다. 경기 상세 직행도 이 ID로 원본 방 상세와 채팅을 다시 불러오며, backend simulation은 확정 직후 DB 재로드 결과에서 연결 ID를 검증한다.
+- 로그인 단건 경기 상세는 해당 경기의 `recruitingPostId`와 연결된 모집방 1건 및 참가 데이터를 함께 반환한다. 공개 단건 경기 상세는 연결 모집방을 반환하지 않는다.
 
 ## 2026-07-01 test login and shared rule constants
 

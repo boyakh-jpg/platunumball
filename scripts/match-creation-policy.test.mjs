@@ -1153,6 +1153,29 @@ test("scoped recruiting confirmation loads active referee qualifications", () =>
   );
 });
 
+test("authenticated match detail loads only its linked recruiting room", () => {
+  const stateLoaderSource = fs.readFileSync(
+    path.join(root, "src/data/repository/remote/stateLoader.js"),
+    "utf8",
+  );
+  const authoritativeSource = fs.readFileSync(
+    path.join(root, "server/api/_authoritativeState.js"),
+    "utf8",
+  );
+  const detailSource = fs.readFileSync(
+    path.join(root, "server/api/matches/detail.js"),
+    "utf8",
+  );
+  assert.match(authoritativeSource, /includeLinkedRecruitingPost: action === "loadMatch"/);
+  assert.match(stateLoaderSource, /matches\.map\(\(match\) => match\.rules\?\.recruitingPostId\)/);
+  assert.match(stateLoaderSource, /fetchRowsByIds\("recruiting_posts", RECRUITING_POST_COLUMNS/);
+  assert.match(stateLoaderSource, /collectRecruitingPageScope\(recruitingPosts, recruitingApplications, matchScope\.profileIds\)/);
+  assert.match(
+    detailSource,
+    /recruitingPosts: \(state\.recruitingPosts \?\? \[\]\)\.filter\(\(post\) => post\.id === match\.recruitingPostId\)/,
+  );
+});
+
 test("public team joins persist only the applying team member as side leader", () => {
   const recruitingSource = readPageSourceGroup(RECRUITING_PAGE_SOURCE_PATHS);
   const users = [

@@ -78,7 +78,7 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
   const [
     privateProfiles,
     matches,
-    recruitingPosts,
+    initialRecruitingPosts,
     tournaments,
     seasons,
     affiliations,
@@ -92,6 +92,13 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
     includeAppMeta ? fetchAllRows("seasons", SEASON_COLUMNS, "id", client) : [],
     includeAppMeta ? fetchAllRows("affiliations", AFFILIATION_COLUMNS, "id", client) : [],
   ]);
+  const linkedRecruitingPostIds = options.includeLinkedRecruitingPost === true
+    ? uniqueScopeIds(matches.map((match) => match.rules?.recruitingPostId))
+    : [];
+  const linkedRecruitingPosts = linkedRecruitingPostIds.length
+    ? await fetchRowsByIds("recruiting_posts", RECRUITING_POST_COLUMNS, "id", linkedRecruitingPostIds, "updated_at", client, true)
+    : [];
+  const recruitingPosts = uniqueRowsById([...initialRecruitingPosts, ...linkedRecruitingPosts]);
 
   if (!profileScope && !matchPageScope && !recruitingPageScope && !tournamentPageScope && !relatedDirectoryScope) {
     [publicProfiles, teams, teamMembers, courts] = await Promise.all([
@@ -209,7 +216,7 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
   const loadedRecruitingPostIds = recruitingPosts.map((post) => post.id).filter(Boolean);
   const loadedTournamentIds = tournaments.map((tournament) => tournament.id).filter(Boolean);
   const shouldFilterMatchChildren = Boolean(matchScopeIds.length || tournamentMatchFilter || clientState || matchLimit);
-  const shouldFilterRecruitingChildren = Boolean(recruitingScopeIds.length || clientState || recruitingLimit);
+  const shouldFilterRecruitingChildren = Boolean(recruitingScopeIds.length || linkedRecruitingPostIds.length || clientState || recruitingLimit);
   const shouldFilterTournamentChildren = Boolean(tournamentScopeIds.length || clientState || tournamentLimit);
   const matchChildFilter = shouldFilterMatchChildren ? (query) => applyIdScope(query, "match_id", loadedMatchIds) : null;
   const recruitingChildFilter = shouldFilterRecruitingChildren ? (query) => applyIdScope(query, "post_id", loadedRecruitingPostIds) : null;
@@ -236,14 +243,16 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
 
   if (matchPageScope) {
     const scopedProfileIds = [...privateProfiles.map((profile) => profile.id), ...uniqueScopeIds(options.profileIds)];
-    const scoped = collectMatchPageScope(matches, matchPlayers, matchResults, playerStats, agreements, approvals, disputes, scopedProfileIds);
-    const teamIds = uniqueScopeIds([...scoped.teamIds, ...uniqueScopeIds(options.teamIds)]);
+    const matchScope = collectMatchPageScope(matches, matchPlayers, matchResults, playerStats, agreements, approvals, disputes, scopedProfileIds);
+    const recruitingScope = collectRecruitingPageScope(recruitingPosts, recruitingApplications, matchScope.profileIds);
+    const teamIds = uniqueScopeIds([...matchScope.teamIds, ...recruitingScope.teamIds, ...uniqueScopeIds(options.teamIds)]);
+    const courtIds = uniqueScopeIds([...matchScope.courtIds, ...recruitingScope.courtIds]);
     const teamMemberTeamIds = matchListOnly ? [] : teamIds;
     ({ teams, teamMembers, courts, publicProfiles } = await fetchScopedDirectoryReferences(client, {
       teamIds,
       teamMemberTeamIds,
-      courtIds: scoped.courtIds,
-      profileIds: scoped.profileIds,
+      courtIds,
+      profileIds: recruitingScope.profileIds,
     }));
     mergeScopedProfiles(profiles, publicProfiles, privateProfileById);
   }
