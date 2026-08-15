@@ -45,6 +45,33 @@ test("saved team receipt emblems require an explicit receipt load and lock repla
   assert.match(migration, /create or replace function public\.rankball_update_team_receipt_emblem/u);
   assert.match(migration, /role = 'captain'/u);
 });
+
+test("canonical receipt keeps dedicated team receipt emblems through public reload", () => {
+  const draft = getMatchReceiptDraftFromMatch({}, {
+    homeTeamRecord: {
+      emblemSource: "upload",
+      emblemKey: "team-general/home.webp",
+      receiptEmblemKey: "team-emblems/home/receipt.webp",
+    },
+    awayTeamRecord: {
+      emblemSource: "preset",
+      emblemKey: "team-general/away.webp",
+      receiptEmblemKey: "team-emblems/away/receipt.webp",
+    },
+    homeUseLineArt: true,
+    awayUseLineArt: false,
+  });
+  const projected = projectPublicReceiptDraft({
+    ...draft,
+    _canonicalReceipt: true,
+  });
+  const reloaded = createMatchReceiptViewModel(projected);
+
+  assert.equal(projected.homeEmblemKey, "team-emblems/home/receipt.webp");
+  assert.equal(projected.awayEmblemKey, "team-emblems/away/receipt.webp");
+  assert.match(reloaded.teamEmblemUrls.home, /team-emblems\/home\/receipt\.webp$/u);
+  assert.equal(reloaded.teamEmblemUrls.away, "");
+});
 import {
   createReceiptClonePayload,
   createCanonicalReceiptSerialSeed,
