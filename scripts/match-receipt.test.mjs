@@ -30,7 +30,7 @@ test("saved team receipt emblems require an explicit receipt load and lock repla
     readFile(new URL("../src/hooks/appData/actions/profileTeamActions.js", import.meta.url), "utf8"),
     readFile(new URL("../server/api/teams/emblem.js", import.meta.url), "utf8"),
     readFile(new URL("../shared/lib/repositoryColumns.js", import.meta.url), "utf8"),
-    readFile(new URL("../supabase/migrations/20260814143000_team_receipt_emblem.sql", import.meta.url), "utf8"),
+    readFile(new URL("../supabase/migrations/20260815130000_team_receipt_emblem_upload_policy.sql", import.meta.url), "utf8"),
   ]);
 
   assert.match(receiptPage, /팀 엠블럼 불러오기/u);
@@ -41,9 +41,15 @@ test("saved team receipt emblems require an explicit receipt load and lock repla
   assert.match(teamPage, /createMatchReceiptLineArt/u);
   assert.match(teamActions, /action: "receipt-upload"/u);
   assert.match(teamApi, /rankball_update_team_receipt_emblem/u);
-  assert.match(teamColumns, /receipt_emblem_key,receipt_emblem_updated_at/u);
+  assert.match(teamColumns, /receipt_emblem_key,receipt_emblem_updated_at,receipt_emblem_uploaded_at,receipt_emblem_upload_count/u);
   assert.match(migration, /create or replace function public\.rankball_update_team_receipt_emblem/u);
   assert.match(migration, /role = 'captain'/u);
+  assert.match(migration, /team_receipt_emblem_cooldown/u);
+  assert.match(migration, /interval '30 days'/u);
+  assert.match(receiptPage, /canonicalHomeTeam\?\.receiptEmblemKey \|\| draft\.homeEmblemKey/u);
+  assert.match(receiptPage, /loadedTeamLineArtUrls\.home \|\| localTeamLineArtUrls\.home \|\| canonicalTeamReceiptEmblemUrls\.home/u);
+  assert.match(receiptPage, /const activeLineArtUrl = selectedTeamLineArtUrls\[side\]/u);
+  assert.match(teamView, /disabled=\{receiptEmblemPending \|\| receiptEmblemUploadLocked\}/u);
 });
 
 test("canonical receipt keeps dedicated team receipt emblems through public reload", () => {
@@ -696,7 +702,7 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(styles, /\.match-receipt-personal-tier[\s\S]*width: 92%[\s\S]*opacity: 0\.64/);
   assert.match(styles, /\.match-receipt-ticket-qr \.match-receipt-qr[\s\S]*width: 94%[\s\S]*max-height: 94%/);
   assert.match(styles, /\.match-receipt-game-info b\s*\{[^}]*font-family: "Bebas Neue"/);
-  assert.match(styles, /\.match-receipt-ticket-game > \.match-receipt-ticket-caption\s*\{[^}]*padding-top: 5%;[^}]*font-size: clamp\(8px, 2\.5cqw, 12px\)/);
+  assert.match(styles, /\.match-receipt-ticket-game > \.match-receipt-ticket-caption\s*\{[^}]*padding-top: 7%;[^}]*font-size: clamp\(8px, 2\.5cqw, 12px\)/);
   assert.doesNotMatch(styles, /\.match-receipt-ticket-game > \.match-receipt-ticket-caption\s*\{[^}]*margin-top:\s*auto/);
   assert.match(styles, /--receipt-ticket-divider-y:\s*58%/);
   assert.match(styles, /\.match-receipt-ticket-date[\s\S]*top:\s*var\(--receipt-ticket-divider-y\)/);
@@ -750,12 +756,14 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(renderer, /const footerRightX = compact \? 850 : 862/);
   assert.match(renderer, /drawCanvasMapPin\(ctx, footerLeftX/);
   assert.match(renderer, /const qrSize = compact \? 216 : 270/);
-  assert.match(renderer, /const footerCommentOffset = footerMiddleDividerOffset \+ \(compact \? 24 : 30\)/);
-  assert.match(renderer, /const footerTierLabelOffset = compact \? 184 : 246/);
+  assert.match(renderer, /const footerCommentOffset = footerDateOffset/);
+  assert.match(renderer, /const footerTierLabelOffset = footerDateOffset \+ \(compact \? 26 : 30\)/);
   assert.match(renderer, /const footerDateOffset = compact \? 174 : 244/);
   assert.match(renderer, /const hasSingleGameInfoMeta = !model\.hasPersonalStats[\s\S]*Boolean\(model\.comment\) !== Boolean\(personalTier\)/);
-  assert.match(renderer, /hasSingleGameInfoMeta \? footerDateOffset : footerCommentOffset/);
+  assert.match(renderer, /footerY \+ footerCommentOffset/);
   assert.match(renderer, /hasSingleGameInfoMeta \? footerDateOffset : footerTierLabelOffset/);
+  assert.match(lineArt, /const CROP_EDGE_GUARD = 5/);
+  assert.match(lineArt, /const boundary = !isCropEdge && neighbors\.some/);
   assert.match(renderer, /const tierSize = compact \? 150 : 192/);
   assert.match(renderer, /ctx\.moveTo\(footerMiddleX, footerY \+ \(compact \? 30 : 70\)\)/);
   assert.match(renderer, /createCanvasPaperPattern/);

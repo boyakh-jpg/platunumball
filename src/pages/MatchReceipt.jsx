@@ -255,13 +255,15 @@ export default function MatchReceipt({ auth, app }) {
   }, [activePublicDraftId]);
   const receiptPublicId = activePublicDraftId;
   const canonicalTeamReceiptEmblemUrls = useMemo(() => ({
-    home: canonicalHomeTeam?.receiptEmblemKey ? assetUrl(canonicalHomeTeam.receiptEmblemKey) : "",
-    away: canonicalAwayTeam?.receiptEmblemKey ? assetUrl(canonicalAwayTeam.receiptEmblemKey) : "",
-  }), [canonicalAwayTeam?.receiptEmblemKey, canonicalHomeTeam?.receiptEmblemKey]);
+    home: canonicalHomeTeam?.receiptEmblemKey || draft.homeEmblemKey ? assetUrl(canonicalHomeTeam?.receiptEmblemKey || draft.homeEmblemKey) : "",
+    away: canonicalAwayTeam?.receiptEmblemKey || draft.awayEmblemKey ? assetUrl(canonicalAwayTeam?.receiptEmblemKey || draft.awayEmblemKey) : "",
+  }), [canonicalAwayTeam?.receiptEmblemKey, canonicalHomeTeam?.receiptEmblemKey, draft.awayEmblemKey, draft.homeEmblemKey]);
   const selectedTeamLineArtUrls = useMemo(() => ({
-    home: draft.homeUseLineArt ? (loadedTeamLineArtUrls.home || localTeamLineArtUrls.home) : "",
-    away: draft.awayUseLineArt ? (loadedTeamLineArtUrls.away || localTeamLineArtUrls.away) : "",
+    home: draft.homeUseLineArt ? (loadedTeamLineArtUrls.home || localTeamLineArtUrls.home || canonicalTeamReceiptEmblemUrls.home) : "",
+    away: draft.awayUseLineArt ? (loadedTeamLineArtUrls.away || localTeamLineArtUrls.away || canonicalTeamReceiptEmblemUrls.away) : "",
   }), [
+    canonicalTeamReceiptEmblemUrls.away,
+    canonicalTeamReceiptEmblemUrls.home,
     draft.awayUseLineArt,
     draft.homeUseLineArt,
     loadedTeamLineArtUrls.away,
@@ -1052,7 +1054,7 @@ export default function MatchReceipt({ auth, app }) {
                 <div className="match-receipt-emblem-upload-grid">
                   {[["home", "TEAM A"], ["away", "TEAM B"]].map(([side, label]) => {
                     const savedUrl = canonicalTeamReceiptEmblemUrls[side];
-                    const activeLineArtUrl = loadedTeamLineArtUrls[side] || localTeamLineArtUrls[side];
+                    const activeLineArtUrl = selectedTeamLineArtUrls[side];
                     return (
                       <div className="match-receipt-emblem-upload" key={side}>
                         {savedUrl ? (

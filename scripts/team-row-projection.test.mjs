@@ -27,6 +27,8 @@ const teamRow = {
   emblem_key: "team/team-1.webp",
   receipt_emblem_key: "team-emblems/team-1/receipt.webp",
   receipt_emblem_updated_at: "2026-07-29T01:12:03.000Z",
+  receipt_emblem_uploaded_at: "2026-07-29T01:12:03.000Z",
+  receipt_emblem_upload_count: "2",
   emblem_source: "upload",
   emblem_updated_at: "2026-07-29T01:02:03.000Z",
   emblem_uploaded_at: "2026-07-28T01:02:03.000Z",
@@ -63,6 +65,8 @@ const commonTeam = {
   emblemKey: "team/team-1.webp",
   receiptEmblemKey: "team-emblems/team-1/receipt.webp",
   receiptEmblemUpdatedAt: "2026-07-29T01:12:03.000Z",
+  receiptEmblemUploadedAt: "2026-07-29T01:12:03.000Z",
+  receiptEmblemUploadCount: 2,
   emblemSource: "upload",
   emblemUpdatedAt: "2026-07-29T01:02:03.000Z",
   emblemUploadedAt: "2026-07-28T01:02:03.000Z",
@@ -191,5 +195,6 @@ test("영수증 엠블럼 확인은 승인한 변환 결과를 다시 인코딩�
 test("영수증 엠블럼 저장 오류를 구체적으로 안내한다", () => {
   assert.equal(getTeamEmblemErrorMessage("team_receipt_emblem_permission_denied"), "팀 주장만 영수증 엠블럼을 저장할 수 있습니다.");
   assert.equal(getTeamEmblemErrorMessage("team_receipt_emblem_conflict"), "다른 변경이 먼저 저장되었습니다. 최신 상태를 확인한 뒤 다시 시도해 주세요.");
+  assert.equal(getTeamEmblemErrorMessage("team_receipt_emblem_cooldown"), "영수증 엠블럼 재업로드 제한 기간입니다. 다음 변경 가능일:");
   assert.equal(getTeamEmblemErrorMessage("invalid_team_receipt_emblem_key"), "영수증 엠블럼 저장 경로가 올바르지 않습니다.");
 });

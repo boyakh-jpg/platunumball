@@ -52,6 +52,8 @@ export function mapRemoteTeamEmblem(row = {}) {
     emblemFont: row.emblem_font ?? "sport",
     receiptEmblemKey: row.receipt_emblem_key ?? null,
     receiptEmblemUpdatedAt: row.receipt_emblem_updated_at ?? null,
+    receiptEmblemUploadedAt: row.receipt_emblem_uploaded_at ?? null,
+    receiptEmblemUploadCount: Number(row.receipt_emblem_upload_count ?? 0),
   };
 }
 
@@ -71,6 +73,8 @@ export function mapClientTeamEmblem(team = {}) {
     emblemFont: team.emblemFont ?? "sport",
     receiptEmblemKey: team.receiptEmblemKey ?? null,
     receiptEmblemUpdatedAt: team.receiptEmblemUpdatedAt ?? null,
+    receiptEmblemUploadedAt: team.receiptEmblemUploadedAt ?? null,
+    receiptEmblemUploadCount: Number(team.receiptEmblemUploadCount ?? 0),
   };
 }
 
@@ -354,6 +358,7 @@ export function getTeamEmblemErrorMessage(code = "") {
     team_emblem_conflict: "다른 변경이 먼저 저장되었습니다. 최신 상태를 확인한 뒤 다시 시도해 주세요.",
     team_receipt_emblem_permission_denied: "팀 주장만 영수증 엠블럼을 저장할 수 있습니다.",
     team_receipt_emblem_conflict: "다른 변경이 먼저 저장되었습니다. 최신 상태를 확인한 뒤 다시 시도해 주세요.",
+    team_receipt_emblem_cooldown: "영수증 엠블럼 재업로드 제한 기간입니다. 다음 변경 가능일:",
     team_receipt_emblem_update_failed: "영수증 엠블럼 정보를 저장하지 못했습니다.",
     invalid_team_receipt_emblem_key: "영수증 엠블럼 저장 경로가 올바르지 않습니다.",
     team_not_found: "팀을 찾을 수 없습니다.",

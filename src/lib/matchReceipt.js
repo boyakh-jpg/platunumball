@@ -1161,8 +1161,8 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
   const footerRightX = compact ? 850 : 862;
   const footerMiddleDividerOffset = compact ? 126 : 177;
   const footerDateOffset = compact ? 174 : 244;
-  const footerCommentOffset = footerMiddleDividerOffset + (compact ? 24 : 30);
-  const footerTierLabelOffset = compact ? 184 : 246;
+  const footerCommentOffset = footerDateOffset;
+  const footerTierLabelOffset = footerDateOffset + (compact ? 26 : 30);
   const hasSingleGameInfoMeta = !model.hasPersonalStats
     && Boolean(model.comment) !== Boolean(personalTier);
 
@@ -1236,7 +1236,7 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
   if (model.comment) {
     ctx.fillStyle = "#151515";
     ctx.font = '900 22px "KBO Dia Gothic", sans-serif';
-    ctx.fillText(model.comment, footerMiddleX, footerY + (hasSingleGameInfoMeta ? footerDateOffset : footerCommentOffset), 260);
+    ctx.fillText(model.comment, footerMiddleX, footerY + footerCommentOffset, 260);
   }
 
   if (personalTier) {

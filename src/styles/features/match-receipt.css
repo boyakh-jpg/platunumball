@@ -615,7 +615,7 @@
   left: 8%;
   display: block;
   width: 84%;
-  padding-top: 5%;
+  padding-top: 7%;
   border-top: var(--ui-stroke-width) dotted rgba(32, 25, 21, 0.55);
   font-size: clamp(8px, 2.5cqw, 12px);
   font-weight: 900;

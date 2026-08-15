@@ -382,6 +382,8 @@ setProfileAffiliation: async ({ affiliationId = "", name = "" } = {}) => {
         ...team,
         receiptEmblemKey: result.receiptEmblemKey ?? null,
         receiptEmblemUpdatedAt: result.receiptEmblemUpdatedAt ?? new Date().toISOString(),
+        receiptEmblemUploadedAt: result.receiptEmblemUploadedAt ?? team.receiptEmblemUploadedAt ?? null,
+        receiptEmblemUploadCount: Number(result.receiptEmblemUploadCount ?? team.receiptEmblemUploadCount ?? 0),
       } : team),
     }));
     return { ...result, sourceByteSize: prepared.sourceByteSize, byteSize: result?.byteSize ?? prepared.byteSize };
@@ -488,6 +490,8 @@ setProfileAffiliation: async ({ affiliationId = "", name = "" } = {}) => {
           ...team,
           receiptEmblemKey: null,
           receiptEmblemUpdatedAt: result.receiptEmblemUpdatedAt ?? null,
+          receiptEmblemUploadedAt: result.receiptEmblemUploadedAt ?? team.receiptEmblemUploadedAt ?? null,
+          receiptEmblemUploadCount: Number(result.receiptEmblemUploadCount ?? team.receiptEmblemUploadCount ?? 0),
         } : team),
       }));
     }

@@ -1,6 +1,7 @@
 const CACHE = new Map();
 const SIZE = 256;
 const GOLD = [214, 165, 34];
+const CROP_EDGE_GUARD = 5;
 
 function loadImage(url) {
   return new Promise((resolve, reject) => {
@@ -64,13 +65,16 @@ async function convert(url) {
 
     const output = context.createImageData(SIZE, SIZE);
     let edgeCount = 0;
+    const cropCenter = (SIZE - 1) / 2;
+    const cropEdgeRadius = SIZE / 2 - CROP_EDGE_GUARD;
     for (let y = 1; y < SIZE - 1; y += 1) {
       for (let x = 1; x < SIZE - 1; x += 1) {
         const pixel = y * SIZE + x;
         if (!foreground[pixel]) continue;
         const offset = pixel * 4;
         const neighbors = [pixel - 1, pixel + 1, pixel - SIZE, pixel + SIZE];
-        const boundary = neighbors.some((neighbor) => !foreground[neighbor]);
+        const isCropEdge = Math.hypot(x - cropCenter, y - cropCenter) >= cropEdgeRadius;
+        const boundary = !isCropEdge && neighbors.some((neighbor) => !foreground[neighbor]);
         const detail = neighbors.some((neighbor) => {
           if (!foreground[neighbor]) return false;
           return colorDistance(source.data, neighbor * 4, [source.data[offset], source.data[offset + 1], source.data[offset + 2]]) > 58;

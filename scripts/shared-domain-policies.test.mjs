@@ -1335,6 +1335,8 @@ test("team emblem row mapping preserves response fallbacks and null handling", (
     emblemFont: "sport",
     receiptEmblemKey: null,
     receiptEmblemUpdatedAt: null,
+    receiptEmblemUploadedAt: null,
+    receiptEmblemUploadCount: 0,
   });
   assert.deepEqual(mapRemoteTeamEmblem({
     accent: null,
@@ -1359,6 +1361,8 @@ test("team emblem row mapping preserves response fallbacks and null handling", (
     emblemFont: "custom",
     receiptEmblemKey: null,
     receiptEmblemUpdatedAt: null,
+    receiptEmblemUploadedAt: null,
+    receiptEmblemUploadCount: 0,
   });
   assert.deepEqual(mapClientTeamEmblem({
     accent: "#abcdef",
@@ -1380,6 +1384,8 @@ test("team emblem row mapping preserves response fallbacks and null handling", (
     emblemFont: "sport",
     receiptEmblemKey: null,
     receiptEmblemUpdatedAt: null,
+    receiptEmblemUploadedAt: null,
+    receiptEmblemUploadCount: 0,
   });
 });
 

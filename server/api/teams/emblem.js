@@ -36,7 +36,7 @@ async function loadTeamForActor(context, teamId) {
   const [{ data: team, error: teamError }, { data: captain, error: captainError }] = await Promise.all([
     context.supabase
       .from("teams")
-      .select("id,emblem_key,emblem_previous_key,emblem_source,emblem_updated_at,emblem_uploaded_at,emblem_upload_count,emblem_color,emblem_border_enabled,emblem_border_color,emblem_text_mode,emblem_abbreviation,emblem_font,emblem_violation_count,emblem_upload_blocked_until,emblem_moderated_at,emblem_moderation_reason,receipt_emblem_key,receipt_emblem_updated_at,deleted_at")
+      .select("id,emblem_key,emblem_previous_key,emblem_source,emblem_updated_at,emblem_uploaded_at,emblem_upload_count,emblem_color,emblem_border_enabled,emblem_border_color,emblem_text_mode,emblem_abbreviation,emblem_font,emblem_violation_count,emblem_upload_blocked_until,emblem_moderated_at,emblem_moderation_reason,receipt_emblem_key,receipt_emblem_updated_at,receipt_emblem_uploaded_at,receipt_emblem_upload_count,deleted_at")
       .eq("id", teamId)
       .is("deleted_at", null)
       .maybeSingle(),
@@ -80,7 +80,8 @@ async function commitReceiptEmblem(context, teamId, emblemKey, expectedEmblemKey
   if (!error) return data ?? { ok: true, teamId, receiptEmblemKey: emblemKey || null };
 
   const mapped = new Error(error.message || "team_receipt_emblem_update_failed");
-  mapped.statusCode = error.code === "42501" ? 403 : error.code === "40001" ? 409 : error.code === "P0002" ? 404 : 400;
+  mapped.statusCode = ["team_receipt_emblem_cooldown", "team_emblem_moderation_blocked"].includes(error.message) ? 429 : error.code === "42501" ? 403 : error.code === "40001" ? 409 : error.code === "P0002" ? 404 : 400;
+  mapped.nextAllowedAt = error.details || null;
   throw mapped;
 }
 
@@ -168,7 +169,7 @@ export default async function handler(request, response) {
     const previousEmblemKey = team.emblem_key || null;
     const retainedEmblemKey = team.emblem_previous_key || null;
     const previousReceiptEmblemKey = team.receipt_emblem_key || null;
-    if (action === "upload" && team.emblem_upload_blocked_until && new Date(team.emblem_upload_blocked_until).getTime() > Date.now()) {
+    if (["upload", "receipt-upload"].includes(action) && team.emblem_upload_blocked_until && new Date(team.emblem_upload_blocked_until).getTime() > Date.now()) {
       const blocked = new Error("team_emblem_moderation_blocked");
       blocked.statusCode = 429;
       blocked.nextAllowedAt = team.emblem_upload_blocked_until;
