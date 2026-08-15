@@ -171,7 +171,7 @@ export function getMatchClockPresetOptions(mode = "5v5") {
       { id: "community", label: "기본 8분×2", patch: getModeClockPreset(mode, "community") },
       { id: "quarters", label: "4쿼터 8분×4", patch: getModeClockPreset(mode, "quarters") },
       { id: "quick", label: "빠른 11점", patch: getModeClockPreset(mode, "quick") },
-      { id: "score21", label: mode === "3v3" ? "FIBA 3x3 · 21점" : "기본 21점", patch: getModeClockPreset(mode, "score21") },
+      { id: "score21", label: mode === "3v3" ? "3x3 · 21점" : "기본 21점", patch: getModeClockPreset(mode, "score21") },
       { id: "extended", label: "긴 경기 15분", patch: getModeClockPreset(mode, "extended") },
     ];
   }

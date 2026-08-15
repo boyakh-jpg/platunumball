@@ -117,6 +117,7 @@ export function incrementMatchScore(state, matchId, deltaA = 0, deltaB = 0, revi
     ...result,
     scoreA,
     scoreB,
+    periodScores: [],
     playerStats: match.refereeId ? result.playerStats ?? {} : {},
     statSubmissions: match.refereeId ? result.statSubmissions ?? {} : {},
     scoreRevisionA: revisionA + (deltaA ? 1 : 0),

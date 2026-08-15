@@ -8,6 +8,7 @@ import { SOLO_RECORD_ANONYMOUS_POSITION } from "../../lib/constants.js";
 import { STAT_ENTRY_WINDOW_MINUTES } from "../../lib/constants.js";
 import { getCourtId } from "../../lib/courts.js";
 import { getMatchCreationPolicyPayload } from "../../lib/matchCreationPolicies.js";
+import { getMatchRulesPayload } from "../../lib/matchRules.js";
 import { getMatchRecordEndedAt } from "../../lib/matchUtils.js";
 import { getRecordCreationWindowStatus } from "../../lib/matchUtils.js";
 import { getRegisteredCourts } from "../../lib/courts.js";
@@ -131,6 +132,7 @@ function createSoloRecordMatch(state, draft = {}) {
   };
   const selectedCourt = getRegisteredCourts(state).find((court) => court.name === draft.court || court.id === getCourtId(draft)) ?? null;
   const rules = {
+    ...getMatchRulesPayload({ ...(draft.rules ?? {}), ...draft }, { mode }),
     recordType: RECORD_TYPES.personalRecord,
     recordEntryMode,
     mmrExcludedPlayerIds,
@@ -337,6 +339,7 @@ export function createMatch(state, draft) {
     statEntryMinutes: STAT_ENTRY_WINDOW_MINUTES,
     disputeMinutes,
     rules: {
+      ...getMatchRulesPayload({ ...(effectiveDraft.rules ?? {}), ...effectiveDraft }, { mode }),
       recordType: RECORD_TYPES.matchRecord,
       recordComposition,
       recordSetupReady: false,

@@ -34,7 +34,7 @@ export const MATCH_RECEIPT_FORMATS = Object.freeze([
   { value: "1v1", label: "1대1" },
   { value: "2v2", label: "2대2" },
   { value: "3v3", label: "3대3" },
-  { value: "3x3", label: "FIBA 3x3" },
+  { value: "3x3", label: "3x3" },
   { value: "5v5", label: "5대5" },
 ]);
 

@@ -186,7 +186,7 @@ export function normalizeMatchRules(source = {}, { mode = "3v3" } = {}) {
   const gameClockEnabled = source.gameClockEnabled !== false && source.gameClockEnabled !== "false";
   const qrAttendanceEnabled = !["match_record", "solo", "personal_record"].includes(String(source.recordType ?? "").trim().toLowerCase());
   const hasPeriodModel = PERIOD_COUNTS.has(Number(source.periodCount));
-  const periodCount = hasPeriodModel ? Number(source.periodCount) : 1;
+  const periodCount = hasPeriodModel ? Number(source.periodCount) : defaults.periodCount;
   const legacyPeriodMinutes = hasPeriodModel ? defaults.periodMinutes : source.timeLimit;
   const periodMinutes = clampInteger(
     source.periodMinutes ?? legacyPeriodMinutes,
@@ -252,13 +252,15 @@ export function getMatchRulesPayload(source = {}, options = {}) {
 
 export function isFiba3x3Rules(mode = "", rules = {}) {
   if (mode !== "3v3") return false;
-  const normalized = normalizeMatchRules(rules, { mode });
-  return normalized.ruleSet === "fiba_3x3" || (
-    Number(normalized.targetScore) === 21
-    && Number(normalized.periodCount) === 1
-    && Number(normalized.periodMinutes) === 12
-    && normalized.endCondition === "target_or_time"
-    && normalized.winByTwo === true
+  const ruleSet = String(rules?.ruleSet ?? "").trim().toLowerCase();
+  if (ruleSet === "fiba_3x3") return true;
+  if (ruleSet) return false;
+  return (
+    Number(rules?.targetScore) === 21
+    && Number(rules?.periodCount) === 1
+    && Number(rules?.periodMinutes) === 12
+    && rules?.endCondition === "target_or_time"
+    && rules?.winByTwo === true
   );
 }
 

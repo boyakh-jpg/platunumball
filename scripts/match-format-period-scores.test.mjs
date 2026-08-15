@@ -9,7 +9,7 @@ import {
 } from "../shared/lib/matchPeriodScores.js";
 import { getMatchReceiptDraftFromMatch } from "../src/lib/matchReceipt.js";
 
-test("FIBA 21-point preset distinguishes 3x3 from ordinary 3v3", () => {
+test("explicit 21-point 3x3 preset distinguishes 3x3 from ordinary 3v3", () => {
   const fibaRules = getModeClockPreset("3v3", "score21");
   const ordinaryRules = getModeClockPreset("3v3", "community");
   const twoOnTwoRules = getModeClockPreset("2v2", "score21");
@@ -20,6 +20,15 @@ test("FIBA 21-point preset distinguishes 3x3 from ordinary 3v3", () => {
   assert.equal(fibaRules.ball, "6호 공");
   assert.equal(getMatchFormatLabel("3v3", fibaRules), "3x3");
   assert.equal(getMatchFormatLabel("3v3", ordinaryRules), "3v3");
+  assert.equal(getMatchFormatLabel("3v3", { recordType: "match_record" }), "3v3");
+  assert.equal(getMatchFormatLabel("3v3", {
+    ruleSet: "standard",
+    targetScore: 21,
+    periodCount: 1,
+    periodMinutes: 12,
+    endCondition: "target_or_time",
+    winByTwo: true,
+  }), "3v3");
   assert.equal(twoOnTwoRules.ruleSet, "standard");
   assert.equal(getMatchFormatLabel("2v2", twoOnTwoRules), "2v2");
 });
@@ -86,6 +95,10 @@ test("schema and migration persist and validate canonical period scores", () => 
     new URL("../supabase/migrations/20260814150000_match_period_scores_and_fiba_3x3.sql", import.meta.url),
     "utf8",
   );
+  const stalePeriodMigration = fs.readFileSync(
+    new URL("../supabase/migrations/20260815120000_clear_stale_match_period_scores.sql", import.meta.url),
+    "utf8",
+  );
 
   for (const source of [schema, migration]) {
     assert.match(source, /period_scores jsonb/u);
@@ -93,4 +106,9 @@ test("schema and migration persist and validate canonical period scores", () => 
     assert.match(source, /period_score_total_mismatch/u);
   }
   assert.match(migration, /update public\.match_results[\s\S]*period_scores = '\[\]'::jsonb/u);
+  for (const source of [schema, stalePeriodMigration]) {
+    assert.match(source, /new\.score_a is distinct from old\.score_a/u);
+    assert.match(source, /new\.period_scores is not distinct from old\.period_scores/u);
+    assert.match(source, /new\.period_scores := '\[\]'::jsonb/u);
+  }
 });

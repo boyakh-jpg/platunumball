@@ -383,6 +383,18 @@ function runActualMatchLifecycle({
     ...scoreOptions,
     expectedRevisionA: 0,
   });
+  state = {
+    ...state,
+    matches: state.matches.map((item) => item.id === match.id
+      ? {
+          ...item,
+          result: {
+            ...item.result,
+            periodScores: [{ label: "1Q", scoreA: 2, scoreB: 0 }],
+          },
+        }
+      : item),
+  };
   state = incrementMatchScore(asActor(state, operatorId), match.id, 1, 0, {
     ...scoreOptions,
     expectedRevisionA: 0,
@@ -392,6 +404,7 @@ function runActualMatchLifecycle({
     ...scoreOptions,
     expectedRevisionB: 0,
   });
+  assert.deepEqual(state.matches[0].result.periodScores, [], `${postId}: 점수 변경 시 기존 구간 점수 제거`);
   if (!hasReferee) {
     state = incrementMatchScore(asActor(state, operatorId), match.id, 1, 0, {
       ...scoreOptions,

@@ -13,6 +13,7 @@ import {
 } from "../src/data/repository.js";
 import { getMatchBenchPolicyError, validateMatchCreateCourt } from "../server/api/matches/sync-match.js";
 import { getSqlMatchReloadPredicate } from "../server/lib/matchSqlActions.js";
+import { getModeClockPreset } from "../src/lib/matchCreationPolicies.js";
 import {
   doMatchTimeRangesOverlap,
   getActualMatchPlayerIds,
@@ -163,6 +164,42 @@ test("postgame records allow an unknown court while normal matches still require
   assert.doesNotThrow(() => validateMatchCreateCourt({ rules: { recordType: "match_record" } }));
   assert.doesNotThrow(() => validateMatchCreateCourt({ rules: { recordType: "solo" } }));
   assert.throws(() => validateMatchCreateCourt({ rules: { recordType: "match" } }), /missing_match_court/);
+});
+
+test("match and personal records preserve canonical match rules", () => {
+  const threeOnThreePreset = getModeClockPreset("3v3", "score21");
+  const threeOnThree = createMatch(makeState(), {
+    ...makeRecordDraft("individual"),
+    ...threeOnThreePreset,
+  });
+  const match3 = threeOnThree.matches[0];
+  assert.equal(match3.rules.ruleSet, "fiba_3x3");
+  assert.equal(match3.rules.periodCount, 1);
+  assert.equal(match3.rules.periodMinutes, 10);
+
+  const fiveOnFive = createMatch(makeState(), {
+    ...makeRecordDraft("individual"),
+    id: "record-5v5",
+    mode: "5v5",
+  });
+  const match5 = fiveOnFive.matches[0];
+  assert.equal(match5.rules.ruleSet, "standard");
+  assert.equal(match5.rules.periodCount, 4);
+  assert.equal(match5.rules.periodMinutes, 10);
+
+  const personal = createMatch(makeState(), {
+    ...makeRecordDraft("individual"),
+    id: "personal-3x3",
+    recordType: "solo",
+    recordEntryMode: "quick",
+    soloScoreFor: 21,
+    soloScoreAgainst: 18,
+    ...threeOnThreePreset,
+  });
+  const personalMatch = personal.matches[0];
+  assert.equal(personalMatch.rules.ruleSet, "fiba_3x3");
+  assert.equal(personalMatch.rules.periodCount, 1);
+  assert.equal(personalMatch.rules.periodMinutes, 10);
 });
 
 test("match-record roster policy errors return client-safe status codes", () => {
