@@ -3,6 +3,12 @@ import { useRecruitingRoomModalInteractions } from "./useRecruitingRoomModalInte
 import { useRecruitingRoomParticipationActions } from "./useRecruitingRoomParticipationActions.js";
 import { useRecruitingRoomManagementActions } from "./useRecruitingRoomManagementActions.js";
 
+export function getCurrentUserTeams(teams = [], currentUserId = "") {
+  return (teams ?? []).filter((team) => (
+    (team?.members ?? []).some((member) => member?.userId === currentUserId)
+  ));
+}
+
 export function useRecruitingRoomController({
   app,
   post,
@@ -48,7 +54,7 @@ export function useRecruitingRoomController({
     [sourceMatch?.anonymousPlayers],
   );
   const myTeams = useMemo(
-    () => app.state.teams.filter((team) => team.members.some((member) => member.userId === app.currentUser.id)),
+    () => getCurrentUserTeams(app.state.teams, app.currentUser.id),
     [app.currentUser.id, app.state.teams],
   );
   useEffect(() => {

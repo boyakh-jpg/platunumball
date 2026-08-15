@@ -2883,9 +2883,12 @@ test("guest room targeting and chat scroll policy preserve exact-link and readin
     }, {
       getGuestRecruitingUnavailableCopy,
       resolveGuestRecruitingTarget,
+    }, {
+      getCurrentUserTeams,
     }] = await Promise.all([
       server.ssrLoadModule("/src/components/recruiting/RecruitingRoomRosterPanels.jsx"),
       server.ssrLoadModule("/src/pages/Recruiting.jsx"),
+      server.ssrLoadModule("/src/components/recruiting/useRecruitingRoomController.js"),
     ]);
 
     assert.equal(isRoomChatNearBottom({ scrollHeight: 1_000, scrollTop: 100, clientHeight: 400 }), false);
@@ -2914,6 +2917,11 @@ test("guest room targeting and chat scroll policy preserve exact-link and readin
     }, "missing-room"), { post: null, status: "not_found" });
     assert.equal(getGuestRecruitingUnavailableCopy("private").title, "비공개 방입니다");
     assert.equal(getGuestRecruitingUnavailableCopy("not_found").title, "방을 찾을 수 없습니다");
+    assert.deepEqual(getCurrentUserTeams([{ id: "public-team" }], "p_pending"), []);
+    assert.deepEqual(
+      getCurrentUserTeams([{ id: "mine", members: [{ userId: "p1" }] }], "p1").map((team) => team.id),
+      ["mine"],
+    );
   } finally {
     await server.close();
   }
