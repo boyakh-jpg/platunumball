@@ -53,7 +53,7 @@ export default function SettingsPageView({ controller, auth }) {
     setIdentityStatus("");
     const result = await auth.linkIdentityWithProvider(providerId, "/app/settings?section=main");
     if (!result?.ok && result?.error !== "auth_action_pending") {
-      setIdentityStatus("로그인 연결을 시작하지 못했습니다.");
+      setIdentityStatus(result?.message || "로그인 연결을 시작하지 못했습니다.");
     }
   };
 

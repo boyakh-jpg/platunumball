@@ -126,6 +126,12 @@ function formatAuthError(message) {
   if (!message) return "";
   const normalizedMessage = String(message).toLowerCase();
   if (
+    normalizedMessage.includes("manual linking")
+    && normalizedMessage.includes("disabled")
+  ) {
+    return "로그인 연결 기능이 아직 설정되지 않았습니다. 관리자에게 문의해 주세요.";
+  }
+  if (
     normalizedMessage.includes("identity_already_exists")
     || normalizedMessage.includes("already linked")
     || normalizedMessage.includes("already registered")
@@ -313,13 +319,17 @@ export function useAuthSession() {
           options: { redirectTo },
         });
         if (linkError) {
-          setError(formatAuthError(linkError.code || linkError.message));
-          return { ok: false, error: linkError.code || linkError.message || "identity_link_failed" };
+          const errorCode = linkError.code || linkError.message || "identity_link_failed";
+          const errorMessage = formatAuthError(errorCode);
+          setError(errorMessage);
+          return { ok: false, error: errorCode, message: errorMessage };
         }
         return { ok: true, data: linkData };
       } catch (linkError) {
-        setError(formatAuthError(linkError?.code || linkError?.message));
-        return { ok: false, error: linkError?.code || linkError?.message || "identity_link_failed" };
+        const errorCode = linkError?.code || linkError?.message || "identity_link_failed";
+        const errorMessage = formatAuthError(errorCode);
+        setError(errorMessage);
+        return { ok: false, error: errorCode, message: errorMessage };
       } finally {
         authActionPendingRef.current = false;
         setAuthActionPending(false);

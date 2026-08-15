@@ -4172,9 +4172,10 @@ flowchart TD
 2. 새 로그인 수단은 로그인된 세션의 설정 화면에서 명시적으로 `linkIdentity`를 실행할 때만 같은 프로필에 연결한다. 일반 로그인은 기존 연결 identity만 같은 프로필로 복귀시키며 연결되지 않은 provider는 별도 프로필을 만들 수 있다.
 3. 이메일·프로필 해시태그·표시명 일치만으로 계정을 자동 병합하지 않는다. identity가 다른 사용자에 연결돼 있으면 충돌로 중단하고 기록·MMR·팀·운영 권한을 자동 이전하지 않는다.
 4. 탈퇴 재가입 제한은 연결된 모든 provider+subject identity에 적용하며 원본 식별자 대신 SHA-256 해시만 저장한다.
-5. Kakao는 Supabase provider 설정과 `VITE_KAKAO_AUTH_ENABLED=true`가 모두 준비된 뒤 노출한다. Kakao 이메일은 선택값으로 취급한다.
-6. 복구 수단과 최소 1개 로그인 유지 정책이 확정되기 전에는 identity 연결 해제를 제공하지 않는다.
-7. 랜딩과 영수증의 로그인 진입은 공용 provider 선택 화면을 사용하고 검증된 내부 `returnTo`만 보존한다.
+5. Kakao는 Supabase provider 설정, Kakao Developers 동의항목, `VITE_KAKAO_AUTH_ENABLED=true`가 모두 준비된 뒤 노출한다. 실제 OAuth 요청 scope와 Kakao 동의항목은 항상 같아야 하며, 현재 Supabase Kakao provider의 기본 요청인 `account_email`, `profile_image`, `profile_nickname`을 모두 설정한다. 이메일 동의를 제공할 수 없는 앱은 `Allow users without an email`을 켜고 OAuth 요청에서 `account_email`이 빠지는지 실제 인가 URL로 확인한 뒤 노출한다.
+6. 설정 화면의 provider 연결은 Supabase `Allow manual linking`이 켜진 경우에만 허용한다. 연결 실패 시 일반 문구로 덮지 않고 인증 계층이 반환한 안전한 사용자 메시지를 표시한다.
+7. 복구 수단과 최소 1개 로그인 유지 정책이 확정되기 전에는 identity 연결 해제를 제공하지 않는다.
+8. 랜딩과 영수증의 로그인 진입은 공용 provider 선택 화면을 사용하고 검증된 내부 `returnTo`만 보존한다.
 
 ## 2026-08-16 영수증 전용 엠블럼 수명주기
 

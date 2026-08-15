@@ -53,5 +53,8 @@ test("login entry points share the provider chooser and settings links identitie
   assert.match(receipt, /getLoginPath/);
   assert.match(settings, /연결된 로그인/);
   assert.match(settings, /linkIdentityWithProvider/);
+  assert.match(settings, /result\?\.message/);
+  assert.match(authHook, /manual linking/);
+  assert.match(authHook, /message: errorMessage/);
   assert.match(envExample, /VITE_KAKAO_AUTH_ENABLED=false/);
 });
