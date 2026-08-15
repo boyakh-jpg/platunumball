@@ -365,11 +365,11 @@ setProfileAffiliation: async ({ affiliationId = "", name = "" } = {}) => {
     }
     return { ...result, sourceByteSize: prepared.sourceByteSize, byteSize: result?.byteSize ?? prepared.byteSize };
   },
-  uploadTeamReceiptEmblem: async (teamId, file) => {
+  uploadTeamReceiptEmblem: async (teamId, prepared) => {
     const serverReady = await ensureServerActionAvailable("/api/teams/emblem", "영수증 엠블럼 저장");
     if (serverReady !== true) return serverReady;
     if (!ensureRemoteReady("영수증 엠블럼 저장")) return { ok: false, error: "remote_not_ready" };
-    const prepared = await prepareTeamEmblemUpload(file);
+    if (!prepared?.imageBase64) return { ok: false, error: "team_emblem_invalid_payload" };
     const result = await runServerAction("/api/teams/emblem", {
       action: "receipt-upload",
       teamId,

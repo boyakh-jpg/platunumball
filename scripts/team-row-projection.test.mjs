@@ -5,7 +5,7 @@ import test from "node:test";
 import { toClientTeamWithMembers } from "../server/api/_supabaseAdmin.js";
 import { toClientTeam as toMatchListTeam } from "../server/api/matches/list.js";
 import { toTeam as toSearchTeam } from "../server/api/search.js";
-import { mapRemoteTeamEmblem as mapSharedRemoteTeamEmblem } from "../shared/lib/teamEmblem.js";
+import { getTeamEmblemErrorMessage, mapRemoteTeamEmblem as mapSharedRemoteTeamEmblem } from "../shared/lib/teamEmblem.js";
 import { projectTeamRow } from "../shared/lib/teamRowProjection.js";
 import { toClientRecruitingTeam } from "../src/data/recruitingMappers.js";
 import { fromRemoteTeam } from "../src/data/teamMappers.js";
@@ -165,4 +165,31 @@ test("server team projections do not import the client team emblem module", asyn
 
   const clientShim = await readFile(new URL("../src/lib/teamEmblem.js", import.meta.url), "utf8");
   assert.match(clientShim, /export \* from "\.\.\/\.\.\/shared\/lib\/teamEmblem\.js";/);
+});
+
+test("영수증 엠블럼 확인은 승인한 변환 결과를 다시 인코딩하지 않고 저장한다", async () => {
+  const [teamPage, teamActions] = await Promise.all([
+    readFile(new URL("../src/pages/TeamDetail.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/hooks/appData/actions/profileTeamActions.js", import.meta.url), "utf8"),
+  ]);
+  const confirmSource = teamPage.slice(
+    teamPage.indexOf("const confirmReceiptEmblem"),
+    teamPage.indexOf("const removeReceiptEmblem"),
+  );
+  const actionSource = teamActions.slice(
+    teamActions.indexOf("uploadTeamReceiptEmblem:"),
+    teamActions.indexOf("restoreTeamEmblem:"),
+  );
+
+  assert.match(teamPage, /setReceiptEmblemUpload\(preparedUpload\)/);
+  assert.match(confirmSource, /uploadTeamReceiptEmblem\(team\.id, receiptEmblemUpload\)/);
+  assert.doesNotMatch(confirmSource, /fetch\(|new File|prepareTeamEmblemUpload/);
+  assert.match(actionSource, /imageBase64: prepared\.imageBase64/);
+  assert.doesNotMatch(actionSource, /prepareTeamEmblemUpload/);
+});
+
+test("영수증 엠블럼 저장 오류를 구체적으로 안내한다", () => {
+  assert.equal(getTeamEmblemErrorMessage("team_receipt_emblem_permission_denied"), "팀 주장만 영수증 엠블럼을 저장할 수 있습니다.");
+  assert.equal(getTeamEmblemErrorMessage("team_receipt_emblem_conflict"), "다른 변경이 먼저 저장되었습니다. 최신 상태를 확인한 뒤 다시 시도해 주세요.");
+  assert.equal(getTeamEmblemErrorMessage("invalid_team_receipt_emblem_key"), "영수증 엠블럼 저장 경로가 올바르지 않습니다.");
 });

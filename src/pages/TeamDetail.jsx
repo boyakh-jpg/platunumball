@@ -79,6 +79,7 @@ export default function TeamDetail({ app }) {
   const [emblemFile, setEmblemFile] = useState(null);
   const [receiptEmblemFile, setReceiptEmblemFile] = useState(null);
   const [receiptEmblemPreview, setReceiptEmblemPreview] = useState("");
+  const [receiptEmblemUpload, setReceiptEmblemUpload] = useState(null);
   const [receiptEmblemFeedback, setReceiptEmblemFeedback] = useState("");
   const [receiptEmblemPending, setReceiptEmblemPending] = useState(false);
   const [emblemStyleDraft, setEmblemStyleDraft] = useState(() => ({
@@ -121,6 +122,7 @@ export default function TeamDetail({ app }) {
     receiptEmblemPendingRef.current = null;
     setReceiptEmblemFile(null);
     setReceiptEmblemPreview("");
+    setReceiptEmblemUpload(null);
     setReceiptEmblemFeedback("");
     setReceiptEmblemPending(false);
   }, [teamId]);
@@ -495,6 +497,7 @@ export default function TeamDetail({ app }) {
     if (!file || receiptEmblemPendingRef.current?.scopeId === team.id) return;
     setReceiptEmblemFile(file);
     setReceiptEmblemPreview("");
+    setReceiptEmblemUpload(null);
     setReceiptEmblemFeedback("");
   };
   const convertReceiptEmblem = async (crop) => {
@@ -502,13 +505,21 @@ export default function TeamDetail({ app }) {
     const operation = { scopeId: team.id, operationId: ++receiptEmblemOperationSequenceRef.current };
     receiptEmblemPendingRef.current = operation;
     setReceiptEmblemPending(true);
+    setReceiptEmblemPreview("");
+    setReceiptEmblemUpload(null);
     setReceiptEmblemFeedback("");
     try {
       const prepared = await prepareTeamEmblemUpload(receiptEmblemFile, crop);
       const preview = await createMatchReceiptLineArt(`data:image/webp;base64,${prepared.imageBase64}`);
       if (!preview) throw new Error("line_art_failed");
+      const [header, base64 = ""] = preview.split(",", 2);
+      const mimeType = header.match(/^data:([^;]+);base64$/)?.[1] || "image/png";
+      const binary = window.atob(base64);
+      const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+      const preparedUpload = await prepareTeamEmblemUpload(new Blob([bytes], { type: mimeType }));
       if (!isCurrentScopedOperation(receiptEmblemPendingRef.current, operation, currentTeamIdRef.current)) return;
       setReceiptEmblemPreview(preview);
+      setReceiptEmblemUpload(preparedUpload);
     } catch (error) {
       if (isCurrentScopedOperation(receiptEmblemPendingRef.current, operation, currentTeamIdRef.current)) {
         setReceiptEmblemFeedback(getTeamEmblemErrorMessage(error?.code || error?.message));
@@ -521,15 +532,13 @@ export default function TeamDetail({ app }) {
     }
   };
   const confirmReceiptEmblem = async () => {
-    if (!receiptEmblemPreview || receiptEmblemPendingRef.current?.scopeId === team.id) return;
+    if (!receiptEmblemPreview || !receiptEmblemUpload || receiptEmblemPendingRef.current?.scopeId === team.id) return;
     const operation = { scopeId: team.id, operationId: ++receiptEmblemOperationSequenceRef.current };
     receiptEmblemPendingRef.current = operation;
     setReceiptEmblemPending(true);
     setReceiptEmblemFeedback("");
     try {
-      const response = await fetch(receiptEmblemPreview);
-      const blob = await response.blob();
-      const result = await app.actions.uploadTeamReceiptEmblem(team.id, new File([blob], "receipt-emblem.png", { type: "image/png" }));
+      const result = await app.actions.uploadTeamReceiptEmblem(team.id, receiptEmblemUpload);
       if (!isCurrentScopedOperation(receiptEmblemPendingRef.current, operation, currentTeamIdRef.current)) return;
       if (!result || result.ok === false) {
         setReceiptEmblemFeedback(getTeamEmblemErrorMessage(result?.error));
@@ -537,6 +546,7 @@ export default function TeamDetail({ app }) {
       }
       setReceiptEmblemFile(null);
       setReceiptEmblemPreview("");
+      setReceiptEmblemUpload(null);
       setReceiptEmblemFeedback("영수증 엠블럼을 저장했습니다.");
     } catch (error) {
       if (isCurrentScopedOperation(receiptEmblemPendingRef.current, operation, currentTeamIdRef.current)) {
@@ -576,7 +586,12 @@ export default function TeamDetail({ app }) {
     if (receiptEmblemPendingRef.current?.scopeId === team.id) return;
     setReceiptEmblemFile(null);
     setReceiptEmblemPreview("");
+    setReceiptEmblemUpload(null);
     setReceiptEmblemFeedback("");
+  };
+  const resetReceiptEmblemConversion = () => {
+    setReceiptEmblemPreview("");
+    setReceiptEmblemUpload(null);
   };
   const restorePreviousEmblem = async () => {
     if (emblemPendingRef.current?.scopeId === team.id || !emblemCanRestore) return;
@@ -662,5 +677,5 @@ export default function TeamDetail({ app }) {
   const emblemUploadLocked = moderationLocked || isEmblemUploadLocked(team.emblemUploadCount, team.emblemUploadedAt);
   const emblemSource = team.emblemSource ?? (team.emblemKey ? "upload" : "initial");
 
-  return <TeamDetailView controller={{ addUserId, app, archivedHistory, availableUsers, approveTeamJoinRequest, canAddMember, canManage, cancelPendingTeamInvitation, cancelReceiptEmblemEditor, cancelTeamJoinRequest, captain, changeTeamMemberRole, confirmEmblemUpload, confirmReceiptEmblem, confirmedCount, convertReceiptEmblem, cooldownNextAt, currentUserIsMember, deleteTeam, detailHistory, directoryPending, declineTeamJoinRequest, emblemAbbreviationCharacterCount, emblemCanRestore, emblemFeedback, emblemFile, emblemInputRef, emblemPending, emblemSource, emblemStatusError, emblemStatusRequestRef, emblemStyleDraft, emblemUploadLocked, excludeTeamMember, favoriteError, favoritePending, favoriteTeamIds, history, historyCount, historyIds, inviteMember, isFavoriteTeam, joinApplicationOpen, loadDirectory, loadTeamEmblemStatus, loadTeamRecords, loadedLosses, loadedWins, losses, memberDraft, memberQuery, membershipCounts, moderationBlockedAt, moderationLocked, nextEmblemUploadAt, openTeamJoinApplication, pendingOwnJoinRequest, pendingOwnTeamInvite, pendingTargetIds, pendingTeamInvitations, pendingTeamJoinRequests, receiptEmblemFeedback, receiptEmblemFile, receiptEmblemInputRef, receiptEmblemPending, receiptEmblemPreview, refreshTeamDetail, regularMembers, removeReceiptEmblem, renderInviteSearchItem, renderMembers, requestTeamMembership, reserveMembers, restorePreviousEmblem, retryTeamEmblemStatus, reviewedJoinApplication, saveEmblemStyle, saveTeamDescription, selectEmblemSource, selectedCount, selectedHistoryMatchId, selectedInviteProfile, selectedInviteUser, selectedRemoteUser, setEmblemCanRestore, setEmblemFeedback, setEmblemFile, setEmblemPending, setEmblemStyleDraft, setJoinApplicationOpen, setMemberDraft, setMemberQuery, setReceiptEmblemPreview, setReviewedJoinApplication, setSelectedHistoryMatchId, setSelectedInviteProfile, setTeamDescriptionDraft, setTeamInviteError, team, teamDescriptionDraft, teamDetailError, teamFull, teamId, teamInviteError, teamInvitePending, teamManagementError, teamManagementPending, teamRecordArchive, teamScoreSummary, toggleTeamFavorite, uploadEmblem, uploadReceiptEmblem, userMap, winRate, wins }} />;
+  return <TeamDetailView controller={{ addUserId, app, archivedHistory, availableUsers, approveTeamJoinRequest, canAddMember, canManage, cancelPendingTeamInvitation, cancelReceiptEmblemEditor, cancelTeamJoinRequest, captain, changeTeamMemberRole, confirmEmblemUpload, confirmReceiptEmblem, confirmedCount, convertReceiptEmblem, cooldownNextAt, currentUserIsMember, deleteTeam, detailHistory, directoryPending, declineTeamJoinRequest, emblemAbbreviationCharacterCount, emblemCanRestore, emblemFeedback, emblemFile, emblemInputRef, emblemPending, emblemSource, emblemStatusError, emblemStatusRequestRef, emblemStyleDraft, emblemUploadLocked, excludeTeamMember, favoriteError, favoritePending, favoriteTeamIds, history, historyCount, historyIds, inviteMember, isFavoriteTeam, joinApplicationOpen, loadDirectory, loadTeamEmblemStatus, loadTeamRecords, loadedLosses, loadedWins, losses, memberDraft, memberQuery, membershipCounts, moderationBlockedAt, moderationLocked, nextEmblemUploadAt, openTeamJoinApplication, pendingOwnJoinRequest, pendingOwnTeamInvite, pendingTargetIds, pendingTeamInvitations, pendingTeamJoinRequests, receiptEmblemFeedback, receiptEmblemFile, receiptEmblemInputRef, receiptEmblemPending, receiptEmblemPreview, refreshTeamDetail, regularMembers, removeReceiptEmblem, renderInviteSearchItem, renderMembers, requestTeamMembership, reserveMembers, resetReceiptEmblemConversion, restorePreviousEmblem, retryTeamEmblemStatus, reviewedJoinApplication, saveEmblemStyle, saveTeamDescription, selectEmblemSource, selectedCount, selectedHistoryMatchId, selectedInviteProfile, selectedInviteUser, selectedRemoteUser, setEmblemCanRestore, setEmblemFeedback, setEmblemFile, setEmblemPending, setEmblemStyleDraft, setJoinApplicationOpen, setMemberDraft, setMemberQuery, setReviewedJoinApplication, setSelectedHistoryMatchId, setSelectedInviteProfile, setTeamDescriptionDraft, setTeamInviteError, team, teamDescriptionDraft, teamDetailError, teamFull, teamId, teamInviteError, teamInvitePending, teamManagementError, teamManagementPending, teamRecordArchive, teamScoreSummary, toggleTeamFavorite, uploadEmblem, uploadReceiptEmblem, userMap, winRate, wins }} />;
 }
