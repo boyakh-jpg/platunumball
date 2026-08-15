@@ -19,6 +19,7 @@ function RecruitingRoomVersusSide({ context, sideName, meta }) {
     roomOwnerId,
     roomPhaseViewModel,
     roomState,
+    selectedMatchRules,
     selectedPost,
     showCaptainBadge,
     slotPositions,
@@ -107,6 +108,10 @@ export function RecruitingRoomPrimarySection({ context }) {
     setRoomHelpOpen, sideMmrBalance, sourceMatchPlacementByPlayerId, sourceMatchSideLeaderIds, sourceMatchSlotManagementOpen, sourceRoomReadOnly, teamAMeta,
     teamBMeta, teamOnlyRoom, toggleInvitePlayer, tournamentRoomOwnerName, updateInviteDraft, userById,
   } = context;
+  const roomFormatLabel = getMatchFormatLabel(
+    sourceMatch?.mode ?? selectedPost.mode,
+    sourceMatch?.rules ?? selectedMatchRules,
+  );
 
   return (
     <>

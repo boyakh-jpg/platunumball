@@ -2869,6 +2869,10 @@ document.body.dataset.result = btoa(JSON.stringify({
 });
 
 test("guest room targeting and chat scroll policy preserve exact-link and reading state", async () => {
+  const primarySectionSource = await readFile(
+    join(process.cwd(), "src/components/recruiting/RecruitingRoomPrimarySection.jsx"),
+    "utf8",
+  );
   const server = await createServer({
     root: process.cwd(),
     logLevel: "error",
@@ -2922,6 +2926,8 @@ test("guest room targeting and chat scroll policy preserve exact-link and readin
       getCurrentUserTeams([{ id: "mine", members: [{ userId: "p1" }] }], "p1").map((team) => team.id),
       ["mine"],
     );
+    assert.match(primarySectionSource, /roomState,\s+selectedMatchRules,\s+selectedPost,/);
+    assert.match(primarySectionSource, /const roomFormatLabel = getMatchFormatLabel\(\s+sourceMatch\?\.mode \?\? selectedPost\.mode,\s+sourceMatch\?\.rules \?\? selectedMatchRules,/);
   } finally {
     await server.close();
   }
