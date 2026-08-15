@@ -1162,7 +1162,7 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
   const footerMiddleDividerOffset = compact ? 126 : 177;
   const footerDateOffset = compact ? 174 : 244;
   const footerCommentOffset = footerDateOffset;
-  const footerTierLabelOffset = footerDateOffset + (compact ? 36 : 42);
+  const footerTierLabelOffset = footerDateOffset + 42;
   const hasSingleGameInfoMeta = !model.hasPersonalStats
     && Boolean(model.comment) !== Boolean(personalTier);
 
