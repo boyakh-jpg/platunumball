@@ -442,6 +442,7 @@
 .match-receipt-ticket {
   --receipt-ticket-divider-y: 58%;
   --receipt-ticket-meta-y: 65%;
+  --receipt-ticket-tier-y: 82%;
   --receipt-ticket-meta-line-height: clamp(12px, 3cqw, 16px);
   position: absolute;
   z-index: 3;
@@ -606,7 +607,7 @@
 }
 
 .match-receipt-personal-tier-label {
-  position: absolute; z-index: 1; top: 78%; left: 6%; display: block; width: 88%; overflow: hidden; color: #71451f;
+  position: absolute; z-index: 1; top: var(--receipt-ticket-tier-y); left: 6%; display: block; width: 88%; overflow: hidden; color: #71451f;
   font-size: clamp(7px, 2.1cqw, 10px); font-weight: 900;
   letter-spacing: 0.04em; line-height: 1; text-overflow: ellipsis; white-space: nowrap;
 }
