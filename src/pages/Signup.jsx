@@ -144,7 +144,7 @@ export default function Signup({ app, auth }) {
       });
       if (!result || result.ok === false) {
         setFormError(result?.error === "account_rejoin_blocked"
-          ? "탈퇴한 Google 계정은 탈퇴일로부터 7일 동안 다시 가입할 수 없습니다."
+          ? "탈퇴한 로그인 계정은 탈퇴일로부터 7일 동안 다시 가입할 수 없습니다."
           : result?.error === "reserved_operator_identity"
             ? "boxtier와 박스티어는 운영자 전용입니다."
             : result?.error === "profile_identity_blocked"
@@ -155,7 +155,7 @@ export default function Signup({ app, auth }) {
       setRedirectAfterSave(true);
     } catch (error) {
       setFormError(error?.message === "account_rejoin_blocked"
-        ? "탈퇴한 Google 계정은 탈퇴일로부터 7일 동안 다시 가입할 수 없습니다."
+        ? "탈퇴한 로그인 계정은 탈퇴일로부터 7일 동안 다시 가입할 수 없습니다."
         : error?.message === "reserved_operator_identity"
           ? "boxtier와 박스티어는 운영자 전용입니다."
           : error?.message === "profile_identity_blocked"
@@ -241,7 +241,7 @@ export default function Signup({ app, auth }) {
               </div>
               <div>
                 <span>프로필</span>
-                <strong>Google 계정당 1개</strong>
+                <strong>외부 로그인 계정 연결</strong>
               </div>
             </div>
           </Card>
@@ -262,7 +262,7 @@ export default function Signup({ app, auth }) {
             </div>
           </Card>
           <Card className="section-card">
-            <p className="muted">Google 로그인에서는 출생연도를 자동으로 확인할 수 없습니다. 연령부는 입력한 출생연도를 기준으로 계산하며, {ageGroupSeasonLabel}마다 다시 확인합니다. 허위 출생연도 입력은 신고 사유로 처리됩니다.</p>
+            <p className="muted">외부 로그인에서는 출생연도를 자동으로 확인할 수 없습니다. 연령부는 입력한 출생연도를 기준으로 계산하며, {ageGroupSeasonLabel}마다 다시 확인합니다. 허위 출생연도 입력은 신고 사유로 처리됩니다.</p>
           </Card>
         </aside>
       </div>

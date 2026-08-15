@@ -200,8 +200,8 @@ test("앱은 분류 박스 없는 표준 디자인을 사용하고 비교 데모
   assert.match(pageSources.landing, /to="\/app\/rankings"/);
   assert.match(pageSources.landing, /className="ui-match-clock-scoreboard"/);
   assert.match(pageSources.landing, /children = "로그인"/);
-  assert.match(pageSources.landing, /가입 없이 Google로 로그인/);
-  assert.equal(count(pageSources.landing, "<GoogleLoginButton"), 2);
+  assert.match(pageSources.landing, /별도 가입 없이 로그인/);
+  assert.equal(count(pageSources.landing, "<LoginButton"), 2);
   assert.doesNotMatch(pageSources.landing, /guest-landing-explore-nav|홈 구경하기/);
   assert.doesNotMatch(pageSources.landing, /guest-landing-text-login|guest-landing-account-login/);
   assert.doesNotMatch(pageSources.landing, /Recent games|지금 열려 있는 경기|Team basketball|Season ranking|ui-design-spotlight|landing-stat-grid/);

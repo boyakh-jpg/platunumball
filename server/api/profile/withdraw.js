@@ -1,7 +1,33 @@
 import { allowRequestMethod, getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
 import { authContextCache, authUserCache } from "../_supabaseAuth.js";
-import { getAccountWithdrawalIdentity } from "./_accountWithdrawal.js";
+import { getAccountWithdrawalIdentities } from "./_accountWithdrawal.js";
 import { COMMUNITY_POST_IMAGE_BUCKET } from "../../../shared/lib/communityPolicy.js";
+
+function isMissingLinkedWithdrawalRpc(error) {
+  const code = String(error?.code ?? "");
+  const message = String(error?.message ?? "");
+  return code === "PGRST202"
+    || /rankball_withdraw_linked_account.+(?:not found|schema cache)/i.test(message);
+}
+
+async function withdrawProfile(context, identityHashes) {
+  const linkedWithdrawal = await context.supabase.rpc("rankball_withdraw_linked_account", {
+    p_profile_id: context.profileId,
+    p_auth_user_id: context.authUserId,
+    p_identity_hashes: identityHashes,
+  });
+  if (!linkedWithdrawal.error) return linkedWithdrawal.data;
+  if (!isMissingLinkedWithdrawalRpc(linkedWithdrawal.error)) throw linkedWithdrawal.error;
+  if (identityHashes.length !== 1) throw new Error("account_withdrawal_migration_required");
+
+  const legacyWithdrawal = await context.supabase.rpc("rankball_withdraw_account", {
+    p_profile_id: context.profileId,
+    p_auth_user_id: context.authUserId,
+    p_identity_hash: identityHashes[0],
+  });
+  if (legacyWithdrawal.error) throw legacyWithdrawal.error;
+  return legacyWithdrawal.data;
+}
 
 export default async function handler(request, response) {
   if (!allowRequestMethod(request, response)) return;
@@ -26,12 +52,8 @@ export default async function handler(request, response) {
       .not("image_path", "is", null);
     if (communityImageError) throw communityImageError;
 
-    const { data, error } = await context.supabase.rpc("rankball_withdraw_account", {
-      p_profile_id: context.profileId,
-      p_auth_user_id: context.authUserId,
-      p_identity_hash: getAccountWithdrawalIdentity(context.authUser),
-    });
-    if (error) throw error;
+    const identityHashes = getAccountWithdrawalIdentities(context.authUser);
+    const data = await withdrawProfile(context, identityHashes);
 
     const communityImagePaths = (communityImages ?? []).map((row) => row.image_path).filter(Boolean);
     if (communityImagePaths.length) {

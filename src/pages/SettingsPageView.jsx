@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRightLeft, LogOut, Trash2 } from "lucide-react";
+import { ArrowRightLeft, Link2, LogOut, Trash2 } from "lucide-react";
 import Button from "../components/common/Button.jsx";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
+import { getAuthProviderLabel } from "../lib/authProviders.js";
 import SettingsPrimaryColumn from "./SettingsPrimaryColumn.jsx";
 import SettingsSideColumn from "./SettingsSideColumn.jsx";
 import SettingsRefereeSection from "./SettingsRefereeSection.jsx";
@@ -16,9 +17,13 @@ export default function SettingsPageView({ controller, auth }) {
   const [activityList, setActivityList] = useState("");
   const [testLoginId, setTestLoginId] = useState(() => controller.currentTestLoginId || auth?.testAccounts?.[0]?.id || "");
   const [testSwitchStatus, setTestSwitchStatus] = useState("");
+  const [identityStatus, setIdentityStatus] = useState("");
   const [withdrawalOpen, setWithdrawalOpen] = useState(false);
   const [withdrawalAcknowledged, setWithdrawalAcknowledged] = useState(false);
   const [withdrawalStatus, setWithdrawalStatus] = useState("");
+  const linkedProviderIds = auth?.linkedProviderIds ?? [];
+  const connectableProviders = (auth?.enabledProviders ?? [])
+    .filter((provider) => !linkedProviderIds.includes(provider.id));
   useBodyScrollLock(withdrawalOpen || Boolean(activityList) || Boolean(activityDetail));
 
   const switchTestAccount = async (event) => {
@@ -42,6 +47,14 @@ export default function SettingsPageView({ controller, auth }) {
     setWithdrawalStatus(result?.error === "account_withdrawal_team_captain"
       ? "팀장인 팀을 먼저 위임하거나 삭제해 주세요."
       : "탈퇴하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+  };
+
+  const linkIdentity = async (providerId) => {
+    setIdentityStatus("");
+    const result = await auth.linkIdentityWithProvider(providerId, "/app/settings?section=main");
+    if (!result?.ok && result?.error !== "auth_action_pending") {
+      setIdentityStatus("로그인 연결을 시작하지 못했습니다.");
+    }
   };
 
   return (
@@ -85,6 +98,38 @@ export default function SettingsPageView({ controller, auth }) {
           {testSwitchStatus ? <p className="form-status form-status-error" role="alert">{testSwitchStatus}</p> : null}
         </details>
       ) : null}
+      {settingsSection === "main" && auth?.configured && !controller.currentTestLoginId ? (
+        <section className="settings-auth-identities" aria-labelledby="settings-auth-identities-title">
+          <div className="settings-auth-identities-copy">
+            <p className="eyebrow">LOGIN CONNECTION</p>
+            <h2 id="settings-auth-identities-title">연결된 로그인</h2>
+            <p>같은 프로필로 사용할 로그인만 직접 연결하세요. 이메일이나 프로필 해시태그만으로 계정을 합치지 않습니다.</p>
+          </div>
+          <div className="settings-auth-identity-list">
+            {linkedProviderIds.map((providerId) => (
+              <div className="settings-auth-identity-row ui-control-surface" key={providerId}>
+                <span className={`settings-auth-provider-mark settings-auth-provider-mark-${providerId}`} aria-hidden="true">
+                  {getAuthProviderLabel(providerId).slice(0, 1)}
+                </span>
+                <strong>{getAuthProviderLabel(providerId)}</strong>
+                <span>연결됨</span>
+              </div>
+            ))}
+            {connectableProviders.map((provider) => (
+              <Button
+                key={provider.id}
+                type="button"
+                variant="secondary"
+                disabled={auth.authActionPending}
+                onClick={() => void linkIdentity(provider.id)}
+              >
+                <Link2 size={16} /> {provider.label} 연결
+              </Button>
+            ))}
+          </div>
+          {identityStatus ? <p className="form-status form-status-error" role="alert">{identityStatus}</p> : null}
+        </section>
+      ) : null}
       {settingsSection === "main" && auth ? (
         <div className="ui-action-row settings-signout-row">
           <Button type="button" variant="danger" onClick={() => window.confirm("로그아웃하시겠습니까?") && void auth.signOut()} disabled={auth.authActionPending}>
@@ -103,7 +148,7 @@ export default function SettingsPageView({ controller, auth }) {
             <h2 id="account-withdrawal-title">회원 탈퇴</h2>
             <p>탈퇴하면 프로필과 개인 기록은 복구할 수 없습니다.</p>
             <p>다른 참가자의 경기 결과 정합성에 필요한 기록은 익명 처리 후 남을 수 있습니다.</p>
-            <p><strong>탈퇴한 Google 계정은 7일 동안 다시 가입할 수 없습니다.</strong></p>
+            <p><strong>연결된 모든 로그인 계정은 탈퇴 후 7일 동안 다시 가입할 수 없습니다.</strong></p>
             <label className="app-confirm-acknowledgement">
               <input type="checkbox" checked={withdrawalAcknowledged} onChange={(event) => setWithdrawalAcknowledged(event.target.checked)} disabled={auth.authActionPending} />
               기록 삭제와 7일 재가입 제한을 확인했습니다.

@@ -7,7 +7,7 @@ import CourtMapPicker from "../components/court/CourtMapPicker.jsx";
 import MatchReceiptPreview from "../components/match/MatchReceiptPreview.jsx";
 import { assetUrl } from "../lib/assets.js";
 import { getCourtAddress, getRegisteredCourts, mergeCourtSearchCourts } from "../lib/courts.js";
-import { inferRegionSelection } from "../lib/profileSetup.js";
+import { getLoginPath, inferRegionSelection } from "../lib/profileSetup.js";
 import { COURT_MAP_SEARCH_LIMIT, COURT_MAP_SEARCH_PURPOSE } from "../lib/queryPolicy.js";
 import { postServerAction } from "../lib/serverActions.js";
 import { getUserHashtag } from "../lib/handles.js";
@@ -937,13 +937,13 @@ export default function MatchReceipt({ auth, app }) {
     }
   }
 
-  async function continueWithGoogle() {
+  async function continueWithLogin() {
     setBusy("login");
     trackMatchReceiptEvent("receipt_save_login_started", { loggedIn: false, matchType: draft.format });
     try {
       const publicId = await ensurePublicDraft(draft, { forClaim: true });
       const returnTo = `${MATCH_RECEIPT_CREATE_RETURN_TO}&receiptDraft=${encodeURIComponent(publicId)}`;
-      await auth?.signInWithProvider?.("google", returnTo);
+      navigate(getLoginPath(returnTo));
     } catch (error) {
       setStatus(error.message === "receipt_draft_rate_limited"
         ? "공유 영수증 생성 한도를 초과했습니다. 잠시 후 다시 시도해 주세요."
@@ -955,7 +955,7 @@ export default function MatchReceipt({ auth, app }) {
 
   async function continueToRecord() {
     if (!auth?.session) {
-      await continueWithGoogle();
+      await continueWithLogin();
       return;
     }
     setBusy("continue");
@@ -1223,7 +1223,7 @@ export default function MatchReceipt({ auth, app }) {
                 </>
               ) : (
                 <>
-                  <p>Google로 계속하면 작성 내용이 유지됩니다. 로그인 뒤 상세 기록을 작성해 저장할 수 있습니다.</p>
+                  <p>로그인 방법을 선택해도 작성 내용이 유지됩니다. 로그인 뒤 상세 기록을 작성해 저장할 수 있습니다.</p>
                   <button type="button" className="button ui-button button-secondary ui-button-secondary button-md ui-button-md" disabled={Boolean(busy)} onClick={continueToRecord}>상세 기록 이어서 작성</button>
                 </>
               )}

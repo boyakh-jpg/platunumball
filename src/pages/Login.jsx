@@ -7,12 +7,6 @@ import { BRAND_NAME } from "../lib/brand.js";
 import { getTestAccountDisplayLabel } from "../lib/constants.js";
 import { getAppRedirectFromLocation } from "../lib/profileSetup.js";
 
-const providers = [
-  { id: "naver", label: "Naver", mark: "N" },
-  { id: "kakao", label: "Kakao", mark: "K" },
-  { id: "google", label: "Google", mark: "G" },
-];
-
 function isEmbeddedOAuthBrowser() {
   if (typeof navigator === "undefined") return false;
   const ua = navigator.userAgent || "";
@@ -25,8 +19,10 @@ export default function Login({ auth, app }) {
   const [copyMessage, setCopyMessage] = useState("");
   const [selectedTestLoginId, setSelectedTestLoginId] = useState(auth.testAccounts?.[0]?.id ?? "rankball-001");
   const from = getAppRedirectFromLocation(location);
-  const activeProviders = auth.configured ? providers.filter((provider) => provider.id === "google") : providers;
-  const embeddedOAuthBrowser = auth.configured && isEmbeddedOAuthBrowser();
+  const activeProviders = auth.enabledProviders ?? [];
+  const embeddedGoogleOAuthBrowser = auth.configured
+    && activeProviders.some((provider) => provider.id === "google")
+    && isEmbeddedOAuthBrowser();
   const browserOpenUrl = typeof window === "undefined" ? "" : `${window.location.origin}${from}`;
 
   if (auth.session) return <Navigate to={from} replace />;
@@ -34,7 +30,7 @@ export default function Login({ auth, app }) {
   const goBack = () => location.key === "default" ? navigate("/app", { replace: true }) : navigate(-1);
   const enterApp = () => navigate(from, { replace: true });
   const signIn = async (providerId) => {
-    if (providerId === "google" && embeddedOAuthBrowser) {
+    if (providerId === "google" && embeddedGoogleOAuthBrowser) {
       setCopyMessage("카카오톡 내 브라우저에서는 Google 로그인을 사용할 수 없습니다. 링크를 복사해 Chrome 또는 Safari에서 열어 주세요.");
       return;
     }
@@ -88,7 +84,7 @@ export default function Login({ auth, app }) {
 
           {auth.error ? <p className="auth-message">{auth.error}</p> : null}
           {auth.message ? <p className="auth-message">{auth.message}</p> : null}
-          {embeddedOAuthBrowser ? (
+          {embeddedGoogleOAuthBrowser ? (
             <div className="auth-browser-warning">
               <strong>카카오톡 내 브라우저에서는 Google 로그인을 사용할 수 없습니다.</strong>
               <span>오른쪽 위 메뉴에서 다른 브라우저로 열거나, 아래 링크를 복사해 Chrome 또는 Safari에서 열어 주세요.</span>

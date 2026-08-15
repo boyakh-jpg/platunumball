@@ -1,12 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getTestAccountDisplayLabel, normalizeTestLoginId, TEST_ACCOUNT_COUNT } from "../lib/constants.js";
+import {
+  getAuthProviderLabel,
+  getEnabledAuthProviders,
+  getLinkedProviderIds,
+} from "../lib/authProviders.js";
 import { getSafeAppRedirect } from "../lib/profileSetup.js";
 import { isSupabaseConfigured, supabase } from "../lib/supabase.js";
 import { postServerAction, setClientActionSession } from "../lib/serverActions.js";
 
 const TEST_SESSION_KEY = "rankball.auth.testSession.v1";
-const PROVIDER_LABELS = { naver: "Naver", kakao: "Kakao", google: "Google" };
 const DEMO_LOGIN_ENV = import.meta.env.VITE_DEMO_LOGIN;
+const ENABLED_AUTH_PROVIDERS = getEnabledAuthProviders({ configured: isSupabaseConfigured });
+const ENABLED_AUTH_PROVIDER_IDS = new Set(ENABLED_AUTH_PROVIDERS.map((provider) => provider.id));
 
 const TEST_ACCOUNTS = Array.from({ length: TEST_ACCOUNT_COUNT }, (_item, index) => {
   const loginId = normalizeTestLoginId(index + 1);
@@ -51,7 +57,7 @@ function clearSupabaseSessionStorage() {
 
 // Local demo session only. Server auth uses Supabase Auth JWT.
 function makeTestSession(provider) {
-  const providerName = PROVIDER_LABELS[provider] ?? provider;
+  const providerName = getAuthProviderLabel(provider);
   const user = {
     id: `test-${provider}`,
     email: `${provider}@rankball.test`,
@@ -108,14 +114,24 @@ function getOAuthCallbackError() {
   const search = new URLSearchParams(window.location.search);
   const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
   return search.get("error_description")
+    ?? search.get("error_code")
     ?? search.get("error")
     ?? hash.get("error_description")
+    ?? hash.get("error_code")
     ?? hash.get("error")
     ?? "";
 }
 
 function formatAuthError(message) {
   if (!message) return "";
+  const normalizedMessage = String(message).toLowerCase();
+  if (
+    normalizedMessage.includes("identity_already_exists")
+    || normalizedMessage.includes("already linked")
+    || normalizedMessage.includes("already registered")
+  ) {
+    return "이미 다른 BOXTIER 계정에 연결된 로그인입니다. 기존 계정으로 로그인한 뒤 연결 상태를 확인해 주세요.";
+  }
   if (message.startsWith("Unable to exchange external code")) {
     return "소셜 로그인을 완료하지 못했습니다. 잠시 후 다시 시도해 주세요.";
   }
@@ -128,17 +144,19 @@ function hasOAuthCallbackParams() {
   const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
   return search.has("code")
     || search.has("error")
+    || search.has("error_code")
     || search.has("error_description")
     || hash.has("access_token")
     || hash.has("refresh_token")
     || hash.has("error")
+    || hash.has("error_code")
     || hash.has("error_description");
 }
 
 function cleanOAuthCallbackUrl() {
   if (typeof window === "undefined") return;
   const url = new URL(window.location.href);
-  ["code", "error", "error_description"].forEach((key) => url.searchParams.delete(key));
+  ["code", "error", "error_code", "error_description"].forEach((key) => url.searchParams.delete(key));
   if (window.location.hash) url.hash = "";
   window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
 }
@@ -168,13 +186,8 @@ export function useAuthSession() {
     const authCode = getOAuthCode();
 
     if (callbackError) {
-      writeTestSession(null);
-      setClientActionSession(null);
       cleanOAuthCallbackUrl();
       setError(formatAuthError(callbackError));
-      setSession(null);
-      setLoading(false);
-      return undefined;
     }
 
     writeTestSession(null);
@@ -216,6 +229,10 @@ export function useAuthSession() {
 
   const actions = useMemo(() => ({
     signInWithProvider: async (provider, redirectPath = "/app") => {
+      if (!ENABLED_AUTH_PROVIDER_IDS.has(provider)) {
+        setError("현재 사용할 수 없는 로그인 방식입니다.");
+        return null;
+      }
       if (authActionPendingRef.current) return null;
       authActionPendingRef.current = true;
       setAuthActionPending(true);
@@ -274,6 +291,35 @@ export function useAuthSession() {
         setSession(null);
         setLoading(false);
         return true;
+      } finally {
+        authActionPendingRef.current = false;
+        setAuthActionPending(false);
+      }
+    },
+    linkIdentityWithProvider: async (provider, redirectPath = "/app/settings?section=main") => {
+      if (!isSupabaseConfigured || !ENABLED_AUTH_PROVIDER_IDS.has(provider)) {
+        setError("현재 연결할 수 없는 로그인 방식입니다.");
+        return { ok: false, error: "auth_provider_unavailable" };
+      }
+      if (authActionPendingRef.current) return { ok: false, error: "auth_action_pending" };
+      authActionPendingRef.current = true;
+      setAuthActionPending(true);
+      setError("");
+      setMessage("");
+      try {
+        const redirectTo = `${window.location.origin}${getSafeAppRedirect(redirectPath)}`;
+        const { data: linkData, error: linkError } = await supabase.auth.linkIdentity({
+          provider,
+          options: { redirectTo },
+        });
+        if (linkError) {
+          setError(formatAuthError(linkError.code || linkError.message));
+          return { ok: false, error: linkError.code || linkError.message || "identity_link_failed" };
+        }
+        return { ok: true, data: linkData };
+      } catch (linkError) {
+        setError(formatAuthError(linkError?.code || linkError?.message));
+        return { ok: false, error: linkError?.code || linkError?.message || "identity_link_failed" };
       } finally {
         authActionPendingRef.current = false;
         setAuthActionPending(false);
@@ -378,6 +424,8 @@ export function useAuthSession() {
 
   return {
     configured: isSupabaseConfigured,
+    enabledProviders: ENABLED_AUTH_PROVIDERS,
+    linkedProviderIds: getLinkedProviderIds(session?.user),
     authActionPending,
     testAccounts: TEST_ACCOUNTS,
     testLoginAllowed: isDemoLoginAllowed(),

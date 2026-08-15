@@ -14,10 +14,10 @@ export default function Privacy() {
       <aside className="legal-summary" aria-label="핵심 요약">
         <strong>핵심 요약</strong>
         <ul>
-          <li>Google 로그인 계정 정보와 이용자가 입력한 프로필·경기 활동 정보를 처리합니다.</li>
+          <li>Google·Kakao 외부 로그인 계정 정보와 이용자가 입력한 프로필·경기 활동 정보를 처리합니다.</li>
           <li>Discord 연동은 선택이며 언제든 연결을 해제할 수 있습니다.</li>
           <li>프로필 공개 범위 일부는 설정에서 직접 끌 수 있습니다.</li>
-          <li>Google 계정 비밀번호와 주민등록번호는 수집하지 않습니다.</li>
+          <li>외부 로그인 계정 비밀번호와 주민등록번호는 수집하지 않습니다.</li>
         </ul>
       </aside>
 
@@ -55,7 +55,7 @@ export default function Privacy() {
             <tbody>
               <tr>
                 <th scope="row">계정·인증</th>
-                <td>Supabase 인증 식별자, Google 계정 식별자, 이메일, 이름, 프로필 이미지, 로그인 제공자, 로그인·세션 정보</td>
+                <td>Supabase 인증 식별자, 외부 로그인 제공자 계정 식별자, 제공되는 경우 이메일·이름·프로필 이미지, 로그인 제공자, 로그인·세션 정보</td>
                 <td>회원 식별, 로그인, 계정 보호, 중복 계정 방지</td>
                 <td>회원 탈퇴 또는 계정 삭제 처리 시까지</td>
               </tr>
@@ -97,7 +97,7 @@ export default function Privacy() {
               </tr>
               <tr>
                 <th scope="row">탈퇴 재가입 제한</th>
-                <td>Google 계정 식별자를 복원할 수 없게 변환한 값, 탈퇴 시각, 재가입 제한 만료 시각</td>
+                <td>연결된 외부 로그인 계정 식별자를 복원할 수 없게 변환한 값, 탈퇴 시각, 재가입 제한 만료 시각</td>
                 <td>탈퇴 악용 방지와 7일 재가입 제한</td>
                 <td>탈퇴 후 7일</td>
               </tr>
@@ -110,10 +110,10 @@ export default function Privacy() {
       <section id="privacy-method">
         <h2>2. 수집 방법과 처리 근거</h2>
         <ul>
-          <li>Google OAuth 로그인, 프로필 설정, 구장 신청, 경기·팀·신고 등 이용자가 직접 입력하거나 수행한 활동을 통해 수집합니다.</li>
+          <li>Google·Kakao OAuth 로그인, 프로필 설정, 구장 신청, 경기·팀·신고 등 이용자가 직접 입력하거나 수행한 활동을 통해 수집합니다.</li>
           <li>서비스 접속 과정에서 인증 세션, 접속·오류·보안 기록이 자동으로 생성될 수 있습니다.</li>
           <li>회원가입과 서비스 제공에 필수적인 정보는 이용계약 체결·이행을 위해 처리하고, 선택 기능은 이용자의 선택 또는 동의를 근거로 처리합니다.</li>
-          <li>Google 계정 비밀번호는 BOXTIER가 받거나 저장하지 않습니다.</li>
+          <li>외부 로그인 계정 비밀번호는 BOXTIER가 받거나 저장하지 않습니다.</li>
         </ul>
       </section>
 
@@ -125,6 +125,13 @@ export default function Privacy() {
             <h3>Google</h3>
             <dl>
               <div><dt>제공받는 정보</dt><dd>이메일 주소, 이름, 프로필 이미지, Google 계정 식별자</dd></div>
+              <div><dt>이용 목적</dt><dd>회원가입, 로그인, 계정 식별</dd></div>
+            </dl>
+          </article>
+          <article>
+            <h3>Kakao</h3>
+            <dl>
+              <div><dt>제공받는 정보</dt><dd>Kakao 계정 식별자, 프로필·닉네임, 동의했고 제공 가능한 경우 이메일 주소</dd></div>
               <div><dt>이용 목적</dt><dd>회원가입, 로그인, 계정 식별</dd></div>
             </dl>
           </article>
@@ -193,6 +200,12 @@ export default function Privacy() {
                 <td>소셜 로그인 본인 확인. Google 계정 식별자·이메일·OAuth 요청 정보</td>
                 <td>미국 등 Google 인프라, 로그인 선택 시 HTTPS 전송</td>
                 <td>Google 정책 및 연동 해제 시까지</td>
+              </tr>
+              <tr>
+                <th scope="row">Kakao Corp.</th>
+                <td>소셜 로그인 본인 확인. Kakao 계정 식별자·동의한 프로필 정보·OAuth 요청 정보</td>
+                <td>대한민국 등 Kakao 인프라, 로그인 선택 시 HTTPS 전송</td>
+                <td>Kakao 정책 및 연동 해제 시까지</td>
               </tr>
               <tr>
                 <th scope="row">Discord Inc.</th>

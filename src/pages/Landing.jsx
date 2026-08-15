@@ -6,6 +6,7 @@ import LandingLoading from "../components/common/LandingLoading.jsx";
 import MatchReceiptPreview from "../components/match/MatchReceiptPreview.jsx";
 import { BRAND_NAME } from "../lib/brand.js";
 import { normalizeMatchReceiptDraft } from "../lib/matchReceipt.js";
+import { getLoginPath } from "../lib/profileSetup.js";
 import "../styles/features/match-clock-shell-controls.css";
 
 const LANDING_RECEIPT_DRAFT = normalizeMatchReceiptDraft({
@@ -25,17 +26,14 @@ const LANDING_RECEIPT_DRAFT = normalizeMatchReceiptDraft({
   verified: true,
 });
 
-function GoogleLoginButton({ auth, children = "로그인", className = "", variant = "secondary" }) {
-  const signIn = () => auth?.signInWithProvider?.("google", "/app");
-
+function LoginButton({ children = "로그인", className = "", variant = "secondary" }) {
   return (
     <Button
-      type="button"
+      as={Link}
+      to={getLoginPath("/app")}
       variant={variant}
       className={className}
-      onClick={signIn}
-      disabled={auth?.authActionPending}
-      aria-label="Google로 로그인"
+      aria-label="로그인"
     >
       {children}
     </Button>
@@ -55,7 +53,7 @@ export default function Landing({ auth }) {
           <Link to="/" className="brand guest-landing-brand" aria-label={BRAND_NAME}>
             <BrandLockup />
           </Link>
-          <GoogleLoginButton auth={auth} className="guest-landing-header-login" />
+          <LoginButton className="guest-landing-header-login" />
         </div>
       </header>
 
@@ -71,12 +69,12 @@ export default function Landing({ auth }) {
             <Button as={Link} to="/app/receipt" className="guest-landing-primary-cta">
               가입 없이 영수증 만들기 <ArrowRight aria-hidden="true" size={18} />
             </Button>
-            <GoogleLoginButton auth={auth} className="guest-landing-hero-login">
-              가입 없이 Google로 로그인
-            </GoogleLoginButton>
+            <LoginButton className="guest-landing-hero-login">
+              별도 가입 없이 로그인
+            </LoginButton>
           </div>
           <small>로그인 없이 제작·저장·공유할 수 있어요.</small>
-          {auth?.error ? <p className="guest-landing-auth-error">Google 로그인을 완료하지 못했습니다. 다시 시도해주세요.</p> : null}
+          {auth?.error ? <p className="guest-landing-auth-error">로그인을 완료하지 못했습니다. 다시 시도해주세요.</p> : null}
         </div>
 
         <div className="guest-landing-hero-receipt" aria-label="박스티어 경기 영수증 예시">

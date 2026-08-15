@@ -54,7 +54,7 @@ test("OAuth homepage identifies BOXTIER and links the privacy policy", async () 
   assert.match(index, /<link rel="canonical" href="https:\/\/boxtier\.kr\/" \/>/);
   assert.match(index, /<title>BOXTIER<\/title>/);
   assert.match(index, /<p class="oauth-static-brand">BOXTIER<\/p>/);
-  assert.match(index, /Google 로그인에서 제공되는 계정 식별자, 이메일, 이름과 프로필 이미지/);
+  assert.match(index, /Google·Kakao 로그인에서 제공되는 계정 식별자와 프로필 정보/);
   assert.match(index, /<a href="\/privacy">개인정보처리방침<\/a>/);
 });
 
@@ -67,10 +67,11 @@ test("OAuth legal URLs have dedicated non-JavaScript HTML disclosures", async ()
 
   for (const required of [
     "BOXTIER 개인정보처리방침",
-    "Google 로그인 데이터",
-    "계정 식별자, 이메일, 이름과 프로필 이미지",
+    "외부 로그인 데이터",
+    "Google·Kakao 로그인에서 계정 식별자와 제공되는 프로필 정보",
     "회원 식별, 계정 생성과 로그인에만 사용",
-    "판매하거나 광고, 신용평가 또는 AI 모델 학습에 사용하지 않습니다",
+    "Kakao 이메일은 이용자가 동의했고 제공 가능한 경우에만 받습니다",
+    "외부 로그인 사용자 데이터를 판매하거나 광고, 신용평가 또는 AI 모델 학습에 사용하지 않습니다",
     "privacy@boxtier.kr",
   ]) {
     assert.ok(privacyHtml.includes(required), `static privacy disclosure missing: ${required}`);
