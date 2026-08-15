@@ -1,4 +1,5 @@
 import { createHash, createHmac, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
+import { cleanDraftReceiptEmblemKey, cleanMatchReceiptEmblemKey } from "./_emblemStorage.js";
 
 export const RECEIPT_CAPABILITY_COOKIE = "boxtier_receipt_capability";
 export const RECEIPT_DRAFT_TTL_SECONDS = 30 * 24 * 60 * 60;
@@ -75,6 +76,8 @@ function cleanSerialSeed(value) {
 
 export function sanitizeReceiptDraftPayload(value = {}, options = {}) {
   const trustedCanonical = options.trustedCanonical === true;
+  const trustedGuestPublicId = String(options.trustedGuestPublicId ?? "");
+  const trustedReceiptMatchId = String(options.trustedReceiptMatchId ?? "");
   const format = ["1v1", "2v2", "3v3", "3x3", "5v5"].includes(value.format) ? value.format : "3v3";
   const matchNature = ["friendly", "competitive", "revenge", "semifinal", "final"].includes(value.matchNature)
     ? value.matchNature
@@ -122,6 +125,14 @@ export function sanitizeReceiptDraftPayload(value = {}, options = {}) {
       homeEmblemKey: cleanTeamEmblemKey(value.homeEmblemKey),
       awayEmblemKey: cleanTeamEmblemKey(value.awayEmblemKey),
     } : {}),
+    ...(trustedGuestPublicId || trustedReceiptMatchId ? {
+      homeGuestEmblemKey: trustedGuestPublicId
+        ? cleanDraftReceiptEmblemKey(value.homeGuestEmblemKey, trustedGuestPublicId, "home")
+        : cleanMatchReceiptEmblemKey(value.homeGuestEmblemKey, trustedReceiptMatchId, "home"),
+      awayGuestEmblemKey: trustedGuestPublicId
+        ? cleanDraftReceiptEmblemKey(value.awayGuestEmblemKey, trustedGuestPublicId, "away")
+        : cleanMatchReceiptEmblemKey(value.awayGuestEmblemKey, trustedReceiptMatchId, "away"),
+    } : {}),
     verified: trustedCanonical && value.verified === true,
   };
 }
@@ -138,6 +149,7 @@ export function projectPublicReceiptDraft(value = {}, options = {}) {
   const legacyMatchId = getLegacyCanonicalReceiptMatchId(value);
   const { originalAddress, personalMmr, profileHashtag, ...publicDraft } = sanitizeReceiptDraftPayload(value, {
     trustedCanonical: value?._canonicalReceipt === true,
+    trustedGuestPublicId: options.publicId,
   });
   return legacyMatchId
     ? { ...publicDraft, serialSeed: createCanonicalReceiptSerialSeed(legacyMatchId, options.serialSecret) }

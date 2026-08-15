@@ -3,16 +3,23 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import {
   canCreatePublicMatchReceiptSnapshot,
+  deleteMatchReceiptEmblem,
   createDefaultMatchReceiptDraft,
   createMatchReceiptViewModel,
   getMatchReceiptDraftFromMatch,
+  getMatchReceiptEmblemScope,
   getMatchReceiptFormatLabel,
   getMatchReceiptSideTeamId,
   getMatchReceiptTeamNameScale,
+  loadMatchReceiptEmblem,
   MATCH_RECEIPT_LIMITS,
+  MATCH_RECEIPT_DRAFT_TTL_MS,
   MATCH_RECEIPT_PHOTO_ASPECT,
+  migrateMatchReceiptEmblems,
   normalizeMatchReceiptDraft,
   renewMatchReceiptDraft,
+  resolveMatchReceiptTeamEmblems,
+  saveMatchReceiptEmblem,
 } from "../src/lib/matchReceipt.js";
 
 test("receipt team names shrink before they can overflow", () => {
@@ -46,8 +53,10 @@ test("saved team receipt emblems require an explicit receipt load and lock repla
   assert.match(migration, /role = 'captain'/u);
   assert.match(migration, /team_receipt_emblem_cooldown/u);
   assert.match(migration, /interval '30 days'/u);
-  assert.match(receiptPage, /canonicalHomeTeam\?\.receiptEmblemKey \|\| draft\.homeEmblemKey/u);
-  assert.match(receiptPage, /loadedTeamLineArtUrls\.home \|\| localTeamLineArtUrls\.home \|\| canonicalTeamReceiptEmblemUrls\.home/u);
+  assert.match(receiptPage, /resolveMatchReceiptTeamEmblems\(/u);
+  assert.match(receiptPage, /local: localTeamLineArtUrls/u);
+  assert.match(receiptPage, /guest: guestTeamReceiptEmblemUrls/u);
+  assert.match(receiptPage, /canonical:\s*\{[\s\S]*canonicalTeamReceiptEmblemUrls\.home[\s\S]*canonicalTeamReceiptEmblemUrls\.away/u);
   assert.match(receiptPage, /const activeLineArtUrl = selectedTeamLineArtUrls\[side\]/u);
   assert.match(teamView, /disabled=\{receiptEmblemPending \|\| receiptEmblemUploadLocked\}/u);
 });
@@ -78,6 +87,120 @@ test("canonical receipt keeps dedicated team receipt emblems through public relo
   assert.match(reloaded.teamEmblemUrls.home, /team-emblems\/home\/receipt\.webp$/u);
   assert.equal(reloaded.teamEmblemUrls.away, "");
 });
+
+function createReceiptIndexedDbFake() {
+  const stores = new Map();
+  let failWrites = false;
+  const request = (transaction, action) => {
+    const result = {};
+    queueMicrotask(() => {
+      if (failWrites && transaction.mode === "readwrite") {
+        const error = new Error("quota");
+        result.error = error;
+        transaction.error = error;
+        result.onerror?.();
+        transaction.onerror?.();
+        return;
+      }
+      try {
+        result.result = action();
+        result.onsuccess?.();
+        queueMicrotask(() => transaction.oncomplete?.());
+      } catch (error) {
+        result.error = error;
+        transaction.error = error;
+        result.onerror?.();
+        transaction.onerror?.();
+      }
+    });
+    return result;
+  };
+  const database = {
+    objectStoreNames: { contains: (name) => stores.has(name) },
+    createObjectStore(name) { stores.set(name, new Map()); },
+    transaction(name, mode) {
+      const transaction = {
+        mode,
+        objectStore() {
+          const store = stores.get(name);
+          return {
+            get: (key) => request(transaction, () => store.get(key)),
+            put: (value, key) => request(transaction, () => { store.set(key, value); return key; }),
+            delete: (key) => request(transaction, () => store.delete(key)),
+          };
+        },
+      };
+      return transaction;
+    },
+    close() {},
+  };
+  return {
+    indexedDB: {
+      open() {
+        const result = {};
+        queueMicrotask(() => {
+          result.result = database;
+          result.onupgradeneeded?.();
+          queueMicrotask(() => result.onsuccess?.());
+        });
+        return result;
+      },
+    },
+    failWrites() { failWrites = true; },
+  };
+}
+
+test("anonymous receipt emblems persist by scope and side for 24 hours", async () => {
+  const previousIndexedDb = globalThis.indexedDB;
+  const fake = createReceiptIndexedDbFake();
+  globalThis.indexedDB = fake.indexedDB;
+  try {
+    const now = Date.UTC(2026, 7, 16, 0, 0, 0);
+    const firstScope = getMatchReceiptEmblemScope({ serialSeed: "first" });
+    const otherScope = getMatchReceiptEmblemScope({ serialSeed: "other" });
+    const publicScope = getMatchReceiptEmblemScope({ publicId: "11111111-1111-4111-8111-111111111111" });
+    const home = new Blob(["home"], { type: "image/webp" });
+    const away = new Blob(["away"], { type: "image/webp" });
+
+    await saveMatchReceiptEmblem(firstScope, "home", home, now);
+    await saveMatchReceiptEmblem(firstScope, "away", away, now);
+    assert.equal(await (await loadMatchReceiptEmblem(firstScope, "home", now + MATCH_RECEIPT_DRAFT_TTL_MS - 1)).text(), "home");
+    assert.equal(await (await loadMatchReceiptEmblem(firstScope, "away", now + MATCH_RECEIPT_DRAFT_TTL_MS - 1)).text(), "away");
+    assert.equal(await loadMatchReceiptEmblem(otherScope, "home", now), null);
+
+    await deleteMatchReceiptEmblem(firstScope, "home");
+    assert.equal(await loadMatchReceiptEmblem(firstScope, "home", now), null);
+    assert.equal(await (await loadMatchReceiptEmblem(firstScope, "away", now)).text(), "away");
+
+    await saveMatchReceiptEmblem(firstScope, "home", home, now);
+    await migrateMatchReceiptEmblems(firstScope, publicScope, now);
+    assert.equal(await loadMatchReceiptEmblem(firstScope, "home", now), null);
+    assert.equal(await (await loadMatchReceiptEmblem(publicScope, "home", now)).text(), "home");
+    assert.equal(await (await loadMatchReceiptEmblem(publicScope, "away", now)).text(), "away");
+    assert.equal(await loadMatchReceiptEmblem(publicScope, "home", now + MATCH_RECEIPT_DRAFT_TTL_MS + 1), null);
+    assert.equal(await (await loadMatchReceiptEmblem(publicScope, "away", now + MATCH_RECEIPT_DRAFT_TTL_MS)).text(), "away");
+
+    fake.failWrites();
+    await assert.rejects(saveMatchReceiptEmblem(otherScope, "home", home, now), /quota/u);
+  } finally {
+    if (previousIndexedDb === undefined) delete globalThis.indexedDB;
+    else globalThis.indexedDB = previousIndexedDb;
+  }
+});
+
+test("receipt emblem resolver uses one preview and canvas priority", () => {
+  assert.deepEqual(resolveMatchReceiptTeamEmblems({
+    local: { home: "local-home" },
+    guest: { home: "guest-home", away: "guest-away" },
+    canonical: { home: "team-home", away: "team-away" },
+    enabled: { home: true, away: true },
+  }), { home: "local-home", away: "guest-away" });
+  assert.deepEqual(resolveMatchReceiptTeamEmblems({
+    guest: { home: "guest-home" },
+    canonical: { home: "team-home", away: "team-away" },
+    enabled: { home: false, away: true },
+  }), { home: "", away: "team-away" });
+});
 import {
   createReceiptClonePayload,
   createCanonicalReceiptSerialSeed,
@@ -90,6 +213,12 @@ import {
   sanitizeReceiptDraftPayload,
   setReceiptCapabilityCookie,
 } from "../server/api/match-receipts/_draftSecurity.js";
+import {
+  cleanDraftReceiptEmblemKey,
+  cleanMatchReceiptEmblemKey,
+  getSafeDraftReceiptEmblems,
+  getSafeMatchReceiptEmblems,
+} from "../server/api/match-receipts/_emblemStorage.js";
 import { RECORD_TYPES } from "../src/lib/constants.js";
 import { getTierDivision, getTierLabel } from "../shared/lib/tier.js";
 
@@ -182,6 +311,44 @@ test("only trusted canonical receipt payload keeps server-only fields", () => {
   assert.equal(untrusted.verified, false);
   assert.equal(untrusted.personalStatsEligible, false);
   assert.equal("homeEmblemKey" in untrusted, false);
+});
+
+test("guest receipt emblem keys stay scoped to their server-issued receipt", () => {
+  const publicId = "11111111-1111-4111-8111-111111111111";
+  const otherPublicId = "22222222-2222-4222-8222-222222222222";
+  const homeKey = `match-receipt-emblems/drafts/${publicId}/home-0123456789abcdef01234567.webp`;
+  const awayKey = `match-receipt-emblems/drafts/${publicId}/away-89abcdef0123456789abcdef.webp`;
+  const matchId = "m_receipt_11111111111141118111111111111111";
+  const matchHomeKey = `match-receipt-emblems/matches/${matchId}/home-fedcba9876543210fedcba98.webp`;
+
+  assert.equal(cleanDraftReceiptEmblemKey(homeKey, publicId, "home"), homeKey);
+  assert.equal(cleanDraftReceiptEmblemKey(homeKey, otherPublicId, "home"), "");
+  assert.equal(cleanDraftReceiptEmblemKey(homeKey, publicId, "away"), "");
+  assert.equal(cleanDraftReceiptEmblemKey("team-emblems/other.webp", publicId, "home"), "");
+  assert.deepEqual(getSafeDraftReceiptEmblems({
+    homeGuestEmblemKey: homeKey,
+    awayGuestEmblemKey: awayKey,
+  }, publicId), { home: homeKey, away: awayKey });
+
+  const untrusted = sanitizeReceiptDraftPayload({ homeGuestEmblemKey: homeKey });
+  const trusted = sanitizeReceiptDraftPayload(
+    { homeGuestEmblemKey: homeKey, awayGuestEmblemKey: awayKey },
+    { trustedGuestPublicId: publicId },
+  );
+  assert.equal("homeGuestEmblemKey" in untrusted, false);
+  assert.equal(trusted.homeGuestEmblemKey, homeKey);
+  assert.equal(trusted.awayGuestEmblemKey, awayKey);
+  assert.equal(sanitizeReceiptDraftPayload(
+    { homeGuestEmblemKey: homeKey },
+    { trustedGuestPublicId: otherPublicId },
+  ).homeGuestEmblemKey, "");
+
+  assert.equal(cleanMatchReceiptEmblemKey(matchHomeKey, matchId, "home"), matchHomeKey);
+  assert.equal(cleanMatchReceiptEmblemKey(matchHomeKey, "m_other", "home"), "");
+  assert.deepEqual(getSafeMatchReceiptEmblems({ home: matchHomeKey }, matchId), {
+    home: matchHomeKey,
+    away: "",
+  });
 });
 
 test("public receipt projection omits internal address and exact personal rating", () => {
@@ -489,7 +656,7 @@ test("receipt capability cookies stay isolated when creation responses arrive ou
 });
 
 test("receipt photo tools stay outside the export card and reference dividers remain", async () => {
-  const [page, preview, qrComponent, styles, tokens, renderer, roomDialog, digitGenerator, syncScript, draftApi, landing, appSource, homeNeutralMark, awayNeutralMark, paperGrain, scoreDigitSource, scoreDigits, wordmark, bebasNeue, bebasLicense, blackHanSans, detailStyles, emblemCropEditor, teamEmblem] = await Promise.all([
+  const [page, preview, qrComponent, styles, tokens, renderer, roomDialog, digitGenerator, syncScript, draftApi, landing, appSource, homeNeutralMark, awayNeutralMark, paperGrain, scoreDigitSource, scoreDigits, wordmark, bebasNeue, bebasLicense, blackHanSans, detailStyles, emblemCropEditor, teamEmblem, lineArt] = await Promise.all([
     readFile(new URL("../src/pages/MatchReceipt.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/components/match/MatchReceiptPreview.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/components/common/QrCode.jsx", import.meta.url), "utf8"),
@@ -514,6 +681,7 @@ test("receipt photo tools stay outside the export card and reference dividers re
     readFile(new URL("../src/styles/features/match-receipt-details.css", import.meta.url), "utf8"),
     readFile(new URL("../src/components/common/EmblemCropEditor.jsx", import.meta.url), "utf8"),
     readFile(new URL("../shared/lib/teamEmblem.js", import.meta.url), "utf8"),
+    readFile(new URL("../src/lib/matchReceiptEmblem.js", import.meta.url), "utf8"),
   ]);
   const receiptSources = `${page}\n${preview}`;
 
@@ -585,7 +753,9 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(page, /reserveImageSaveWindow\(\)/);
   assert.match(page, /saveWindow\.location\.replace\(url\)/);
   assert.match(page, /공유 메뉴에서 이미지 저장을 선택하세요/);
-  assert.match(page, /try \{\s*publicId = await ensurePublicDraft\(result\.draft\);\s*\} catch \{/);
+  assert.match(page, /let emblemShareFailed = false;\s*try \{\s*publicId = await ensurePublicDraft\(result\.draft\);\s*\} catch \(error\) \{\s*emblemShareFailed = error\.message === "match_receipt_emblem_sync_failed";/);
+  assert.match(page, /EMBLEM_SHARE_FAILURE_MESSAGE = "이미지는 저장할 수 있지만 엠블럼을 공유 서버에 보관하지 못해 QR은 제외했습니다\."/u);
+  assert.match(page, /URL\.revokeObjectURL\(url\)/u);
   assert.match(page, /const publicMatchUrl = publicId\s*\? new URL/);
   assert.match(page, /<EmblemCropEditor\s+file=\{emblemCropTarget\?\.file\}\s+circular/);
   assert.match(emblemCropEditor, /drawEmblemCrop\([^;]+\{ circular \}\)/);
@@ -636,7 +806,7 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(page, /while \(true\)/);
   assert.match(page, /ownedPublicId \? \{ publicId: ownedPublicId \} : \{\}/);
   assert.match(page, /requestRevision === draftRevisionRef\.current/);
-  assert.match(page, /return Boolean\(canonicalMatchId && CANONICAL_RECEIPT_FIELDS\.has\(name\)\)/);
+  assert.match(page, /return receiptIsReadOnly \|\| Boolean\(canonicalMatchId && CANONICAL_RECEIPT_FIELDS\.has\(name\)\)/);
   assert.doesNotMatch(page, /return Boolean\(requestedPublicDraftId \|\|/);
   assert.doesNotMatch(page, /publicDraftId && !requestedPublicDraftId/);
   assert.doesNotMatch(page, /receipt_draft_stale/);
@@ -702,14 +872,14 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(styles, /\.match-receipt-personal-tier[\s\S]*width: 92%[\s\S]*opacity: 0\.64/);
   assert.match(styles, /\.match-receipt-ticket-qr \.match-receipt-qr[\s\S]*width: 94%[\s\S]*max-height: 94%/);
   assert.match(styles, /\.match-receipt-game-info b\s*\{[^}]*font-family: "Bebas Neue"/);
-  assert.match(styles, /\.match-receipt-ticket-game > \.match-receipt-ticket-caption\s*\{[^}]*padding-top: 7%;[^}]*font-size: clamp\(8px, 2\.5cqw, 12px\)/);
+  assert.match(styles, /\.match-receipt-ticket-game > \.match-receipt-ticket-caption\s*\{[^}]*top: var\(--receipt-ticket-meta-y\);[^}]*font-size: clamp\(8px, 2\.5cqw, 12px\)/);
   assert.doesNotMatch(styles, /\.match-receipt-ticket-game > \.match-receipt-ticket-caption\s*\{[^}]*margin-top:\s*auto/);
   assert.match(styles, /--receipt-ticket-divider-y:\s*58%/);
   assert.match(styles, /\.match-receipt-ticket-date[\s\S]*top:\s*var\(--receipt-ticket-divider-y\)/);
   assert.match(styles, /\.match-receipt-ticket-date\s*\{[^}]*color:\s*#bd4e2a/);
-  assert.match(styles, /\.match-receipt-ticket-game > \.match-receipt-ticket-caption[\s\S]*top:\s*var\(--receipt-ticket-divider-y\)/);
-  assert.match(styles, /\.match-receipt-personal-tier-label[\s\S]*top:\s*78%/);
-  assert.match(styles, /\.match-receipt-ticket-game--single-meta > :is\(\.match-receipt-ticket-caption, \.match-receipt-personal-tier-label\) \{ top: var\(--receipt-ticket-divider-y\); padding-top: 7%; \}/);
+  assert.match(styles, /\.match-receipt-ticket-game > \.match-receipt-ticket-caption[\s\S]*top:\s*var\(--receipt-ticket-meta-y\)/);
+  assert.match(styles, /\.match-receipt-personal-tier-label[\s\S]*top:\s*var\(--receipt-ticket-tier-y\)/);
+  assert.match(styles, /\.match-receipt-ticket-game--single-meta > :is\(\.match-receipt-ticket-caption, \.match-receipt-personal-tier-label\) \{ top: var\(--receipt-ticket-meta-y\); line-height: var\(--receipt-ticket-meta-line-height\); \}/);
   assert.match(styles, /\.match-receipt-team-fields fieldset[\s\S]*background: var\(--surface-2\)[\s\S]*border: 0;/);
   assert.match(styles, /\.match-receipt-photo-tools[\s\S]*grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/);
   assert.match(detailStyles, /input\[type="date"\][\s\S]*min-inline-size: 0[\s\S]*max-inline-size: 100%/);
@@ -757,7 +927,7 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(renderer, /drawCanvasMapPin\(ctx, footerLeftX/);
   assert.match(renderer, /const qrSize = compact \? 216 : 270/);
   assert.match(renderer, /const footerCommentOffset = footerDateOffset/);
-  assert.match(renderer, /const footerTierLabelOffset = footerDateOffset \+ \(compact \? 26 : 30\)/);
+  assert.match(renderer, /const footerTierLabelOffset = footerDateOffset \+ 42/);
   assert.match(renderer, /const footerDateOffset = compact \? 174 : 244/);
   assert.match(renderer, /const hasSingleGameInfoMeta = !model\.hasPersonalStats[\s\S]*Boolean\(model\.comment\) !== Boolean\(personalTier\)/);
   assert.match(renderer, /footerY \+ footerCommentOffset/);

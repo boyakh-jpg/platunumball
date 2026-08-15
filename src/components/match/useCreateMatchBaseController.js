@@ -64,6 +64,7 @@ const navigate = useNavigate();
   const receiptFlowRef = useRef({
     returnTo: receiptCreateDraft || receiptDraftId ? `/app/receipt${receiptDraftId ? `?draft=${encodeURIComponent(receiptDraftId)}` : ""}` : "",
     sourceDraft: receiptCreateDraft ? receiptSourceDraft : null,
+    draftPublicId: receiptDraftId,
   });
   const claimedReceiptDraftRef = useRef("");
   const loadDirectory = app.actions.loadDirectory;
@@ -243,6 +244,7 @@ const navigate = useNavigate();
         receiptFlowRef.current = {
           returnTo: `/app/receipt?draft=${encodeURIComponent(receiptDraftId)}`,
           sourceDraft,
+          draftPublicId: receiptDraftId,
         };
         modeManuallyChangedRef.current = true;
         setSubmitFeedback("경기 영수증 내용을 불러왔습니다.");
@@ -509,6 +511,10 @@ const navigate = useNavigate();
     ...CREATE_MATCH_DEPENDENCIES,
     app, initialDraft, onRecruitingCreated, onCancel, embedded, practiceMode, syncStepToUrl, createReturnTo,
     receiptReturnTo: receiptFlowRef.current.returnTo, receiptSourceDraft: receiptFlowRef.current.sourceDraft,
+    receiptDraftPublicId: receiptFlowRef.current.draftPublicId,
+    receiptRecordMatchId: receiptFlowRef.current.draftPublicId
+      ? `m_receipt_${receiptFlowRef.current.draftPublicId.replace(/-/g, "")}`
+      : "",
     navigate, location, remakeDraft, remakeSourceId, remakeSourceMatchId, challengeTeamAId, challengeTeamBId, hasTeamChallenge, today, minSoloRecordDate,
     nextWeek, maxScheduleDate, maxPrivateScheduleDate, maxPublicScheduleDate, isRecordCreateIntent, loadDirectory, remoteDirectoryEnabled,
     requestedTournamentDirectoryRef, modeManuallyChangedRef, loadedCourtMapRegionsRef, courtMapRequestIdRef, myTeams, captainTeams, representativeTeamId,

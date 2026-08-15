@@ -101,7 +101,11 @@ export function projectPublicMatch(match = {}) {
   const result = match.result && typeof match.result === "object" ? { ...match.result } : match.result;
   if (result && typeof result === "object") delete result.submittedBy;
   const rules = match.rules && typeof match.rules === "object" ? { ...match.rules } : match.rules;
-  if (rules && typeof rules === "object") delete rules.tournamentOrganizerId;
+  if (rules && typeof rules === "object") {
+    delete rules.tournamentOrganizerId;
+    delete rules.receiptEmblems;
+    delete rules.receiptDraftPublicId;
+  }
 
   return {
     ...publicMatch,

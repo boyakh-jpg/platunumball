@@ -1,6 +1,7 @@
 import { MATCH_SYNC_DEPENDENCIES } from "./matchSyncDependencies.js";
 import * as MATCH_SYNC_POLICY from "./matchSyncPolicy.js";
 import * as MATCH_SQL_ACTIONS from "./matchSqlActions.js";
+import { copyDraftReceiptEmblems, getSafeMatchReceiptEmblems } from "../api/match-receipts/_emblemStorage.js";
 
 export {
   getCheckedInMatchAttendanceIds,
@@ -43,6 +44,41 @@ const {
   toResultRow, uniqueIds, uniqueItemsById, validateLockedMatchCore, validateMatchCreateCourt, validateMatchRosterEligibility, validateMatchShape,
   validateParticipantResultUnchanged, validateRefereeEligibility, validateResultOnlyOnSubmission, validateResultShape, validateSoloRecordSnapshot, withTimeout,
 } = MATCH_SYNC_HANDLER_DEPENDENCIES;
+
+const RECEIPT_DRAFT_PUBLIC_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+async function prepareReceiptSpecificEmblems(context, match, existingMatch, action) {
+  const nextRules = { ...(match.rules ?? {}) };
+  delete nextRules.receiptEmblems;
+
+  const existingEmblems = getSafeMatchReceiptEmblems(existingMatch?.rules?.receiptEmblems, match.id);
+  if (existingEmblems.home || existingEmblems.away) nextRules.receiptEmblems = existingEmblems;
+
+  const publicId = String(nextRules.receiptDraftPublicId ?? "").trim();
+  delete nextRules.receiptDraftPublicId;
+  const shouldPromote = !existingMatch && CREATE_MATCH_ACTIONS.has(action) && isSoloRecordMatch(match);
+  if (!publicId || !shouldPromote) return { ...match, rules: nextRules };
+  if (!RECEIPT_DRAFT_PUBLIC_ID_PATTERN.test(publicId)) reject(400, "invalid_receipt_draft");
+
+  const { data: receiptDraft, error } = await context.supabase
+    .from("match_receipt_drafts")
+    .select("public_id, payload, expires_at, claimed_by, claimed_at")
+    .eq("public_id", publicId)
+    .maybeSingle();
+  if (error) throw error;
+  const isExpired = !receiptDraft?.expires_at || new Date(receiptDraft.expires_at).getTime() <= Date.now();
+  if (isExpired || !receiptDraft?.claimed_at || receiptDraft.claimed_by !== context.profileId) {
+    reject(403, "receipt_draft_claim_required");
+  }
+
+  const promotedEmblems = await copyDraftReceiptEmblems({
+    payload: receiptDraft.payload,
+    sourcePublicId: receiptDraft.public_id,
+    targetMatchId: match.id,
+  });
+  if (promotedEmblems.home || promotedEmblems.away) nextRules.receiptEmblems = promotedEmblems;
+  return { ...match, rules: nextRules };
+}
 
 function getRatingCommitProfileIds(ratingCommit = {}) {
   return uniqueIds([
@@ -154,11 +190,13 @@ export async function persistMatchSnapshot(context, { match, notifications = [],
   await validateRefereeEligibility(context.supabase, existingMatch, match, action, context.profileId);
   await validateMatchRosterEligibility(context.supabase, match);
 
-  const matchRow = toAuthoritativeMatchRow(match, context.profileId);
+  const persistedMatch = await prepareReceiptSpecificEmblems(context, match, existingMatch, action);
+
+  const matchRow = toAuthoritativeMatchRow(persistedMatch, context.profileId);
   if (expectedUpdatedAt) matchRow.__expectedUpdatedAt = expectedUpdatedAt;
-  const playerRows = getSidePlayerRows(match);
-  const shouldCommitRating = canCommitRatingResult(action, existingResult, match);
-  const shouldReplaceResult = shouldReplaceMatchResult(action, match);
+  const playerRows = getSidePlayerRows(persistedMatch);
+  const shouldCommitRating = canCommitRatingResult(action, existingResult, persistedMatch);
+  const shouldReplaceResult = shouldReplaceMatchResult(action, persistedMatch);
   if (shouldCommitRating && !ratingCommit) reject(400, "missing_rating_commit");
   if (action !== "submitMatchResult" && existingMatch) {
     if (action !== "updateMatchRoomRules") {
@@ -182,11 +220,11 @@ export async function persistMatchSnapshot(context, { match, notifications = [],
       matchRow.team_rating_result = existingMatch.team_rating_result ?? null;
     }
   }
-  const resultRow = shouldReplaceResult ? toResultRow(match, context.profileId) : null;
-  const statRows = shouldReplaceResult ? toAuthoritativePlayerStatRows(match) : [];
-  const agreementRows = toAgreementRows(match);
-  const approvalRows = toApprovalRows(match);
-  const disputeRows = toDisputeRows(match);
+  const resultRow = shouldReplaceResult ? toResultRow(persistedMatch, context.profileId) : null;
+  const statRows = shouldReplaceResult ? toAuthoritativePlayerStatRows(persistedMatch) : [];
+  const agreementRows = toAgreementRows(persistedMatch);
+  const approvalRows = toApprovalRows(persistedMatch);
+  const disputeRows = toDisputeRows(persistedMatch);
   const snapshotNotifications = ["cancelMatch", "voidMatch"].includes(action)
     ? notifications.filter((notification) => notification.matchId !== match.id)
     : notifications;
@@ -244,10 +282,10 @@ export async function persistMatchSnapshot(context, { match, notifications = [],
   const trustCommitResult = trustCommit ? await commitProfileTrustDeltas(context, trustCommit) : null;
   let discordDeliveryCount = 0;
   let discordDeliveryError = null;
-  if (!isSoloRecordMatch(match)) {
+  if (!isSoloRecordMatch(persistedMatch)) {
     try {
       discordDeliveryCount = await withTimeout(
-        queueMatchDiscordDeliveries(context.supabase, match, action),
+        queueMatchDiscordDeliveries(context.supabase, persistedMatch, action),
         DISCORD_QUEUE_TIMEOUT_MS,
         "discord_match_delivery_timeout",
       );
@@ -256,7 +294,7 @@ export async function persistMatchSnapshot(context, { match, notifications = [],
       console.error("Match Discord delivery queue failed.", deliveryError);
     }
   }
-  const syncedMatch = isSoloRecordMatch(match) ? match : await loadSyncedMatchAfterWrite(context, match.id, match);
+  const syncedMatch = isSoloRecordMatch(persistedMatch) ? persistedMatch : await loadSyncedMatchAfterWrite(context, persistedMatch.id, persistedMatch);
   const responseState = ratingState ? { ...ratingState, matches: syncedMatch ? [syncedMatch] : [] } : null;
 
   return {

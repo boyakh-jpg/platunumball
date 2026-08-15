@@ -35,5 +35,9 @@ export default async function handler(request, response) {
       .maybeSingle();
   if (error) throw error;
   if (!data) return sendJson(response, 409, { error: "receipt_draft_already_claimed" });
-  return sendJson(response, 200, { publicId, draft: sanitizeReceiptDraftPayload(data.payload), expiresAt: data.expires_at });
+  return sendJson(response, 200, {
+    publicId,
+    draft: sanitizeReceiptDraftPayload(data.payload, { trustedGuestPublicId: publicId }),
+    expiresAt: data.expires_at,
+  });
 }

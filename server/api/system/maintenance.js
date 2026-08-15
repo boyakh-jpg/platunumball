@@ -3,12 +3,47 @@ import { MINUTE_MS } from "../../../shared/lib/matchConstants.js";
 import { normalizeDisputeWindowMinutes } from "../../../shared/lib/constants.js";
 import { RECRUITING_APPLICATION_STATUSES } from "../../../shared/lib/recruiting.js";
 import { fetchRoomFeedSourceMap } from "../../lib/roomFeedSources.js";
+import { deleteReceiptEmblemKeys, getSafeDraftReceiptEmblems } from "../match-receipts/_emblemStorage.js";
 
 const DEFAULT_MATCH_LIMIT = 10;
 const FEED_REPAIR_ROW_FACTOR = 8;
 const FEED_REPAIR_SOURCE_COLUMNS = "id,status,updated_at";
 const ROOM_FEED_RETENTION_DAYS = 7;
 const NOTIFICATION_RETENTION_DAYS = 7;
+
+export async function cleanupExpiredMatchReceiptEmblems(client, now = new Date(), limit = DEFAULT_MATCH_LIMIT) {
+  const { data: rows, error } = await client
+    .from("match_receipt_drafts")
+    .select("id, public_id, payload, expires_at")
+    .lte("expires_at", now.toISOString())
+    .order("expires_at", { ascending: true })
+    .limit(normalizeLimit(limit));
+  if (error) return { ok: false, checked: 0, cleaned: 0, failed: 0, error: error.message };
+
+  let cleaned = 0;
+  let failed = 0;
+  for (const row of rows ?? []) {
+    const safeKeys = getSafeDraftReceiptEmblems(row.payload, row.public_id);
+    const keys = Object.values(safeKeys).filter(Boolean);
+    if (!keys.length) continue;
+    try {
+      await deleteReceiptEmblemKeys(keys, { ignoreErrors: false });
+      const payload = { ...(row.payload ?? {}) };
+      delete payload.homeGuestEmblemKey;
+      delete payload.awayGuestEmblemKey;
+      const { error: updateError } = await client
+        .from("match_receipt_drafts")
+        .update({ payload })
+        .eq("id", row.id);
+      if (updateError) throw updateError;
+      cleaned += keys.length;
+    } catch {
+      failed += keys.length;
+    }
+  }
+
+  return { ok: failed === 0, checked: rows?.length ?? 0, cleaned, failed };
+}
 
 function assertAccess(request) {
   const secret = process.env.CRON_SECRET || "";
@@ -438,6 +473,7 @@ export async function runSystemMaintenance(client = getSupabaseAdminClient(), op
   const feedCleanup = await cleanupRoomFeed(client, now);
   const notificationCleanup = await cleanupReadNotifications(client, now);
   const recordArchiveCleanup = await archiveCompletedRecords(client, now, limit);
+  const receiptEmblemCleanup = await cleanupExpiredMatchReceiptEmblems(client, now, limit);
 
   return {
     ok: simulationQuarantine.ok === true
@@ -445,6 +481,7 @@ export async function runSystemMaintenance(client = getSupabaseAdminClient(), op
       && feedCleanup.ok === true
       && notificationCleanup.ok === true
       && recordArchiveCleanup.ok === true
+      && receiptEmblemCleanup.ok === true
       && results.every((result) => result.ok || result.skipped),
     candidateCount: candidateIds.length,
     confirmedCount: results.filter((result) => result.ok).length,
@@ -454,6 +491,7 @@ export async function runSystemMaintenance(client = getSupabaseAdminClient(), op
     feedCleanup,
     notificationCleanup,
     recordArchiveCleanup,
+    receiptEmblemCleanup,
     feedRepair: includeFeedRepair
       ? await repairStaleRoomFeed(client, limit)
       : { ok: true, skipped: true, reason: "disabled" },

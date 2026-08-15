@@ -1,7 +1,7 @@
 export function createCreateMatchActions(context) {
   const {
     RECORD_TYPES, Star, ageRestrictionOption, app, appendSoloRecordUser, challengeTeamAId, challengeTeamBId, clearCreateMatchGuestDraft, clearMatchReceiptDraft, createReturnTo, currentRegion, draft, hasTeamChallenge,
-    receiptReturnTo, receiptSourceDraft,
+    receiptReturnTo, receiptSourceDraft, receiptDraftPublicId, receiptRecordMatchId,
     favoriteRefereeIds, favoriteTeamIds, formatCreateSaveError, getAvailableTeamPlayerIds, getCourtAddress, getCourtHashtag, getCourtLayoutLabel,
     getClientActionAccessToken, getCourtSurfaceLabel, getLoginPath, getMatchCreationPolicyPayload, getMatchRulesPayload, getOpponentTeam, getPersonalRecordDraftPayload, getRepresentativePlayerIds, getScopedMatchCreationPolicyPayload,
     getTeamEligibility, getTeamHashtag, getTournamentTeamEligibility, getUserHashtag, hydrateCreateMatchTeam, isFavoriteCourt, isInstantRoom, isMatchRecordRoom,
@@ -350,6 +350,7 @@ export function createCreateMatchActions(context) {
       });
       const matchId = await app.actions.createMatch({
         ...personalRecordDraft,
+        ...(receiptRecordMatchId ? { id: receiptRecordMatchId } : {}),
         recordType: RECORD_TYPES.personalRecord,
         visibility: draft.visibility === "public" ? "public" : "private",
         ranked: false,
@@ -361,6 +362,7 @@ export function createCreateMatchActions(context) {
         court: selectedCourt?.name ?? draft.court ?? "",
         scheduledDate: draft.scheduledDate,
         scheduledTime: draft.scheduledTime,
+        receiptDraftPublicId,
       });
       if (typeof matchId === "string" && matchId) {
       clearCreateMatchGuestDraft();

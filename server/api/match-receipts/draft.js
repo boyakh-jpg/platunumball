@@ -27,6 +27,11 @@ import {
   sanitizeReceiptDraftPayload,
   setReceiptCapabilityCookie,
 } from "./_draftSecurity.js";
+import {
+  copyDraftReceiptEmblems,
+  deleteReceiptEmblemKeys,
+  getSafeDraftReceiptEmblems,
+} from "./_emblemStorage.js";
 
 function getPublicId(request) {
   return String(request.query?.publicId ?? "").trim();
@@ -73,8 +78,11 @@ function isValidPublicId(value) {
   return RECEIPT_PUBLIC_ID_PATTERN.test(String(value ?? "").trim());
 }
 
-function mergeOwnedDraftPayload(storedPayload, draft) {
+function mergeOwnedDraftPayload(storedPayload, draft, publicId) {
   const nextPayload = sanitizeReceiptDraftPayload(draft);
+  const guestEmblems = getSafeDraftReceiptEmblems(storedPayload, publicId);
+  nextPayload.homeGuestEmblemKey = guestEmblems.home;
+  nextPayload.awayGuestEmblemKey = guestEmblems.away;
   if (storedPayload?._canonicalReceipt !== true) return nextPayload;
   const canonicalPayload = sanitizeReceiptDraftPayload(storedPayload, { trustedCanonical: true });
   for (const field of CANONICAL_RECEIPT_FIELDS) nextPayload[field] = canonicalPayload[field];
@@ -135,7 +143,7 @@ async function clonePublicPayload(supabase, publicId) {
   if (error) throw error;
   if (!data) return null;
   if (!await canExposeStoredReceiptDraft(supabase, data.payload)) return null;
-  return createReceiptClonePayload(data.payload);
+  return { payload: createReceiptClonePayload(data.payload), sourcePayload: data.payload, sourcePublicId: publicId };
 }
 
 async function canExposeStoredReceiptDraft(supabase, payload) {
@@ -182,7 +190,7 @@ export default async function handler(request, response) {
     response.setHeader("Cache-Control", "private, no-store");
     return sendJson(response, 200, {
       publicId: data.public_id,
-      draft: projectPublicReceiptDraft(data.payload),
+      draft: projectPublicReceiptDraft(data.payload, { publicId: data.public_id }),
       expiresAt: data.expires_at,
       claimed: Boolean(data.claimed_at),
       canClaim,
@@ -214,7 +222,7 @@ export default async function handler(request, response) {
       || !receiptCapabilityMatches(capability.secret, existing.capability_hash)) {
       return sendJson(response, 403, { error: "receipt_capability_required" });
     }
-    const payload = mergeOwnedDraftPayload(existing.payload, body.draft);
+    const payload = mergeOwnedDraftPayload(existing.payload, body.draft, existing.public_id);
     if (!payload.homeTeam || !payload.awayTeam) {
       return sendJson(response, 400, { error: "receipt_draft_invalid" });
     }
@@ -231,13 +239,16 @@ export default async function handler(request, response) {
       publicId: data.public_id,
       serialSeed: payload.serialSeed,
       expiresAt: data.expires_at,
+      draft: projectPublicReceiptDraft(payload, { publicId: data.public_id }),
     });
   }
 
+  const capability = createReceiptCapability();
+  const clone = clonePublicId ? await clonePublicPayload(supabase, clonePublicId) : null;
   const payload = sourceMatchId
     ? await createCanonicalPayload(request, sourceMatchId, body.draft)
     : clonePublicId
-      ? await clonePublicPayload(supabase, clonePublicId)
+      ? clone?.payload ?? null
       : sanitizeReceiptDraftPayload(body.draft);
   if (!payload) return sendJson(response, 404, {
     error: sourceMatchId ? "receipt_source_match_not_found" : "receipt_draft_not_found",
@@ -250,7 +261,16 @@ export default async function handler(request, response) {
   if (rateError) throw rateError;
   if (!allowed) return sendJson(response, 429, { error: "receipt_draft_rate_limited" });
 
-  const capability = createReceiptCapability();
+  let copiedEmblems = { home: "", away: "" };
+  if (clone) {
+    copiedEmblems = await copyDraftReceiptEmblems({
+      payload: clone.sourcePayload,
+      sourcePublicId: clone.sourcePublicId,
+      targetPublicId: capability.publicId,
+    });
+    payload.homeGuestEmblemKey = copiedEmblems.home;
+    payload.awayGuestEmblemKey = copiedEmblems.away;
+  }
   const { data, error } = await supabase
     .from("match_receipt_drafts")
     .insert({
@@ -260,12 +280,16 @@ export default async function handler(request, response) {
     })
     .select("public_id,expires_at")
     .single();
-  if (error) throw error;
+  if (error) {
+    await deleteReceiptEmblemKeys(Object.values(copiedEmblems));
+    throw error;
+  }
 
   setReceiptCapabilityCookie(response, capability);
   return sendJson(response, 201, {
     publicId: data.public_id,
     serialSeed: payload.serialSeed,
     expiresAt: data.expires_at,
+    draft: projectPublicReceiptDraft(payload, { publicId: data.public_id }),
   });
 }

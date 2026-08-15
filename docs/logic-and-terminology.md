@@ -4175,3 +4175,12 @@ flowchart TD
 5. Kakao는 Supabase provider 설정과 `VITE_KAKAO_AUTH_ENABLED=true`가 모두 준비된 뒤 노출한다. Kakao 이메일은 선택값으로 취급한다.
 6. 복구 수단과 최소 1개 로그인 유지 정책이 확정되기 전에는 identity 연결 해제를 제공하지 않는다.
 7. 랜딩과 영수증의 로그인 진입은 공용 provider 선택 화면을 사용하고 검증된 내부 `returnTo`만 보존한다.
+
+## 2026-08-16 영수증 전용 엠블럼 수명주기
+
+1. 익명 영수증에서 확정한 TEAM A·B 선화 엠블럼은 `localStorage`가 아닌 IndexedDB에 side별 Blob으로 저장한다. 로컬 보관 기간은 영수증 텍스트 draft·배경 사진과 같은 24시간이며, scope는 `serialSeed → publicId → matchId` 순서로 승계한다.
+2. 공개 draft 엠블럼은 capability를 가진 소유자만 업로드·교체·삭제할 수 있다. 서버는 영수증 전용 `match-receipt-emblems/drafts/{publicId}/...` namespace에만 저장하고, 정적 WebP·최대 320×320px·최대 96KB·투명 alpha 규격을 다시 검증한다.
+3. 엠블럼 표시 우선순위는 현재 편집 화면의 로컬 확정본, 해당 공개 draft의 guest 엠블럼, canonical 팀의 `receiptEmblemKey`, 티어·중립 엠블럼 순서다. 미리보기와 Story·Feed Canvas는 같은 resolver를 사용한다.
+4. 공개 영수증 복제는 새 public ID와 capability를 발급하고 엠블럼을 새 draft namespace로 복사한다. 개인 기록 생성 시에는 서버가 claim 소유권을 확인한 뒤 `match-receipt-emblems/matches/{matchId}/...`로 승계하며, 팀 프로필·공식 경기·MMR에는 영향을 주지 않는다.
+5. 선화 사용 해제는 표시만 끈다. 삭제·교체는 해당 side만 정리한다. 새 영수증 만들기는 현재 로컬 draft·배경·엠블럼만 정리하며 이미 공유한 서버 draft는 30일 정책을 유지한다. 만료 guest asset은 정리하되 개인 기록으로 승계한 durable asset은 유지한다.
+6. 서버 엠블럼 동기화가 실패하면 로컬 PNG 저장은 허용하지만 QR은 제외한다. 동기화 실패를 성공 완료로 표시하지 않는다.
