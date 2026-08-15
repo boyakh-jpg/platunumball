@@ -92,8 +92,29 @@ const TEAM_EMBLEM_LINE_ART_PROMPT = `첨부한 팀 엠블럼의 형태, 비율, 
 - 새 글자나 도형 추가 금지
 - 투명 PNG 출력이 불가능한 경우에만 배경을 균일한 순수 #00FF00으로 사용하고, 다른 초록색, 그림자, 반사, 색 번짐은 넣지 마세요.`;
 
-function downloadBlob(blob, fileName) {
+function isIosBrowser() {
+  if (typeof navigator === "undefined") return false;
+  return /iP(?:hone|ad|od)/u.test(navigator.userAgent)
+    || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+}
+
+function reserveImageSaveWindow() {
+  if (typeof window === "undefined" || !isIosBrowser()) return null;
+  const saveWindow = window.open("", "_blank");
+  if (saveWindow) {
+    saveWindow.document.title = "BOXTIER 이미지 준비 중";
+    saveWindow.document.body.textContent = "이미지 만드는 중...";
+  }
+  return saveWindow;
+}
+
+function downloadBlob(blob, fileName, saveWindow = null) {
   const url = URL.createObjectURL(blob);
+  if (saveWindow && !saveWindow.closed) {
+    saveWindow.location.replace(url);
+    window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    return "open";
+  }
   const anchor = document.createElement("a");
   anchor.href = url;
   anchor.download = fileName;
@@ -101,6 +122,7 @@ function downloadBlob(blob, fileName) {
   anchor.click();
   anchor.remove();
   window.setTimeout(() => URL.revokeObjectURL(url), 10_000);
+  return "download";
 }
 
 function getPhotoGestureSnapshot(pointers) {
@@ -494,7 +516,7 @@ export default function MatchReceipt({ auth, app }) {
     setStatus("");
     setEmblemCropError("");
     try {
-      const prepared = await prepareTeamEmblemUpload(file, crop);
+      const prepared = await prepareTeamEmblemUpload(file, crop, { circular: true });
       const croppedUrl = `data:image/webp;base64,${prepared.imageBase64}`;
       const lineArtUrl = await createMatchReceiptLineArt(croppedUrl);
       if (!lineArtUrl) {
@@ -835,8 +857,15 @@ export default function MatchReceipt({ auth, app }) {
       setStatus("영수증을 먼저 완성해 주세요.");
       throw new Error("match_receipt_invalid");
     }
-    const publicId = await ensurePublicDraft(result.draft);
-    const publicMatchUrl = new URL(`/app/receipt?draft=${encodeURIComponent(publicId)}`, window.location.origin).toString();
+    let publicId = "";
+    try {
+      publicId = await ensurePublicDraft(result.draft);
+    } catch {
+      // A public QR is optional for local image export.
+    }
+    const publicMatchUrl = publicId
+      ? new URL(`/app/receipt?draft=${encodeURIComponent(publicId)}`, window.location.origin).toString()
+      : "";
     const renderDraft = publicDraftSerialSeedRef.current
       ? normalizeMatchReceiptDraft({ ...result.draft, serialSeed: publicDraftSerialSeedRef.current })
       : result.draft;
@@ -850,16 +879,20 @@ export default function MatchReceipt({ auth, app }) {
   }
 
   async function handleDownload(preset) {
+    const saveWindow = reserveImageSaveWindow();
     setBusy(`download-${preset}`);
     setStatus("");
     try {
       const blob = await createPng(preset);
-      downloadBlob(blob, getMatchReceiptFileName(draft, preset));
-      setStatus(`${MATCH_RECEIPT_CANVAS_SIZES[preset].label} 이미지를 저장했습니다.`);
+      const method = downloadBlob(blob, getMatchReceiptFileName(draft, preset), saveWindow);
+      setStatus(method === "open"
+        ? "이미지를 열었습니다. 공유 메뉴에서 이미지 저장을 선택하세요."
+        : `${MATCH_RECEIPT_CANVAS_SIZES[preset].label} 이미지를 저장했습니다.`);
       trackMatchReceiptEvent("receipt_downloaded", { loggedIn: Boolean(auth?.session), imagePreset: preset });
     } catch (error) {
+      if (saveWindow && !saveWindow.closed) saveWindow.close();
       if (error.message !== "match_receipt_invalid") {
-        console.error("[match-receipt] image export failed", { preset, error });
+        console.error("[match-receipt] image export failed", preset, error?.message, error?.stack);
         setStatus("이미지를 만들지 못했습니다. 다시 시도해 주세요.");
       }
     } finally {
@@ -1198,6 +1231,7 @@ export default function MatchReceipt({ auth, app }) {
       </div>
       <EmblemCropEditor
         file={emblemCropTarget?.file}
+        circular
         pending={busy === `emblem-crop-${emblemCropTarget?.side}`}
         convertedPreview={emblemCropCandidate && emblemCropTarget && emblemCropCandidate.side === emblemCropTarget.side
           ? emblemCropCandidate.lineArtUrl

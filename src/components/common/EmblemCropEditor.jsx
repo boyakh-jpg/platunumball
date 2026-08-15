@@ -19,6 +19,7 @@ export default function EmblemCropEditor({
   onConvert,
   onConfirm,
   onCropChange,
+  circular = false,
 }) {
   const canvasRef = useRef(null);
   const [image, setImage] = useState(null);
@@ -41,8 +42,8 @@ export default function EmblemCropEditor({
 
   useEffect(() => {
     if (!image || !canvasRef.current) return;
-    drawEmblemCrop(canvasRef.current, image, image.naturalWidth, image.naturalHeight, crop, 320);
-  }, [crop, image]);
+    drawEmblemCrop(canvasRef.current, image, image.naturalWidth, image.naturalHeight, crop, 320, { circular });
+  }, [circular, crop, image]);
 
   function updateCrop(name, value) {
     setCrop((current) => ({ ...current, [name]: Number(value) }));

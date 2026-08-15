@@ -615,6 +615,7 @@ export default function TeamDetailView({ controller }) {
       />
       <EmblemCropEditor
         file={receiptEmblemFile}
+        circular
         pending={receiptEmblemPending}
         convertedPreview={receiptEmblemPreview}
         warning="대비가 강하고 배경이 투명하거나 단색인 엠블럼을 권장합니다. 결과가 좋지 않으면 AI로 선화 PNG를 만든 뒤 다시 선택해 주세요."

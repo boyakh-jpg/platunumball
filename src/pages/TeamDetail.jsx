@@ -509,14 +509,14 @@ export default function TeamDetail({ app }) {
     setReceiptEmblemUpload(null);
     setReceiptEmblemFeedback("");
     try {
-      const prepared = await prepareTeamEmblemUpload(receiptEmblemFile, crop);
+      const prepared = await prepareTeamEmblemUpload(receiptEmblemFile, crop, { circular: true });
       const preview = await createMatchReceiptLineArt(`data:image/webp;base64,${prepared.imageBase64}`);
       if (!preview) throw new Error("line_art_failed");
       const [header, base64 = ""] = preview.split(",", 2);
       const mimeType = header.match(/^data:([^;]+);base64$/)?.[1] || "image/png";
       const binary = window.atob(base64);
       const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
-      const preparedUpload = await prepareTeamEmblemUpload(new Blob([bytes], { type: mimeType }));
+      const preparedUpload = await prepareTeamEmblemUpload(new Blob([bytes], { type: mimeType }), {}, { circular: true });
       if (!isCurrentScopedOperation(receiptEmblemPendingRef.current, operation, currentTeamIdRef.current)) return;
       setReceiptEmblemPreview(preview);
       setReceiptEmblemUpload(preparedUpload);

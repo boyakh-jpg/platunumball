@@ -13,8 +13,8 @@ import {
   decodeBase64Image,
   deleteR2Object,
   getR2Config,
+  normalizeWebpUpload,
   uploadR2Webp,
-  validateWebpImage,
 } from "../_r2ImageStorage.js";
 
 const MAX_REQUEST_BYTES = 224 * 1024;
@@ -255,8 +255,13 @@ export default async function handler(request, response) {
       return;
     }
 
-    const bytes = decodeBase64Image(body.imageBase64, { maxBytes: TEAM_EMBLEM_UPLOAD_MAX_BYTES, errorPrefix: "team_emblem" });
-    validateWebpImage(bytes, { maxDimension: TEAM_EMBLEM_MAX_DIMENSION, errorPrefix: "team_emblem", safeContainer: true });
+    const decodedBytes = decodeBase64Image(body.imageBase64, { maxBytes: TEAM_EMBLEM_UPLOAD_MAX_BYTES, errorPrefix: "team_emblem" });
+    const { bytes } = await normalizeWebpUpload(decodedBytes, {
+      maxBytes: TEAM_EMBLEM_UPLOAD_MAX_BYTES,
+      maxDimension: TEAM_EMBLEM_MAX_DIMENSION,
+      errorPrefix: "team_emblem",
+      canonicalizeWebp: true,
+    });
     const digest = createHash("sha256").update(bytes).digest("hex").slice(0, 24);
     const emblemKey = `team-emblems/${teamId}/${digest}.webp`;
     await uploadR2Webp(config, emblemKey, bytes, "team emblem");

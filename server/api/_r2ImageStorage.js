@@ -205,11 +205,16 @@ export async function normalizeWebpUpload(bytes, options = {}) {
   if (!Number.isFinite(maxDimension) || maxDimension <= 0) throw new Error("invalid_image_max_dimension");
   if (!bytes?.length || bytes.length > maxBytes) throw httpError(400, `${errorPrefix}_too_large`);
 
-  if (bytes.toString("ascii", 0, 4) === "RIFF" && bytes.toString("ascii", 8, 12) === "WEBP") {
-    return {
-      bytes,
-      dimensions: validateWebpImage(bytes, { maxDimension, errorPrefix, safeContainer: true }),
-    };
+  const isWebp = bytes.toString("ascii", 0, 4) === "RIFF" && bytes.toString("ascii", 8, 12) === "WEBP";
+  if (isWebp) {
+    try {
+      return {
+        bytes,
+        dimensions: validateWebpImage(bytes, { maxDimension, errorPrefix, safeContainer: true }),
+      };
+    } catch (error) {
+      if (options.canonicalizeWebp !== true) throw error;
+    }
   }
 
   const isJpeg = bytes.length >= 4
@@ -217,7 +222,7 @@ export async function normalizeWebpUpload(bytes, options = {}) {
     && bytes[1] === 0xd8
     && bytes[bytes.length - 2] === 0xff
     && bytes[bytes.length - 1] === 0xd9;
-  if (!isJpeg) throw httpError(400, `${errorPrefix}_webp_required`);
+  if (!isWebp && !isJpeg) throw httpError(400, `${errorPrefix}_webp_required`);
 
   let sharp;
   try {
@@ -228,12 +233,12 @@ export async function normalizeWebpUpload(bytes, options = {}) {
 
   try {
     const image = sharp(bytes, {
-      failOn: "warning",
+      failOn: isWebp ? "error" : "warning",
       limitInputPixels: maxDimension * maxDimension,
     });
     const metadata = await image.metadata();
     if (
-      metadata.format !== "jpeg"
+      metadata.format !== (isWebp ? "webp" : "jpeg")
       || !metadata.width
       || !metadata.height
       || metadata.width > maxDimension

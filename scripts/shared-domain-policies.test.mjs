@@ -257,6 +257,7 @@ import {
 } from "../src/lib/inputSecurity.js";
 import {
   decodeBase64Image,
+  normalizeWebpUpload,
   readWebpDimensions,
   validateSafeWebpContainer,
   validateWebpImage,
@@ -1332,6 +1333,8 @@ test("team emblem row mapping preserves response fallbacks and null handling", (
     emblemTextMode: "name",
     emblemAbbreviation: "",
     emblemFont: "sport",
+    receiptEmblemKey: null,
+    receiptEmblemUpdatedAt: null,
   });
   assert.deepEqual(mapRemoteTeamEmblem({
     accent: null,
@@ -1354,6 +1357,8 @@ test("team emblem row mapping preserves response fallbacks and null handling", (
     emblemTextMode: "initial",
     emblemAbbreviation: "",
     emblemFont: "custom",
+    receiptEmblemKey: null,
+    receiptEmblemUpdatedAt: null,
   });
   assert.deepEqual(mapClientTeamEmblem({
     accent: "#abcdef",
@@ -1373,6 +1378,8 @@ test("team emblem row mapping preserves response fallbacks and null handling", (
     emblemTextMode: "abbreviation",
     emblemAbbreviation: "",
     emblemFont: "sport",
+    receiptEmblemKey: null,
+    receiptEmblemUpdatedAt: null,
   });
 });
 
@@ -2545,6 +2552,31 @@ test("R2 image uploads reject metadata, animation, unknown chunks and trailing p
   }
 });
 
+test("browser WebP containers are canonicalized before emblem storage", async () => {
+  const { default: sharp } = await import("sharp");
+  const valid = await sharp({
+    create: {
+      width: 64,
+      height: 64,
+      channels: 4,
+      background: { r: 255, g: 120, b: 40, alpha: 0.7 },
+    },
+  }).webp({ quality: 76 }).toBuffer();
+  const browserVariant = Buffer.concat([valid, Buffer.from([0])]);
+
+  assert.throws(() => validateSafeWebpContainer(browserVariant, "team_emblem"), /invalid_container/);
+  const normalized = await normalizeWebpUpload(browserVariant, {
+    maxBytes: 96 * 1024,
+    maxDimension: 320,
+    errorPrefix: "team_emblem",
+    canonicalizeWebp: true,
+  });
+
+  assert.deepEqual(normalized.dimensions, { width: 64, height: 64 });
+  assert.doesNotThrow(() => validateSafeWebpContainer(normalized.bytes, "team_emblem"));
+  assert.equal(normalized.bytes.equals(browserVariant), false);
+});
+
 test("match dispute rejection, void reasons, restoration and scoped penalties stay separate", async () => {
   const now = new Date().toISOString();
   const voidedMatch = {
@@ -2668,7 +2700,8 @@ test("core consumers do not restore duplicated policy literals", async () => {
   assert.doesNotMatch(matchConsumers, /\?\?\s*1200/);
   assert.doesNotMatch(`${profileEmblem}\n${teamEmblem}`, /api\.cloudflare\.com\/client\/v4\/accounts/);
   assert.doesNotMatch(`${profileEmblem}\n${teamEmblem}`, /function readWebpDimensions/);
-  assert.equal((`${profileEmblem}\n${teamEmblem}`.match(/safeContainer:\s*true/g) ?? []).length, 2);
+  assert.equal((`${profileEmblem}\n${teamEmblem}`.match(/safeContainer:\s*true/g) ?? []).length, 1);
+  assert.match(teamEmblem, /canonicalizeWebp:\s*true/);
   assert.doesNotMatch(discordBridge, /https:\/\/discord\.com\/api\/v10/);
   assert.doesNotMatch(discordBridge, /\^\\d\{17,20\}\$/);
 });
@@ -2935,7 +2968,7 @@ test("경기 영수증 입력은 안전하게 정규화하고 이미지 규격�
     teamA: { teamId: "team-a", name: "HOME", mmr: 1300 },
     teamB: { teamId: "team-b", name: "AWAY", mmr: 1200 },
     result: { scoreA: 21, scoreB: 18, playerStats: { userA: { points: 8, rebounds: 4 } } },
-  }, { currentUserId: "userA", personalMmr: 1400 });
+  }, { currentUserId: "userA", personalMmr: 1400, profileHashtag: "#userA" });
   const canonicalViewModel = createMatchReceiptViewModel(canonicalDraft);
   assert.equal(canonicalDraft.hasCanonicalTeamMatch, true);
   assert.equal(canonicalViewModel.showTeamTierEmblems, true);

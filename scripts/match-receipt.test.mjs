@@ -483,7 +483,7 @@ test("receipt capability cookies stay isolated when creation responses arrive ou
 });
 
 test("receipt photo tools stay outside the export card and reference dividers remain", async () => {
-  const [page, preview, qrComponent, styles, tokens, renderer, roomDialog, digitGenerator, syncScript, draftApi, landing, appSource, homeNeutralMark, awayNeutralMark, paperGrain, scoreDigitSource, scoreDigits, wordmark, bebasNeue, bebasLicense, blackHanSans, detailStyles, emblemCropEditor] = await Promise.all([
+  const [page, preview, qrComponent, styles, tokens, renderer, roomDialog, digitGenerator, syncScript, draftApi, landing, appSource, homeNeutralMark, awayNeutralMark, paperGrain, scoreDigitSource, scoreDigits, wordmark, bebasNeue, bebasLicense, blackHanSans, detailStyles, emblemCropEditor, teamEmblem] = await Promise.all([
     readFile(new URL("../src/pages/MatchReceipt.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/components/match/MatchReceiptPreview.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/components/common/QrCode.jsx", import.meta.url), "utf8"),
@@ -507,6 +507,7 @@ test("receipt photo tools stay outside the export card and reference dividers re
     readFile(new URL("../public/assets/fonts/BlackHanSans-Regular.ttf", import.meta.url)),
     readFile(new URL("../src/styles/features/match-receipt-details.css", import.meta.url), "utf8"),
     readFile(new URL("../src/components/common/EmblemCropEditor.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../shared/lib/teamEmblem.js", import.meta.url), "utf8"),
   ]);
   const receiptSources = `${page}\n${preview}`;
 
@@ -574,7 +575,16 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(preview, /model\.showPersonalTierIdentity \? <span className="match-receipt-poster-profile">/);
   assert.match(page, /CourtMapPicker/);
   assert.match(page, /EmblemCropEditor/);
-  assert.match(page, /prepareTeamEmblemUpload\(file, crop\)/);
+  assert.match(page, /prepareTeamEmblemUpload\(file, crop, \{ circular: true \}\)/);
+  assert.match(page, /reserveImageSaveWindow\(\)/);
+  assert.match(page, /saveWindow\.location\.replace\(url\)/);
+  assert.match(page, /공유 메뉴에서 이미지 저장을 선택하세요/);
+  assert.match(page, /try \{\s*publicId = await ensurePublicDraft\(result\.draft\);\s*\} catch \{/);
+  assert.match(page, /const publicMatchUrl = publicId\s*\? new URL/);
+  assert.match(page, /<EmblemCropEditor\s+file=\{emblemCropTarget\?\.file\}\s+circular/);
+  assert.match(emblemCropEditor, /drawEmblemCrop\([^;]+\{ circular \}\)/);
+  assert.match(teamEmblem, /context\.arc\(dimension \/ 2, dimension \/ 2, dimension \/ 2/);
+  assert.match(teamEmblem, /if \(options\.circular === true\) context\.restore\(\)/);
   assert.match(page, /setCroppedTeamEmblemUrls/);
   assert.match(page, /setEmblemCropCandidate\(\{ side, croppedUrl, lineArtUrl, width: prepared\.width, height: prepared\.height \}\)/);
   assert.match(page, /convertedPreview=\{emblemCropCandidate && emblemCropTarget && emblemCropCandidate\.side === emblemCropTarget\.side/);

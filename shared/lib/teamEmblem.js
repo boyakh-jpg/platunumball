@@ -242,7 +242,7 @@ function normalizeCrop(crop = {}) {
   };
 }
 
-export function drawEmblemCrop(canvas, source, sourceWidth, sourceHeight, crop = {}, dimension = TEAM_EMBLEM_MAX_DIMENSION) {
+export function drawEmblemCrop(canvas, source, sourceWidth, sourceHeight, crop = {}, dimension = TEAM_EMBLEM_MAX_DIMENSION, options = {}) {
   canvas.width = dimension;
   canvas.height = dimension;
   const context = canvas.getContext("2d", { alpha: true });
@@ -262,11 +262,18 @@ export function drawEmblemCrop(canvas, source, sourceWidth, sourceHeight, crop =
     : (dimension - height) * ((100 - normalized.y) / 100);
   context.imageSmoothingEnabled = true;
   context.imageSmoothingQuality = "high";
+  if (options.circular === true) {
+    context.save();
+    context.beginPath();
+    context.arc(dimension / 2, dimension / 2, dimension / 2, 0, Math.PI * 2);
+    context.clip();
+  }
   context.drawImage(source, x, y, width, height);
+  if (options.circular === true) context.restore();
   return canvas;
 }
 
-export async function prepareTeamEmblemUpload(file, crop = {}) {
+export async function prepareTeamEmblemUpload(file, crop = {}, options = {}) {
   if (!(file instanceof Blob)) throw createImageLoadError("team_emblem_file_required");
   const fileType = String(file.type || "").toLowerCase();
   const extension = String(file.name || "").split(".").pop()?.toLowerCase() ?? "";
@@ -301,7 +308,7 @@ export async function prepareTeamEmblemUpload(file, crop = {}) {
 
     for (const dimension of dimensions) {
       const canvas = document.createElement("canvas");
-      drawEmblemCrop(canvas, decoded.source, decoded.width, decoded.height, crop, dimension);
+      drawEmblemCrop(canvas, decoded.source, decoded.width, decoded.height, crop, dimension, options);
       for (const quality of qualities) {
         const blob = await canvasToWebp(canvas, quality);
         if (!blob) throw createImageLoadError("team_emblem_webp_unavailable");
