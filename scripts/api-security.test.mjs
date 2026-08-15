@@ -269,7 +269,7 @@ test("public landing exposes aggregate counts and a roster-only public room proj
   assert.equal(resolveRequestedRecruitingResult("", null), null);
   assert.deepEqual(resolveRequestedRecruitingResult("room-1", null), { status: "not_found", post: null });
   assert.deepEqual(resolveRequestedRecruitingResult("room-1", { id: "room-1", visibility: "private", status: "open" }), {
-    status: "private",
+    status: "not_found",
     post: null,
   });
   assert.deepEqual(resolveRequestedRecruitingResult("room-1", { id: "room-1", visibility: "public", status: "confirmed" }), {

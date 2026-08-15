@@ -3197,7 +3197,8 @@ flowchart TD
 1. `confirmRecruitingMatch`의 중앙 reducer 계산과 서버 검증은 유지한다.
 2. 검증된 recruiting/match snapshot은 `rankball_confirm_recruiting_match_action()` 한 번으로 저장한다.
 3. 모집방 `closed`, 신청/초대 정리, 경기 row/선수/합의/알림 생성은 한 DB transaction이다.
-4. 경기 생성이 실패하면 모집방 종료도 롤백하며, 동일 match id가 이미 있으면 전체 요청을 거절한다.
+4. 경기 생성이 실패하면 모집방 종료도 롤백하며, 모집방 하나에는 `matches.rules.recruitingPostId` 기준 연결 경기 하나만 허용한다.
+5. 같은 모집방·같은 match id 확정 재시도는 기존 결과를 반환하고, 다른 match id 연결과 알림·Discord 전달 중복은 거절한다.
 ## 2026-07-13 운영 검증 순서
 
 1. 비파괴 migration을 원격 DB에 적용한다.

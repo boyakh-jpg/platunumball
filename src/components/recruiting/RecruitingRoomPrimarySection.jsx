@@ -1,5 +1,5 @@
 import { getRecruitingRoomRosterProps } from "./RecruitingRoomRosterProps.js";
-import { getMatchFormatLabel } from "../../lib/matchRules.js";
+import { getMatchFormatLabel, resolveMatchRuleSource } from "../../lib/matchRules.js";
 
 function RecruitingRoomVersusSide({ context, sideName, meta }) {
   const {
@@ -31,10 +31,8 @@ function RecruitingRoomVersusSide({ context, sideName, meta }) {
     tournamentRoomOwnerName,
     userById,
   } = context;
-  const roomFormatLabel = getMatchFormatLabel(
-    sourceMatch?.mode ?? selectedPost.mode,
-    sourceMatch?.rules ?? selectedMatchRules,
-  );
+  const roomRuleSource = resolveMatchRuleSource(sourceMatch, { mode: selectedPost.mode, rules: selectedMatchRules });
+  const roomFormatLabel = getMatchFormatLabel(roomRuleSource.mode, roomRuleSource.rules);
   const pendingSideLeaderInvitation = !sourceMatch && selectedPost.visibility === "private"
     ? (roomState.invitations ?? []).find((invitation) => (
         invitation.status === "pending"
@@ -108,10 +106,8 @@ export function RecruitingRoomPrimarySection({ context }) {
     setRoomHelpOpen, sideMmrBalance, sourceMatchPlacementByPlayerId, sourceMatchSideLeaderIds, sourceMatchSlotManagementOpen, sourceRoomReadOnly, teamAMeta,
     teamBMeta, teamOnlyRoom, toggleInvitePlayer, tournamentRoomOwnerName, updateInviteDraft, userById,
   } = context;
-  const roomFormatLabel = getMatchFormatLabel(
-    sourceMatch?.mode ?? selectedPost.mode,
-    sourceMatch?.rules ?? selectedMatchRules,
-  );
+  const roomRuleSource = resolveMatchRuleSource(sourceMatch, { mode: selectedPost.mode, rules: selectedMatchRules });
+  const roomFormatLabel = getMatchFormatLabel(roomRuleSource.mode, roomRuleSource.rules);
 
   return (
     <>

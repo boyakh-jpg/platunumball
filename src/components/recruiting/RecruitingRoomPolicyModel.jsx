@@ -1,3 +1,5 @@
+import { resolveMatchRuleSource } from "../../lib/matchRules.js";
+
 export function buildRecruitingRoomPolicyModel(context) {
   const {
     DEFAULT_RATING, MATCH_SIDES, RECRUITING_JOIN_MODES, ROOM_BODY_MODES, app, getCourtPlayWarning,
@@ -227,12 +229,12 @@ const lobby = getRecruitingLobby(selectedPost, roomDataState);
             )) ?? null
           : null;
         const roomEditCourtWarning = roomEditDraft && roomEditCourt ? getCourtPlayWarning(roomEditCourt, `${roomEditDraft.sideCapacity}v${roomEditDraft.sideCapacity}`) : "";
+        const resolvedMatchRuleSource = resolveMatchRuleSource(sourceMatch, selectedPost);
         const selectedRoomPolicySource = sourceMatch
           ? {
               ...selectedPost,
               ...sourceMatch,
-              mode: sourceMatch.mode ?? selectedPost.mode,
-              rules: sourceMatch.rules ?? selectedPost.rules,
+              ...resolvedMatchRuleSource,
             }
           : selectedPost;
         const selectedMatchRules = normalizeMatchRules(selectedRoomPolicySource.rules, { mode: selectedRoomPolicySource.mode });

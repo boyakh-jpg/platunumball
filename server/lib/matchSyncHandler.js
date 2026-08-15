@@ -277,12 +277,13 @@ export async function persistMatchSnapshot(context, { match, notifications = [],
   if (persistError) throw persistError;
   const matchPersistResult = recruitingPersistence ? persistResult?.match : persistResult;
   const recruitingPersistResult = recruitingPersistence ? persistResult?.recruiting : null;
+  const confirmationAlreadyConfirmed = Boolean(recruitingPersistence && persistResult?.alreadyConfirmed);
   const ratingCommitResult = shouldCommitRating ? matchPersistResult?.ratingCommit : null;
   const ratingState = shouldCommitRating ? await loadCommittedRatingState(context, ratingCommit) : null;
   const trustCommitResult = trustCommit ? await commitProfileTrustDeltas(context, trustCommit) : null;
   let discordDeliveryCount = 0;
   let discordDeliveryError = null;
-  if (!isSoloRecordMatch(persistedMatch)) {
+  if (!isSoloRecordMatch(persistedMatch) && !confirmationAlreadyConfirmed) {
     try {
       discordDeliveryCount = await withTimeout(
         queueMatchDiscordDeliveries(context.supabase, persistedMatch, action),
@@ -311,6 +312,7 @@ export async function persistMatchSnapshot(context, { match, notifications = [],
     ratingAlreadyCommitted: Boolean(ratingCommitResult?.alreadyCommitted),
     ratingAtomic: Boolean(shouldCommitRating && matchPersistResult?.ratingAtomic),
     confirmationAtomic: Boolean(recruitingPersistence && persistResult?.confirmationAtomic),
+    alreadyConfirmed: confirmationAlreadyConfirmed,
     ...(recruitingPersistResult ? { recruitingPersistResult } : {}),
     trustCommitted: Boolean(trustCommitResult?.ok && !trustCommitResult?.skipped),
     trustProfileCount: Number(trustCommitResult?.profileCount ?? 0),

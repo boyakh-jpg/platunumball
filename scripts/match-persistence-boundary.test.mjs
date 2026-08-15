@@ -289,6 +289,86 @@ test("legacy mixed recruiting player team provenance survives the match player r
   assert.deepEqual(teamOnlyRows.map((row) => row.team_id), ["team-a", "team-a", "team-b"]);
 });
 
+test("confirmed recruiting roster survives the authoritative DB round trip", () => {
+  const match = {
+    id: "confirmed-recruiting-roster",
+    title: "confirmed recruiting roster",
+    mode: "3v3",
+    timingType: "scheduled",
+    visibility: "public",
+    status: "confirmed",
+    createdBy: "host",
+    courtId: "court-1",
+    court: "Court 1",
+    scheduledDate: "2026-08-16",
+    scheduledTime: "18:30",
+    recruitingPostId: "post-1",
+    refereeId: "referee-1",
+    teamA: {
+      name: "Team A",
+      teamId: "team-a",
+      players: ["host", "a-player", "a-promoted"],
+      playerTeams: {},
+      score: 0,
+    },
+    teamB: {
+      name: "Team B",
+      teamId: null,
+      players: ["b-solo", "b-party-1", "b-party-2"],
+      playerTeams: {
+        "b-party-1": "team-b-party",
+        "b-party-2": "team-b-party",
+      },
+      score: 0,
+    },
+    reservePlayers: { teamA: ["a-reserve"], teamB: ["b-reserve"] },
+    promotedReserveIds: { teamA: ["a-promoted"], teamB: [] },
+    attendance: {
+      teamA: ["host", "a-player", "a-promoted"],
+      teamB: ["b-solo", "b-party-1", "b-party-2"],
+    },
+    rules: {
+      timingType: "scheduled",
+      benchCapacity: 1,
+      parties: [{
+        id: "party-b",
+        kind: "team",
+        side: "teamB",
+        teamId: "team-b-party",
+        players: ["b-party-1", "b-party-2"],
+        reserves: ["b-reserve"],
+      }],
+    },
+  };
+  const matchRow = toAuthoritativeMatchRow(match, "host");
+  const playerRows = getSidePlayerRows(match);
+  const reloaded = fromRemoteMatch(matchRow, {
+    playersByMatch: new Map([[match.id, playerRows]]),
+    resultsByMatch: {},
+    statsByMatch: new Map(),
+    disputesByMatch: new Map(),
+    agreementsByMatch: new Map(),
+    approvalsByMatch: new Map(),
+    teamById: {
+      "team-a": { id: "team-a", name: "Team A" },
+      "team-b-party": { id: "team-b-party", name: "Team B Party" },
+    },
+    courtById: { "court-1": { id: "court-1", name: "Court 1" } },
+  });
+
+  assert.equal(reloaded.recruitingPostId, "post-1");
+  assert.equal(reloaded.refereeId, "referee-1");
+  assert.equal(reloaded.teamA.teamId, "team-a");
+  assert.equal(reloaded.teamB.teamId, null);
+  assert.deepEqual(reloaded.teamA.players, match.teamA.players);
+  assert.deepEqual(reloaded.teamB.players, match.teamB.players);
+  assert.deepEqual(reloaded.teamB.playerTeams, match.teamB.playerTeams);
+  assert.deepEqual(reloaded.reservePlayers, match.reservePlayers);
+  assert.deepEqual(reloaded.promotedReserveIds, match.promotedReserveIds);
+  assert.deepEqual(reloaded.attendance, match.attendance);
+  assert.deepEqual(reloaded.parties, match.rules.parties);
+});
+
 test("per-player team provenance must stay inside its side roster and match current membership", async () => {
   const supabase = makeRosterSupabase({
     profileIds: ["solo-a", "party-b1", "solo-b"],

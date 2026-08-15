@@ -1,5 +1,5 @@
 import { allowRequestMethod, getAuthenticatedContext, readJsonBody } from "../_supabaseAdmin.js";
-import { applyAuthoritativeRecruitingOperation, getOperation, loadAuthoritativeState } from "../_authoritativeState.js";
+import { applyAuthoritativeRecruitingOperation, getOperation, loadAuthoritativeState, loadExistingRecruitingConfirmation } from "../_authoritativeState.js";
 import { persistMatchSnapshot } from "../matches/sync-match.js";
 import { hasPracticeMutationPayload, PRACTICE_LOCAL_ONLY_ERROR } from "../../../shared/lib/practiceMode.js";
 
@@ -94,6 +94,14 @@ export default async function handler(request, response) {
     }
 
     if (operation.action === "confirmRecruitingMatch") {
+      const existingConfirmation = await timing.track(
+        "existingConfirmation",
+        () => loadExistingRecruitingConfirmation(context, operation),
+      );
+      if (existingConfirmation) {
+        sendTimedJson(response, 200, existingConfirmation, timing, debugTiming);
+        return;
+      }
       await timing.track("roomChangeApproval", () => assertRecruitingRoomChangeComplete(context, operation.postId));
       const state = await timing.track("authoritativeLoad", () => loadAuthoritativeState(context, { operation }));
       const result = await timing.track("authoritativeReplay", () => applyAuthoritativeRecruitingOperation(state, operation));
@@ -138,6 +146,7 @@ export default async function handler(request, response) {
         createdMatch: matchResult.match,
         matchId: matchResult.matchId,
         confirmationAtomic: Boolean(matchResult.confirmationAtomic),
+        alreadyConfirmed: Boolean(matchResult.alreadyConfirmed),
       };
     } else {
       result = await timing.track("persistSnapshot", () => persistRecruitingPostSnapshot(context, {

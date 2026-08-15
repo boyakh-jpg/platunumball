@@ -30,10 +30,11 @@ export async function fetchScopedDirectoryReferences(client, {
   courtIds = [],
   profileIds = [],
 } = {}) {
+  const scopedCourtIds = uniqueScopeIds(courtIds);
   const [teams, teamMembers, courts] = await Promise.all([
     fetchRowsByIds("teams", TEAM_COLUMNS, "id", teamIds, "id", client),
     fetchRowsByIds("team_members", TEAM_MEMBER_COLUMNS, "team_id", teamMemberTeamIds, null, client),
-    fetchCourtRows(client, courtIds),
+    scopedCourtIds.length ? fetchCourtRows(client, scopedCourtIds) : [],
   ]);
   const publicProfiles = await fetchRowsByIds(
     "public_profiles",

@@ -1,5 +1,5 @@
 import { getRecruitingRoomRosterProps } from "./RecruitingRoomRosterProps.js";
-import { getMatchFormatLabel } from "../../lib/matchRules.js";
+import { getMatchFormatLabel, resolveMatchRuleSource } from "../../lib/matchRules.js";
 
 export function createRecruitingRoomMatchRenderers(context) {
   const {
@@ -16,7 +16,8 @@ export function createRecruitingRoomMatchRenderers(context) {
     sourceMatchRecordBoardFirst, sourceMatchRecordWindow, sourceMatchResultSubmitLabel, sourceMatchReviewRefreshing, sourceMatchSideLeaderIds, sourceMatchSlotManagementOpen,
     runSourceMatchAction, sourceMatchResultEntryPermission, sourceRoomReadOnly, teamOnlyRoom, userById,
   } = context;
-  const roomFormatLabel = getMatchFormatLabel(sourceMatch?.mode ?? selectedPost.mode, sourceMatch?.rules ?? selectedPost.rules);
+  const roomRuleSource = resolveMatchRuleSource(sourceMatch, selectedPost);
+  const roomFormatLabel = getMatchFormatLabel(roomRuleSource.mode, roomRuleSource.rules);
 
 const renderSourceMatchRecordBoard = () => {
           if (!sourceMatchRecordBoardFirst) return null;

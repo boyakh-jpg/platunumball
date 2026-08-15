@@ -65,7 +65,7 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
     tournamentScopeIds.length ? (query) => applyIdScope(query, "id", tournamentScopeIds) : null,
     !tournamentScopeIds.length ? (query) => applyUpdatedBefore(query, "updated_at", options.tournamentUpdatedBefore ?? options.tournamentCursor) : null,
   );
-  const privateProfileFilter = (clientState || tournamentPageScope) && authUserIdText
+  const privateProfileFilter = (clientState || matchPageScope || recruitingPageScope || tournamentPageScope) && authUserIdText
     ? (query) => query.eq("auth_user_id", authUserIdText)
     : null;
   const matchLimit = matchScopeIds.length ? null : clientState ? getClientLimit(options.matchLimit, REMOTE_CLIENT_MATCH_LIMIT) : null;
@@ -165,7 +165,7 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
     refereeRequests,
     refereeExamAttempts,
     adminAppointments,
-    refereeAppointments,
+    initialRefereeAppointments,
     adminAuditLog,
     adminDisciplinaryActions,
   ] = await Promise.all([
@@ -204,7 +204,9 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
       : isAdminStateLoad
         ? fetchOptionalRows("admin_appointments", APPOINTMENT_COLUMNS, "created_at", client)
         : fetchOptionalFilteredRows("admin_appointments", APPOINTMENT_COLUMNS, "created_at", client, (query) => query.eq("user_id", currentUserId)),
-    includeRefereeAppointments ? fetchOptionalRows("referee_appointments", APPOINTMENT_COLUMNS, "created_at", client) : [],
+    includeRefereeAppointments && !matchPageScope && !recruitingPageScope && !tournamentPageScope
+      ? fetchOptionalRows("referee_appointments", APPOINTMENT_COLUMNS, "created_at", client)
+      : [],
     includeUserScoped && isAdminStateLoad ? fetchOptionalRows("admin_audit_log", ADMIN_AUDIT_COLUMNS, "created_at", client) : [],
     !includeUserScoped || !currentUserId
       ? []
@@ -306,6 +308,17 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
     }));
     mergeScopedProfiles(profiles, publicProfiles, privateProfileById);
   }
+  const refereeAppointments = includeRefereeAppointments && (matchPageScope || recruitingPageScope || tournamentPageScope)
+    ? await fetchRowsByIds(
+        "referee_appointments",
+        APPOINTMENT_COLUMNS,
+        "user_id",
+        uniqueScopeIds(profiles.map((profile) => profile.id)),
+        "created_at",
+        client,
+        true,
+      )
+    : initialRefereeAppointments;
   const teamMembersByTeam = groupBy(teamMembers, "team_id");
   const teamById = firstBy(teams, "id");
   const courtById = firstBy(courts, "id");

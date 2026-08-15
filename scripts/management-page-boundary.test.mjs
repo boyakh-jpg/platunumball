@@ -799,7 +799,7 @@ test("비로그인 랜딩은 인증 확인 후 안전하게 분기한다", async
   const hydration = await read("src/hooks/appData/orchestrator/runtimeHydration.js");
   assert.match(landing, /if \(auth\?\.loading\) return <LandingLoading \/>;/u);
   assert.match(landing, /if \(auth\?\.user\) return <Navigate to="\/app" replace \/>;/u);
-  assert.match(landing, /signInWithProvider\?\.\("google", "\/app"\)/u);
+  assert.match(landing, /to=\{getLoginPath\("\/app"\)\}/u);
   assert.match(app, /path="\/"[\s\S]*?<Landing auth=\{auth\} \/>/u);
   assert.match(app, /path="\/start"[\s\S]*?<Landing auth=\{auth\} \/>/u);
   assert.match(profileSetup, /if \(url\.origin !== "https:\/\/boxtier\.local"\) return safeFallback;/u);

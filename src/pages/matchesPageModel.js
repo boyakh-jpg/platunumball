@@ -25,19 +25,29 @@ export function requestMatchDetailOnce({
   onSettled,
 }) {
   requestedMatchDetails.add(matchId);
-  const request = loadMatchDetail?.(matchId);
+  let request;
+  try {
+    request = loadMatchDetail?.(matchId);
+  } catch {
+    requestedMatchDetails.delete(matchId);
+    onUnavailable?.();
+    onSettled?.();
+    return;
+  }
   if (!request?.then) {
     if (!request) requestedMatchDetails.delete(matchId);
     onSettled?.();
     return;
   }
-  return request.then((count) => {
-    if (!count) {
+  return request.then(
+    (count) => {
+      if (count) return;
       requestedMatchDetails.delete(matchId);
       onUnavailable?.();
-    }
-  }).catch(() => {
-    requestedMatchDetails.delete(matchId);
-    onUnavailable?.();
-  }).finally(() => onSettled?.());
+    },
+    () => {
+      requestedMatchDetails.delete(matchId);
+      onUnavailable?.();
+    },
+  ).finally(() => onSettled?.());
 }

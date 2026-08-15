@@ -48,7 +48,7 @@ function getRecruitingRegion(request) {
 export function resolveRequestedRecruitingResult(requestedPostId, row = null, post = null) {
   if (!requestedPostId) return null;
   if (!row) return { status: "not_found", post: null };
-  if (row.visibility !== "public") return { status: "private", post: null };
+  if (row.visibility !== "public") return { status: "not_found", post: null };
   if (row.status !== "open") return { status: "closed", post: null };
   return post ? { status: "open", post } : { status: "not_found", post: null };
 }

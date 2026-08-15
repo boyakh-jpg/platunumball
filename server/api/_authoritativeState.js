@@ -4,6 +4,7 @@ import {
   createMatch,
   loadNormalizedRemoteStateFromClient,
 } from "../lib/repositoryAdapter.js";
+import { getRecruitingRoomOwnerId } from "../../src/lib/recruiting.js";
 import { SERVER_RATING_AUTHORITY } from "../lib/ratingAuthority.js";
 
 configureServerRatingAuthority(SERVER_RATING_AUTHORITY);
@@ -190,5 +191,58 @@ export function applyAuthoritativeMatchOperation(state, operation = {}) {
     tournamentNotifications: [],
     ratingCommit: null,
     trustCommit: null,
+  };
+}
+
+export async function loadExistingRecruitingConfirmation(context, operation = {}) {
+  if (String(operation.action || "") !== "confirmRecruitingMatch") return null;
+  const postId = String(operation.postId || operation.preferredPostId || "").trim();
+  if (!postId) return null;
+
+  const { data: linkedRows, error: linkedError } = await context.supabase
+    .from("matches")
+    .select("id")
+    .eq("rules->>recruitingPostId", postId)
+    .limit(2);
+  if (linkedError) throw linkedError;
+  if (!Array.isArray(linkedRows) || linkedRows.length === 0) return null;
+  if (linkedRows.length > 1) reject(409, "recruiting_post_has_multiple_matches");
+
+  const matchId = String(linkedRows[0]?.id || "").trim();
+  const requestedMatchId = String(operation.preferredMatchId || operation.matchId || "").trim();
+  if (!matchId || (requestedMatchId && requestedMatchId !== matchId)) {
+    reject(409, "recruiting_post_already_linked", { matchId });
+  }
+
+  const loaded = await loadNormalizedRemoteStateFromClient(
+    context.supabase,
+    context.authUserId,
+    context.authUser?.email ?? "",
+    {
+      scope: "matches",
+      matchIds: [matchId],
+      includeLinkedRecruitingPost: true,
+    },
+  );
+  const state = { ...(loaded?.state ?? {}), currentUserId: context.profileId };
+  const post = (state.recruitingPosts ?? []).find((item) => item.id === postId) ?? null;
+  const match = (state.matches ?? []).find((item) => item.id === matchId) ?? null;
+  if (!post || !match) reject(409, "recruiting_confirmation_state_missing");
+  if (getRecruitingRoomOwnerId(post) !== context.profileId) reject(403, "recruiting_room_owner_required");
+
+  return {
+    ok: true,
+    post,
+    postId,
+    applicationCount: 0,
+    notificationCount: 0,
+    discordDeliveryCount: 0,
+    discordDeliveryError: null,
+    discordDeliveryDeferred: false,
+    createdMatch: match,
+    matchId,
+    confirmationAtomic: true,
+    alreadyConfirmed: true,
+    state,
   };
 }

@@ -8,6 +8,7 @@ import test from "node:test";
 import { promisify } from "node:util";
 import { chromium } from "playwright-core";
 import { createServer } from "vite";
+import { requestMatchDetailOnce } from "../src/pages/matchesPageModel.js";
 import {
   acceptRecruitingInvitation,
   agreeMatch,
@@ -33,6 +34,7 @@ import {
   setRecruitingPartyPlayerReserve,
   setRecruitingRoomTeam,
   setRecruitingTeamPartyRoster,
+  sendRecruitingChat,
   startMatch,
   submitMatchResult,
   substituteMatchPlayer,
@@ -53,7 +55,14 @@ import {
   submitPracticeSampleResult,
 } from "../src/lib/practiceMatch.js";
 import { createPracticeClockClient } from "../src/lib/practiceMatchClock.js";
-import { getRecruitingEntryPlacementIds, getRecruitingLobby, isIndividualOnlyRecruitingRoom } from "../src/lib/recruiting.js";
+import { getRecruitingEntryPlacementIds, getRecruitingLobby, getRecruitingSideCapacity, isIndividualOnlyRecruitingRoom } from "../src/lib/recruiting.js";
+import {
+  getMatchEndLabel,
+  getMatchFormatLabel,
+  getMatchPeriodLabel,
+  normalizeMatchRules,
+  resolveMatchRuleSource,
+} from "../src/lib/matchRules.js";
 import {
   buildMatchDisputeRequest,
   buildMatchResultSubmission,
@@ -64,7 +73,12 @@ import {
   getOpenMatchDisputes,
   normalizeTeamScoresDisputeRequest,
 } from "../src/lib/matchUtils.js";
-import { inferRegionSelection } from "../src/lib/profileSetup.js";
+import {
+  getAppRedirectFromLocation,
+  getLoginPath,
+  getSafeAppRedirect,
+  inferRegionSelection,
+} from "../src/lib/profileSetup.js";
 import { getLocalRivalries, getTeamScoreSummary } from "../src/lib/season.js";
 import { buildSettingsActions } from "../src/hooks/appData/actions/settingsActions.js";
 import {
@@ -72,6 +86,10 @@ import {
   markRecruitingMutationPending,
 } from "../src/hooks/appData/orchestrator/serverActions.js";
 import { useDirectoryLoaders } from "../src/hooks/appData/orchestrator/directoryLoaders.js";
+import {
+  mergeRemoteMatchPage,
+  mergeRemoteRecruitingPage,
+} from "../src/hooks/appData/remoteMerge/pages.js";
 import { mergeRemoteDirectory } from "../src/hooks/appData/remoteMerge/state.js";
 import {
   beginTrackedMutation,
@@ -81,6 +99,7 @@ import {
   hasTrackedMutationSince,
 } from "../src/lib/asyncState.js";
 import { mergeNotificationRefresh } from "../shared/lib/notifications.js";
+import { canSyncRecruitingAction } from "../server/api/recruiting/_syncPostPolicy.js";
 
 const execFileAsync = promisify(execFile);
 const MODE_CAPACITY = Object.freeze({
@@ -1237,6 +1256,51 @@ test("최종 승인은 결과 제출과 경기 종료 중 늦은 시각부터 3�
   assert.equal(getMatchManualFinalizationStatus(match, "2026-07-31T12:12:59.999Z").ready, false);
   assert.equal(getMatchManualFinalizationStatus(match, "2026-07-31T12:13:00.000Z").ready, true);
 });
+
+function createScopedStateSupabase(seed = {}) {
+  const calls = [];
+  const getRowValue = (row, column) => {
+    const jsonTextMatch = String(column || "").match(/^([a-z_]+)->>([A-Za-z0-9_]+)$/);
+    if (jsonTextMatch) return row?.[jsonTextMatch[1]]?.[jsonTextMatch[2]];
+    return row?.[column];
+  };
+  return {
+    calls,
+    from(table) {
+      const state = { table, filters: [], from: 0, to: Number.MAX_SAFE_INTEGER };
+      const execute = async () => {
+        calls.push({ table, filters: state.filters.map((filter) => ({ ...filter })) });
+        let rows = [...(seed[table] ?? [])];
+        state.filters.forEach((filter) => {
+          if (filter.op === "eq") {
+            rows = rows.filter((row) => String(getRowValue(row, filter.column) ?? "") === String(filter.value ?? ""));
+          }
+          if (filter.op === "in") {
+            const values = new Set(filter.values.map(String));
+            rows = rows.filter((row) => values.has(String(getRowValue(row, filter.column) ?? "")));
+          }
+          if (filter.op === "lt") {
+            rows = rows.filter((row) => String(getRowValue(row, filter.column) ?? "") < String(filter.value ?? ""));
+          }
+        });
+        return { data: rows.slice(state.from, state.to + 1), error: null };
+      };
+      const query = {
+        select() { return query; },
+        limit(count) { state.to = state.from + Math.max(0, Number(count) || 0) - 1; return query; },
+        range(from, to) { state.from = from; state.to = to; return query; },
+        eq(column, value) { state.filters.push({ op: "eq", column, value }); return query; },
+        in(column, values) { state.filters.push({ op: "in", column, values: [...values] }); return query; },
+        lt(column, value) { state.filters.push({ op: "lt", column, value }); return query; },
+        or() { return query; },
+        filter() { return query; },
+        order() { return execute(); },
+        then(resolve, reject) { return execute().then(resolve, reject); },
+      };
+      return query;
+    },
+  };
+}
 
 function createDeferred() {
   let resolve;
@@ -2588,6 +2652,147 @@ test("affiliation directory loads replace only authoritative first pages", async
   assert.deepEqual(await load({ kind: "affiliations", affiliations: [], reject: true }), [first]);
 });
 
+test("late recruiting and match detail responses stay scoped to the selected id", async () => {
+  let state = {
+    currentUserId: "viewer",
+    users: [],
+    teams: [],
+    tournaments: [],
+    recruitingPosts: [
+      { id: "room-a", title: "A list", listCardOnly: true, updatedAt: "2026-08-16T00:00:01.000Z" },
+      { id: "room-b", title: "B list", listCardOnly: true, updatedAt: "2026-08-16T00:00:02.000Z" },
+    ],
+    matches: [
+      { id: "match-1", title: "M1 list", matchListOnly: true, updatedAt: "2026-08-16T00:00:01.000Z" },
+      { id: "match-2", title: "M2 list", matchListOnly: true, updatedAt: "2026-08-16T00:00:02.000Z" },
+    ],
+  };
+  let selectedPostId = "room-a";
+  const roomA = createDeferred();
+  const roomB = createDeferred();
+  const applyRoom = (postId, request) => request.promise.then((remoteState) => {
+    state = mergeRemoteRecruitingPage(state, remoteState);
+    return selectedPostId === postId;
+  });
+  const roomACompletion = applyRoom("room-a", roomA);
+  selectedPostId = "room-b";
+  const roomBCompletion = applyRoom("room-b", roomB);
+
+  roomB.resolve({
+    users: [{ id: "player-b", name: "Player B" }],
+    teams: [{ id: "team-b", name: "Team B", members: [{ userId: "player-b" }] }],
+    recruitingPosts: [{
+      id: "room-b",
+      title: "B full",
+      updatedAt: "2026-08-16T00:00:04.000Z",
+      applicants: [{ id: "application-b", playerId: "player-b" }],
+      roomState: { chatMessages: [{ id: "chat-b", userId: "player-b", body: "B only" }] },
+    }],
+  });
+  assert.equal(await roomBCompletion, true);
+  roomA.resolve({
+    users: [{ id: "player-a", name: "Player A" }],
+    teams: [{ id: "team-a", name: "Team A", members: [{ userId: "player-a" }] }],
+    recruitingPosts: [{
+      id: "room-a",
+      title: "A full",
+      updatedAt: "2026-08-16T00:00:03.000Z",
+      applicants: [{ id: "application-a", playerId: "player-a" }],
+      roomState: { chatMessages: [{ id: "chat-a", userId: "player-a", body: "A only" }] },
+    }],
+  });
+  assert.equal(await roomACompletion, false);
+  assert.equal(selectedPostId, "room-b");
+  const loadedRoomB = state.recruitingPosts.find((post) => post.id === "room-b");
+  assert.deepEqual(loadedRoomB.applicants.map((application) => application.id), ["application-b"]);
+  assert.deepEqual(loadedRoomB.roomState.chatMessages.map((message) => message.id), ["chat-b"]);
+  assert.equal(loadedRoomB.roomState.chatMessages.some((message) => message.id === "chat-a"), false);
+
+  state = mergeRemoteRecruitingPage(state, {
+    recruitingPosts: [{
+      id: "room-b",
+      title: "B late list",
+      listCardOnly: true,
+      listCounts: { applicants: 9 },
+      updatedAt: "2026-08-16T00:00:05.000Z",
+    }],
+  });
+  const roomBAfterList = state.recruitingPosts.find((post) => post.id === "room-b");
+  assert.equal(roomBAfterList.title, "B full");
+  assert.equal(roomBAfterList.listCardOnly, undefined);
+  assert.deepEqual(roomBAfterList.applicants.map((application) => application.id), ["application-b"]);
+  assert.deepEqual(roomBAfterList.roomState.chatMessages.map((message) => message.id), ["chat-b"]);
+  assert.deepEqual(roomBAfterList.listCounts, { applicants: 9 });
+
+  let selectedMatchId = "match-1";
+  const match1 = createDeferred();
+  const match2 = createDeferred();
+  const applyMatch = (matchId, request) => request.promise.then((remoteState) => {
+    state = mergeRemoteMatchPage(state, remoteState);
+    return selectedMatchId === matchId;
+  });
+  const match1Completion = applyMatch("match-1", match1);
+  selectedMatchId = "match-2";
+  const match2Completion = applyMatch("match-2", match2);
+  match2.resolve({
+    users: [{ id: "match-player-2", name: "Match Player 2" }],
+    teams: [],
+    tournaments: [],
+    recruitingPosts: [],
+    matches: [{
+      id: "match-2",
+      title: "M2 full",
+      updatedAt: "2026-08-16T00:00:04.000Z",
+      teamA: { players: ["match-player-2"] },
+      teamB: { players: [] },
+      rules: { periodCount: 4 },
+      result: { teamAScore: 8, teamBScore: 4 },
+    }],
+  });
+  assert.equal(await match2Completion, true);
+  match1.resolve({
+    users: [{ id: "match-player-1", name: "Match Player 1" }],
+    teams: [],
+    tournaments: [],
+    recruitingPosts: [],
+    matches: [{
+      id: "match-1",
+      title: "M1 full",
+      updatedAt: "2026-08-16T00:00:03.000Z",
+      teamA: { players: ["match-player-1"] },
+      teamB: { players: [] },
+      rules: { periodCount: 1 },
+      result: { teamAScore: 3, teamBScore: 2 },
+    }],
+  });
+  assert.equal(await match1Completion, false);
+  assert.equal(selectedMatchId, "match-2");
+  const loadedMatch2 = state.matches.find((match) => match.id === "match-2");
+  assert.deepEqual(loadedMatch2.teamA.players, ["match-player-2"]);
+  assert.deepEqual(loadedMatch2.result, { teamAScore: 8, teamBScore: 4 });
+
+  state = mergeRemoteMatchPage(state, {
+    users: [],
+    teams: [],
+    tournaments: [],
+    recruitingPosts: [],
+    matches: [{
+      id: "match-2",
+      title: "M2 late list",
+      matchListOnly: true,
+      updatedAt: "2026-08-16T00:00:05.000Z",
+      teamA: { name: "Team A summary" },
+      teamB: { name: "Team B summary" },
+    }],
+  });
+  const match2AfterList = state.matches.find((match) => match.id === "match-2");
+  assert.equal(match2AfterList.title, "M2 late list");
+  assert.equal(match2AfterList.matchListOnly, undefined);
+  assert.deepEqual(match2AfterList.teamA.players, ["match-player-2"]);
+  assert.deepEqual(match2AfterList.rules, { periodCount: 4 });
+  assert.deepEqual(match2AfterList.result, { teamAScore: 8, teamBScore: 4 });
+});
+
 test("a stale notification refresh preserves newer reads and deletions", async () => {
   const tracker = createMutationTracker(["notifications"]);
   const deletedIds = new Set();
@@ -2868,11 +3073,144 @@ document.body.dataset.result = btoa(JSON.stringify({
   }
 });
 
-test("guest room targeting and chat scroll policy preserve exact-link and reading state", async () => {
-  const primarySectionSource = await readFile(
-    join(process.cwd(), "src/components/recruiting/RecruitingRoomPrimarySection.jsx"),
-    "utf8",
+test("recruiting login round trip preserves the exact deep link once", () => {
+  const recruitingDeepLink = "/app/recruiting?post=room-1&region=%EC%84%9C%EC%9A%B8#room-chat";
+  const loginPath = getLoginPath(recruitingDeepLink);
+  const loginUrl = new URL(loginPath, "https://boxtier.kr");
+
+  assert.equal(loginUrl.pathname, "/login");
+  assert.equal(loginUrl.searchParams.get("redirect"), recruitingDeepLink);
+  assert.equal(getAppRedirectFromLocation({ search: loginUrl.search }), recruitingDeepLink);
+  assert.equal(getAppRedirectFromLocation({
+    search: "",
+    state: { from: { pathname: "/app/recruiting", search: "?post=room-2&tab=all", hash: "#room" } },
+  }), "/app/recruiting?post=room-2&tab=all#room");
+  assert.equal(getSafeAppRedirect("https://attacker.example/app/recruiting?post=room-1"), "/app");
+  assert.equal(getSafeAppRedirect("/app/signup?redirect=%2Fapp%2Frecruiting"), "/app");
+});
+
+test("canonical match format drives label slots score rules and period labels", () => {
+  const cases = [
+    {
+      name: "standard 3v3",
+      primary: { mode: "3v3", rules: { ruleSet: "standard" } },
+      fallback: {},
+      format: "3v3",
+      capacity: 3,
+      normalized: { periodCount: 1, periodMinutes: 12, endCondition: "target_or_time", targetScore: 21 },
+    },
+    {
+      name: "canonical FIBA 3x3",
+      primary: { mode: "3v3", rules: { ruleSet: "fiba_3x3" } },
+      fallback: {},
+      format: "3x3",
+      capacity: 3,
+      normalized: { periodCount: 1, periodMinutes: 12, endCondition: "target_or_time", targetScore: 21 },
+    },
+    {
+      name: "legacy FIBA 3x3",
+      primary: {
+        mode: "3v3",
+        rules: { targetScore: 21, periodCount: 1, periodMinutes: 12, endCondition: "target_or_time", winByTwo: true },
+      },
+      fallback: {},
+      format: "3x3",
+      capacity: 3,
+      normalized: { periodCount: 1, periodMinutes: 12, endCondition: "target_or_time", targetScore: 21 },
+    },
+    {
+      name: "standard 5v5",
+      primary: { mode: "5v5", rules: { ruleSet: "standard" } },
+      fallback: {},
+      format: "5v5",
+      capacity: 5,
+      normalized: { periodCount: 4, periodMinutes: 10, endCondition: "time", targetScore: 21 },
+    },
+    {
+      name: "custom four-quarter 5v5",
+      primary: { mode: "5v5", rules: { periodCount: 4, periodMinutes: 8, endCondition: "time" } },
+      fallback: {},
+      format: "5v5",
+      capacity: 5,
+      normalized: { periodCount: 4, periodMinutes: 8, endCondition: "time", targetScore: 21 },
+    },
+    {
+      name: "empty match rules use recruiting rules",
+      primary: { mode: "3v3", rules: {} },
+      fallback: { mode: "3v3", rules: { ruleSet: "fiba_3x3", periodCount: 1, periodMinutes: 12 } },
+      format: "3x3",
+      capacity: 3,
+      normalized: { periodCount: 1, periodMinutes: 12, endCondition: "target_or_time", targetScore: 21 },
+    },
+    {
+      name: "explicit match rules win conflicting legacy recruiting rules",
+      primary: { mode: "3v3", rules: { ruleSet: "standard", periodCount: 2, periodMinutes: 9, endCondition: "time" } },
+      fallback: { mode: "3v3", rules: { ruleSet: "fiba_3x3", periodCount: 1, periodMinutes: 12, targetScore: 21 } },
+      format: "3v3",
+      capacity: 3,
+      normalized: { periodCount: 2, periodMinutes: 9, endCondition: "time", targetScore: 21 },
+    },
+  ];
+
+  for (const scenario of cases) {
+    const resolved = resolveMatchRuleSource(scenario.primary, scenario.fallback);
+    const normalized = normalizeMatchRules(resolved.rules, { mode: resolved.mode });
+    assert.equal(getMatchFormatLabel(resolved.mode, resolved.rules), scenario.format, `${scenario.name}: format`);
+    assert.equal(getRecruitingSideCapacity(resolved), scenario.capacity, `${scenario.name}: slots`);
+    assert.deepEqual({
+      periodCount: normalized.periodCount,
+      periodMinutes: normalized.periodMinutes,
+      endCondition: normalized.endCondition,
+      targetScore: normalized.targetScore,
+    }, scenario.normalized, `${scenario.name}: normalized rules`);
+    assert.equal(getMatchPeriodLabel(resolved.rules, resolved.mode), getMatchPeriodLabel(normalized, resolved.mode), `${scenario.name}: period label`);
+    assert.equal(getMatchEndLabel(resolved.rules, resolved.mode), getMatchEndLabel(normalized, resolved.mode), `${scenario.name}: score end label`);
+  }
+});
+
+test("recruiting chat writes stop at confirmation while existing messages remain readable", () => {
+  const openPost = {
+    id: "room-chat-lock",
+    status: "open",
+    confirmedAt: null,
+    visibility: "public",
+    playerId: "p1",
+    playerIds: ["p1"],
+    roomState: {
+      ownerId: "p1",
+      chatMessages: [{ id: "old", userId: "p1", body: "old", createdAt: "2026-08-16T00:00:00.000Z" }],
+    },
+    applicants: [],
+  };
+  const state = { currentUserId: "p1", recruitingPosts: [openPost] };
+  const openResult = sendRecruitingChat(state, openPost.id, "new");
+  assert.deepEqual(
+    openResult.recruitingPosts[0].roomState.chatMessages.map((message) => message.body),
+    ["old", "new"],
   );
+
+  const confirmedPost = { ...openPost, confirmedAt: "2026-08-16T00:01:00.000Z" };
+  const confirmedState = { ...state, recruitingPosts: [confirmedPost] };
+  assert.equal(sendRecruitingChat(confirmedState, confirmedPost.id, "blocked"), confirmedState);
+  assert.deepEqual(confirmedState.recruitingPosts[0].roomState.chatMessages, openPost.roomState.chatMessages);
+
+  const serverOpenPost = {
+    id: openPost.id,
+    status: "open",
+    confirmed_at: null,
+    visibility: "public",
+    player_id: "p1",
+    player_ids: ["p1"],
+    referee_id: null,
+    room_state: openPost.roomState,
+  };
+  assert.equal(canSyncRecruitingAction("p1", serverOpenPost, serverOpenPost, "sendRecruitingChat"), true);
+  assert.equal(canSyncRecruitingAction("outsider", serverOpenPost, serverOpenPost, "sendRecruitingChat"), false);
+  assert.equal(canSyncRecruitingAction("p1", { ...serverOpenPost, status: "closed" }, serverOpenPost, "sendRecruitingChat"), false);
+  assert.equal(canSyncRecruitingAction("p1", { ...serverOpenPost, confirmed_at: confirmedPost.confirmedAt }, serverOpenPost, "sendRecruitingChat"), false);
+});
+
+test("guest room targeting and chat scroll policy preserve exact-link and reading state", async () => {
   const server = await createServer({
     root: process.cwd(),
     logLevel: "error",
@@ -2889,10 +3227,14 @@ test("guest room targeting and chat scroll policy preserve exact-link and readin
       resolveGuestRecruitingTarget,
     }, {
       getCurrentUserTeams,
+    }, {
+      getMatchFormatLabel,
+      resolveMatchRuleSource,
     }] = await Promise.all([
       server.ssrLoadModule("/src/components/recruiting/RecruitingRoomRosterPanels.jsx"),
       server.ssrLoadModule("/src/pages/Recruiting.jsx"),
       server.ssrLoadModule("/src/components/recruiting/useRecruitingRoomController.js"),
+      server.ssrLoadModule("/src/lib/matchRules.js"),
     ]);
 
     assert.equal(isRoomChatNearBottom({ scrollHeight: 1_000, scrollTop: 100, clientHeight: 400 }), false);
@@ -2905,20 +3247,37 @@ test("guest room targeting and chat scroll policy preserve exact-link and readin
       loading: false,
       error: false,
       posts: [],
+      requestedRecruitingId: outsideFeedPost.id,
       requestedRecruiting: { status: "open", post: outsideFeedPost },
     }, outsideFeedPost.id), { post: outsideFeedPost, status: "open" });
     assert.deepEqual(resolveGuestRecruitingTarget({
       loading: false,
       error: false,
       posts: [],
-      requestedRecruiting: { status: "private", post: null },
-    }, "private-room"), { post: null, status: "private" });
+      requestedRecruitingId: "private-room",
+      requestedRecruiting: { status: "not_found", post: null },
+    }, "private-room"), { post: null, status: "not_found" });
     assert.deepEqual(resolveGuestRecruitingTarget({
       loading: false,
       error: false,
       posts: [],
+      requestedRecruitingId: "missing-room",
       requestedRecruiting: { status: "not_found", post: null },
     }, "missing-room"), { post: null, status: "not_found" });
+    assert.deepEqual(resolveGuestRecruitingTarget({
+      loading: false,
+      error: false,
+      posts: [],
+      requestedRecruitingId: "old-room",
+      requestedRecruiting: { status: "closed", post: null },
+    }, "next-room"), { post: null, status: "loading" });
+    assert.deepEqual(resolveGuestRecruitingTarget({
+      loading: false,
+      error: false,
+      posts: [],
+      requestedRecruitingId: "closed-room",
+      requestedRecruiting: { status: "closed", post: null },
+    }, "closed-room"), { post: null, status: "closed" });
     assert.equal(getGuestRecruitingUnavailableCopy("private").title, "비공개 방입니다");
     assert.equal(getGuestRecruitingUnavailableCopy("not_found").title, "방을 찾을 수 없습니다");
     assert.deepEqual(getCurrentUserTeams([{ id: "public-team" }], "p_pending"), []);
@@ -2926,8 +3285,238 @@ test("guest room targeting and chat scroll policy preserve exact-link and readin
       getCurrentUserTeams([{ id: "mine", members: [{ userId: "p1" }] }], "p1").map((team) => team.id),
       ["mine"],
     );
-    assert.match(primarySectionSource, /roomState,\s+selectedMatchRules,\s+selectedPost,/);
-    assert.match(primarySectionSource, /const roomFormatLabel = getMatchFormatLabel\(\s+sourceMatch\?\.mode \?\? selectedPost\.mode,\s+sourceMatch\?\.rules \?\? selectedMatchRules,/);
+    const fibaFallback = resolveMatchRuleSource(
+      { mode: "3v3", rules: {} },
+      { mode: "3v3", rules: { ruleSet: "fiba_3x3" } },
+    );
+    assert.equal(getMatchFormatLabel(fibaFallback.mode, fibaFallback.rules), "3x3");
+    const explicitSourceRule = resolveMatchRuleSource(
+      { mode: "3v3", rules: { ruleSet: "standard" } },
+      { mode: "3v3", rules: { ruleSet: "fiba_3x3", periodCount: 1 } },
+    );
+    assert.equal(getMatchFormatLabel(explicitSourceRule.mode, explicitSourceRule.rules), "3v3");
+    assert.equal(explicitSourceRule.rules.periodCount, 1);
+  } finally {
+    await server.close();
+  }
+});
+
+test("match detail retry recovers from synchronous and asynchronous loader failures", async () => {
+  const requestedMatchDetails = new Set(["other-match"]);
+  let unavailableCount = 0;
+  let settledCount = 0;
+  const callbacks = {
+    onUnavailable: () => { unavailableCount += 1; },
+    onSettled: () => { settledCount += 1; },
+  };
+
+  assert.doesNotThrow(() => requestMatchDetailOnce({
+    matchId: "target-match",
+    requestedMatchDetails,
+    loadMatchDetail: () => { throw new Error("network setup failed"); },
+    ...callbacks,
+  }));
+  assert.equal(requestedMatchDetails.has("target-match"), false);
+  assert.equal(requestedMatchDetails.has("other-match"), true);
+  assert.equal(unavailableCount, 1);
+  assert.equal(settledCount, 1);
+
+  await requestMatchDetailOnce({
+    matchId: "target-match",
+    requestedMatchDetails,
+    loadMatchDetail: async () => 1,
+    ...callbacks,
+  });
+  assert.equal(requestedMatchDetails.has("target-match"), true);
+  assert.equal(unavailableCount, 1);
+  assert.equal(settledCount, 2);
+
+  await requestMatchDetailOnce({
+    matchId: "missing-match",
+    requestedMatchDetails,
+    loadMatchDetail: async () => 0,
+    ...callbacks,
+  });
+  assert.equal(requestedMatchDetails.has("missing-match"), false);
+  assert.equal(unavailableCount, 2);
+  assert.equal(settledCount, 3);
+});
+
+test("single match remote load reads and merges only the linked room directory scope", async () => {
+  const server = await createServer({
+    root: process.cwd(),
+    logLevel: "error",
+    server: { middlewareMode: true, hmr: false },
+    appType: "custom",
+  });
+  const now = "2026-08-16T00:00:00.000Z";
+  const currentProfile = {
+    id: "p-current", auth_user_id: "auth-current", name: "Current", handle: "current",
+    position: "PG", ratings: { integrated: 1200 }, onboarding_complete: true,
+    created_at: now, updated_at: now,
+  };
+  const playerProfile = {
+    id: "p-player", name: "Player", handle: "player", position: "SG",
+    ratings: { integrated: 1200 }, onboarding_complete: true, created_at: now, updated_at: now,
+  };
+  const unrelatedProfile = {
+    id: "p-other", auth_user_id: "auth-other", name: "Other", handle: "other",
+    position: "C", ratings: { integrated: 1200 }, onboarding_complete: true,
+    created_at: now, updated_at: now,
+  };
+  const client = createScopedStateSupabase({
+    profiles: [currentProfile, unrelatedProfile],
+    public_profiles: [currentProfile, playerProfile, unrelatedProfile],
+    matches: [{
+      id: "m1", title: "M1", mode: "3v3", status: "contract", visibility: "public",
+      ranked: false, official: false, verified: false, created_by: "p-current", referee_id: "p-player",
+      rules: { recruitingPostId: "r1" }, team_a_name: "A", team_b_name: "B",
+      team_a_score: 0, team_b_score: 0, scheduled_date: "2026-08-16", scheduled_time: "10:00",
+      court_id: "c1", created_at: now, updated_at: now,
+    }, {
+      id: "m2", title: "M2", mode: "5v5", status: "live", visibility: "private",
+      created_by: "p-other", rules: { recruitingPostId: "r2" }, created_at: now, updated_at: now,
+    }],
+    match_players: [
+      { id: "mp1", match_id: "m1", user_id: "p-player", side: "teamA", slot_order: 0 },
+      { id: "mp2", match_id: "m2", user_id: "p-other", side: "teamA", slot_order: 0 },
+    ],
+    recruiting_posts: [{
+      id: "r1", type: "pickup", title: "R1", visibility: "public", mode: "3v3", status: "closed",
+      player_id: "p-current", player_ids: ["p-current", "p-player"], room_state: {}, rules: {},
+      ranked: false, official: false, pre_registered: true, spots: 6, court_id: "c1",
+      scheduled_date: "2026-08-16", scheduled_time: "10:00", created_at: now, updated_at: now,
+    }, {
+      id: "r2", type: "pickup", title: "R2", visibility: "private", mode: "5v5", status: "open",
+      player_id: "p-other", player_ids: ["p-other"], room_state: {}, rules: {}, created_at: now, updated_at: now,
+    }],
+    recruiting_applications: [
+      { id: "a1", post_id: "r1", kind: "individual", player_id: "p-player", player_ids: ["p-player"], side: "teamA", status: "accepted", reserve: false, created_at: now, updated_at: now },
+      { id: "a2", post_id: "r2", kind: "individual", player_id: "p-other", player_ids: ["p-other"], side: "teamA", status: "accepted", reserve: false, created_at: now, updated_at: now },
+    ],
+    referee_appointments: [
+      { id: "ra1", user_id: "p-player", created_at: now },
+      { id: "ra2", user_id: "p-other", created_at: now },
+    ],
+    approved_courts: [
+      { id: "c1", name: "Court 1", status: "active", created_at: now, updated_at: now },
+      { id: "c2", name: "Court 2", status: "active", created_at: now, updated_at: now },
+    ],
+  });
+
+  try {
+    const { loadNormalizedRemoteStateFromClient } = await server.ssrLoadModule(
+      "/src/data/repository/remote/stateLoader.js",
+    );
+    const result = await loadNormalizedRemoteStateFromClient(
+      client,
+      "auth-current",
+      "current@example.com",
+      { scope: "matches", matchIds: ["m1"], includeLinkedRecruitingPost: true },
+    );
+    const ids = (rows = []) => rows.map((row) => row.id).sort();
+
+    assert.deepEqual(ids(result.state.matches), ["m1"]);
+    assert.deepEqual(ids(result.state.recruitingPosts), ["r1"]);
+    assert.deepEqual(
+      result.state.recruitingPosts[0].applicants.map((applicant) => applicant.playerId),
+      ["p-player"],
+    );
+    assert.equal(result.state.users.some((user) => user.id === "p-other"), false);
+    assert.deepEqual(ids(result.state.settings.refereeAppointments), ["ra1"]);
+    assert.equal(result.state.matches[0].courtId, "c1");
+    assert.equal(result.state.matches[0].court, "Court 1");
+    assert.equal(
+      client.calls.some((call) => call.table === "profiles" && !call.filters.some((filter) => filter.op === "eq" && filter.column === "auth_user_id" && filter.value === "auth-current")),
+      false,
+    );
+    assert.equal(
+      client.calls.some((call) => call.table === "referee_appointments" && !call.filters.some((filter) => filter.op === "in" && filter.column === "user_id")),
+      false,
+    );
+    assert.equal(
+      client.calls.some((call) => call.table === "approved_courts" && !call.filters.some((filter) => filter.column === "id" && (filter.op === "eq" || filter.op === "in"))),
+      false,
+    );
+  } finally {
+    await server.close();
+  }
+});
+
+test("lost recruiting confirmation response replays the authoritative linked match without side effects", async () => {
+  const server = await createServer({
+    root: process.cwd(),
+    logLevel: "error",
+    server: { middlewareMode: true, hmr: false },
+    appType: "custom",
+  });
+  const now = "2026-08-16T00:00:00.000Z";
+  const seed = {
+    profiles: [{
+      id: "p-host", auth_user_id: "auth-host", name: "Host", handle: "host",
+      position: "PG", ratings: { integrated: 1200 }, onboarding_complete: true,
+      created_at: now, updated_at: now,
+    }],
+    public_profiles: [{
+      id: "p-host", name: "Host", handle: "host", position: "PG",
+      ratings: { integrated: 1200 }, onboarding_complete: true,
+      created_at: now, updated_at: now,
+    }],
+    matches: [{
+      id: "m-confirmed", title: "Confirmed", mode: "3v3", status: "contract", visibility: "public",
+      ranked: false, official: false, verified: false, created_by: "p-host",
+      rules: { recruitingPostId: "r-confirmed" }, team_a_name: "A", team_b_name: "B",
+      team_a_score: 0, team_b_score: 0, scheduled_date: "2026-08-16", scheduled_time: "10:00",
+      created_at: now, updated_at: now,
+    }],
+    recruiting_posts: [{
+      id: "r-confirmed", type: "pickup", title: "Confirmed room", visibility: "public",
+      mode: "3v3", status: "closed", player_id: "p-host", player_ids: ["p-host"],
+      room_state: { ownerId: "p-host" }, rules: {}, ranked: false, official: false,
+      pre_registered: true, spots: 6, scheduled_date: "2026-08-16", scheduled_time: "10:00",
+      created_at: now, updated_at: now,
+    }],
+  };
+
+  try {
+    const { loadExistingRecruitingConfirmation } = await server.ssrLoadModule(
+      "/server/api/_authoritativeState.js",
+    );
+    const context = {
+      supabase: createScopedStateSupabase(seed),
+      authUserId: "auth-host",
+      authUser: { email: "host@example.com" },
+      profileId: "p-host",
+    };
+    const replay = await loadExistingRecruitingConfirmation(context, {
+      action: "confirmRecruitingMatch",
+      postId: "r-confirmed",
+      preferredMatchId: "m-confirmed",
+    });
+
+    assert.equal(replay.ok, true);
+    assert.equal(replay.alreadyConfirmed, true);
+    assert.equal(replay.matchId, "m-confirmed");
+    assert.equal(replay.createdMatch.rules.recruitingPostId, "r-confirmed");
+    assert.equal(replay.notificationCount, 0);
+    assert.equal(replay.discordDeliveryCount, 0);
+
+    await assert.rejects(
+      () => loadExistingRecruitingConfirmation(context, {
+        action: "confirmRecruitingMatch",
+        postId: "r-confirmed",
+        preferredMatchId: "m-other",
+      }),
+      (error) => error?.statusCode === 409 && error?.message === "recruiting_post_already_linked",
+    );
+    await assert.rejects(
+      () => loadExistingRecruitingConfirmation({ ...context, profileId: "p-intruder" }, {
+        action: "confirmRecruitingMatch",
+        postId: "r-confirmed",
+        preferredMatchId: "m-confirmed",
+      }),
+      (error) => error?.statusCode === 403 && error?.message === "recruiting_room_owner_required",
+    );
   } finally {
     await server.close();
   }

@@ -268,6 +268,19 @@ export function getMatchFormatLabel(mode = "", rules = {}) {
   return isFiba3x3Rules(mode, rules) ? "3x3" : mode;
 }
 
+export function resolveMatchRuleSource(primary = {}, fallback = {}) {
+  const primaryRules = primary?.rules && typeof primary.rules === "object" && !Array.isArray(primary.rules)
+    ? primary.rules
+    : {};
+  const fallbackRules = fallback?.rules && typeof fallback.rules === "object" && !Array.isArray(fallback.rules)
+    ? fallback.rules
+    : {};
+  return {
+    mode: primary?.mode ?? fallback?.mode ?? "",
+    rules: { ...fallbackRules, ...primaryRules },
+  };
+}
+
 export function getMatchPeriodLabel(rules = {}, mode = "3v3") {
   const normalized = normalizeMatchRules(rules, { mode });
   if (normalized.periodCount === 4) return `4쿼터 × ${normalized.periodMinutes}분`;

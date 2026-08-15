@@ -72,6 +72,7 @@ export function resolveGuestRecruitingTarget(feed, targetPostId) {
   if (!targetPostId) return { post: null, status: "" };
   const listedPost = (feed?.posts ?? []).find((post) => post.id === targetPostId) ?? null;
   if (listedPost) return { post: listedPost, status: "open" };
+  if (feed?.requestedRecruitingId !== targetPostId) return { post: null, status: "loading" };
   const requested = feed?.requestedRecruiting;
   if (requested?.status === "open" && requested?.post?.id === targetPostId) {
     return { post: requested.post, status: "open" };
@@ -100,7 +101,7 @@ function GuestRecruiting({ app }) {
   const [reloadKey, setReloadKey] = useState(0);
   const [regionFilterSido, setRegionFilterSido] = useState(REGION_FILTER_ALL);
   const [regionFilterDistrict, setRegionFilterDistrict] = useState("");
-  const [feed, setFeed] = useState({ loading: true, error: false, openCount: 0, posts: [], requestedRecruiting: null });
+  const [feed, setFeed] = useState({ loading: true, error: false, openCount: 0, posts: [], requestedRecruitingId: "", requestedRecruiting: null });
   const targetPostId = searchParams.get("post") ?? "";
   const selectedRegionGroup = REGION_TREE.find((region) => region.sido === regionFilterSido) ?? REGION_TREE[0] ?? { districts: [] };
   const regionDistrictOptions = regionFilterSido === REGION_FILTER_ALL ? [] : selectedRegionGroup.districts ?? [];
@@ -117,7 +118,7 @@ function GuestRecruiting({ app }) {
     let active = true;
     const controller = new AbortController();
     const timeoutId = window.setTimeout(() => controller.abort(), PUBLIC_RECRUITING_TIMEOUT_MS);
-    setFeed((current) => ({ ...current, loading: true, error: false, requestedRecruiting: null }));
+    setFeed((current) => ({ ...current, loading: true, error: false, requestedRecruitingId: targetPostId, requestedRecruiting: null }));
     const requestParams = new URLSearchParams({ recruitingLimit: String(REMOTE_CLIENT_RECRUITING_LIMIT) });
     if (targetPostId) requestParams.set("recruitingPostId", targetPostId);
     if (selectedRegionKey) requestParams.set("recruitingRegion", selectedRegionKey);
@@ -141,6 +142,7 @@ function GuestRecruiting({ app }) {
           error: false,
           openCount: Number.isSafeInteger(openCount) && openCount >= 0 ? openCount : posts.length,
           posts,
+          requestedRecruitingId: targetPostId,
           requestedRecruiting: payload?.feed?.requestedRecruiting ?? null,
         });
       })

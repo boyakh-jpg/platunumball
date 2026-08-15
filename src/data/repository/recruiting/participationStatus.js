@@ -135,7 +135,13 @@ export function sendRecruitingChat(state, postId, body = "") {
   const post = state.recruitingPosts?.find((item) => item.id === postId);
   const text = String(body).trim();
   if (text.includes("\n") || text.includes("\r") || getUnsafeUserTextReason(text, { maxLength: 60 })) return state;
-  if (!post || !text || !isRecruitingRoomMember(post, state.currentUserId, state)) return state;
+  if (
+    !post ||
+    post.status !== "open" ||
+    Boolean(post.confirmedAt ?? post.confirmed_at) ||
+    !text ||
+    !isRecruitingRoomMember(post, state.currentUserId, state)
+  ) return state;
   const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
   const message = {
     id: makeId("chat"),

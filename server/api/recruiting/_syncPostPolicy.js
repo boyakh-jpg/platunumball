@@ -387,6 +387,11 @@ export function canSyncRecruitingAction(profileId, existingPost, nextPost, actio
   });
   const nextParticipants = rosterIdsFromPost(nextPost);
 
+  if (
+    action === "sendRecruitingChat" &&
+    (existingPost.status !== "open" || Boolean(existingPost.confirmedAt ?? existingPost.confirmed_at))
+  ) return false;
+
   if (OWNER_RECRUITING_ACTIONS.has(action)) return isOwner(profileId, existingPost);
   if (JOIN_RECRUITING_ACTIONS.has(action)) {
     if (action === "interestRecruitingPost" && body.joinMode === "referee") {

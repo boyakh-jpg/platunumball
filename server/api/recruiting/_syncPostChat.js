@@ -16,7 +16,7 @@ async function loadRecruitingChatPermissionSnapshot(context, postId = "") {
   if (!safePostId) reject(400, "missing_recruiting_post");
   const { data: existingPost, error: existingError } = await context.supabase
     .from("recruiting_posts")
-    .select("id, visibility, player_id, player_ids, referee_id, room_state")
+    .select("id, status, confirmed_at, visibility, player_id, player_ids, referee_id, room_state")
     .eq("id", safePostId)
     .maybeSingle();
   if (existingError) throw existingError;
