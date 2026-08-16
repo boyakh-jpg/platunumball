@@ -970,6 +970,8 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.doesNotMatch(digitGenerator, /<svg/);
   assert.match(syncScript, /match-receipt-score-digits-v3\.png/);
   assert.match(syncScript, /boxtier_letter_dark\.png/);
+  assert.match(syncScript, /R2_UPLOAD_MAX_ATTEMPTS = 3/);
+  assert.match(syncScript, /response\.status === 429 \|\| response\.status >= 500/);
   assert.match(draftApi, /allowRequestMethod\(request, response, \["GET", "POST"\]\)/);
   assert.match(draftApi, /sourceMatchId/);
   assert.match(draftApi, /clonePublicId/);

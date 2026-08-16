@@ -28,6 +28,8 @@ const CONTENT_TYPES = new Map([
   [".svg", "image/svg+xml"],
   [".webp", "image/webp"],
 ]);
+const R2_UPLOAD_MAX_ATTEMPTS = 3;
+const R2_UPLOAD_RETRY_BASE_DELAY_MS = 750;
 
 if (process.env.VERCEL_ENV !== "production") {
   console.log("Receipt R2 sync skipped outside production.");
@@ -48,22 +50,34 @@ for (const file of RECEIPT_ASSETS) {
   const objectKey = file.replace(/^public\//, "");
   const encodedKey = objectKey.split("/").map(encodeURIComponent).join("/");
   const bytes = await readFile(resolve(file));
-  const response = await fetch(
-    `https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(accountId)}/r2/buckets/${encodeURIComponent(bucket)}/objects/${encodedKey}`,
-    {
-      method: "PUT",
-      headers: {
-        Authorization: `Bearer ${apiToken}`,
-        "Cache-Control": "public, max-age=31536000, immutable",
-        "Content-Type": CONTENT_TYPES.get(extname(file)) || "application/octet-stream",
-      },
-      body: bytes,
-    },
-  );
+  let response;
 
-  if (!response.ok) {
+  for (let attempt = 1; attempt <= R2_UPLOAD_MAX_ATTEMPTS; attempt += 1) {
+    response = await fetch(
+      `https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(accountId)}/r2/buckets/${encodeURIComponent(bucket)}/objects/${encodedKey}`,
+      {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${apiToken}`,
+          "Cache-Control": "public, max-age=31536000, immutable",
+          "Content-Type": CONTENT_TYPES.get(extname(file)) || "application/octet-stream",
+        },
+        body: bytes,
+      },
+    );
+
+    if (response.ok) break;
+
     const detail = await response.text();
-    throw new Error(`receipt_r2_sync_failed:${objectKey}:${response.status}:${detail}`);
+    const retryable = response.status === 429 || response.status >= 500;
+    if (!retryable || attempt === R2_UPLOAD_MAX_ATTEMPTS) {
+      throw new Error(`receipt_r2_sync_failed:${objectKey}:${response.status}:${detail}`);
+    }
+
+    console.warn(`Receipt R2 retry ${attempt}/${R2_UPLOAD_MAX_ATTEMPTS - 1}: ${objectKey} (${response.status})`);
+    await new Promise((resolveDelay) => {
+      setTimeout(resolveDelay, R2_UPLOAD_RETRY_BASE_DELAY_MS * attempt);
+    });
   }
 
   console.log(`Receipt R2 synced: ${objectKey}`);
