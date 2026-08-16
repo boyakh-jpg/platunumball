@@ -368,7 +368,6 @@ html[data-theme="light"] .om-calendar-grid button.active {
 }
 
 .om-calendar-toolbar button {
-  min-height: 38px;
   border: var(--ui-stroke-width) solid var(--rb-line);
   background: rgba(255, 255, 255, 0.06);
   color: var(--rb-text);

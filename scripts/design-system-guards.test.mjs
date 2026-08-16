@@ -204,9 +204,9 @@ test("앱은 분류 박스 없는 표준 디자인을 사용하고 비교 데모
   assert.match(pageSources.landing, /children = "로그인"/);
   assert.match(pageSources.landing, /별도 가입 없이 로그인/);
   assert.equal(count(pageSources.landing, "<LoginButton"), 2);
-  assert.match(pageSources.landing, /to="\/app" variant="secondary" className="guest-landing-explore-link"/);
+  assert.match(pageSources.landing, /to="\/app" className="guest-landing-explore-link"/);
   assert.match(pageSources.landing, /로그인 없이 둘러보기/);
-  assert.match(landingGuestStyles, /\.guest-landing-primary-actions\s*\{[^}]*grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)\);/);
+  assert.match(landingGuestStyles, /\.guest-landing-primary-actions\s*\{[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\);/);
   assert.match(landingGuestStyles, /\.guest-landing-primary-actions \.ui-button\s*\{[^}]*width:\s*100%;[^}]*justify-content:\s*center;/);
   assert.doesNotMatch(pageSources.landing, /guest-landing-text-login|guest-landing-account-login/);
   assert.doesNotMatch(pageSources.landing, /Recent games|지금 열려 있는 경기|Team basketball|Season ranking|ui-design-spotlight|landing-stat-grid/);
@@ -766,6 +766,9 @@ test("공용 버튼과 badge 라벨은 한 줄을 유지한다", () => {
   assert.match(primitiveStyles, /\.ui-badge\s*\{[\s\S]*?flex:\s*0 0 auto;[\s\S]*?white-space:\s*nowrap;/);
   assert.match(primitiveStyles, /\.ui-action-row > \*\s*\{\s*flex:\s*0 0 auto;\s*\}/);
   assert.match(tokenStyles, /--ui-button-bg:\s*var\(--button-secondary-bg\);/);
+  assert.equal(count(tokenStyles, "--button-secondary-bg: var(--surface-3);"), 2);
+  assert.match(tokenStyles, /--ui-button-secondary-bg:\s*var\(--button-secondary-bg\);/);
+  assert.match(primitiveStyles, /\.ui-button\.ui-button-secondary\s*\{[^}]*background:\s*var\(--ui-button-secondary-bg\);[^}]*border-color:\s*transparent;/);
   assert.equal(count(read("src/styles/themes/home-dashboard-theme.css"), "background: var(--ui-button-bg);"), 2);
   assert.doesNotMatch(hoverSurfaceStyles, /(?:^|\n)\s*\.button\s*\{[^{}]*white-space:\s*normal;/);
 });
@@ -2027,7 +2030,7 @@ test("shared control families and fixed labels keep canonical ownership", () => 
   assert.match(uiControlsStyles, /\.ui-folder-tabs button\[aria-selected="true"\]\s*\{[^}]*background:\s*transparent;[^}]*font-weight:\s*var\(--font-weight-title\);[^}]*box-shadow:\s*none;[^}]*transform:\s*none;/);
   assert.match(uiControlsStyles, /\.ui-segmented-control:not\(\.create-choice-segments\):not\(\[role="radiogroup"\]\)\s*\{[^}]*border:\s*0;[^}]*background:\s*transparent;[^}]*box-shadow:\s*none;/);
   assert.match(uiControlsStyles, /\.ui-segmented-control:not\(\.create-choice-segments\):not\(\[role="radiogroup"\]\) > button:is\(\.active, \[aria-current="page"\], \[aria-selected="true"\]\)\s*\{[^}]*background:\s*transparent;[^}]*font-weight:\s*var\(--font-weight-title\);[^}]*box-shadow:\s*none;/);
-  assert.match(profileRecordStyles, /\.profile-record-section-filter,[\s\S]*?\.profile-record-visibility-filter\s*\{[^}]*display:\s*flex;[^}]*width:\s*fit-content;[^}]*max-width:\s*100%;[^}]*overflow-x:\s*auto;/);
+  assert.match(profileRecordStyles, /\.profile-record-section-filter,[\s\S]*?\.profile-record-visibility-filter\s*\{[^}]*display:\s*flex;[^}]*width:\s*100%;[^}]*max-width:\s*100%;[^}]*overflow-x:\s*auto;/);
   assert.match(profileRecordStyles, /\.profile-record-section-filter button,[\s\S]*?\.profile-record-visibility-filter button\s*\{[^}]*flex:\s*0 0 auto;[^}]*white-space:\s*nowrap;/);
   assert.doesNotMatch(profileRecordStyles, /\.profile-record-(?:section|mode|visibility)-filter\s*\{[^}]*grid-template-columns:/);
   assert.match(sharedControlStyles, /button\.ui-choice-tile/);

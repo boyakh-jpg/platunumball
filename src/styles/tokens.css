@@ -152,7 +152,9 @@
   --button-primary-bg: var(--rb-orange);
   --button-primary-hover-bg: var(--rb-orange-2);
   --button-primary-pressed-bg: var(--rb-orange-pressed);
-  --button-secondary-bg: rgba(255, 255, 255, 0.06);
+  --button-secondary-bg: var(--surface-3);
+  --button-secondary-hover-bg: rgba(255, 255, 255, 0.1);
+  --button-secondary-pressed-bg: rgba(255, 255, 255, 0.14);
   --input-bg: rgba(255, 255, 255, 0.06);
   --input-border: var(--rb-line);
   --focus-ring: 0 0 0 3px rgba(255, 118, 88, 0.2);
@@ -193,6 +195,9 @@
   --ui-button-bg-active: var(--button-primary-bg);
   --ui-button-bg-hover: var(--button-primary-hover-bg);
   --ui-button-bg-pressed: var(--button-primary-pressed-bg);
+  --ui-button-secondary-bg: var(--button-secondary-bg);
+  --ui-button-secondary-hover-bg: var(--button-secondary-hover-bg);
+  --ui-button-secondary-pressed-bg: var(--button-secondary-pressed-bg);
   --ui-button-color: var(--rb-text);
   --ui-button-color-active: #ffffff;
   --ui-button-border: var(--control-border);
@@ -222,6 +227,7 @@
   --ui-information-row-padding: 8px 10px;
   --ui-notification-row-min-height: 48px;
   --ui-data-cell-bg: color-mix(in srgb, var(--rb-text) 4%, transparent);
+  --ui-divider-subtle: color-mix(in srgb, var(--rb-line) 72%, transparent);
   --ui-information-surface-bg: var(--ui-data-cell-bg);
   --ui-result-win-bg: color-mix(in srgb, var(--ui-result-win-border) 12%, var(--ui-information-surface-bg));
   --ui-result-loss-bg: color-mix(in srgb, var(--ui-result-loss-border) 12%, var(--ui-information-surface-bg));
@@ -383,7 +389,9 @@ html[data-theme="light"] {
   --button-primary-bg: var(--rb-orange);
   --button-primary-hover-bg: var(--rb-orange-2);
   --button-primary-pressed-bg: var(--rb-orange-pressed);
-  --button-secondary-bg: #e9ecee;
+  --button-secondary-bg: var(--surface-3);
+  --button-secondary-hover-bg: #dfe3e6;
+  --button-secondary-pressed-bg: #d4d9dd;
   --input-bg: #ffffff;
   --input-border: rgba(24, 33, 38, 0.14);
   --focus-ring: 0 0 0 3px rgba(229, 85, 63, 0.16);

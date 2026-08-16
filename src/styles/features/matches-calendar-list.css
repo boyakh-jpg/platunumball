@@ -143,32 +143,39 @@
 
 .om-calendar-toolbar {
   display: grid;
-  grid-template-columns: 34px 1fr 34px;
+  grid-template-columns: var(--ui-button-height-sm) minmax(0, 1fr) var(--ui-button-height-sm);
   gap: 8px;
   align-items: center;
+  min-height: var(--ui-button-height-sm);
 }
 
 .om-calendar-toolbar button {
   display: grid;
-  width: 34px;
-  height: 34px;
+  width: var(--ui-button-height-sm);
+  height: var(--ui-button-height-sm);
+  min-height: var(--ui-button-height-sm);
   place-items: center;
   border-radius: var(--radius-xs);
 }
 
 .om-calendar-toolbar strong {
   display: inline-flex;
-  align-items: baseline;
+  align-self: stretch;
+  align-items: center;
   justify-content: center;
+  min-width: 0;
+  height: var(--ui-button-height-sm);
   gap: 8px;
   text-align: center;
   font-size: 1.08rem;
+  line-height: 1;
 }
 
 .om-calendar-toolbar strong span {
   color: var(--gold);
   font-size: 0.78rem;
   font-weight: 950;
+  line-height: 1;
   white-space: nowrap;
 }
 
@@ -202,7 +209,7 @@
   position: absolute;
   content: "";
   pointer-events: none;
-  background: color-mix(in srgb, var(--rb-line) 72%, transparent);
+  background: var(--ui-divider-subtle);
 }
 
 .om-calendar-grid button::before,

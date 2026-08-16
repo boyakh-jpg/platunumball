@@ -14,7 +14,10 @@
   grid-template-columns: 34px minmax(0, 1fr) minmax(54px, auto);
 }
 .profile-record-folder-tabs {
+  width: 100%;
   margin-bottom: var(--space-6);
+  padding-bottom: var(--space-2);
+  border-bottom: var(--ui-stroke-width) solid var(--ui-divider-subtle);
 }
 .profile-record-section-filter button,
 .profile-record-mode-filter button,
@@ -26,9 +29,11 @@
 .profile-record-mode-filter,
 .profile-record-visibility-filter {
   display: flex;
-  width: fit-content;
+  width: 100%;
   max-width: 100%;
   margin: 0 0 var(--space-4);
+  padding-bottom: var(--space-2);
+  border-bottom: var(--ui-stroke-width) solid var(--ui-divider-subtle);
   overflow-x: auto;
   scrollbar-width: none;
 }

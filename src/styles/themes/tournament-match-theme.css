@@ -129,6 +129,11 @@ html[data-theme="light"] .tournament-schedule-list {
   letter-spacing: 0;
 }
 
+.om-calendar-toolbar > button {
+  min-height: var(--ui-button-height-sm);
+  height: var(--ui-button-height-sm);
+}
+
 .om-calendar-toolbar button.active,
 .om-calendar-grid button.active,
 .om-tournament-head-actions button.active,

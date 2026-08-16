@@ -72,10 +72,10 @@ export default function Landing({ auth }) {
             <LoginButton className="guest-landing-hero-login">
               별도 가입 없이 로그인
             </LoginButton>
-            <Button as={Link} to="/app" variant="secondary" className="guest-landing-explore-link">
-              로그인 없이 둘러보기 <ArrowRight aria-hidden="true" size={16} />
-            </Button>
           </div>
+          <Link to="/app" className="guest-landing-explore-link">
+            로그인 없이 둘러보기 <ArrowRight aria-hidden="true" size={16} />
+          </Link>
           {auth?.error ? <p className="guest-landing-auth-error">로그인을 완료하지 못했습니다. 다시 시도해주세요.</p> : null}
         </div>
 

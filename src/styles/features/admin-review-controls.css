@@ -301,7 +301,6 @@ html[data-theme="light"] .tier-range-note {
   color: var(--text);
 }
 
-html[data-theme="light"] .button-secondary,
 html[data-theme="light"] .sidebar-signout,
 html[data-theme="light"] .badge,
 html[data-theme="light"] .favorite-toggle-button,

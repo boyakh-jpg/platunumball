@@ -232,9 +232,14 @@ html[data-theme="light"] .om-calendar-filter-bar {
 }
 @media (min-width: 721px) {
   .om-calendar-panel {
-    width: min(100%, 820px);
+    width: 100%;
     grid-template-columns: minmax(220px, 250px) minmax(420px, 540px);
-    justify-content: start;
+    justify-content: space-between;
+  }
+
+  .om-calendar-box {
+    width: 100%;
+    justify-self: end;
   }
 
   .om-calendar-filter-row {

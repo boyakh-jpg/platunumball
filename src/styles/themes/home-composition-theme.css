@@ -70,7 +70,6 @@ html[data-theme="light"] .sidebar-nav a.active {
 }
 html[data-theme="light"] .rank-home .rank-summary-grid {
   background:
-    linear-gradient(90deg, rgba(20, 20, 20, 0.58), rgba(70, 58, 46, 0.36)),
     var(--bg-court) var(--hero-bg-position-court) / var(--hero-bg-size) no-repeat,
     var(--rb-bg-3);
 }
@@ -168,8 +167,6 @@ html[data-theme="light"] .app-main {
     border: var(--ui-hero-border-width) solid var(--rb-line);
     border-radius: 0;
     background:
-      linear-gradient(180deg, rgba(0, 0, 0, 0.06), rgba(0, 0, 0, 0.3) 48%, rgba(0, 0, 0, 0.82)),
-      linear-gradient(90deg, rgba(0, 0, 0, 0.72), rgba(0, 0, 0, 0.16) 58%, rgba(0, 0, 0, 0.08)),
       var(--bg-court) center 46% / cover no-repeat,
       var(--rb-bg-2);
     padding: 18px;
@@ -197,7 +194,7 @@ html[data-theme="light"] .app-main {
     font-size: 13px;
     font-weight: 850;
     line-height: 1.35;
-    text-shadow: 0 8px 18px rgba(0, 0, 0, 0.5);
+    text-shadow: none;
   }
 
   .rank-home .rank-summary-grid .home-rank-board-head .button {
@@ -215,11 +212,7 @@ html[data-theme="light"] .app-main {
   }
 
   html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
-    background:
-      linear-gradient(180deg, rgba(30, 24, 18, 0.04), rgba(30, 24, 18, 0.2) 48%, rgba(30, 24, 18, 0.68)),
-      linear-gradient(90deg, rgba(30, 24, 18, 0.5), rgba(30, 24, 18, 0.12) 58%, rgba(30, 24, 18, 0.04)),
-      var(--bg-court) center 46% / cover no-repeat,
-      var(--rb-bg-3);
+    background: transparent;
   }
 }
 .eyebrow {
@@ -378,7 +371,7 @@ html[data-theme="light"] .app-main {
   background: linear-gradient(90deg, rgba(240, 90, 70, 0.14), transparent 28%, transparent 76%, rgba(255, 211, 108, 0.08));
 }
 .rank-home .rank-summary-grid::before {
-  background: radial-gradient(ellipse at 38% 70%, rgba(240, 90, 70, 0.16), transparent 22rem);
+  background: none;
 }
 .rank-home .rank-summary-grid .home-rank-board-head h1,
 html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head h1 {
@@ -387,7 +380,7 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head h1 
 }
 .rank-home .rank-summary-grid .home-rank-board-head p:not(.eyebrow),
 html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head p:not(.eyebrow) {
-  text-shadow: var(--hero-copy-shadow);
+  text-shadow: none;
 }
 .rank-home .rank-tier-rail {
   display: grid;

@@ -218,15 +218,7 @@ html[data-theme="light"] .page-header p:not(.eyebrow) {
 }
 
 .rank-home .rank-summary-grid::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background:
-    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px) 0 0 / 100% 10px,
-    linear-gradient(90deg, rgba(70, 224, 182, 0.18), transparent 36%, rgba(255, 211, 108, 0.12));
-  opacity: 0.4;
+  content: none;
 }
 
 .rank-home .rank-profile-card {
@@ -378,12 +370,6 @@ html[data-theme="light"] .page-header p:not(.eyebrow) {
   min-height: 34px;
 }
 
-.recent-match-row.result-w,
-.recent-match-row.result-l,
-.recent-match-row.result-d {
-  background: rgba(255, 255, 255, 0.045);
-}
-
 html[data-theme="light"] .home-search-box,
 html[data-theme="light"] .home-search-results a,
 html[data-theme="light"] .home-search-results .team-hover-trigger,
@@ -397,8 +383,7 @@ html[data-theme="light"] .home-action-row,
 html[data-theme="light"] .home-invitation-row,
 html[data-theme="light"] .home-side-stack .compact-list a,
 html[data-theme="light"] .home-side-stack .compact-list > div,
-html[data-theme="light"] .home-side-stack .compact-list > .team-hover-trigger,
-html[data-theme="light"] .recent-match-row {
+html[data-theme="light"] .home-side-stack .compact-list > .team-hover-trigger {
   border-color: rgba(32, 56, 68, 0.14);
   background: rgba(255, 255, 255, 0.58);
 }
@@ -422,7 +407,6 @@ html[data-theme="light"] .recent-match-row {
 .member-row,
 .ranking-row,
 .delta-row,
-.recent-match-row,
 .home-action-row,
 .home-invitation-row,
 .home-search-box,

@@ -2714,8 +2714,9 @@ UI 수정 전:
 
 ## 2026-08-07 공용 보조 버튼 대비
 
-1. 공용 보조 버튼은 기존 테마별 반투명 `--button-secondary-bg`를 `--ui-button-bg`로 재사용한다.
-2. `.ui-liquid-glass` 내부 보조 버튼만 공용 `--ui-liquid-glass-button-bg`, `--ui-liquid-glass-button-color`를 사용한다. 홈 보조 버튼과 같은 중립 계열을 유지하고, 다크는 불투명 중립 표면과 밝은 글자, 라이트는 흰 표면과 짙은 글자를 사용한다. 파란 강조색과 화면별 덮어쓰기는 두지 않는다.
+1. 공용 보조 버튼은 방 만들기의 비활성 선택·취소·뒤로가기와 같은 `--surface-3` 회색을 `--button-secondary-bg`와 `--ui-button-secondary-bg`로 재사용한다. 영수증을 포함한 모든 일반 화면의 `.ui-button-secondary`는 화면별 색상 덮어쓰기를 두지 않는다.
+2. hover·pressed는 공용 `--ui-button-secondary-hover-bg`, `--ui-button-secondary-pressed-bg`만 사용한다. 주요 동작, 위험 동작, 선택 상태, 승패 상태, 카드 전체 높이의 `방 보기`처럼 의미가 있는 action은 해당 semantic variant를 유지한다.
+3. `.ui-liquid-glass` 내부 보조 버튼만 공용 `--ui-liquid-glass-button-bg`, `--ui-liquid-glass-button-color`를 사용한다. 홈 보조 버튼과 같은 중립 계열을 유지하고, 다크는 불투명 중립 표면과 밝은 글자, 라이트는 흰 표면과 짙은 글자를 사용한다. 파란 강조색과 화면별 덮어쓰기는 두지 않는다.
 
 ## 2026-08-06 탭·진행 목록 공용 소유권
 
@@ -2906,16 +2907,18 @@ UI 수정 전:
 11. 방 모달의 선수 slot 내부와 영수증 미리보기·Story·Feed 출력물은 이 밀도·표면 통일 범위에서 제외하고 전용 규칙을 유지한다.
 12. 데스크톱 side rail은 공용 `--ui-rail-*` 토큰을 사용한다. 본문과 분리되는 한 단계의 중성 표면만 허용하고 외곽선·블러·중첩 프로필 박스를 사용하지 않는다.
 13. hero의 상황판·badge·보조 action에 붙는 공용 `.ui-liquid-glass`는 배경과 구분되는 반투명 면과 약한 단일 그림자만 사용한다. 테두리, 굴절, 가상 요소 광택, 다중 그림자를 추가하지 않는다. 주요 글자는 `--ui-liquid-glass-color`, 보조 문구는 `--ui-liquid-glass-muted-color`를 사용해 light/dark 모두 대비를 유지한다.
-14. 승패·무승부 기록 행은 투명한 무테두리 표면을 사용하고 공용 `--ui-status-rail-*` 토큰의 짧고 둥근 세로 상태선만 남긴다. 상태별 면색이나 화면별 선 크기를 만들지 않는다.
+14. 승패·무승부 기록 행은 공용 `--ui-result-win-bg`, `--ui-result-loss-bg`, `--ui-result-draw-bg`의 옅은 파스텔 면과 `--ui-status-rail-*`의 짧고 둥근 세로 상태선을 함께 사용한다. 화면별 상태 면색과 선 크기를 만들지 않는다.
 15. 경기 목록 요약의 팀명은 말줄임 없이 두 줄까지 줄바꿈하되 팀명 영역 높이는 항상 두 줄로 고정해 카드 높이를 유지한다. 영역을 완전히 넘는 이름만 고정 영역 안에서 자르고, 공용 좁은 너비 breakpoint에서 전체 요약 배치가 전환되는 경우만 예외로 한다.
-16. 홈 안내 배너, 처리할 일, 알림, 지역 랭킹의 반복 행은 내부 면색·외곽선 없이 투명 행과 공용 `--ui-status-rail-*` 상태선으로 통일한다. 홈 hero의 `.ui-liquid-glass`와 우측 rail의 단일 중성 바탕은 이 규칙에서 제외한다.
+16. 홈 안내 배너, 처리할 일, 알림, 지역 랭킹의 반복 행은 내부 면색·외곽선 없이 투명 행, 공용 `--ui-status-rail-*` 상태선, 행 사이 `--ui-divider-subtle` 구획선으로 통일한다. 홈 hero의 `.ui-liquid-glass`와 우측 rail의 단일 중성 바탕은 이 규칙에서 제외한다.
 17. `Card`, `Button`, `Badge`, `.ui-folder-tabs`, `.ui-segmented-control`, `.ui-page-hero`, `ModalShell`이 애플리케이션의 형태를 소유한다. 공통 시각 규칙은 `tokens.css`, control·modal은 `primitives/ui-controls.css`, 콘텐츠·hero·인증 배치는 `primitives/ui-content-layout.css`에 둔다. 페이지·기능별 CSS는 배치와 기능 상태만 정의하며 별도 최종 덮어쓰기 파일과 메뉴별 복제 표면 규칙을 만들지 않는다.
-18. 일반 `.section-card`는 면색·외곽선·그림자 없이 위쪽 구획선과 여백만 사용한다. 반복 정보 행도 면색 대신 간격, 구획선, 짧은 상태 rail로 구분한다. 방 모달 선수 slot 내부, 영수증 미리보기·Story·Feed 출력물, hero의 `.ui-liquid-glass`, 로그인의 단일 인증 면은 전용 규칙을 유지한다.
+18. 일반 `.section-card`는 면색·외곽선·그림자 없이 위쪽 구획선과 여백만 사용한다. 반복 정보 행도 면색 대신 간격, `--ui-divider-subtle` 구획선, 짧은 상태 rail로 구분한다. 방 모달 선수 slot 내부, 영수증 미리보기·Story·Feed 출력물, hero의 `.ui-liquid-glass`, 로그인의 단일 인증 면은 전용 규칙을 유지한다.
 19. dark 배경·표면은 공용 색상 토큰만 사용하고 완전한 검정 대신 중성 회색 단계로 구분한다. 홈 Play의 매칭 일정 hero만 이미지 위 공용 가독성 overlay를 허용한다. 나머지 page hero는 gradient·가상 요소 mask·그림자를 사용하지 않고 원본 이미지와 테마 배경을 그대로 노출한다.
 20. 랜딩·로그인은 앱 내부와 같은 control 높이·button 내용 너비·본문 크기를 사용한다. 랜딩의 비로그인 둘러보기 경로는 항상 유지하고, 인증 여부에 따라 제거하거나 전체 폭 핵심 action으로 바꾸지 않는다.
 21. 일반 dialog는 공용 `ModalShell`을 사용하고 면색·테두리·radius·그림자를 개별 모달 CSS에서 정의하지 않는다. 방 dialog는 같은 셸에 `.ui-room-modal`만 추가한다. 방 slot 내부, 영수증 미리보기·출력물, 전체 화면 경기 시계만 기능상 예외다.
 22. page hero 제목은 `--hero-title-size`, 문서·인증·가이드·카드 대표 제목은 `.ui-content-title`과 `--ui-content-title-size`를 사용한다. 개별 화면에서 큰 제목 크기를 다시 지정하지 않으며, 목록 안의 정보 제목은 section title 단계 이하를 사용한다.
 23. 승패 통계처럼 서로 다른 값을 빠르게 비교해야 하는 data cell은 공용 `--ui-data-cell-*`의 옅은 면과 간격을 사용한다. 장식 이미지·티어 spotlight처럼 정체성을 만드는 면은 `.ui-design-decorative-surface`로 명시하고 일반 카드 평탄화 대상에서 제외한다.
-24. filter는 가능한 한 `ui-filter-row` 한 줄에 배치하고 별도 wrapper 면·외곽선을 만들지 않는다. 좁은 화면은 항목을 줄바꿈하지 않고 가로 이동으로 보존한다.
+24. filter는 가능한 한 `ui-filter-row` 한 줄에 배치하고 별도 wrapper 면·외곽선을 만들지 않는다. 기록의 1차·2차 탭과 filter 행은 컨테이너 전체 너비를 채우고 아래 `--ui-divider-subtle` 구획선으로 데이터 영역과 분리한다. 좁은 화면은 항목을 줄바꿈하지 않고 가로 이동으로 보존한다.
 25. 알림 action은 행 오른쪽에 내용 너비로 배치하고 공용 작은 control 높이를 사용한다. badge나 action 때문에 알림 행의 최소 높이를 키우지 않는다.
 26. 랜딩의 비로그인 둘러보기는 두 개의 핵심 CTA 묶음 밖에 독립 보조 경로로 둔다.
+27. 일정 달력은 데스크톱에서 일정 filter 오른쪽의 남은 너비를 채운다. toolbar의 연월·경기 수는 세로 중앙에 맞추고 날짜 셀은 면색 없이 가로·세로 길이의 절반인 `--ui-divider-subtle` 구획선만 사용한다. 달력 위에 월 표기를 중복하지 않는다.
+28. 공용 `.ui-button-secondary`는 방 만들기의 중립 회색을 기준으로 영수증과 일반 화면에서 동일하게 표시한다. 화면 CSS는 색을 다시 정의하지 않으며 semantic variant와 `.ui-liquid-glass`만 예외로 둔다.

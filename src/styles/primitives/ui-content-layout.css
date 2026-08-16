@@ -17,6 +17,10 @@ html[data-theme] .ui-design-app .ui-design-choice-list > :not(.match-receipt-car
   box-shadow: none;
 }
 
+html[data-theme] .ui-design-app .ui-design-borderless-list > :not(.match-receipt-card) + :not(.match-receipt-card) {
+  border-top: var(--ui-stroke-width) solid var(--ui-divider-subtle);
+}
+
 html[data-theme]
   .ui-design-app
   .section-card.ui-design-category-surface:not(.match-receipt-card) {
@@ -194,7 +198,7 @@ html[data-theme] .guest-landing-primary-actions .ui-button {
 
 html[data-theme] .guest-landing-experience-actions,
 html[data-theme] .guest-landing-experience-actions .ui-button {
-  width: fit-content;
+  width: 100%;
   max-width: 100%;
 }
 

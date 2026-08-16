@@ -149,6 +149,20 @@ html[data-theme] .app-main .ui-match-list-surface .ui-match-list-summary {
     color 140ms ease;
 }
 
+html[data-theme] .ui-button.ui-button-secondary {
+  color: var(--ui-button-color);
+  background: var(--ui-button-secondary-bg);
+  border-color: transparent;
+}
+
+html[data-theme] .ui-button.ui-button-secondary:hover:not(:disabled) {
+  background: var(--ui-button-secondary-hover-bg);
+}
+
+html[data-theme] .ui-button.ui-button-secondary:active:not(:disabled) {
+  background: var(--ui-button-secondary-pressed-bg);
+}
+
 .ui-button-block {
   width: fit-content;
   max-width: 100%;

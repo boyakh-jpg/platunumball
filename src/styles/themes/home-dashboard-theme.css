@@ -19,7 +19,6 @@ html[data-theme="light"] .auth-test-login .provider-button:hover {
   background: var(--rb-orange-pressed);
   filter: none;
 }
-html[data-theme="light"] .button-secondary,
 html[data-theme="light"] .provider-button,
 html[data-theme="light"] .button-icon,
 html[data-theme="light"] .arena-icon-button {
@@ -305,13 +304,11 @@ button:not(:focus-visible) {
 .auth-test-login .provider-button:active {
   background: var(--rb-orange-pressed);
 }
-.button-secondary,
 .provider-button,
 .button-icon,
 .arena-icon-button {
   border-color: var(--rb-line);
 }
-.button-secondary,
 .provider-button,
 .button-icon {
   background: var(--ui-button-bg);
@@ -327,16 +324,11 @@ button:not(:focus-visible) {
   border-radius: var(--radius-lg);
   border-color: var(--rb-line);
   background:
-    linear-gradient(90deg, rgba(16, 16, 16, 0.98), rgba(48, 49, 50, 0.74) 62%, rgba(24, 25, 26, 0.92)),
     var(--bg-court) var(--hero-bg-position-court) / var(--hero-bg-size) no-repeat,
     var(--rb-bg-2);
 }
 .rank-home .rank-summary-grid::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  opacity: 0.82;
+  content: none;
 }
 .rank-home .rank-summary-grid > * {
   position: relative;
