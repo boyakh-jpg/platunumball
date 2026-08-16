@@ -428,11 +428,13 @@
 }
 
 .notifications-list .notification-row {
-  min-height: 62px;
-  border-color: var(--ui-control-border);
-  border-radius: var(--ui-control-radius);
-  background: var(--ui-control-bg);
-  padding: 9px 10px;
+  min-height: var(--ui-notification-row-min-height);
+  border-width: 0 0 var(--ui-stroke-width);
+  border-style: solid;
+  border-color: var(--rb-line);
+  border-radius: 0;
+  background: transparent;
+  padding: var(--ui-information-row-padding);
 }
 
 .notifications-list .home-action-main em {
@@ -443,6 +445,9 @@
 
 .notification-actions {
   flex: 0 0 auto;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+  margin-inline-start: auto;
 }
 
 .notification-actions button,
@@ -464,7 +469,9 @@
   color: var(--rb-blue);
   font-size: 0.74rem;
   font-weight: 950;
-  padding: 5px 8px;
+  min-width: max-content;
+  min-height: var(--ui-button-height-sm);
+  padding: 0 var(--ui-button-padding-x-sm);
   text-decoration: none;
   white-space: nowrap;
 }
@@ -472,12 +479,17 @@
 .notification-actions .notification-action-control {
   display: inline-flex;
   box-sizing: border-box;
-  min-width: calc(var(--ui-button-height) + var(--space-6));
-  height: var(--ui-button-height);
-  min-height: var(--ui-button-height);
+  min-width: calc(var(--ui-button-height-sm) + var(--space-6));
+  height: var(--ui-button-height-sm);
+  min-height: var(--ui-button-height-sm);
   align-items: center;
   justify-content: center;
   border-radius: var(--ui-button-radius);
   padding: 0 10px;
   white-space: nowrap;
+}
+
+.notification-actions .notification-read-button {
+  min-width: calc(var(--ui-button-height-sm) + var(--space-6));
+  height: var(--ui-button-height-sm);
 }

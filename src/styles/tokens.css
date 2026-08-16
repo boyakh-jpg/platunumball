@@ -220,6 +220,11 @@
   --ui-status-rail-radius: var(--ui-badge-radius);
   --ui-information-row-min-height: 44px;
   --ui-information-row-padding: 8px 10px;
+  --ui-notification-row-min-height: 48px;
+  --ui-data-cell-bg: color-mix(in srgb, var(--rb-text) 4%, transparent);
+  --ui-data-cell-radius: 6px;
+  --ui-data-cell-gap: 6px;
+  --ui-filter-gap: 0px;
   --ui-profile-identity-gap: var(--space-4);
   --ui-team-emblem-text-control-height: 64px;
   --ui-control-bg: var(--input-bg);
@@ -252,18 +257,24 @@
   --ui-room-panel-border: var(--card-border);
   --ui-room-panel-border-width: 1px;
   --ui-hero-border-width: 1px;
-  --ui-page-hero-min-height: 176px;
-  --ui-page-hero-min-height-mobile: 152px;
+  --ui-page-hero-min-height: 164px;
+  --ui-page-hero-min-height-mobile: 144px;
   --ui-page-hero-padding: clamp(16px, 2vw, 22px);
-  --ui-page-hero-shadow: 0 10px 24px rgba(0, 0, 0, 0.16);
-  --ui-page-hero-overlay-start: rgba(27, 30, 32, 0.94);
-  --ui-page-hero-overlay-middle: rgba(27, 30, 32, 0.72);
-  --ui-page-hero-overlay-end: rgba(27, 30, 32, 0.34);
+  --ui-page-hero-shadow: none;
+  --ui-schedule-hero-mask: linear-gradient(
+    90deg,
+    rgba(27, 30, 32, 0.94),
+    rgba(27, 30, 32, 0.72) 54%,
+    rgba(27, 30, 32, 0.34)
+  );
   --hero-title-font: var(--sports-display-font);
-  --ui-content-title-size: clamp(1.7rem, 2.7vw, 2.1rem);
-  --ui-content-title-size-mobile: clamp(1.6rem, 7vw, 1.9rem);
-  --hero-title-size: clamp(1.8rem, 2.5vw, 2.25rem);
-  --hero-title-size-mobile: clamp(1.65rem, 7vw, 2rem);
+  --ui-content-title-size: clamp(1.45rem, 2.2vw, 1.8rem);
+  --ui-content-title-size-mobile: clamp(1.4rem, 6vw, 1.7rem);
+  --hero-title-size: clamp(1.55rem, 2.2vw, 1.95rem);
+  --hero-title-size-mobile: clamp(1.45rem, 6vw, 1.75rem);
+  --ui-room-title-size: clamp(1.45rem, 2.2vw, 1.8rem);
+  --ui-room-title-size-mobile: 1.4rem;
+  --ui-room-copy-size: 0.8125rem;
   --hero-title-line-height: 0.95;
   --hero-title-letter-spacing: 0.018em;
   --hero-title-color: var(--rb-cream);
@@ -397,10 +408,13 @@ html[data-theme="light"] {
   --ui-liquid-glass-refraction: none;
   --ui-liquid-glass-shadow: 0 8px 20px rgba(24, 33, 38, 0.09);
   --ui-liquid-glass-filter: blur(10px) saturate(0.96);
-  --ui-page-hero-shadow: 0 10px 22px rgba(24, 33, 38, 0.09);
-  --ui-page-hero-overlay-start: rgba(255, 255, 255, 0.96);
-  --ui-page-hero-overlay-middle: rgba(255, 255, 255, 0.76);
-  --ui-page-hero-overlay-end: rgba(255, 255, 255, 0.42);
+  --ui-page-hero-shadow: none;
+  --ui-schedule-hero-mask: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.96),
+    rgba(255, 255, 255, 0.76) 54%,
+    rgba(255, 255, 255, 0.42)
+  );
   --hero-title-color: var(--rb-text);
   --hero-eyebrow-color: var(--rb-orange-pressed);
   --hero-title-shadow: none;

@@ -46,7 +46,7 @@ export default function HomeRightRail({
     <aside className="page-stack home-right-rail">
       <aside className="page-stack home-top-rail">
         <div className="rank-tier-rail">
-          <Card className="section-card rank-profile-card rank-spotlight-card">
+          <Card className="section-card rank-profile-card rank-spotlight-card ui-design-decorative-surface">
             <div className="rank-spotlight-content">
               <div className="rank-spotlight-main">
                 <TierEmblem mmr={user.ratings.integrated} ratings={user.ratings} size="md" />

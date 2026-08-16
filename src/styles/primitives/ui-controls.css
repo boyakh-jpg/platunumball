@@ -599,3 +599,21 @@ input[type="checkbox"]:hover:not(:disabled) {
   border: var(--ui-control-group-border-width) solid var(--ui-control-group-border);
   border-radius: var(--ui-control-group-radius);
 }
+
+html[data-theme] .ui-design-app .ui-filter-row {
+  display: flex;
+  width: fit-content;
+  max-width: 100%;
+  flex-wrap: nowrap;
+  gap: var(--ui-filter-gap);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+html[data-theme] .ui-design-app .ui-filter-row::-webkit-scrollbar {
+  display: none;
+}
+
+html[data-theme] .ui-design-app .ui-filter-row > * {
+  flex: 0 0 auto;
+}

@@ -118,28 +118,28 @@ export default function ProfileRecordSummaryCard({
         ))}
       </div>
       {recordFolder === "official" ? (
-        <div className="ui-segmented-control segmented-control profile-record-section-filter" aria-label="공식기록 구분">
+        <div className="ui-segmented-control ui-filter-row segmented-control profile-record-section-filter" aria-label="공식기록 구분">
           {OFFICIAL_SECTIONS.map((item) => (
             <button key={item.id} type="button" className={officialSection === item.id ? "active" : ""} aria-pressed={officialSection === item.id} onClick={() => setOfficialSection(item.id)}>{item.label}</button>
           ))}
         </div>
       ) : null}
       {recordFolder !== "personal" ? (
-        <div className="ui-segmented-control segmented-control profile-record-mode-filter" aria-label="경기 인원 구분">
+        <div className="ui-segmented-control ui-filter-row segmented-control profile-record-mode-filter" aria-label="경기 인원 구분">
           {MODE_FILTERS.map((item) => (
             <button key={item.id} type="button" className={modeFilter === item.id ? "active" : ""} aria-pressed={modeFilter === item.id} onClick={() => setModeFilter(item.id)}>{item.label}</button>
           ))}
         </div>
       ) : null}
       {recordFolder === "personal" && showPersonalVisibilityFilter ? (
-        <div className="ui-segmented-control segmented-control profile-record-visibility-filter" aria-label="내 기록 공개 범위">
+        <div className="ui-segmented-control ui-filter-row segmented-control profile-record-visibility-filter" aria-label="내 기록 공개 범위">
           {PERSONAL_VISIBILITY_FILTERS.map((item) => (
             <button key={item.id} type="button" className={personalVisibilityFilter === item.id ? "active" : ""} aria-pressed={personalVisibilityFilter === item.id} onClick={() => setPersonalVisibilityFilter(item.id)}>{item.label}</button>
           ))}
         </div>
       ) : null}
       <h3 className="profile-record-metric-title">최근 6개월 점수</h3>
-      <div className="rank-stat-grid profile-record-score-grid">
+      <div className="rank-stat-grid ui-data-cell-grid profile-record-score-grid">
         <span><strong>{recentSummary.games}</strong>경기</span>
         <span><strong>{recentSummary.wins}</strong>승</span>
         <span><strong>{recentSummary.losses}</strong>패</span>
@@ -154,11 +154,11 @@ export default function ProfileRecordSummaryCard({
         <h3 className="profile-record-metric-title">
           {recordFolder === "personal" ? `저장된 내 기록 누적 · ${personalGameCount}경기` : `검증된 개인 기록 누적 · ${statCount}경기`}
         </h3>
-        <div className="rank-stat-grid">
+        <div className="rank-stat-grid ui-data-cell-grid">
           {PLAYER_STAT_FIELDS.map((field) => <span key={field.id}><strong>{statTotals[field.id] ?? 0}</strong>{field.label}</span>)}
         </div>
         <h3 className="profile-record-metric-title">개인 기록 경기당 평균</h3>
-        <div className="rank-stat-grid">
+        <div className="rank-stat-grid ui-data-cell-grid">
           {PLAYER_STAT_FIELDS.map((field) => <span key={field.id}><strong>{formatMetric(statAverages[field.id])}</strong>평균 {field.label}</span>)}
         </div>
       </> : null}
@@ -167,7 +167,7 @@ export default function ProfileRecordSummaryCard({
           {venueGroups.map((group) => (
             <section key={group.id}>
               <div className="profile-record-venue-heading"><strong>{group.name}</strong><span>{group.summary.games}경기</span></div>
-              <div className="rank-stat-grid">
+              <div className="rank-stat-grid ui-data-cell-grid">
                 <span><strong>{formatMetric(group.summary.averageScore)}</strong>평균 득점</span>
                 <span><strong>{formatMetric(group.summary.averageAllowed)}</strong>평균 실점</span>
                 <span><strong>{formatMetric(group.summary.averageDiff)}</strong>평균 득실차</span>

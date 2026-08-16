@@ -9,7 +9,7 @@ html[data-theme] .ui-design-app :is(
   .ui-design-info-surface,
   .ui-design-soft-surface,
   .ui-design-borderless-surface
-):not(.ui-liquid-glass):not(.ui-design-category-surface):not(.match-receipt-card):not(.match-receipt-card *),
+):not(.ui-liquid-glass):not(.ui-design-category-surface):not(.ui-design-decorative-surface):not(.match-receipt-card):not(.match-receipt-card *),
 html[data-theme] .ui-design-app .ui-design-borderless-list > :not(.match-receipt-card):not(.match-receipt-card *),
 html[data-theme] .ui-design-app .ui-design-choice-list > :not(.match-receipt-card):not(.match-receipt-card *) {
   border-color: transparent;
@@ -17,7 +17,9 @@ html[data-theme] .ui-design-app .ui-design-choice-list > :not(.match-receipt-car
   box-shadow: none;
 }
 
-html[data-theme] .ui-design-app .section-card.ui-design-category-surface:not(.match-receipt-card) {
+html[data-theme]
+  .ui-design-app
+  .section-card.ui-design-category-surface:not(.match-receipt-card) {
   border-width: var(--ui-stroke-width) 0 0;
   border-style: solid;
   border-color: var(--rb-line) transparent transparent;
@@ -52,6 +54,20 @@ html[data-theme] .ui-design-app :is(.rank-stat-grid, .stat-strip) > span {
 
 html[data-theme] .ui-design-app :is(.rank-stat-grid, .stat-strip) > span + span {
   border-inline-start: var(--ui-stroke-width) solid var(--rb-line);
+}
+
+html[data-theme] .ui-design-app .ui-data-cell-grid {
+  gap: var(--ui-data-cell-gap);
+}
+
+html[data-theme] .ui-design-app .ui-data-cell-grid > span {
+  border: 0;
+  border-radius: var(--ui-data-cell-radius);
+  background: var(--ui-data-cell-bg);
+}
+
+html[data-theme] .ui-design-app .ui-data-cell-grid > span + span {
+  border-inline-start: 0;
 }
 
 html[data-theme] .ui-design-app :is(
@@ -91,25 +107,13 @@ html[data-theme] .app-main .ui-button-block:not(.provider-button):not(.match-rec
 }
 
 html[data-theme] .app-main .page-header {
+  --ui-page-hero-image: var(--page-hero-bg, var(--bg-court));
+  --ui-page-hero-position: var(--page-hero-bg-position, var(--hero-bg-position-court));
   min-height: var(--ui-page-hero-min-height);
+  box-shadow: var(--ui-page-hero-shadow);
   padding: var(--ui-page-hero-padding);
   border: 0;
   border-radius: var(--ui-card-radius);
-  background:
-    linear-gradient(
-      90deg,
-      var(--ui-page-hero-overlay-start),
-      var(--ui-page-hero-overlay-middle) 54%,
-      var(--ui-page-hero-overlay-end)
-    ),
-    var(--page-hero-bg, var(--bg-court)) var(--page-hero-bg-position, var(--hero-bg-position-court)) / var(--hero-bg-size) no-repeat,
-    var(--rb-bg-3);
-  box-shadow: var(--ui-page-hero-shadow);
-}
-
-html[data-theme] .app-main .page-header::after,
-html[data-theme] .app-main .team-hub-hero::before {
-  content: none;
 }
 
 html[data-theme] .app-main .page-header :is(p, small):not(.eyebrow) {
@@ -124,17 +128,10 @@ html[data-theme] .app-main .page-header .ui-page-hero__copy > .ui-button {
 }
 
 html[data-theme] .app-main .team-hub-hero {
+  --ui-page-hero-image: var(--bg-ball);
+  --ui-page-hero-position: var(--hero-bg-position-ball);
   min-height: clamp(280px, 26vw, 360px);
   padding: var(--ui-page-hero-padding);
-  background:
-    linear-gradient(
-      180deg,
-      var(--ui-page-hero-overlay-end),
-      var(--ui-page-hero-overlay-middle) 52%,
-      var(--ui-page-hero-overlay-start)
-    ),
-    var(--bg-ball) var(--hero-bg-position-ball) / var(--hero-bg-size) no-repeat,
-    var(--rb-bg-3);
 }
 
 html[data-theme] .app-main .team-hub-board {
@@ -202,6 +199,12 @@ html[data-theme] .guest-landing-primary-cta {
   padding-inline: var(--ui-button-padding-x);
 }
 
+html[data-theme] .guest-landing-primary-actions + .guest-landing-explore-link {
+  display: flex;
+  width: fit-content;
+  margin: var(--space-3) auto 0;
+}
+
 html[data-theme] .guest-landing-section {
   gap: clamp(28px, 4vw, 44px);
   padding-block: clamp(52px, 6vw, 76px);
@@ -217,8 +220,43 @@ html[data-theme] .app-main {
   background-color: var(--rb-bg);
 }
 
-html[data-theme] .app-main .ui-page-hero {
+html[data-theme] .app-main :is(.match-hero, .om-match-hero, .gm-room-hero) {
+  --ui-page-hero-image: var(--bg-hoop);
+  --ui-page-hero-position: var(--hero-bg-position-hoop);
+}
+
+html[data-theme] .app-main .tournament-hero {
+  --ui-page-hero-image: var(--bg-ball);
+  --ui-page-hero-position: var(--hero-bg-position-ball);
+}
+
+html[data-theme] .app-main .arena-recruit-hero {
+  --ui-page-hero-image: var(--bg-recruiting, var(--bg-ball));
+  --ui-page-hero-position: var(--hero-bg-position-ball);
+}
+
+html[data-theme] .app-main .landing-hero {
+  --ui-page-hero-image: var(--bg-action);
+  --ui-page-hero-position: var(--landing-hero-position, var(--hero-bg-position-action));
+  --ui-page-hero-size: var(--landing-hero-size, var(--hero-bg-size));
+}
+
+html[data-theme] .app-main .ui-design-hero {
+  --ui-page-hero-image: var(--bg-court);
+  --ui-page-hero-position: var(--hero-bg-position-court);
+}
+
+html[data-theme] .app-main .ui-page-hero:not(.rank-summary-grid) {
   isolation: isolate;
+  background:
+    var(--ui-page-hero-image, var(--page-hero-bg, var(--bg-court)))
+      var(--ui-page-hero-position, var(--page-hero-bg-position, var(--hero-bg-position-court))) /
+      var(--ui-page-hero-size, var(--hero-bg-size)) no-repeat,
+    var(--rb-bg-3);
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  filter: none;
 }
 
 html[data-theme] .app-main .ui-page-hero .ui-page-hero__copy,
@@ -270,11 +308,6 @@ html[data-theme] .auth-shell {
     max(16px, env(safe-area-inset-bottom))
     max(16px, env(safe-area-inset-left));
   background:
-    linear-gradient(
-      90deg,
-      color-mix(in srgb, var(--rb-bg) 94%, transparent),
-      color-mix(in srgb, var(--rb-bg) 78%, transparent)
-    ),
     var(--bg-court) var(--hero-bg-position-court) / var(--hero-bg-size) no-repeat,
     var(--rb-bg);
 }
@@ -325,6 +358,44 @@ html[data-theme] .provider-button span {
   width: 22px;
   height: 22px;
   font-size: var(--font-size-caption);
+}
+
+html[data-theme] .app-main .ui-page-hero:not(.rank-summary-grid)::before,
+html[data-theme] .app-main .ui-page-hero:not(.rank-summary-grid)::after,
+html[data-theme] :is(.guest-landing-hero, .auth-shell)::before,
+html[data-theme] :is(.guest-landing-hero, .auth-shell)::after {
+  content: none;
+  display: none;
+  background: none;
+  opacity: 0;
+}
+
+html[data-theme] .arena-lobby-modal .arena-lobby-title h2 {
+  font-size: var(--ui-room-title-size);
+  line-height: 1.08;
+}
+
+html[data-theme]
+  .arena-lobby-modal
+  :is(
+    .arena-lobby-title,
+    .arena-owner-panel,
+    .arena-room-rule-panel,
+    .arena-room-rule-head,
+    .arena-room-rule-detail-grid,
+    .arena-room-rule-summary,
+    .arena-room-support-notes,
+    .arena-details-memo,
+    .arena-join-panel,
+    .arena-room-chat,
+    .arena-invite-panel,
+    .arena-invitation-list,
+    .arena-record-setup-panel,
+    .arena-room-subtitle
+  )
+  :where(p, span, small, em, dd, dt, label) {
+  font-size: var(--ui-room-copy-size);
+  line-height: 1.45;
 }
 
 .ui-help-disclosure {
@@ -407,6 +478,10 @@ html[data-theme] .provider-button span {
   html[data-theme] .app-main .team-hub-hero {
     min-height: 340px;
     padding: var(--ui-page-hero-padding);
+  }
+
+  html[data-theme] .arena-lobby-modal .arena-lobby-title h2 {
+    font-size: var(--ui-room-title-size-mobile);
   }
 
   html[data-theme] .guest-landing-primary-actions,

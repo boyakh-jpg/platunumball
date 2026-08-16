@@ -7,9 +7,17 @@ html[data-theme] [data-design] .ui-design-app .rank-home .rank-leaderboard-card 
   position: relative;
   padding-inline-start: calc(var(--space-5) + var(--ui-status-rail-width));
   background: transparent;
-  border-color: transparent;
+  border-color: transparent transparent var(--rb-line);
   border-radius: 0;
   box-shadow: none;
+}
+
+html[data-theme]
+  [data-design]
+  .ui-design-app
+  .rank-home
+  :is(.home-action-list > .home-action-row, .rank-leaderboard-card .rank-list > .rank-row):last-child {
+  border-block-end-color: transparent;
 }
 
 html[data-theme] [data-design] .ui-design-app .rank-home .home-action-list > .home-action-row::before,

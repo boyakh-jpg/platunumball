@@ -771,11 +771,11 @@ test("알림 보기와 읽음은 같은 네모 버튼 규격을 사용한다", (
   assert.match(notificationSource, /notification-action-control notification-read-button/);
   assert.match(
     foundationStyles,
-    /\.notification-actions \.notification-action-control\s*\{[^}]*min-width:\s*calc\(var\(--ui-button-height\) \+ var\(--space-6\)\);[^}]*height:\s*var\(--ui-button-height\);[^}]*min-height:\s*var\(--ui-button-height\);[^}]*border-radius:\s*var\(--ui-button-radius\);/,
+    /\.notification-actions \.notification-action-control\s*\{[^}]*min-width:\s*calc\(var\(--ui-button-height-sm\) \+ var\(--space-6\)\);[^}]*height:\s*var\(--ui-button-height-sm\);[^}]*min-height:\s*var\(--ui-button-height-sm\);[^}]*border-radius:\s*var\(--ui-button-radius\);/,
   );
   assert.match(
     foundationStyles,
-    /\.notification-actions \.notification-read-button\s*\{[^}]*min-width:\s*calc\(var\(--ui-button-height\) \+ var\(--space-6\)\);[^}]*height:\s*var\(--ui-button-height\);/,
+    /\.notification-actions \.notification-read-button\s*\{[^}]*min-width:\s*calc\(var\(--ui-button-height-sm\) \+ var\(--space-6\)\);[^}]*height:\s*var\(--ui-button-height-sm\);/,
   );
   assert.doesNotMatch(
     foundationStyles,
@@ -1264,6 +1264,8 @@ test("home Season Zero banner routes by founding player status", () => {
 });
 
 test("hero inner boards share one restrained glass surface system", () => {
+  const homeDashboardResponsiveStyles = read("src/styles/responsive/home-dashboard-responsive.css");
+
   assert.equal(count(tokenStyles, "--hero-copy-color: var(--rb-cream);"), 1);
   assert.match(
     tokenStyles,
@@ -1323,6 +1325,18 @@ test("hero inner boards share one restrained glass surface system", () => {
   assert.doesNotMatch(landingGuestStyles, /\.guest-landing-mobile-cta|position:\s*fixed;/);
   assert.equal(count(primitiveStyles, "-webkit-mask-composite: xor;"), 0);
   assert.equal(count(primitiveStyles, "mask-composite: exclude;"), 0);
+  assert.match(
+    primitiveStyles,
+    /html\[data-theme\] \.app-main \.ui-page-hero:not\(\.rank-summary-grid\)\s*\{[^}]*background:\s*var\(--ui-page-hero-image,[^}]*box-shadow:\s*none;[^}]*backdrop-filter:\s*none;/,
+  );
+  assert.match(
+    primitiveStyles,
+    /\.ui-page-hero:not\(\.rank-summary-grid\)::before,[\s\S]*?\.auth-shell\)::after\s*\{[^}]*content:\s*none;[^}]*display:\s*none;/,
+  );
+  assert.match(
+    homeDashboardResponsiveStyles,
+    /\.rank-home \.rank-summary-grid,[\s\S]*?background:\s*var\(--ui-schedule-hero-mask\),[\s\S]*?var\(--bg-home-court\)/,
+  );
 });
 
 test("page heroes keep shared eyebrows without implementation copy", () => {
@@ -1415,8 +1429,8 @@ test("shared primitives own application-wide density, surfaces, and modals", () 
   );
   assert.match(tokenStyles, /--ui-information-row-min-height:\s*44px;/);
   assert.match(tokenStyles, /--font-size-title-xl:\s*clamp\(1\.9rem, 3\.4vw, 2\.4rem\);/);
-  assert.match(tokenStyles, /--ui-content-title-size:\s*clamp\(1\.7rem, 2\.7vw, 2\.1rem\);/);
-  assert.match(tokenStyles, /--hero-title-size:\s*clamp\(1\.8rem, 2\.5vw, 2\.25rem\);/);
+  assert.match(tokenStyles, /--ui-content-title-size:\s*clamp\(1\.45rem, 2\.2vw, 1\.8rem\);/);
+  assert.match(tokenStyles, /--hero-title-size:\s*clamp\(1\.55rem, 2\.2vw, 1\.95rem\);/);
   assert.match(
     primitiveStyles,
     /\.ui-content-title\.ui-content-title\s*\{[^}]*font-size:\s*var\(--ui-content-title-size\);/,

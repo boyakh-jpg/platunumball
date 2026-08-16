@@ -60,8 +60,8 @@
 }
 
 .notification-actions .notification-read-button {
-  min-width: calc(var(--ui-button-height) + var(--space-6));
-  height: var(--ui-button-height);
+  min-width: calc(var(--ui-button-height-sm) + var(--space-6));
+  height: var(--ui-button-height-sm);
 }
 
 .notification-actions .notification-delete-button:hover,
@@ -73,23 +73,21 @@
 }
 
 @media (max-width: 760px) {
-  .notification-row-open {
-    min-height: 42px;
-  }
-
   .home-alert-heading-actions {
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    overflow-x: auto;
   }
 
   .notification-inbox-controls {
-    width: 100%;
-    align-items: stretch;
-    flex-direction: column;
+    width: auto;
+    align-items: center;
+    flex-direction: row;
+    overflow-x: auto;
   }
 
   .notification-view-tabs,
   .notification-view-tabs button {
-    flex: 1 1 0;
+    flex: 0 0 auto;
   }
 
   .notifications-list .notification-row {
@@ -102,6 +100,6 @@
     max-width: 100%;
     grid-column: auto;
     justify-content: flex-end;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
   }
 }

@@ -1,48 +1,12 @@
-.landing-hero,
-html[data-theme="light"] .landing-hero {
-  background:
-    var(--bg-action) var(--landing-hero-position, var(--hero-bg-position-action)) / var(--landing-hero-size, var(--hero-bg-size)) no-repeat,
-    var(--rb-bg-2);
-  backdrop-filter: none;
-  filter: none;
-}
 .landing-backdrop,
 html[data-theme="light"] .landing-backdrop {
   background: none;
-}
-.match-hero,
-html[data-theme="light"] .match-hero {
-  background:
-    var(--bg-hoop) var(--hero-bg-position-hoop) / var(--hero-bg-size) no-repeat,
-    var(--rb-bg-2);
-  backdrop-filter: none;
-  filter: none;
-}
-.team-hub-hero,
-html[data-theme="light"] .team-hub-hero {
-  background:
-    var(--bg-ball) var(--hero-bg-position-ball) / var(--hero-bg-size) no-repeat,
-    var(--rb-bg-2);
-  backdrop-filter: none;
-  filter: none;
 }
 @media (max-width: 1079px) {
   .landing-hero,
   html[data-theme="light"] .landing-hero {
     --landing-hero-position: 68% 32%;
   }
-}
-.page-header,
-.profile-hero,
-.team-detail-hero,
-html[data-theme="light"] .page-header,
-html[data-theme="light"] .profile-hero,
-html[data-theme="light"] .team-detail-hero {
-  background:
-    var(--page-hero-bg, var(--bg-court)) var(--page-hero-bg-position, var(--hero-bg-position-court)) / var(--hero-bg-size) no-repeat,
-    var(--rb-bg-2);
-  backdrop-filter: none;
-  filter: none;
 }
 .create-match-hero.is-match {
   --page-hero-bg: var(--bg-create);
@@ -81,32 +45,8 @@ html[data-theme="light"] .team-detail-hero {
 }
 .rank-home .rank-summary-grid::before,
 .rank-home .rank-summary-grid::after,
-.landing-hero::before,
-.landing-hero::after,
-.match-hero::before,
-.match-hero::after,
-.team-hub-hero::before,
-.team-hub-hero::after,
-.page-header::before,
-.page-header::after,
-.profile-hero::before,
-.profile-hero::after,
-.team-detail-hero::before,
-.team-detail-hero::after,
 html[data-theme="light"] .rank-home .rank-summary-grid::before,
-html[data-theme="light"] .rank-home .rank-summary-grid::after,
-html[data-theme="light"] .landing-hero::before,
-html[data-theme="light"] .landing-hero::after,
-html[data-theme="light"] .match-hero::before,
-html[data-theme="light"] .match-hero::after,
-html[data-theme="light"] .team-hub-hero::before,
-html[data-theme="light"] .team-hub-hero::after,
-html[data-theme="light"] .page-header::before,
-html[data-theme="light"] .page-header::after,
-html[data-theme="light"] .profile-hero::before,
-html[data-theme="light"] .profile-hero::after,
-html[data-theme="light"] .team-detail-hero::before,
-html[data-theme="light"] .team-detail-hero::after {
+html[data-theme="light"] .rank-home .rank-summary-grid::after {
   content: none;
   display: none;
   background: none;
@@ -160,6 +100,14 @@ html[data-theme="light"] .team-detail-hero::after {
 .rank-home .rank-summary-grid .home-rank-board-head,
 html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
   background: transparent;
+}
+
+.rank-home .rank-summary-grid,
+html[data-theme="light"] .rank-home .rank-summary-grid {
+  background:
+    var(--ui-schedule-hero-mask),
+    var(--bg-home-court) center 46% / cover no-repeat,
+    var(--rb-bg-2);
 }
 .rank-home .home-search-panel.rank-search-card {
   grid-template-columns: minmax(0, 1fr) auto;
@@ -329,7 +277,14 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
   }
 
   .rank-home .home-search-actions {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-2);
+  }
+
+  .rank-home .home-search-actions :is(.button, .ui-button) {
+    min-width: 0;
+    padding-inline: var(--space-2);
+    font-size: var(--font-size-caption);
   }
 
   .rivalry-challenge-actions {
@@ -344,6 +299,7 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
   .rank-home .rank-summary-grid .home-rank-board-head,
   html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
     background:
+      var(--ui-schedule-hero-mask),
       var(--bg-home-court) center 46% / cover no-repeat,
       var(--rb-bg-2);
   }
