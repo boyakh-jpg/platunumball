@@ -1,6 +1,9 @@
 .home-guide-card {
-  --ui-card-padding: var(--space-8);
-  --ui-card-border: color-mix(in srgb, var(--rb-orange) 32%, var(--rb-line));
+  --ui-card-padding: var(--space-6) var(--space-4) var(--space-6) calc(var(--space-6) + var(--ui-status-rail-width));
+  --ui-card-bg: transparent;
+  --ui-card-border: transparent;
+  --ui-card-radius: 0;
+  --ui-card-shadow: none;
   position: relative;
   display: grid;
   grid-template-columns: auto minmax(190px, 1fr) auto auto;
@@ -9,14 +12,27 @@
   min-width: 0;
   color: var(--rb-text);
   text-decoration: none;
-  transition:
-    transform 150ms ease,
-    border-color 150ms ease;
+  transition: color 150ms ease;
 }
 
-.home-guide-card:hover {
-  --ui-card-border: color-mix(in srgb, var(--rb-orange) 58%, var(--rb-line));
-  transform: translateY(-1px);
+.home-guide-card::before {
+  position: absolute;
+  inset: var(--ui-status-rail-inset) auto var(--ui-status-rail-inset) 0;
+  width: var(--ui-status-rail-width);
+  background: var(--rb-orange);
+  border-radius: var(--ui-status-rail-radius);
+  content: "";
+}
+
+html[data-theme] [data-design] .ui-design-app .home-guide-card {
+  background: transparent;
+  border-color: transparent;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.home-guide-card:hover .home-guide-card__link {
+  color: var(--rb-orange);
 }
 
 .home-guide-card:focus-visible {
@@ -27,12 +43,12 @@
 
 .home-guide-card__icon {
   display: grid;
-  width: 46px;
+  width: 40px;
   aspect-ratio: 1;
   place-items: center;
-  color: #fff;
-  background: var(--rb-orange);
-  border-radius: var(--radius-sm);
+  color: var(--rb-orange);
+  background: transparent;
+  border-radius: 0;
 }
 
 .home-guide-card__copy {
@@ -50,7 +66,7 @@
 }
 
 .home-guide-card__copy strong {
-  font-size: 1.08rem;
+  font-size: 1rem;
   font-weight: 950;
   line-height: 1.2;
 }

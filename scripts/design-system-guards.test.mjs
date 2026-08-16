@@ -112,6 +112,7 @@ const recruitingStyles = readCssTree("src/styles/recruiting-arena.css");
 const recruitingLobbyResponsiveStyles = read("src/styles/responsive/recruiting-lobby-responsive.css");
 const matchesStyles = readCssTree("src/styles/matches-arena.css");
 const gettingStartedStyles = readCssTree("src/styles/getting-started.css");
+const homeRailStyles = read("src/styles/themes/home-rail-theme.css");
 const matchClockStyles = readCssTree("src/styles/match-clock.css");
 const matchClockSource = readSourceGroupSync(read, MATCH_CLOCK_PANEL_SOURCE_PATHS);
 const matchRoomStyles = readCssTree("src/styles/matchroom-arena.css");
@@ -1253,7 +1254,8 @@ test("home Season Zero banner routes by founding player status", () => {
   assert.match(pageSources.home, /FOUNDING PLAYER 특전 지급 완료/);
   assert.match(pageSources.home, /getProfileIcon\("341-founding-player-s0"\)/);
   assert.match(read("src/lib/assets.js"), /normalizedPath\.startsWith\("\/assets\/profile-icons\/"\)/);
-  assert.doesNotMatch(gettingStartedStyles, /\.home-guide-card\s*\{[^}]*--ui-card-bg:/s);
+  assert.match(gettingStartedStyles, /\.home-guide-card\s*\{[^}]*--ui-card-bg:\s*transparent;/s);
+  assert.match(gettingStartedStyles, /\.home-guide-card::before\s*\{[^}]*var\(--ui-status-rail-width\)/s);
   assert.doesNotMatch(gettingStartedStyles, /\.home-guide-card::after/);
   assert.match(pageSources.profile, /useState\(\(\) => location\.hash === "#icons"\)/);
   assert.match(pageSources.profile, /setIconDialogOpen\(location\.hash === "#icons"\)/);
@@ -1408,6 +1410,14 @@ test("팀 허브 대표팀 보드는 팀 전용 너비와 테마 대응 고대�
     visualSystemStyles,
     /\.team-hub-board strong[^}]*background(?:-image)?:\s*(?:linear|radial)-gradient/,
   );
+});
+
+test("home information rows use transparent surfaces and shared status rails", () => {
+  assert.match(homeRailStyles, /\.home-action-list > \.home-action-row/);
+  assert.match(homeRailStyles, /\.rank-leaderboard-card \.rank-list > \.rank-row/);
+  assert.match(homeRailStyles, /background:\s*transparent/);
+  assert.match(homeRailStyles, /var\(--ui-status-rail-width\)/);
+  assert.match(homeRailStyles, /\.home-action-icon\s*\{[^}]*background:\s*transparent/s);
 });
 
 test("게스트 팀 hero는 개인 상태를 추정하지 않고 공개 방은 명단만 표시한다", () => {

@@ -1,3 +1,37 @@
+html[data-theme] [data-design] .ui-design-app .rank-home .home-action-list > .home-action-row,
+html[data-theme] [data-design] .ui-design-app .rank-home .rank-leaderboard-card .rank-list > .rank-row {
+  --ui-card-bg: transparent;
+  --ui-card-border: transparent;
+  --ui-card-radius: 0;
+  --ui-card-shadow: none;
+  position: relative;
+  padding-inline-start: calc(var(--space-5) + var(--ui-status-rail-width));
+  background: transparent;
+  border-color: transparent;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+html[data-theme] [data-design] .ui-design-app .rank-home .home-action-list > .home-action-row::before,
+html[data-theme] [data-design] .ui-design-app .rank-home .rank-leaderboard-card .rank-list > .rank-row::before {
+  position: absolute;
+  inset: var(--ui-status-rail-inset) auto var(--ui-status-rail-inset) 0;
+  width: var(--ui-status-rail-width);
+  background: var(--ui-status-rail-color, var(--rb-orange));
+  border-radius: var(--ui-status-rail-radius);
+  content: "";
+}
+
+html[data-theme] [data-design] .ui-design-app .rank-home .rank-leaderboard-card .rank-list > .rank-row {
+  --ui-status-rail-color: var(--blue);
+}
+
+html[data-theme] [data-design] .ui-design-app .rank-home .home-action-icon {
+  color: var(--rb-orange-2);
+  background: transparent;
+  border-radius: 0;
+}
+
 @media (max-width: 759px) {
   .rank-home > .home-search-panel {
     order: 2;
