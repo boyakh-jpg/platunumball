@@ -20,14 +20,15 @@ html[data-theme] .app-main :is(.ui-liquid-glass, .page-header > .ui-button) {
   isolation: isolate;
   border: 0;
   background: var(--ui-liquid-glass-bg);
-  color: var(--hero-title-color);
-  box-shadow: none;
-  -webkit-backdrop-filter: none;
-  backdrop-filter: none;
+  color: var(--ui-liquid-glass-color);
+  box-shadow: var(--ui-liquid-glass-shadow);
+  -webkit-backdrop-filter: var(--ui-liquid-glass-filter);
+  backdrop-filter: var(--ui-liquid-glass-filter);
   text-shadow: none;
 }
 
 html[data-theme] .app-main .ui-liquid-glass :where(*) {
+  color: inherit;
   text-shadow: none;
 }
 
@@ -603,6 +604,11 @@ html[data-theme] .app-main .ui-page-hero .ui-page-hero__copy > p:not(.eyebrow),
   font-size: var(--font-size-body);
   line-height: 1.55;
   text-shadow: var(--hero-copy-shadow);
+}
+
+html[data-theme] .app-main .ui-page-hero :where(*),
+html[data-theme] .guest-landing-hero :where(*) {
+  text-shadow: none;
 }
 
 html[data-theme] :is(.ui-design-app, .ui-design-host) .eyebrow,

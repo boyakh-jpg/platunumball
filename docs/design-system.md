@@ -758,7 +758,7 @@
 6. Keep every subject inside a 16:9 safe area with enough outer margin. The card uses `object-fit: contain`; no important body part or prop may look cropped. Subject glow, necessary motion lines, hazard shapes, and close contact shadows may use partial alpha, but background pixels and corners must be fully transparent.
 7. Existing `assets/referee-rulebook/{scene}.svg` files remain as load-failure fallback only.
 8. Profile icons `221~225` reuse the same referee character language as full-body transparent cutouts. They remain fully inside the circular safe area, stay readable at small size, and gain clearer referee equipment and premium sports accessories by tier without duplicate props or cropped limbs.
-9. Light theme rulebook hero title uses the shared `--hero-title-shadow`; individual theme files do not remove or replace it.
+9. 룰북을 포함한 모든 hero 문구는 장식용 `text-shadow`를 사용하지 않는다. 가독성은 공용 글자색, 이미지 crop, 문구 안전 영역으로 확보한다.
 10. 룰북 본문은 `경기 중 판정 → 개인활약 기록 → BOXTIER 기록·이의·후기 → 안전·심판 윤리` 순서의 chapter로 묶는다. hero는 제목만 표시하고 고정 설명·홍보 문구를 사용하지 않는다.
 11. 룰북의 page-header만 hero로 사용한다. 적용 범위 안내는 공용 card 한 겹으로 두고, 통계·상황 예시 안쪽은 별도 card 테두리나 배경 없이 평면 구획으로 나눈다.
 12. 이의신청 chapter는 `10분·15분·20분`, 참가자별 병렬 요청, 방장 항목별 판정, 마지막 판정 즉시 확정을 설명한다. 심판 확정, 단일 전역 큐, 재승인 필요 문구를 사용하지 않는다.
@@ -1645,7 +1645,7 @@ UI 수정 전:
 7-3. Match/recruiting summary center labels such as `VS` and fill counts stay about half the side label size.
 7-4. Default text uses `--font-body`. Functional panel titles and descriptions use the shared `.ui-panel-title` and `.ui-panel-copy` typography instead of browser-default `strong`/`span` weights. Sports display typography remains an explicit override only.
 7-4-0. `--font-body`는 프로젝트가 직접 제공하는 `Pretendard Variable` 웹폰트를 우선 사용해 Windows, macOS, iOS, Android에서 같은 기본 UI 글꼴을 유지한다. 시스템 폰트는 웹폰트 로드 실패 시에만 fallback으로 사용한다.
-7-4-1. 모든 clear glass surface는 화면별 재구현 없이 공용 `.ui-liquid-glass` 클래스와 `--ui-liquid-glass-*` 토큰을 사용한다. 이 클래스 하나가 border 없는 투명 본체, 중앙 `0.75px` blur, 약한 그림자와 중앙을 뚫은 `1px` 단일 `mask-composite: exclude` 굴절 가장자리를 소유한다. 세 칸처럼 구획이 필요한 내부 metric은 `.ui-liquid-glass-segments`를 추가해 `--ui-liquid-glass-divider`의 얇은 외곽선과 세로 구획선을 사용하며 개별 불투명 카드로 분리하지 않는다. 홈 경기 요약, 팀 허브 대표팀, 경기·매칭 상황판, 시즌 요약, 프로필 티어와 이후 추가하는 glass surface 모두 이 primitive를 사용한다. 경기·매칭 상황판은 `--ui-hero-status-width`, metric 최소 높이와 공용 버튼 높이를 공유해 가로·세로 위치와 전체 너비·높이를 맞춘다. 글라스는 상위 hero의 `text-shadow`를 내부 자식까지 차단하는 스타일 경계다. 내부 제목·주요 수치는 `--hero-title-color`, 설명·보조 수치는 `--hero-copy-color`, 상태 소제목은 `--rb-orange-2`를 사용하되 별도 text shadow를 만들지 않는다. 팀 허브 대표팀 이름은 다크의 밝은 노랑과 라이트의 짙은 골드를 제공하는 `--rb-gold`를 사용하며 텍스트 그라데이션을 적용하지 않는다. page hero의 배지·세부 정보 surface는 같은 투명 배경과 미세 blur를 사용하고, 글라스 내부 보조 버튼만 공용 `--ui-liquid-glass-button-*` 불투명 표면과 대비 글자색을 사용한다. primary CTA의 주황색 의미는 유지한다. 색상 강조를 굴절처럼 사용하거나 안쪽 장식 링, 균일한 흰 테두리, 전체 inset shadow를 겹치지 않는다. Chromium의 SVG 굴절은 `1.25px` 이하의 보조 효과로 제한하고, SVG backdrop filter 미지원 환경에서는 얇은 비정형 반사광만 남는 투명 fallback을 사용한다. 대표팀 이름은 `--sports-display-font`를 유지한다.
+7-4-1. 모든 hero glass surface는 화면별 재구현 없이 공용 `.ui-liquid-glass` 클래스와 `--ui-liquid-glass-*` 토큰을 사용한다. 이 클래스는 배경과 구분되는 반투명 면, `blur(10px)`, 약한 단일 그림자만 소유한다. 테두리, 굴절선, 가상 요소 광택, 다중 그림자는 사용하지 않는다. 글라스는 상위 hero의 `text-shadow`를 내부 자식까지 차단하며 주요 글자는 `--ui-liquid-glass-color`, 보조 문구는 `--ui-liquid-glass-muted-color`를 사용해 light/dark 모두 대비를 유지한다. 내부 구획은 별도 카드로 나누지 않고 `.ui-liquid-glass-segments`의 한 줄 기준선을 사용한다. primary CTA의 주황색 의미와 대표팀 이름의 `--sports-display-font`는 유지한다.
 7-4-1-1. 공개 랜딩의 로고·레터는 별도 글래스나 text shadow를 사용하지 않는다. 배경 구도와 원본 브랜드 자산으로 대비를 확보한다.
 7-4-2. 공개 랜딩의 장문 `.landing-purpose` 박스와 로고 아래 기능 요약 문구는 표시하지 않는다. 개인정보처리방침·약관 링크는 공용 푸터에 둔다. 모바일은 배경을 `cover`로 확대하지 않고 뷰포트 높이 기준으로 축소해 선수의 몸이 보이되 로고·레터에 닿지 않게 오른쪽에 둔다.
 7-4-3. 경기 기록의 WIN·LOSS·DRAW 왼쪽 상태선은 라이트·다크 모두 각각 `--ui-result-win-border`, `--ui-result-loss-border`, `--ui-result-draw-border`를 사용한다. 일반 카드의 테마별 `border-color`가 상태선을 회색으로 덮어쓰면 안 된다.
@@ -2891,8 +2891,9 @@ UI 수정 전:
 5. 일반 표면은 중성 회색과 여백으로 묶고 장식용 테두리, 중첩 카드, 유리 굴절, 과한 그림자를 만들지 않는다. 선은 표·목록·탭의 정렬과 구획을 설명할 때만 사용한다. 다크 배경은 완전한 검정에 가깝게 낮추지 않는다.
 6. folder tab과 segmented control의 활성 상태는 텍스트와 하단 2px 주황선으로만 표시한다. 위·좌·우 테두리를 이어 붙인 `∩`형 외곽선, 들뜬 위치 이동, 별도 pill을 금지한다.
 7. action은 기본적으로 내용 너비를 사용한다. 폼 제출이나 모바일의 단일 핵심 과업처럼 전체 폭이 동작 이해에 필요한 경우에만 block button을 사용한다.
-8. page hero 제목과 본문은 공용 hero 색상·크기·그림자 토큰을 사용하고 390px, 768px, 1024px, 1440px에서 배경과 겹쳐도 읽혀야 한다. hero의 정보 위계는 유지하되 일반 본문 크기로 확장하지 않는다.
+8. page hero 제목과 본문은 공용 hero 색상·크기 토큰을 사용하고 장식용 `text-shadow`를 적용하지 않는다. 390px, 768px, 1024px, 1440px에서 이미지 crop과 문구 안전 영역을 확인한다. hero의 정보 위계는 유지하되 일반 본문 크기로 확장하지 않는다.
 9. 선택적 설명은 공용 `HelpDisclosure`의 `?`에 넣고 데스크톱 hover·focus, 터치 click으로 연다. 필수 조건, 오류, 위험, 현재 상태, 접근성 라벨은 항상 보이게 유지한다.
 10. 새 button·field·card·tab은 공용 primitive와 token을 사용한다. 화면별 색상·높이·radius·테두리를 하드코딩하지 않는다.
 11. 방 모달의 선수 slot 내부와 영수증 미리보기·Story·Feed 출력물은 이 밀도·표면 통일 범위에서 제외하고 전용 규칙을 유지한다.
 12. 데스크톱 side rail은 공용 `--ui-rail-*` 토큰을 사용한다. 본문과 분리되는 한 단계의 중성 표면만 허용하고 외곽선·블러·중첩 프로필 박스를 사용하지 않는다.
+13. hero의 상황판·badge·보조 action에 붙는 공용 `.ui-liquid-glass`는 배경과 구분되는 반투명 면과 약한 단일 그림자만 사용한다. 테두리, 굴절, 가상 요소 광택, 다중 그림자를 추가하지 않는다. 주요 글자는 `--ui-liquid-glass-color`, 보조 문구는 `--ui-liquid-glass-muted-color`를 사용해 light/dark 모두 대비를 유지한다.

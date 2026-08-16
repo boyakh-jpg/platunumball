@@ -167,16 +167,18 @@
   --ui-profile-popup-bg: color-mix(in srgb, var(--surface) 82%, transparent);
   --ui-profile-popup-shadow: var(--shadow-strong);
   --ui-profile-popup-backdrop-filter: blur(16px) saturate(1.08);
-  --ui-liquid-glass-bg: var(--rb-surface);
-  --ui-liquid-glass-button-bg: var(--button-secondary-bg);
+  --ui-liquid-glass-bg: color-mix(in srgb, var(--rb-bg-3) 76%, transparent);
+  --ui-liquid-glass-color: var(--rb-cream);
+  --ui-liquid-glass-muted-color: color-mix(in srgb, var(--rb-cream) 72%, transparent);
+  --ui-liquid-glass-button-bg: color-mix(in srgb, var(--rb-bg-3) 86%, transparent);
   --ui-liquid-glass-button-color: var(--rb-text);
   --ui-liquid-glass-border: transparent;
   --ui-liquid-glass-divider: rgba(255, 255, 255, 0.11);
   --ui-liquid-glass-edge: none;
   --ui-liquid-glass-edge-width: 0px;
   --ui-liquid-glass-refraction: none;
-  --ui-liquid-glass-shadow: none;
-  --ui-liquid-glass-filter: none;
+  --ui-liquid-glass-shadow: 0 8px 20px rgba(0, 0, 0, 0.16);
+  --ui-liquid-glass-filter: blur(10px) saturate(0.96);
   --ui-hero-status-width: 428px;
   --ui-hero-metric-min-height: 72px;
   --ui-panel-radius: var(--panel-radius);
@@ -247,13 +249,9 @@
   --hero-title-letter-spacing: 0.018em;
   --hero-title-color: var(--rb-cream);
   --hero-eyebrow-color: var(--rb-orange-2);
-  --hero-title-shadow:
-    0 2px 3px rgba(5, 7, 10, 0.84),
-    0 6px 18px rgba(0, 0, 0, 0.32);
+  --hero-title-shadow: none;
   --hero-copy-color: var(--rb-cream);
-  --hero-copy-shadow:
-    0 1px 2px rgba(5, 7, 10, 0.84),
-    0 3px 8px rgba(0, 0, 0, 0.28);
+  --hero-copy-shadow: none;
   --sidebar-width: 272px;
   --ui-rail-bg: var(--rb-bg-3);
   --ui-rail-item-hover-bg: color-mix(in srgb, var(--rb-text) 6%, transparent);
@@ -366,25 +364,23 @@ html[data-theme="light"] {
   --ui-rail-item-active-bg: color-mix(in srgb, var(--rb-orange) 10%, transparent);
   --ui-room-modal-bg: var(--card-bg-strong);
   --ui-room-panel-bg: rgba(255, 255, 255, 0.86);
-  --ui-liquid-glass-bg: var(--rb-surface);
-  --ui-liquid-glass-button-bg: #ffffff;
+  --ui-liquid-glass-bg: color-mix(in srgb, #ffffff 78%, transparent);
+  --ui-liquid-glass-color: var(--rb-text);
+  --ui-liquid-glass-muted-color: var(--rb-soft);
+  --ui-liquid-glass-button-bg: color-mix(in srgb, #ffffff 88%, transparent);
   --ui-liquid-glass-button-color: var(--rb-text);
   --ui-liquid-glass-border: transparent;
   --ui-liquid-glass-divider: rgba(35, 50, 59, 0.12);
   --ui-liquid-glass-edge: none;
   --ui-liquid-glass-edge-width: 0px;
   --ui-liquid-glass-refraction: none;
-  --ui-liquid-glass-shadow: none;
-  --ui-liquid-glass-filter: none;
+  --ui-liquid-glass-shadow: 0 8px 20px rgba(24, 33, 38, 0.09);
+  --ui-liquid-glass-filter: blur(10px) saturate(0.96);
   --hero-title-color: var(--rb-cream);
   --hero-eyebrow-color: var(--rb-orange-pressed);
-  --hero-title-shadow:
-    0 2px 3px rgba(5, 7, 10, 0.84),
-    0 6px 18px rgba(0, 0, 0, 0.32);
+  --hero-title-shadow: none;
   --hero-copy-color: var(--rb-cream);
-  --hero-copy-shadow:
-    0 1px 2px rgba(5, 7, 10, 0.84),
-    0 3px 8px rgba(0, 0, 0, 0.28);
+  --hero-copy-shadow: none;
   --court-line: rgba(24, 33, 38, 0.04);
   --scoreboard: #ffffff;
   --scoreboard-2: #e5e8e9;

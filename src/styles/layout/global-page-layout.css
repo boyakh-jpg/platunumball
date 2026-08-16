@@ -276,7 +276,17 @@ html[data-theme] .app-main :is(
   color: var(--hero-copy-color);
 }
 html[data-theme] .app-main .ui-page-hero .ui-liquid-glass :where(*) {
-  color: var(--rb-cream);
+  color: inherit;
+}
+html[data-theme] .app-main .ui-page-hero .ui-liquid-glass :is(
+  .home-hero-next > em,
+  .home-hero-stats em,
+  .team-hub-board em,
+  .home-hero-next > svg:last-child,
+  .om-match-stats > span,
+  .arena-hero-stats > span
+) {
+  color: var(--ui-liquid-glass-muted-color);
 }
 html[data-theme] .app-main .ui-page-hero .team-hub-board .team-hub-board-identity em {
   color: var(--rb-yellow);

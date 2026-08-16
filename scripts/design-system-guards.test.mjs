@@ -1236,27 +1236,29 @@ test("home Season Zero banner routes by founding player status", () => {
   assert.doesNotMatch(pageSources.playerDetail, /foundingPlayer|FOUNDING PLAYER/);
 });
 
-test("hero inner boards share one readable flat surface system", () => {
+test("hero inner boards share one restrained glass surface system", () => {
   assert.equal(count(tokenStyles, "--hero-copy-color: var(--rb-cream);"), 2);
-  assert.equal(count(tokenStyles, "0 2px 3px rgba(5, 7, 10, 0.84)"), 2);
-  assert.equal(count(tokenStyles, "0 6px 18px rgba(0, 0, 0, 0.32)"), 2);
-  assert.equal(count(tokenStyles, "0 1px 2px rgba(5, 7, 10, 0.84)"), 2);
-  assert.equal(count(tokenStyles, "0 3px 8px rgba(0, 0, 0, 0.28)"), 2);
+  assert.equal(count(tokenStyles, "--hero-title-shadow: none;"), 2);
+  assert.equal(count(tokenStyles, "--hero-copy-shadow: none;"), 2);
   assert.doesNotMatch(tokenStyles, /--hero-title-shadow:[\s\S]{0,100}?14px 34px/);
   assert.doesNotMatch(tokenStyles, /--hero-copy-shadow:[\s\S]{0,100}?8px 20px/);
-  assert.equal(count(tokenStyles, "--ui-liquid-glass-filter: none;"), 2);
+  assert.equal(count(tokenStyles, "--ui-liquid-glass-filter: blur(10px) saturate(0.96);"), 2);
+  assert.equal(count(tokenStyles, "--ui-liquid-glass-color:"), 2);
+  assert.equal(count(tokenStyles, "--ui-liquid-glass-muted-color:"), 2);
   assert.equal(count(tokenStyles, "--ui-liquid-glass-edge-width: 0px;"), 2);
   assert.equal(count(tokenStyles, "--ui-liquid-glass-refraction: none;"), 2);
-  assert.equal(count(tokenStyles, "--ui-liquid-glass-shadow: none;"), 2);
+  assert.match(tokenStyles, /--ui-liquid-glass-shadow:\s*0 8px 20px rgba\(0,\s*0,\s*0,\s*0\.16\);/);
+  assert.match(tokenStyles, /--ui-liquid-glass-shadow:\s*0 8px 20px rgba\(24,\s*33,\s*38,\s*0\.09\);/);
   assert.equal(count(tokenStyles, "--ui-liquid-glass-edge: none;"), 2);
   assert.match(tokenStyles, /--ui-hero-status-width:\s*428px;/);
   assert.match(tokenStyles, /--ui-hero-metric-min-height:\s*72px;/);
   assert.doesNotMatch(tokenStyles, /--ui-liquid-glass-(?:caustic|edge-inset|refraction-inner)/);
   assert.match(tokenStyles, /--ui-liquid-glass-divider:\s*rgba\(255,\s*255,\s*255,\s*0\.11\);/);
   assert.match(tokenStyles, /--ui-liquid-glass-divider:\s*rgba\(35,\s*50,\s*59,\s*0\.12\);/);
-  assert.match(primitiveStyles, /html\[data-theme\] \.app-main :is\(\.ui-liquid-glass,\s*\.page-header > \.ui-button\)\s*\{[^}]*border:\s*0;[^}]*box-shadow:\s*none;[^}]*backdrop-filter:\s*none;/);
+  assert.match(primitiveStyles, /html\[data-theme\] \.app-main :is\(\.ui-liquid-glass,\s*\.page-header > \.ui-button\)\s*\{[^}]*border:\s*0;[^}]*box-shadow:\s*var\(--ui-liquid-glass-shadow\);[^}]*backdrop-filter:\s*var\(--ui-liquid-glass-filter\);/);
   assert.match(primitiveStyles, /html\[data-theme\] \.app-main :is\(\.ui-liquid-glass,\s*\.page-header > \.ui-button\)\s*\{[^}]*text-shadow:\s*none;/);
   assert.match(primitiveStyles, /html\[data-theme\] \.app-main \.ui-liquid-glass :where\(\*\)\s*\{[^}]*text-shadow:\s*none;/);
+  assert.match(primitiveStyles, /html\[data-theme\] \.app-main \.ui-page-hero :where\(\*\),[\s\S]*?\.guest-landing-hero :where\(\*\)\s*\{[^}]*text-shadow:\s*none;/);
   assert.match(primitiveStyles, /html\[data-theme\] \.app-main :is\(\.ui-liquid-glass,\s*\.page-header > \.ui-button\)::before\s*\{\s*content:\s*none;/);
   assert.match(primitiveStyles, /\.app-main \.ui-liquid-glass-segments\s*\{[^}]*border:\s*0;[^}]*border-bottom:\s*var\(--ui-stroke-width\) solid var\(--rb-line\);[^}]*border-radius:\s*0;[^}]*background:\s*transparent;/);
   assert.match(primitiveStyles, /\.app-main \.ui-liquid-glass-segments > \*\s*\{[^}]*border:\s*0;[^}]*border-radius:\s*0;[^}]*background:\s*transparent;[^}]*box-shadow:\s*none;/);
@@ -1277,7 +1279,8 @@ test("hero inner boards share one readable flat surface system", () => {
   assert.match(visualSystemStyles, /\.om-match-actions,\s*\.arena-hero-actions[\s\S]*?height:\s*var\(--ui-button-height\);/);
   assert.match(visualSystemStyles, /\.eyebrow\s*\{[^}]*color:\s*var\(--hero-eyebrow-color\);/);
   assert.match(visualSystemStyles, /html\[data-theme="light"\] \.app-main \.rank-home \.ui-page-hero\s*\{[^}]*--hero-title-color:\s*var\(--rb-orange-pressed\);[^}]*--hero-eyebrow-color:\s*var\(--rb-cream\);/);
-  assert.match(visualSystemStyles, /html\[data-theme\] \.app-main \.ui-page-hero \.ui-liquid-glass :where\(\*\)\s*\{[^}]*color:\s*var\(--rb-cream\);/);
+  assert.match(visualSystemStyles, /html\[data-theme\] \.app-main \.ui-page-hero \.ui-liquid-glass :where\(\*\)\s*\{[^}]*color:\s*inherit;/);
+  assert.match(visualSystemStyles, /\.ui-page-hero \.ui-liquid-glass :is\([\s\S]*?\.home-hero-stats em[\s\S]*?\)\s*\{[^}]*color:\s*var\(--ui-liquid-glass-muted-color\);/);
   assert.match(visualSystemStyles, /\.home-hero-next > strong,[\s\S]*?\.arena-hero-stats strong[\s\S]*?color:\s*var\(--hero-title-color\);/);
   assert.match(landingGuestStyles, /\.guest-landing-header\s*\{[^}]*position:\s*sticky;[^}]*height:\s*64px;/);
   assert.match(landingGuestStyles, /@media \(max-width:\s*760px\)[\s\S]*?\.guest-landing-hero\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\);/);
@@ -1365,7 +1368,7 @@ test("팀 허브 대표팀 보드는 팀 전용 너비와 테마 대응 고대�
     read("src/styles/tokens.css"),
     /--rb-yellow:\s*#ffd36c;/,
   );
-  assert.match(visualSystemStyles, /\.ui-page-hero \.ui-liquid-glass :where\(\*\)\s*\{[^}]*color:\s*var\(--rb-cream\);/);
+  assert.match(visualSystemStyles, /\.ui-page-hero \.ui-liquid-glass :where\(\*\)\s*\{[^}]*color:\s*inherit;/);
   assert.match(visualSystemStyles, /\.ui-page-hero \.team-hub-board \.team-hub-board-identity em\s*\{[^}]*color:\s*var\(--rb-yellow\);/);
   assert.match(
     readCssTree("src/styles/global-surfaces.css"),
