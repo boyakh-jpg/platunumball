@@ -215,6 +215,9 @@
   --ui-result-win-border: var(--blue);
   --ui-result-loss-border: var(--danger);
   --ui-result-draw-border: var(--gold);
+  --ui-status-rail-width: 4px;
+  --ui-status-rail-inset: 10px;
+  --ui-status-rail-radius: var(--ui-badge-radius);
   --ui-profile-identity-gap: var(--space-4);
   --ui-team-emblem-text-control-height: 64px;
   --ui-control-bg: var(--input-bg);

@@ -202,7 +202,10 @@ test("앱은 분류 박스 없는 표준 디자인을 사용하고 비교 데모
   assert.match(pageSources.landing, /children = "로그인"/);
   assert.match(pageSources.landing, /별도 가입 없이 로그인/);
   assert.equal(count(pageSources.landing, "<LoginButton"), 2);
-  assert.doesNotMatch(pageSources.landing, /guest-landing-explore-nav|홈 구경하기/);
+  assert.match(pageSources.landing, /to="\/app" className="guest-landing-explore-link"/);
+  assert.match(pageSources.landing, /로그인 없이 둘러보기/);
+  assert.match(landingGuestStyles, /\.guest-landing-explore-link\s*\{[^}]*display:\s*inline-flex;[^}]*color:\s*var\(--rb-muted\);[^}]*font-size:\s*var\(--ui-meta-font-size\);[^}]*text-decoration:\s*none;/);
+  assert.doesNotMatch(landingGuestStyles, /\.guest-landing-explore-link\s*\{[^}]*(?:background|border|box-shadow|width):/);
   assert.doesNotMatch(pageSources.landing, /guest-landing-text-login|guest-landing-account-login/);
   assert.doesNotMatch(pageSources.landing, /Recent games|지금 열려 있는 경기|Team basketball|Season ranking|ui-design-spotlight|landing-stat-grid/);
   assert.match(editorialDesignStyles, /\.ui-design-spotlight__stats > div\s*\{[^}]*color:\s*var\(--text\);/);
@@ -225,10 +228,9 @@ test("앱은 분류 박스 없는 표준 디자인을 사용하고 비교 데모
   assert.match(tokenStyles, /\[data-design="editorial"\] \.ui-design-app\s*\{[\s\S]*?--ui-card-border-width:\s*0px;[\s\S]*?--ui-button-border-width:\s*0px;[\s\S]*?--ui-control-group-border-width:\s*0px;[\s\S]*?--ui-room-modal-border-width:\s*0px;[\s\S]*?--ui-room-panel-border-width:\s*0px;[\s\S]*?--ui-hero-border-width:\s*0px;[\s\S]*?\}/);
   assert.match(editorialAppStyles, /--ui-design-section-rule-space:\s*calc\(var\(--card-padding\) \* 2\);/);
   assert.match(editorialAppStyles, /--ui-design-soft-surface-bg:\s*color-mix\(in srgb,\s*var\(--rb-bg-2\) 86%,\s*var\(--rb-bg\)\);/);
-  assert.match(editorialAppStyles, /--ui-design-record-surface-bg:\s*color-mix/);
   assert.match(editorialAppStyles, /\.ui-design-info-surface,[\s\S]*?html\[data-theme\][\s\S]*?\.ui-design-borderless-list > \*\s*\{[\s\S]*?border-width:\s*var\(--ui-design-surface-border-width\);[\s\S]*?border-radius:\s*var\(--ui-card-radius\);[\s\S]*?background-color:\s*var\(--ui-design-soft-surface-bg\);/);
   assert.match(editorialAppStyles, /\.ui-design-info-surface\.ui-design-info-accent\s*\{[\s\S]*?border-inline-start:\s*4px solid var\(--ui-info-accent, transparent\);/);
-  assert.match(editorialAppStyles, /\.ui-design-record-surface\.ui-design-info-surface\s*\{[\s\S]*?background:\s*color-mix/);
+  assert.match(editorialAppStyles, /\.ui-design-record-surface\.ui-design-info-surface\s*\{[\s\S]*?border:\s*0;[\s\S]*?border-radius:\s*0;[\s\S]*?background:\s*transparent;[\s\S]*?box-shadow:\s*none;/);
   assert.match(editorialAppStyles, /html\[data-theme\][\s\S]*?\.ui-design-soft-surface\s*\{[\s\S]*?border-width:\s*var\(--ui-card-border-width\);[\s\S]*?background:\s*var\(--ui-design-soft-surface-bg\);/);
   assert.match(editorialAppStyles, /\.ui-design-borderless-surface,[\s\S]*?\.ui-design-borderless-list > \*\s*\{[\s\S]*?border-width:\s*var\(--ui-design-surface-border-width\);/);
   assert.match(editorialAppStyles, /\.ui-design-choice-list > \*\s*\{[\s\S]*?border-width:\s*var\(--ui-button-border-width\);[\s\S]*?background:\s*var\(--ui-design-choice-bg\);/);
@@ -463,21 +465,28 @@ test("shared SearchPicker owns canonical result typography", () => {
   assert.doesNotMatch(recruitingStyles, /\.arena-room-rule-panel (?:strong|span)\s*\{/);
 });
 
-test("win loss draw record borders keep semantic colors in every theme", () => {
+test("win loss draw records use shared rounded semantic rails in every theme", () => {
   assert.match(tokenStyles, /--ui-result-win-border:\s*var\(--blue\);/);
   assert.match(tokenStyles, /--ui-result-loss-border:\s*var\(--danger\);/);
   assert.match(tokenStyles, /--ui-result-draw-border:\s*var\(--gold\);/);
+  assert.match(tokenStyles, /--ui-status-rail-width:\s*4px;/);
+  assert.match(tokenStyles, /--ui-status-rail-inset:\s*10px;/);
+  assert.match(tokenStyles, /--ui-status-rail-radius:\s*var\(--ui-badge-radius\);/);
   assert.match(
     primitiveStyles,
-    /html\[data-theme\] \.app-main :is\(\.recent-match-row\.result-w, \.rank-match-win\)\s*\{[^}]*border-left-color:\s*var\(--ui-result-win-border\);/,
+    /html\[data-theme\] \.app-main :is\(\.recent-match-row\.result-w, \.rank-match-win\)\s*\{[^}]*--ui-status-rail-color:\s*var\(--ui-result-win-border\);/,
   );
   assert.match(
     primitiveStyles,
-    /html\[data-theme\] \.app-main :is\(\.recent-match-row\.result-l, \.rank-match-loss\)\s*\{[^}]*border-left-color:\s*var\(--ui-result-loss-border\);/,
+    /html\[data-theme\] \.app-main :is\(\.recent-match-row\.result-l, \.rank-match-loss\)\s*\{[^}]*--ui-status-rail-color:\s*var\(--ui-result-loss-border\);/,
   );
   assert.match(
     primitiveStyles,
-    /html\[data-theme\] \.app-main :is\(\.recent-match-row\.result-d, \.rank-match-draw\)\s*\{[^}]*border-left-color:\s*var\(--ui-result-draw-border\);/,
+    /html\[data-theme\] \.app-main :is\(\.recent-match-row\.result-d, \.rank-match-draw\)\s*\{[^}]*--ui-status-rail-color:\s*var\(--ui-result-draw-border\);/,
+  );
+  assert.match(
+    primitiveStyles,
+    /html\[data-theme\] \.app-main :is\(\.recent-match-row, \.rank-match-item\)::before\s*\{[^}]*inset:\s*var\(--ui-status-rail-inset\) auto var\(--ui-status-rail-inset\) 0;[^}]*width:\s*var\(--ui-status-rail-width\);[^}]*border-radius:\s*var\(--ui-status-rail-radius\);[^}]*background:\s*var\(--ui-status-rail-color, var\(--rb-soft\)\);/,
   );
 });
 
@@ -1080,6 +1089,21 @@ test("목록 카드 feature CSS는 primitive 표면을 다시 정의하지 않�
   assert.doesNotMatch(getRuleBody(matchListStyles, ".match-list-card__action"), buttonProperties);
   assert.match(matchListStyles, /--ui-card-padding:/);
   assert.match(matchListStyles, /--ui-panel-padding:/);
+});
+
+test("경기 목록 상태선과 팀명 높이는 공용 규칙을 사용한다", () => {
+  assert.match(
+    matchListStyles,
+    /\.match-list-card::before\s*\{[^}]*inset:\s*var\(--ui-status-rail-inset\) auto var\(--ui-status-rail-inset\) 0;[^}]*width:\s*var\(--ui-status-rail-width\);[^}]*border-radius:\s*var\(--ui-status-rail-radius\);/,
+  );
+  assert.match(
+    matchListStyles,
+    /\.match-list-summary__side\s*\{[^}]*display:\s*grid;[^}]*block-size:\s*1\.96em;[^}]*overflow:\s*hidden;[^}]*white-space:\s*normal;/,
+  );
+  assert.match(
+    matchListStyles,
+    /\.match-list-summary__side > :is\(\.team-hover-trigger, a, span\)\s*\{[^}]*display:\s*block;[^}]*max-height:\s*1\.96em;[^}]*overflow:\s*hidden;[^}]*white-space:\s*inherit;/,
+  );
 });
 
 test("홈 검색 카드가 공용 card padding을 덮지 않는다", () => {
@@ -1881,6 +1905,7 @@ test("shared control families and fixed labels keep canonical ownership", () => 
   const sourceEntries = sourceFiles.map((file) => [file, read(file)]);
   const sharedControlStyles = `${read("src/styles/primitives/shared-controls.css")}\n${read("src/styles/primitives/hover-disclosure.css")}`;
   const uiControlsStyles = read("src/styles/primitives/ui-controls.css");
+  const profileRecordStyles = read("src/styles/features/profile-affiliation-ranges.css");
   const segmentedOccurrences = sourceEntries.flatMap(([file, source]) => (
     [...source.matchAll(/className="([^"]*\bsegmented-control\b[^"]*)"/g)]
       .map((match) => ({ file, className: match[1] }))
@@ -1893,7 +1918,13 @@ test("shared control families and fixed labels keep canonical ownership", () => 
 
   assert.match(sharedControlStyles, /\.ui-segmented-control button/);
   assert.match(uiControlsStyles, /\.ui-folder-tabs button/);
-  assert.match(uiControlsStyles, /\.ui-folder-tabs button\[aria-selected="true"\][\s\S]*?background:\s*transparent;[\s\S]*?box-shadow:\s*inset 0 -2px 0 var\(--rb-orange\);[\s\S]*?transform:\s*none;/);
+  assert.match(uiControlsStyles, /\.ui-folder-tabs\s*\{[^}]*width:\s*fit-content;[^}]*max-width:\s*100%;[^}]*border-bottom:\s*0;/);
+  assert.match(uiControlsStyles, /\.ui-folder-tabs button\[aria-selected="true"\]\s*\{[^}]*background:\s*transparent;[^}]*font-weight:\s*var\(--font-weight-title\);[^}]*box-shadow:\s*none;[^}]*transform:\s*none;/);
+  assert.match(uiControlsStyles, /\.ui-segmented-control\s*\{[^}]*border:\s*0;[^}]*background:\s*transparent;[^}]*box-shadow:\s*none;/);
+  assert.match(uiControlsStyles, /\.ui-segmented-control > button:is\(\.active, \[aria-current="page"\], \[aria-selected="true"\]\)\s*\{[^}]*background:\s*transparent;[^}]*font-weight:\s*var\(--font-weight-title\);[^}]*box-shadow:\s*none;/);
+  assert.match(profileRecordStyles, /\.profile-record-section-filter,[\s\S]*?\.profile-record-visibility-filter\s*\{[^}]*display:\s*flex;[^}]*width:\s*fit-content;[^}]*max-width:\s*100%;[^}]*overflow-x:\s*auto;/);
+  assert.match(profileRecordStyles, /\.profile-record-section-filter button,[\s\S]*?\.profile-record-visibility-filter button\s*\{[^}]*flex:\s*0 0 auto;[^}]*white-space:\s*nowrap;/);
+  assert.doesNotMatch(profileRecordStyles, /\.profile-record-(?:section|mode|visibility)-filter\s*\{[^}]*grid-template-columns:/);
   assert.match(sharedControlStyles, /button\.ui-choice-tile/);
   assert.match(sharedControlStyles, /\.ui-compact-action/);
   assert.doesNotMatch(sharedControlStyles, /\.(?:create-mode-grid|favorite-type-grid|referee-exam-choice-grid) button/);

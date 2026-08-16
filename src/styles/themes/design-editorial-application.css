@@ -127,7 +127,6 @@
   --ui-design-section-rule-space: calc(var(--card-padding) * 2);
   --ui-design-section-rule-outer-space: var(--page-section-gap);
   --ui-design-soft-surface-bg: color-mix(in srgb, var(--rb-bg-2) 86%, var(--rb-bg));
-  --ui-design-record-surface-bg: color-mix(in srgb, var(--ui-design-soft-surface-bg) 90%, #fff 10%);
   --ui-design-choice-bg: color-mix(in srgb, var(--rb-bg-2) 92%, var(--text) 8%);
 }
 
@@ -172,7 +171,10 @@ html[data-theme] [data-design="editorial"] .ui-design-app .ui-design-info-surfac
 }
 
 html[data-theme] [data-design="editorial"] .ui-design-app .ui-design-record-surface.ui-design-info-surface {
-  background: color-mix(in srgb, var(--ui-info-accent, transparent) 7%, var(--ui-design-record-surface-bg));
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 [data-design="editorial"] .ui-design-app .ui-design-content-surface.ui-design-info-surface {

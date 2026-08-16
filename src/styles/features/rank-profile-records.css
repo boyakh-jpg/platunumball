@@ -199,21 +199,6 @@
 .rank-profile-summary.is-single {
   grid-template-columns: minmax(0, 1fr);
 }
-.rank-match-item {
-  border-left: 4px solid var(--line);
-}
-.rank-match-win {
-  border-left-color: var(--blue);
-  background: rgba(116, 169, 255, 0.07);
-}
-.rank-match-loss {
-  border-left-color: var(--danger);
-  background: rgba(255, 93, 108, 0.06);
-}
-.rank-match-draw {
-  border-left-color: var(--gold);
-  background: rgba(255, 211, 108, 0.06);
-}
 .rank-team-hero .favorite-toggle-button {
   width: max-content;
   margin-top: 4px;
@@ -322,10 +307,6 @@
   display: grid;
   align-items: center;
   gap: var(--space-5);
-  border: var(--ui-stroke-width) solid var(--line);
-  border-left-width: 4px;
-  border-radius: var(--radius);
-  background: rgba(255, 255, 255, 0.045);
   padding: 10px;
 }
 .recent-match-row b {

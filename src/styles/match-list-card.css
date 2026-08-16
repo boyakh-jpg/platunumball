@@ -14,9 +14,9 @@
 
 .match-list-card::before {
   position: absolute;
-  inset: 10px auto 10px 0;
-  width: 4px;
-  border-radius: 999px;
+  inset: var(--ui-status-rail-inset) auto var(--ui-status-rail-inset) 0;
+  width: var(--ui-status-rail-width);
+  border-radius: var(--ui-status-rail-radius);
   background: var(--rb-orange);
   content: "";
 }
@@ -132,7 +132,9 @@
 }
 
 .match-list-summary__side {
-  display: -webkit-box;
+  display: grid;
+  align-items: center;
+  block-size: 1.96em;
   min-width: 0;
   max-width: 100%;
   overflow: hidden;
@@ -141,17 +143,23 @@
   font-size: clamp(18px, 2vw, 30px);
   font-weight: 1000;
   line-height: 0.98;
-  overflow-wrap: anywhere;
   text-align: center;
+  overflow-wrap: anywhere;
   white-space: normal;
   word-break: keep-all;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
 }
 
-.match-list-summary__side :is(.team-hover-trigger, a, span) {
+.match-list-summary__side > :is(.team-hover-trigger, a, span) {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  max-height: 1.96em;
+  overflow: hidden;
   color: inherit;
   font: inherit;
+  overflow-wrap: inherit;
+  white-space: inherit;
+  word-break: inherit;
 }
 
 .match-list-summary__line > strong {

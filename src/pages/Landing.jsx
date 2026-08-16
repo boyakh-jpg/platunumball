@@ -69,6 +69,9 @@ export default function Landing({ auth }) {
             <Button as={Link} to="/app/receipt" className="guest-landing-primary-cta">
               가입 없이 영수증 만들기 <ArrowRight aria-hidden="true" size={18} />
             </Button>
+            <Link to="/app" className="guest-landing-explore-link">
+              로그인 없이 둘러보기 <ArrowRight aria-hidden="true" size={16} />
+            </Link>
             <LoginButton className="guest-landing-hero-login">
               별도 가입 없이 로그인
             </LoginButton>

@@ -57,8 +57,13 @@
   font-weight: 800;
 }
 
+.theme-choice-card .segmented-control {
+  width: fit-content;
+  max-width: 100%;
+}
+
 .theme-choice-card .segmented-control button {
-  flex: 1 1 0;
+  flex: 0 0 auto;
 }
 
 .settings-save-row {

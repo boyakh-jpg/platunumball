@@ -67,17 +67,34 @@ html[data-theme] .app-main .ui-liquid-glass-segments > * + * {
 
 html[data-theme] .app-main :is(.recent-match-row.result-w, .rank-match-win) {
   --ui-info-accent: var(--ui-result-win-border);
-  border-left-color: var(--ui-result-win-border);
+  --ui-status-rail-color: var(--ui-result-win-border);
 }
 
 html[data-theme] .app-main :is(.recent-match-row.result-l, .rank-match-loss) {
   --ui-info-accent: var(--ui-result-loss-border);
-  border-left-color: var(--ui-result-loss-border);
+  --ui-status-rail-color: var(--ui-result-loss-border);
 }
 
 html[data-theme] .app-main :is(.recent-match-row.result-d, .rank-match-draw) {
   --ui-info-accent: var(--ui-result-draw-border);
-  border-left-color: var(--ui-result-draw-border);
+  --ui-status-rail-color: var(--ui-result-draw-border);
+}
+
+html[data-theme] .app-main :is(.recent-match-row, .rank-match-item) {
+  position: relative;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+html[data-theme] .app-main :is(.recent-match-row, .rank-match-item)::before {
+  position: absolute;
+  inset: var(--ui-status-rail-inset) auto var(--ui-status-rail-inset) 0;
+  width: var(--ui-status-rail-width);
+  border-radius: var(--ui-status-rail-radius);
+  background: var(--ui-status-rail-color, var(--rb-soft));
+  content: "";
 }
 
 .ui-profile-identity-inline {
@@ -127,12 +144,13 @@ html[data-theme] .app-main :is(.recent-match-row.result-d, .rank-match-draw) {
 
 .ui-folder-tabs {
   display: flex;
-  width: 100%;
+  width: fit-content;
+  max-width: 100%;
   align-items: center;
   gap: 0;
   padding: 0;
   overflow-x: auto;
-  border-bottom: var(--ui-stroke-width) solid var(--ui-control-border);
+  border-bottom: 0;
   scrollbar-width: none;
 }
 
@@ -163,7 +181,8 @@ html[data-theme] .app-main :is(.recent-match-row.result-d, .rank-match-draw) {
   border-color: transparent;
   background: transparent;
   color: var(--rb-text);
-  box-shadow: inset 0 -2px 0 var(--rb-orange);
+  font-weight: var(--font-weight-title);
+  box-shadow: none;
   transform: none;
 }
 
@@ -178,7 +197,6 @@ html[data-theme] .app-main .ui-segmented-control {
   gap: 0;
   padding: 0;
   border: 0;
-  border-bottom: var(--ui-stroke-width) solid var(--rb-line);
   border-radius: 0;
   background: transparent;
   box-shadow: none;
@@ -197,7 +215,8 @@ html[data-theme] .app-main .ui-segmented-control > button {
 html[data-theme] .app-main .ui-segmented-control > button:is(.active, [aria-current="page"], [aria-selected="true"]) {
   color: var(--rb-text);
   background: transparent;
-  box-shadow: inset 0 -2px 0 var(--rb-orange);
+  font-weight: var(--font-weight-title);
+  box-shadow: none;
 }
 
 .ui-folder-tabs button:focus-visible {
