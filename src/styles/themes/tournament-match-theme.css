@@ -148,7 +148,6 @@ html[data-theme="light"] .tournament-schedule-list {
 }
 
 .om-view-card.active {
-  border-color: color-mix(in srgb, var(--rb-orange) 46%, transparent);
   background: color-mix(in srgb, var(--rb-orange) 14%, var(--ui-card-bg));
 }
 

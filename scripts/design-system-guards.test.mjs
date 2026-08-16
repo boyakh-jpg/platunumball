@@ -204,10 +204,10 @@ test("앱은 분류 박스 없는 표준 디자인을 사용하고 비교 데모
   assert.match(pageSources.landing, /children = "로그인"/);
   assert.match(pageSources.landing, /별도 가입 없이 로그인/);
   assert.equal(count(pageSources.landing, "<LoginButton"), 2);
-  assert.match(pageSources.landing, /to="\/app" className="guest-landing-explore-link"/);
+  assert.match(pageSources.landing, /to="\/app" variant="secondary" className="guest-landing-explore-link"/);
   assert.match(pageSources.landing, /로그인 없이 둘러보기/);
-  assert.match(landingGuestStyles, /\.guest-landing-explore-link\s*\{[^}]*display:\s*inline-flex;[^}]*color:\s*var\(--rb-muted\);[^}]*font-size:\s*var\(--ui-meta-font-size\);[^}]*text-decoration:\s*none;/);
-  assert.doesNotMatch(landingGuestStyles, /\.guest-landing-explore-link\s*\{[^}]*(?:background|border|box-shadow|width):/);
+  assert.match(landingGuestStyles, /\.guest-landing-primary-actions\s*\{[^}]*grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)\);/);
+  assert.match(landingGuestStyles, /\.guest-landing-primary-actions \.ui-button\s*\{[^}]*width:\s*100%;[^}]*justify-content:\s*center;/);
   assert.doesNotMatch(pageSources.landing, /guest-landing-text-login|guest-landing-account-login/);
   assert.doesNotMatch(pageSources.landing, /Recent games|지금 열려 있는 경기|Team basketball|Season ranking|ui-design-spotlight|landing-stat-grid/);
   assert.match(editorialDesignStyles, /\.ui-design-spotlight__stats > div\s*\{[^}]*color:\s*var\(--text\);/);
@@ -378,7 +378,13 @@ test("referee detail uses the player hero structure and dedicated tier emblems",
 test("signed-in login redirects and settings exposes logout", () => {
   const authStyles = read("src/styles/layout/app-shell-auth.css");
   assert.match(loginSource, /if \(auth\.session\) return <Navigate to=\{from\} replace \/>;/);
-  assert.match(loginSource, /const goBack = \(\) => location\.key === "default" \? navigate\("\/app", \{ replace: true \}\) : navigate\(-1\)/);
+  assert.match(loginSource, /const hasPreviousHistoryEntry = typeof window !== "undefined" && Number\(window\.history\.state\?\.idx\) > 0;/);
+  assert.match(loginSource, /if \(hasPreviousHistoryEntry\) \{[\s\S]*?navigate\(-1\);[\s\S]*?return;[\s\S]*?\}/);
+  assert.match(loginSource, /navigate\(getLoginBackTargetFromLocation\(location\), \{ replace: true \}\);/);
+  assert.match(loginSource, /embeddedGoogleOAuthBrowser && showGoogleBrowserFallback/);
+  assert.match(loginSource, /providerId === "google" && embeddedGoogleOAuthBrowser[\s\S]*?setShowGoogleBrowserFallback\(true\);[\s\S]*?return;/);
+  assert.match(loginSource, /<AuthProviderIcon providerId=\{provider\.id\} \/>/);
+  assert.match(authStyles, /\.auth-browser-copy-button\s*\{[^}]*width:\s*fit-content;[^}]*border:\s*0;[^}]*background:\s*transparent;/s);
   assert.match(loginSource, /<div className="auth-card-head">[\s\S]*?<Link to="\/" className="brand auth-brand"[\s\S]*?<Button type="button"[^>]*className="auth-back-link" onClick=\{goBack\}/);
   assert.doesNotMatch(loginSource, /auth-card-primary|로그인 가능/);
   assert.match(authStyles, /\.auth-card-head\s*\{[^}]*grid-template-columns: minmax\(0, 1fr\) auto;/s);
@@ -1078,8 +1084,21 @@ test("목록 카드는 Card, Button, ui-panel primitive를 사용한다", () => 
   assert.match(componentSource, /import Button from "\.\.\/common\/Button\.jsx";/);
   assert.match(componentSource, /import Card from "\.\.\/common\/Card\.jsx";/);
   assert.match(componentSource, /<Card\s+as="article"/);
-  assert.match(componentSource, /<Button\s+className="match-list-card__action"/);
-  assert.match(componentSource, /className="match-list-summary ui-panel"/);
+  assert.match(componentSource, /<Button\s+className="match-list-card__action ui-button-card-action"/);
+  assert.match(componentSource, /className="match-list-summary ui-panel ui-match-list-summary"/);
+  assert.match(componentSource, /\["match-list-card", "ui-match-list-surface", className\]/);
+});
+
+test("목록 정보면, 결과색, 카드 action은 공용 토큰과 primitive를 사용한다", () => {
+  assert.match(tokenStyles, /--ui-information-surface-bg:\s*var\(--ui-data-cell-bg\);/);
+  assert.match(tokenStyles, /--ui-result-win-bg:\s*color-mix\(/);
+  assert.match(tokenStyles, /--ui-result-loss-bg:\s*color-mix\(/);
+  assert.match(tokenStyles, /--ui-result-draw-bg:\s*color-mix\(/);
+  assert.match(primitiveStyles, /\.ui-card\.ui-match-list-surface\s*\{[^}]*background:\s*var\(--ui-information-surface-bg\);/);
+  assert.match(primitiveStyles, /:not\(\.ui-match-list-surface\)/);
+  assert.match(primitiveStyles, /\.ui-button\.ui-button-card-action\s*\{[^}]*min-height:\s*var\(--ui-card-action-min-height, 100%\);[^}]*align-self:\s*stretch;/);
+  assert.match(matchListStyles, /"main action"\s*"summary action"/);
+  assert.match(matchListStyles, /--ui-card-action-height:\s*var\(--ui-button-height\);/);
 });
 
 test("목록 카드 feature CSS는 primitive 표면을 다시 정의하지 않는다", () => {

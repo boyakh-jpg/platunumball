@@ -23,8 +23,6 @@ html[data-theme="light"] .profile-side-grid > .card {
   padding: var(--card-padding);
 }
 .provider-button,
-.auth-browser-actions button,
-.auth-browser-actions a,
 .auth-session-line button,
 .ui-segmented-control button,
 .team-picker,
@@ -33,8 +31,6 @@ html[data-theme="light"] .profile-side-grid > .card {
   min-height: var(--control-height);
 }
 .provider-button,
-.auth-browser-actions button,
-.auth-browser-actions a,
 .auth-session-line button,
 .ui-segmented-control button,
 .team-picker,
@@ -57,8 +53,6 @@ html[data-theme="light"] .profile-side-grid > .card {
 }
 .button-icon,
 .provider-button,
-.auth-browser-actions button,
-.auth-browser-actions a,
 .auth-session-line button,
 .ui-segmented-control,
 .ui-segmented-control button,
@@ -345,8 +339,7 @@ html[data-theme="light"] .rank-home .rank-tier-rail .rank-mode-pill {
 }
 .ui-segmented-control,
 .ui-choice-group,
-.theme-choice-card .ui-segmented-control,
-.auth-browser-actions {
+.theme-choice-card .ui-segmented-control {
   gap: var(--ui-control-group-gap);
   border-radius: var(--ui-control-group-radius);
   padding: var(--ui-control-group-padding);
@@ -354,7 +347,6 @@ html[data-theme="light"] .rank-home .rank-tier-rail .rank-mode-pill {
 .ui-segmented-control,
 .ui-choice-group,
 .theme-choice-card .ui-segmented-control,
-.auth-browser-actions,
 .arena-start-date-filter {
   align-items: stretch;
   border: var(--ui-control-group-border-width) solid var(--ui-control-group-border);
@@ -363,8 +355,6 @@ html[data-theme="light"] .rank-home .rank-tier-rail .rank-mode-pill {
   overflow: visible;
 }
 .provider-button,
-.auth-browser-actions button,
-.auth-browser-actions a,
 .auth-session-line button,
 .ui-segmented-control button,
 button.ui-choice-tile,

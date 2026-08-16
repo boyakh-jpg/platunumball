@@ -255,9 +255,10 @@
 
 1. 홈·일정·매칭·플레이·팀·프로필의 일반 content surface는 `Card`/`.ui-card`를 기준으로 한다. 배경, 테두리, radius, shadow, padding은 `--ui-card-*`와 `--ui-card-padding`에서만 정하고 page CSS가 같은 외형을 다시 선언하지 않는다. 이미지가 핵심인 hero·랭크 spotlight만 예외다.
 2. 일반 버튼은 `Button`/`.ui-button`의 `md 42px`, `sm 34px` 높이를 사용한다. 버튼과 상태 badge의 라벨은 기본 한 줄이며 모바일에서도 글자 단위로 접지 않는다. 공용 `.ui-action-row`의 자식은 내용 너비를 유지하고 실제 가로 공간이 부족할 때만 다음 줄로 이동한다. 가로 전체 확장은 `.ui-button-block`만 추가하며 홈·일정·매칭별 CTA class로 높이·색상·radius를 덮지 않는다.
-3. 일정·매칭·플레이 목록은 `MatchListCard` 하나를 사용한다. 외부 surface는 `Card`, 내부 요약은 `.ui-panel`, action은 `Button`이 담당하고 `match-list-card.css`에는 grid·gap·줄바꿈·상태 bar 같은 배치만 둔다.
+3. 일정·매칭·플레이 목록은 `MatchListCard` 하나를 사용한다. 외부 surface는 숫자 셀과 같은 `--ui-information-surface-bg`, 내부 요약은 같은 면색 위의 옅은 구분선, action은 `Button.ui-button-card-action`이 담당한다. 카드 action은 한 행 배치에서 카드 내부 높이를 채우고 세로 적층 시 공용 버튼 높이로 복귀한다. `match-list-card.css`에는 grid·gap·줄바꿈·상태 bar 같은 배치만 둔다.
 4. `om-match-card`, `om-match-create`, `arena-hero-cta`, `home-search-create-button`, `wide-button`은 폐기한다. 해당 selector를 다시 추가하거나 feature CSS에서 공용 surface·CTA 외형을 덮으면 빌드의 `design-system-guards`가 실패해야 한다.
 5. 공통 디자인 변경은 primitive를 먼저 수정해 전 화면에 반영한다. 화면별 예외가 필요하면 정보 구조나 배치 차이인지 먼저 확인하고, 단순 외형 차이면 예외 selector를 만들지 않는다.
+6. 승·패·무 결과 행은 공용 정보 면색 대신 `--ui-result-win-bg`, `--ui-result-loss-bg`, `--ui-result-draw-bg`를 사용한다. 색상 의미는 상태 rail과 함께 유지하고 별도 테두리 박스를 추가하지 않는다.
 
 ## 2026-07-24 점유 슬롯 방 수정 UI
 

@@ -213,10 +213,12 @@
     grid-template-columns: minmax(0, 1fr) minmax(92px, 116px);
     grid-template-areas:
       "main action"
-      "summary summary";
+      "summary action";
   }
 
   .match-list-summary {
+    --ui-match-list-summary-block-border-width: var(--ui-stroke-width);
+    --ui-match-list-summary-inline-border-width: 0;
     min-height: 72px;
   }
 }
@@ -238,7 +240,14 @@
 
   .match-list-summary {
     --ui-panel-padding: 9px 10px;
+    --ui-match-list-summary-block-border-width: var(--ui-stroke-width);
+    --ui-match-list-summary-inline-border-width: 0;
     min-height: 74px;
+  }
+
+  .match-list-card__action.ui-button-card-action {
+    --ui-card-action-height: var(--ui-button-height);
+    --ui-card-action-min-height: var(--ui-button-height);
   }
 
   .match-list-summary__side {

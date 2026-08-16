@@ -9,7 +9,7 @@ html[data-theme] .ui-design-app :is(
   .ui-design-info-surface,
   .ui-design-soft-surface,
   .ui-design-borderless-surface
-):not(.ui-liquid-glass):not(.ui-design-category-surface):not(.ui-design-decorative-surface):not(.match-receipt-card):not(.match-receipt-card *),
+):not(.ui-liquid-glass):not(.ui-design-category-surface):not(.ui-design-decorative-surface):not(.ui-match-list-surface):not(.match-receipt-card):not(.match-receipt-card *),
 html[data-theme] .ui-design-app .ui-design-borderless-list > :not(.match-receipt-card):not(.match-receipt-card *),
 html[data-theme] .ui-design-app .ui-design-choice-list > :not(.match-receipt-card):not(.match-receipt-card *) {
   border-color: transparent;
@@ -187,7 +187,11 @@ html[data-theme] .guest-landing-lead {
 }
 
 html[data-theme] .guest-landing-primary-actions,
-html[data-theme] .guest-landing-primary-actions .ui-button,
+html[data-theme] .guest-landing-primary-actions .ui-button {
+  width: 100%;
+  max-width: 100%;
+}
+
 html[data-theme] .guest-landing-experience-actions,
 html[data-theme] .guest-landing-experience-actions .ui-button {
   width: fit-content;
@@ -197,12 +201,6 @@ html[data-theme] .guest-landing-experience-actions .ui-button {
 html[data-theme] .guest-landing-primary-cta {
   min-height: var(--ui-button-height);
   padding-inline: var(--ui-button-padding-x);
-}
-
-html[data-theme] .guest-landing-primary-actions + .guest-landing-explore-link {
-  display: flex;
-  width: fit-content;
-  margin: var(--space-3) auto 0;
 }
 
 html[data-theme] .guest-landing-section {
@@ -354,9 +352,13 @@ html[data-theme] .provider-button:active {
   transform: none;
 }
 
-html[data-theme] .provider-button span {
+html[data-theme] .provider-button > .auth-provider-icon,
+html[data-theme] .provider-test > span {
   width: 22px;
   height: 22px;
+}
+
+html[data-theme] .provider-test > span {
   font-size: var(--font-size-caption);
 }
 
@@ -486,7 +488,7 @@ html[data-theme]
 
   html[data-theme] .guest-landing-primary-actions,
   html[data-theme] .guest-landing-primary-actions .ui-button {
-    width: fit-content;
+    width: 100%;
   }
 
   .ui-help-disclosure-copy {

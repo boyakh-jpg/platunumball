@@ -30,7 +30,7 @@ function LoginButton({ children = "로그인", className = "", variant = "second
   return (
     <Button
       as={Link}
-      to={getLoginPath("/app")}
+      to={getLoginPath("/app", "/")}
       variant={variant}
       className={className}
       aria-label="로그인"
@@ -72,11 +72,10 @@ export default function Landing({ auth }) {
             <LoginButton className="guest-landing-hero-login">
               별도 가입 없이 로그인
             </LoginButton>
+            <Button as={Link} to="/app" variant="secondary" className="guest-landing-explore-link">
+              로그인 없이 둘러보기 <ArrowRight aria-hidden="true" size={16} />
+            </Button>
           </div>
-          <Link to="/app" className="guest-landing-explore-link">
-            로그인 없이 둘러보기 <ArrowRight aria-hidden="true" size={16} />
-          </Link>
-          <small>로그인 없이 제작·저장·공유할 수 있어요.</small>
           {auth?.error ? <p className="guest-landing-auth-error">로그인을 완료하지 못했습니다. 다시 시도해주세요.</p> : null}
         </div>
 

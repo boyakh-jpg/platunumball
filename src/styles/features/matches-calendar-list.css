@@ -176,7 +176,7 @@
 .om-calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 5px;
+  gap: 0;
 }
 
 .om-calendar-weekdays span {
@@ -188,11 +188,44 @@
 
 .om-calendar-grid button,
 .om-calendar-grid > span {
-  border-radius: var(--radius-xs);
+  position: relative;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.om-calendar-grid button::before,
+.om-calendar-grid > span::before,
+.om-calendar-grid button::after,
+.om-calendar-grid > span::after {
+  position: absolute;
+  content: "";
+  pointer-events: none;
+  background: color-mix(in srgb, var(--rb-line) 72%, transparent);
+}
+
+.om-calendar-grid button::before,
+.om-calendar-grid > span::before {
+  bottom: 0;
+  left: 25%;
+  width: 50%;
+  height: var(--ui-stroke-width);
+}
+
+.om-calendar-grid button::after,
+.om-calendar-grid > span::after {
+  top: 25%;
+  right: 0;
+  width: var(--ui-stroke-width);
+  height: 50%;
+}
+
+.om-calendar-grid > :nth-child(7n)::after {
+  display: none;
 }
 
 .om-calendar-grid button {
-  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -200,11 +233,11 @@
 }
 
 .om-calendar-grid button.today {
-  border-color: rgba(255, 211, 108, 0.62);
+  color: var(--gold);
 }
 
 .om-calendar-grid button:hover {
-  border-color: rgba(118, 169, 255, 0.45);
+  color: var(--gold);
 }
 
 .om-calendar-grid button strong {

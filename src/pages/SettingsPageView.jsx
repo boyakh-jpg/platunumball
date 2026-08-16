@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { ArrowRightLeft, Link2, LogOut, Trash2 } from "lucide-react";
+import { ArrowRightLeft, LogOut, Trash2 } from "lucide-react";
+import AuthProviderIcon from "../components/auth/AuthProviderIcon.jsx";
 import Button from "../components/common/Button.jsx";
 import ModalShell from "../components/common/ModalShell.jsx";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
@@ -139,9 +140,7 @@ export default function SettingsPageView({ controller, auth }) {
           <div className="settings-auth-identity-list">
             {linkedProviderIds.map((providerId) => (
               <div className="settings-auth-identity-row ui-control-surface" key={providerId}>
-                <span className={`settings-auth-provider-mark settings-auth-provider-mark-${providerId}`} aria-hidden="true">
-                  {getAuthProviderLabel(providerId).slice(0, 1)}
-                </span>
+                <AuthProviderIcon providerId={providerId} className="settings-auth-provider-mark" />
                 <strong>{getAuthProviderLabel(providerId)}</strong>
                 <span>연결됨</span>
               </div>
@@ -154,7 +153,7 @@ export default function SettingsPageView({ controller, auth }) {
                 disabled={auth.authActionPending}
                 onClick={() => void linkIdentity(provider.id)}
               >
-                <Link2 size={16} /> {provider.id === validRequestedProviderId ? "연결 마무리" : `${provider.label} 연결`}
+                <AuthProviderIcon providerId={provider.id} /> {provider.id === validRequestedProviderId ? "연결 마무리" : `${provider.label} 연결`}
               </Button>
             ))}
           </div>

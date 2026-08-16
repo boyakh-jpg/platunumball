@@ -231,8 +231,36 @@ html[data-theme="light"] .om-calendar-filter-bar {
   }
 }
 @media (min-width: 721px) {
+  .om-calendar-panel {
+    width: min(100%, 820px);
+    grid-template-columns: minmax(220px, 250px) minmax(420px, 540px);
+    justify-content: start;
+  }
+
   .om-calendar-filter-row {
     grid-template-columns: 34px minmax(0, 1fr);
+  }
+
+  .om-calendar-filter-row .segmented-control {
+    width: max-content;
+    max-width: 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+
+  .om-calendar-filter-row .om-relation-filter-grid,
+  .om-calendar-filter-row .om-branch-filter-grid {
+    display: flex;
+    width: max-content;
+  }
+
+  .om-calendar-filter-row .om-branch-filter-grid > button:last-child:nth-child(odd) {
+    grid-column: auto;
+  }
+
+  .om-calendar-filter-row :is(.om-relation-filter-grid, .om-branch-filter-grid) > button {
+    width: auto;
   }
 
   .om-calendar-summary {

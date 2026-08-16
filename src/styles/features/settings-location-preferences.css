@@ -369,19 +369,12 @@
 
 .settings-auth-provider-mark {
   display: inline-grid;
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   place-items: center;
-  border-radius: 50%;
-  background: var(--surface-strong, var(--surface));
-  color: var(--text);
-  font-size: 0.78rem;
-  font-weight: 950;
-}
-
-.settings-auth-provider-mark-kakao {
-  background: #fee500;
-  color: #191919;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
 }
 
 .settings-auth-identity-list .button {

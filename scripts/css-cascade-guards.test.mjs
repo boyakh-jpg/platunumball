@@ -938,7 +938,7 @@ test("editorial feature cards and buttons inherit border width owners", () => {
   const authStyles = fs.readFileSync("src/styles/primitives/hover-disclosure.css", "utf8");
   assert.match(
     authStyles,
-    /\.provider-button,\s*\.auth-browser-actions button,\s*\.auth-browser-actions a,\s*\.auth-session-line button,\s*\.auth-form > \.button-secondary\s*\{[^}]*border:\s*0;/,
+    /\.provider-button,\s*\.auth-session-line button,\s*\.auth-form > \.button-secondary\s*\{[^}]*border:\s*0;/,
   );
   assert.match(
     fs.readFileSync("src/styles/themes/sports-shell-theme.css", "utf8"),

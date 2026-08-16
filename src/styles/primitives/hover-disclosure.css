@@ -1,6 +1,4 @@
 .provider-button,
-.auth-browser-actions button,
-.auth-browser-actions a,
 .auth-session-line button,
 .ui-segmented-control button,
 button.ui-choice-tile,
@@ -21,8 +19,6 @@ button.ui-choice-tile,
   letter-spacing: 0;
 }
 .provider-button,
-.auth-browser-actions button,
-.auth-browser-actions a,
 .auth-session-line button,
 .auth-form > .button-secondary {
   border: 0;
@@ -155,8 +151,6 @@ textarea:focus {
   box-shadow: var(--focus-ring);
 }
 .provider-button:focus-visible,
-.auth-browser-actions button:focus-visible,
-.auth-browser-actions a:focus-visible,
 .auth-session-line button:focus-visible,
 .ui-segmented-control button:focus-visible,
 button.ui-choice-tile:focus-visible,

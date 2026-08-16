@@ -75,8 +75,10 @@ import {
 } from "../src/lib/matchUtils.js";
 import {
   getAppRedirectFromLocation,
+  getLoginBackTargetFromLocation,
   getLoginPath,
   getSafeAppRedirect,
+  getSafeLoginBackTarget,
   inferRegionSelection,
 } from "../src/lib/profileSetup.js";
 import { getLocalRivalries, getTeamScoreSummary } from "../src/lib/season.js";
@@ -3080,13 +3082,17 @@ test("recruiting login round trip preserves the exact deep link once", () => {
 
   assert.equal(loginUrl.pathname, "/login");
   assert.equal(loginUrl.searchParams.get("redirect"), recruitingDeepLink);
+  assert.equal(loginUrl.searchParams.get("backTo"), recruitingDeepLink);
   assert.equal(getAppRedirectFromLocation({ search: loginUrl.search }), recruitingDeepLink);
+  assert.equal(getLoginBackTargetFromLocation({ search: loginUrl.search }), recruitingDeepLink);
   assert.equal(getAppRedirectFromLocation({
     search: "",
     state: { from: { pathname: "/app/recruiting", search: "?post=room-2&tab=all", hash: "#room" } },
   }), "/app/recruiting?post=room-2&tab=all#room");
   assert.equal(getSafeAppRedirect("https://attacker.example/app/recruiting?post=room-1"), "/app");
   assert.equal(getSafeAppRedirect("/app/signup?redirect=%2Fapp%2Frecruiting"), "/app");
+  assert.equal(getSafeLoginBackTarget("https://attacker.example/app/recruiting?post=room-1"), "/");
+  assert.equal(getSafeLoginBackTarget("/login?redirect=%2Fapp%2Frecruiting"), "/");
 });
 
 test("canonical match format drives label slots score rules and period labels", () => {

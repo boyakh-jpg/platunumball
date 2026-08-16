@@ -222,6 +222,10 @@
   --ui-information-row-padding: 8px 10px;
   --ui-notification-row-min-height: 48px;
   --ui-data-cell-bg: color-mix(in srgb, var(--rb-text) 4%, transparent);
+  --ui-information-surface-bg: var(--ui-data-cell-bg);
+  --ui-result-win-bg: color-mix(in srgb, var(--ui-result-win-border) 12%, var(--ui-information-surface-bg));
+  --ui-result-loss-bg: color-mix(in srgb, var(--ui-result-loss-border) 12%, var(--ui-information-surface-bg));
+  --ui-result-draw-bg: color-mix(in srgb, var(--ui-result-draw-border) 12%, var(--ui-information-surface-bg));
   --ui-data-cell-radius: 6px;
   --ui-data-cell-gap: 6px;
   --ui-filter-gap: 0px;

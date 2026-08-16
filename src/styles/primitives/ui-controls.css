@@ -67,24 +67,27 @@ html[data-theme] .app-main .ui-liquid-glass-segments > * + * {
 
 html[data-theme] .app-main :is(.recent-match-row.result-w, .rank-match-win) {
   --ui-info-accent: var(--ui-result-win-border);
+  --ui-result-surface-bg: var(--ui-result-win-bg);
   --ui-status-rail-color: var(--ui-result-win-border);
 }
 
 html[data-theme] .app-main :is(.recent-match-row.result-l, .rank-match-loss) {
   --ui-info-accent: var(--ui-result-loss-border);
+  --ui-result-surface-bg: var(--ui-result-loss-bg);
   --ui-status-rail-color: var(--ui-result-loss-border);
 }
 
 html[data-theme] .app-main :is(.recent-match-row.result-d, .rank-match-draw) {
   --ui-info-accent: var(--ui-result-draw-border);
+  --ui-result-surface-bg: var(--ui-result-draw-bg);
   --ui-status-rail-color: var(--ui-result-draw-border);
 }
 
 html[data-theme] .app-main :is(.recent-match-row, .rank-match-item) {
   position: relative;
   border: 0;
-  border-radius: 0;
-  background: transparent;
+  border-radius: var(--ui-data-cell-radius);
+  background: var(--ui-result-surface-bg, var(--ui-information-surface-bg));
   box-shadow: none;
 }
 
@@ -95,6 +98,21 @@ html[data-theme] .app-main :is(.recent-match-row, .rank-match-item)::before {
   border-radius: var(--ui-status-rail-radius);
   background: var(--ui-status-rail-color, var(--rb-soft));
   content: "";
+}
+
+html[data-theme] .app-main .ui-card.ui-match-list-surface {
+  border-color: transparent;
+  background: var(--ui-information-surface-bg);
+  box-shadow: none;
+}
+
+html[data-theme] .app-main .ui-match-list-surface .ui-match-list-summary {
+  border: 0;
+  border-top: var(--ui-match-list-summary-block-border-width, 0) solid var(--rb-line);
+  border-inline-start: var(--ui-match-list-summary-inline-border-width, var(--ui-stroke-width)) solid var(--rb-line);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .ui-profile-identity-inline {
@@ -134,6 +152,13 @@ html[data-theme] .app-main :is(.recent-match-row, .rank-match-item)::before {
 .ui-button-block {
   width: fit-content;
   max-width: 100%;
+}
+
+.ui-button.ui-button-card-action {
+  height: var(--ui-card-action-height, auto);
+  min-height: var(--ui-card-action-min-height, 100%);
+  align-self: stretch;
+  border-radius: var(--ui-card-radius);
 }
 
 .ui-button.ui-button-sm {

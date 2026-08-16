@@ -1,17 +1,19 @@
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Copy, LogOut, ShieldCheck } from "lucide-react";
 import { useState } from "react";
+import AuthProviderIcon from "../components/auth/AuthProviderIcon.jsx";
 import BrandLockup from "../components/common/BrandLockup.jsx";
 import Button from "../components/common/Button.jsx";
 import { BRAND_NAME } from "../lib/brand.js";
 import { getTestAccountDisplayLabel } from "../lib/constants.js";
 import { getAuthProviderLabel, isKakaoTalkInAppBrowser } from "../lib/authProviders.js";
-import { getAppRedirectFromLocation } from "../lib/profileSetup.js";
+import { getAppRedirectFromLocation, getLoginBackTargetFromLocation } from "../lib/profileSetup.js";
 
 export default function Login({ auth, app }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [copyMessage, setCopyMessage] = useState("");
+  const [showGoogleBrowserFallback, setShowGoogleBrowserFallback] = useState(false);
   const [selectedTestLoginId, setSelectedTestLoginId] = useState(auth.testAccounts?.[0]?.id ?? "rankball-001");
   const from = getAppRedirectFromLocation(location);
   const searchParams = new URLSearchParams(location.search);
@@ -27,11 +29,19 @@ export default function Login({ auth, app }) {
 
   if (auth.session) return <Navigate to={from} replace />;
 
-  const goBack = () => location.key === "default" ? navigate("/app", { replace: true }) : navigate(-1);
+  const goBack = () => {
+    const hasPreviousHistoryEntry = typeof window !== "undefined" && Number(window.history.state?.idx) > 0;
+    if (hasPreviousHistoryEntry) {
+      navigate(-1);
+      return;
+    }
+    navigate(getLoginBackTargetFromLocation(location), { replace: true });
+  };
   const enterApp = () => navigate(from, { replace: true });
   const signIn = async (providerId) => {
     if (providerId === "google" && embeddedGoogleOAuthBrowser) {
-      setCopyMessage("카카오톡 내 브라우저에서는 Google 로그인을 사용할 수 없습니다. 링크를 복사해 Chrome 또는 Safari에서 열어 주세요.");
+      setCopyMessage("");
+      setShowGoogleBrowserFallback(true);
       return;
     }
     const nextSession = await auth.signInWithProvider(providerId, from);
@@ -84,13 +94,11 @@ export default function Login({ auth, app }) {
 
           {auth.error ? <p className="auth-message">{auth.error}</p> : null}
           {auth.message ? <p className="auth-message">{auth.message}</p> : null}
-          {embeddedGoogleOAuthBrowser ? (
+          {embeddedGoogleOAuthBrowser && showGoogleBrowserFallback ? (
             <div className="auth-browser-warning">
               <strong>카카오톡 내 브라우저에서는 Google 로그인을 사용할 수 없습니다.</strong>
               <span>오른쪽 위 메뉴에서 다른 브라우저로 열거나, 아래 링크를 복사해 Chrome 또는 Safari에서 열어 주세요.</span>
-              <div className="auth-browser-actions">
-                <button type="button" onClick={copyBrowserOpenUrl}><Copy size={15} /> 링크 복사</button>
-              </div>
+              <button type="button" className="auth-browser-copy-button" onClick={copyBrowserOpenUrl}><Copy size={15} /> 링크 복사</button>
               {copyMessage ? <small>{copyMessage}</small> : null}
             </div>
           ) : null}
@@ -108,7 +116,7 @@ export default function Login({ auth, app }) {
           <div className="social-login-grid">
             {activeProviders.map((provider) => (
               <button key={provider.id} type="button" className={`provider-button provider-${provider.id}`} disabled={auth.authActionPending || auth.testLoginPending} onClick={() => signIn(provider.id)}>
-                <span>{provider.mark}</span>
+                <AuthProviderIcon providerId={provider.id} />
                 {auth.configured ? `${provider.label}로 로그인` : `${provider.label} 체험 로그인`}
               </button>
             ))}

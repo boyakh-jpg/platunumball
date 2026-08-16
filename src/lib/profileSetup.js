@@ -107,8 +107,36 @@ export function getAppRedirectFromLocation(location, fallback = "/app") {
   return getSafeAppRedirect(fallback, "/app");
 }
 
-export function getLoginPath(redirect = "/app") {
-  return `/login?redirect=${encodeURIComponent(getSafeAppRedirect(redirect))}`;
+export function getSafeLoginBackTarget(value, fallback = "/") {
+  const fallbackValue = String(fallback ?? "/").trim();
+  const safeFallback = fallbackValue.startsWith("/")
+    && !fallbackValue.startsWith("//")
+    && !fallbackValue.startsWith("/login")
+    ? fallbackValue
+    : "/";
+  const candidate = String(value ?? "").trim();
+  if (!candidate.startsWith("/") || candidate.startsWith("//") || candidate.startsWith("/login")) {
+    return safeFallback;
+  }
+  return candidate;
+}
+
+export function getLoginBackTargetFromLocation(location, fallback = "/") {
+  const params = new URLSearchParams(location?.search ?? "");
+  const queryBackTarget = params.get("backTo");
+  if (queryBackTarget) return getSafeLoginBackTarget(queryBackTarget, fallback);
+
+  const from = location?.state?.from;
+  if (typeof from === "string") return getSafeLoginBackTarget(from, fallback);
+  if (from?.pathname) return getSafeLoginBackTarget(`${from.pathname}${from.search ?? ""}${from.hash ?? ""}`, fallback);
+  return getSafeLoginBackTarget(fallback, "/");
+}
+
+export function getLoginPath(redirect = "/app", backTo = redirect) {
+  const params = new URLSearchParams();
+  params.set("redirect", getSafeAppRedirect(redirect));
+  params.set("backTo", getSafeLoginBackTarget(backTo, "/"));
+  return `/login?${params.toString()}`;
 }
 
 const teamRolePriority = {

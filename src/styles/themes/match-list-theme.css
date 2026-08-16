@@ -57,8 +57,7 @@
   min-width: 0;
 }
 
-.om-calendar-toolbar button,
-.om-calendar-grid button {
+.om-calendar-toolbar button {
   border-color: rgba(163, 185, 208, 0.14);
 }
 
@@ -254,11 +253,10 @@ html[data-theme="light"] .om-list-head {
   background-color: var(--rb-surface);
 }
 
-.om-view-card.active,
 .om-calendar-grid button.active {
-  border-color: rgba(255, 118, 88, 0.42);
-  background: var(--rb-orange);
-  color: #fff;
+  border: 0;
+  background: transparent;
+  color: var(--rb-orange);
 }
 
 html[data-theme="light"] .om-match-hero,
@@ -287,11 +285,10 @@ html[data-theme="light"] .om-list-head {
   box-shadow: var(--shadow);
 }
 
-html[data-theme="light"] .om-view-card.active,
 html[data-theme="light"] .om-calendar-grid button.active {
-  border-color: transparent;
-  background: var(--rb-orange);
-  color: #fff;
+  border: 0;
+  background: transparent;
+  color: var(--rb-orange);
 }
 
 /* 2026-07-01 full internal preview pass: matches screen. */
@@ -370,8 +367,7 @@ html[data-theme="light"] .om-calendar-grid button.active {
   box-shadow: none;
 }
 
-.om-calendar-toolbar button,
-.om-calendar-grid button {
+.om-calendar-toolbar button {
   min-height: 38px;
   border: var(--ui-stroke-width) solid var(--rb-line);
   background: rgba(255, 255, 255, 0.06);
@@ -430,8 +426,7 @@ html[data-theme="light"] .om-view-card.active {
   color: var(--rb-text);
 }
 
-html[data-theme="light"] .om-calendar-toolbar button,
-html[data-theme="light"] .om-calendar-grid button {
+html[data-theme="light"] .om-calendar-toolbar button {
   border-color: rgba(30, 24, 18, 0.14);
   background: rgba(255, 255, 255, 0.72);
   color: var(--rb-text);
