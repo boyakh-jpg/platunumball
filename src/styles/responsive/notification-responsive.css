@@ -60,7 +60,6 @@
 }
 
 .notification-actions .notification-read-button {
-  min-width: calc(var(--ui-button-height-sm) + var(--space-6));
   height: var(--ui-button-height-sm);
 }
 
