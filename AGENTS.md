@@ -14,6 +14,11 @@ Caveman mode.
 
 - 제1원칙: 운영 데이터, 사용자 값, 테마 색상, 경로, 화면별 시각 규칙을 하드코딩하지 않는다. canonical DB/API, 공용 helper, 디자인 토큰을 재사용한다.
 - 제2원칙: 업로드 이미지는 용도별 canonical 저장소를 고정한다. DB row 수명주기에 결합된 게시판·사용자 첨부는 Supabase Storage, 고조회 공개 이미지와 서버 전용 비공개 증거는 Cloudflare R2를 사용한다. 파일별 동적 전환과 브라우저 직접 쓰기를 금지하고 DB에는 object key와 검증 메타데이터만 저장한다.
+- Before changing CSS or logic, trace the final applied value and its cascade, inheritance, call path, and data path to the canonical owner.
+- Change the narrowest canonical shared layer intended to govern every affected consumer: canonical DB/API/schema/helper, shared component or semantic variant, design token or primitive, then page-local code only when the behavior is truly page-specific.
+- Do not bypass project-owned shared rules with duplicated page logic, stronger selectors, inline styles, or `!important`.
+- Use `!important` only at an unavoidable third-party CSS boundary. Scope it narrowly and add a comment naming the boundary and reason.
+- When one screen needs a legitimate difference, add or reuse an explicit shared semantic variant. Do not mutate an unrelated global token or create an accidental page override.
 - Inspect relevant current files before editing.
 - Make minimal safe changes. Prefer small targeted patches.
 - Do not rewrite whole files unless necessary.
@@ -33,6 +38,17 @@ Caveman mode.
 - For a UI idea, evaluate clarity, step count, and responsive layout.
 - For a logic change, evaluate room phase, party, permission, MMR, and record rules.
 - Diagnosis, explanation, and review requests are read-only unless the user also asks for implementation.
+
+# Policy Authority and Drift
+
+- Treat canonical policy documents as current-state specifications, not append-only changelogs. Git history stores superseded policy history.
+- Before implementing an affected domain, search its canonical document for duplicate, overlapping, or contradictory rules.
+- Separate intended policy from runtime evidence. Current user decisions and canonical policy define intent; DB/API/schema, shared helpers, code, and tests show what is currently implemented.
+- A newer date or newer code alone does not supersede policy. A replacement must state its affected scope and which prior rule it replaces.
+- When policy, code, schema, and tests conflict, inspect the canonical owner and relevant Git history. Classify the conflict as stale documentation, implementation regression, or an unresolved product decision.
+- If the classification requires a product decision that materially changes behavior, explain the conflicting rules and ask the user. Otherwise repair the stale side in the same scoped change.
+- When policy changes, rewrite or remove the superseded active statement, update affected code and tests in the same commit, and leave historical context to Git instead of retaining conflicting rules in the canonical document.
+- Audit broad existing drift by domain in a separate scoped task. Do not opportunistically normalize unrelated policy while implementing another request.
 
 # Development Rules
 
