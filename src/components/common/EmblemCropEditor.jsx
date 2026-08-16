@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import useBodyScrollLock from "../../hooks/useBodyScrollLock.js";
 import { drawEmblemCrop } from "../../lib/teamEmblem.js";
 import Button from "./Button.jsx";
+import ModalShell from "./ModalShell.jsx";
 
 const DEFAULT_CROP = { zoom: 1, x: 50, y: 50 };
 
@@ -54,7 +55,7 @@ export default function EmblemCropEditor({
 
   return (
     <div className="app-confirm-backdrop emblem-crop-backdrop" role="presentation" onMouseDown={() => !pending && onCancel?.()}>
-      <section className="app-confirm-dialog emblem-crop-dialog" role="dialog" aria-modal="true" aria-label="엠블럼 이미지 편집" onMouseDown={(event) => event.stopPropagation()}>
+      <ModalShell className="app-confirm-dialog emblem-crop-dialog" role="dialog" aria-modal="true" aria-label="엠블럼 이미지 편집" onMouseDown={(event) => event.stopPropagation()}>
         <header>
           <strong>엠블럼 영역 선택</strong>
           <p>미리보기를 보면서 위치와 크기를 조정해 주세요.</p>
@@ -93,7 +94,7 @@ export default function EmblemCropEditor({
           ) : null}
           <Button type="button" disabled={pending || (Boolean(onConvert) && !convertedPreview)} onClick={() => onConfirm?.(crop)}>확인</Button>
         </div>
-      </section>
+      </ModalShell>
     </div>
   );
 }

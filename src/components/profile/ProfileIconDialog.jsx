@@ -10,6 +10,7 @@ import {
 } from "../../lib/profileIcons.js";
 import { getTeamEmblemErrorMessage } from "../../lib/teamEmblem.js";
 import Button from "../common/Button.jsx";
+import ModalShell from "../common/ModalShell.jsx";
 import ProfileEmblem from "./ProfileEmblem.jsx";
 
 const DEFAULT_UNLOCKED_KEYS = DEFAULT_UNLOCKED_PROFILE_ICON_KEYS;
@@ -28,7 +29,7 @@ function getInitialDraft(user) {
 function ProfileIconPreviewDialog({ icon, user, draft, onClose }) {
   return createPortal(
     <div className="app-confirm-backdrop profile-icon-preview-backdrop" role="presentation" onMouseDown={onClose}>
-      <section className="app-confirm-dialog profile-icon-preview-dialog" role="dialog" aria-modal="true" aria-labelledby="profile-icon-preview-title" onMouseDown={(event) => event.stopPropagation()}>
+      <ModalShell className="app-confirm-dialog profile-icon-preview-dialog" role="dialog" aria-modal="true" aria-labelledby="profile-icon-preview-title" onMouseDown={(event) => event.stopPropagation()}>
         <header className="profile-icon-preview-header">
           <div>
             <p className="eyebrow">Icon Preview</p>
@@ -42,7 +43,7 @@ function ProfileIconPreviewDialog({ icon, user, draft, onClose }) {
             className="profile-icon-large-preview"
           />
         </div>
-      </section>
+      </ModalShell>
     </div>,
     document.body,
   );
@@ -165,7 +166,7 @@ export default function ProfileIconDialog({ user, actions, onClose, onSaved }) {
   return (
     <>
       <div className="app-confirm-backdrop profile-icon-dialog-backdrop" role="presentation" onMouseDown={() => !pending && onClose()}>
-        <form className="app-confirm-dialog profile-icon-dialog" role="dialog" aria-modal="true" aria-labelledby="profile-icon-dialog-title" onSubmit={submit} onMouseDown={(event) => event.stopPropagation()}>
+        <ModalShell as="form" className="app-confirm-dialog profile-icon-dialog" role="dialog" aria-modal="true" aria-labelledby="profile-icon-dialog-title" onSubmit={submit} onMouseDown={(event) => event.stopPropagation()}>
         <header className="profile-icon-dialog-header">
           <div>
             <p className="eyebrow">My Icon</p>
@@ -266,7 +267,7 @@ export default function ProfileIconDialog({ user, actions, onClose, onSaved }) {
           <Button as={Link} variant="secondary" size="sm" to="/app/profile/achievements" onClick={onClose}>업적 보기</Button>
           <Button type="submit" size="sm" disabled={pending || loading}>{pending ? "저장 중" : "저장"}</Button>
         </footer>
-        </form>
+        </ModalShell>
       </div>
       {previewIcon ? <ProfileIconPreviewDialog icon={previewIcon} user={user} draft={draft} onClose={() => setPreviewIcon(null)} /> : null}
     </>

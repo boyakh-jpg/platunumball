@@ -4,6 +4,7 @@ import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import EmblemCropEditor from "../components/common/EmblemCropEditor.jsx";
+import ModalShell from "../components/common/ModalShell.jsx";
 import SearchPicker from "../components/common/SearchPicker.jsx";
 import RecentMatchRow from "../components/match/RecentMatchRow.jsx";
 import EntityProfileHero from "../components/profile/EntityProfileHero.jsx";
@@ -574,7 +575,7 @@ export default function TeamDetailView({ controller }) {
       </div>
       {dangerAction ? (
         <div className="app-confirm-backdrop" role="presentation" onMouseDown={() => !teamControlPending && closeDangerAction()}>
-          <div className="app-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="team-danger-action-title" onMouseDown={(event) => event.stopPropagation()}>
+          <ModalShell as="div" className="app-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="team-danger-action-title" onMouseDown={(event) => event.stopPropagation()}>
             <h2 id="team-danger-action-title">{dangerAction.type === "delete-team" ? "팀 삭제" : "팀원 제외"}</h2>
             <p>{dangerAction.type === "delete-team"
               ? "팀을 삭제하면 팀 정보와 운영 기록을 복구할 수 없습니다."
@@ -589,7 +590,7 @@ export default function TeamDetailView({ controller }) {
                 {teamControlPending ? "처리 중" : dangerAction.type === "delete-team" ? "팀 삭제" : "팀원 제외"}
               </Button>
             </div>
-          </div>
+          </ModalShell>
         </div>
       ) : null}
       {selectedHistoryMatchId ? (

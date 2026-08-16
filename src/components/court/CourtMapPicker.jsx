@@ -5,6 +5,7 @@ import useBodyScrollLock from "../../hooks/useBodyScrollLock.js";
 import { loadNaverMapsSdk } from "../../lib/naverAddress.js";
 import { getCourtAddress, getCourtCoordinate, isCourtInRegion } from "../../lib/courts.js";
 import Button from "../common/Button.jsx";
+import ModalShell from "../common/ModalShell.jsx";
 
 const DISTRICT_OVERVIEW_ZOOM = 13;
 const WIDE_DISTRICT_OVERVIEW_ZOOM = 14;
@@ -248,7 +249,7 @@ export default function CourtMapPicker({
 
   return createPortal(
     <div className="court-map-picker-backdrop" role="presentation" onMouseDown={onClose}>
-      <section
+      <ModalShell
         className="court-map-picker-dialog"
         role="dialog"
         aria-modal="true"
@@ -321,7 +322,7 @@ export default function CourtMapPicker({
           <span>{currentRegion ? `${currentRegion} · ` : ""}지도 표시 {mappedCourts.length}개</span>
           {missingCoordinateCount ? <span>좌표 없는 구장 {missingCoordinateCount}개는 검색으로 선택</span> : null}
         </footer>
-      </section>
+      </ModalShell>
     </div>,
     document.body,
   );

@@ -2,6 +2,7 @@ import { createPortal } from "react-dom";
 import { ChevronLeft, ChevronRight, Database, ListChecks, RotateCcw, Save, ScanLine, X } from "lucide-react";
 import Button from "../common/Button.jsx";
 import Card from "../common/Card.jsx";
+import ModalShell from "../common/ModalShell.jsx";
 import {
   ACTION_COLUMN_WIDTH,
   COURT_COLUMNS,
@@ -104,7 +105,7 @@ export default function CourtDatabasePanelView({ controller }) {
   } = controller;
 const modal = open ? (
     <div className="court-db-modal-backdrop" role="presentation">
-      <section className="court-db-modal" role="dialog" aria-modal="true" aria-labelledby="court-db-modal-title">
+      <ModalShell className="court-db-modal" role="dialog" aria-modal="true" aria-labelledby="court-db-modal-title">
         <header className="court-db-modal-header">
           <div>
             <p className="eyebrow">Court Database</p>
@@ -462,7 +463,7 @@ const modal = open ? (
 
           {(!reviewMode && !duplicateReview) || tab === "history" ? <Pagination page={activePage} onChange={changePage} loading={loading} /> : null}
         </div>
-      </section>
+      </ModalShell>
     </div>
   ) : null;
 

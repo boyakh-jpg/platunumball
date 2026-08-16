@@ -1,0 +1,429 @@
+/* Shared content contract. Component classes own visual rules; route styles
+   only own layout. Room slots and receipt output keep dedicated component rules. */
+html[data-theme] .ui-design-app {
+  --ui-design-soft-surface-bg: transparent;
+  --ui-design-choice-bg: transparent;
+}
+
+html[data-theme] .ui-design-app :is(
+  .ui-design-info-surface,
+  .ui-design-soft-surface,
+  .ui-design-borderless-surface
+):not(.ui-liquid-glass):not(.ui-design-category-surface):not(.match-receipt-card):not(.match-receipt-card *),
+html[data-theme] .ui-design-app .ui-design-borderless-list > :not(.match-receipt-card):not(.match-receipt-card *),
+html[data-theme] .ui-design-app .ui-design-choice-list > :not(.match-receipt-card):not(.match-receipt-card *) {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+html[data-theme] .ui-design-app .section-card.ui-design-category-surface:not(.match-receipt-card) {
+  border-width: var(--ui-stroke-width) 0 0;
+  border-style: solid;
+  border-color: var(--rb-line) transparent transparent;
+  border-radius: 0;
+  padding: var(--ui-card-padding, var(--card-padding)) 0 0;
+  background: transparent;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+html[data-theme] .ui-design-app .ui-design-content-surface.ui-design-info-surface:not(.match-receipt-card *) {
+  min-height: var(--ui-information-row-min-height);
+  border-width: 0;
+  border-radius: 0;
+  padding: var(--ui-information-row-padding);
+}
+
+html[data-theme] .ui-design-app .ui-design-info-surface.ui-design-info-accent:not(.match-receipt-card *) {
+  border-width: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: inset var(--ui-status-rail-width) 0 0 var(--ui-info-accent, var(--rb-soft));
+}
+
+html[data-theme] .ui-design-app :is(.rank-stat-grid, .stat-strip) > span {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+html[data-theme] .ui-design-app :is(.rank-stat-grid, .stat-strip) > span + span {
+  border-inline-start: var(--ui-stroke-width) solid var(--rb-line);
+}
+
+html[data-theme] .ui-design-app :is(
+  .ui-design-soft-surface.active,
+  .ui-design-choice-list > .active,
+  .ui-design-choice-list > [aria-current="true"],
+  .ui-design-choice-list > [aria-selected="true"]
+) {
+  border-color: transparent;
+  background: transparent;
+  color: var(--rb-text);
+  box-shadow: inset var(--ui-status-rail-width) 0 0 var(--rb-orange);
+  transform: none;
+}
+
+html[data-theme] .app-main .section-card :where(h2, h3),
+html[data-theme] .app-main .section-title-row > :where(h2, h3, strong) {
+  font-size: var(--font-size-app-section-title);
+  line-height: 1.25;
+}
+
+html[data-theme] .app-main .section-card :where(p, small) {
+  line-height: 1.5;
+}
+
+html[data-theme] .ui-content-title.ui-content-title {
+  margin-block: 0;
+  font-size: var(--ui-content-title-size);
+  line-height: 1.08;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+}
+
+html[data-theme] .app-main .ui-button-block:not(.provider-button):not(.match-receipt-card *) {
+  width: fit-content;
+  max-width: 100%;
+}
+
+html[data-theme] .app-main .page-header {
+  min-height: var(--ui-page-hero-min-height);
+  padding: var(--ui-page-hero-padding);
+  border: 0;
+  border-radius: var(--ui-card-radius);
+  background:
+    linear-gradient(
+      90deg,
+      var(--ui-page-hero-overlay-start),
+      var(--ui-page-hero-overlay-middle) 54%,
+      var(--ui-page-hero-overlay-end)
+    ),
+    var(--page-hero-bg, var(--bg-court)) var(--page-hero-bg-position, var(--hero-bg-position-court)) / var(--hero-bg-size) no-repeat,
+    var(--rb-bg-3);
+  box-shadow: var(--ui-page-hero-shadow);
+}
+
+html[data-theme] .app-main .page-header::after,
+html[data-theme] .app-main .team-hub-hero::before {
+  content: none;
+}
+
+html[data-theme] .app-main .page-header :is(p, small):not(.eyebrow) {
+  font-size: var(--font-size-body-sm);
+  line-height: 1.5;
+}
+
+html[data-theme] .app-main .page-header > .ui-button,
+html[data-theme] .app-main .page-header .ui-page-hero__copy > .ui-button {
+  width: fit-content;
+  max-width: 100%;
+}
+
+html[data-theme] .app-main .team-hub-hero {
+  min-height: clamp(280px, 26vw, 360px);
+  padding: var(--ui-page-hero-padding);
+  background:
+    linear-gradient(
+      180deg,
+      var(--ui-page-hero-overlay-end),
+      var(--ui-page-hero-overlay-middle) 52%,
+      var(--ui-page-hero-overlay-start)
+    ),
+    var(--bg-ball) var(--hero-bg-position-ball) / var(--hero-bg-size) no-repeat,
+    var(--rb-bg-3);
+}
+
+html[data-theme] .app-main .team-hub-board {
+  gap: var(--space-6);
+  padding: var(--ui-page-hero-padding);
+  border: 0;
+  background: var(--ui-liquid-glass-bg);
+  box-shadow: var(--ui-liquid-glass-shadow);
+  -webkit-backdrop-filter: var(--ui-liquid-glass-filter);
+  backdrop-filter: var(--ui-liquid-glass-filter);
+}
+
+html[data-theme] .app-main .team-hub-board-name strong {
+  font-size: clamp(1.75rem, 3.4vw, 2.6rem);
+}
+
+html[data-theme] .app-main .ui-step-nav {
+  overflow-x: auto;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+}
+
+html[data-theme] .app-main .ui-step-nav button {
+  min-height: var(--ui-information-row-min-height);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  transform: none;
+}
+
+html[data-theme] .app-main .ui-step-nav li.active button {
+  border: 0;
+  background: transparent;
+  color: var(--rb-text);
+  box-shadow: inset var(--ui-status-rail-width) 0 0 var(--rb-orange);
+}
+
+html[data-theme] .guest-landing-hero {
+  min-height: auto;
+  padding-block: clamp(48px, 6vw, 72px);
+}
+
+html[data-theme] .guest-landing-hero h1 {
+  max-width: 18ch;
+}
+
+html[data-theme] .guest-landing-lead {
+  font-size: var(--font-size-body);
+  line-height: 1.6;
+}
+
+html[data-theme] .guest-landing-primary-actions,
+html[data-theme] .guest-landing-primary-actions .ui-button,
+html[data-theme] .guest-landing-experience-actions,
+html[data-theme] .guest-landing-experience-actions .ui-button {
+  width: fit-content;
+  max-width: 100%;
+}
+
+html[data-theme] .guest-landing-primary-cta {
+  min-height: var(--ui-button-height);
+  padding-inline: var(--ui-button-padding-x);
+}
+
+html[data-theme] .guest-landing-section {
+  gap: clamp(28px, 4vw, 44px);
+  padding-block: clamp(52px, 6vw, 76px);
+}
+
+html[data-theme] .guest-landing-account-section {
+  background: transparent;
+}
+
+html[data-theme] body,
+html[data-theme] #root,
+html[data-theme] .app-main {
+  background-color: var(--rb-bg);
+}
+
+html[data-theme] .app-main .ui-page-hero {
+  isolation: isolate;
+}
+
+html[data-theme] .app-main .ui-page-hero .ui-page-hero__copy,
+.guest-landing-hero-copy {
+  position: relative;
+  z-index: 1;
+  max-width: min(100%, 64rem);
+}
+
+html[data-theme] .app-main .ui-page-hero :is(h1, h2),
+.guest-landing-hero h1 {
+  max-width: 18ch;
+  color: var(--hero-title-color);
+  font-family: var(--hero-title-font);
+  font-size: var(--hero-title-size);
+  line-height: var(--hero-title-line-height);
+  letter-spacing: var(--hero-title-letter-spacing);
+  text-shadow: var(--hero-title-shadow);
+  text-wrap: balance;
+}
+
+html[data-theme] .app-main .ui-page-hero .ui-page-hero__copy > p:not(.eyebrow),
+.guest-landing-hero-copy > p:not(.guest-landing-eyebrow) {
+  max-width: 62ch;
+  color: var(--hero-copy-color);
+  font-size: var(--font-size-body);
+  line-height: 1.55;
+  text-shadow: var(--hero-copy-shadow);
+}
+
+html[data-theme] .app-main .ui-page-hero :where(*),
+html[data-theme] .guest-landing-hero :where(*) {
+  text-shadow: none;
+}
+
+html[data-theme] :is(.ui-design-app, .ui-design-host) .eyebrow,
+.guest-landing-eyebrow {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-control);
+  letter-spacing: 0.04em;
+  text-transform: none;
+}
+
+html[data-theme] .auth-shell {
+  padding:
+    max(16px, env(safe-area-inset-top))
+    max(16px, env(safe-area-inset-right))
+    max(16px, env(safe-area-inset-bottom))
+    max(16px, env(safe-area-inset-left));
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--rb-bg) 94%, transparent),
+      color-mix(in srgb, var(--rb-bg) 78%, transparent)
+    ),
+    var(--bg-court) var(--hero-bg-position-court) / var(--hero-bg-size) no-repeat,
+    var(--rb-bg);
+}
+
+html[data-theme] .auth-card {
+  width: min(440px, 100%);
+  gap: 14px;
+  padding: 20px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--rb-bg-2) 96%, transparent);
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+html[data-theme] .auth-form {
+  gap: 12px;
+}
+
+html[data-theme] .social-login-grid {
+  gap: 8px;
+}
+
+html[data-theme] .provider-button {
+  min-height: var(--ui-button-height);
+  border: 0;
+  border-radius: var(--ui-button-radius);
+  background: var(--ui-button-bg);
+  color: var(--ui-button-color);
+  font-size: var(--ui-button-font-size);
+  font-weight: var(--ui-button-font-weight);
+  transform: none;
+  box-shadow: none;
+  transition:
+    background-color 140ms ease,
+    color 140ms ease;
+}
+
+html[data-theme] .provider-button:hover,
+html[data-theme] .provider-button:active {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--ui-button-bg) 82%, var(--rb-text));
+  transform: none;
+}
+
+html[data-theme] .provider-button span {
+  width: 22px;
+  height: 22px;
+  font-size: var(--font-size-caption);
+}
+
+.ui-help-disclosure {
+  position: relative;
+  display: inline-flex;
+  width: fit-content;
+  max-width: 100%;
+  vertical-align: middle;
+}
+
+.ui-help-disclosure > summary {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: var(--ui-button-bg);
+  color: var(--rb-muted);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-control);
+  list-style: none;
+  cursor: help;
+}
+
+.ui-help-disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+
+.ui-help-disclosure > summary:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--rb-orange-2) 72%, transparent);
+  outline-offset: 2px;
+}
+
+.ui-help-disclosure-copy {
+  position: absolute;
+  z-index: 60;
+  top: 50%;
+  left: calc(100% + 6px);
+  display: none;
+  width: min(260px, calc(100vw - 32px));
+  padding: 8px 10px;
+  border: var(--ui-stroke-width) solid var(--rb-line);
+  border-radius: var(--radius-xs);
+  background: var(--rb-bg-2);
+  box-shadow: var(--shadow);
+  color: var(--rb-text);
+  font-size: var(--font-size-app-support);
+  font-weight: var(--font-weight-support);
+  line-height: 1.45;
+  transform: translateY(-50%);
+}
+
+.ui-help-disclosure[open] > .ui-help-disclosure-copy {
+  display: block;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ui-help-disclosure:hover > .ui-help-disclosure-copy,
+  .ui-help-disclosure:focus-within > .ui-help-disclosure-copy {
+    display: block;
+  }
+}
+
+@media (max-width: 760px) {
+  html[data-theme] .ui-content-title.ui-content-title {
+    font-size: var(--ui-content-title-size-mobile);
+  }
+
+  html[data-theme] .app-main .ui-page-hero :is(h1, h2),
+  .guest-landing-hero h1 {
+    font-size: var(--hero-title-size-mobile);
+  }
+
+  html[data-theme] .app-main .page-header {
+    min-height: var(--ui-page-hero-min-height-mobile);
+  }
+
+  html[data-theme] .app-main .team-hub-hero {
+    min-height: 340px;
+    padding: var(--ui-page-hero-padding);
+  }
+
+  html[data-theme] .guest-landing-primary-actions,
+  html[data-theme] .guest-landing-primary-actions .ui-button {
+    width: fit-content;
+  }
+
+  .ui-help-disclosure-copy {
+    top: calc(100% + 6px);
+    right: auto;
+    left: 0;
+    transform: none;
+  }
+}
+
+@media (max-width: 480px) {
+  html[data-theme] .app-main .team-hub-hero {
+    min-height: 320px;
+  }
+}

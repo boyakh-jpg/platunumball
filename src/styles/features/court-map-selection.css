@@ -194,10 +194,6 @@
   max-height: calc(100dvh - 36px);
   overflow: auto;
   gap: var(--space-6);
-  border: var(--ui-card-border-width) solid var(--card-border, var(--line));
-  border-radius: var(--card-radius, var(--radius));
-  background: var(--card-bg-strong, var(--surface));
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5);
   padding: 16px;
   color: var(--text);
 }
@@ -382,12 +378,6 @@
 
 .court-map-picker-footer {
   justify-content: space-between;
-}
-
-html[data-theme="light"] .court-map-picker-dialog {
-  border-color: var(--ui-card-border);
-  background: var(--ui-card-bg-strong);
-  box-shadow: var(--shadow-strong);
 }
 
 html[data-theme="light"] .court-map-picker-state {

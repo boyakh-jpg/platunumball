@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import useBodyScrollLock from "../../hooks/useBodyScrollLock.js";
+import ModalShell from "../common/ModalShell.jsx";
 
 const CourtDetail = lazy(() => import("../../pages/CourtDetail.jsx"));
 
@@ -23,7 +24,7 @@ export default function CourtDetailModal({ app, courtId = "", open = false, onCl
 
   return createPortal(
     <div className="court-detail-modal-backdrop" role="presentation" onClick={onClose}>
-      <section
+      <ModalShell
         className="court-detail-modal-shell"
         role="dialog"
         aria-modal="true"
@@ -45,7 +46,7 @@ export default function CourtDetailModal({ app, courtId = "", open = false, onCl
             <CourtDetail app={app} courtId={courtId} embedded onClose={onClose} />
           </Suspense>
         </div>
-      </section>
+      </ModalShell>
     </div>,
     document.body,
   );

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRightLeft, Link2, LogOut, Trash2 } from "lucide-react";
 import Button from "../components/common/Button.jsx";
+import ModalShell from "../components/common/ModalShell.jsx";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import { getAuthProviderLabel } from "../lib/authProviders.js";
 import SettingsPrimaryColumn from "./SettingsPrimaryColumn.jsx";
@@ -144,7 +145,7 @@ export default function SettingsPageView({ controller, auth }) {
       ) : null}
       {withdrawalOpen ? (
         <div className="app-confirm-backdrop" role="presentation" onMouseDown={() => !auth.authActionPending && setWithdrawalOpen(false)}>
-          <div className="app-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="account-withdrawal-title" onMouseDown={(event) => event.stopPropagation()}>
+          <ModalShell as="div" className="app-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="account-withdrawal-title" onMouseDown={(event) => event.stopPropagation()}>
             <h2 id="account-withdrawal-title">회원 탈퇴</h2>
             <p>탈퇴하면 프로필과 개인 기록은 복구할 수 없습니다.</p>
             <p>다른 참가자의 경기 결과 정합성에 필요한 기록은 익명 처리 후 남을 수 있습니다.</p>
@@ -160,7 +161,7 @@ export default function SettingsPageView({ controller, auth }) {
                 {auth.authActionPending ? "처리 중" : "영구 탈퇴"}
               </Button>
             </div>
-          </div>
+          </ModalShell>
         </div>
       ) : null}
       <SettingsListDialog

@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import Badge from "../common/Badge.jsx";
 import Button from "../common/Button.jsx";
+import ModalShell from "../common/ModalShell.jsx";
 import {
   PLAYER_POSITIONS,
   SIDE_LABEL_TEXT as SIDE_LABELS,
@@ -52,6 +53,7 @@ function CommandPopoverFrame({ floating = false, anchor = null, className = "", 
         "--popover-width": `${panelWidth}px`,
       }
     : undefined;
+  const PanelTag = floating ? ModalShell : "div";
 
   useEffect(() => {
     if (!floating || typeof window === "undefined") return undefined;
@@ -108,9 +110,9 @@ function CommandPopoverFrame({ floating = false, anchor = null, className = "", 
   };
 
   const panel = (
-    <div
+    <PanelTag
       ref={panelRef}
-      className={panelClassName}
+      className={[panelClassName, floating ? "ui-room-modal" : ""].filter(Boolean).join(" ")}
       style={panelStyle}
       role={floating ? "dialog" : undefined}
       aria-modal={floating ? "true" : undefined}
@@ -121,7 +123,7 @@ function CommandPopoverFrame({ floating = false, anchor = null, className = "", 
       onClick={(event) => event.stopPropagation()}
     >
       {children}
-    </div>
+    </PanelTag>
   );
 
   if (!floating) return panel;

@@ -2905,3 +2905,9 @@ UI 수정 전:
 14. 승패·무승부 기록 행은 투명한 무테두리 표면을 사용하고 공용 `--ui-status-rail-*` 토큰의 짧고 둥근 세로 상태선만 남긴다. 상태별 면색이나 화면별 선 크기를 만들지 않는다.
 15. 경기 목록 요약의 팀명은 말줄임 없이 두 줄까지 줄바꿈하되 팀명 영역 높이는 항상 두 줄로 고정해 카드 높이를 유지한다. 영역을 완전히 넘는 이름만 고정 영역 안에서 자르고, 공용 좁은 너비 breakpoint에서 전체 요약 배치가 전환되는 경우만 예외로 한다.
 16. 홈 안내 배너, 처리할 일, 알림, 지역 랭킹의 반복 행은 내부 면색·외곽선 없이 투명 행과 공용 `--ui-status-rail-*` 상태선으로 통일한다. 홈 hero의 `.ui-liquid-glass`와 우측 rail의 단일 중성 바탕은 이 규칙에서 제외한다.
+17. `Card`, `Button`, `Badge`, `.ui-folder-tabs`, `.ui-segmented-control`, `.ui-page-hero`, `ModalShell`이 애플리케이션의 형태를 소유한다. 공통 시각 규칙은 `tokens.css`, control·modal은 `primitives/ui-controls.css`, 콘텐츠·hero·인증 배치는 `primitives/ui-content-layout.css`에 둔다. 페이지·기능별 CSS는 배치와 기능 상태만 정의하며 별도 최종 덮어쓰기 파일과 메뉴별 복제 표면 규칙을 만들지 않는다.
+18. 일반 `.section-card`는 면색·외곽선·그림자 없이 위쪽 구획선과 여백만 사용한다. 반복 정보 행도 면색 대신 간격, 구획선, 짧은 상태 rail로 구분한다. 방 모달 선수 slot 내부, 영수증 미리보기·Story·Feed 출력물, hero의 `.ui-liquid-glass`, 로그인의 단일 인증 면은 전용 규칙을 유지한다.
+19. dark 배경·표면과 page hero의 명암은 공용 색상·overlay·shadow 토큰만 사용한다. dark는 완전한 검정 대신 중성 회색 단계로 구분하고 light hero는 밝은 overlay에서 `--rb-text`와 `--rb-muted`를 사용해 이미지와 겹쳐도 대비를 유지한다.
+20. 랜딩·로그인은 앱 내부와 같은 control 높이·button 내용 너비·본문 크기를 사용한다. 랜딩의 비로그인 둘러보기 경로는 항상 유지하고, 인증 여부에 따라 제거하거나 전체 폭 핵심 action으로 바꾸지 않는다.
+21. 일반 dialog는 공용 `ModalShell`을 사용하고 면색·테두리·radius·그림자를 개별 모달 CSS에서 정의하지 않는다. 방 dialog는 같은 셸에 `.ui-room-modal`만 추가한다. 방 slot 내부, 영수증 미리보기·출력물, 전체 화면 경기 시계만 기능상 예외다.
+22. page hero 제목은 `--hero-title-size`, 문서·인증·가이드·카드 대표 제목은 `.ui-content-title`과 `--ui-content-title-size`를 사용한다. 개별 화면에서 큰 제목 크기를 다시 지정하지 않으며, 목록 안의 정보 제목은 section title 단계 이하를 사용한다.

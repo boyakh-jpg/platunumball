@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
+import ModalShell from "../components/common/ModalShell.jsx";
 import { getAdminStatusLabel } from "../lib/admin.js";
 import { getCourtPublicAccessLabel } from "../lib/courts.js";
 import { getSettingsReportTargetName } from "./settingsPageModel.js";
@@ -69,7 +70,7 @@ export default function SettingsListDialog({ kind, controller, onClose, onOpenDe
 
   return createPortal(
     <div className="app-confirm-backdrop" role="presentation" onMouseDown={onClose}>
-      <section ref={dialogRef} tabIndex={-1} className="app-confirm-dialog settings-activity-dialog settings-list-dialog" role="dialog" aria-modal="true" aria-labelledby="settings-list-dialog-title" onMouseDown={(event) => event.stopPropagation()}>
+      <ModalShell ref={dialogRef} tabIndex={-1} className="app-confirm-dialog settings-activity-dialog settings-list-dialog" role="dialog" aria-modal="true" aria-labelledby="settings-list-dialog-title" onMouseDown={(event) => event.stopPropagation()}>
         <div className="section-title-row">
           <strong id="settings-list-dialog-title">{title}</strong>
           <Badge tone={count ? "orange" : "neutral"}>{count}{isBlocks ? "명" : "건"}</Badge>
@@ -117,7 +118,7 @@ export default function SettingsListDialog({ kind, controller, onClose, onOpenDe
         <div className="ui-action-row app-confirm-actions">
           <Button data-dialog-initial-focus type="button" variant="secondary" onClick={onClose}>닫기</Button>
         </div>
-      </section>
+      </ModalShell>
     </div>,
     document.body,
   );

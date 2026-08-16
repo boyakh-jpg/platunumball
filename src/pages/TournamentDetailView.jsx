@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { CalendarDays, ChevronLeft, Flag, Save, ShieldCheck, UserRound } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
+import ModalShell from "../components/common/ModalShell.jsx";
 import SearchPicker from "../components/common/SearchPicker.jsx";
 import TierBadge from "../components/rating/TierBadge.jsx";
 import TeamEmblem from "../components/team/TeamEmblem.jsx";
@@ -336,7 +337,7 @@ return (
 
       {scheduleDialog ? (
         <div className="app-confirm-backdrop" role="presentation" onMouseDown={() => !savingScheduleId && setScheduleDialog(null)}>
-          <div className="app-confirm-dialog" role="dialog" aria-modal="true" aria-label="대회 경기 일정 저장" onMouseDown={(event) => event.stopPropagation()}>
+          <ModalShell as="div" className="app-confirm-dialog" role="dialog" aria-modal="true" aria-label="대회 경기 일정 저장" onMouseDown={(event) => event.stopPropagation()}>
             <strong>{scheduleDialog.mode === "confirm" ? "경기 일정을 저장할까요?" : scheduleDialog.mode === "success" ? "일정을 저장했습니다." : scheduleDialog.mode === "notice" ? "일정 정보를 확인해 주세요." : "일정을 저장하지 못했습니다."}</strong>
             <p>
               {scheduleDialog.mode === "confirm"
@@ -357,12 +358,12 @@ return (
                 <Button type="button" onClick={() => setScheduleDialog(null)}>확인</Button>
               )}
             </div>
-          </div>
+          </ModalShell>
         </div>
       ) : null}
       {forfeitDialog ? (
         <div className="app-confirm-backdrop" role="presentation" onMouseDown={() => !savingForfeitId && setForfeitDialog(null)}>
-          <div className="app-confirm-dialog" role="dialog" aria-modal="true" aria-label="대회 경기 몰수 처리" onMouseDown={(event) => event.stopPropagation()}>
+          <ModalShell as="div" className="app-confirm-dialog" role="dialog" aria-modal="true" aria-label="대회 경기 몰수 처리" onMouseDown={(event) => event.stopPropagation()}>
             <strong>
               {forfeitDialog.mode === "choose"
                 ? "불참 팀을 선택해 주세요."
@@ -397,7 +398,7 @@ return (
                 <Button type="button" onClick={() => setForfeitDialog(null)}>확인</Button>
               )}
             </div>
-          </div>
+          </ModalShell>
         </div>
       ) : null}
       <MatchRoomModal app={app} matchId={selectedMatchId} entryPoint="tournament" onClose={() => setSelectedMatchId("")} />

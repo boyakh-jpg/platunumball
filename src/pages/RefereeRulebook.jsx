@@ -119,7 +119,7 @@ export default function RefereeRulebook({ theme = "dark" }) {
           <Badge tone={isEasyRulebook ? "green" : "blue"}>
             {isEasyRulebook ? "처음 보는 사람용" : "FIBA 2024 · BOXTIER 운영 기준"}
           </Badge>
-          <h2>{isEasyRulebook ? "경기에서 바로 쓰는 쉬운 규칙" : "판정과 기록 상세 기준"}</h2>
+          <h2 className="ui-content-title">{isEasyRulebook ? "경기에서 바로 쓰는 쉬운 규칙" : "판정과 기록 상세 기준"}</h2>
         </div>
         <RulebookIllustration scene="standard" theme={theme} />
       </Card>

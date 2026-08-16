@@ -1,3 +1,5 @@
+import ModalShell from "../common/ModalShell.jsx";
+
 export function RecruitingRoomDialogSection({ context }) {
   const {
     Button, MatchFinalizeDialog, X, closeModal, confirmDeleteSourceSoloRecord, confirmSourceMatchFinalization,
@@ -69,7 +71,7 @@ export function RecruitingRoomDialogSection({ context }) {
     <>
               {roomHelpOpen && typeof document !== "undefined" ? createPortal(
                 <div className="app-confirm-backdrop" role="presentation" onMouseDown={() => setRoomHelpOpen(false)}>
-                  <section
+                  <ModalShell
                     className="app-confirm-dialog room-help-dialog"
                     role="dialog"
                     aria-modal="true"
@@ -94,26 +96,27 @@ export function RecruitingRoomDialogSection({ context }) {
                       ))}
                     </div>
                     <Button type="button" variant="secondary" onClick={() => setRoomHelpOpen(false)}>확인</Button>
-                  </section>
+                  </ModalShell>
                 </div>,
                 document.body,
               ) : null}
 {soloRecordDeleteTarget && typeof document !== "undefined" ? createPortal(
                 <div className="app-confirm-backdrop" role="presentation" onMouseDown={() => setSoloRecordDeleteTarget(null)}>
-                  <div className="app-confirm-dialog" role="dialog" aria-modal="true" aria-label="개인 기록 삭제 확인" onMouseDown={(event) => event.stopPropagation()}>
+                  <ModalShell as="div" className="app-confirm-dialog" role="dialog" aria-modal="true" aria-label="개인 기록 삭제 확인" onMouseDown={(event) => event.stopPropagation()}>
                     <strong>개인 기록 삭제</strong>
                     <p>삭제하면 내 기록 목록에서 사라집니다. MMR은 변하지 않습니다.</p>
                     <div className="ui-action-row app-confirm-actions">
                       <Button type="button" variant="secondary" onClick={() => setSoloRecordDeleteTarget(null)}>취소</Button>
                       <Button type="button" variant="primary" className="danger-button" onClick={confirmDeleteSourceSoloRecord}>삭제하기</Button>
                     </div>
-                  </div>
+                  </ModalShell>
                 </div>,
                 document.body,
               ) : null}
               {roomCancellationTarget && typeof document !== "undefined" ? createPortal(
                 <div className="app-confirm-backdrop" role="presentation" onMouseDown={() => !roomCancellationPending && setRoomCancellationTarget(null)}>
-                  <form
+                  <ModalShell
+                    as="form"
                     className="app-confirm-dialog room-cancellation-dialog"
                     role="dialog"
                     aria-modal="true"
@@ -162,7 +165,7 @@ export function RecruitingRoomDialogSection({ context }) {
                         {roomCancellationPending ? "취소 처리 중" : roomCancellationTarget.label}
                       </Button>
                     </div>
-                  </form>
+                  </ModalShell>
                 </div>,
                 document.body,
               ) : null}

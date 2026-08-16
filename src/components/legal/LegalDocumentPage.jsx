@@ -38,7 +38,7 @@ export default function LegalDocumentPage({ eyebrow, title, lead, effectiveDate,
             </nav>
           </div>
           <p className="eyebrow">{eyebrow}</p>
-          <h1>{title}</h1>
+          <h1 className="ui-content-title">{title}</h1>
           <p className="legal-document-lead">{lead}</p>
           <dl className="legal-document-meta">
             <div>

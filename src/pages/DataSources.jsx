@@ -21,7 +21,7 @@ export default function DataSources() {
       <article className="section-card ui-card data-sources-card">
         <header className="data-sources-header">
           <p className="eyebrow">DATA SOURCES</p>
-          <h1>데이터 출처</h1>
+          <h1 className="ui-content-title">데이터 출처</h1>
           <p>본 서비스의 농구장 정보는 다음 공개 데이터를 기반으로 가공되었습니다.</p>
         </header>
 

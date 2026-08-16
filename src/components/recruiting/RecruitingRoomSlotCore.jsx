@@ -12,6 +12,7 @@ import {
 import Badge from "../common/Badge.jsx";
 import BasketballLoader from "../common/BasketballLoader.jsx";
 import Button from "../common/Button.jsx";
+import ModalShell from "../common/ModalShell.jsx";
 import PlayerHoverCard from "../profile/PlayerHoverCard.jsx";
 import {
   getTierEmblemSrc,
@@ -52,7 +53,7 @@ import {
 export function RecruitingRoomLoadingView({ onClose }) {
   return (
     <div className="arena-modal-backdrop arena-room-backdrop" role="presentation" onMouseDown={onClose}>
-      <aside className="arena-room-modal ui-room-borderless-scope" role="dialog" aria-modal="true" aria-label="방 불러오는 중" onMouseDown={(event) => event.stopPropagation()}>
+      <ModalShell as="aside" className="arena-room-modal ui-room-modal ui-room-borderless-scope" role="dialog" aria-modal="true" aria-label="방 불러오는 중" onMouseDown={(event) => event.stopPropagation()}>
         <div className="arena-modal-status-row">
           <Badge tone="orange">ROOM LOAD</Badge>
           <button type="button" className="arena-icon-button" aria-label="닫기" onClick={onClose}><X size={18} /></button>
@@ -61,7 +62,7 @@ export function RecruitingRoomLoadingView({ onClose }) {
         <div className="arena-modal-close-row">
           <Button type="button" variant="secondary" size="lg" onClick={onClose}>방 닫기</Button>
         </div>
-      </aside>
+      </ModalShell>
     </div>
   );
 }

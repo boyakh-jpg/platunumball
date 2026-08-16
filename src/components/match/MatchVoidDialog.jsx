@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import Button from "../common/Button.jsx";
+import ModalShell from "../common/ModalShell.jsx";
 
 export const MATCH_VOID_REASON_MIN_LENGTH = 10;
 export const MATCH_VOID_REASON_MAX_LENGTH = 500;
@@ -26,7 +27,8 @@ export function MatchFinalizeDialog({
 
   return createPortal(
     <div className="app-confirm-backdrop" role="presentation" onMouseDown={() => !pending && onClose?.()}>
-      <form
+      <ModalShell
+        as="form"
         className="app-confirm-dialog"
         role="dialog"
         aria-modal="true"
@@ -55,7 +57,7 @@ export function MatchFinalizeDialog({
             {pending ? "승인 중" : "최종 승인"}
           </Button>
         </div>
-      </form>
+      </ModalShell>
     </div>,
     document.body,
   );
@@ -77,7 +79,8 @@ export default function MatchVoidDialog({ open, pending = false, onClose, onConf
 
   return createPortal(
     <div className="app-confirm-backdrop" role="presentation" onMouseDown={() => !pending && onClose?.()}>
-      <form
+      <ModalShell
+        as="form"
         className="app-confirm-dialog match-void-dialog"
         role="dialog"
         aria-modal="true"
@@ -110,7 +113,7 @@ export default function MatchVoidDialog({ open, pending = false, onClose, onConf
           <Button type="button" variant="secondary" disabled={pending} onClick={onClose}>취소</Button>
           <Button type="submit" className="danger-button" disabled={!canSubmit}>{pending ? "처리 중" : "경기 무효 처리"}</Button>
         </div>
-      </form>
+      </ModalShell>
     </div>,
     document.body,
   );

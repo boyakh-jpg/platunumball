@@ -47,7 +47,7 @@ export function MatchCreationWizardNav({ currentStep, steps = MATCH_CREATION_STE
   if (steps.length < 2) return null;
   const currentIndex = Math.max(0, steps.findIndex((step) => step.id === currentStep));
   return (
-    <nav className="match-creation-wizard-nav" aria-label="경기 만들기 단계">
+    <nav className="match-creation-wizard-nav ui-step-nav" aria-label="경기 만들기 단계">
       <ol className={`step-count-${steps.length}`}>
         {steps.map((step, index) => (
           <li key={step.id} className={currentStep === step.id ? "active" : index < currentIndex ? "complete" : ""}>

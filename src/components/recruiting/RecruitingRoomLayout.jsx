@@ -1,3 +1,4 @@
+import ModalShell from "../common/ModalShell.jsx";
 import { RecruitingRoomPrimarySection } from "./RecruitingRoomPrimarySection.jsx";
 import { RecruitingRoomManagementSection } from "./RecruitingRoomManagementSection.jsx";
 import { RecruitingRoomActionSection } from "./RecruitingRoomActionSection.jsx";
@@ -16,9 +17,10 @@ export function RecruitingRoomLayout({ context }) {
             style={{ "--sheet-backdrop-opacity": sheetBackdropOpacity }}
             onClick={closeFromBackdrop}
           >
-            <aside
+            <ModalShell
+              as="aside"
               ref={lobbyModalRef}
-              className={`arena-lobby-modal ui-modal-shell ui-room-borderless-scope${sheetDragSettling ? " is-sheet-settling" : ""}${sheetDragOffset > 0 ? " is-sheet-dragging" : ""}`}
+              className={`arena-lobby-modal ui-room-modal ui-room-borderless-scope${sheetDragSettling ? " is-sheet-settling" : ""}${sheetDragOffset > 0 ? " is-sheet-dragging" : ""}`}
               role="dialog"
               aria-modal="true"
               aria-label="매치방"
@@ -44,7 +46,7 @@ export function RecruitingRoomLayout({ context }) {
               <RecruitingRoomActionSection context={context} />
               <RecruitingRoomDialogSection context={context} />
               </div>
-            </aside>
+            </ModalShell>
           </div>
   );
 }

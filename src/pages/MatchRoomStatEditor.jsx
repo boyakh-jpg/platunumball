@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { X } from "lucide-react";
 import Button from "../components/common/Button.jsx";
 import NumericStepper from "../components/common/NumericStepper.jsx";
+import ModalShell from "../components/common/ModalShell.jsx";
 import { formatStatLine } from "../lib/matchUtils.js";
 
 export function MatchRoomStatEditor({ controller }) {
@@ -52,7 +53,7 @@ export function MatchRoomStatEditor({ controller }) {
 
   return (open ? (
         <div className="modal-backdrop stat-editor-backdrop" onClick={() => setStatEditorPlayerId(null)}>
-          <div ref={dialogRef} className="modal stat-editor-modal" role="dialog" aria-modal="true" aria-labelledby="match-stat-editor-title" tabIndex={-1} onClick={(event) => event.stopPropagation()}>
+          <ModalShell as="div" ref={dialogRef} className="modal stat-editor-modal" role="dialog" aria-modal="true" aria-labelledby="match-stat-editor-title" tabIndex={-1} onClick={(event) => event.stopPropagation()}>
             <div className="modal-header">
               <div>
                 <p className="eyebrow">개인 기록</p>
@@ -83,7 +84,7 @@ export function MatchRoomStatEditor({ controller }) {
               ))}
             </div>
             <Button type="button" onClick={() => setStatEditorPlayerId(null)}>완료</Button>
-          </div>
+          </ModalShell>
         </div>
       ) : null);
 }

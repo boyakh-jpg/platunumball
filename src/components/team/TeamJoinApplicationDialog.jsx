@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import Button from "../common/Button.jsx";
+import ModalShell from "../common/ModalShell.jsx";
 import useBodyScrollLock from "../../hooks/useBodyScrollLock.js";
 import { BASKETBALL_POSITIONS } from "../../lib/constants.js";
 import {
@@ -73,7 +74,7 @@ export default function TeamJoinApplicationDialog({
 
   return (
     <div className="app-confirm-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !pending) onClose?.(); }}>
-      <section className="app-confirm-dialog team-join-application-dialog" role="dialog" aria-modal="true" aria-labelledby="team-join-application-title">
+      <ModalShell className="app-confirm-dialog team-join-application-dialog" role="dialog" aria-modal="true" aria-labelledby="team-join-application-title">
         <div>
           <p className="eyebrow">Team Application</p>
           <strong id="team-join-application-title">{review ? `${applicantName} 가입 신청서` : "팀 가입 신청서"}</strong>
@@ -107,7 +108,7 @@ export default function TeamJoinApplicationDialog({
           </form>
         )}
         {review ? <div className="app-confirm-actions ui-action-row"><Button type="button" onClick={onClose}>확인</Button></div> : null}
-      </section>
+      </ModalShell>
     </div>
   );
 }

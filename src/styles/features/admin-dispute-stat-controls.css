@@ -33,7 +33,6 @@
   .court-db-modal {
     width: calc(100vw - 8px);
     height: calc(100dvh - 8px);
-    border-radius: var(--radius-sm);
   }
 
   .court-db-modal-header {
@@ -247,10 +246,6 @@
   display: grid;
   width: min(360px, 100%);
   gap: var(--space-6);
-  border: var(--ui-stroke-width) solid color-mix(in srgb, var(--card-border) 80%, var(--text) 20%);
-  border-radius: var(--card-radius);
-  background: color-mix(in srgb, var(--card-bg-strong) 16%, var(--bg) 84%);
-  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.5);
   padding: 18px;
   color: var(--text);
 }

@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import Button from "../components/common/Button.jsx";
 import Badge from "../components/common/Badge.jsx";
+import ModalShell from "../components/common/ModalShell.jsx";
 import { getSettingsActivityDetail } from "./settingsPageModel.js";
 
 export default function SettingsActivityDialog({ detail, controller, onClose }) {
@@ -55,7 +56,7 @@ export default function SettingsActivityDialog({ detail, controller, onClose }) 
 
   return createPortal(
     <div className="app-confirm-backdrop" role="presentation" onMouseDown={onClose}>
-      <section ref={dialogRef} tabIndex={-1} className="app-confirm-dialog settings-activity-dialog" role="dialog" aria-modal="true" aria-labelledby="settings-activity-dialog-title" onMouseDown={(event) => event.stopPropagation()}>
+      <ModalShell ref={dialogRef} tabIndex={-1} className="app-confirm-dialog settings-activity-dialog" role="dialog" aria-modal="true" aria-labelledby="settings-activity-dialog-title" onMouseDown={(event) => event.stopPropagation()}>
         <div className="section-title-row">
           <strong id="settings-activity-dialog-title">{model.title}</strong>
           <Badge tone={model.tone}>{model.status}</Badge>
@@ -71,7 +72,7 @@ export default function SettingsActivityDialog({ detail, controller, onClose }) 
         <div className="ui-action-row app-confirm-actions">
           <Button data-dialog-initial-focus type="button" variant="secondary" onClick={onClose}>닫기</Button>
         </div>
-      </section>
+      </ModalShell>
     </div>,
     document.body,
   );

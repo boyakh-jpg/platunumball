@@ -1,6 +1,7 @@
 import { X } from "lucide-react";
 import Badge from "../common/Badge.jsx";
 import Button from "../common/Button.jsx";
+import ModalShell from "../common/ModalShell.jsx";
 
 export function RecruitingRoomLoadFailedView({
   onClose,
@@ -11,7 +12,7 @@ export function RecruitingRoomLoadFailedView({
 }) {
   return (
     <div className="arena-modal-backdrop arena-room-backdrop" role="presentation" onMouseDown={onClose}>
-      <aside className="arena-room-modal ui-room-borderless-scope" role="dialog" aria-modal="true" aria-label={title} onMouseDown={(event) => event.stopPropagation()}>
+      <ModalShell as="aside" className="arena-room-modal ui-room-modal ui-room-borderless-scope" role="dialog" aria-modal="true" aria-label={title} onMouseDown={(event) => event.stopPropagation()}>
         <div className="arena-modal-status-row">
           <Badge tone="orange">ROOM LOAD</Badge>
           <button type="button" className="arena-icon-button" aria-label="닫기" onClick={onClose}><X size={18} /></button>
@@ -22,7 +23,7 @@ export function RecruitingRoomLoadFailedView({
           <Button type="button" variant="secondary" size="lg" disabled={retrying} onClick={onClose}>방 닫기</Button>
           {onRetry ? <Button type="button" size="lg" disabled={retrying} onClick={onRetry}>{retrying ? "다시 불러오는 중" : "다시 시도"}</Button> : null}
         </div>
-      </aside>
+      </ModalShell>
     </div>
   );
 }

@@ -127,10 +127,6 @@
   display: grid;
   width: min(360px, 100%);
   gap: 12px;
-  border: var(--ui-card-border-width) solid var(--card-border);
-  border-radius: var(--card-radius);
-  background: color-mix(in srgb, var(--card-bg-strong) 16%, var(--bg) 84%);
-  box-shadow: var(--card-shadow);
   padding: 18px;
   color: var(--rb-text);
 }

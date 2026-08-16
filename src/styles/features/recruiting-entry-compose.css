@@ -259,10 +259,6 @@
   max-height: calc(100dvh - 36px);
   gap: 12px;
   overflow: auto;
-  border: var(--ui-room-modal-border-width) solid var(--ui-room-modal-border);
-  border-radius: var(--ui-room-modal-radius);
-  background: var(--ui-room-modal-bg);
-  box-shadow: var(--ui-room-modal-shadow);
   padding: 18px;
 }
 

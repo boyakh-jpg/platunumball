@@ -10,6 +10,7 @@ import MatchVoidDialog, { MatchFinalizeDialog } from "../components/match/MatchV
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
+import ModalShell from "../components/common/ModalShell.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import ProfileEmblem from "../components/profile/ProfileEmblem.jsx";
 import MmrChange from "../components/rating/MmrChange.jsx";
@@ -92,7 +93,7 @@ return (
       </section>
       {soloRecordDeleteOpen ? (
         <div className="app-confirm-backdrop" role="presentation" onMouseDown={() => !managementActionPending && setSoloRecordDeleteOpen(false)}>
-          <div className="app-confirm-dialog" role="dialog" aria-modal="true" aria-label="개인 기록 삭제 확인" onMouseDown={(event) => event.stopPropagation()}>
+          <ModalShell as="div" className="app-confirm-dialog" role="dialog" aria-modal="true" aria-label="개인 기록 삭제 확인" onMouseDown={(event) => event.stopPropagation()}>
             <strong>개인 기록 삭제</strong>
             <p>삭제하면 내 기록 목록에서 사라집니다. MMR은 변하지 않습니다.</p>
             {managementActionFeedback ? <small role="status" className="form-warning">{managementActionFeedback}</small> : null}
@@ -100,7 +101,7 @@ return (
               <Button type="button" variant="secondary" disabled={Boolean(managementActionPending)} onClick={() => setSoloRecordDeleteOpen(false)}>취소</Button>
               <Button type="button" variant="danger" disabled={Boolean(managementActionPending)} onClick={confirmDeleteSoloRecord}>{managementActionPending === "delete" ? "삭제 중" : "삭제하기"}</Button>
             </div>
-          </div>
+          </ModalShell>
         </div>
       ) : null}
 

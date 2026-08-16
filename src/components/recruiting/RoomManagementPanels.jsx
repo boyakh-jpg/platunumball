@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { RefreshCw } from "lucide-react";
 import Button from "../common/Button.jsx";
+import ModalShell from "../common/ModalShell.jsx";
 import PlayerHoverCard from "../profile/PlayerHoverCard.jsx";
 import ProfileEmblem from "../profile/ProfileEmblem.jsx";
 import {
@@ -227,7 +228,7 @@ export function RoomKickPanel({
       {actionError && !pendingKick ? <p className="form-warning" role="alert">{actionError}</p> : null}
       {pendingKick && typeof document !== "undefined" ? createPortal(
         <div className="arena-kick-confirm-backdrop" role="presentation" onMouseDown={closeKickConfirm}>
-          <div className="arena-kick-confirm-dialog" role="dialog" aria-modal="true" aria-label="강퇴 확인" onMouseDown={(event) => event.stopPropagation()}>
+          <ModalShell as="div" className="arena-kick-confirm-dialog ui-room-modal" role="dialog" aria-modal="true" aria-label="강퇴 확인" onMouseDown={(event) => event.stopPropagation()}>
             <strong>{pendingKick.playerName} 강퇴</strong>
             <p>강퇴하면 즉시 방에서 제외됩니다. 반복 강퇴는 방장 신뢰도를 줄일 수 있습니다.</p>
             <label className="arena-kick-reason-field">
@@ -251,7 +252,7 @@ export function RoomKickPanel({
               <Button type="button" variant="secondary" disabled={Boolean(pendingAction)} onClick={closeKickConfirm}>취소하기</Button>
               <Button type="button" variant="primary" className="danger-button" disabled={Boolean(pendingAction) || !kickAcknowledged || !isValidParticipantRemovalReason(kickReason)} onClick={() => void confirmKick()}>{pendingAction ? "처리 중" : "강퇴하기"}</Button>
             </div>
-          </div>
+          </ModalShell>
         </div>,
         document.body,
       ) : null}

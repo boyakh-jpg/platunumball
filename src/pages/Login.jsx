@@ -71,7 +71,7 @@ export default function Login({ auth, app }) {
         <div className="auth-form">
           <div>
             <p className="eyebrow">Sign in</p>
-            <h1>소셜 계정으로 시작</h1>
+            <h1 className="ui-content-title">소셜 계정으로 시작</h1>
           </div>
 
           {auth.session ? (

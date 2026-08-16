@@ -391,10 +391,6 @@
   max-height: calc(100dvh - 20px);
   min-width: 0;
   overflow: hidden;
-  border: var(--ui-card-border-width) solid var(--ui-card-border);
-  border-radius: var(--ui-card-radius);
-  background: var(--surface);
-  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.5);
 }
 
 .court-detail-modal-close {
@@ -429,7 +425,6 @@
   .court-detail-modal-shell {
     height: calc(100dvh - 16px);
     max-height: calc(100dvh - 16px);
-    border-radius: var(--radius-md);
   }
 
   .court-detail-modal-scroll {

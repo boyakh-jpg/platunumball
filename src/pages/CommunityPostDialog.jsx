@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { Eye, MessageCircle, Pencil, Reply, ThumbsUp, Trash2, X } from "lucide-react";
 import Button from "../components/common/Button.jsx";
 import Badge from "../components/common/Badge.jsx";
+import ModalShell from "../components/common/ModalShell.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import ProfileEmblem from "../components/profile/ProfileEmblem.jsx";
 import { getUserHashtag } from "../lib/handles.js";
@@ -136,7 +137,7 @@ export default function CommunityPostDialog({ app, controller }) {
 
   return createPortal(
     <div className="app-confirm-backdrop community-dialog-backdrop" role="presentation" onMouseDown={() => !pending && controller.closePost()}>
-      <section ref={dialogRef} className="app-confirm-dialog community-post-dialog" role="dialog" aria-modal="true" aria-labelledby="community-post-dialog-title" tabIndex={-1} onMouseDown={(event) => event.stopPropagation()}>
+      <ModalShell ref={dialogRef} className="app-confirm-dialog community-post-dialog" role="dialog" aria-modal="true" aria-labelledby="community-post-dialog-title" tabIndex={-1} onMouseDown={(event) => event.stopPropagation()}>
         <header className="community-dialog-header">
           <div>
             <Badge tone={post.category === "notice" ? "orange" : post.category === "question" ? "blue" : "neutral"}>{COMMUNITY_POST_CATEGORY_LABELS[post.category] ?? "자유"}</Badge>
@@ -222,7 +223,7 @@ export default function CommunityPostDialog({ app, controller }) {
             </div>
           </section>
         ) : null}
-      </section>
+      </ModalShell>
     </div>,
     document.body,
   );

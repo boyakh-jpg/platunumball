@@ -71,6 +71,7 @@ const ruleSelectorSource = read("src/components/match/RuleSelector.jsx");
 const matchListStyles = read("src/styles/match-list-card.css");
 const primitiveStyles = readCssTree("src/styles/ui-primitives.css");
 const tokenStyles = read("src/styles/tokens.css");
+const modalShellSource = read("src/components/common/ModalShell.jsx");
 const foundationStyles = readCssTree("src/styles/global-foundation.css");
 const globalSearchStyles = readCssTree("src/styles/global-search-profile.css");
 const searchPickerStyles = read("src/styles/features/search-picker-home.css");
@@ -715,7 +716,7 @@ test("KBO는 스포츠 표시, Pretendard는 읽기와 조작 UI에 사용한다
   assert.doesNotMatch(globalSearchStyles, /\.approval-teaser-card \.compact-list a > span\s*\{[^}]*var\(--sports-display-font\)/);
 });
 
-test("공용 CTA는 ui-button-block 하나로 너비만 확장한다", () => {
+test("공용 CTA는 좁은 화면에서도 내용 너비를 유지한다", () => {
   assert.match(
     pageSources.home,
     /className="ui-action-row home-public-actions"><Button as=\{Link\} to="\/app\/teams"[\s\S]*?to="\/app\/community"[\s\S]*?to="\/app\/guide\/practice"/,
@@ -728,7 +729,7 @@ test("공용 CTA는 ui-button-block 하나로 너비만 확장한다", () => {
   assert.equal(countClassToken(pageSources.recruiting, "ui-button-block"), 2);
   assert.equal(countClassToken(pageSources.season, "ui-button-block"), 1);
   assert.match(primitiveStyles, /\.ui-button-block\s*\{\s*width:\s*fit-content;\s*max-width:\s*100%;\s*\}/);
-  assert.match(primitiveStyles, /@media \(max-width:\s*760px\)[\s\S]*?\.ui-button-block\s*\{\s*width:\s*100%;\s*\}/);
+  assert.doesNotMatch(primitiveStyles, /@media \(max-width:\s*760px\)[\s\S]*?\.ui-button-block\s*\{\s*width:\s*100%;\s*\}/);
   assert.doesNotMatch(allStyleSources, /\.season-play-report > a\s*\{[^}]*display:\s*block/);
   assert.doesNotMatch(allStyleSources, /\.ranking-name span\s*\{/);
   for (const source of [pageSources.home, pageSources.matches, pageSources.recruiting]) {
@@ -1263,7 +1264,11 @@ test("home Season Zero banner routes by founding player status", () => {
 });
 
 test("hero inner boards share one restrained glass surface system", () => {
-  assert.equal(count(tokenStyles, "--hero-copy-color: var(--rb-cream);"), 2);
+  assert.equal(count(tokenStyles, "--hero-copy-color: var(--rb-cream);"), 1);
+  assert.match(
+    tokenStyles,
+    /html\[data-theme="light"\]\s*\{[\s\S]*?--hero-title-color:\s*var\(--rb-text\);[\s\S]*?--hero-copy-color:\s*var\(--rb-muted\);/,
+  );
   assert.equal(count(tokenStyles, "--hero-title-shadow: none;"), 2);
   assert.equal(count(tokenStyles, "--hero-copy-shadow: none;"), 2);
   assert.doesNotMatch(tokenStyles, /--hero-title-shadow:[\s\S]{0,100}?14px 34px/);
@@ -1387,6 +1392,63 @@ test("page heroes keep shared eyebrows without implementation copy", () => {
     allComponentSources,
     /className="(?:om-list-head|arena-queue-controls-head|getting-started-section__head|referee-rulebook-head|settings-nearby-courts-head|league-panel-head|court-db-review-section-head|ui-design-section-heading)/,
   );
+});
+
+test("shared primitives own application-wide density, surfaces, and modals", () => {
+  assert.doesNotMatch(read("src/styles/ui-primitives.css"), /app-consistency\.css/);
+  assert.equal(fs.existsSync("src/styles/primitives/app-consistency.css"), false);
+  assert.match(
+    primitiveStyles,
+    /\.section-card\.ui-design-category-surface:not\(\.match-receipt-card\)\s*\{[^}]*border-width:\s*var\(--ui-stroke-width\) 0 0;[^}]*background:\s*transparent;[^}]*box-shadow:\s*none;/,
+  );
+  assert.match(
+    primitiveStyles,
+    /\.ui-folder-tabs\s*\{[^}]*width:\s*fit-content;/,
+  );
+  assert.match(
+    primitiveStyles,
+    /\.ui-segmented-control:not\(\.create-choice-segments\):not\(\[role="radiogroup"\]\)\s*\{[^}]*width:\s*fit-content;/,
+  );
+  assert.match(
+    primitiveStyles,
+    /\.app-main \.page-header\s*\{[^}]*min-height:\s*var\(--ui-page-hero-min-height\);[^}]*box-shadow:\s*var\(--ui-page-hero-shadow\);/,
+  );
+  assert.match(tokenStyles, /--ui-information-row-min-height:\s*44px;/);
+  assert.match(tokenStyles, /--font-size-title-xl:\s*clamp\(1\.9rem, 3\.4vw, 2\.4rem\);/);
+  assert.match(tokenStyles, /--ui-content-title-size:\s*clamp\(1\.7rem, 2\.7vw, 2\.1rem\);/);
+  assert.match(tokenStyles, /--hero-title-size:\s*clamp\(1\.8rem, 2\.5vw, 2\.25rem\);/);
+  assert.match(
+    primitiveStyles,
+    /\.ui-content-title\.ui-content-title\s*\{[^}]*font-size:\s*var\(--ui-content-title-size\);/,
+  );
+  for (const file of [
+    "src/pages/GettingStarted.jsx",
+    "src/components/legal/LegalDocumentPage.jsx",
+    "src/pages/DataSources.jsx",
+    "src/pages/Login.jsx",
+    "src/pages/RefereeRulebook.jsx",
+  ]) {
+    assert.match(read(file), /className="ui-content-title"/);
+  }
+  assert.match(primitiveStyles, /:not\(\.match-receipt-card \*\)/);
+  assert.match(modalShellSource, /className=\{\["ui-modal-shell", className\]/);
+  assert.match(
+    primitiveStyles,
+    /\.ui-modal-shell\.ui-modal-shell\s*\{[^}]*background:\s*var\(--ui-modal-bg\);[^}]*border-radius:\s*var\(--ui-modal-radius\);[^}]*box-shadow:\s*var\(--ui-modal-shadow\);/,
+  );
+  assert.match(
+    primitiveStyles,
+    /\.ui-modal-shell\.ui-room-modal\s*\{[^}]*background:\s*var\(--ui-room-modal-bg\);[^}]*border-radius:\s*var\(--ui-room-modal-radius\);/,
+  );
+  for (const file of [
+    "src/pages/AdminPageParts.jsx",
+    "src/pages/CommunityPostDialog.jsx",
+    "src/pages/MatchesPagePanels.jsx",
+    "src/components/court/CourtDetailModal.jsx",
+    "src/components/recruiting/RecruitingRoomLayout.jsx",
+  ]) {
+    assert.match(read(file), /<ModalShell\b/);
+  }
 });
 
 test("팀 허브 대표팀 보드는 팀 전용 너비와 테마 대응 고대비 팀명을 사용한다", () => {
@@ -1930,8 +1992,8 @@ test("shared control families and fixed labels keep canonical ownership", () => 
   assert.match(uiControlsStyles, /\.ui-folder-tabs button/);
   assert.match(uiControlsStyles, /\.ui-folder-tabs\s*\{[^}]*width:\s*fit-content;[^}]*max-width:\s*100%;[^}]*border-bottom:\s*0;/);
   assert.match(uiControlsStyles, /\.ui-folder-tabs button\[aria-selected="true"\]\s*\{[^}]*background:\s*transparent;[^}]*font-weight:\s*var\(--font-weight-title\);[^}]*box-shadow:\s*none;[^}]*transform:\s*none;/);
-  assert.match(uiControlsStyles, /\.ui-segmented-control\s*\{[^}]*border:\s*0;[^}]*background:\s*transparent;[^}]*box-shadow:\s*none;/);
-  assert.match(uiControlsStyles, /\.ui-segmented-control > button:is\(\.active, \[aria-current="page"\], \[aria-selected="true"\]\)\s*\{[^}]*background:\s*transparent;[^}]*font-weight:\s*var\(--font-weight-title\);[^}]*box-shadow:\s*none;/);
+  assert.match(uiControlsStyles, /\.ui-segmented-control:not\(\.create-choice-segments\):not\(\[role="radiogroup"\]\)\s*\{[^}]*border:\s*0;[^}]*background:\s*transparent;[^}]*box-shadow:\s*none;/);
+  assert.match(uiControlsStyles, /\.ui-segmented-control:not\(\.create-choice-segments\):not\(\[role="radiogroup"\]\) > button:is\(\.active, \[aria-current="page"\], \[aria-selected="true"\]\)\s*\{[^}]*background:\s*transparent;[^}]*font-weight:\s*var\(--font-weight-title\);[^}]*box-shadow:\s*none;/);
   assert.match(profileRecordStyles, /\.profile-record-section-filter,[\s\S]*?\.profile-record-visibility-filter\s*\{[^}]*display:\s*flex;[^}]*width:\s*fit-content;[^}]*max-width:\s*100%;[^}]*overflow-x:\s*auto;/);
   assert.match(profileRecordStyles, /\.profile-record-section-filter button,[\s\S]*?\.profile-record-visibility-filter button\s*\{[^}]*flex:\s*0 0 auto;[^}]*white-space:\s*nowrap;/);
   assert.doesNotMatch(profileRecordStyles, /\.profile-record-(?:section|mode|visibility)-filter\s*\{[^}]*grid-template-columns:/);

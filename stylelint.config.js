@@ -1,6 +1,7 @@
 export default {
   extends: ["stylelint-config-standard"],
   rules: {
+    "import-notation": "string",
     "color-no-hex": true,
     "declaration-no-important": true,
     "function-disallowed-list": ["rgb", "rgba", "hsl", "hsla"],

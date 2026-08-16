@@ -112,7 +112,7 @@ export default function GettingStarted({ app }) {
         <header className="getting-started-chapter__copy">
           <Badge tone="orange">{activeIndex + 1} / {GUIDE_CHAPTERS.length}</Badge>
           <p className="eyebrow">{chapter.eyebrow}</p>
-          <h1 ref={chapterTitleRef} tabIndex={-1}>{chapter.title}</h1>
+          <h1 className="ui-content-title" ref={chapterTitleRef} tabIndex={-1}>{chapter.title}</h1>
           <div className="ui-action-row">
             {chapter.actions.map((action) => {
               const ActionIcon = action.Icon;

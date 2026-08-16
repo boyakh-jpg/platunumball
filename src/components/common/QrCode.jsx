@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { createQrPath } from "../../lib/qrCode.js";
 import useBodyScrollLock from "../../hooks/useBodyScrollLock.js";
 import Button from "./Button.jsx";
+import ModalShell from "./ModalShell.jsx";
 
 const BRANDED_QR_ACCENT = "#d4582b";
 
@@ -130,9 +131,10 @@ export default function QrCode({ value, label = "QR 코드", className = "", exp
       </button>
       {expanded && typeof document !== "undefined" ? createPortal(
         <div className="ui-qr-expand-backdrop" role="presentation" onMouseDown={() => setExpanded(false)}>
-          <div
+          <ModalShell
+            as="div"
             ref={dialogRef}
-            className="ui-qr-expand-dialog ui-modal-shell"
+            className="ui-qr-expand-dialog"
             role="dialog"
             aria-modal="true"
             aria-label={`${label} 확대 보기`}
@@ -142,7 +144,7 @@ export default function QrCode({ value, label = "QR 코드", className = "", exp
             <QrGraphic qr={qr} label={label} className="ui-qr-expanded-code" branded={branded} />
             <small>참가자가 카메라로 스캔하세요.</small>
             <Button type="button" size="sm" variant="secondary" onClick={() => setExpanded(false)}>닫기</Button>
-          </div>
+          </ModalShell>
         </div>,
         document.body,
       ) : null}
