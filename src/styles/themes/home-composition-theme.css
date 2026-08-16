@@ -365,10 +365,10 @@ html[data-theme="light"] .app-main {
 }
 .landing-hero::after,
 .team-hub-hero::after,
-.match-hero::before,
 .page-header::after,
 .team-hub-hero::before {
-  background: linear-gradient(90deg, rgba(240, 90, 70, 0.14), transparent 28%, transparent 76%, rgba(255, 211, 108, 0.08));
+  background: none;
+  content: none;
 }
 .rank-home .rank-summary-grid::before {
   background: none;

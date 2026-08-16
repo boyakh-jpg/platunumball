@@ -341,11 +341,11 @@ body.rankball-scroll-locked .app-main {
 
 .auth-browser-warning {
   display: grid;
-  gap: var(--space-5);
+  gap: var(--space-3);
   border: 0;
-  border-radius: var(--radius);
-  background: rgba(255, 205, 96, 0.08);
-  padding: 12px;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
 }
 
 .auth-browser-warning strong {

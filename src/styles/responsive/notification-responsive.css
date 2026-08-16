@@ -101,4 +101,26 @@
     justify-content: flex-end;
     flex-wrap: nowrap;
   }
+
+  .rank-home .home-right-rail .home-action-list > .home-action-row:not(:has(.home-action-buttons)) {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+  }
+
+  .rank-home .home-right-rail .home-action-list > .home-action-row:not(:has(.home-action-buttons)) > .home-action-icon {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .rank-home .home-right-rail .home-action-list > .home-action-row:not(:has(.home-action-buttons)) > .home-action-main {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .rank-home .home-right-rail .home-action-list > .home-action-row:not(:has(.home-action-buttons)) > b {
+    grid-column: 3;
+    grid-row: 1;
+    align-self: center;
+    justify-self: end;
+  }
 }

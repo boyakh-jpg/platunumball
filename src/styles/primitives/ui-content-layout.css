@@ -9,7 +9,7 @@ html[data-theme] .ui-design-app :is(
   .ui-design-info-surface,
   .ui-design-soft-surface,
   .ui-design-borderless-surface
-):not(.ui-liquid-glass):not(.ui-design-category-surface):not(.ui-design-decorative-surface):not(.ui-match-list-surface):not(.match-receipt-card):not(.match-receipt-card *),
+):not(.ui-liquid-glass):not(.ui-design-category-surface):not(.ui-design-decorative-surface):not(.ui-design-record-surface):not(.ui-match-list-surface):not(.match-receipt-card):not(.match-receipt-card *),
 html[data-theme] .ui-design-app .ui-design-borderless-list > :not(.match-receipt-card):not(.match-receipt-card *),
 html[data-theme] .ui-design-app .ui-design-choice-list > :not(.match-receipt-card):not(.match-receipt-card *) {
   border-color: transparent;
@@ -35,14 +35,14 @@ html[data-theme]
   backdrop-filter: none;
 }
 
-html[data-theme] .ui-design-app .ui-design-content-surface.ui-design-info-surface:not(.match-receipt-card *) {
+html[data-theme] .ui-design-app .ui-design-content-surface.ui-design-info-surface:not(.ui-design-record-surface):not(.ui-match-list-surface):not(.match-receipt-card *) {
   min-height: var(--ui-information-row-min-height);
   border-width: 0;
   border-radius: 0;
   padding: var(--ui-information-row-padding);
 }
 
-html[data-theme] .ui-design-app .ui-design-info-surface.ui-design-info-accent:not(.match-receipt-card *) {
+html[data-theme] .ui-design-app .ui-design-info-surface.ui-design-info-accent:not(.ui-design-record-surface):not(.ui-match-list-surface):not(.match-receipt-card *) {
   border-width: 0;
   border-radius: 0;
   background: transparent;

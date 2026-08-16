@@ -105,7 +105,6 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
 .rank-home .rank-summary-grid,
 html[data-theme="light"] .rank-home .rank-summary-grid {
   background:
-    var(--ui-schedule-hero-mask),
     var(--bg-home-court) center 46% / cover no-repeat,
     var(--rb-bg-2);
 }
@@ -147,6 +146,11 @@ html[data-theme="light"] .rank-home .rank-summary-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-4);
+}
+
+.rank-home .home-search-actions > :is(.button, .ui-button, a) {
+  width: 100%;
+  min-width: 0;
 }
 .rank-home .home-public-actions {
   flex-wrap: nowrap;
@@ -299,7 +303,6 @@ html[data-theme="light"] .rank-home .rank-summary-grid {
   .rank-home .rank-summary-grid .home-rank-board-head,
   html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
     background:
-      var(--ui-schedule-hero-mask),
       var(--bg-home-court) center 46% / cover no-repeat,
       var(--rb-bg-2);
   }

@@ -104,10 +104,11 @@
 
 .om-calendar-summary,
 .om-calendar-box {
-  border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.1);
-  border-radius: var(--radius);
-  background: rgba(8, 11, 16, 0.66);
-  padding: 10px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
 }
 
 .om-calendar-summary {
@@ -155,7 +156,10 @@
   height: var(--ui-button-height-sm);
   min-height: var(--ui-button-height-sm);
   place-items: center;
-  border-radius: var(--radius-xs);
+  border-color: transparent;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .om-calendar-toolbar strong {
@@ -206,10 +210,7 @@
 .om-calendar-grid > span::before,
 .om-calendar-grid button::after,
 .om-calendar-grid > span::after {
-  position: absolute;
-  content: "";
-  pointer-events: none;
-  background: var(--ui-divider-subtle);
+  content: none;
 }
 
 .om-calendar-grid button::before,

@@ -122,7 +122,6 @@ html[data-theme="light"] .tournament-detail-page > .tournament-section > .om-lis
   grid-template-columns: minmax(0, 1fr);
   gap: 10px;
   align-self: start;
-  padding: 14px;
 }
 .om-calendar-heading {
   display: grid;
@@ -162,10 +161,10 @@ html[data-theme="light"] .om-calendar-filter-bar {
   width: auto;
   max-width: 100%;
   min-width: 0;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 4px;
   align-items: center;
-  overflow: visible;
+  overflow-x: auto;
   border: 0;
   border-radius: 0;
   background: transparent;
@@ -197,23 +196,17 @@ html[data-theme="light"] .om-calendar-filter-bar {
 }
 .om-calendar-filter-row .om-relation-filter-grid,
 .om-calendar-filter-row .om-branch-filter-grid {
-  display: grid;
-  width: 100%;
-}
-.om-calendar-filter-row .om-relation-filter-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-.om-calendar-filter-row .om-branch-filter-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  display: flex;
+  width: max-content;
 }
 .om-calendar-filter-row .om-branch-filter-grid > button {
   grid-column: auto;
 }
 .om-calendar-filter-row .om-branch-filter-grid > button:last-child:nth-child(odd) {
-  grid-column: 1 / -1;
+  grid-column: auto;
 }
 .om-calendar-filter-row :is(.om-relation-filter-grid, .om-branch-filter-grid) > button {
-  width: 100%;
+  width: auto;
 }
 @media (max-width: 1120px) {
   .om-view-grid {
@@ -233,8 +226,8 @@ html[data-theme="light"] .om-calendar-filter-bar {
 @media (min-width: 721px) {
   .om-calendar-panel {
     width: 100%;
-    grid-template-columns: minmax(220px, 250px) minmax(420px, 540px);
-    justify-content: space-between;
+    grid-template-columns: minmax(220px, 250px) minmax(420px, 1fr);
+    justify-content: stretch;
   }
 
   .om-calendar-box {
@@ -269,18 +262,18 @@ html[data-theme="light"] .om-calendar-filter-bar {
   }
 
   .om-calendar-summary {
-    padding: 12px;
+    padding: 0;
   }
 }
 @media (max-width: 720px) {
   .om-calendar-filter-row .segmented-control button {
-    min-height: 42px;
-    height: 42px;
+    min-height: var(--ui-button-height-sm);
+    height: var(--ui-button-height-sm);
   }
 }
 @media (max-width: 480px) {
   .om-calendar-summary {
-    padding: 10px;
+    padding: 0;
   }
 
   .om-calendar-heading {
@@ -288,7 +281,7 @@ html[data-theme="light"] .om-calendar-filter-bar {
   }
 
   .om-calendar-filter-row {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: 34px minmax(0, 1fr);
     gap: 4px;
   }
 
@@ -297,15 +290,15 @@ html[data-theme="light"] .om-calendar-filter-bar {
   }
 
   .om-calendar-filter-row .segmented-control button {
-    min-height: var(--ui-button-height);
-    height: var(--ui-button-height);
+    min-height: var(--ui-button-height-sm);
+    height: var(--ui-button-height-sm);
     padding-inline: 6px;
     font-size: 0.72rem;
   }
 }
 html[data-theme="light"] .om-calendar-summary {
-  border-color: var(--ui-card-border);
-  background: var(--ui-card-bg);
+  border-color: transparent;
+  background: transparent;
   box-shadow: none;
 }
 /* 2026-07-16 responsive clipping guard for match list cards. */

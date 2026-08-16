@@ -335,25 +335,38 @@
   gap: var(--space-1);
 }
 .recent-match-matchup {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   min-width: 0;
-  align-items: baseline;
+  min-height: 2.4em;
+  max-height: 2.4em;
+  align-items: center;
   gap: var(--space-2);
   overflow: hidden;
-  white-space: nowrap;
+  white-space: normal;
 }
 .recent-match-matchup > :is(.team-hover-trigger, span) {
-  display: inline-block;
+  display: block;
   min-width: 0;
+  max-height: 2.4em;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.2;
+  text-overflow: clip;
+  white-space: normal;
+}
+.recent-match-row .recent-match-matchup .team-hover-trigger > strong {
+  display: block;
+  max-height: 2.4em;
+  overflow: hidden;
+  line-height: 1.2;
+  text-overflow: clip;
+  white-space: normal;
 }
 .recent-match-matchup > :is(.team-hover-trigger, span):first-child {
-  flex: 0 1 auto;
+  text-align: end;
 }
 .recent-match-matchup > :is(.team-hover-trigger, span):last-child {
-  flex: 1 1 auto;
+  text-align: start;
 }
 .recent-match-vs {
   display: inline;
@@ -457,14 +470,12 @@
 }
 @media (max-width: 430px) {
   .recent-match-matchup {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-    overflow: visible;
-    white-space: normal;
+    gap: var(--space-1);
   }
   .recent-match-matchup > :is(.team-hover-trigger, span),
   .recent-match-matchup .team-hover-trigger > strong {
-    overflow: visible;
+    max-height: 2.4em;
+    overflow: hidden;
     text-overflow: clip;
     white-space: normal;
   }

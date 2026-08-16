@@ -5,7 +5,7 @@ html[data-theme] [data-design] .ui-design-app .rank-home .rank-leaderboard-card 
   --ui-card-radius: 0;
   --ui-card-shadow: none;
   position: relative;
-  padding-inline-start: calc(var(--space-5) + var(--ui-status-rail-width));
+  padding-inline-start: var(--space-5);
   background: transparent;
   border-color: transparent transparent var(--rb-line);
   border-radius: 0;
@@ -22,16 +22,7 @@ html[data-theme]
 
 html[data-theme] [data-design] .ui-design-app .rank-home .home-action-list > .home-action-row::before,
 html[data-theme] [data-design] .ui-design-app .rank-home .rank-leaderboard-card .rank-list > .rank-row::before {
-  position: absolute;
-  inset: var(--ui-status-rail-inset) auto var(--ui-status-rail-inset) 0;
-  width: var(--ui-status-rail-width);
-  background: var(--ui-status-rail-color, var(--rb-orange));
-  border-radius: var(--ui-status-rail-radius);
-  content: "";
-}
-
-html[data-theme] [data-design] .ui-design-app .rank-home .rank-leaderboard-card .rank-list > .rank-row {
-  --ui-status-rail-color: var(--blue);
+  content: none;
 }
 
 html[data-theme] [data-design] .ui-design-app .rank-home .home-action-icon {

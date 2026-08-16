@@ -266,9 +266,14 @@
 .arena-room-modal .arena-modal-close-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--space-3);
   align-items: center;
   justify-content: space-between;
+}
+
+.arena-room-modal .arena-modal-close-row > :is(.button, .ui-button) {
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 .arena-room-modal .arena-room-subtitle {

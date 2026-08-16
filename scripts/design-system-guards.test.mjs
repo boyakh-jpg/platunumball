@@ -98,6 +98,7 @@ const cardSource = read("src/components/common/Card.jsx");
 const brandLockupSource = read("src/components/common/BrandLockup.jsx");
 const sidebarSource = read("src/components/layout/Sidebar.jsx");
 const loginSource = read("src/pages/Login.jsx");
+const matchReceiptSource = read("src/pages/MatchReceipt.jsx");
 const notificationsSource = read("src/pages/Notifications.jsx");
 const settingsSource = readSourceGroupSync(read, SETTINGS_PAGE_SOURCE_PATHS);
 const settingsStyles = read("src/styles/features/settings-location-preferences.css");
@@ -385,6 +386,8 @@ test("signed-in login redirects and settings exposes logout", () => {
   assert.match(loginSource, /providerId === "google" && embeddedGoogleOAuthBrowser[\s\S]*?setShowGoogleBrowserFallback\(true\);[\s\S]*?return;/);
   assert.match(loginSource, /<AuthProviderIcon providerId=\{provider\.id\} \/>/);
   assert.match(authStyles, /\.auth-browser-copy-button\s*\{[^}]*width:\s*fit-content;[^}]*border:\s*0;[^}]*background:\s*transparent;/s);
+  assert.match(authStyles, /\.auth-browser-warning\s*\{[^}]*border:\s*0;[^}]*border-radius:\s*0;[^}]*background:\s*transparent;[^}]*padding:\s*0;/s);
+  assert.match(matchReceiptSource, /const backTo = `\$\{location\.pathname\}\$\{location\.search\}\$\{location\.hash\}`;[\s\S]*?navigate\(getLoginPath\(returnTo, backTo\)\);/);
   assert.match(loginSource, /<div className="auth-card-head">[\s\S]*?<Link to="\/" className="brand auth-brand"[\s\S]*?<Button type="button"[^>]*className="auth-back-link" onClick=\{goBack\}/);
   assert.doesNotMatch(loginSource, /auth-card-primary|로그인 가능/);
   assert.match(authStyles, /\.auth-card-head\s*\{[^}]*grid-template-columns: minmax\(0, 1fr\) auto;/s);
@@ -1059,14 +1062,14 @@ test("공용 방모달은 배경 페이지와 섞이지 않는 전용 표면을 
   );
 });
 
-test("공용 빈 상태와 control 높이는 페이지 override 없이 유지된다", () => {
+test("공용 빈 상태와 compact filter 높이는 canonical token을 유지한다", () => {
   assert.doesNotMatch(globalWorkflowStyles, /(?:^|\n)\s*\.empty-state\s*\{/);
   assert.doesNotMatch(globalWorkflowStyles, /(?:^|\n)\s*\.ui-empty-state\s*\{/);
   assert.match(primitiveStyles, /\.ui-empty-state-compact\s*\{/);
   assert.match(recruitingStyles, /\.arena-modal-close-button\s*\{\s*min-height:\s*var\(--ui-button-height\);/);
   assert.match(
     matchesStyles,
-    /@media \(max-width:\s*480px\)[\s\S]*?\.om-calendar-filter-row \.segmented-control button\s*\{[\s\S]*?min-height:\s*var\(--ui-button-height\);[\s\S]*?height:\s*var\(--ui-button-height\);/,
+    /@media \(max-width:\s*480px\)[\s\S]*?\.om-calendar-filter-row \.segmented-control button\s*\{[\s\S]*?min-height:\s*var\(--ui-button-height-sm\);[\s\S]*?height:\s*var\(--ui-button-height-sm\);/,
   );
 });
 
@@ -1357,8 +1360,9 @@ test("hero inner boards share one restrained glass surface system", () => {
   );
   assert.match(
     homeDashboardResponsiveStyles,
-    /\.rank-home \.rank-summary-grid,[\s\S]*?background:\s*var\(--ui-schedule-hero-mask\),[\s\S]*?var\(--bg-home-court\)/,
+    /\.rank-home \.rank-summary-grid,[\s\S]*?background:\s*var\(--bg-home-court\)/,
   );
+  assert.doesNotMatch(homeDashboardResponsiveStyles, /var\(--ui-schedule-hero-mask\)/);
 });
 
 test("page heroes keep shared eyebrows without implementation copy", () => {
@@ -1439,7 +1443,7 @@ test("shared primitives own application-wide density, surfaces, and modals", () 
   );
   assert.match(
     primitiveStyles,
-    /\.ui-folder-tabs\s*\{[^}]*width:\s*fit-content;/,
+    /\.ui-folder-tabs\s*\{[^}]*width:\s*100%;/,
   );
   assert.match(
     primitiveStyles,
@@ -1510,11 +1514,12 @@ test("팀 허브 대표팀 보드는 팀 전용 너비와 테마 대응 고대�
   );
 });
 
-test("home information rows use transparent surfaces and shared status rails", () => {
+test("home information rows use transparent surfaces and subtle separators", () => {
   assert.match(homeRailStyles, /\.home-action-list > \.home-action-row/);
   assert.match(homeRailStyles, /\.rank-leaderboard-card \.rank-list > \.rank-row/);
   assert.match(homeRailStyles, /background:\s*transparent/);
-  assert.match(homeRailStyles, /var\(--ui-status-rail-width\)/);
+  assert.match(homeRailStyles, /border-color:\s*transparent transparent var\(--rb-line\)/);
+  assert.match(homeRailStyles, /::before\s*\{\s*content:\s*none;/);
   assert.match(homeRailStyles, /\.home-action-icon\s*\{[^}]*background:\s*transparent/s);
 });
 
@@ -2026,7 +2031,8 @@ test("shared control families and fixed labels keep canonical ownership", () => 
 
   assert.match(sharedControlStyles, /\.ui-segmented-control button/);
   assert.match(uiControlsStyles, /\.ui-folder-tabs button/);
-  assert.match(uiControlsStyles, /\.ui-folder-tabs\s*\{[^}]*width:\s*fit-content;[^}]*max-width:\s*100%;[^}]*border-bottom:\s*0;/);
+  assert.match(uiControlsStyles, /\.ui-folder-tabs\s*\{[^}]*width:\s*100%;[^}]*max-width:\s*100%;[^}]*border-bottom:\s*0;/);
+  assert.match(uiControlsStyles, /\.ui-folder-tabs button\s*\{[^}]*flex:\s*1 1 0;/);
   assert.match(uiControlsStyles, /\.ui-folder-tabs button\[aria-selected="true"\]\s*\{[^}]*background:\s*transparent;[^}]*font-weight:\s*var\(--font-weight-title\);[^}]*box-shadow:\s*none;[^}]*transform:\s*none;/);
   assert.match(uiControlsStyles, /\.ui-segmented-control:not\(\.create-choice-segments\):not\(\[role="radiogroup"\]\)\s*\{[^}]*border:\s*0;[^}]*background:\s*transparent;[^}]*box-shadow:\s*none;/);
   assert.match(uiControlsStyles, /\.ui-segmented-control:not\(\.create-choice-segments\):not\(\[role="radiogroup"\]\) > button:is\(\.active, \[aria-current="page"\], \[aria-selected="true"\]\)\s*\{[^}]*background:\s*transparent;[^}]*font-weight:\s*var\(--font-weight-title\);[^}]*box-shadow:\s*none;/);

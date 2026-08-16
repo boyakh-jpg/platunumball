@@ -1178,7 +1178,8 @@ export default function MatchReceipt({ auth, app }) {
     try {
       const publicId = await ensurePublicDraft(draft, { forClaim: true });
       const returnTo = `${MATCH_RECEIPT_CREATE_RETURN_TO}&receiptDraft=${encodeURIComponent(publicId)}`;
-      navigate(getLoginPath(returnTo));
+      const backTo = `${location.pathname}${location.search}${location.hash}`;
+      navigate(getLoginPath(returnTo, backTo));
     } catch (error) {
       setStatus(error.message === "match_receipt_emblem_sync_failed"
         ? EMBLEM_SHARE_FAILURE_MESSAGE

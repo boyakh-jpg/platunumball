@@ -183,7 +183,7 @@ html[data-theme] .ui-button.ui-button-secondary:active:not(:disabled) {
 
 .ui-folder-tabs {
   display: flex;
-  width: fit-content;
+  width: 100%;
   max-width: 100%;
   align-items: center;
   gap: 0;
@@ -198,7 +198,7 @@ html[data-theme] .ui-button.ui-button-secondary:active:not(:disabled) {
 }
 
 .ui-folder-tabs button {
-  flex: 0 0 auto;
+  flex: 1 1 0;
   min-height: var(--ui-button-height-sm);
   padding: 0 var(--ui-button-padding-x-sm);
   border: 0;
