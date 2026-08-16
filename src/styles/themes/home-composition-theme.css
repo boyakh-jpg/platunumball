@@ -57,15 +57,15 @@ html[data-theme="light"] .app-main {
   color: var(--rb-text);
 }
 html[data-theme="light"] .sidebar {
-  background: rgba(255, 250, 241, 0.94);
-  border-right-color: var(--rb-line);
+  background: var(--ui-rail-bg);
+  border-right-color: transparent;
 }
 html[data-theme="light"] .sidebar-nav a {
   color: var(--rb-muted);
 }
 html[data-theme="light"] .sidebar-nav a.active {
-  border-color: rgba(229, 85, 63, 0.28);
-  background: rgba(229, 85, 63, 0.1);
+  border-color: transparent;
+  background: var(--ui-rail-item-active-bg);
   color: var(--rb-text);
 }
 html[data-theme="light"] .rank-home .rank-summary-grid {

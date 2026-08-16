@@ -86,6 +86,10 @@ h3 {
   color: var(--muted);
 }
 
+.ui-design-app .muted {
+  font-size: var(--font-size-app-support);
+}
+
 .eyebrow {
   font-size: var(--font-size-badge);
   font-weight: var(--font-weight-body);

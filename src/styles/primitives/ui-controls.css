@@ -21,9 +21,9 @@ html[data-theme] .app-main :is(.ui-liquid-glass, .page-header > .ui-button) {
   border: 0;
   background: var(--ui-liquid-glass-bg);
   color: var(--hero-title-color);
-  box-shadow: var(--ui-liquid-glass-shadow);
-  -webkit-backdrop-filter: var(--ui-liquid-glass-filter);
-  backdrop-filter: var(--ui-liquid-glass-filter);
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
   text-shadow: none;
 }
 
@@ -38,43 +38,30 @@ html[data-theme] .app-main .ui-liquid-glass .ui-button.ui-button-secondary {
 }
 
 html[data-theme] .app-main :is(.ui-liquid-glass, .page-header > .ui-button)::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  border-radius: inherit;
-  padding: var(--ui-liquid-glass-edge-width);
-  -webkit-backdrop-filter: var(--ui-liquid-glass-refraction);
-  backdrop-filter: var(--ui-liquid-glass-refraction);
-  background: var(--ui-liquid-glass-edge);
-  -webkit-mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  mask-composite: exclude;
-  pointer-events: none;
+  content: none;
 }
 
 html[data-theme] .app-main .ui-liquid-glass-segments {
-  gap: 0;
-  overflow: hidden;
-  border: var(--ui-stroke-width) solid var(--ui-liquid-glass-divider);
-  border-radius: var(--ui-control-radius);
+  gap: var(--space-1);
+  padding-bottom: var(--ui-stroke-width);
+  overflow: visible;
+  border: 0;
+  border-bottom: var(--ui-stroke-width) solid var(--rb-line);
+  border-radius: 0;
+  background: transparent;
 }
 
 html[data-theme] .app-main .ui-liquid-glass-segments > * {
   border: 0;
   border-radius: 0;
-  background: var(--ui-liquid-glass-bg);
-  -webkit-backdrop-filter: var(--ui-liquid-glass-filter);
-  backdrop-filter: var(--ui-liquid-glass-filter);
+  background: transparent;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 
 html[data-theme] .app-main .ui-liquid-glass-segments > * + * {
-  border-left: var(--ui-stroke-width) solid var(--ui-liquid-glass-divider);
+  border-left: 0;
 }
 
 html[data-theme] .app-main :is(.recent-match-row.result-w, .rank-match-win) {
@@ -127,7 +114,8 @@ html[data-theme] .app-main :is(.recent-match-row.result-d, .rank-match-draw) {
 }
 
 .ui-button-block {
-  width: 100%;
+  width: fit-content;
+  max-width: 100%;
 }
 
 .ui-button.ui-button-sm {
@@ -139,9 +127,9 @@ html[data-theme] .app-main :is(.recent-match-row.result-d, .rank-match-draw) {
 .ui-folder-tabs {
   display: flex;
   width: 100%;
-  align-items: flex-end;
-  gap: var(--space-5);
-  padding: var(--space-2) var(--space-2) 0;
+  align-items: center;
+  gap: 0;
+  padding: 0;
   overflow-x: auto;
   border-bottom: var(--ui-stroke-width) solid var(--ui-control-border);
   scrollbar-width: none;
@@ -152,12 +140,11 @@ html[data-theme] .app-main :is(.recent-match-row.result-d, .rank-match-draw) {
 }
 
 .ui-folder-tabs button {
-  flex: 1 0 auto;
-  min-height: var(--ui-button-height);
-  padding: 0 var(--ui-button-padding-x);
-  border: var(--ui-button-border-width) solid transparent;
-  border-bottom: 0;
-  border-radius: var(--ui-control-radius) var(--ui-control-radius) 0 0;
+  flex: 0 0 auto;
+  min-height: var(--ui-button-height-sm);
+  padding: 0 var(--ui-button-padding-x-sm);
+  border: 0;
+  border-radius: 0;
   background: transparent;
   color: var(--muted);
   font-size: var(--ui-button-font-size);
@@ -167,24 +154,49 @@ html[data-theme] .app-main :is(.recent-match-row.result-d, .rank-match-draw) {
 }
 
 .ui-folder-tabs button:hover:not([aria-selected="true"]) {
-  background: var(--ui-control-bg);
+  background: transparent;
   color: var(--rb-text);
 }
 
 .ui-folder-tabs button[aria-selected="true"] {
-  border-color: var(--ui-control-border);
-  background: var(--rb-bg);
+  border-color: transparent;
+  background: transparent;
   color: var(--rb-text);
-  box-shadow: inset 0 calc(var(--ui-stroke-width) * 3) 0 var(--rb-orange);
-  transform: translateY(var(--ui-stroke-width));
+  box-shadow: inset 0 -2px 0 var(--rb-orange);
+  transform: none;
 }
 
 :is(.ui-folder-tabs button, .ui-segmented-control button, button.ui-choice-tile) {
   transition:
     border-color 140ms ease,
     background-color 140ms ease,
-    color 140ms ease,
-    transform 140ms ease;
+    color 140ms ease;
+}
+
+html[data-theme] .app-main .ui-segmented-control {
+  gap: 0;
+  padding: 0;
+  border: 0;
+  border-bottom: var(--ui-stroke-width) solid var(--rb-line);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+html[data-theme] .app-main .ui-segmented-control > button {
+  min-height: var(--ui-button-height-sm);
+  padding: 0 var(--ui-button-padding-x-sm);
+  border: 0;
+  border-radius: 0;
+  color: var(--rb-muted);
+  background: transparent;
+  box-shadow: none;
+}
+
+html[data-theme] .app-main .ui-segmented-control > button:is(.active, [aria-current="page"], [aria-selected="true"]) {
+  color: var(--rb-text);
+  background: transparent;
+  box-shadow: inset 0 -2px 0 var(--rb-orange);
 }
 
 .ui-folder-tabs button:focus-visible {
@@ -551,4 +563,203 @@ input[type="checkbox"]:hover:not(:disabled) {
   background: var(--ui-control-group-bg);
   border: var(--ui-control-group-border-width) solid var(--ui-control-group-border);
   border-radius: var(--ui-control-group-radius);
+}
+
+/* Shared application density and readability rules. Room slots and receipt output
+   keep their dedicated component styles. */
+html[data-theme] body,
+html[data-theme] #root,
+html[data-theme] .app-main {
+  background-color: var(--rb-bg);
+}
+
+html[data-theme] .app-main .ui-page-hero {
+  isolation: isolate;
+}
+
+html[data-theme] .app-main .ui-page-hero .ui-page-hero__copy,
+.guest-landing-hero-copy {
+  position: relative;
+  z-index: 1;
+  max-width: min(100%, 64rem);
+}
+
+html[data-theme] .app-main .ui-page-hero :is(h1, h2),
+.guest-landing-hero h1 {
+  max-width: 18ch;
+  color: var(--hero-title-color);
+  font-family: var(--hero-title-font);
+  font-size: var(--hero-title-size);
+  line-height: var(--hero-title-line-height);
+  letter-spacing: var(--hero-title-letter-spacing);
+  text-shadow: var(--hero-title-shadow);
+  text-wrap: balance;
+}
+
+html[data-theme] .app-main .ui-page-hero .ui-page-hero__copy > p:not(.eyebrow),
+.guest-landing-hero-copy > p:not(.guest-landing-eyebrow) {
+  max-width: 62ch;
+  color: var(--hero-copy-color);
+  font-size: var(--font-size-body);
+  line-height: 1.55;
+  text-shadow: var(--hero-copy-shadow);
+}
+
+html[data-theme] :is(.ui-design-app, .ui-design-host) .eyebrow,
+.guest-landing-eyebrow {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-control);
+  letter-spacing: 0.04em;
+  text-transform: none;
+}
+
+html[data-theme] .auth-shell {
+  padding:
+    max(16px, env(safe-area-inset-top))
+    max(16px, env(safe-area-inset-right))
+    max(16px, env(safe-area-inset-bottom))
+    max(16px, env(safe-area-inset-left));
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--rb-bg) 94%, transparent),
+      color-mix(in srgb, var(--rb-bg) 78%, transparent)
+    ),
+    var(--bg-court) var(--hero-bg-position-court) / var(--hero-bg-size) no-repeat,
+    var(--rb-bg);
+}
+
+html[data-theme] .auth-card {
+  width: min(440px, 100%);
+  gap: 14px;
+  padding: 20px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--rb-bg-2) 96%, transparent);
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+html[data-theme] .auth-form {
+  gap: 12px;
+}
+
+html[data-theme] .auth-form h1 {
+  font-size: clamp(1.75rem, 6vw, 2.2rem);
+  line-height: 1.05;
+}
+
+html[data-theme] .social-login-grid {
+  gap: 8px;
+}
+
+html[data-theme] .provider-button {
+  min-height: var(--ui-button-height);
+  border: 0;
+  border-radius: var(--ui-button-radius);
+  background: var(--ui-button-bg);
+  color: var(--ui-button-color);
+  font-size: var(--ui-button-font-size);
+  font-weight: var(--ui-button-font-weight);
+  transform: none;
+  box-shadow: none;
+  transition:
+    background-color 140ms ease,
+    color 140ms ease;
+}
+
+html[data-theme] .provider-button:hover,
+html[data-theme] .provider-button:active {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--ui-button-bg) 82%, var(--rb-text));
+  transform: none;
+}
+
+html[data-theme] .provider-button span {
+  width: 22px;
+  height: 22px;
+  font-size: var(--font-size-caption);
+}
+
+.ui-help-disclosure {
+  position: relative;
+  display: inline-flex;
+  width: fit-content;
+  max-width: 100%;
+  vertical-align: middle;
+}
+
+.ui-help-disclosure > summary {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: var(--ui-button-bg);
+  color: var(--rb-muted);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-control);
+  list-style: none;
+  cursor: help;
+}
+
+.ui-help-disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+
+.ui-help-disclosure > summary:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--rb-orange-2) 72%, transparent);
+  outline-offset: 2px;
+}
+
+.ui-help-disclosure-copy {
+  position: absolute;
+  z-index: 60;
+  top: 50%;
+  left: calc(100% + 6px);
+  display: none;
+  width: min(260px, calc(100vw - 32px));
+  padding: 8px 10px;
+  border: var(--ui-stroke-width) solid var(--rb-line);
+  border-radius: var(--radius-xs);
+  background: var(--rb-bg-2);
+  box-shadow: var(--shadow);
+  color: var(--rb-text);
+  font-size: var(--font-size-app-support);
+  font-weight: var(--font-weight-support);
+  line-height: 1.45;
+  transform: translateY(-50%);
+}
+
+.ui-help-disclosure[open] > .ui-help-disclosure-copy {
+  display: block;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ui-help-disclosure:hover > .ui-help-disclosure-copy,
+  .ui-help-disclosure:focus-within > .ui-help-disclosure-copy {
+    display: block;
+  }
+}
+
+@media (max-width: 760px) {
+  .ui-button-block {
+    width: 100%;
+  }
+
+  html[data-theme] .app-main .ui-page-hero :is(h1, h2),
+  .guest-landing-hero h1 {
+    font-size: var(--hero-title-size-mobile);
+  }
+
+  .ui-help-disclosure-copy {
+    top: calc(100% + 6px);
+    right: auto;
+    left: 0;
+    transform: none;
+  }
 }

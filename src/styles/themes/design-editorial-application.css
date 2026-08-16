@@ -121,7 +121,7 @@
 [data-design="editorial"] .ui-design-app {
   --ui-design-app-page-gap: var(--page-section-gap);
   --ui-design-app-inner-gap: var(--page-section-gap-mobile);
-  --ui-design-app-heading-size: clamp(1.35rem, 2.4vw, 2rem);
+  --ui-design-app-heading-size: var(--font-size-app-section-title);
   --ui-design-app-section-rule: color-mix(in srgb, var(--text) 18%, transparent);
   --ui-design-surface-border-width: var(--ui-card-border-width);
   --ui-design-section-rule-space: calc(var(--card-padding) * 2);

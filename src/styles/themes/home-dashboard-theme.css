@@ -225,29 +225,35 @@ body {
   color: var(--rb-text);
 }
 .sidebar {
-  border-right: var(--ui-stroke-width) solid var(--rb-line);
-  background: rgba(24, 25, 26, 0.94);
+  border-right: 0;
+  background: var(--ui-rail-bg);
   box-shadow: none;
-  backdrop-filter: blur(18px);
+  backdrop-filter: none;
 }
 .sidebar-nav a {
-  min-height: 44px;
-  border: var(--ui-stroke-width) solid transparent;
+  min-height: var(--ui-button-height);
+  border: 0;
   border-radius: var(--radius-xs);
   color: var(--rb-muted);
 }
+.sidebar-nav a:hover {
+  background: var(--ui-rail-item-hover-bg);
+}
 .sidebar-nav a.active {
-  border-color: rgba(240, 90, 70, 0.35);
-  background: rgba(240, 90, 70, 0.14);
+  border-color: transparent;
+  background: var(--ui-rail-item-active-bg);
   color: var(--rb-text);
   box-shadow: none;
 }
 .sidebar-profile,
 .sidebar-signout {
   border-radius: var(--radius-md);
-  border-color: var(--rb-line);
-  background: rgba(255, 255, 255, 0.045);
+  border: 0;
+  background: transparent;
   box-shadow: none;
+}
+.sidebar-signout:hover {
+  background: var(--ui-rail-item-hover-bg);
 }
 .modal {
   border: var(--ui-stroke-width) solid var(--rb-line);

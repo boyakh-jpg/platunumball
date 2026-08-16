@@ -94,7 +94,7 @@
 [data-design="classic"] .ui-design-app {
   --ui-design-app-page-gap: var(--page-section-gap);
   --ui-design-app-inner-gap: var(--page-section-gap-mobile);
-  --ui-design-app-heading-size: clamp(1.35rem, 2.4vw, 2rem);
+  --ui-design-app-heading-size: var(--font-size-app-section-title);
 }
 
 [data-design="classic"] .ui-design-app > .page-stack {

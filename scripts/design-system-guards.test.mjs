@@ -583,8 +583,9 @@ test("record result cards share matchup and date mode court metadata", () => {
 });
 
 test("표면 선 두께는 공통 토큰을 사용하고 방 모달은 뱃지를 건드리지 않는다", () => {
-  assert.match(tokenStyles, /--ui-card-border-width:\s*1px;/);
-  assert.match(tokenStyles, /--ui-button-border-width:\s*1px;/);
+  assert.match(tokenStyles, /--ui-card-border-width:\s*0px;/);
+  assert.match(tokenStyles, /--ui-button-border-width:\s*0px;/);
+  assert.match(tokenStyles, /--ui-control-group-border-width:\s*0px;/);
   assert.match(tokenStyles, /--ui-room-modal-border-width:\s*1px;/);
   assert.match(primitiveStyles, /\.ui-card\s*\{[\s\S]*?border:\s*var\(--ui-card-border-width\) solid var\(--ui-card-border\);/);
   assert.match(primitiveStyles, /\.ui-button\s*\{[\s\S]*?border:\s*var\(--ui-button-border-width\) solid var\(--ui-button-border\);/);
@@ -639,10 +640,10 @@ test("모든 페이지는 공용 의미 굵기 위계를 사용하고 명시형 
   const forbiddenWeights = [];
 
   assert.match(tokenStyles, /--font-weight-min:\s*500;/);
-  assert.match(tokenStyles, /--font-weight-support:\s*600;/);
-  assert.match(tokenStyles, /--font-weight-body:\s*700;/);
-  assert.match(tokenStyles, /--font-weight-control:\s*800;/);
-  assert.match(tokenStyles, /--font-weight-title:\s*900;/);
+  assert.match(tokenStyles, /--font-weight-support:\s*550;/);
+  assert.match(tokenStyles, /--font-weight-body:\s*650;/);
+  assert.match(tokenStyles, /--font-weight-control:\s*700;/);
+  assert.match(tokenStyles, /--font-weight-title:\s*850;/);
   assert.match(bodyRule, /font-weight:\s*var\(--font-weight-body\);/);
 
   for (const file of styleFiles) {
@@ -678,16 +679,16 @@ test("모든 페이지는 공용 의미 굵기 위계를 사용하고 명시형 
 
 test("KBO는 스포츠 표시, Pretendard는 읽기와 조작 UI에 사용한다", () => {
   assert.match(tokenStyles, /--font-weight-min:\s*500;/);
-  assert.match(tokenStyles, /--font-weight-support:\s*600;/);
-  assert.match(tokenStyles, /--font-weight-body:\s*700;/);
-  assert.match(tokenStyles, /--font-weight-control:\s*800;/);
-  assert.match(tokenStyles, /--font-weight-title:\s*900;/);
+  assert.match(tokenStyles, /--font-weight-support:\s*550;/);
+  assert.match(tokenStyles, /--font-weight-body:\s*650;/);
+  assert.match(tokenStyles, /--font-weight-control:\s*700;/);
+  assert.match(tokenStyles, /--font-weight-title:\s*850;/);
   assert.match(tokenStyles, /--font-weight-sports:\s*700;/);
   assert.match(tokenStyles, /--font-size-caption:\s*0\.72rem;/);
   assert.match(tokenStyles, /--font-size-control:\s*0\.78rem;/);
   assert.match(tokenStyles, /--font-size-meta:\s*0\.82rem;/);
-  assert.match(tokenStyles, /--font-size-body:\s*1rem;/);
-  assert.match(tokenStyles, /--font-size-section-title:\s*1\.5rem;/);
+  assert.match(tokenStyles, /--font-size-body:\s*0\.9375rem;/);
+  assert.match(tokenStyles, /--font-size-section-title:\s*1\.25rem;/);
   assert.match(
     foundationStyles,
     /body\s*\{[^}]*font-family:\s*var\(--font-body\);[^}]*font-size:\s*var\(--font-size-body\);[^}]*font-weight:\s*var\(--font-weight-body\);/,
@@ -716,12 +717,27 @@ test("공용 CTA는 ui-button-block 하나로 너비만 확장한다", () => {
   assert.equal(countClassToken(pageSources.matches, "ui-button-block"), 2);
   assert.equal(countClassToken(pageSources.recruiting, "ui-button-block"), 2);
   assert.equal(countClassToken(pageSources.season, "ui-button-block"), 1);
-  assert.match(primitiveStyles, /\.ui-button-block\s*\{\s*width:\s*100%;\s*\}/);
+  assert.match(primitiveStyles, /\.ui-button-block\s*\{\s*width:\s*fit-content;\s*max-width:\s*100%;\s*\}/);
+  assert.match(primitiveStyles, /@media \(max-width:\s*760px\)[\s\S]*?\.ui-button-block\s*\{\s*width:\s*100%;\s*\}/);
   assert.doesNotMatch(allStyleSources, /\.season-play-report > a\s*\{[^}]*display:\s*block/);
   assert.doesNotMatch(allStyleSources, /\.ranking-name span\s*\{/);
   for (const source of [pageSources.home, pageSources.matches, pageSources.recruiting]) {
     assert.match(source, /to="\/app\/create\?intent=record" variant="secondary"/);
   }
+});
+
+test("데스크톱 side rail은 공용 중성 표면과 무테 활성 상태를 사용한다", () => {
+  const dashboardThemeStyles = read("src/styles/themes/home-dashboard-theme.css");
+  const compositionThemeStyles = read("src/styles/themes/home-composition-theme.css");
+
+  assert.equal(count(tokenStyles, "--ui-rail-bg:"), 2);
+  assert.equal(count(tokenStyles, "--ui-rail-item-hover-bg:"), 2);
+  assert.equal(count(tokenStyles, "--ui-rail-item-active-bg:"), 2);
+  assert.match(dashboardThemeStyles, /\.sidebar\s*\{[^}]*border-right:\s*0;[^}]*background:\s*var\(--ui-rail-bg\);[^}]*backdrop-filter:\s*none;/);
+  assert.match(dashboardThemeStyles, /\.sidebar-nav a\s*\{[^}]*min-height:\s*var\(--ui-button-height\);[^}]*border:\s*0;/);
+  assert.match(dashboardThemeStyles, /\.sidebar-nav a\.active\s*\{[^}]*background:\s*var\(--ui-rail-item-active-bg\);/);
+  assert.match(dashboardThemeStyles, /\.sidebar-profile,[\s\S]*?\.sidebar-signout\s*\{[^}]*border:\s*0;[^}]*background:\s*transparent;/);
+  assert.match(compositionThemeStyles, /html\[data-theme="light"\] \.sidebar\s*\{[^}]*background:\s*var\(--ui-rail-bg\);[^}]*border-right-color:\s*transparent;/);
 });
 
 test("공용 버튼과 badge 라벨은 한 줄을 유지한다", () => {
@@ -1220,35 +1236,31 @@ test("home Season Zero banner routes by founding player status", () => {
   assert.doesNotMatch(pageSources.playerDetail, /foundingPlayer|FOUNDING PLAYER/);
 });
 
-test("hero inner boards share one readable liquid-glass system", () => {
+test("hero inner boards share one readable flat surface system", () => {
   assert.equal(count(tokenStyles, "--hero-copy-color: var(--rb-cream);"), 2);
-  assert.equal(count(tokenStyles, "0 2px 3px rgba(5, 7, 10, 0.84)"), 1);
-  assert.equal(count(tokenStyles, "0 6px 18px rgba(0, 0, 0, 0.32)"), 1);
-  assert.equal(count(tokenStyles, "0 1px 2px rgba(5, 7, 10, 0.84)"), 1);
-  assert.equal(count(tokenStyles, "0 3px 8px rgba(0, 0, 0, 0.28)"), 1);
-  assert.match(tokenStyles, /html\[data-theme="light"\][\s\S]*?--hero-title-color:\s*var\(--rb-cream\);[\s\S]*?--hero-eyebrow-color:\s*var\(--rb-orange-pressed\);[\s\S]*?--hero-title-shadow:\s*none;[\s\S]*?--hero-copy-color:\s*var\(--rb-cream\);[\s\S]*?--hero-copy-shadow:\s*none;/);
+  assert.equal(count(tokenStyles, "0 2px 3px rgba(5, 7, 10, 0.84)"), 2);
+  assert.equal(count(tokenStyles, "0 6px 18px rgba(0, 0, 0, 0.32)"), 2);
+  assert.equal(count(tokenStyles, "0 1px 2px rgba(5, 7, 10, 0.84)"), 2);
+  assert.equal(count(tokenStyles, "0 3px 8px rgba(0, 0, 0, 0.28)"), 2);
   assert.doesNotMatch(tokenStyles, /--hero-title-shadow:[\s\S]{0,100}?14px 34px/);
   assert.doesNotMatch(tokenStyles, /--hero-copy-shadow:[\s\S]{0,100}?8px 20px/);
-  assert.equal(count(tokenStyles, "--ui-liquid-glass-filter: blur(0.75px) saturate(1.02);"), 2);
-  assert.equal(count(tokenStyles, "--ui-liquid-glass-edge-width: 1px;"), 2);
-  assert.equal(count(tokenStyles, "--ui-liquid-glass-refraction: url(\"#ui-liquid-glass-refraction\");"), 2);
+  assert.equal(count(tokenStyles, "--ui-liquid-glass-filter: none;"), 2);
+  assert.equal(count(tokenStyles, "--ui-liquid-glass-edge-width: 0px;"), 2);
+  assert.equal(count(tokenStyles, "--ui-liquid-glass-refraction: none;"), 2);
+  assert.equal(count(tokenStyles, "--ui-liquid-glass-shadow: none;"), 2);
+  assert.equal(count(tokenStyles, "--ui-liquid-glass-edge: none;"), 2);
   assert.match(tokenStyles, /--ui-hero-status-width:\s*428px;/);
   assert.match(tokenStyles, /--ui-hero-metric-min-height:\s*72px;/);
   assert.doesNotMatch(tokenStyles, /--ui-liquid-glass-(?:caustic|edge-inset|refraction-inner)/);
-  assert.match(tokenStyles, /--ui-liquid-glass-edge:\s*[\s\S]*?linear-gradient\(135deg/);
-  assert.match(appSource, /id="ui-liquid-glass-refraction"/);
-  assert.match(appSource, /<feTurbulence[^>]*type="fractalNoise"[^>]*baseFrequency="0\.008 0\.018"/);
-  assert.match(appSource, /<feDisplacementMap[^>]*in="SourceGraphic"[^>]*scale="1\.25"/);
   assert.match(tokenStyles, /--ui-liquid-glass-divider:\s*rgba\(255,\s*255,\s*255,\s*0\.11\);/);
   assert.match(tokenStyles, /--ui-liquid-glass-divider:\s*rgba\(35,\s*50,\s*59,\s*0\.12\);/);
-  assert.match(primitiveStyles, /html\[data-theme\] \.app-main :is\(\.ui-liquid-glass,\s*\.page-header > \.ui-button\)\s*\{[^}]*border:\s*0;[^}]*backdrop-filter:\s*var\(--ui-liquid-glass-filter\);/);
+  assert.match(primitiveStyles, /html\[data-theme\] \.app-main :is\(\.ui-liquid-glass,\s*\.page-header > \.ui-button\)\s*\{[^}]*border:\s*0;[^}]*box-shadow:\s*none;[^}]*backdrop-filter:\s*none;/);
   assert.match(primitiveStyles, /html\[data-theme\] \.app-main :is\(\.ui-liquid-glass,\s*\.page-header > \.ui-button\)\s*\{[^}]*text-shadow:\s*none;/);
   assert.match(primitiveStyles, /html\[data-theme\] \.app-main \.ui-liquid-glass :where\(\*\)\s*\{[^}]*text-shadow:\s*none;/);
-  assert.match(primitiveStyles, /html\[data-theme\] \.app-main :is\(\.ui-liquid-glass,\s*\.page-header > \.ui-button\)::before\s*\{/);
-  assert.match(primitiveStyles, /padding:\s*var\(--ui-liquid-glass-edge-width\);/);
-  assert.match(primitiveStyles, /backdrop-filter:\s*var\(--ui-liquid-glass-refraction\);/);
-  assert.match(primitiveStyles, /\.app-main \.ui-liquid-glass-segments\s*\{[^}]*border:\s*var\(--ui-stroke-width\) solid var\(--ui-liquid-glass-divider\);/);
-  assert.match(primitiveStyles, /\.app-main \.ui-liquid-glass-segments > \* \+ \*\s*\{[^}]*border-left:\s*var\(--ui-stroke-width\) solid var\(--ui-liquid-glass-divider\);/);
+  assert.match(primitiveStyles, /html\[data-theme\] \.app-main :is\(\.ui-liquid-glass,\s*\.page-header > \.ui-button\)::before\s*\{\s*content:\s*none;/);
+  assert.match(primitiveStyles, /\.app-main \.ui-liquid-glass-segments\s*\{[^}]*border:\s*0;[^}]*border-bottom:\s*var\(--ui-stroke-width\) solid var\(--rb-line\);[^}]*border-radius:\s*0;[^}]*background:\s*transparent;/);
+  assert.match(primitiveStyles, /\.app-main \.ui-liquid-glass-segments > \*\s*\{[^}]*border:\s*0;[^}]*border-radius:\s*0;[^}]*background:\s*transparent;[^}]*box-shadow:\s*none;/);
+  assert.match(primitiveStyles, /\.app-main \.ui-liquid-glass-segments > \* \+ \*\s*\{[^}]*border-left:\s*0;/);
   assert.match(pageSources.home, /home-hero-board ui-liquid-glass/);
   assert.match(pageSources.teams, /team-hub-board ui-liquid-glass/);
   assert.match(pageSources.matches, /om-match-panel ui-liquid-glass[\s\S]*om-match-stats ui-liquid-glass-segments/);
@@ -1275,8 +1287,8 @@ test("hero inner boards share one readable liquid-glass system", () => {
   assert.match(landingGuestStyles, /@media \(max-width:\s*760px\)[\s\S]*?\.guest-landing-record-flow,[\s\S]*?width:\s*calc\(100% - 24px\);/);
   assert.match(landingGuestStyles, /@media \(max-width:\s*760px\)[\s\S]*?\.guest-landing-mobile-scoreboard \.ui-match-clock-scoreboard\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*0\.78fr\) minmax\(84px,\s*1\.12fr\) minmax\(0,\s*0\.78fr\);/);
   assert.doesNotMatch(landingGuestStyles, /\.guest-landing-mobile-cta|position:\s*fixed;/);
-  assert.equal(count(primitiveStyles, "-webkit-mask-composite: xor;"), 1);
-  assert.equal(count(primitiveStyles, "mask-composite: exclude;"), 1);
+  assert.equal(count(primitiveStyles, "-webkit-mask-composite: xor;"), 0);
+  assert.equal(count(primitiveStyles, "mask-composite: exclude;"), 0);
 });
 
 test("page heroes keep shared eyebrows without implementation copy", () => {
@@ -1878,7 +1890,7 @@ test("shared control families and fixed labels keep canonical ownership", () => 
 
   assert.match(sharedControlStyles, /\.ui-segmented-control button/);
   assert.match(uiControlsStyles, /\.ui-folder-tabs button/);
-  assert.match(uiControlsStyles, /\.ui-folder-tabs button\[aria-selected="true"\][\s\S]*?background:\s*var\(--rb-bg\)/);
+  assert.match(uiControlsStyles, /\.ui-folder-tabs button\[aria-selected="true"\][\s\S]*?background:\s*transparent;[\s\S]*?box-shadow:\s*inset 0 -2px 0 var\(--rb-orange\);[\s\S]*?transform:\s*none;/);
   assert.match(sharedControlStyles, /button\.ui-choice-tile/);
   assert.match(sharedControlStyles, /\.ui-compact-action/);
   assert.doesNotMatch(sharedControlStyles, /\.(?:create-mode-grid|favorite-type-grid|referee-exam-choice-grid) button/);

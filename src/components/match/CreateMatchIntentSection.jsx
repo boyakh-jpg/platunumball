@@ -1,3 +1,5 @@
+import HelpDisclosure from "../common/HelpDisclosure.jsx";
+
 export function CreateMatchIntentSection({ context }) {
   const {
     Badge, Card, ClipboardList, Globe2, Lock, MatchIntentPresetSelector, RECORD_COMPOSITION_OPTIONS,
@@ -198,8 +200,8 @@ export function CreateMatchIntentSection({ context }) {
               </>
             )}
           </div>
-          {practiceMode ? <p className="form-helper">연습에서는 비공개 경기방만 사용합니다. 경기 목적·팀 구성·시계 규칙은 직접 바꿔볼 수 있습니다.</p> : null}
-          {hasTeamChallenge ? <p className="form-helper">라이벌 매치는 비공개 팀전으로 고정됩니다.</p> : null}
+          {practiceMode ? <HelpDisclosure>연습에서는 비공개 경기방만 사용합니다. 경기 목적·팀 구성·시계 규칙은 직접 바꿔볼 수 있습니다.</HelpDisclosure> : null}
+          {hasTeamChallenge ? <HelpDisclosure>라이벌 매치는 비공개 팀전으로 고정됩니다.</HelpDisclosure> : null}
           {isStandardCreateWizard ? (
             <div className="match-intent-preset-section">
               <MatchIntentPresetSelector
@@ -318,7 +320,7 @@ export function CreateMatchIntentSection({ context }) {
                   </span>
                 </button>
               </div>
-              <p className="form-helper">공개 기록도 모집·일정 목록에는 노출되지 않으며 MMR과 공식 통계에 반영되지 않습니다.</p>
+              <HelpDisclosure>공개 기록도 모집·일정 목록에는 노출되지 않으며 MMR과 공식 통계에 반영되지 않습니다.</HelpDisclosure>
             </div>
           ) : null}
         </Card>

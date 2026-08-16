@@ -1,5 +1,6 @@
 import Badge from "../common/Badge.jsx";
 import Card from "../common/Card.jsx";
+import HelpDisclosure from "../common/HelpDisclosure.jsx";
 import { PLAYER_STAT_FIELDS } from "../../lib/constants.js";
 import { filterProfileRecords, groupProfileRecordsByCourt, summarizeProfileRecords } from "../../lib/matchUtils.js";
 
@@ -177,8 +178,8 @@ export default function ProfileRecordSummaryCard({
         </div>
       ) : null}
       {recordFolder === "official" && officialSection === "venue" && !venueGroups.length ? <div className="ui-empty-state-compact">최근 6개월 공식 경기장 기록이 없습니다.</div> : null}
-      {recordFolder === "personal" ? <p className="form-helper">직접 만든 기록만 합산합니다. 공식 통계·업적·MMR에는 포함되지 않습니다.</p> : null}
-      {["no_referee", "postgame"].includes(recordFolder) ? <p className="form-helper">개인 스탯을 만들지 않는 기록 유형이라 점수 통계만 표시합니다.</p> : null}
+      {recordFolder === "personal" ? <HelpDisclosure>직접 만든 기록만 합산합니다. 공식 통계·업적·MMR에는 포함되지 않습니다.</HelpDisclosure> : null}
+      {["no_referee", "postgame"].includes(recordFolder) ? <HelpDisclosure>개인 스탯을 만들지 않는 기록 유형이라 점수 통계만 표시합니다.</HelpDisclosure> : null}
     </Card>
   );
 }
