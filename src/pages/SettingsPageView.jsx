@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ArrowRightLeft, Link2, LogOut, Trash2 } from "lucide-react";
 import Button from "../components/common/Button.jsx";
 import ModalShell from "../components/common/ModalShell.jsx";
@@ -12,6 +12,8 @@ import SettingsActivityDialog from "./SettingsActivityDialog.jsx";
 import SettingsListDialog from "./SettingsListDialog.jsx";
 
 export default function SettingsPageView({ controller, auth }) {
+  const location = useLocation();
+  const navigate = useNavigate();
   const { sectionMeta, settingsSection, selectedReportCourtRequest } = controller;
   const canSwitchTestAccount = controller.serverAdminLevel >= 100 || Boolean(controller.currentTestLoginId);
   const [activityDetail, setActivityDetail] = useState(null);
@@ -19,13 +21,31 @@ export default function SettingsPageView({ controller, auth }) {
   const [testLoginId, setTestLoginId] = useState(() => controller.currentTestLoginId || auth?.testAccounts?.[0]?.id || "");
   const [testSwitchStatus, setTestSwitchStatus] = useState("");
   const [identityStatus, setIdentityStatus] = useState("");
+  const [identityStatusTone, setIdentityStatusTone] = useState("");
   const [withdrawalOpen, setWithdrawalOpen] = useState(false);
   const [withdrawalAcknowledged, setWithdrawalAcknowledged] = useState(false);
   const [withdrawalStatus, setWithdrawalStatus] = useState("");
   const linkedProviderIds = auth?.linkedProviderIds ?? [];
-  const connectableProviders = (auth?.enabledProviders ?? [])
-    .filter((provider) => !linkedProviderIds.includes(provider.id));
+  const enabledProviders = auth?.enabledProviders ?? [];
+  const requestedProviderId = new URLSearchParams(location.search).get("connectProvider") ?? "";
+  const validRequestedProviderId = enabledProviders.some((provider) => provider.id === requestedProviderId)
+    ? requestedProviderId
+    : "";
+  const requestedProviderLinked = Boolean(validRequestedProviderId && linkedProviderIds.includes(validRequestedProviderId));
+  const connectableProviders = enabledProviders
+    .filter((provider) => !linkedProviderIds.includes(provider.id))
+    .sort((left, right) => Number(right.id === validRequestedProviderId) - Number(left.id === validRequestedProviderId));
   useBodyScrollLock(withdrawalOpen || Boolean(activityList) || Boolean(activityDetail));
+
+  useEffect(() => {
+    if (!requestedProviderLinked) return;
+    setIdentityStatus(`${getAuthProviderLabel(validRequestedProviderId)} 로그인을 같은 프로필에 연결했습니다.`);
+    setIdentityStatusTone("success");
+    const nextParams = new URLSearchParams(location.search);
+    nextParams.delete("connectProvider");
+    const nextSearch = nextParams.toString();
+    navigate(`${location.pathname}${nextSearch ? `?${nextSearch}` : ""}`, { replace: true });
+  }, [location.pathname, location.search, navigate, requestedProviderLinked, validRequestedProviderId]);
 
   const switchTestAccount = async (event) => {
     event.preventDefault();
@@ -52,9 +72,14 @@ export default function SettingsPageView({ controller, auth }) {
 
   const linkIdentity = async (providerId) => {
     setIdentityStatus("");
-    const result = await auth.linkIdentityWithProvider(providerId, "/app/settings?section=main");
+    setIdentityStatusTone("");
+    const returnTo = providerId === validRequestedProviderId
+      ? `/app/settings?section=main&connectProvider=${encodeURIComponent(providerId)}`
+      : "/app/settings?section=main";
+    const result = await auth.linkIdentityWithProvider(providerId, returnTo);
     if (!result?.ok && result?.error !== "auth_action_pending") {
       setIdentityStatus(result?.message || "로그인 연결을 시작하지 못했습니다.");
+      setIdentityStatusTone("error");
     }
   };
 
@@ -101,6 +126,11 @@ export default function SettingsPageView({ controller, auth }) {
       ) : null}
       {settingsSection === "main" && auth?.configured && !controller.currentTestLoginId ? (
         <section className="settings-auth-identities" aria-labelledby="settings-auth-identities-title">
+          {validRequestedProviderId && !requestedProviderLinked ? (
+            <p className="settings-auth-recovery-callout">
+              기존 아이디로 로그인했습니다. 이제 {getAuthProviderLabel(validRequestedProviderId)} 로그인을 이 프로필에 연결하세요.
+            </p>
+          ) : null}
           <div className="settings-auth-identities-copy">
             <p className="eyebrow">LOGIN CONNECTION</p>
             <h2 id="settings-auth-identities-title">연결된 로그인</h2>
@@ -124,11 +154,15 @@ export default function SettingsPageView({ controller, auth }) {
                 disabled={auth.authActionPending}
                 onClick={() => void linkIdentity(provider.id)}
               >
-                <Link2 size={16} /> {provider.label} 연결
+                <Link2 size={16} /> {provider.id === validRequestedProviderId ? "연결 마무리" : `${provider.label} 연결`}
               </Button>
             ))}
           </div>
-          {identityStatus ? <p className="form-status form-status-error" role="alert">{identityStatus}</p> : null}
+          {identityStatus ? (
+            <p className={`form-status${identityStatusTone === "error" ? " form-status-error" : ""}`} role="status">
+              {identityStatus}
+            </p>
+          ) : null}
         </section>
       ) : null}
       {settingsSection === "main" && auth ? (

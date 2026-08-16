@@ -44,6 +44,7 @@ import profileDiscordDm from "../server/api/profile/discord-dm.js";
 import profileAchievements from "../server/api/profile/achievements.js";
 import profileAffiliation from "../server/api/profile/affiliation.js";
 import profileMe from "../server/api/profile/me.js";
+import profileReleaseOnboardingIdentity from "../server/api/profile/release-onboarding-identity.js";
 import profileUpsert from "../server/api/profile/upsert.js";
 import profileWithdraw from "../server/api/profile/withdraw.js";
 import recordList from "../server/api/records/list.js";
@@ -119,6 +120,7 @@ export const API_ROUTES = new Map([
   ["/profile/achievements", route(profileAchievements, ["POST"], "user")],
   ["/profile/affiliation", route(profileAffiliation, ["POST"], "user")],
   ["/profile/me", route(profileMe, ["POST"], "user")],
+  ["/profile/release-onboarding-identity", route(profileReleaseOnboardingIdentity, ["POST"], "user")],
   ["/profile/upsert", route(profileUpsert, ["POST"], "user")],
   ["/profile/withdraw", route(profileWithdraw, ["POST"], "user")],
   ["/records/list", route(recordList, ["POST"], "user")],

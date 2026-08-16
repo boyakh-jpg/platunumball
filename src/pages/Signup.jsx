@@ -8,6 +8,11 @@ import ProfileBasicsFields from "../components/profile/ProfileBasicsFields.jsx";
 import { BASKETBALL_POSITIONS } from "../lib/constants.js";
 import { getUserHashtag, hasReservedOperatorIdentity, makeRandomDigitSuffix, makeSuggestedHashtagBody, PROFILE_HASHTAG_MIN_LENGTH, sameHashtag, stripHandle, toHashtag } from "../lib/handles.js";
 import {
+  getAuthProviderLabel,
+  getAuthProviderProfileName,
+  getSingleRecoverableProviderId,
+} from "../lib/authProviders.js";
+import {
   AGE_GROUPS,
   canChangeProfileName,
   formatProfileDate,
@@ -40,12 +45,14 @@ export default function Signup({ app, auth }) {
   const navigate = useNavigate();
   const location = useLocation();
   const user = app.currentUser;
+  const providerProfileName = !user.onboardingComplete ? getAuthProviderProfileName(auth?.user) : "";
+  const recoverableProviderId = !user.onboardingComplete ? getSingleRecoverableProviderId(auth?.user) : "";
   const redirectTo = getAppRedirectFromLocation(location, "/app/profile");
   const inferredRegion = inferRegionSelection([user.regionSido, user.regionDistrict, user.region].filter(Boolean).join(" "));
   const [suggestionSuffix] = useState(makeRandomDigitSuffix);
   const [handleTouched, setHandleTouched] = useState(() => Boolean(stripHandle(user.hashtag ?? user.handle ?? "")));
   const [draft, setDraft] = useState(() => ({
-    name: user.name ?? "",
+    name: providerProfileName || user.name || "",
     handle: getInitialHandleBody(user, suggestionSuffix, app.state.users),
     birthYear: user.birthYear ?? "",
     position: BASKETBALL_POSITIONS.includes(user.position) ? user.position : "PG",
@@ -56,6 +63,10 @@ export default function Signup({ app, auth }) {
   const [profileSavePending, setProfileSavePending] = useState(false);
   const profileSavePendingRef = useRef(false);
   const [redirectAfterSave, setRedirectAfterSave] = useState(false);
+  const [accountRecoveryOpen, setAccountRecoveryOpen] = useState(false);
+  const [accountRecoveryPending, setAccountRecoveryPending] = useState(false);
+  const [accountRecoveryError, setAccountRecoveryError] = useState("");
+  const providerNameAppliedRef = useRef(false);
   const ageGroup = getAgeGroupByBirthYear(draft.birthYear) ?? user.ageGroup ?? "open";
   const ageGroupLabel = getAgeGroupLabel(ageGroup);
   const ageGroupSeason = getAgeGroupSeasonForDate();
@@ -74,6 +85,12 @@ export default function Signup({ app, auth }) {
   const update = (patch) => setDraft((current) => ({ ...current, ...patch }));
 
   useEffect(() => {
+    if (providerNameAppliedRef.current || user.onboardingComplete || !providerProfileName) return;
+    providerNameAppliedRef.current = true;
+    setDraft((current) => current.name.trim() ? current : { ...current, name: providerProfileName });
+  }, [providerProfileName, user.onboardingComplete]);
+
+  useEffect(() => {
     if (handleLocked || handleTouched) return;
     const nextHandle = getSuggestedHandleBody(draft.name || user.name, suggestionSuffix, app.state.users, user.id);
     setDraft((current) => (current.handle === nextHandle ? current : { ...current, handle: nextHandle }));
@@ -84,6 +101,28 @@ export default function Signup({ app, auth }) {
     if (shouldSetupProfile(user) || shouldRecheckAgeGroup(user)) return;
     navigate(redirectTo, { replace: true });
   }, [navigate, redirectAfterSave, redirectTo, user]);
+
+  const releaseCurrentLoginForRecovery = async () => {
+    if (!recoverableProviderId || accountRecoveryPending) return;
+    const confirmed = window.confirm("현재 로그인으로 만든 미완성 가입을 지우고 기존 BOXTIER 아이디로 다시 로그인합니다. 계속할까요?");
+    if (!confirmed) return;
+    setAccountRecoveryPending(true);
+    setAccountRecoveryError("");
+    try {
+      const result = await auth.releaseOnboardingIdentity("기존 아이디 연결");
+      if (!result?.ok) {
+        setAccountRecoveryError(result?.message || "기존 아이디 연결을 시작하지 못했습니다.");
+        return;
+      }
+      const releasedProvider = result.releasedProvider || recoverableProviderId;
+      const returnTo = `/app/settings?section=main&connectProvider=${encodeURIComponent(releasedProvider)}`;
+      window.location.assign(`/login?recoverAccount=1&excludeProvider=${encodeURIComponent(releasedProvider)}&redirect=${encodeURIComponent(returnTo)}`);
+    } catch {
+      setAccountRecoveryError("기존 아이디 연결을 시작하지 못했습니다.");
+    } finally {
+      setAccountRecoveryPending(false);
+    }
+  };
 
   const submit = async (event) => {
     event.preventDefault();
@@ -191,6 +230,7 @@ export default function Signup({ app, auth }) {
             <label>
               닉네임
               <input required value={draft.name} maxLength={PROFILE_NAME_MAX_LENGTH} onChange={(event) => update({ name: event.target.value })} />
+              {providerProfileName && !user.onboardingComplete ? <span className="muted">로그인 프로필 이름을 불러왔습니다. 자유롭게 수정할 수 있습니다.</span> : null}
               {user.onboardingComplete && !nameChangeAllowed ? <span className="form-warning">다음 변경 가능일: {formatProfileDate(nextNameChangeDate)}</span> : null}
             </label>
             <label>
@@ -221,7 +261,7 @@ export default function Signup({ app, auth }) {
             {formError ? <p className="form-warning">{formError}</p> : null}
             <div className="create-submit-row signup-submit-row">
               <span className="create-submit-warning">소속은 가입 후 나 메뉴에서 선택할 수 있습니다. 가입 단계에서는 지역과 연령부만 설정합니다.</span>
-              <Button type="submit" disabled={profileSavePending}><CheckCircle2 size={18} /> {profileSavePending ? "저장 중" : "저장"}</Button>
+              <Button type="submit" disabled={profileSavePending || accountRecoveryPending}><CheckCircle2 size={18} /> {profileSavePending ? "저장 중" : "저장"}</Button>
             </div>
           </form>
         </Card>
@@ -244,6 +284,24 @@ export default function Signup({ app, auth }) {
                 <strong>외부 로그인 계정 연결</strong>
               </div>
             </div>
+            {recoverableProviderId ? (
+              <div className="signup-account-recovery">
+                <Button type="button" variant="secondary" onClick={() => setAccountRecoveryOpen((current) => !current)}>
+                  이미 BOXTIER 아이디가 있어요
+                </Button>
+                {accountRecoveryOpen ? (
+                  <div className="signup-account-recovery-panel">
+                    <strong>기존 아이디 연결</strong>
+                    <p>현재 {getAuthProviderLabel(recoverableProviderId)} 로그인으로 만든 미완성 가입만 지운 뒤, 기존 BOXTIER 아이디의 다른 로그인으로 다시 로그인합니다.</p>
+                    <p>프로필·기록·MMR·팀 데이터는 자동으로 합치지 않습니다.</p>
+                    <Button type="button" variant="secondary" onClick={() => void releaseCurrentLoginForRecovery()} disabled={accountRecoveryPending}>
+                      {accountRecoveryPending ? "처리 중" : "기존 아이디로 다시 로그인"}
+                    </Button>
+                  </div>
+                ) : null}
+                {accountRecoveryError ? <p className="form-status form-status-error" role="alert">{accountRecoveryError}</p> : null}
+              </div>
+            ) : null}
           </Card>
           <Card className="section-card">
             <div className="section-title-row">

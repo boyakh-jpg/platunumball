@@ -4181,7 +4181,11 @@ flowchart TD
 5. Kakao는 Supabase provider 설정, Kakao Developers 동의항목, `VITE_KAKAO_AUTH_ENABLED=true`가 모두 준비된 뒤 노출한다. 실제 OAuth 요청 scope와 Kakao 동의항목은 항상 같아야 하며, 현재 Supabase Kakao provider의 기본 요청인 `account_email`, `profile_image`, `profile_nickname`을 모두 설정한다. 이메일 동의를 제공할 수 없는 앱은 `Allow users without an email`을 켜고 OAuth 요청에서 `account_email`이 빠지는지 실제 인가 URL로 확인한 뒤 노출한다.
 6. 설정 화면의 provider 연결은 Supabase `Allow manual linking`이 켜진 경우에만 허용한다. 연결 실패 시 일반 문구로 덮지 않고 인증 계층이 반환한 안전한 사용자 메시지를 표시한다.
 7. 복구 수단과 최소 1개 로그인 유지 정책이 확정되기 전에는 identity 연결 해제를 제공하지 않는다.
-8. 랜딩과 영수증의 로그인 진입은 공용 provider 선택 화면을 사용하고 검증된 내부 `returnTo`만 보존한다.
+8. 가입정보가 미완성일 때만 Google·Kakao의 공개 표시명을 이름 입력칸의 편집 가능한 초기값으로 사용한다. 이메일은 이름 후보에서 제외하고 사용자가 입력한 값이나 완성된 프로필은 덮어쓰지 않는다.
+9. `이미 BOXTIER 아이디가 있어요` 복구는 canonical 프로필이 없고 Google 또는 Kakao OAuth identity가 정확히 하나뿐인 현재 인증 사용자에게만 허용한다. 이메일·해시태그·표시명으로 계정을 찾거나 자동 병합하지 않는다.
+10. 복구 확인 시 현재의 비어 있는 Supabase 인증 사용자만 해제하고 세션을 종료한다. 사용자는 다른 provider로 기존 프로필에 로그인한 뒤 설정 화면에서 해제한 provider를 직접 연결해야 하며, 프로필·기록·MMR·팀 데이터는 이동하거나 병합하지 않는다.
+11. 복구 로그인과 연결 콜백의 `returnTo`는 BOXTIER 내부 경로만 허용한다. 연결할 provider는 URL 상태로 전달하되 실제 연결 성공 여부는 Supabase identity 목록으로 다시 확인한다.
+12. 랜딩과 영수증의 로그인 진입은 공용 provider 선택 화면을 사용하고 검증된 내부 `returnTo`만 보존한다.
 
 ## 2026-08-16 영수증 전용 엠블럼 수명주기
 

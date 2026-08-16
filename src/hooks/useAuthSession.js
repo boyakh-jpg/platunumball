@@ -335,6 +335,36 @@ export function useAuthSession() {
         setAuthActionPending(false);
       }
     },
+    releaseOnboardingIdentity: async (confirmation) => {
+      if (authActionPendingRef.current) return { ok: false, error: "auth_action_pending" };
+      authActionPendingRef.current = true;
+      setAuthActionPending(true);
+      setError("");
+      setMessage("");
+      try {
+        const result = await postServerAction(
+          "/api/profile/release-onboarding-identity",
+          { confirmation },
+          { allowWhenDisabled: true },
+        );
+        clearSupabaseSessionStorage();
+        writeTestSession(null);
+        setClientActionSession(null);
+        setSession(null);
+        setLoading(false);
+        return result;
+      } catch (releaseError) {
+        const errorCode = releaseError?.code
+          || releaseError?.message
+          || "identity_release_failed";
+        const errorMessage = formatAuthError(errorCode);
+        setError(errorMessage);
+        return { ok: false, error: errorCode, message: errorMessage };
+      } finally {
+        authActionPendingRef.current = false;
+        setAuthActionPending(false);
+      }
+    },
     withdrawAccount: async (confirmation) => {
       if (authActionPendingRef.current) return { ok: false, error: "auth_action_pending" };
       authActionPendingRef.current = true;

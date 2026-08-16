@@ -1,17 +1,12 @@
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
-import { ArrowLeft, ArrowRight, Copy, ExternalLink, LogOut, ShieldCheck } from "lucide-react";
+import { ArrowLeft, ArrowRight, Copy, LogOut, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import BrandLockup from "../components/common/BrandLockup.jsx";
 import Button from "../components/common/Button.jsx";
 import { BRAND_NAME } from "../lib/brand.js";
 import { getTestAccountDisplayLabel } from "../lib/constants.js";
+import { getAuthProviderLabel, isKakaoTalkInAppBrowser } from "../lib/authProviders.js";
 import { getAppRedirectFromLocation } from "../lib/profileSetup.js";
-
-function isEmbeddedOAuthBrowser() {
-  if (typeof navigator === "undefined") return false;
-  const ua = navigator.userAgent || "";
-  return /KAKAOTALK|KAKAOSTORY|NAVER|Instagram|FBAN|FBAV|Line\/|Twitter|; wv\)/i.test(ua);
-}
 
 export default function Login({ auth, app }) {
   const navigate = useNavigate();
@@ -19,11 +14,16 @@ export default function Login({ auth, app }) {
   const [copyMessage, setCopyMessage] = useState("");
   const [selectedTestLoginId, setSelectedTestLoginId] = useState(auth.testAccounts?.[0]?.id ?? "rankball-001");
   const from = getAppRedirectFromLocation(location);
-  const activeProviders = auth.enabledProviders ?? [];
+  const searchParams = new URLSearchParams(location.search);
+  const recoveryMode = searchParams.get("recoverAccount") === "1";
+  const excludedProviderId = searchParams.get("excludeProvider") ?? "";
+  const activeProviders = (auth.enabledProviders ?? []).filter(
+    (provider) => !recoveryMode || provider.id !== excludedProviderId,
+  );
   const embeddedGoogleOAuthBrowser = auth.configured
     && activeProviders.some((provider) => provider.id === "google")
-    && isEmbeddedOAuthBrowser();
-  const browserOpenUrl = typeof window === "undefined" ? "" : `${window.location.origin}${from}`;
+    && isKakaoTalkInAppBrowser();
+  const browserOpenUrl = typeof window === "undefined" ? "" : window.location.href;
 
   if (auth.session) return <Navigate to={from} replace />;
 
@@ -90,11 +90,18 @@ export default function Login({ auth, app }) {
               <span>오른쪽 위 메뉴에서 다른 브라우저로 열거나, 아래 링크를 복사해 Chrome 또는 Safari에서 열어 주세요.</span>
               <div className="auth-browser-actions">
                 <button type="button" onClick={copyBrowserOpenUrl}><Copy size={15} /> 링크 복사</button>
-                {browserOpenUrl ? (
-                  <a href={browserOpenUrl} target="_blank" rel="noreferrer"><ExternalLink size={15} /> 새 창 열기</a>
-                ) : null}
               </div>
               {copyMessage ? <small>{copyMessage}</small> : null}
+            </div>
+          ) : null}
+
+          {recoveryMode ? (
+            <div className="auth-recovery-notice" role="status">
+              <strong>기존 BOXTIER 아이디로 로그인하세요.</strong>
+              <p>
+                {getAuthProviderLabel(excludedProviderId)} 외의 로그인으로 기존 아이디에 들어가면,
+                가입정보 설정에서 {getAuthProviderLabel(excludedProviderId)} 연결을 마무리할 수 있습니다.
+              </p>
             </div>
           ) : null}
 

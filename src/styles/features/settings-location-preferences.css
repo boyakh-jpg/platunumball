@@ -311,6 +311,24 @@
   padding-top: var(--space-6);
 }
 
+.settings-auth-recovery-callout {
+  grid-column: 1 / -1;
+  margin: 0;
+  border: var(--ui-card-border-width) solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-strong, var(--surface));
+  padding: var(--space-4);
+  color: var(--text);
+  font-size: 0.84rem;
+  font-weight: 800;
+  line-height: 1.5;
+}
+
+.settings-auth-identities > .form-status {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
 .settings-auth-identities-copy {
   display: grid;
   align-content: start;
