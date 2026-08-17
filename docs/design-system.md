@@ -255,7 +255,7 @@
 
 1. 홈·일정·매칭·플레이·팀·프로필의 일반 content surface는 `Card`/`.ui-card`를 기준으로 한다. 배경, 테두리, radius, shadow, padding은 `--ui-card-*`와 `--ui-card-padding`에서만 정하고 page CSS가 같은 외형을 다시 선언하지 않는다. 이미지가 핵심인 hero·랭크 spotlight만 예외다.
 2. 일반 버튼은 `Button`/`.ui-button`의 `md 42px`, `sm 34px` 높이를 사용한다. 버튼과 상태 badge의 라벨은 기본 한 줄이며 모바일에서도 글자 단위로 접지 않는다. 공용 `.ui-action-row`의 자식은 내용 너비를 유지하고 실제 가로 공간이 부족할 때만 다음 줄로 이동한다. 가로 전체 확장은 `.ui-button-block`만 추가하며 홈·일정·매칭별 CTA class로 높이·색상·radius를 덮지 않는다.
-3. 일정·매칭·플레이 목록은 `MatchListCard` 하나를 사용한다. 외부 surface는 숫자 셀과 같은 `--ui-information-surface-bg`, 내부 요약은 같은 면색 위의 옅은 구분선, action은 `Button.ui-button-card-action`이 담당한다. 카드 action은 한 행 배치에서 카드 내부 높이를 채우고 세로 적층 시 공용 버튼 높이로 복귀한다. `match-list-card.css`에는 grid·gap·줄바꿈·상태 bar 같은 배치만 둔다.
+3. 일정·매칭·플레이 목록은 `MatchListCard` 하나를 사용한다. 외부 surface는 숫자 셀과 같은 `--ui-information-surface-bg`, 내부 요약은 같은 면색 위의 옅은 구분선, action은 `Button.ui-button-card-action`이 담당한다. 카드 action은 모든 너비에서 오른쪽 action rail로 카드 전체 높이를 채운다. 좁은 화면에서는 정보와 요약만 왼쪽에서 두 행으로 쌓는다. `match-list-card.css`에는 grid·gap·줄바꿈·상태 bar 같은 배치만 둔다.
 4. `om-match-card`, `om-match-create`, `arena-hero-cta`, `home-search-create-button`, `wide-button`은 폐기한다. 해당 selector를 다시 추가하거나 feature CSS에서 공용 surface·CTA 외형을 덮으면 빌드의 `design-system-guards`가 실패해야 한다.
 5. 공통 디자인 변경은 primitive를 먼저 수정해 전 화면에 반영한다. 화면별 예외가 필요하면 정보 구조나 배치 차이인지 먼저 확인하고, 단순 외형 차이면 예외 selector를 만들지 않는다.
 6. 승·패·무 결과 행은 공용 정보 면색 대신 `--ui-result-win-bg`, `--ui-result-loss-bg`, `--ui-result-draw-bg`를 사용한다. 색상 의미는 상태 rail과 함께 유지하고 별도 테두리 박스를 추가하지 않는다.
@@ -1478,7 +1478,7 @@ UI 수정 전:
 ## 2026-06-25 목록카드 중간폭 표준
 
 1. 경기/매칭 방 목록카드는 충분한 데스크탑 폭에서만 정보/요약/버튼 3열을 유지한다.
-2. 761px~960px 중간폭에서는 정보와 버튼을 첫 줄에 두고, 요약 박스는 다음 줄 전체 폭으로 내린다.
+2. `960px` 미만에서는 정보와 요약을 왼쪽에 두 행으로 쌓고, action rail은 오른쪽에서 두 행 전체 높이를 채운다.
 3. 태그, 일시, 구장, 방장/팀 메타가 좁은 첫 열에 갇혀 줄바꿈되면 카드 폭 문제로 본다.
 4. native select 옵션 목록은 브라우저가 흰 배경으로 펼칠 수 있으므로 option/optgroup 글자색을 어두운색으로 고정한다.
 5. 프로필 공유카드는 오른쪽에 큰 티어 엠블럼을 두고, 링크 복사는 현재 페이지가 아니라 `/app/players/{userId}` 공개 프로필 URL을 복사한다.
@@ -1547,8 +1547,8 @@ UI 수정 전:
 
 ## 2026-06-27 경기 카드 좁은 화면
 
-1. 760px 이하에서도 `om-score-box`와 summary/info box는 카드 전체 폭을 사용한다.
-2. `om-room-link`는 첫 행 오른쪽에 고정하고 score/summary는 다음 행으로 내려 카드 내용과 겹치지 않는다.
+1. `760px` 이하에서도 `match-list-summary`는 정보 열 너비를 사용하고 카드 밖으로 넘치지 않는다.
+2. `match-list-card__action`은 오른쪽 action rail에 고정해 카드 전체 높이를 채우며 정보·요약과 겹치지 않는다.
 
 ## 2026-06-30 invite selection hover
 
@@ -1764,7 +1764,7 @@ UI 수정 전:
 12. 팀 hero 순위판은 강조 글자색만 유지하고 외곽 표면은 공용 card 토큰을 사용한다.
 13. 앱 셸은 `1079px` 이하에서 사이드바를 하단 내비게이션으로 전환한다.
 14. Home 우측 레일은 viewport가 아니라 실제 `app-main` 컨테이너 폭이 좁으면 1열로 전환한다.
-15. 경기 목록 카드는 `1180px` 이하에서 요약판을 다음 행으로 내리고, `760px` 이하에서 1열로 전환한다.
+15. 경기 목록 카드는 content container `960px` 미만에서 정보·요약을 왼쪽 두 행으로 쌓고 오른쪽 action rail은 카드 전체 높이를 채운다.
 16. 모바일 방 모달 버튼은 공용 터치 높이를 지키며 방 관리 정보와 세 액션을 두 행으로 배치한다.
 17. 방 모달은 외부 배경 클릭으로 닫히고 내부 클릭은 열린 상태를 유지한다.
 17-1. 방 모달 backdrop은 페이지 콘텐츠의 `max-width`와 자동 margin 영향을 받지 않고 viewport 전체를 덮는다. 기본 `0.82`의 near-opaque 검정으로 본문을 분리하며 데스크톱 예약 스크롤바 gutter까지 가린다. 아래로 닫기 제스처 중에만 opacity를 낮춘다.
@@ -1854,19 +1854,19 @@ UI 수정 전:
 1. 방 모달 내부에서 여는 확인 dialog는 변형·스크롤되는 sheet의 자식으로 두지 않고 `document.body` portal에 렌더링한다.
 2. 기록 명단 grid의 최소 열 폭은 실제 부모 폭을 넘지 않아야 한다. `320px` viewport에서도 panel 테두리와 입력 control이 잘리지 않아야 한다.
 3. 기록 경기 카드의 팀명은 최대 두 줄로 표시하고 제목·역할·상태 메타는 `overflow-wrap: anywhere`로 부모 폭 안에서 줄바꿈한다.
-4. 경기 목록 카드의 중간 너비 전환은 viewport가 아니라 `.app-main` content container 폭 `1180px`를 기준으로 한다.
+4. 경기 목록 카드의 중간 너비 전환은 viewport가 아니라 `.app-main` content container 폭 `960px`를 기준으로 한다.
 5. 후보 목록에서 실제 A/B 후보 항목이 각각 card surface를 가지면 두 항목을 묶는 layout wrapper는 별도 테두리·배경·그림자를 만들지 않는다.
 
 ## 2026-07-16 운영 화면 추가 반응형 규칙
 
-1. 경기 목록과 비공개 대회 카드의 열 전환은 viewport가 아니라 `.app-main` content container 폭을 기준으로 한다. `1181px` 이상은 3열, `761~1180px`는 2열, `760px` 이하는 1열이다.
+1. 경기 목록과 비공개 대회 카드의 열 전환은 viewport가 아니라 `.app-main` content container 폭을 기준으로 한다. 공용 경기 목록은 `960px` 이상에서 3열이고 그 미만에서는 정보·요약 왼쪽 열과 전체 높이 action rail로 전환한다. 비공개 대회 카드는 기존 `1181px` 이상 3열, `761~1180px` 2열, `760px` 이하 1열 규칙을 유지한다.
 2. 터치 hover 카드는 anchor 위치와 무관하게 화면 아래 sheet로 열고 최대 높이는 `min(78dvh, 560px)`를 사용한다. 데스크톱 anchor 배치용 inline 높이가 터치 sheet 높이를 줄이지 않는다.
 2-1. 터치 hover 카드의 좌우 안전 여백은 `window.innerWidth`가 아니라 실제 문서 `clientWidth`를 기준으로 계산한다. 세로 스크롤바가 viewport를 줄여도 오른쪽 테두리가 화면 밖으로 나가면 안 된다.
 3. 홈 처리 항목 제목은 최대 두 줄로 표시한다. 긴 팀명이나 경기명이 한 줄 말줄임으로 핵심 대진을 숨기지 않아야 한다.
 3-1. 모바일 홈 알림 본문은 말줄임하지 않고 카드 본문 열 안에서 줄바꿈한다. 긴 공백 없는 문자열도 `overflow-wrap`으로 카드 폭 안에 유지한다.
 4. 홈 확정 경기의 반복 항목 자체가 card surface를 가지면 제목과 목록을 묶는 외부 구조 wrapper는 별도 테두리·배경을 만들지 않는다.
 5. `480px` 이하에서 일정 아이콘을 숨기면 제목 wrapper도 1열로 전환한다. 숨겨진 아이콘의 `32px` grid 열에 제목이 들어가면 안 된다.
-6. `480px` 이하 일정 필터는 관계·유형 라벨을 control 위에 두고 summary padding을 `10px`로 줄인다. 관계 4개와 유형 5개 버튼은 각각 한 줄을 우선하며 버튼 높이는 `38px`를 유지한다.
+6. `480px` 이하 일정 필터는 관계·유형 라벨을 control 위에 두고 summary padding을 `10px`로 줄인다. 라벨과 선택지는 공용 `--font-size-caption`, 버튼은 `--ui-button-height-sm`을 사용한다. 관계 4개와 유형 5개 버튼은 각각 한 줄을 유지한다.
 
 ## 2026-07-17 터치 팝업·설정 화면 표준
 
@@ -1918,7 +1918,7 @@ UI 수정 전:
 3. 일반 경기성 목록의 대진·점수·인원 요약은 플레이 메뉴를 기준으로 공용 `match-list-summary` 패널 하나에 표시한다. 패널은 공용 room panel 토큰만 사용하고 메뉴·상태별 별도 배경을 만들지 않는다.
 4. 팀명과 점수는 sports display 글꼴을 사용하며, 일반 목록 팀명은 최대 두 줄 안에서 모두 보여준다. 절반 폭의 리그 fixture만 긴 팀명에 세 줄을 허용한다. 점수는 팀명과 같거나 더 큰 시각 위계를 유지한다.
 5. 목록 배지는 의미별 공용 tone을 사용한다. 상태는 상태 tone, 경기 방식은 blue, 공개 범위는 public green/private violet, 개인·팀 구분은 green/orange, 정규전은 gold, 심판 없음은 neutral을 쓴다. 색상은 `tokens.css` 변수만 사용한다.
-6. 카드 반응형은 공용 CSS에서만 관리한다. 콘텐츠 container `960px` 이상은 정보/요약/액션 3열, `761~959px`는 정보+액션 뒤 요약 전체폭, `760px` 이하는 정보/요약/액션 1열로 접는다. 페이지별 카드 breakpoint나 descendant override를 추가하지 않는다.
+6. 카드 반응형은 공용 CSS에서만 관리한다. 콘텐츠 container `960px` 이상은 정보/요약/액션 3열, `959px` 이하는 정보와 요약을 왼쪽 두 행으로 두고 action rail이 오른쪽에서 카드 전체 높이를 채운다. 페이지별 카드 breakpoint나 descendant override를 추가하지 않는다.
 
 ## 2026-07-18 구장 상세 화면
 

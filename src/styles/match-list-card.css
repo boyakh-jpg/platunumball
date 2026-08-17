@@ -229,7 +229,7 @@
     --ui-card-padding: 0;
     grid-template-columns: minmax(0, 1fr) minmax(88px, 104px);
     grid-template-areas:
-      "main main"
+      "main action"
       "summary action";
     gap: 0;
   }
@@ -250,15 +250,6 @@
     margin: 0 0 var(--space-2) var(--space-2);
   }
 
-  .match-list-card__action.ui-button-card-action {
-    --ui-card-action-height: auto;
-    --ui-card-action-min-height: var(--ui-match-summary-min-height-mobile);
-    width: auto;
-    min-height: var(--ui-match-summary-min-height-mobile);
-    margin: 0 var(--space-2) var(--space-2) 6px;
-    border-radius: var(--ui-control-radius);
-  }
-
   .match-list-summary__side {
     font-size: clamp(15px, 5vw, 20px);
   }
@@ -272,7 +263,7 @@
   .match-list-card {
     grid-template-columns: minmax(0, 1fr) minmax(88px, 104px);
     grid-template-areas:
-      "main main"
+      "main action"
       "summary action";
   }
 

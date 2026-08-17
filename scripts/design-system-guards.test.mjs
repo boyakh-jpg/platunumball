@@ -1094,6 +1094,21 @@ test("공용 빈 상태와 compact filter 높이는 canonical token을 유지한
     matchesStyles,
     /@media \(max-width:\s*480px\)[\s\S]*?\.om-calendar-filter-row \.segmented-control button\s*\{[\s\S]*?min-height:\s*var\(--ui-button-height-sm\);[\s\S]*?height:\s*var\(--ui-button-height-sm\);/,
   );
+  assert.match(
+    matchesStyles,
+    /\.om-calendar-filter-label\s*\{[^}]*font-size:\s*var\(--font-size-caption\);/,
+  );
+  const filterButtonRules = [
+    ...matchesStyles.matchAll(/\.om-calendar-filter-row \.segmented-control button\s*\{([^}]*)\}/g),
+  ];
+  assert.ok(filterButtonRules.length >= 1);
+  assert.ok(
+    filterButtonRules.every(([, body]) => !/font-size:\s*(?:clamp\(|0\.62rem)/.test(body)),
+  );
+  assert.match(
+    filterButtonRules[0][1],
+    /font-size:\s*var\(--font-size-caption\);/,
+  );
 });
 
 test("화면별 점수 입력 layout은 feature CSS만 소유한다", () => {
@@ -1126,12 +1141,12 @@ test("목록 정보면, 결과색, 카드 action은 공용 토큰과 primitive�
   assert.match(primitiveStyles, /\.ui-card\.ui-match-list-surface\s*\{[^}]*background:\s*var\(--ui-information-surface-bg\);/);
   assert.match(primitiveStyles, /:not\(\.ui-match-list-surface\)/);
   assert.match(primitiveStyles, /\.ui-button\.ui-button-card-action\s*\{[^}]*min-height:\s*var\(--ui-card-action-min-height, 100%\);[^}]*align-self:\s*stretch;/);
-  assert.match(matchListStyles, /"main action"\s*"summary action"/);
-  assert.match(matchListStyles, /--ui-card-action-height:\s*auto;/);
+  const fullHeightActionLayouts = matchListStyles.match(/"main action"\s*"summary action"/g) ?? [];
+  assert.equal(fullHeightActionLayouts.length, 3);
+  assert.doesNotMatch(matchListStyles, /\.match-list-card__action\.ui-button-card-action\s*\{/);
   assert.match(tokenStyles, /--ui-match-card-min-height:\s*88px;/);
   assert.match(matchListStyles, /\.match-list-card\s*\{[^}]*min-height:\s*var\(--ui-match-card-min-height\);/);
   assert.match(matchListStyles, /\.match-list-summary\s*\{[^}]*min-height:\s*var\(--ui-match-summary-min-height\);/);
-  assert.match(matchListStyles, /--ui-card-action-min-height:\s*var\(--ui-match-summary-min-height-mobile\);/);
 });
 
 test("목록 카드 feature CSS는 primitive 표면을 다시 정의하지 않는다", () => {
