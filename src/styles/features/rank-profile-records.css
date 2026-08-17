@@ -324,7 +324,7 @@
 .recent-match-row > span {
   display: grid;
   min-width: 0;
-  gap: var(--space-1);
+  gap: 0;
 }
 .connection-list .ui-profile-identity-inline {
   width: 100%;
@@ -336,12 +336,11 @@
 .recent-match-copy {
   display: grid;
   min-width: 0;
-  gap: var(--space-1);
+  gap: 0;
 }
 .recent-match-matchup {
   display: flex;
   min-width: 0;
-  min-height: var(--ui-record-team-line-block-size);
   max-height: var(--ui-record-team-line-block-size);
   align-items: flex-start;
   justify-content: flex-start;

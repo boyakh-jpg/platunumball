@@ -602,6 +602,11 @@ test("record result cards share matchup and date mode court metadata", () => {
     globalSearchStyles,
     /\.recent-match-matchup\s*\{[^}]*display:\s*flex;[^}]*align-items:\s*flex-start;[^}]*justify-content:\s*flex-start;/,
   );
+  assert.match(globalSearchStyles, /\.recent-match-row > span\s*\{[^}]*gap:\s*0;/);
+  assert.match(globalSearchStyles, /\.recent-match-copy\s*\{[^}]*gap:\s*0;/);
+  const recentMatchupRule = getRuleBody(globalSearchStyles, ".recent-match-matchup");
+  assert.doesNotMatch(recentMatchupRule, /min-height:/);
+  assert.match(recentMatchupRule, /max-height:\s*var\(--ui-record-team-line-block-size\);/);
   assert.doesNotMatch(courtControlStyles, /\.home-recent-card \.recent-match-(?:copy|matchup|vs)/);
 });
 
