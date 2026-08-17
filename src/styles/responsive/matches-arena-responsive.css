@@ -313,20 +313,23 @@ html[data-theme="light"] .om-calendar-filter-bar {
   }
 
   .om-schedule-rail .om-view-grid {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 0;
+    overflow: hidden;
+    border: var(--ui-stroke-width) solid var(--ui-divider-subtle);
+    border-radius: var(--ui-control-group-radius);
   }
 
   .om-schedule-workspace .om-schedule-rail .om-view-card {
     grid-column: auto;
-    grid-template-columns: 32px minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
-    gap: 8px;
-    min-height: 48px;
-    padding: 7px 0 7px 8px;
+    gap: var(--space-2);
+    min-height: var(--ui-button-height-sm);
+    padding: var(--space-2) var(--space-3);
     border: 0;
-    border-inline-start: var(--ui-status-rail-width) solid transparent;
-    border-bottom: var(--ui-stroke-width) solid var(--rb-line);
+    border-inline-end: var(--ui-stroke-width) solid var(--ui-divider-subtle);
+    border-bottom: var(--ui-stroke-width) solid var(--ui-divider-subtle);
     border-radius: 0;
     background: transparent;
     box-shadow: none;
@@ -334,29 +337,26 @@ html[data-theme="light"] .om-calendar-filter-bar {
   }
 
   .om-schedule-workspace .om-schedule-rail .om-view-card.active {
-    border-inline-start-color: var(--rb-orange);
-    background: transparent;
+    color: var(--rb-orange-2);
+    background: var(--ui-badge-orange-bg);
     box-shadow: none;
   }
 
-  .om-schedule-workspace .om-schedule-rail .om-view-card:last-child {
+  .om-schedule-workspace .om-schedule-rail .om-view-card:nth-child(3n) {
+    border-inline-end: 0;
+  }
+
+  .om-schedule-workspace .om-schedule-rail .om-view-card:nth-child(n + 4) {
     border-bottom: 0;
   }
 
   .om-schedule-workspace .om-schedule-rail .om-view-icon {
-    display: grid;
-    width: 32px;
-    height: 32px;
-    border: 0;
-    border-radius: 0;
-    background: transparent;
-    box-shadow: none;
+    display: none;
   }
 
   .om-schedule-rail .om-view-card > span:nth-child(2) {
-    display: grid;
+    display: block;
     min-width: 0;
-    gap: 1px;
   }
 
   .om-schedule-rail .om-view-card :is(small, em) {
@@ -365,7 +365,7 @@ html[data-theme="light"] .om-calendar-filter-bar {
 
   .om-schedule-rail .om-view-card strong,
   .om-schedule-rail .om-view-card b {
-    font-size: 0.9rem;
+    font-size: var(--font-size-control);
     line-height: 1.1;
     white-space: nowrap;
   }
