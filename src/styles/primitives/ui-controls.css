@@ -618,6 +618,7 @@ input[type="checkbox"]:hover:not(:disabled) {
   flex-wrap: wrap;
   gap: var(--control-group-gap);
   align-items: center;
+  justify-content: flex-start;
 }
 
 .ui-action-row > * {

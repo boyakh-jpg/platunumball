@@ -2522,7 +2522,7 @@ UI 수정 전:
 33. `tokens.css`의 `[data-design="editorial"] .ui-design-app`은 위 표면 폭 토큰을 `0px`로 설정한다. 후순위 전체 선택자나 `!important`로 `button`·카드의 `border`를 덮지 않는다. 입력·드롭다운과 `.ui-badge`는 별도 제어·뱃지 토큰을 사용하므로 영향을 받지 않는다.
 34. 방 모달 루트는 `tokens.css`의 `.ui-room-borderless-scope`를 사용해 방 표면 폭 토큰만 `0px`로 설정한다. 방 내부 간격·구분선 배치는 바꾸지 않는다.
 35. 분류 구분선의 색과 굵기는 유지하고, 선 위 바깥 여백과 선 아래 안쪽 여백은 기존 값의 2배를 공통 토큰으로 적용한다.
-36. 최근 전적 레일 간격은 `.recent-match-list`의 `--recent-match-list-gap: calc(var(--space-6) * 2)`만 사용한다.
+36. 최근 전적 레일 간격은 `.recent-match-list`의 `--recent-match-list-gap: var(--ui-compact-list-gap)`만 사용한다.
 37. 랭킹 행·배치 진행·심판 설정·튜토리얼·매칭 생성 최종 확인도 `.ui-design-info-surface`, `.ui-design-borderless-list`, `.ui-design-borderless-surface` 중 하나를 사용하며 기능별 테두리를 만들지 않는다.
 38. 설정의 상태 요약은 `.ui-support-grid`, 이력·빈 상태는 `.ui-support-list`와 `.ui-support-copy`를 사용한다. 보조 정보는 `--font-size-body-sm`을 공유하고 카드 선은 `--ui-card-border-width`만 따른다.
 39. 팀원 초대 검색·선택·대기 행은 `PlayerHoverCard`와 `getUserHashtag()`를 공유한다. 초대 상태는 영문 뱃지를 사용하지 않고 취소 조작과 같은 버튼 높이·모서리 토큰의 네모 상태 표면으로 표시하며, 이름·해시태그·역할은 공통 간격 토큰으로 분리한다.
@@ -2923,3 +2923,11 @@ UI 수정 전:
 27. 일정 달력은 데스크톱에서 일정 filter 오른쪽의 남은 너비를 채운다. toolbar의 연월·경기 수는 세로 중앙에 맞추고 날짜 셀은 면색·외곽선·내부 구획선을 사용하지 않는다. 달력 위에 월 표기를 중복하지 않는다.
 28. 공용 `.ui-button-secondary`는 방 만들기의 중립 회색을 기준으로 영수증과 일반 화면에서 동일하게 표시한다. 화면 CSS는 색을 다시 정의하지 않으며 위험·성공 같은 semantic variant만 예외로 둔다.
 29. 영수증 편집부의 입력 section과 저장 action은 일반 정보 표면 규칙을 따라 면색·외곽선 없이 구획선으로 나눈다. 영수증 미리보기·Story·Feed·다운로드·인쇄 출력물은 이 규칙에서 제외하고 기존 전용 시각 규칙을 유지한다.
+
+## 2026-08-17 데스크톱 action 폭과 목록 밀도
+
+1. 데스크톱 일반 block action의 최대 너비는 `--ui-action-button-max-inline-size`를 사용한다. 남는 공간은 action row의 좌측 또는 화면이 명시한 우측 정렬로 처리하고 버튼 하나를 불필요하게 한 행 전체로 늘리지 않는다.
+2. 같은 역할의 2개·3개 action 묶음은 각각 `--ui-action-pair-max-inline-size`, `--ui-action-trio-max-inline-size`를 사용한다. 홈의 `방 만들기·기록하기·영수증`은 한 줄·동일 폭을 유지하되 묶음 전체가 데스크톱 콘텐츠 폭 끝까지 늘어나지 않는다.
+3. 모바일의 핵심 action과 공간이 부족한 action 묶음은 가용 너비를 사용한다. provider 로그인, 경기 카드 우측 action, 영수증 미리보기·출력물은 일반 block action 상한에서 제외한다.
+4. 경기·승패 목록은 `--ui-compact-*`, `--ui-match-*` 밀도 토큰으로 행 간격, 안쪽 여백, 결과 칸, 요약 높이를 공유한다. 상태 면색과 필수 정보는 유지하고 장식 여백만 줄인다.
+5. 최근 승패의 팀명 행은 왼쪽에서 시작한다. 팀명은 말줄임 없이 두 줄까지 줄바꿈하고 고정 팀명 영역 안에서만 자르며, 가운데 정렬이나 점수 중심의 대칭 grid로 되돌리지 않는다.

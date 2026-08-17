@@ -110,6 +110,12 @@ html[data-theme] .app-main .ui-button-block:not(.provider-button):not(.match-rec
   max-width: 100%;
 }
 
+@media (min-width: 760px) {
+  html[data-theme] .app-main .ui-button-block:not(.provider-button):not(.ui-button-card-action):not(.match-receipt-card *) {
+    max-inline-size: min(100%, var(--ui-action-button-max-inline-size));
+  }
+}
+
 html[data-theme] .app-main .page-header {
   --ui-page-hero-image: var(--page-hero-bg, var(--bg-court));
   --ui-page-hero-position: var(--page-hero-bg-position, var(--hero-bg-position-court));
@@ -199,7 +205,11 @@ html[data-theme] .guest-landing-lead {
   line-height: 1.6;
 }
 
-html[data-theme] .guest-landing-primary-actions,
+html[data-theme] .guest-landing-primary-actions {
+  width: min(100%, var(--ui-action-pair-max-inline-size));
+  max-width: var(--ui-action-pair-max-inline-size);
+}
+
 html[data-theme] .guest-landing-primary-actions .ui-button {
   width: 100%;
   max-width: 100%;

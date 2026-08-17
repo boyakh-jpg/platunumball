@@ -190,6 +190,17 @@
   --ui-button-padding-x: var(--control-padding-x);
   --ui-button-padding-x-sm: 10px;
   --ui-button-font-size: var(--control-font-size);
+  --ui-action-button-max-inline-size: 176px;
+  --ui-action-pair-max-inline-size: 364px;
+  --ui-action-trio-max-inline-size: 552px;
+  --ui-compact-list-gap: var(--space-2);
+  --ui-compact-record-row-min-height: 44px;
+  --ui-compact-record-row-padding: 6px 10px;
+  --ui-record-result-size: 26px;
+  --ui-record-team-line-block-size: 2.4em;
+  --ui-match-card-min-height: 88px;
+  --ui-match-summary-min-height: 58px;
+  --ui-match-summary-min-height-mobile: 60px;
   --ui-button-font-weight: var(--font-weight-control);
   --ui-button-bg: var(--button-secondary-bg);
   --ui-button-bg-active: var(--button-primary-bg);

@@ -21,7 +21,8 @@
 }
 
 .recent-match-row {
-  grid-template-columns: 34px minmax(0, 1fr) minmax(54px, auto);
+  grid-template-columns: var(--ui-record-result-size) minmax(0, 1fr) minmax(54px, auto);
+  min-height: var(--ui-compact-record-row-min-height);
 }
 
 .recent-match-row > span,
@@ -253,7 +254,10 @@ html[data-theme="light"] .rank-home .rank-mode-pill em {
     font-size: 1.18rem;
   }
 
-  .recent-match-row,
+  .recent-match-row {
+    grid-template-columns: var(--ui-record-result-size) minmax(0, 1fr) auto;
+  }
+
   .profile-record-row {
     grid-template-columns: 32px minmax(0, 1fr) auto;
   }

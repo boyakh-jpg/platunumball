@@ -8,7 +8,7 @@
   gap: 0;
   width: 100%;
   min-width: 0;
-  min-height: 110px;
+  min-height: var(--ui-match-card-min-height);
   overflow: hidden;
 }
 
@@ -37,9 +37,9 @@
   grid-area: main;
   display: grid;
   align-content: center;
-  gap: 8px;
+  gap: var(--space-2);
   min-width: 0;
-  padding: 14px 16px 14px 20px;
+  padding: 10px 12px 10px 16px;
 }
 
 .match-list-card__badges {
@@ -55,13 +55,13 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 22px;
+  min-height: 20px;
   max-width: 100%;
   border: var(--ui-stroke-width) solid color-mix(in srgb, var(--match-list-badge-color) 30%, transparent);
   border-radius: 999px;
   background: color-mix(in srgb, var(--match-list-badge-color) 14%, transparent);
   color: var(--match-list-badge-color);
-  padding: 3px 7px;
+  padding: 2px 6px;
   font-size: 10px;
   font-weight: 950;
   line-height: 1;
@@ -84,7 +84,7 @@
   overflow: hidden;
   color: var(--rb-text);
   font-family: var(--sports-display-font);
-  font-size: clamp(18px, 1.45vw, 24px);
+  font-size: clamp(17px, 1.35vw, 22px);
   font-weight: 1000;
   line-height: 0.98;
   overflow-wrap: anywhere;
@@ -112,14 +112,14 @@
 }
 
 .match-list-summary {
-  --ui-panel-padding: 10px 12px;
+  --ui-panel-padding: 8px 10px;
   grid-area: summary;
   display: grid;
   align-content: center;
   gap: 4px;
   min-width: 0;
-  min-height: 80px;
-  margin-block: 12px;
+  min-height: var(--ui-match-summary-min-height);
+  margin-block: var(--space-2);
   overflow: hidden;
   text-align: center;
 }
@@ -220,7 +220,7 @@
   .match-list-summary {
     --ui-match-list-summary-block-border-width: var(--ui-stroke-width);
     --ui-match-list-summary-inline-border-width: 0;
-    min-height: 72px;
+    min-height: var(--ui-match-summary-min-height);
   }
 }
 
@@ -235,27 +235,27 @@
   }
 
   .match-list-card__main {
-    padding: 12px 12px 12px 16px;
+    padding: 10px 10px 10px 14px;
   }
 
   .match-list-card__title {
-    font-size: clamp(18px, 5.8vw, 23px);
+    font-size: clamp(17px, 5.4vw, 21px);
   }
 
   .match-list-summary {
-    --ui-panel-padding: 9px 10px;
+    --ui-panel-padding: 7px 8px;
     --ui-match-list-summary-block-border-width: var(--ui-stroke-width);
     --ui-match-list-summary-inline-border-width: 0;
-    min-height: 74px;
-    margin: 0 0 12px 12px;
+    min-height: var(--ui-match-summary-min-height-mobile);
+    margin: 0 0 var(--space-2) var(--space-2);
   }
 
   .match-list-card__action.ui-button-card-action {
     --ui-card-action-height: auto;
-    --ui-card-action-min-height: 74px;
+    --ui-card-action-min-height: var(--ui-match-summary-min-height-mobile);
     width: auto;
-    min-height: 74px;
-    margin: 0 12px 12px 8px;
+    min-height: var(--ui-match-summary-min-height-mobile);
+    margin: 0 var(--space-2) var(--space-2) 6px;
     border-radius: var(--ui-control-radius);
   }
 

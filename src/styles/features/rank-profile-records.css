@@ -303,19 +303,19 @@
   font-weight: 950;
 }
 .recent-match-list {
-  --recent-match-list-gap: calc(var(--space-6) * 2);
+  --recent-match-list-gap: var(--ui-compact-list-gap);
   display: grid;
   gap: var(--recent-match-list-gap);
 }
 .recent-match-row {
   display: grid;
   align-items: center;
-  gap: var(--space-5);
-  padding: 10px;
+  gap: var(--space-3);
+  padding: var(--ui-compact-record-row-padding);
 }
 .recent-match-row b {
   display: grid;
-  height: 28px;
+  height: var(--ui-record-result-size);
   place-items: center;
   border-radius: var(--radius-xs);
   color: #fff;
@@ -339,12 +339,12 @@
   gap: var(--space-1);
 }
 .recent-match-matchup {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  display: flex;
   min-width: 0;
-  min-height: 2.4em;
-  max-height: 2.4em;
-  align-items: center;
+  min-height: var(--ui-record-team-line-block-size);
+  max-height: var(--ui-record-team-line-block-size);
+  align-items: flex-start;
+  justify-content: flex-start;
   gap: var(--space-2);
   overflow: hidden;
   white-space: normal;
@@ -352,7 +352,7 @@
 .recent-match-matchup > :is(.team-hover-trigger, span) {
   display: block;
   min-width: 0;
-  max-height: 2.4em;
+  max-height: var(--ui-record-team-line-block-size);
   overflow: hidden;
   line-height: 1.2;
   text-overflow: clip;
@@ -360,17 +360,24 @@
 }
 .recent-match-row .recent-match-matchup .team-hover-trigger > strong {
   display: block;
-  max-height: 2.4em;
+  max-height: var(--ui-record-team-line-block-size);
   overflow: hidden;
   line-height: 1.2;
   text-overflow: clip;
   white-space: normal;
 }
 .recent-match-matchup > :is(.team-hover-trigger, span):first-child {
-  text-align: end;
+  flex: 0 1 auto;
+  text-align: start;
 }
 .recent-match-matchup > :is(.team-hover-trigger, span):last-child {
+  flex: 1 1 auto;
   text-align: start;
+}
+.recent-match-row .recent-match-matchup strong {
+  overflow: hidden;
+  text-overflow: clip;
+  white-space: normal;
 }
 .recent-match-vs {
   display: inline;
@@ -478,7 +485,7 @@
   }
   .recent-match-matchup > :is(.team-hover-trigger, span),
   .recent-match-matchup .team-hover-trigger > strong {
-    max-height: 2.4em;
+    max-height: var(--ui-record-team-line-block-size);
     overflow: hidden;
     text-overflow: clip;
     white-space: normal;

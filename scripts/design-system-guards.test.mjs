@@ -597,7 +597,11 @@ test("record result cards share matchup and date mode court metadata", () => {
   for (const page of ["home", "profile", "profileRecords", "teamDetail"]) {
     assert.match(pageSources[page], /RecentMatchRow/);
   }
-  assert.match(globalSearchStyles, /\.recent-match-list\s*\{[^}]*--recent-match-list-gap:\s*calc\(var\(--space-6\) \* 2\);[^}]*gap:\s*var\(--recent-match-list-gap\);/);
+  assert.match(globalSearchStyles, /\.recent-match-list\s*\{[^}]*--recent-match-list-gap:\s*var\(--ui-compact-list-gap\);[^}]*gap:\s*var\(--recent-match-list-gap\);/);
+  assert.match(
+    globalSearchStyles,
+    /\.recent-match-matchup\s*\{[^}]*display:\s*flex;[^}]*align-items:\s*flex-start;[^}]*justify-content:\s*flex-start;/,
+  );
   assert.doesNotMatch(courtControlStyles, /\.home-recent-card \.recent-match-(?:copy|matchup|vs)/);
 });
 
@@ -737,6 +741,17 @@ test("공용 CTA는 좁은 화면에서도 내용 너비를 유지한다", () =>
   assert.equal(countClassToken(pageSources.recruiting, "ui-button-block"), 2);
   assert.equal(countClassToken(pageSources.season, "ui-button-block"), 1);
   assert.match(primitiveStyles, /\.ui-button-block\s*\{\s*width:\s*fit-content;\s*max-width:\s*100%;\s*\}/);
+  assert.match(tokenStyles, /--ui-action-button-max-inline-size:\s*176px;/);
+  assert.match(tokenStyles, /--ui-action-trio-max-inline-size:\s*552px;/);
+  assert.match(primitiveStyles, /max-inline-size:\s*min\(100%, var\(--ui-action-button-max-inline-size\)\);/);
+  assert.match(
+    read("src/styles/responsive/home-dashboard-responsive.css"),
+    /\.home-search-actions\s*\{[^}]*width:\s*min\(100%, var\(--ui-action-trio-max-inline-size\)\);/,
+  );
+  assert.match(
+    primitiveStyles,
+    /html\[data-theme\] \.guest-landing-primary-actions\s*\{[^}]*width:\s*min\(100%, var\(--ui-action-pair-max-inline-size\)\);[^}]*max-width:\s*var\(--ui-action-pair-max-inline-size\);/,
+  );
   assert.doesNotMatch(primitiveStyles, /@media \(max-width:\s*760px\)[\s\S]*?\.ui-button-block\s*\{\s*width:\s*100%;\s*\}/);
   assert.doesNotMatch(allStyleSources, /\.season-play-report > a\s*\{[^}]*display:\s*block/);
   assert.doesNotMatch(allStyleSources, /\.ranking-name span\s*\{/);
@@ -1104,8 +1119,10 @@ test("목록 정보면, 결과색, 카드 action은 공용 토큰과 primitive�
   assert.match(primitiveStyles, /\.ui-button\.ui-button-card-action\s*\{[^}]*min-height:\s*var\(--ui-card-action-min-height, 100%\);[^}]*align-self:\s*stretch;/);
   assert.match(matchListStyles, /"main action"\s*"summary action"/);
   assert.match(matchListStyles, /--ui-card-action-height:\s*auto;/);
-  assert.match(matchListStyles, /--ui-card-action-min-height:\s*74px;/);
-  assert.match(matchListStyles, /\.match-list-summary\s*\{[^}]*min-height:\s*74px;/);
+  assert.match(tokenStyles, /--ui-match-card-min-height:\s*88px;/);
+  assert.match(matchListStyles, /\.match-list-card\s*\{[^}]*min-height:\s*var\(--ui-match-card-min-height\);/);
+  assert.match(matchListStyles, /\.match-list-summary\s*\{[^}]*min-height:\s*var\(--ui-match-summary-min-height\);/);
+  assert.match(matchListStyles, /--ui-card-action-min-height:\s*var\(--ui-match-summary-min-height-mobile\);/);
 });
 
 test("목록 카드 feature CSS는 primitive 표면을 다시 정의하지 않는다", () => {
