@@ -880,7 +880,7 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(styles, /\.match-receipt-ticket-game > \.match-receipt-ticket-caption[\s\S]*top:\s*var\(--receipt-ticket-meta-y\)/);
   assert.match(styles, /\.match-receipt-personal-tier-label[\s\S]*top:\s*var\(--receipt-ticket-tier-y\)/);
   assert.match(styles, /\.match-receipt-ticket-game--single-meta > :is\(\.match-receipt-ticket-caption, \.match-receipt-personal-tier-label\) \{ top: var\(--receipt-ticket-meta-y\); line-height: var\(--receipt-ticket-meta-line-height\); \}/);
-  assert.match(styles, /\.match-receipt-team-fields fieldset[\s\S]*background: var\(--surface-2\)[\s\S]*border: 0;/);
+  assert.match(styles, /\.match-receipt-team-fields fieldset\s*\{[^}]*border:\s*0;[^}]*background:\s*transparent;/);
   assert.match(styles, /\.match-receipt-photo-tools[\s\S]*grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/);
   assert.match(detailStyles, /input\[type="date"\][\s\S]*min-inline-size: 0[\s\S]*max-inline-size: 100%/);
   assert.match(detailStyles, /\.match-receipt-period-fields input\[type="number"\][\s\S]*appearance: textfield/);
@@ -890,6 +890,8 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(styles, /@media \(max-width: 900px\)[\s\S]*?\.match-receipt-editor \{[\s\S]*?display: contents;[\s\S]*?\.match-receipt-preview-panel \{[\s\S]*?order: 2;[\s\S]*?\.match-receipt-complete \{[\s\S]*?order: 3;/);
   assert.match(styles, /\.match-receipt-ticket-date[\s\S]*border-top/);
   assert.match(styles, /\.match-receipt-ticket\s*\{[^}]*inset:\s*auto 0 1\.8%;/);
+  assert.match(styles, /--receipt-ticket-personal-stats-shift:\s*-16%/);
+  assert.match(styles, /\.match-receipt-ticket-game > \.match-receipt-personal-stats\s*\{[^}]*transform:\s*translateY\(var\(--receipt-ticket-personal-stats-shift\)\)/);
   assert.match(styles, /\.match-receipt-personal-stats b \+ b[\s\S]*border-left/);
   assert.match(renderer, /const receiptTop = compact \? 1010 : 1504/);
   assert.match(renderer, /ctx\.fillStyle = "#d4582b";\s*ctx\.font = '900 27px "KBO Dia Gothic", sans-serif';\s*ctx\.fillText\(model\.playedOn/);
@@ -929,13 +931,19 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(renderer, /const footerCommentOffset = footerDateOffset/);
   assert.match(renderer, /const footerTierLabelOffset = footerDateOffset \+ 42/);
   assert.match(renderer, /const footerDateOffset = compact \? 174 : 244/);
+  assert.match(renderer, /const personalStatsShiftY = compact \? 12 : 16/);
+  assert.match(renderer, /const personalStatsValueOffset = \(compact \? 78 : 132\) - personalStatsShiftY/);
+  assert.match(renderer, /const personalStatsLabelOffset = \(compact \? 110 : 166\) - personalStatsShiftY/);
+  assert.match(renderer, /const personalStatsDividerTopOffset = \(compact \? 30 : 70\) - personalStatsShiftY/);
+  assert.match(renderer, /const personalStatsDividerBottomOffset = \(compact \? 116 : 180\) - personalStatsShiftY/);
   assert.match(renderer, /const hasSingleGameInfoMeta = !model\.hasPersonalStats[\s\S]*Boolean\(model\.comment\) !== Boolean\(personalTier\)/);
   assert.match(renderer, /footerY \+ footerCommentOffset/);
   assert.match(renderer, /hasSingleGameInfoMeta \? footerDateOffset : footerTierLabelOffset/);
   assert.match(lineArt, /const CROP_EDGE_GUARD = 5/);
   assert.match(lineArt, /const boundary = !isCropEdge && neighbors\.some/);
   assert.match(renderer, /const tierSize = compact \? 150 : 192/);
-  assert.match(renderer, /ctx\.moveTo\(footerMiddleX, footerY \+ \(compact \? 30 : 70\)\)/);
+  assert.match(renderer, /ctx\.moveTo\(footerMiddleX, footerY \+ personalStatsDividerTopOffset\)/);
+  assert.match(renderer, /ctx\.lineTo\(footerMiddleX, footerY \+ personalStatsDividerBottomOffset\)/);
   assert.match(renderer, /createCanvasPaperPattern/);
   assert.match(renderer, /drawCanvasPaperGrain/);
   assert.match(renderer, /drawCanvasScoreDigits/);

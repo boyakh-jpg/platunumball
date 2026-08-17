@@ -442,7 +442,7 @@
 .match-receipt-ticket {
   --receipt-ticket-divider-y: 58%;
   --receipt-ticket-meta-y: 65%; --receipt-ticket-tier-y: 82%;
-  --receipt-ticket-meta-line-height: clamp(12px, 3cqw, 16px);
+  --receipt-ticket-meta-line-height: clamp(12px, 3cqw, 16px); --receipt-ticket-personal-stats-shift: -16%;
   position: absolute;
   z-index: 3;
   inset: auto 0 1.8%;
@@ -543,7 +543,7 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   width: 100%;
-  transform: translateY(-6%);
+  transform: translateY(var(--receipt-ticket-personal-stats-shift));
 }
 
 .match-receipt-ticket-game > .match-receipt-game-info {

@@ -1268,6 +1268,11 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
   const footerDateOffset = compact ? 174 : 244;
   const footerCommentOffset = footerDateOffset;
   const footerTierLabelOffset = footerDateOffset + 42;
+  const personalStatsShiftY = compact ? 12 : 16;
+  const personalStatsValueOffset = (compact ? 78 : 132) - personalStatsShiftY;
+  const personalStatsLabelOffset = (compact ? 110 : 166) - personalStatsShiftY;
+  const personalStatsDividerTopOffset = (compact ? 30 : 70) - personalStatsShiftY;
+  const personalStatsDividerBottomOffset = (compact ? 116 : 180) - personalStatsShiftY;
   const hasSingleGameInfoMeta = !model.hasPersonalStats
     && Boolean(model.comment) !== Boolean(personalTier);
 
@@ -1315,16 +1320,16 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
   if (model.hasPersonalStats) {
     ctx.fillStyle = "#151515";
     ctx.font = '900 62px "KBO Dia Gothic", sans-serif';
-    ctx.fillText(`${model.personalPoints ?? 0}`, compact ? 480 : 505, footerY + (compact ? 78 : 132));
-    ctx.fillText(`${model.personalRebounds ?? 0}`, compact ? 600 : 620, footerY + (compact ? 78 : 132));
+    ctx.fillText(`${model.personalPoints ?? 0}`, compact ? 480 : 505, footerY + personalStatsValueOffset);
+    ctx.fillText(`${model.personalRebounds ?? 0}`, compact ? 600 : 620, footerY + personalStatsValueOffset);
     ctx.font = '900 20px "KBO Dia Gothic", sans-serif';
-    ctx.fillText("PTS", compact ? 480 : 505, footerY + (compact ? 110 : 166));
-    ctx.fillText("REB", compact ? 600 : 620, footerY + (compact ? 110 : 166));
+    ctx.fillText("PTS", compact ? 480 : 505, footerY + personalStatsLabelOffset);
+    ctx.fillText("REB", compact ? 600 : 620, footerY + personalStatsLabelOffset);
     ctx.strokeStyle = "rgba(195,74,37,.7)";
     ctx.setLineDash([3, 7]);
     ctx.beginPath();
-    ctx.moveTo(footerMiddleX, footerY + (compact ? 30 : 70));
-    ctx.lineTo(footerMiddleX, footerY + (compact ? 116 : 180));
+    ctx.moveTo(footerMiddleX, footerY + personalStatsDividerTopOffset);
+    ctx.lineTo(footerMiddleX, footerY + personalStatsDividerBottomOffset);
     ctx.stroke();
     ctx.setLineDash([]);
     ctx.fillStyle = "#151515";
