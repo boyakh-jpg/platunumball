@@ -602,8 +602,20 @@ test("record result cards share matchup and date mode court metadata", () => {
     globalSearchStyles,
     /\.recent-match-matchup\s*\{[^}]*display:\s*flex;[^}]*align-items:\s*flex-start;[^}]*justify-content:\s*flex-start;/,
   );
-  assert.match(globalSearchStyles, /\.recent-match-row > span\s*\{[^}]*gap:\s*0;/);
-  assert.match(globalSearchStyles, /\.recent-match-copy\s*\{[^}]*gap:\s*0;/);
+  assert.match(
+    globalSearchStyles,
+    /\.recent-match-row > span\s*\{[^}]*gap:\s*var\(--ui-compact-record-content-gap\);/,
+  );
+  assert.match(
+    globalSearchStyles,
+    /\.recent-match-copy\s*\{[^}]*gap:\s*var\(--ui-compact-record-content-gap\);/,
+  );
+  assert.match(tokenStyles, /--ui-compact-list-gap:\s*var\(--space-3\);/);
+  assert.match(
+    tokenStyles,
+    /--ui-compact-record-row-padding:\s*var\(--space-4\) var\(--space-5\);/,
+  );
+  assert.match(tokenStyles, /--ui-compact-record-content-gap:\s*var\(--space-2\);/);
   const recentMatchupRule = getRuleBody(globalSearchStyles, ".recent-match-matchup");
   assert.doesNotMatch(recentMatchupRule, /min-height:/);
   assert.match(recentMatchupRule, /max-height:\s*var\(--ui-record-team-line-block-size\);/);
@@ -1194,7 +1206,15 @@ test("경기 목록 제목과 요약은 실제 정보량만큼 조밀하게 유�
   );
   assert.match(
     matchListStyles,
-    /@container \(max-width: 760px\)[\s\S]*?\.match-list-card__main\s*\{[^}]*padding:\s*var\(--space-2\) var\(--space-4\) var\(--space-2\) var\(--space-6\);/,
+    /@container \(max-width: 760px\)[\s\S]*?\.match-list-card__main\s*\{[^}]*gap:\s*var\(--space-2\);[^}]*padding:\s*var\(--space-3\) var\(--space-4\) var\(--space-3\) var\(--space-6\);/,
+  );
+  assert.match(
+    matchListStyles,
+    /@container \(max-width: 760px\)[\s\S]*?\.match-list-summary\s*\{[^}]*--ui-panel-padding:\s*var\(--space-2\) var\(--space-4\);/,
+  );
+  assert.doesNotMatch(
+    matchListStyles,
+    /\.match-list-summary__meta,\s*\.match-list-summary__detail\s*\{[^}]*font-size:\s*10px;/,
   );
 });
 

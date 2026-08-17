@@ -193,9 +193,10 @@
   --ui-action-button-max-inline-size: 176px;
   --ui-action-pair-max-inline-size: 364px;
   --ui-action-trio-max-inline-size: 552px;
-  --ui-compact-list-gap: var(--space-2);
+  --ui-compact-list-gap: var(--space-3);
   --ui-compact-record-row-min-height: 44px;
-  --ui-compact-record-row-padding: 6px 10px;
+  --ui-compact-record-row-padding: var(--space-4) var(--space-5);
+  --ui-compact-record-content-gap: var(--space-2);
   --ui-record-result-size: 26px;
   --ui-record-team-line-block-size: 2.4em;
   --ui-match-card-min-height: 88px;
