@@ -256,6 +256,20 @@ html[data-theme="light"] .om-calendar-filter-bar {
 .om-calendar-filter-row :is(.om-relation-filter-grid, .om-branch-filter-grid) > button {
   width: 0;
 }
+.om-schedule-workspace,
+.om-schedule-rail {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-4);
+}
+.om-schedule-rail {
+  align-content: start;
+}
+.om-schedule-workspace > .om-calendar-panel {
+  width: 100%;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
+}
 @media (max-width: 1120px) {
   .om-view-grid {
     grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -272,16 +286,93 @@ html[data-theme="light"] .om-calendar-filter-bar {
   }
 }
 @media (min-width: 900px) {
-  .om-calendar-panel {
-    width: 100%;
-    grid-template-columns: minmax(300px, 340px) minmax(0, 700px);
+  .om-schedule-workspace {
+    grid-template-columns: minmax(300px, 340px) minmax(0, 1fr);
+    align-items: start;
     gap: var(--space-4);
-    justify-content: space-between;
   }
 
-  .om-calendar-box {
+  .om-schedule-rail {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .om-schedule-workspace > :is(.om-calendar-panel, .om-tournament-panel) {
+    grid-column: 2;
+    grid-row: 1;
+    min-width: 0;
+  }
+
+  .om-schedule-workspace > .om-calendar-panel {
     width: min(100%, 700px);
     justify-self: end;
+  }
+
+  .om-schedule-workspace .om-calendar-box {
+    width: 100%;
+  }
+
+  .om-schedule-rail .om-view-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+
+  .om-schedule-workspace .om-schedule-rail .om-view-card {
+    grid-column: auto;
+    grid-template-columns: 32px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+    min-height: 48px;
+    padding: 7px 0 7px 8px;
+    border: 0;
+    border-inline-start: var(--ui-status-rail-width) solid transparent;
+    border-bottom: var(--ui-stroke-width) solid var(--rb-line);
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    transform: none;
+  }
+
+  .om-schedule-workspace .om-schedule-rail .om-view-card.active {
+    border-inline-start-color: var(--rb-orange);
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .om-schedule-workspace .om-schedule-rail .om-view-card:last-child {
+    border-bottom: 0;
+  }
+
+  .om-schedule-workspace .om-schedule-rail .om-view-icon {
+    display: grid;
+    width: 32px;
+    height: 32px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .om-schedule-rail .om-view-card > span:nth-child(2) {
+    display: grid;
+    min-width: 0;
+    gap: 1px;
+  }
+
+  .om-schedule-rail .om-view-card :is(small, em) {
+    display: none;
+  }
+
+  .om-schedule-rail .om-view-card strong,
+  .om-schedule-rail .om-view-card b {
+    font-size: 0.9rem;
+    line-height: 1.1;
+    white-space: nowrap;
+  }
+
+  .om-schedule-workspace .om-schedule-rail > .om-calendar-summary {
+    padding: var(--space-3) 0 0;
+    border-top: var(--ui-stroke-width) solid var(--rb-line);
   }
 
   .om-calendar-filter-row {

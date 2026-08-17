@@ -63,8 +63,10 @@ return (
         </div>
       </section>
 
-      <section className="om-view-grid" aria-label="경기 상태">
-        {VIEWS.map((view) => {
+      <div className="om-schedule-workspace">
+        <aside className="om-schedule-rail">
+          <section className="om-view-grid" aria-label="경기 상태">
+            {VIEWS.map((view) => {
           const Icon = view.icon;
           const active = panelMode === "schedule" && view.id === viewId;
           return (
@@ -89,8 +91,8 @@ return (
               <b>{getDisplayViewButtonCount(view)}</b>
             </button>
           );
-        })}
-        <button
+            })}
+            <button
           type="button"
           className={panelMode === "team" ? "om-view-card ui-design-soft-surface ui-design-filter-tile active" : "om-view-card ui-design-soft-surface ui-design-filter-tile"}
           onClick={() => {
@@ -111,8 +113,8 @@ return (
             <em>진행·예정</em>
           </span>
           <b>{teamMatchList.status === MATCH_LIST_STATUSES.LOADING ? "..." : teamScheduleCount}</b>
-        </button>
-        <button
+            </button>
+            <button
           type="button"
           className={panelMode === "tournament" ? "om-view-card ui-design-soft-surface ui-design-filter-tile active" : "om-view-card ui-design-soft-surface ui-design-filter-tile"}
           onClick={() => applyFilterState({ panelMode: "tournament" })}
@@ -124,12 +126,11 @@ return (
             <em>내 대회·초대</em>
           </span>
           <b>{activeTournaments.length}</b>
-        </button>
-      </section>
+            </button>
+          </section>
 
-      {panelMode !== "tournament" ? (
-      <section className="om-calendar-panel" aria-label="경기 일정 캘린더">
-        <div className="om-calendar-summary ui-design-soft-surface">
+          {panelMode !== "tournament" ? (
+            <div className="om-calendar-summary ui-design-soft-surface">
           <div className="om-calendar-heading">
             <span className="om-view-icon"><CalendarDays size={22} /></span>
             <div>
@@ -170,8 +171,12 @@ return (
               </div>
             </div> : null}
           </section>
-        </div>
+            </div>
+          ) : null}
+        </aside>
 
+        {panelMode !== "tournament" ? (
+          <section className="om-calendar-panel" aria-label="경기 일정 캘린더">
         <div className="om-calendar-box ui-design-soft-surface">
           <div className="om-calendar-toolbar">
             <button type="button" aria-label="이전 달" onClick={() => applyFilterState({ calendarMonth: addMonths(calendarMonth, -1) })}>
@@ -212,10 +217,10 @@ return (
             })}
           </div>
         </div>
-      </section>
-      ) : null}
+          </section>
+        ) : null}
 
-      {panelMode === "tournament" ? <section className="om-tournament-panel" aria-label="비공개 대회">
+        {panelMode === "tournament" ? <section className="om-tournament-panel" aria-label="비공개 대회">
         <div className="section-title-row om-list-head">
           <div>
             <span className="eyebrow">PRIVATE EVENT</span>
@@ -283,7 +288,8 @@ return (
             />
           )}
         </div>
-      </section> : null}
+        </section> : null}
+      </div>
 
       {attendanceQrFlow ? (
         <AttendanceScanResultView state={attendanceScanState} onClose={closeSelectedMatch} />
