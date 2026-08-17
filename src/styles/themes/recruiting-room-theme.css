@@ -133,10 +133,6 @@ html[data-theme="light"] .arena-side-roster .arena-room-player-slot:not(.empty) 
   box-shadow: none;
 }
 
-.arena-hero-copy h1 {
-  color: #fff;
-}
-
 .arena-hero-copy p {
   font-size: 14px;
 }
@@ -149,15 +145,11 @@ html[data-theme="light"] .arena-side-roster .arena-room-player-slot:not(.empty) 
 
 .arena-filter-bar,
 .arena-queue-controls {
-  border: var(--ui-card-border-width) solid var(--rb-line);
-  border-radius: var(--radius-md);
-  padding: 10px;
+  padding: 10px 0;
 }
 
 .arena-filter-bar button {
   min-height: 38px;
-  border-radius: var(--radius-xs);
-  background: rgba(255, 255, 255, 0.06);
   color: var(--rb-text);
   font-size: 12px;
   font-weight: 900;
@@ -204,8 +196,6 @@ html[data-theme="light"] .arena-side-roster .arena-room-player-slot:not(.empty) 
 
 .arena-lobby-title h2 {
   color: var(--rb-orange);
-  line-height: 0.9;
-  text-shadow: 0 12px 30px rgba(0, 0, 0, 0.34);
 }
 
 .arena-lobby-title > span,

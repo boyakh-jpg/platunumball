@@ -61,7 +61,7 @@
 /* 2026-07-14 compact queue and room content without changing shell or slot sizing. */
 .arena-queue-controls {
   gap: var(--ui-control-group-gap);
-  padding: var(--card-padding);
+  padding: var(--space-2) 0;
 }
 .arena-queue-controls > .arena-filter-bar {
   gap: var(--ui-control-group-gap);
@@ -199,41 +199,43 @@ html[data-theme="light"] .arena-lobby-modal .arena-room-rule-summary > span {
 }
 /* Room titles keep their hierarchy without letting long generated names dominate the modal. */
 .arena-lobby-modal .arena-lobby-title h2 {
-  font-size: 64px;
-  line-height: 0.92;
+  font-size: var(--ui-room-title-size);
+  line-height: 1.08;
   word-break: keep-all;
   text-wrap: balance;
 }
 .arena-lobby-modal .arena-lobby-title h2.is-long {
-  font-size: 50px;
-  line-height: 0.96;
+  font-size: var(--ui-room-title-size);
+  line-height: 1.08;
 }
 .arena-lobby-modal .arena-lobby-title h2.is-very-long {
-  font-size: 38px;
-  line-height: 1;
+  font-size: var(--ui-room-title-size);
+  line-height: 1.08;
 }
 @media (max-width: 720px) {
   .arena-lobby-modal .arena-lobby-title h2 {
-    font-size: 38px;
-    line-height: 0.94;
+    font-size: var(--ui-room-title-size-mobile);
+    line-height: 1.08;
   }
 
   .arena-lobby-modal .arena-lobby-title h2.is-long {
-    font-size: 32px;
-    line-height: 0.98;
+    font-size: var(--ui-room-title-size-mobile);
+    line-height: 1.08;
   }
 
   .arena-lobby-modal .arena-lobby-title h2.is-very-long {
-    font-size: 27px;
-    line-height: 1.04;
+    font-size: var(--ui-room-title-size-mobile);
+    line-height: 1.08;
   }
 }
 /* Keep one filter surface in both themes; the inner filter is only layout. */
 .arena-recruit-page.page-stack > .arena-queue-controls {
-  border: var(--ui-card-border-width) solid var(--ui-card-border);
-  border-radius: var(--ui-card-radius);
-  background: var(--ui-card-bg);
-  box-shadow: var(--ui-card-shadow);
+  border: 0;
+  border-bottom: var(--ui-stroke-width) solid var(--rb-line);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding-inline: 0;
 }
 html[data-theme="light"] .arena-recruit-page > .arena-queue-controls > .arena-filter-bar {
   border: 0;

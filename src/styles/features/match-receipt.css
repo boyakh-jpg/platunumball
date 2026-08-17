@@ -2,7 +2,7 @@
 
 .match-receipt-page-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: var(--space-8); }
 
-.match-receipt-page-head h1 { margin: 0; font-size: clamp(30px, 4vw, 44px); }
+.match-receipt-page-head h1 { margin: 0; }
 
 .match-receipt-page-head .ui-page-hero__copy > p:last-child { margin: 0; }
 
@@ -14,35 +14,35 @@
 .match-receipt-editor,
 .match-receipt-preview-panel { min-width: 0; }
 
-.match-receipt-editor { display: grid; gap: var(--space-8); }
+.match-receipt-editor { display: grid; gap: var(--space-7); }
 
 .match-receipt-editor > section,
 .match-receipt-save-card {
-  min-width: 0; max-width: 100%;
-  --ui-panel-padding: 20px;
-  --ui-panel-radius: 20px;
+  min-width: 0; max-width: 100%; --ui-panel-padding: 0; --ui-panel-radius: 0;
+  border: 0; border-radius: 0; background: transparent; box-shadow: none;
 }
+
+.match-receipt-editor > section + section,
+.match-receipt-save-card { border-top: var(--ui-stroke-width) solid var(--rb-line); padding-top: var(--space-7); }
 
 .match-receipt-editor h2,
-.match-receipt-save-card h2 {
-  margin: 0 0 16px;
-  font-size: 18px;
-}
+.match-receipt-save-card h2 { margin: 0 0 16px; font-size: 18px; }
 
 .match-receipt-team-fields,
-.match-receipt-info-fields {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-7);
-}
+.match-receipt-info-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; }
 
 .match-receipt-team-fields fieldset {
   display: grid; grid-template-columns: minmax(0, 1fr) 84px;
   align-items: end; gap: var(--space-4); min-width: 0;
-  margin: 0; padding: 14px;
+  margin: 0; padding: 0;
   border: 0;
-  border-radius: 16px;
-  background: var(--surface-2);
+  border-radius: 0;
+  background: transparent;
+}
+
+.match-receipt-team-fields fieldset + fieldset {
+  margin-left: var(--space-6); padding-left: var(--space-6);
+  border-left: var(--ui-stroke-width) solid var(--rb-line);
 }
 
 .match-receipt-team-fields legend { padding: 0 6px; color: var(--rb-orange); font-weight: 900; }
@@ -735,9 +735,7 @@
 
 .match-receipt-actions svg { width: 17px; height: 17px; }
 
-.match-receipt-save-card {
-  text-align: left;
-}
+.match-receipt-save-card { text-align: left; }
 
 .match-receipt-save-card p {
   margin: -6px 0 14px;
@@ -784,9 +782,11 @@
   .match-receipt-venue-control { grid-template-columns: 1fr; }
 
   .match-receipt-editor > section,
-  .match-receipt-save-card {
-    --ui-panel-padding: 16px;
-    --ui-panel-radius: 16px;
+  .match-receipt-save-card { --ui-panel-padding: 0; --ui-panel-radius: 0; }
+
+  .match-receipt-team-fields fieldset + fieldset {
+    margin: var(--space-5) 0 0; padding: var(--space-5) 0 0;
+    border-top: var(--ui-stroke-width) solid var(--rb-line); border-left: 0;
   }
 
   .match-receipt-card {

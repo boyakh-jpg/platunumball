@@ -21,9 +21,9 @@ html[data-theme] .app-main :is(.ui-liquid-glass, .page-header > .ui-button) {
   border: 0;
   background: var(--ui-liquid-glass-bg);
   color: var(--ui-liquid-glass-color);
-  box-shadow: var(--ui-liquid-glass-shadow);
-  -webkit-backdrop-filter: var(--ui-liquid-glass-filter);
-  backdrop-filter: var(--ui-liquid-glass-filter);
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
   text-shadow: none;
 }
 
@@ -83,7 +83,26 @@ html[data-theme] .app-main :is(.recent-match-row.result-d, .rank-match-draw) {
   --ui-status-rail-color: var(--ui-result-draw-border);
 }
 
-html[data-theme] .app-main :is(.recent-match-row, .rank-match-item) {
+html[data-theme] .app-main .ui-design-record-surface.result-w {
+  --ui-info-accent: var(--ui-result-win-border);
+  --ui-result-surface-bg: var(--ui-result-win-bg);
+  --ui-status-rail-color: var(--ui-result-win-border);
+}
+
+html[data-theme] .app-main .ui-design-record-surface.result-l {
+  --ui-info-accent: var(--ui-result-loss-border);
+  --ui-result-surface-bg: var(--ui-result-loss-bg);
+  --ui-status-rail-color: var(--ui-result-loss-border);
+}
+
+html[data-theme] .app-main .ui-design-record-surface.result-d {
+  --ui-info-accent: var(--ui-result-draw-border);
+  --ui-result-surface-bg: var(--ui-result-draw-bg);
+  --ui-status-rail-color: var(--ui-result-draw-border);
+}
+
+html[data-theme] .app-main :is(.recent-match-row, .rank-match-item),
+html[data-theme] .app-main .ui-design-record-surface {
   position: relative;
   border: 0;
   border-radius: var(--ui-data-cell-radius);
@@ -91,7 +110,8 @@ html[data-theme] .app-main :is(.recent-match-row, .rank-match-item) {
   box-shadow: none;
 }
 
-html[data-theme] .app-main :is(.recent-match-row, .rank-match-item)::before {
+html[data-theme] .app-main :is(.recent-match-row, .rank-match-item)::before,
+html[data-theme] .app-main .ui-design-record-surface::before {
   position: absolute;
   inset: var(--ui-status-rail-inset) auto var(--ui-status-rail-inset) 0;
   width: var(--ui-status-rail-width);
@@ -232,7 +252,7 @@ html[data-theme] .ui-button.ui-button-secondary:active:not(:disabled) {
     color 140ms ease;
 }
 
-html[data-theme] .app-main .ui-segmented-control:not(.create-choice-segments):not([role="radiogroup"]) {
+html[data-theme] .app-main .ui-segmented-control:not(.create-choice-segments):not([role="radiogroup"]):not(.ui-filter-row) {
   width: fit-content;
   max-width: 100%;
   justify-content: flex-start;
@@ -246,7 +266,7 @@ html[data-theme] .app-main .ui-segmented-control:not(.create-choice-segments):no
   scrollbar-width: thin;
 }
 
-html[data-theme] .app-main .ui-segmented-control:not(.create-choice-segments):not([role="radiogroup"]) > button {
+html[data-theme] .app-main .ui-segmented-control:not(.create-choice-segments):not([role="radiogroup"]):not(.ui-filter-row) > button {
   width: auto;
   min-width: max-content;
   flex: 0 0 auto;
@@ -641,11 +661,11 @@ input[type="checkbox"]:hover:not(:disabled) {
 
 html[data-theme] .ui-design-app .ui-filter-row {
   display: flex;
-  width: fit-content;
+  width: 100%;
   max-width: 100%;
   flex-wrap: nowrap;
   gap: var(--ui-filter-gap);
-  overflow-x: auto;
+  overflow-x: hidden;
   scrollbar-width: none;
 }
 
@@ -654,5 +674,7 @@ html[data-theme] .ui-design-app .ui-filter-row::-webkit-scrollbar {
 }
 
 html[data-theme] .ui-design-app .ui-filter-row > * {
-  flex: 0 0 auto;
+  flex: 1 1 0;
+  width: 0;
+  min-width: 0;
 }

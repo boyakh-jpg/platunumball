@@ -449,9 +449,9 @@ html[data-theme="light"] .arena-hero-copy p {
 }
 
 html[data-theme="light"] .arena-filter-bar,
-html[data-theme="light"] .arena-queue-controls,
-html[data-theme="light"] .arena-hero-panel {
-  background: rgba(255, 255, 255, 0.78);
+html[data-theme="light"] .arena-queue-controls {
+  background: transparent;
+  box-shadow: none;
 }
 
 @media (max-width: 1020px) {

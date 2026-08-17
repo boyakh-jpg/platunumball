@@ -144,15 +144,19 @@
 }
 .rank-list {
   display: grid;
-  gap: var(--space-4);
+  gap: 0;
 }
 .rank-list .rank-row {
   display: grid;
   width: 100%;
-  border: var(--ui-card-border-width) solid rgba(255, 255, 255, 0.1);
-  border-radius: var(--radius);
-  background: rgba(255, 255, 255, 0.045);
-  padding: 9px;
+  border: 0;
+  border-block-end: var(--ui-stroke-width) solid var(--rb-line);
+  border-radius: 0;
+  background: transparent;
+  padding: 9px 0;
+}
+.rank-list .rank-row:last-child {
+  border-block-end-color: transparent;
 }
 .rank-list .rank-row > b {
   color: var(--blue);
@@ -254,7 +258,7 @@
   .rank-list .rank-row {
     grid-template-columns: 22px 30px minmax(0, 1fr) max-content;
     gap: var(--space-4);
-    padding: 8px;
+    padding: 8px 0;
   }
 
   .rank-search-results small,

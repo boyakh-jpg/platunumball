@@ -30,10 +30,14 @@
 }
 
 .progression-list,
-.member-control-list,
 .member-add-form {
   display: grid;
   gap: 9px;
+}
+
+.member-control-list {
+  display: grid;
+  gap: 0;
 }
 
 .progression-list > div,
@@ -67,8 +71,16 @@
   font-weight: 900;
 }
 
-.member-control-row {
+.member-control-row.ui-control-surface {
   grid-template-columns: minmax(0, 1fr) minmax(120px, 0.5fr) auto;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding-inline: 0;
+}
+
+.member-control-row.ui-control-surface + .member-control-row.ui-control-surface {
+  border-top: var(--ui-stroke-width) solid var(--ui-divider-subtle);
 }
 
 .member-control-row a,
@@ -128,7 +140,8 @@
 }
 
 .member-control-row button {
-  background: rgba(255, 93, 108, 0.1);
+  border-color: transparent;
+  background: var(--ui-button-secondary-bg);
   color: var(--danger);
   cursor: pointer;
 }

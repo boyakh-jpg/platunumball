@@ -428,11 +428,11 @@ html[data-theme="light"] .search-picker-result-row.selected {
 }
 .home-action-list {
   display: grid;
-  gap: var(--space-4);
+  gap: 0;
 }
 .home-invitation-list {
   display: grid;
-  gap: var(--space-4);
+  gap: 0;
 }
 .home-action-row {
   color: var(--text);
@@ -444,14 +444,15 @@ html[data-theme="light"] .search-picker-result-row.selected {
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--space-5);
-  border: var(--ui-card-border-width) solid rgba(255, 255, 255, 0.1);
-  border-radius: var(--radius);
-  background: rgba(255, 255, 255, 0.045);
-  padding: 10px;
+  border: 0;
+  border-block-end: var(--ui-stroke-width) solid var(--rb-line);
+  border-radius: 0;
+  background: transparent;
+  padding: 10px 0;
 }
-.home-invitation-row {
-  border-color: rgba(70, 224, 182, 0.2);
-  background: rgba(70, 224, 182, 0.055);
+.home-action-row:last-child,
+.home-invitation-row:last-child {
+  border-block-end-color: transparent;
 }
 .home-invitation-actions {
   justify-content: flex-end;

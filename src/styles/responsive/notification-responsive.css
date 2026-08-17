@@ -124,3 +124,19 @@
     justify-self: end;
   }
 }
+
+.notification-inbox-card > .section-title-row {
+  padding-bottom: var(--space-5);
+  border-bottom: var(--ui-stroke-width) solid var(--rb-line);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.notification-inbox-card .notification-view-tabs {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}

@@ -172,21 +172,10 @@ html[data-theme="light"] .rank-home .rank-spotlight-card {
   border: var(--ui-card-border-width) solid var(--rb-line);
   border-radius: var(--card-radius);
   background:
-    linear-gradient(180deg, rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.78)),
-    linear-gradient(90deg, rgba(0, 0, 0, 0.76), rgba(0, 0, 0, 0.14) 64%),
     var(--bg-ball) center 48% / cover no-repeat,
     var(--rb-bg-2);
   color: #fff;
   padding: 18px;
-}
-.rank-home .rank-spotlight-card::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background:
-    radial-gradient(ellipse at 26% 72%, rgba(120, 170, 255, 0.2), transparent 42%),
-    linear-gradient(180deg, transparent 0 58%, rgba(24, 25, 26, 0.7));
 }
 .rank-home .rank-spotlight-content {
   position: relative;
@@ -262,11 +251,6 @@ html[data-theme="light"] .rank-home .rank-spotlight-card .rank-spotlight-links a
 }
 html[data-theme="light"] .rank-home .rank-spotlight-card {
   border-color: rgba(30, 24, 18, 0.16);
-  background:
-    linear-gradient(180deg, rgba(30, 24, 18, 0.04), rgba(30, 24, 18, 0.62)),
-    linear-gradient(90deg, rgba(30, 24, 18, 0.54), rgba(30, 24, 18, 0.08) 64%),
-    var(--bg-ball) center 48% / cover no-repeat,
-    var(--rb-bg-2);
 }
 /* 2026-07-02 home top rail rank fix. */
 .rank-home > .home-top-rail {
@@ -294,8 +278,6 @@ html[data-theme="light"] .rank-home .home-top-rail .rank-tier-rail > .rank-profi
   border: var(--ui-card-border-width) solid var(--rb-line);
   border-radius: var(--card-radius);
   background:
-    linear-gradient(180deg, rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.78)),
-    linear-gradient(90deg, rgba(0, 0, 0, 0.78), rgba(0, 0, 0, 0.14) 66%),
     var(--bg-ball) center 48% / cover no-repeat,
     var(--rb-bg-2);
   color: #fff;
@@ -303,16 +285,6 @@ html[data-theme="light"] .rank-home .home-top-rail .rank-tier-rail > .rank-profi
 }
 html[data-theme="light"] .rank-home .home-top-rail .rank-tier-rail > .rank-profile-card.rank-spotlight-card {
   border-color: rgba(30, 24, 18, 0.14);
-  background:
-    linear-gradient(180deg, rgba(30, 24, 18, 0.04), rgba(30, 24, 18, 0.64)),
-    linear-gradient(90deg, rgba(30, 24, 18, 0.58), rgba(30, 24, 18, 0.08) 66%),
-    var(--bg-ball) center 48% / cover no-repeat,
-    var(--rb-bg-2);
-}
-.rank-home .home-top-rail .rank-spotlight-card::before {
-  background:
-    radial-gradient(ellipse at 26% 72%, rgba(120, 170, 255, 0.18), transparent 42%),
-    linear-gradient(180deg, transparent 0 58%, rgba(24, 25, 26, 0.68));
 }
 @media (min-width: 1080px) {
   .rank-home > .home-top-rail {

@@ -12,6 +12,37 @@ html[data-theme="light"] .arena-room-player-slot {
     0 0 18px rgba(255, 118, 88, 0.1);
 }
 
+/* Modal footer actions share the same control contract; slot interiors stay untouched. */
+.arena-room-modal .arena-modal-close-row,
+.arena-lobby-modal .arena-modal-close-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--ui-control-group-gap);
+}
+
+:is(.arena-room-modal, .arena-lobby-modal)
+  .arena-modal-close-row:has(> :nth-child(2)) {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+:is(.arena-room-modal, .arena-lobby-modal) .arena-modal-close-row > .ui-button,
+:is(.arena-room-modal, .arena-lobby-modal) .arena-modal-close-row > .arena-modal-close-button {
+  display: inline-flex;
+  width: 100%;
+  min-width: 0;
+  min-height: var(--ui-button-height);
+  height: auto;
+  align-items: center;
+  justify-content: center;
+  padding-inline: var(--ui-button-padding-inline);
+}
+
+:is(.arena-room-modal, .arena-lobby-modal) .arena-modal-close-row > .arena-modal-close-button {
+  border-color: var(--ui-button-secondary-border);
+  background: var(--ui-button-secondary-bg);
+  color: var(--ui-button-secondary-text);
+}
+
 .arena-side-roster .arena-room-player-slot.ready,
 .arena-room-reserve-row .arena-room-player-slot.ready,
 .arena-room-party-group > .arena-room-player-slot-wrap .arena-room-player-slot.ready,

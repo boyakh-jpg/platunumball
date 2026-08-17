@@ -30,11 +30,6 @@ export default function Login({ auth, app }) {
   if (auth.session) return <Navigate to={from} replace />;
 
   const goBack = () => {
-    const hasPreviousHistoryEntry = typeof window !== "undefined" && Number(window.history.state?.idx) > 0;
-    if (hasPreviousHistoryEntry) {
-      navigate(-1);
-      return;
-    }
     navigate(getLoginBackTargetFromLocation(location), { replace: true });
   };
   const enterApp = () => navigate(from, { replace: true });

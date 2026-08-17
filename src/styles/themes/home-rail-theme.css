@@ -1,5 +1,6 @@
 html[data-theme] [data-design] .ui-design-app .rank-home .home-action-list > .home-action-row,
-html[data-theme] [data-design] .ui-design-app .rank-home .rank-leaderboard-card .rank-list > .rank-row {
+html[data-theme] [data-design] .ui-design-app .rank-home .rank-leaderboard-card .rank-list > .rank-row,
+html[data-theme] [data-design] .ui-design-app .rank-home .home-side-stack .compact-list > :is(a, div, .team-hover-trigger) {
   --ui-card-bg: transparent;
   --ui-card-border: transparent;
   --ui-card-radius: 0;
@@ -7,21 +8,54 @@ html[data-theme] [data-design] .ui-design-app .rank-home .rank-leaderboard-card 
   position: relative;
   padding-inline-start: var(--space-5);
   background: transparent;
-  border-color: transparent transparent var(--rb-line);
+  border: 0;
+  border-block-end: var(--ui-stroke-width) solid var(--rb-line);
   border-radius: 0;
   box-shadow: none;
+}
+
+@media (max-width: 759px) {
+  html[data-theme] [data-design] .ui-design-app .rank-home .home-right-rail .home-action-list > .home-action-row:not(:has(.home-action-buttons)) {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+  }
+
+  html[data-theme] [data-design] .ui-design-app .rank-home .home-right-rail .home-action-list > .home-action-row:not(:has(.home-action-buttons)) > .home-action-icon {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  html[data-theme] [data-design] .ui-design-app .rank-home .home-right-rail .home-action-list > .home-action-row:not(:has(.home-action-buttons)) > .home-action-main {
+    grid-column: 2;
+    grid-row: 1;
+    min-width: 0;
+  }
+
+  html[data-theme] [data-design] .ui-design-app .rank-home .home-right-rail .home-action-list > .home-action-row:not(:has(.home-action-buttons)) > b {
+    grid-column: 3;
+    grid-row: 1;
+    justify-self: end;
+    margin: 0;
+  }
 }
 
 html[data-theme]
   [data-design]
   .ui-design-app
   .rank-home
-  :is(.home-action-list > .home-action-row, .rank-leaderboard-card .rank-list > .rank-row):last-child {
+  :is(
+    .home-action-list > .home-action-row,
+    .rank-leaderboard-card .rank-list > .rank-row,
+    .home-side-stack .compact-list > a,
+    .home-side-stack .compact-list > div,
+    .home-side-stack .compact-list > .team-hover-trigger
+  ):last-child {
   border-block-end-color: transparent;
 }
 
 html[data-theme] [data-design] .ui-design-app .rank-home .home-action-list > .home-action-row::before,
-html[data-theme] [data-design] .ui-design-app .rank-home .rank-leaderboard-card .rank-list > .rank-row::before {
+html[data-theme] [data-design] .ui-design-app .rank-home .rank-leaderboard-card .rank-list > .rank-row::before,
+html[data-theme] [data-design] .ui-design-app .rank-home .home-side-stack .compact-list > :is(a, div, .team-hover-trigger)::before {
   content: none;
 }
 
@@ -29,6 +63,24 @@ html[data-theme] [data-design] .ui-design-app .rank-home .home-action-icon {
   color: var(--rb-orange-2);
   background: transparent;
   border-radius: 0;
+}
+
+html[data-theme] [data-design] .ui-design-app .rank-home .home-side-stack .compact-list {
+  gap: 0;
+}
+
+html[data-theme]
+  [data-design]
+  .ui-design-app
+  .rank-home
+  .home-top-rail
+  .rank-tier-rail
+  > .rank-profile-card.rank-spotlight-card.ui-design-decorative-surface {
+  background-color: var(--rb-bg-2);
+  background-image: var(--bg-ball);
+  background-position: center 48%;
+  background-repeat: no-repeat;
+  background-size: cover;
 }
 
 @media (max-width: 759px) {

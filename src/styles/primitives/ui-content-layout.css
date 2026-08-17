@@ -9,7 +9,7 @@ html[data-theme] .ui-design-app :is(
   .ui-design-info-surface,
   .ui-design-soft-surface,
   .ui-design-borderless-surface
-):not(.ui-liquid-glass):not(.ui-design-category-surface):not(.ui-design-decorative-surface):not(.ui-design-record-surface):not(.ui-match-list-surface):not(.match-receipt-card):not(.match-receipt-card *),
+):not(.ui-liquid-glass):not(.ui-design-category-surface):not(.ui-design-decorative-surface):not(.ui-design-record-surface):not(.ui-match-list-surface):not(.arena-queue-controls):not(.match-receipt-card):not(.match-receipt-card *),
 html[data-theme] .ui-design-app .ui-design-borderless-list > :not(.match-receipt-card):not(.match-receipt-card *),
 html[data-theme] .ui-design-app .ui-design-choice-list > :not(.match-receipt-card):not(.match-receipt-card *) {
   border-color: transparent;
@@ -82,8 +82,8 @@ html[data-theme] .ui-design-app :is(
 ) {
   border-color: transparent;
   background: transparent;
-  color: var(--rb-text);
-  box-shadow: inset var(--ui-status-rail-width) 0 0 var(--rb-orange);
+  color: var(--rb-orange);
+  box-shadow: none;
   transform: none;
 }
 
@@ -160,7 +160,16 @@ html[data-theme] .app-main .ui-step-nav {
   background: transparent;
 }
 
+html[data-theme] .app-main .ui-step-nav ol {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(max-content, 1fr);
+  min-width: 100%;
+  border-bottom: var(--ui-stroke-width) solid var(--rb-border-soft);
+}
+
 html[data-theme] .app-main .ui-step-nav button {
+  width: 100%;
   min-height: var(--ui-information-row-min-height);
   border: 0;
   border-radius: 0;
@@ -172,8 +181,8 @@ html[data-theme] .app-main .ui-step-nav button {
 html[data-theme] .app-main .ui-step-nav li.active button {
   border: 0;
   background: transparent;
-  color: var(--rb-text);
-  box-shadow: inset var(--ui-status-rail-width) 0 0 var(--rb-orange);
+  color: var(--rb-orange);
+  box-shadow: none;
 }
 
 html[data-theme] .guest-landing-hero {
@@ -289,11 +298,6 @@ html[data-theme] .app-main .ui-page-hero .ui-page-hero__copy > p:not(.eyebrow),
   text-shadow: var(--hero-copy-shadow);
 }
 
-html[data-theme] .app-main .ui-page-hero :where(*),
-html[data-theme] .guest-landing-hero :where(*) {
-  text-shadow: none;
-}
-
 html[data-theme] :is(.ui-design-app, .ui-design-host) .eyebrow,
 .guest-landing-eyebrow {
   font-family: var(--font-body);
@@ -404,6 +408,98 @@ html[data-theme]
   line-height: 1.45;
 }
 
+/* 공개 디자인 데모도 앱과 같은 평면형 화면 규칙을 사용한다. */
+html[data-theme] .ui-design-host {
+  gap: var(--page-section-gap);
+}
+
+html[data-theme] .ui-design-host :is(.ui-design-hero, .ui-design-image-feature) {
+  isolation: isolate;
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--ui-radius-md);
+  background:
+    var(--ui-design-media, var(--bg-court))
+    var(--ui-design-media-position, var(--hero-bg-position)) /
+    var(--hero-bg-size) no-repeat,
+    var(--rb-bg-3);
+  box-shadow: none;
+  filter: none;
+}
+
+html[data-theme] .ui-design-host .ui-design-hero {
+  min-height: 430px;
+  padding: var(--page-hero-padding);
+}
+
+html[data-theme] .ui-design-host .ui-design-image-feature {
+  min-height: 360px;
+  padding: var(--page-hero-padding);
+}
+
+html[data-theme] .ui-design-host :is(.ui-design-hero, .ui-design-image-feature)::before,
+html[data-theme] .ui-design-host :is(.ui-design-hero, .ui-design-image-feature)::after {
+  display: none;
+  content: none;
+}
+
+html[data-theme] .ui-design-host .ui-design-hero h1 {
+  color: var(--ui-image-hero-title-color);
+  font-size: var(--ui-page-hero-title-size);
+  line-height: var(--ui-page-hero-title-line-height);
+  text-shadow: var(--ui-image-hero-title-shadow);
+}
+
+html[data-theme] .ui-design-host .ui-design-image-feature h2 {
+  color: var(--ui-image-hero-title-color);
+  font-size: var(--ui-content-title-size);
+  line-height: var(--ui-content-title-line-height);
+  text-shadow: var(--ui-image-hero-title-shadow);
+}
+
+html[data-theme] .ui-design-host :is(.ui-design-hero, .ui-design-image-feature) :is(p, small, span) {
+  color: var(--ui-image-hero-copy-color);
+  text-shadow: var(--ui-image-hero-copy-shadow);
+}
+
+html[data-theme] .ui-design-host .ui-design-hero__stats {
+  gap: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+html[data-theme] .ui-design-host .ui-design-hero__stats > * {
+  flex: 1 1 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+html[data-theme] .ui-design-host .ui-design-hero__stats > * + * {
+  border-left: var(--ui-stroke-width) solid color-mix(in srgb, var(--ui-image-hero-title-color) 28%, transparent);
+}
+
+html[data-theme] .ui-design-host .ui-design-section {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+html[data-theme] .ui-design-host .ui-design-list {
+  gap: 0;
+  border-top: var(--ui-stroke-width) solid var(--rb-line);
+}
+
+html[data-theme] .ui-design-host .ui-design-list > * {
+  border: 0;
+  border-bottom: var(--ui-stroke-width) solid var(--rb-line);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
 .ui-help-disclosure {
   position: relative;
   display: inline-flex;
@@ -468,6 +564,28 @@ html[data-theme]
 }
 
 @media (max-width: 760px) {
+  html[data-theme] .ui-design-host .ui-design-hero {
+    min-height: 360px;
+    padding: var(--page-hero-padding-mobile);
+  }
+
+  html[data-theme] .ui-design-host .ui-design-image-feature {
+    min-height: 320px;
+    padding: var(--page-hero-padding-mobile);
+  }
+
+  html[data-theme] .ui-design-host .ui-design-hero h1 {
+    font-size: var(--ui-page-hero-title-size-mobile);
+  }
+
+  html[data-theme] .ui-design-host .ui-design-image-feature h2 {
+    font-size: var(--ui-content-title-size-mobile);
+  }
+
+  html[data-theme] .ui-design-host .ui-design-hero__stats {
+    width: 100%;
+  }
+
   html[data-theme] .ui-content-title.ui-content-title {
     font-size: var(--ui-content-title-size-mobile);
   }

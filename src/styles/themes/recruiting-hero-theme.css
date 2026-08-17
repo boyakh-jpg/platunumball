@@ -14,7 +14,13 @@
 .arena-filter-bar .segmented-control button.active,
 .arena-filter-bar .arena-start-date-filter button.active,
 .arena-filter-bar .arena-start-date-filter button.sat.active,
-.arena-filter-bar .arena-start-date-filter button.sun.active,
+.arena-filter-bar .arena-start-date-filter button.sun.active {
+  border-color: transparent;
+  background: transparent;
+  color: var(--rb-orange);
+  font-weight: var(--font-weight-title);
+}
+
 .arena-team-choice-grid button.selected,
 .arena-party-picker-grid > button.selected,
 .arena-party-role-buttons button.active,
@@ -65,24 +71,23 @@ html[data-theme="light"] .arena-slot-command-popover {
 .arena-filter-bar .segmented-control,
 .arena-filter-bar .arena-start-date-filter {
   box-sizing: border-box;
-  padding: 7px;
-  scroll-padding-inline: 7px;
+  padding: 0;
+  scroll-padding-inline: 0;
 }
 
 .arena-filter-bar .segmented-control button,
 .arena-filter-bar .arena-start-date-filter button {
   box-sizing: border-box;
-  border-width: var(--ui-button-border-width);
-  border-style: solid;
-  border-color: var(--ui-button-border);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 .arena-filter-bar .segmented-control button.active,
 .arena-filter-bar .arena-start-date-filter button.active,
 .arena-filter-bar .arena-start-date-filter button.sat.active,
 .arena-filter-bar .arena-start-date-filter button.sun.active {
-  border-width: var(--ui-button-border-width);
-  border-style: solid;
+  border: 0;
 }
 
 .arena-filter-bar .arena-start-date-filter {
@@ -113,8 +118,44 @@ html[data-theme="light"] .arena-recruit-hero {
 .arena-recruit-hero::after,
 html[data-theme="light"] .arena-recruit-hero::before,
 html[data-theme="light"] .arena-recruit-hero::after {
-  content: none;
-  display: none;
   background: none;
   opacity: 0;
+}
+
+/* Canonical image-hero and room shell. Slot interiors remain untouched. */
+.arena-hero-copy h1 {
+  line-height: 1.05;
+  color: var(--ui-image-hero-title-color);
+  text-shadow: var(--ui-image-hero-title-shadow);
+}
+
+.arena-hero-copy p,
+.arena-hero-copy .eyebrow {
+  color: var(--ui-image-hero-copy-color);
+  text-shadow: var(--ui-image-hero-copy-shadow);
+}
+
+.arena-hero-panel,
+html[data-theme="light"] .arena-hero-panel {
+  border: 0;
+  background: var(--ui-liquid-glass-bg);
+  background-image: none;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.arena-lobby-arena,
+html[data-theme="light"] .arena-lobby-arena {
+  border: 0;
+  background:
+    var(--bg-hoop) var(--hero-bg-position-hoop) / var(--hero-bg-size) no-repeat,
+    var(--rb-bg-2);
+  box-shadow: none;
+}
+
+.arena-lobby-arena::before,
+.arena-lobby-arena::after,
+html[data-theme="light"] .arena-lobby-arena::before,
+html[data-theme="light"] .arena-lobby-arena::after {
+  background: none;
 }

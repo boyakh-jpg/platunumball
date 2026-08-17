@@ -101,19 +101,12 @@
 .member-row,
 .ranking-row,
 .delta-row,
-.home-action-row,
-.home-invitation-row,
 .home-search-box,
 .home-search-results a,
 .home-search-results .team-hover-trigger,
 .rank-quick-links a,
-.rank-list .rank-row,
-.home-side-stack .compact-list a,
-.home-side-stack .compact-list > div,
-.home-side-stack .compact-list > .team-hover-trigger,
 .favorite-result-row,
-.favorite-mini-chip,
-.ranking-filter-card {
+.favorite-mini-chip {
   background-color: rgba(255, 255, 255, 0.045);
   background-image: none;
 }
@@ -130,19 +123,12 @@ html[data-theme="light"] .team-card .member-row,
 html[data-theme="light"] .member-row,
 html[data-theme="light"] .ranking-row,
 html[data-theme="light"] .delta-row,
-html[data-theme="light"] .home-action-row,
-html[data-theme="light"] .home-invitation-row,
 html[data-theme="light"] .home-search-box,
 html[data-theme="light"] .home-search-results a,
 html[data-theme="light"] .home-search-results .team-hover-trigger,
 html[data-theme="light"] .rank-quick-links a,
-html[data-theme="light"] .rank-list .rank-row,
-html[data-theme="light"] .home-side-stack .compact-list a,
-html[data-theme="light"] .home-side-stack .compact-list > div,
-html[data-theme="light"] .home-side-stack .compact-list > .team-hover-trigger,
 html[data-theme="light"] .favorite-result-row,
-html[data-theme="light"] .favorite-mini-chip,
-html[data-theme="light"] .ranking-filter-card {
+html[data-theme="light"] .favorite-mini-chip {
   background-color: var(--ui-control-group-bg);
   background-image: none;
 }
@@ -319,16 +305,30 @@ html[data-theme="light"] .ranking-filter-card {
 
 .settings-page .section-card {
   gap: var(--space-6);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .settings-page .contract-grid.single {
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-4);
+  gap: 0;
 }
 
 .settings-page .contract-grid.single > div {
   min-height: 58px;
   padding: 10px 12px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.settings-page .contract-grid.single > div + div {
+  margin-left: var(--space-3);
+  padding-left: calc(12px + var(--space-3));
+  border-left: var(--ui-stroke-width) solid var(--ui-divider-subtle);
 }
 
 .settings-page .form-stack {
@@ -421,7 +421,7 @@ html[data-theme="light"] .ranking-filter-card {
 
 .settings-page .settings-toggle-grid {
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: var(--space-4);
+  gap: 0;
 }
 
 .settings-page .settings-referee-card {
@@ -440,7 +440,7 @@ html[data-theme="light"] .ranking-filter-card {
 }
 
 .match-card {
-  background-color: rgba(10, 14, 21, 0.9);
+  background-color: var(--ui-data-cell-bg);
   background-image: none;
 }
 
@@ -460,14 +460,17 @@ html[data-theme="light"] .referee-hover-tier > span {
   background-image: none;
 }
 
-html[data-theme="light"] .home-action-card,
-html[data-theme="light"] .settings-page .section-card {
+html[data-theme="light"] .home-action-card {
   background-color: rgba(255, 255, 255, 0.92);
   background-image: none;
 }
 
+html[data-theme="light"] .settings-page .section-card {
+  background: transparent;
+}
+
 html[data-theme="light"] .match-card {
-  background-color: rgba(255, 255, 255, 0.92);
+  background-color: var(--ui-data-cell-bg);
   background-image: none;
 }
 

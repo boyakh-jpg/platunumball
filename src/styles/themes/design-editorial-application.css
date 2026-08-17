@@ -172,8 +172,8 @@ html[data-theme] [data-design="editorial"] .ui-design-app .ui-design-info-surfac
 
 html[data-theme] [data-design="editorial"] .ui-design-app .ui-design-record-surface.ui-design-info-surface {
   border: 0;
-  border-radius: 0;
-  background: transparent;
+  border-radius: var(--ui-data-cell-radius);
+  background: var(--ui-result-surface-bg, transparent);
   box-shadow: none;
 }
 

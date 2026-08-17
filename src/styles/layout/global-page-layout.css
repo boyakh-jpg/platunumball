@@ -124,16 +124,14 @@ html[data-theme] .app-main :is(
 ) .eyebrow {
   color: var(--hero-eyebrow-color);
 }
-html[data-theme="light"] .ui-page-hero,
-html[data-theme="light"] .ui-page-hero :where(*) {
-  text-shadow: none;
+html[data-theme] .app-main .ui-page-hero {
+  --hero-title-color: var(--ui-image-hero-title-color);
+  --hero-copy-color: var(--ui-image-hero-copy-color);
+  --hero-title-shadow: var(--ui-image-hero-title-shadow);
+  --hero-copy-shadow: var(--ui-image-hero-copy-shadow);
 }
 html[data-theme="light"] .app-main .ui-page-hero .eyebrow {
   color: var(--hero-eyebrow-color);
-}
-html[data-theme="light"] .app-main .rank-home .ui-page-hero {
-  --hero-title-color: var(--rb-orange-pressed);
-  --hero-eyebrow-color: var(--rb-cream);
 }
 /* Home hero keeps the next-match board below the rank copy on the left. */
 .rank-home .rank-summary-grid .home-rank-board-head {
@@ -247,10 +245,10 @@ html[data-theme] .app-main :is(
   .gm-room-actions > div
 ) {
   border-color: transparent;
-  background: var(--ui-liquid-glass-bg);
-  box-shadow: var(--ui-liquid-glass-shadow);
-  -webkit-backdrop-filter: var(--ui-liquid-glass-filter);
-  backdrop-filter: var(--ui-liquid-glass-filter);
+  background: var(--ui-design-soft-surface-bg);
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 html[data-theme] .app-main :is(.home-hero-next > span, .team-hub-board-head > span) {
   color: var(--rb-orange-2);

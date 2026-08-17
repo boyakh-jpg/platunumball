@@ -379,9 +379,8 @@ test("referee detail uses the player hero structure and dedicated tier emblems",
 test("signed-in login redirects and settings exposes logout", () => {
   const authStyles = read("src/styles/layout/app-shell-auth.css");
   assert.match(loginSource, /if \(auth\.session\) return <Navigate to=\{from\} replace \/>;/);
-  assert.match(loginSource, /const hasPreviousHistoryEntry = typeof window !== "undefined" && Number\(window\.history\.state\?\.idx\) > 0;/);
-  assert.match(loginSource, /if \(hasPreviousHistoryEntry\) \{[\s\S]*?navigate\(-1\);[\s\S]*?return;[\s\S]*?\}/);
   assert.match(loginSource, /navigate\(getLoginBackTargetFromLocation\(location\), \{ replace: true \}\);/);
+  assert.doesNotMatch(loginSource, /navigate\(-1\)|hasPreviousHistoryEntry/);
   assert.match(loginSource, /embeddedGoogleOAuthBrowser && showGoogleBrowserFallback/);
   assert.match(loginSource, /providerId === "google" && embeddedGoogleOAuthBrowser[\s\S]*?setShowGoogleBrowserFallback\(true\);[\s\S]*?return;/);
   assert.match(loginSource, /<AuthProviderIcon providerId=\{provider\.id\} \/>/);
@@ -497,7 +496,7 @@ test("win loss draw records use shared rounded semantic rails in every theme", (
   );
   assert.match(
     primitiveStyles,
-    /html\[data-theme\] \.app-main :is\(\.recent-match-row, \.rank-match-item\)::before\s*\{[^}]*inset:\s*var\(--ui-status-rail-inset\) auto var\(--ui-status-rail-inset\) 0;[^}]*width:\s*var\(--ui-status-rail-width\);[^}]*border-radius:\s*var\(--ui-status-rail-radius\);[^}]*background:\s*var\(--ui-status-rail-color, var\(--rb-soft\)\);/,
+    /html\[data-theme\] \.app-main :is\(\.recent-match-row, \.rank-match-item\)::before(?:,\s*html\[data-theme\] \.app-main \.ui-design-record-surface::before)?\s*\{[^}]*inset:\s*var\(--ui-status-rail-inset\) auto var\(--ui-status-rail-inset\) 0;[^}]*width:\s*var\(--ui-status-rail-width\);[^}]*border-radius:\s*var\(--ui-status-rail-radius\);[^}]*background:\s*var\(--ui-status-rail-color, var\(--rb-soft\)\);/,
   );
 });
 
@@ -1104,7 +1103,9 @@ test("목록 정보면, 결과색, 카드 action은 공용 토큰과 primitive�
   assert.match(primitiveStyles, /:not\(\.ui-match-list-surface\)/);
   assert.match(primitiveStyles, /\.ui-button\.ui-button-card-action\s*\{[^}]*min-height:\s*var\(--ui-card-action-min-height, 100%\);[^}]*align-self:\s*stretch;/);
   assert.match(matchListStyles, /"main action"\s*"summary action"/);
-  assert.match(matchListStyles, /--ui-card-action-height:\s*var\(--ui-button-height\);/);
+  assert.match(matchListStyles, /--ui-card-action-height:\s*auto;/);
+  assert.match(matchListStyles, /--ui-card-action-min-height:\s*74px;/);
+  assert.match(matchListStyles, /\.match-list-summary\s*\{[^}]*min-height:\s*74px;/);
 });
 
 test("목록 카드 feature CSS는 primitive 표면을 다시 정의하지 않는다", () => {
@@ -1288,7 +1289,7 @@ test("home Season Zero banner routes by founding player status", () => {
   assert.doesNotMatch(pageSources.playerDetail, /foundingPlayer|FOUNDING PLAYER/);
 });
 
-test("hero inner boards share one restrained glass surface system", () => {
+test("hero inner boards share one restrained solid surface system", () => {
   const homeDashboardResponsiveStyles = read("src/styles/responsive/home-dashboard-responsive.css");
 
   assert.equal(count(tokenStyles, "--hero-copy-color: var(--rb-cream);"), 1);
@@ -1298,25 +1299,27 @@ test("hero inner boards share one restrained glass surface system", () => {
   );
   assert.equal(count(tokenStyles, "--hero-title-shadow: none;"), 2);
   assert.equal(count(tokenStyles, "--hero-copy-shadow: none;"), 2);
-  assert.doesNotMatch(tokenStyles, /--hero-title-shadow:[\s\S]{0,100}?14px 34px/);
-  assert.doesNotMatch(tokenStyles, /--hero-copy-shadow:[\s\S]{0,100}?8px 20px/);
-  assert.equal(count(tokenStyles, "--ui-liquid-glass-filter: blur(10px) saturate(0.96);"), 2);
+  assert.equal(count(tokenStyles, "--ui-image-hero-title-color:"), 2);
+  assert.equal(count(tokenStyles, "--ui-image-hero-copy-color:"), 2);
+  assert.equal(count(tokenStyles, "--ui-image-hero-title-shadow:"), 2);
+  assert.equal(count(tokenStyles, "--ui-image-hero-copy-shadow:"), 2);
+  assert.doesNotMatch(tokenStyles, /--ui-image-hero-(?:title|copy)-shadow:[\s\S]{0,100}?14px 34px/);
+  assert.equal(count(tokenStyles, "--ui-liquid-glass-filter: none;"), 2);
   assert.equal(count(tokenStyles, "--ui-liquid-glass-color:"), 2);
   assert.equal(count(tokenStyles, "--ui-liquid-glass-muted-color:"), 2);
   assert.equal(count(tokenStyles, "--ui-liquid-glass-edge-width: 0px;"), 2);
   assert.equal(count(tokenStyles, "--ui-liquid-glass-refraction: none;"), 2);
-  assert.match(tokenStyles, /--ui-liquid-glass-shadow:\s*0 8px 20px rgba\(0,\s*0,\s*0,\s*0\.16\);/);
-  assert.match(tokenStyles, /--ui-liquid-glass-shadow:\s*0 8px 20px rgba\(24,\s*33,\s*38,\s*0\.09\);/);
+  assert.equal(count(tokenStyles, "--ui-liquid-glass-shadow: none;"), 2);
   assert.equal(count(tokenStyles, "--ui-liquid-glass-edge: none;"), 2);
   assert.match(tokenStyles, /--ui-hero-status-width:\s*428px;/);
   assert.match(tokenStyles, /--ui-hero-metric-min-height:\s*72px;/);
   assert.doesNotMatch(tokenStyles, /--ui-liquid-glass-(?:caustic|edge-inset|refraction-inner)/);
   assert.match(tokenStyles, /--ui-liquid-glass-divider:\s*rgba\(255,\s*255,\s*255,\s*0\.11\);/);
   assert.match(tokenStyles, /--ui-liquid-glass-divider:\s*rgba\(35,\s*50,\s*59,\s*0\.12\);/);
-  assert.match(primitiveStyles, /html\[data-theme\] \.app-main :is\(\.ui-liquid-glass,\s*\.page-header > \.ui-button\)\s*\{[^}]*border:\s*0;[^}]*box-shadow:\s*var\(--ui-liquid-glass-shadow\);[^}]*backdrop-filter:\s*var\(--ui-liquid-glass-filter\);/);
+  assert.match(primitiveStyles, /html\[data-theme\] \.app-main :is\(\.ui-liquid-glass,\s*\.page-header > \.ui-button\)\s*\{[^}]*border:\s*0;[^}]*background:\s*var\(--ui-liquid-glass-bg\);[^}]*box-shadow:\s*none;[^}]*backdrop-filter:\s*none;/);
   assert.match(primitiveStyles, /html\[data-theme\] \.app-main :is\(\.ui-liquid-glass,\s*\.page-header > \.ui-button\)\s*\{[^}]*text-shadow:\s*none;/);
   assert.match(primitiveStyles, /html\[data-theme\] \.app-main \.ui-liquid-glass :where\(\*\)\s*\{[^}]*text-shadow:\s*none;/);
-  assert.match(primitiveStyles, /html\[data-theme\] \.app-main \.ui-page-hero :where\(\*\),[\s\S]*?\.guest-landing-hero :where\(\*\)\s*\{[^}]*text-shadow:\s*none;/);
+  assert.doesNotMatch(primitiveStyles, /html\[data-theme\] \.app-main \.ui-page-hero :where\(\*\),[\s\S]*?\.guest-landing-hero :where\(\*\)\s*\{[^}]*text-shadow:\s*none;/);
   assert.match(primitiveStyles, /html\[data-theme\] \.app-main :is\(\.ui-liquid-glass,\s*\.page-header > \.ui-button\)::before\s*\{\s*content:\s*none;/);
   assert.match(primitiveStyles, /\.app-main \.ui-liquid-glass-segments\s*\{[^}]*border:\s*0;[^}]*border-bottom:\s*var\(--ui-stroke-width\) solid var\(--rb-line\);[^}]*border-radius:\s*0;[^}]*background:\s*transparent;/);
   assert.match(primitiveStyles, /\.app-main \.ui-liquid-glass-segments > \*\s*\{[^}]*border:\s*0;[^}]*border-radius:\s*0;[^}]*background:\s*transparent;[^}]*box-shadow:\s*none;/);
@@ -1336,7 +1339,8 @@ test("hero inner boards share one restrained glass surface system", () => {
   assert.match(visualSystemStyles, /\.om-match-panel,\s*\.arena-hero-panel[\s\S]*?width:\s*min\(100%,\s*var\(--ui-hero-status-width\)\);/);
   assert.match(visualSystemStyles, /\.om-match-actions,\s*\.arena-hero-actions[\s\S]*?height:\s*var\(--ui-button-height\);/);
   assert.match(visualSystemStyles, /\.eyebrow\s*\{[^}]*color:\s*var\(--hero-eyebrow-color\);/);
-  assert.match(visualSystemStyles, /html\[data-theme="light"\] \.app-main \.rank-home \.ui-page-hero\s*\{[^}]*--hero-title-color:\s*var\(--rb-orange-pressed\);[^}]*--hero-eyebrow-color:\s*var\(--rb-cream\);/);
+  assert.match(visualSystemStyles, /html\[data-theme\] \.app-main \.ui-page-hero\s*\{[^}]*--hero-title-color:\s*var\(--ui-image-hero-title-color\);[^}]*--hero-copy-color:\s*var\(--ui-image-hero-copy-color\);[^}]*--hero-title-shadow:\s*var\(--ui-image-hero-title-shadow\);[^}]*--hero-copy-shadow:\s*var\(--ui-image-hero-copy-shadow\);/);
+  assert.doesNotMatch(visualSystemStyles, /html\[data-theme="light"\] \.app-main \.rank-home \.ui-page-hero\s*\{/);
   assert.match(visualSystemStyles, /html\[data-theme\] \.app-main \.ui-page-hero \.ui-liquid-glass :where\(\*\)\s*\{[^}]*color:\s*inherit;/);
   assert.match(visualSystemStyles, /\.ui-page-hero \.ui-liquid-glass :is\([\s\S]*?\.home-hero-stats em[\s\S]*?\)\s*\{[^}]*color:\s*var\(--ui-liquid-glass-muted-color\);/);
   assert.match(visualSystemStyles, /\.home-hero-next > strong,[\s\S]*?\.arena-hero-stats strong[\s\S]*?color:\s*var\(--hero-title-color\);/);
@@ -1416,7 +1420,7 @@ test("page heroes keep shared eyebrows without implementation copy", () => {
   assert.match(visualSystemStyles, /\.ui-page-hero__copy h1\s*\{[^}]*text-shadow:\s*var\(--hero-title-shadow\);[^}]*font-family:\s*var\(--hero-title-font\);/);
   assert.match(visualSystemStyles, /\.ui-page-hero__copy p:not\(\.eyebrow\)\s*\{[^}]*color:\s*var\(--hero-copy-color\);[^}]*text-shadow:\s*var\(--hero-copy-shadow\);/);
   assert.match(visualSystemStyles, /\.ui-page-hero__copy \.eyebrow\s*\{[^}]*text-shadow:\s*var\(--hero-copy-shadow\);/);
-  assert.match(visualSystemStyles, /html\[data-theme="light"\] \.ui-page-hero,[\s\S]*?html\[data-theme="light"\] \.ui-page-hero :where\(\*\)\s*\{[^}]*text-shadow:\s*none;/);
+  assert.doesNotMatch(visualSystemStyles, /html\[data-theme="light"\] \.ui-page-hero,[\s\S]*?html\[data-theme="light"\] \.ui-page-hero :where\(\*\)\s*\{[^}]*text-shadow:\s*none;/);
   assert.match(visualSystemStyles, /\.rank-home \.rank-summary-grid \.home-rank-board-head p:not\(\.eyebrow\),[\s\S]*?\{[^}]*text-shadow:\s*var\(--hero-copy-shadow\);/);
   assert.doesNotMatch(
     readCssTree("src/styles/responsive/global-home-responsive.css"),
@@ -1447,7 +1451,7 @@ test("shared primitives own application-wide density, surfaces, and modals", () 
   );
   assert.match(
     primitiveStyles,
-    /\.ui-segmented-control:not\(\.create-choice-segments\):not\(\[role="radiogroup"\]\)\s*\{[^}]*width:\s*fit-content;/,
+    /\.ui-segmented-control:not\(\.create-choice-segments\):not\(\[role="radiogroup"\]\):not\(\.ui-filter-row\)\s*\{[^}]*width:\s*fit-content;/,
   );
   assert.match(
     primitiveStyles,
@@ -1518,7 +1522,7 @@ test("home information rows use transparent surfaces and subtle separators", () 
   assert.match(homeRailStyles, /\.home-action-list > \.home-action-row/);
   assert.match(homeRailStyles, /\.rank-leaderboard-card \.rank-list > \.rank-row/);
   assert.match(homeRailStyles, /background:\s*transparent/);
-  assert.match(homeRailStyles, /border-color:\s*transparent transparent var\(--rb-line\)/);
+  assert.match(homeRailStyles, /border-block-end:\s*var\(--ui-stroke-width\) solid var\(--rb-line\);/);
   assert.match(homeRailStyles, /::before\s*\{\s*content:\s*none;/);
   assert.match(homeRailStyles, /\.home-action-icon\s*\{[^}]*background:\s*transparent/s);
 });
@@ -2034,10 +2038,10 @@ test("shared control families and fixed labels keep canonical ownership", () => 
   assert.match(uiControlsStyles, /\.ui-folder-tabs\s*\{[^}]*width:\s*100%;[^}]*max-width:\s*100%;[^}]*border-bottom:\s*0;/);
   assert.match(uiControlsStyles, /\.ui-folder-tabs button\s*\{[^}]*flex:\s*1 1 0;/);
   assert.match(uiControlsStyles, /\.ui-folder-tabs button\[aria-selected="true"\]\s*\{[^}]*background:\s*transparent;[^}]*font-weight:\s*var\(--font-weight-title\);[^}]*box-shadow:\s*none;[^}]*transform:\s*none;/);
-  assert.match(uiControlsStyles, /\.ui-segmented-control:not\(\.create-choice-segments\):not\(\[role="radiogroup"\]\)\s*\{[^}]*border:\s*0;[^}]*background:\s*transparent;[^}]*box-shadow:\s*none;/);
+  assert.match(uiControlsStyles, /\.ui-segmented-control:not\(\.create-choice-segments\):not\(\[role="radiogroup"\]\):not\(\.ui-filter-row\)\s*\{[^}]*border:\s*0;[^}]*background:\s*transparent;[^}]*box-shadow:\s*none;/);
   assert.match(uiControlsStyles, /\.ui-segmented-control:not\(\.create-choice-segments\):not\(\[role="radiogroup"\]\) > button:is\(\.active, \[aria-current="page"\], \[aria-selected="true"\]\)\s*\{[^}]*background:\s*transparent;[^}]*font-weight:\s*var\(--font-weight-title\);[^}]*box-shadow:\s*none;/);
   assert.match(profileRecordStyles, /\.profile-record-section-filter,[\s\S]*?\.profile-record-visibility-filter\s*\{[^}]*display:\s*flex;[^}]*width:\s*100%;[^}]*max-width:\s*100%;[^}]*overflow-x:\s*auto;/);
-  assert.match(profileRecordStyles, /\.profile-record-section-filter button,[\s\S]*?\.profile-record-visibility-filter button\s*\{[^}]*flex:\s*0 0 auto;[^}]*white-space:\s*nowrap;/);
+  assert.match(profileRecordStyles, /\.profile-record-section-filter button,[\s\S]*?\.profile-record-visibility-filter button\s*\{[^}]*flex:\s*1 1 0;[^}]*min-width:\s*0;[^}]*white-space:\s*nowrap;/);
   assert.doesNotMatch(profileRecordStyles, /\.profile-record-(?:section|mode|visibility)-filter\s*\{[^}]*grid-template-columns:/);
   assert.match(sharedControlStyles, /button\.ui-choice-tile/);
   assert.match(sharedControlStyles, /\.ui-compact-action/);

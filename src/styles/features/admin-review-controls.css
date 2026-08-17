@@ -281,13 +281,11 @@ html[data-theme="light"] .favorite-toggle-button.active.button-secondary {
 
 html[data-theme="light"] .auth-shell {
   background:
-    linear-gradient(180deg, rgba(248, 252, 248, 0.76), rgba(242, 247, 244, 0.94)),
     var(--bg-court) var(--hero-bg-position-court) / var(--hero-bg-size) no-repeat,
     #f4f7f2;
 }
 
 html[data-theme="light"] .auth-card,
-html[data-theme="light"] .sidebar-profile,
 html[data-theme="light"] .provider-button,
 html[data-theme="light"] .theme-choice-card,
 html[data-theme="light"] .selector-panel,
@@ -298,6 +296,13 @@ html[data-theme="light"] .tier-range-note {
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(247, 251, 248, 0.72)),
     rgba(255, 255, 255, 0.86);
+  color: var(--text);
+}
+
+html[data-theme="light"] .sidebar-profile {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
   color: var(--text);
 }
 

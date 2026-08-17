@@ -263,15 +263,9 @@ body {
 }
 .home-search-results a,
 .home-search-results .team-hover-trigger,
-.home-action-row,
-.home-invitation-row,
-.home-side-stack .compact-list a,
-.home-side-stack .compact-list > div,
-.home-side-stack .compact-list > .team-hover-trigger,
 .team-card .member-row {
   border: var(--ui-card-border-width) solid var(--rb-line);
   border-radius: var(--radius-sm);
-  background: rgba(255, 255, 255, 0.045);
 }
 .segmented-control button,
 .favorite-type-grid button {
@@ -355,9 +349,7 @@ button:not(:focus-visible) {
   border-color: rgba(255, 255, 255, 0.15);
 }
 .rank-home .rank-profile-card .rank-tier-block,
-.rank-home .rank-mode-pill,
-.home-action-row,
-.home-invitation-row {
+.rank-home .rank-mode-pill {
   background: rgba(0, 0, 0, 0.18);
 }
 .rank-home .rank-mode-pill {
@@ -384,14 +376,14 @@ button:not(:focus-visible) {
 }
 .home-action-row {
   grid-template-columns: 38px minmax(0, 1fr) auto;
-  min-height: 66px;
-  padding: 10px 12px;
+  min-height: 52px;
+  padding: 8px 0;
 }
 .home-action-icon {
   width: 38px;
   height: 38px;
-  border-radius: var(--radius-sm);
-  background: rgba(240, 90, 70, 0.14);
+  border-radius: 0;
+  background: transparent;
   color: var(--rb-orange-2);
 }
 .home-action-main strong,

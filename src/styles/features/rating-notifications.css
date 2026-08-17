@@ -400,13 +400,34 @@
   color: var(--muted);
 }
 
+html[data-theme] .app-main .score-line > :is(span, a, .team-hover-trigger) {
+  display: grid;
+  align-items: center;
+  block-size: 1.96em;
+  min-width: 0;
+  overflow: hidden;
+  line-height: 0.98;
+  white-space: normal;
+  word-break: keep-all;
+}
+
+html[data-theme] .app-main .score-line > :is(span, a, .team-hover-trigger) > :is(span, a) {
+  display: block;
+  max-height: 1.96em;
+  overflow: hidden;
+  color: inherit;
+  line-height: inherit;
+  white-space: inherit;
+  word-break: inherit;
+}
+
 .score-line strong {
   font-size: 1.55rem;
 }
 
 .compact-list {
   display: grid;
-  gap: var(--space-4);
+  gap: 0;
 }
 
 .compact-list a,
@@ -418,9 +439,14 @@
   width: 100%;
   gap: var(--space-6);
   border: var(--ui-card-border-width) solid var(--ui-card-border);
-  border-radius: var(--radius);
-  background: var(--surface-2);
-  padding: 12px;
+  border-block-end: var(--ui-stroke-width) solid var(--rb-line);
+  border-radius: 0;
+  background: transparent;
+  padding: 10px 0;
+}
+
+.compact-list > :is(a, div, .team-hover-trigger):last-child {
+  border-block-end-color: transparent;
 }
 
 .notification-read {

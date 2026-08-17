@@ -69,10 +69,10 @@
 }
 
 .ranking-filter-card {
-  border: var(--ui-card-border-width) solid rgba(163, 185, 208, 0.16);
-  border-radius: var(--radius);
-  background: rgba(255, 255, 255, 0.045);
-  padding: 12px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
 }
 
 .selector-panel .search-controls {
@@ -92,21 +92,19 @@ html[data-theme="light"] .team-card .member-row,
 html[data-theme="light"] .member-row,
 html[data-theme="light"] .ranking-row,
 html[data-theme="light"] .delta-row,
-html[data-theme="light"] .home-action-row,
-html[data-theme="light"] .home-invitation-row,
 html[data-theme="light"] .home-search-box,
 html[data-theme="light"] .home-search-results a,
 html[data-theme="light"] .home-search-results .team-hover-trigger,
 html[data-theme="light"] .rank-quick-links a,
-html[data-theme="light"] .rank-list .rank-row,
-html[data-theme="light"] .home-side-stack .compact-list a,
-html[data-theme="light"] .home-side-stack .compact-list > div,
-html[data-theme="light"] .home-side-stack .compact-list > .team-hover-trigger,
 html[data-theme="light"] .favorite-result-row,
-html[data-theme="light"] .favorite-mini-chip,
-html[data-theme="light"] .ranking-filter-card {
+html[data-theme="light"] .favorite-mini-chip {
   border-color: var(--ui-control-group-border);
   background: var(--ui-control-group-bg);
+}
+
+html[data-theme="light"] .ranking-filter-card {
+  border: 0;
+  background: transparent;
 }
 
 .rank-profile-card .rank-tier-block {
@@ -140,11 +138,10 @@ html[data-theme="light"] .rank-profile-card .rank-tier-block {
 
 .rank-home .rank-profile-card .rank-tier-block,
 html[data-theme="light"] .rank-home .rank-profile-card .rank-tier-block {
-  min-height: 0;
+  min-height: 116px;
   border: 0;
-  background: transparent;
   box-shadow: none;
-  overflow: visible;
+  overflow: hidden;
 }
 
 html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head p:not(.eyebrow) {
@@ -208,7 +205,7 @@ html[data-theme="light"] .rank-home .rank-mode-pill em {
   }
 
   .rank-home .rank-summary-grid .home-rank-board-head h1 {
-    font-size: 2.4rem;
+    font-size: 1.85rem;
   }
 
   .rank-home .rank-profile-card {
@@ -228,7 +225,7 @@ html[data-theme="light"] .rank-home .rank-mode-pill em {
   }
 
   .rank-home .rank-tier-block strong {
-    font-size: 2.25rem;
+    font-size: 1.8rem;
   }
 
   .rank-home .rank-tier-meta-line,

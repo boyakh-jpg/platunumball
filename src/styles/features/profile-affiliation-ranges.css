@@ -22,7 +22,8 @@
 .profile-record-section-filter button,
 .profile-record-mode-filter button,
 .profile-record-visibility-filter button {
-  flex: 0 0 auto;
+  flex: 1 1 0;
+  min-width: 0;
   white-space: nowrap;
 }
 .profile-record-section-filter,
@@ -36,6 +37,23 @@
   border-bottom: var(--ui-stroke-width) solid var(--ui-divider-subtle);
   overflow-x: auto;
   scrollbar-width: none;
+}
+html[data-theme] .ui-design-app.app-main :is(
+  .profile-record-section-filter,
+  .profile-record-mode-filter,
+  .profile-record-visibility-filter
+) {
+  width: 100%;
+}
+html[data-theme] .ui-design-app.app-main :is(
+  .profile-record-section-filter,
+  .profile-record-mode-filter,
+  .profile-record-visibility-filter
+) > button {
+  flex: 1 1 0;
+  width: 0;
+  min-width: 0;
+  justify-content: center;
 }
 .profile-record-section-filter::-webkit-scrollbar,
 .profile-record-mode-filter::-webkit-scrollbar,

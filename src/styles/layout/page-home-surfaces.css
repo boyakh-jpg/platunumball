@@ -377,13 +377,7 @@ html[data-theme="light"] .rank-quick-links a,
 html[data-theme="light"] .rank-tier-block,
 html[data-theme="light"] .rank-record-main,
 html[data-theme="light"] .rank-stat-grid span,
-html[data-theme="light"] .rank-mode-pill,
-html[data-theme="light"] .rank-list .rank-row,
-html[data-theme="light"] .home-action-row,
-html[data-theme="light"] .home-invitation-row,
-html[data-theme="light"] .home-side-stack .compact-list a,
-html[data-theme="light"] .home-side-stack .compact-list > div,
-html[data-theme="light"] .home-side-stack .compact-list > .team-hover-trigger {
+html[data-theme="light"] .rank-mode-pill {
   border-color: rgba(32, 56, 68, 0.14);
   background: rgba(255, 255, 255, 0.58);
 }
@@ -407,16 +401,10 @@ html[data-theme="light"] .home-side-stack .compact-list > .team-hover-trigger {
 .member-row,
 .ranking-row,
 .delta-row,
-.home-action-row,
-.home-invitation-row,
 .home-search-box,
 .home-search-results a,
 .home-search-results .team-hover-trigger,
 .rank-quick-links a,
-.rank-list .rank-row,
-.home-side-stack .compact-list a,
-.home-side-stack .compact-list > div,
-.home-side-stack .compact-list > .team-hover-trigger,
 .favorite-result-row,
 .favorite-mini-chip {
   border-color: rgba(163, 185, 208, 0.14);

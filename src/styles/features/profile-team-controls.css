@@ -194,17 +194,21 @@
 
   .ranking-filter-card .segmented-control {
     display: grid;
-    grid-template-columns: repeat(12, minmax(0, 1fr));
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    grid-template-columns: none;
   }
 
   .ranking-filter-card .segmented-control button {
     width: 100%;
     min-width: 0;
-    grid-column: span 3;
+    grid-column: auto;
+    padding-inline: 2px;
+    font-size: 0.72rem;
   }
 
   .ranking-filter-card .segmented-control button:nth-last-child(-n + 3) {
-    grid-column: span 4;
+    grid-column: auto;
   }
 }
 
@@ -218,16 +222,20 @@
   }
 
   .ranking-filter-card .segmented-control {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    grid-template-columns: none;
   }
 
   .ranking-filter-card .segmented-control button,
   .ranking-filter-card .segmented-control button:nth-last-child(-n + 3) {
-    grid-column: span 3;
+    grid-column: auto;
+    padding-inline: 1px;
+    font-size: 0.66rem;
   }
 
   .ranking-filter-card .segmented-control button:nth-child(-n + 3) {
-    grid-column: span 2;
+    grid-column: auto;
   }
 
 }

@@ -76,9 +76,11 @@
 
 .arena-queue-controls {
   display: grid;
-  border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.1);
-  border-radius: var(--radius);
-  background: rgba(8, 11, 16, 0.62);
+  border: 0;
+  border-bottom: var(--ui-stroke-width) solid var(--rb-line);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .arena-queue-controls-head {
@@ -266,7 +268,7 @@
 .arena-room-modal .arena-modal-close-row {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-3);
+  gap: var(--space-4);
   align-items: center;
   justify-content: space-between;
 }

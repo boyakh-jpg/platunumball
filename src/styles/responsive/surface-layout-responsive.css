@@ -51,4 +51,23 @@ html[data-theme="light"] .rank-home .rank-mode-card {
   .settings-page .contract-grid.single {
     grid-template-columns: minmax(0, 1fr);
   }
+
+  .settings-page .contract-grid.single > div + div {
+    margin-left: 0;
+    padding-top: var(--space-4);
+    padding-left: 12px;
+    border-top: var(--ui-stroke-width) solid var(--ui-divider-subtle);
+    border-left: 0;
+  }
+
+  .settings-page .settings-toggle-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .settings-page .settings-toggle-grid label + label {
+    padding-top: var(--space-4);
+    padding-left: 10px;
+    border-top: var(--ui-stroke-width) solid var(--ui-divider-subtle);
+    border-left: 0;
+  }
 }

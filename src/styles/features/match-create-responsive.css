@@ -279,22 +279,9 @@
   order: 2;
 }
 
-.rank-home :is(
-  .home-action-row,
-  .rank-list .rank-row,
-  .home-side-stack .compact-list a,
-  .home-side-stack .compact-list > div,
-  .home-side-stack .compact-list > .team-hover-trigger,
-  .season-mini-card .contract-grid > div
-) {
+.rank-home .season-mini-card .contract-grid > div {
   border: var(--ui-card-border-width) solid var(--ui-control-border);
   border-radius: var(--ui-control-radius);
-  background: var(--ui-control-bg);
-  box-shadow: none;
-}
-
-.rank-home .home-action-row:is(.priority-1, .priority-2, .priority-3, .priority-4, .priority-5) {
-  border-color: var(--ui-control-border);
   background: var(--ui-control-bg);
   box-shadow: none;
 }

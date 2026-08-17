@@ -89,8 +89,8 @@
   white-space: nowrap;
 }
 .rank-home .match-focus-card .match-card .score-line {
-  gap: clamp(var(--space-5), 2vw, var(--space-11));
-  padding: 6px 0 4px;
+  gap: clamp(var(--space-3), 1.2vw, var(--space-7));
+  padding: 2px 0;
 }
 .rank-home .match-focus-card .match-card .score-line span,
 .rank-home .match-focus-card .match-card .score-line a,
@@ -102,29 +102,17 @@
 }
 .rank-home .match-focus-card .match-card .score-line span,
 .rank-home .match-focus-card .match-card .score-line a {
-  font-size: clamp(1.55rem, 4.8vw, 3rem);
+  font-size: clamp(1.15rem, 2.6vw, 1.65rem);
   font-weight: 950;
   overflow-wrap: anywhere;
 }
 .rank-home .match-focus-card .match-card .score-line strong {
   color: var(--muted);
-  font-size: clamp(2rem, 5.2vw, 3.4rem);
-}
-.rank-home .match-focus-card .match-card > .button-secondary {
-  border-color: transparent;
-  background: var(--rb-orange);
-  color: #fff;
-}
-.rank-home .match-focus-card .match-card > .button-secondary:hover {
-  background: var(--rb-orange-2);
-  color: #fff;
-}
-.rank-home .match-focus-card .match-card > .button-secondary:active {
-  background: var(--rb-orange-pressed);
+  font-size: clamp(1.4rem, 3vw, 2rem);
 }
 @media (max-width: 640px) {
   .rank-home .match-focus-card .match-card .score-line {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   }
 
   .rank-home .match-focus-card .match-card .score-line span,

@@ -65,7 +65,7 @@
   --bg: #383b3d;
   --surface: #404345;
   --surface-2: rgba(255, 255, 255, 0.055);
-  --surface-3: #313436;
+  --surface-3: #474a4c;
   --line: rgba(255, 255, 255, 0.1);
   --line-strong: rgba(255, 255, 255, 0.18);
   --text: #f5f6f6;
@@ -153,8 +153,8 @@
   --button-primary-hover-bg: var(--rb-orange-2);
   --button-primary-pressed-bg: var(--rb-orange-pressed);
   --button-secondary-bg: var(--surface-3);
-  --button-secondary-hover-bg: rgba(255, 255, 255, 0.1);
-  --button-secondary-pressed-bg: rgba(255, 255, 255, 0.14);
+  --button-secondary-hover-bg: #54585a;
+  --button-secondary-pressed-bg: #5b5f61;
   --input-bg: rgba(255, 255, 255, 0.06);
   --input-border: var(--rb-line);
   --focus-ring: 0 0 0 3px rgba(255, 118, 88, 0.2);
@@ -169,18 +169,18 @@
   --ui-profile-popup-bg: color-mix(in srgb, var(--surface) 82%, transparent);
   --ui-profile-popup-shadow: var(--shadow-strong);
   --ui-profile-popup-backdrop-filter: blur(16px) saturate(1.08);
-  --ui-liquid-glass-bg: color-mix(in srgb, var(--rb-bg-3) 76%, transparent);
+  --ui-liquid-glass-bg: var(--rb-bg-3);
   --ui-liquid-glass-color: var(--rb-cream);
   --ui-liquid-glass-muted-color: color-mix(in srgb, var(--rb-cream) 72%, transparent);
-  --ui-liquid-glass-button-bg: color-mix(in srgb, var(--rb-bg-3) 86%, transparent);
+  --ui-liquid-glass-button-bg: var(--button-secondary-bg);
   --ui-liquid-glass-button-color: var(--rb-text);
   --ui-liquid-glass-border: transparent;
   --ui-liquid-glass-divider: rgba(255, 255, 255, 0.11);
   --ui-liquid-glass-edge: none;
   --ui-liquid-glass-edge-width: 0px;
   --ui-liquid-glass-refraction: none;
-  --ui-liquid-glass-shadow: 0 8px 20px rgba(0, 0, 0, 0.16);
-  --ui-liquid-glass-filter: blur(10px) saturate(0.96);
+  --ui-liquid-glass-shadow: none;
+  --ui-liquid-glass-filter: none;
   --ui-hero-status-width: 428px;
   --ui-hero-metric-min-height: 72px;
   --ui-panel-radius: var(--panel-radius);
@@ -271,19 +271,18 @@
   --ui-page-hero-min-height-mobile: 144px;
   --ui-page-hero-padding: clamp(16px, 2vw, 22px);
   --ui-page-hero-shadow: none;
-  --ui-schedule-hero-mask: linear-gradient(
-    90deg,
-    rgba(27, 30, 32, 0.94),
-    rgba(27, 30, 32, 0.72) 54%,
-    rgba(27, 30, 32, 0.34)
-  );
+  --ui-schedule-hero-mask: none;
+  --ui-image-hero-title-color: var(--rb-cream);
+  --ui-image-hero-copy-color: color-mix(in srgb, var(--rb-cream) 88%, transparent);
+  --ui-image-hero-title-shadow: 0 1px 2px rgba(10, 14, 18, 0.88), 0 0 6px rgba(10, 14, 18, 0.36);
+  --ui-image-hero-copy-shadow: 0 1px 2px rgba(10, 14, 18, 0.82);
   --hero-title-font: var(--sports-display-font);
   --ui-content-title-size: clamp(1.45rem, 2.2vw, 1.8rem);
   --ui-content-title-size-mobile: clamp(1.4rem, 6vw, 1.7rem);
   --hero-title-size: clamp(1.55rem, 2.2vw, 1.95rem);
   --hero-title-size-mobile: clamp(1.45rem, 6vw, 1.75rem);
-  --ui-room-title-size: clamp(1.45rem, 2.2vw, 1.8rem);
-  --ui-room-title-size-mobile: 1.4rem;
+  --ui-room-title-size: clamp(1.3rem, 1.8vw, 1.55rem);
+  --ui-room-title-size-mobile: 1.25rem;
   --ui-room-copy-size: 0.8125rem;
   --hero-title-line-height: 0.95;
   --hero-title-letter-spacing: 0.018em;
@@ -342,10 +341,10 @@
 
 html[data-theme="light"] {
   color-scheme: light;
-  --bg: #f3f4f4;
+  --bg: #f8f7f4;
   --surface: #ffffff;
-  --surface-2: #eef0f1;
-  --surface-3: #e5e8e9;
+  --surface-2: #f2f0eb;
+  --surface-3: #e9e7e2;
   --line: rgba(24, 33, 38, 0.11);
   --line-strong: rgba(24, 33, 38, 0.18);
   --text: #1d2326;
@@ -361,9 +360,9 @@ html[data-theme="light"] {
   --blue: #336fb8;
   --violet: #7356b8;
   --danger: #c94242;
-  --rb-bg: #f3f4f4;
+  --rb-bg: #f8f7f4;
   --rb-bg-2: #ffffff;
-  --rb-bg-3: #e5e8e9;
+  --rb-bg-3: #e9e7e2;
   --rb-surface: rgba(255, 255, 255, 0.86);
   --rb-surface-strong: #ffffff;
   --rb-line: rgba(24, 33, 38, 0.11);
@@ -390,8 +389,8 @@ html[data-theme="light"] {
   --button-primary-hover-bg: var(--rb-orange-2);
   --button-primary-pressed-bg: var(--rb-orange-pressed);
   --button-secondary-bg: var(--surface-3);
-  --button-secondary-hover-bg: #dfe3e6;
-  --button-secondary-pressed-bg: #d4d9dd;
+  --button-secondary-hover-bg: #e2dfd8;
+  --button-secondary-pressed-bg: #d8d4cc;
   --input-bg: #ffffff;
   --input-border: rgba(24, 33, 38, 0.14);
   --focus-ring: 0 0 0 3px rgba(229, 85, 63, 0.16);
@@ -408,25 +407,26 @@ html[data-theme="light"] {
   --ui-modal-shadow: 0 16px 36px rgba(24, 33, 38, 0.14);
   --ui-modal-bg: var(--rb-bg-2);
   --ui-room-panel-bg: rgba(255, 255, 255, 0.86);
-  --ui-liquid-glass-bg: color-mix(in srgb, #ffffff 78%, transparent);
+  --ui-liquid-glass-bg: var(--ui-information-surface-bg);
   --ui-liquid-glass-color: var(--rb-text);
   --ui-liquid-glass-muted-color: var(--rb-soft);
-  --ui-liquid-glass-button-bg: color-mix(in srgb, #ffffff 88%, transparent);
+  --ui-liquid-glass-button-bg: var(--button-secondary-bg);
   --ui-liquid-glass-button-color: var(--rb-text);
   --ui-liquid-glass-border: transparent;
   --ui-liquid-glass-divider: rgba(35, 50, 59, 0.12);
   --ui-liquid-glass-edge: none;
   --ui-liquid-glass-edge-width: 0px;
   --ui-liquid-glass-refraction: none;
-  --ui-liquid-glass-shadow: 0 8px 20px rgba(24, 33, 38, 0.09);
-  --ui-liquid-glass-filter: blur(10px) saturate(0.96);
+  --ui-liquid-glass-shadow: none;
+  --ui-data-cell-bg: #ffffff;
+  --ui-information-surface-bg: #ffffff;
+  --ui-liquid-glass-filter: none;
   --ui-page-hero-shadow: none;
-  --ui-schedule-hero-mask: linear-gradient(
-    90deg,
-    rgba(255, 255, 255, 0.96),
-    rgba(255, 255, 255, 0.76) 54%,
-    rgba(255, 255, 255, 0.42)
-  );
+  --ui-schedule-hero-mask: none;
+  --ui-image-hero-title-color: var(--rb-cream);
+  --ui-image-hero-copy-color: color-mix(in srgb, var(--rb-cream) 88%, transparent);
+  --ui-image-hero-title-shadow: 0 1px 2px rgba(10, 14, 18, 0.88), 0 0 6px rgba(10, 14, 18, 0.36);
+  --ui-image-hero-copy-shadow: 0 1px 2px rgba(10, 14, 18, 0.82);
   --hero-title-color: var(--rb-text);
   --hero-eyebrow-color: var(--rb-orange-pressed);
   --hero-title-shadow: none;

@@ -123,6 +123,54 @@ html[data-theme="light"] .tournament-detail-page > .tournament-section > .om-lis
   gap: 10px;
   align-self: start;
 }
+
+/* Calendar is navigation, not a nested card grid. Keep the final cascade unboxed. */
+html[data-theme] .om-calendar-panel,
+html[data-theme] .om-calendar-summary,
+html[data-theme] .om-calendar-box,
+html[data-theme] .om-calendar-toolbar {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+html[data-theme] .om-calendar-toolbar {
+  align-items: center;
+  padding: 0;
+}
+
+html[data-theme] .om-calendar-toolbar > button {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+html[data-theme] .om-calendar-toolbar strong {
+  display: inline-flex;
+  align-self: stretch;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--ui-button-height-sm);
+  line-height: 1;
+}
+
+html[data-theme] .om-calendar-grid > span,
+html[data-theme] .om-calendar-grid button,
+html[data-theme] .om-calendar-grid button.active {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+html[data-theme] .om-calendar-grid > span::before,
+html[data-theme] .om-calendar-grid > span::after,
+html[data-theme] .om-calendar-grid button::before,
+html[data-theme] .om-calendar-grid button::after {
+  content: none;
+}
 .om-calendar-heading {
   display: grid;
   grid-template-columns: 32px minmax(0, 1fr);
@@ -158,13 +206,13 @@ html[data-theme="light"] .om-calendar-filter-bar {
 }
 .om-calendar-filter-row .segmented-control {
   display: flex;
-  width: auto;
+  width: 100%;
   max-width: 100%;
   min-width: 0;
   flex-wrap: nowrap;
   gap: 4px;
   align-items: center;
-  overflow-x: auto;
+  overflow: visible;
   border: 0;
   border-radius: 0;
   background: transparent;
@@ -172,32 +220,32 @@ html[data-theme="light"] .om-calendar-filter-bar {
   padding: 0;
 }
 .om-calendar-filter-row .segmented-control button {
-  width: auto;
+  width: 0;
   min-width: 0;
   min-height: 34px;
   height: 34px;
-  flex: 0 0 auto;
-  border: var(--ui-button-border-width) solid var(--ui-button-border);
-  border-radius: var(--ui-button-radius);
-  background: var(--ui-button-bg);
+  flex: 1 1 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   color: var(--ui-button-color);
   box-shadow: none;
-  padding: 0 8px;
-  font-size: var(--ui-button-font-size);
+  padding: 0 3px;
+  font-size: clamp(0.62rem, 1vw, 0.7rem);
   font-weight: var(--ui-button-font-weight);
   line-height: 1;
   letter-spacing: 0;
   white-space: nowrap;
 }
 .om-calendar-filter-row .segmented-control button.active {
-  border-color: transparent;
-  background: var(--ui-button-bg-active);
-  color: var(--ui-button-color-active);
+  background: transparent;
+  color: var(--rb-orange-2);
+  font-weight: var(--font-weight-title);
 }
 .om-calendar-filter-row .om-relation-filter-grid,
 .om-calendar-filter-row .om-branch-filter-grid {
   display: flex;
-  width: max-content;
+  width: 100%;
 }
 .om-calendar-filter-row .om-branch-filter-grid > button {
   grid-column: auto;
@@ -206,7 +254,7 @@ html[data-theme="light"] .om-calendar-filter-bar {
   grid-column: auto;
 }
 .om-calendar-filter-row :is(.om-relation-filter-grid, .om-branch-filter-grid) > button {
-  width: auto;
+  width: 0;
 }
 @media (max-width: 1120px) {
   .om-view-grid {
@@ -223,15 +271,16 @@ html[data-theme="light"] .om-calendar-filter-bar {
     grid-column: span 3;
   }
 }
-@media (min-width: 721px) {
+@media (min-width: 900px) {
   .om-calendar-panel {
     width: 100%;
-    grid-template-columns: minmax(220px, 250px) minmax(420px, 1fr);
-    justify-content: stretch;
+    grid-template-columns: minmax(300px, 340px) minmax(0, 700px);
+    gap: var(--space-4);
+    justify-content: space-between;
   }
 
   .om-calendar-box {
-    width: 100%;
+    width: min(100%, 700px);
     justify-self: end;
   }
 
@@ -240,17 +289,16 @@ html[data-theme="light"] .om-calendar-filter-bar {
   }
 
   .om-calendar-filter-row .segmented-control {
-    width: max-content;
+    width: 100%;
     max-width: 100%;
     flex-wrap: nowrap;
-    overflow-x: auto;
-    scrollbar-width: thin;
+    overflow: visible;
   }
 
   .om-calendar-filter-row .om-relation-filter-grid,
   .om-calendar-filter-row .om-branch-filter-grid {
     display: flex;
-    width: max-content;
+    width: 100%;
   }
 
   .om-calendar-filter-row .om-branch-filter-grid > button:last-child:nth-child(odd) {
@@ -258,11 +306,22 @@ html[data-theme="light"] .om-calendar-filter-bar {
   }
 
   .om-calendar-filter-row :is(.om-relation-filter-grid, .om-branch-filter-grid) > button {
-    width: auto;
+    width: 0;
   }
 
   .om-calendar-summary {
     padding: 0;
+  }
+}
+@media (min-width: 721px) and (max-width: 899px) {
+  .om-calendar-panel {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-4);
+  }
+
+  .om-calendar-box {
+    width: min(100%, 700px);
+    justify-self: end;
   }
 }
 @media (max-width: 720px) {
@@ -292,8 +351,8 @@ html[data-theme="light"] .om-calendar-filter-bar {
   .om-calendar-filter-row .segmented-control button {
     min-height: var(--ui-button-height-sm);
     height: var(--ui-button-height-sm);
-    padding-inline: 6px;
-    font-size: 0.72rem;
+    padding-inline: 2px;
+    font-size: 0.62rem;
   }
 }
 html[data-theme="light"] .om-calendar-summary {

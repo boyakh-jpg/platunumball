@@ -152,6 +152,15 @@ html[data-theme="light"] .rank-home .rank-summary-grid {
   width: 100%;
   min-width: 0;
 }
+
+html[data-theme]
+  .app-main
+  .rank-home
+  .home-search-actions
+  > .home-search-create.ui-button-block:not(.provider-button):not(.match-receipt-card *) {
+  width: 100%;
+  inline-size: 100%;
+}
 .rank-home .home-public-actions {
   flex-wrap: nowrap;
 }

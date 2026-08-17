@@ -1,11 +1,11 @@
 .match-list-card {
-  --ui-card-padding: 14px 14px 14px 18px;
+  --ui-card-padding: 0;
   position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr) minmax(92px, 116px);
   grid-template-areas: "main summary action";
   align-items: stretch;
-  gap: 12px;
+  gap: 0;
   width: 100%;
   min-width: 0;
   min-height: 110px;
@@ -39,6 +39,7 @@
   align-content: center;
   gap: 8px;
   min-width: 0;
+  padding: 14px 16px 14px 20px;
 }
 
 .match-list-card__badges {
@@ -76,20 +77,19 @@
 }
 
 .match-list-card__title {
-  display: -webkit-box;
+  display: block;
+  block-size: 1.96em;
   max-width: 100%;
   margin: 0;
   overflow: hidden;
   color: var(--rb-text);
   font-family: var(--sports-display-font);
-  font-size: clamp(22px, 2vw, 32px);
+  font-size: clamp(18px, 1.45vw, 24px);
   font-weight: 1000;
   line-height: 0.98;
   overflow-wrap: anywhere;
   white-space: normal;
   word-break: keep-all;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
 }
 
 .match-list-card__meta {
@@ -119,6 +119,7 @@
   gap: 4px;
   min-width: 0;
   min-height: 80px;
+  margin-block: 12px;
   overflow: hidden;
   text-align: center;
 }
@@ -140,7 +141,7 @@
   overflow: hidden;
   color: var(--rb-text);
   font-family: var(--sports-display-font);
-  font-size: clamp(18px, 2vw, 30px);
+  font-size: clamp(15px, 1.45vw, 22px);
   font-weight: 1000;
   line-height: 0.98;
   text-align: center;
@@ -166,7 +167,7 @@
   min-width: 2.2ch;
   color: var(--rb-text);
   font-family: var(--sports-display-font);
-  font-size: clamp(24px, 2.8vw, 42px);
+  font-size: clamp(22px, 2.2vw, 34px);
   font-weight: 1000;
   line-height: 0.9;
   text-transform: uppercase;
@@ -225,17 +226,20 @@
 
 @container (max-width: 760px) {
   .match-list-card {
-    --ui-card-padding: 12px 12px 12px 16px;
-    grid-template-columns: minmax(0, 1fr);
+    --ui-card-padding: 0;
+    grid-template-columns: minmax(0, 1fr) minmax(88px, 104px);
     grid-template-areas:
-      "main"
-      "summary"
-      "action";
-    gap: 10px;
+      "main main"
+      "summary action";
+    gap: 0;
+  }
+
+  .match-list-card__main {
+    padding: 12px 12px 12px 16px;
   }
 
   .match-list-card__title {
-    font-size: clamp(21px, 7vw, 27px);
+    font-size: clamp(18px, 5.8vw, 23px);
   }
 
   .match-list-summary {
@@ -243,29 +247,33 @@
     --ui-match-list-summary-block-border-width: var(--ui-stroke-width);
     --ui-match-list-summary-inline-border-width: 0;
     min-height: 74px;
+    margin: 0 0 12px 12px;
   }
 
   .match-list-card__action.ui-button-card-action {
-    --ui-card-action-height: var(--ui-button-height);
-    --ui-card-action-min-height: var(--ui-button-height);
+    --ui-card-action-height: auto;
+    --ui-card-action-min-height: 74px;
+    width: auto;
+    min-height: 74px;
+    margin: 0 12px 12px 8px;
+    border-radius: var(--ui-control-radius);
   }
 
   .match-list-summary__side {
-    font-size: clamp(16px, 6vw, 22px);
+    font-size: clamp(15px, 5vw, 20px);
   }
 
   .match-list-summary__line > strong {
-    font-size: clamp(25px, 8vw, 34px);
+    font-size: clamp(22px, 7vw, 30px);
   }
 }
 
 @media (max-width: 560px) {
   .match-list-card {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) minmax(88px, 104px);
     grid-template-areas:
-      "main"
-      "summary"
-      "action";
+      "main main"
+      "summary action";
   }
 
   .match-list-badge {

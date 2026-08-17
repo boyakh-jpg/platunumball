@@ -179,15 +179,6 @@ html[data-theme="light"] .arena-room-chat {
   font-weight: 900;
 }
 
-.arena-filter-bar button.active,
-.arena-filter-bar .segmented-control button.active,
-.arena-filter-bar .arena-start-date-filter button.active,
-.arena-filter-bar .arena-start-date-filter button.sat.active,
-.arena-filter-bar .arena-start-date-filter button.sun.active {
-  background: var(--button-primary-bg);
-  color: #fff;
-}
-
 /* 2026-07-01 standard UI cleanup: recruiting controls follow shared primitives. */
 
 .arena-lobby-title h1 {
@@ -255,15 +246,6 @@ html[data-theme="light"] .arena-party-member-card {
   color: var(--rb-text);
   font-size: var(--control-font-size);
   font-weight: 900;
-}
-
-.arena-team-choice-grid button.selected,
-.arena-party-picker-grid > button.selected,
-.arena-party-role-buttons button.active,
-.arena-invite-team-head > button.active,
-.arena-invite-member-grid button.selected {
-  background: var(--button-primary-bg);
-  color: #fff;
 }
 
 @media (max-width: 720px) {
