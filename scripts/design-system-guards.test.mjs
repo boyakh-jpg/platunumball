@@ -745,6 +745,10 @@ test("공용 CTA는 좁은 화면에서도 내용 너비를 유지한다", () =>
   assert.match(tokenStyles, /--ui-action-trio-max-inline-size:\s*552px;/);
   assert.match(primitiveStyles, /max-inline-size:\s*min\(100%, var\(--ui-action-button-max-inline-size\)\);/);
   assert.match(
+    primitiveStyles,
+    /\.form-grid > \.ui-button[^}]*inline-size:\s*min\(100%, var\(--ui-action-button-max-inline-size\)\);[^}]*justify-self:\s*start;/,
+  );
+  assert.match(
     read("src/styles/responsive/home-dashboard-responsive.css"),
     /\.home-search-actions\s*\{[^}]*width:\s*min\(100%, var\(--ui-action-trio-max-inline-size\)\);/,
   );

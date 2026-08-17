@@ -114,6 +114,12 @@ html[data-theme] .app-main .ui-button-block:not(.provider-button):not(.match-rec
   html[data-theme] .app-main .ui-button-block:not(.provider-button):not(.ui-button-card-action):not(.match-receipt-card *) {
     max-inline-size: min(100%, var(--ui-action-button-max-inline-size));
   }
+
+  html[data-theme] .app-main .form-grid > .ui-button:not(.provider-button):not(.ui-button-card-action) {
+    inline-size: min(100%, var(--ui-action-button-max-inline-size));
+    max-inline-size: var(--ui-action-button-max-inline-size);
+    justify-self: start;
+  }
 }
 
 html[data-theme] .app-main .page-header {
