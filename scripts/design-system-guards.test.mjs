@@ -1185,8 +1185,17 @@ test("경기 목록 제목과 요약은 실제 정보량만큼 조밀하게 유�
   assert.match(mainBody, /padding:\s*var\(--space-4\) var\(--space-5\) var\(--space-4\) var\(--space-7\);/);
   assert.match(matchListStyles, /\.match-list-badge\s*\{[^}]*min-height:\s*var\(--ui-match-badge-min-height\);/);
   assert.match(tokenStyles, /--ui-match-badge-min-height:\s*18px;/);
-  assert.match(tokenStyles, /--ui-match-summary-min-height:\s*54px;/);
-  assert.match(tokenStyles, /--ui-match-summary-min-height-mobile:\s*54px;/);
+  assert.match(tokenStyles, /--ui-match-summary-min-height:\s*0px;/);
+  assert.match(tokenStyles, /--ui-match-summary-min-height-mobile:\s*0px;/);
+  assert.match(componentSource, /className="match-list-summary__support"/);
+  assert.match(
+    matchListStyles,
+    /\.match-list-summary__support\s*\{[^}]*display:\s*flex;[^}]*flex-wrap:\s*wrap;[^}]*justify-content:\s*center;/,
+  );
+  assert.match(
+    matchListStyles,
+    /@container \(max-width: 760px\)[\s\S]*?\.match-list-card__main\s*\{[^}]*padding:\s*var\(--space-2\) var\(--space-4\) var\(--space-2\) var\(--space-6\);/,
+  );
 });
 
 test("홈 검색 카드가 공용 card padding을 덮지 않는다", () => {

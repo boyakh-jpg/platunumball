@@ -53,8 +53,12 @@ export function MatchListSummary({ left, center = "vs", right, meta, detail, var
         <strong>{center}</strong>
         <span className="match-list-summary__side">{right}</span>
       </div>
-      {meta ? <span className="match-list-summary__meta">{meta}</span> : null}
-      {detail ? <span className="match-list-summary__detail">{detail}</span> : null}
+      {meta || detail ? (
+        <span className="match-list-summary__support">
+          {meta ? <span className="match-list-summary__meta">{meta}</span> : null}
+          {detail ? <span className="match-list-summary__detail">{detail}</span> : null}
+        </span>
+      ) : null}
     </div>
   );
 }

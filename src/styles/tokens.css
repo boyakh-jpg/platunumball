@@ -200,8 +200,8 @@
   --ui-record-team-line-block-size: 2.4em;
   --ui-match-card-min-height: 88px;
   --ui-match-badge-min-height: 18px;
-  --ui-match-summary-min-height: 54px;
-  --ui-match-summary-min-height-mobile: 54px;
+  --ui-match-summary-min-height: 0px;
+  --ui-match-summary-min-height-mobile: 0px;
   --ui-button-font-weight: var(--font-weight-control);
   --ui-button-bg: var(--button-secondary-bg);
   --ui-button-bg-active: var(--button-primary-bg);

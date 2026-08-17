@@ -1920,6 +1920,8 @@ UI 수정 전:
 5. 목록 배지는 의미별 공용 tone을 사용한다. 상태는 상태 tone, 경기 방식은 blue, 공개 범위는 public green/private violet, 개인·팀 구분은 green/orange, 정규전은 gold, 심판 없음은 neutral을 쓴다. 색상은 `tokens.css` 변수만 사용한다.
 6. 카드 반응형은 공용 CSS에서만 관리한다. 콘텐츠 container `960px` 이상은 정보/요약/액션 3열, `959px` 이하는 정보와 요약을 왼쪽 두 행으로 두고 action rail이 오른쪽에서 카드 전체 높이를 채운다. 페이지별 카드 breakpoint나 descendant override를 추가하지 않는다.
 
+7. `MatchListSummary`의 팀명은 두 줄 높이를 고정하되 참여 정보와 상태 상세는 하나의 support row에서 함께 흐르게 한다. 요약 영역은 별도 최소 높이를 예약하지 않고, 긴 문구가 실제 너비를 넘을 때만 support row를 줄바꿈한다.
+
 ## 2026-07-18 구장 상세 화면
 
 1. 홈 통합검색의 선수·팀·심판·구장 결과 row는 클릭 시 해당 공용 hover/profile 카드를 고정해서 연다. 페이지 이동은 카드 안의 `프로필 보기`, `팀 보기`, `구장 정보 보기`처럼 명시된 액션으로만 수행한다.
