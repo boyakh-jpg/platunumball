@@ -37,16 +37,16 @@
   grid-area: main;
   display: grid;
   align-content: center;
-  gap: var(--space-2);
+  gap: var(--space-1);
   min-width: 0;
-  padding: 10px 12px 10px 16px;
+  padding: var(--space-4) var(--space-5) var(--space-4) var(--space-7);
 }
 
 .match-list-card__badges {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 5px;
+  gap: var(--space-1);
   min-width: 0;
 }
 
@@ -55,7 +55,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 20px;
+  min-height: var(--ui-match-badge-min-height);
   max-width: 100%;
   border: var(--ui-stroke-width) solid color-mix(in srgb, var(--match-list-badge-color) 30%, transparent);
   border-radius: 999px;
@@ -78,7 +78,8 @@
 
 .match-list-card__title {
   display: block;
-  block-size: 1.96em;
+  min-block-size: 0.98em;
+  max-block-size: 1.96em;
   max-width: 100%;
   margin: 0;
   overflow: hidden;
@@ -112,14 +113,14 @@
 }
 
 .match-list-summary {
-  --ui-panel-padding: 8px 10px;
+  --ui-panel-padding: var(--space-2) var(--space-4);
   grid-area: summary;
   display: grid;
   align-content: center;
-  gap: 4px;
+  gap: var(--space-1);
   min-width: 0;
   min-height: var(--ui-match-summary-min-height);
-  margin-block: var(--space-2);
+  margin-block: var(--space-1);
   overflow: hidden;
   text-align: center;
 }
@@ -235,7 +236,7 @@
   }
 
   .match-list-card__main {
-    padding: 10px 10px 10px 14px;
+    padding: var(--space-3) var(--space-4) var(--space-3) var(--space-6);
   }
 
   .match-list-card__title {
@@ -243,11 +244,11 @@
   }
 
   .match-list-summary {
-    --ui-panel-padding: 7px 8px;
+    --ui-panel-padding: var(--space-2) var(--space-4);
     --ui-match-list-summary-block-border-width: var(--ui-stroke-width);
     --ui-match-list-summary-inline-border-width: 0;
     min-height: var(--ui-match-summary-min-height-mobile);
-    margin: 0 0 var(--space-2) var(--space-2);
+    margin: 0 0 var(--space-1) var(--space-2);
   }
 
   .match-list-summary__side {

@@ -1175,6 +1175,20 @@ test("경기 목록 상태선과 팀명 높이는 공용 규칙을 사용한다"
   );
 });
 
+test("경기 목록 제목과 요약은 실제 정보량만큼 조밀하게 유지한다", () => {
+  const titleBody = getRuleBody(matchListStyles, ".match-list-card__title");
+  const mainBody = getRuleBody(matchListStyles, ".match-list-card__main");
+
+  assert.match(titleBody, /min-block-size:\s*0\.98em;/);
+  assert.match(titleBody, /max-block-size:\s*1\.96em;/);
+  assert.doesNotMatch(titleBody, /(?:^|\n)\s*block-size:\s*1\.96em;/m);
+  assert.match(mainBody, /padding:\s*var\(--space-4\) var\(--space-5\) var\(--space-4\) var\(--space-7\);/);
+  assert.match(matchListStyles, /\.match-list-badge\s*\{[^}]*min-height:\s*var\(--ui-match-badge-min-height\);/);
+  assert.match(tokenStyles, /--ui-match-badge-min-height:\s*18px;/);
+  assert.match(tokenStyles, /--ui-match-summary-min-height:\s*54px;/);
+  assert.match(tokenStyles, /--ui-match-summary-min-height-mobile:\s*54px;/);
+});
+
 test("홈 검색 카드가 공용 card padding을 덮지 않는다", () => {
   assert.doesNotMatch(
     legacyStyleSources,
