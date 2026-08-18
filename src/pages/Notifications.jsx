@@ -23,6 +23,10 @@ function formatNotificationTime(value) {
   }).format(date);
 }
 
+function formatCount(value) {
+  return value > 99 ? "99+" : String(value);
+}
+
 export default function Notifications({ app }) {
   const navigate = useNavigate();
   const [notificationView, setNotificationView] = useState("unread");
@@ -33,6 +37,7 @@ export default function Notifications({ app }) {
   const [notificationsLoadError, setNotificationsLoadError] = useState("");
   const [notificationReadPendingId, setNotificationReadPendingId] = useState("");
   const [notificationReadError, setNotificationReadError] = useState("");
+  const [notificationsLoadMorePending, setNotificationsLoadMorePending] = useState(false);
   const pendingInvitationKeysRef = useRef(new Set());
   const notificationDeletePendingRef = useRef("");
   const notificationReadPendingRef = useRef("");
@@ -70,6 +75,21 @@ export default function Notifications({ app }) {
       notificationsRefreshPendingRef.current = false;
     }
   }, [app.serverProfileBound, loadDirectory, loadNotifications]);
+  const loadMoreNotifications = useCallback(async () => {
+    if (notificationsRefreshPendingRef.current) return;
+    notificationsRefreshPendingRef.current = true;
+    setNotificationsLoadMorePending(true);
+    setNotificationsLoadError("");
+    try {
+      const loaded = await loadNotifications?.({ append: true });
+      if (loaded === false) throw new Error("notification_load_failed");
+    } catch {
+      setNotificationsLoadError("알림을 더 불러오지 못했습니다.");
+    } finally {
+      notificationsRefreshPendingRef.current = false;
+      setNotificationsLoadMorePending(false);
+    }
+  }, [loadNotifications]);
   useEffect(() => {
     void refreshNotifications();
   }, [refreshNotifications]);
@@ -86,6 +106,9 @@ export default function Notifications({ app }) {
   const unreadNotifications = visibleNotifications.filter((notification) => !notification.readAt);
   const pastNotifications = visibleNotifications.filter((notification) => Boolean(notification.readAt));
   const unreadCount = unreadNotifications.length;
+  const totalUnreadCount = Number.isFinite(app.state.notificationUnreadCount)
+    ? app.state.notificationUnreadCount
+    : unreadCount;
   const displayedNotifications = notificationView === "past" ? pastNotifications : unreadNotifications;
   const pendingInvitations = getPendingRecruitingInvitations(app.state, app.currentUser.id);
   const pendingTeamInvitations = (app.state.teamInvitations ?? []).filter((invitation) => (
@@ -198,7 +221,7 @@ export default function Notifications({ app }) {
           <p className="eyebrow">Notifications</p>
           <h1>알림</h1>
         </div>
-        <Button variant="secondary" disabled={!unreadCount || Boolean(notificationReadPendingId)} onClick={() => { void readNotifications("all", app.actions.markAllNotificationsRead); }}>
+        <Button variant="secondary" disabled={!totalUnreadCount || Boolean(notificationReadPendingId)} onClick={() => { void readNotifications("all", app.actions.markAllNotificationsRead); }}>
           {notificationReadPendingId === "all" ? "처리 중" : "모두 읽음"}
         </Button>
       </header>
@@ -323,7 +346,7 @@ export default function Notifications({ app }) {
         <div className="section-title-row">
           <div>
             <p className="eyebrow">Inbox</p>
-            <h2>{notificationView === "past" ? `지난 알림 ${pastNotifications.length}개` : `읽지 않은 알림 ${unreadCount}개`}</h2>
+            <h2>{notificationView === "past" ? `지난 알림 ${pastNotifications.length}개` : `읽지 않은 알림 ${formatCount(totalUnreadCount)}개`}</h2>
           </div>
           <div className="notification-inbox-controls">
             <div className="ui-segmented-control segmented-control notification-view-tabs" role="tablist" aria-label="알림 보기">
@@ -334,7 +357,7 @@ export default function Notifications({ app }) {
                 className={notificationView === "unread" ? "active" : ""}
                 onClick={() => setNotificationView("unread")}
               >
-                읽지 않음 <span>{unreadCount}</span>
+                읽지 않음 <span>{formatCount(totalUnreadCount)}</span>
               </button>
               <button
                 type="button"
@@ -346,7 +369,7 @@ export default function Notifications({ app }) {
                 지난 알림 <span>{pastNotifications.length}</span>
               </button>
             </div>
-            <Badge tone={unreadCount ? "orange" : "green"}>{unreadCount ? "확인 필요" : "정리됨"}</Badge>
+            <Badge tone={totalUnreadCount ? "orange" : "green"}>{totalUnreadCount ? "확인 필요" : "정리됨"}</Badge>
           </div>
         </div>
         <div className="home-action-list notifications-list ui-design-borderless-list" role="tabpanel">
@@ -427,6 +450,13 @@ export default function Notifications({ app }) {
             </div>
           )}
         </div>
+        {app.state.notificationHasMore ? (
+          <div className="ui-action-row notification-load-more-row">
+            <Button type="button" variant="secondary" size="sm" disabled={notificationsLoadMorePending} onClick={() => { void loadMoreNotifications(); }}>
+              {notificationsLoadMorePending ? "불러오는 중" : "알림 더 보기"}
+            </Button>
+          </div>
+        ) : null}
       </Card>
       <MatchRoomModal app={app} matchId={selectedMatchId} entryPoint="notifications" onClose={() => setSelectedMatchId("")} />
       {selectedRecruitingPost ? (

@@ -63,6 +63,8 @@ export function SideRoster({
   canManageEntry = null,
   onInviteSlot,
   onSelfSlotAction,
+  contactContext = null,
+  resolveContact = null,
 }) {
   const activeSlots = [];
   const seenPlayerIds = new Set();
@@ -104,6 +106,8 @@ export function SideRoster({
         position={displayPosition}
         badge={getRoomSlotBadge(playerId, entry, hostPlayerId, showCaptainBadge, roomState, { sideLeaderId: displayedSideLeaderId })}
         onSelfAction={canOpenAction ? (event) => onSelfSlotAction?.(sideName, false, playerId, entry.id, event) : null}
+        contactContext={contactContext}
+        resolveContact={resolveContact}
       />
     );
   };
@@ -181,6 +185,8 @@ export function ReserveLine({
   capacity = MAX_RESERVE_PLAYERS_PER_SIDE,
   onInviteSlot,
   onSelfSlotAction,
+  contactContext = null,
+  resolveContact = null,
 }) {
   if (capacity <= 0) return null;
   const playingSet = new Set(playingIds);
@@ -218,6 +224,8 @@ export function ReserveLine({
         position={displayPosition}
         badge={getRoomSlotBadge(candidate.playerId, entry, hostPlayerId, showCaptainBadge, roomState, { showPartyBadge: false, sideLeaderId: displayedSideLeaderId })}
         onSelfAction={canOpenAction ? (event) => onSelfSlotAction?.(sideName, true, candidate.playerId, candidate.entryId, event) : null}
+        contactContext={contactContext}
+        resolveContact={resolveContact}
       />
     );
   };

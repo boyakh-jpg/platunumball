@@ -8,6 +8,12 @@ import {
 } from "../../../shared/lib/notifications.js";
 import { fromRemoteNotification } from "../../../shared/lib/remotePayloadMappers.js";
 import { NOTIFICATION_COLUMNS } from "../../../shared/lib/repositoryColumns.js";
+import {
+  getNotificationCategory,
+  isExternalChannelEnabled,
+  isNotificationCategoryEnabled,
+  normalizeNotificationDeliveryPreferences,
+} from "../../../shared/lib/externalNotifications.js";
 import { getDiscordBotStatus, sendDiscordDm, sendTestDiscordDm } from "./dmWorkerDiscord.js";
 
 
@@ -242,6 +248,7 @@ export default async function handler(request, response) {
       : { data: [], error: null };
     if (notificationError) throw notificationError;
     const notificationsWithActors = await attachNotificationActors(supabase, (notificationRows ?? []).map(fromRemoteNotification));
+    const notificationById = new Map(notificationsWithActors.map((notification) => [notification.id, notification]));
     const actorByNotificationId = new Map(notificationsWithActors.map((notification) => [notification.id, getNotificationActorId(notification)]));
     const claimedRowsWithActors = (claimedRows ?? []).map((delivery) => {
       const fromUserId = getNotificationActorId(delivery) || actorByNotificationId.get(delivery.notification_id) || "";
@@ -310,14 +317,30 @@ export default async function handler(request, response) {
     const validClaimedRows = activeClaimedRows.filter((delivery) => !staleIds.has(delivery.id));
 
     const targetUserIds = [...new Set(validClaimedRows.map((row) => row.target_user_id).filter(Boolean))];
-    const { data: profileRows, error: profileError } = targetUserIds.length
-      ? await supabase.from("profiles").select("id,discord_user_id,app_settings").in("id", targetUserIds)
-      : { data: [], error: null };
+    const [{ data: profileRows, error: profileError }, { data: preferenceRows, error: preferenceError }] = targetUserIds.length
+      ? await Promise.all([
+          supabase.from("profiles").select("id,discord_user_id,app_settings").in("id", targetUserIds),
+          supabase.from("notification_delivery_preferences").select("profile_id,external_mode,game_recruiting_enabled,team_enabled,record_tier_enabled,service_enabled").in("profile_id", targetUserIds),
+        ])
+      : [{ data: [], error: null }, { data: [], error: null }];
     if (profileError) throw profileError;
+    if (preferenceError) throw preferenceError;
     const profileById = new Map((profileRows ?? []).map((profile) => [profile.id, profile]));
+    const preferenceById = new Map((preferenceRows ?? []).map((preference) => [preference.profile_id, normalizeNotificationDeliveryPreferences({
+      mode: preference.external_mode,
+      gameRecruiting: preference.game_recruiting_enabled,
+      team: preference.team_enabled,
+      recordTier: preference.record_tier_enabled,
+      service: preference.service_enabled,
+    })]));
     const optedOutRows = validClaimedRows.filter((delivery) => (
       !isCurrentDiscordDeliveryTarget(delivery, profileById.get(delivery.target_user_id))
       || !isDiscordNotificationEnabled(profileById.get(delivery.target_user_id)?.app_settings, delivery.event)
+      || !isExternalChannelEnabled(preferenceById.get(delivery.target_user_id), "discord")
+      || !isNotificationCategoryEnabled(
+        preferenceById.get(delivery.target_user_id),
+        getNotificationCategory(notificationById.get(delivery.notification_id) ?? delivery),
+      )
       || new Set(getBlockedUserIds(profileById.get(delivery.target_user_id)?.app_settings)).has(getNotificationActorId(delivery))
     ));
     if (optedOutRows.length) {

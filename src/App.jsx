@@ -197,6 +197,15 @@ export default function App() {
     return () => cancel(id);
   }, [app.remoteReady, auth.user, location.pathname]);
 
+  useEffect(() => {
+    if (!auth.user || !app.serverProfileBound || !("serviceWorker" in navigator)) return undefined;
+    const handlePush = (event) => {
+      if (event.data?.type === "boxtier:push") void app.actions.loadNotifications();
+    };
+    navigator.serviceWorker.addEventListener("message", handlePush);
+    return () => navigator.serviceWorker.removeEventListener("message", handlePush);
+  }, [app.actions.loadNotifications, app.serverProfileBound, auth.user]);
+
   if (profileSetupRequired || ageRecheckRequired) {
     const redirectTo = getSafeAppRedirect(`${location.pathname}${location.search}${location.hash}`);
     return <Navigate to={`/app/signup?redirect=${encodeURIComponent(redirectTo)}`} replace />;

@@ -43,5 +43,7 @@ export function getRecruitingRoomRosterProps(context, sideName) {
       ? (targetSide, reserve, playerId, entryId, event) => openSelfSlotAction(selectedPost, targetSide, reserve, playerId, entryId, event)
       : null,
     onMoveCandidate: moveCandidate,
+    contactContext: selectedPost?.id ? { kind: "recruiting", id: selectedPost.id } : null,
+    resolveContact: app.actions.runServerAction,
   };
 }

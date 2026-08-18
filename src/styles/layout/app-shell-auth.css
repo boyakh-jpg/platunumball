@@ -240,6 +240,25 @@ body.rankball-scroll-locked .app-main {
   color: var(--text);
 }
 
+.app-notification-nav {
+  position: relative;
+}
+
+.app-notification-badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  margin-left: auto;
+  border-radius: 999px;
+  background: var(--danger);
+  color: var(--ui-button-color-active);
+  padding: 0 5px;
+  font-size: 0.66rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
 .sidebar-profile {
   margin-top: auto;
   border: var(--ui-stroke-width) solid var(--line);

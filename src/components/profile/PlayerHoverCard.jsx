@@ -1,10 +1,9 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { MessageCircle } from "lucide-react";
 import HoverPortal, { HoverCardCloseButton, HoverCardTrigger } from "../common/HoverPortal.jsx";
 import TierEmblem from "../rating/TierEmblem.jsx";
 import TeamEmblem from "../team/TeamEmblem.jsx";
 import useHoverCardInteraction from "../../hooks/useHoverCardInteraction.js";
-import { getDiscordProfileUrl } from "../../lib/discord.js";
 import { getTeamHashtag, getUserHashtag } from "../../lib/handles.js";
 import { isTouchPreviewEvent } from "../../lib/hoverPreviewPin.js";
 import { getAgeGroupForUser, getAgeGroupLabel, getRepresentativeTeam, getUserProfileTeams } from "../../lib/profileSetup.js";
@@ -30,7 +29,9 @@ function roleLabel(role) {
   return "정규멤버";
 }
 
-export default function PlayerHoverCard({ user, teams = [], children, className = "", as = "link", to }) {
+export default function PlayerHoverCard({ user, teams = [], children, className = "", as = "link", to, contactContext = null, resolveContact = null }) {
+  const [contact, setContact] = useState(null);
+  const [contactState, setContactState] = useState("idle");
   const cardKey = user?.id ? `player:${user.id}` : "";
   const {
     anchorRef,
@@ -44,6 +45,11 @@ export default function PlayerHoverCard({ user, teams = [], children, className 
     triggerProps,
   } = useHoverCardInteraction({ cardKey, longPress: true });
 
+  useEffect(() => {
+    setContact(null);
+    setContactState("idle");
+  }, [contactContext?.id, contactContext?.kind, user?.id]);
+
   if (!user) return children ?? null;
 
   const anonymousUser = Boolean(user.anonymous || user.participationLabel === "개인참여");
@@ -54,7 +60,6 @@ export default function PlayerHoverCard({ user, teams = [], children, className 
   const activeTeam = userTeams.find((team) => team.id === user.representativeTeamId)
     ?? projectedRepresentativeTeam
     ?? getRepresentativeTeam(user.id, userTeams, user.representativeTeamId);
-  const discordProfileUrl = getDiscordProfileUrl(user);
   const placementComplete = isPlacementComplete(user.ratings);
   const modes = placementComplete
     ? [
@@ -63,6 +68,22 @@ export default function PlayerHoverCard({ user, teams = [], children, className 
       ]
     : [{ label: "통합", mode: "", mmr: user.ratings?.integrated }];
   const profilePath = to ?? `/app/players/${user.id}`;
+  const handleResolveContact = async (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!contactContext || !resolveContact || contactState === "loading") return;
+    setContactState("loading");
+    const result = await resolveContact("/api/contacts/resolve", {
+      targetProfileId: user.id,
+      context: contactContext,
+    });
+    if (!result || result.ok === false) {
+      setContactState("error");
+      return;
+    }
+    setContact(result.contact ?? null);
+    setContactState(result.contact ? "ready" : "empty");
+  };
   const handleTriggerClick = (event) => {
     if (as === "span" && !isTouchPreviewEvent(event)) return;
     event.preventDefault();
@@ -104,11 +125,6 @@ export default function PlayerHoverCard({ user, teams = [], children, className 
             <span className="player-hover-identity">
               <strong>{user.name}</strong>
               <span className="hover-hashtag">{getUserHashtag(user)}</span>
-              {discordProfileUrl ? (
-                <a className="discord-link-badge discord-icon-link" href={discordProfileUrl} target="_blank" rel="noreferrer" aria-label="Discord에서 DM 열기" title="Discord에서 DM 열기">
-                  <MessageCircle size={16} aria-hidden="true" />
-                </a>
-              ) : null}
               <span className="hover-age-group">{getAgeGroupLabel(getAgeGroupForUser(user))}</span>
             </span>
             <em>{anonymousUser ? `${user.participationLabel ?? "개인참여"} · ${user.position ?? "free"}` : `${user.region} · ${user.position}`} · 신뢰도 {user.trustScore ?? "-"}</em>
@@ -146,6 +162,19 @@ export default function PlayerHoverCard({ user, teams = [], children, className 
             <em>없음</em>
           )}
         </span>
+        {contactContext && resolveContact ? (
+          <span className="player-hover-contact">
+            {contact?.kind === "kakao" ? (
+              <a className="ui-compact-action hover-card-action" href={contact.url} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}>카카오톡 연락</a>
+            ) : (
+              <button type="button" className="ui-compact-action hover-card-action" disabled={contactState === "loading"} onClick={handleResolveContact}>
+                {contactState === "loading" ? "확인 중" : "연락 방법 확인"}
+              </button>
+            )}
+            {contactState === "empty" ? <em>공개된 연락 방법 없음</em> : null}
+            {contactState === "error" ? <em>연락 방법을 확인하지 못했습니다.</em> : null}
+          </span>
+        ) : null}
         <Link className="ui-compact-action hover-card-action" to={profilePath} state={{ playerPreview: user }} onClick={(event) => {
           event.stopPropagation();
           closePinned();

@@ -31,8 +31,12 @@ function getTeamManagementPermissionDeniedState(state) {
 
 export function markNotificationRead(state, notificationId) {
   const readAt = new Date().toISOString();
+  const wasUnread = state.notifications.some((notification) => notification.id === notificationId && !notification.readAt);
   return {
     ...state,
+    notificationUnreadCount: wasUnread
+      ? Math.max(0, Number(state.notificationUnreadCount ?? 0) - 1)
+      : state.notificationUnreadCount,
     notifications: state.notifications.map((notification) =>
       notification.id === notificationId ? { ...notification, readAt: notification.readAt ?? readAt } : notification,
     ),
@@ -43,6 +47,7 @@ export function markAllNotificationsRead(state) {
   const readAt = new Date().toISOString();
   return {
     ...state,
+    notificationUnreadCount: 0,
     notifications: state.notifications.map((notification) => {
       const targetUserId = notification.targetUserId ?? notification.userId ?? "";
       if (notification.readAt || !isNotificationDue(notification) || (targetUserId && targetUserId !== state.currentUserId)) {

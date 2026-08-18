@@ -390,11 +390,15 @@ const currentUser = useMemo(() => {
       return result;
     }).finally(() => endTrackedMutation(tracker, "notifications"));
   }, [runServerAction]);
-  const loadNotifications = useCallback(() => {
+  const loadNotifications = useCallback((options = {}) => {
     if (!isSupabaseConfigured) return Promise.resolve(stateRef.current.notifications ?? []);
     const tracker = userMutationTrackerRef.current;
     const mutationVersion = tracker.notifications?.version ?? 0;
-    return runServerAction("/api/notifications/list", { limit: 80 }).then((result) => {
+    const append = options.append === true;
+    return runServerAction("/api/notifications/list", {
+      limit: 20,
+      cursor: options.cursor ?? (append ? stateRef.current.notificationNextCursor : null),
+    }).then((result) => {
       if (!result || result.ok === false || !Array.isArray(result.notifications)) return false;
       setState((prev) => ({
         ...prev,
@@ -408,6 +412,9 @@ const currentUser = useMemo(() => {
               || (tracker.notifications?.version ?? 0) !== mutationVersion,
           },
         ),
+        notificationNextCursor: result.nextCursor ?? null,
+        notificationHasMore: result.hasMore === true,
+        notificationUnreadCount: Number.isFinite(result.unreadCount) ? result.unreadCount : prev.notificationUnreadCount,
       }));
       return result.notifications;
     });

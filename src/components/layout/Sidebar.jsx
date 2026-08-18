@@ -1,17 +1,17 @@
-import { CalendarDays, ClipboardList, Handshake, House, LogIn, LogOut, MessageCircle, MessageSquareText, Settings, Trophy, UserRound, UsersRound } from "lucide-react";
+import { Bell, CalendarDays, ClipboardList, Handshake, House, LogIn, LogOut, MessageSquareText, Settings, Trophy, UserRound, UsersRound } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import BrandLockup from "../common/BrandLockup.jsx";
 import PlayerHoverCard from "../profile/PlayerHoverCard.jsx";
 import ProfileEmblem from "../profile/ProfileEmblem.jsx";
 import TierBadge from "../rating/TierBadge.jsx";
 import { BRAND_NAME } from "../../lib/brand.js";
-import { getDiscordProfileUrl } from "../../lib/discord.js";
 import { getUserHashtag } from "../../lib/handles.js";
 import { DEFAULT_RATING, getTestAccountDisplayLabel } from "../../lib/constants.js";
 import { getLoginPath } from "../../lib/profileSetup.js";
 
 const navItems = [
   { to: "/app", label: "홈", icon: House },
+  { to: "/app/notifications", label: "알림", icon: Bell, authenticatedOnly: true },
   { to: "/app/matches", label: "일정", icon: CalendarDays },
   { to: "/app/recruiting", label: "매칭", icon: Handshake },
   { to: "/app/recorder", label: "플레이", icon: ClipboardList },
@@ -22,13 +22,12 @@ const navItems = [
   { to: "/app/settings", label: "설정", icon: Settings },
 ];
 
-export default function Sidebar({ user, teams = [], auth, guestPreview = false }) {
+export default function Sidebar({ user, teams = [], auth, guestPreview = false, unreadNotificationCount = 0 }) {
   const location = useLocation();
   const safeUser = user ?? {};
   const authDisplayName = auth?.user?.user_metadata?.providerName || auth?.user?.email || "";
   const displayName = safeUser.name || getTestAccountDisplayLabel(authDisplayName) || BRAND_NAME;
   const displayHashtag = getUserHashtag(safeUser);
-  const discordProfileUrl = getDiscordProfileUrl(safeUser);
   const integratedRating = safeUser.ratings?.integrated ?? DEFAULT_RATING;
   const loginPath = getLoginPath(`${location.pathname}${location.search}${location.hash}`);
   return (
@@ -37,12 +36,17 @@ export default function Sidebar({ user, teams = [], auth, guestPreview = false }
         <BrandLockup />
       </NavLink>
       <nav className="sidebar-nav" aria-label="주요 메뉴">
-        {navItems.map((item) => {
+        {navItems.filter((item) => !item.authenticatedOnly || !guestPreview).map((item) => {
           const Icon = item.icon;
+          const isNotifications = item.to === "/app/notifications";
+          const accessibleLabel = isNotifications && unreadNotificationCount
+            ? `알림, 읽지 않은 알림 ${unreadNotificationCount}개`
+            : undefined;
           return (
-            <NavLink key={item.to} to={item.to} end={item.to === "/app"} className="nav-item">
+            <NavLink key={item.to} to={item.to} end={item.to === "/app"} className={`nav-item${isNotifications ? " app-notification-nav" : ""}`} aria-label={accessibleLabel}>
               <Icon size={18} />
               <span>{item.label}</span>
+              {isNotifications && unreadNotificationCount ? <b className="app-notification-badge" aria-hidden="true">{unreadNotificationCount > 99 ? "99+" : unreadNotificationCount}</b> : null}
             </NavLink>
           );
         })}
@@ -60,14 +64,7 @@ export default function Sidebar({ user, teams = [], auth, guestPreview = false }
           <ProfileEmblem user={safeUser} />
           <div className="sidebar-profile-copy">
             <strong>{displayName}</strong>
-            <span className="sidebar-profile-handle">
-              <small>{displayHashtag}</small>
-              {discordProfileUrl ? (
-                <a className="discord-link-badge discord-icon-link" href={discordProfileUrl} target="_blank" rel="noreferrer" aria-label="Discord에서 DM 열기" title="Discord에서 DM 열기" onClick={(event) => event.stopPropagation()}>
-                  <MessageCircle size={12} aria-hidden="true" />
-                </a>
-              ) : null}
-            </span>
+            <span className="sidebar-profile-handle"><small>{displayHashtag}</small></span>
             <TierBadge mmr={integratedRating} ratings={safeUser.ratings} compact />
           </div>
           {auth?.session ? (

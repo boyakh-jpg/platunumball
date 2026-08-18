@@ -519,3 +519,7 @@ html[data-theme] .app-main .score-line > :is(span, a, .team-hover-trigger) > :is
   min-width: calc(var(--ui-button-height-sm) + var(--space-6));
   height: var(--ui-button-height-sm);
 }
+.notification-load-more-row {
+  justify-content: center;
+  margin-top: var(--space-5);
+}

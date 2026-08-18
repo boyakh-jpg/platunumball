@@ -2795,7 +2795,7 @@ flowchart TD
 ## 2026-06-28 public feed access
 
 1. `public_profiles`는 공개 표시용 프로필 컬럼만 제공한다. `school`, `company`, `club`, 테스트 로그인 ID와 Discord 연결 원본은 현재 사용자 private profile 또는 server action에서만 읽는다.
-1-1. `public_profiles`는 Discord 사용자명·표시명·숫자 ID를 반환하지 않는다. 선수 상세는 연동 사용자에게 해시태그 옆 `Discord 아이콘 + DM 보내기`를 표시하고 내부 서버 redirect로 Discord 사용자 화면을 연다. hover 카드는 연결 여부 아이콘만 유지하며, 본인 설정 화면도 Discord ID 대신 BOXTIER 닉네임을 표시한다.
+1-1. `public_profiles`는 Discord 사용자명·표시명·숫자 ID를 반환하지 않는다. 일반 선수 상세·hover 카드·사이드바에는 Discord 연락 UI를 표시하지 않는다. 외부 연락은 함께 참여 중인 활성 모집방·경기 컨텍스트의 선수 hover 카드에서만 서버 확인 후 Kakao 오픈프로필로 제공하며, 본인 설정 화면도 Discord ID 대신 BOXTIER 닉네임을 표시한다.
 2. `user_room_feed.feed_scope='public'` 지역 공개 feed는 서버 API/service-role 전용 source다. `profile_id='*'`는 legacy 저장키/fallback일 뿐 공개 feed 의미 기준이 아니다. 브라우저 RLS 직접 read는 `feed_scope='profile'`인 현재 프로필 feed row만 허용한다.
 3. 구장 이름/지역은 `court_id`가 있으면 legacy `courts`를 먼저 보고, 없거나 찾지 못하면 active `approved_courts`와 기존 `court_name`/지역 텍스트를 fallback으로 쓴다. hidden/disabled approved court는 공개 목록 fallback에 쓰지 않는다.
 
@@ -4196,3 +4196,16 @@ flowchart TD
 4. 공개 영수증 복제는 새 public ID와 capability를 발급하고 엠블럼을 새 draft namespace로 복사한다. 개인 기록 생성 시에는 서버가 claim 소유권을 확인한 뒤 `match-receipt-emblems/matches/{matchId}/...`로 승계하며, 팀 프로필·공식 경기·MMR에는 영향을 주지 않는다.
 5. 선화 사용 해제는 표시만 끈다. 삭제·교체는 해당 side만 정리한다. 새 영수증 만들기는 현재 로컬 draft·배경·엠블럼만 정리하며 이미 공유한 서버 draft는 30일 정책을 유지한다. 만료 guest asset은 정리하되 개인 기록으로 승계한 durable asset은 유지한다.
 6. 서버 엠블럼 동기화가 실패하면 로컬 PNG 저장은 허용하지만 QR은 제외한다. 동기화 실패를 성공 완료로 표시하지 않는다.
+
+## 2026-08-18 외부 알림·연락
+
+1. 앱 내부 알림이 canonical 원본이다. 외부 전달 실패는 알림 생성이나 방·경기·기록 작업을 롤백하지 않는다. 사용자 외부 알림 모드는 `push`, `discord`, `both`, `none`이고 기본값은 `none`이다.
+2. 외부 알림 카테고리는 경기·모집, 팀, 기록·티어, 서비스다. 기본값은 경기·모집, 팀, 기록·티어가 활성화되고 서비스는 비활성화된다. Discord 사용자 DM 전달과 운영 Discord webhook은 서로 다른 경로·설정으로 유지한다.
+3. Web Push 구독과 배송 큐는 비공개 DB가 소유한다. 알림 원본 생성 trigger는 사용자 모드·카테고리를 확인해 최소 payload `id`, `type`, `title`, `body`, 내부 `path`, `tag`, `timestamp`만 큐에 저장한다. 클라이언트가 제출한 임의 URL이나 프로필·연락처 비밀은 payload에 넣지 않는다.
+4. Push worker 호출 스케줄은 Vercel Cron이 소유하며 Supabase `pg_cron`, DB webhook, `pg_net`을 사용하지 않는다. worker는 만료 endpoint의 `404`, `410`에서 구독을 비활성화하고 `401`, `403`을 재시도하지 않는다. `429`, `5xx`, 네트워크 오류만 최대 5회 지수 backoff와 `Retry-After` 범위 안에서 재시도한다. 중단된 `sending` delivery는 10분 뒤 재회수할 수 있다.
+5. 서비스 worker는 `push`와 `notificationclick`만 처리하고 `fetch`를 가로채지 않는다. foreground 페이지에는 payload를 전달해 앱 내부 상태만 갱신하고 중복 시스템 알림을 만들지 않는다. click 이동은 검증된 `/app` 내부 경로만 허용한다.
+6. 외부 연락 설정과 Kakao 오픈프로필 URL은 일반 프로필과 분리된 비공개 테이블이 소유하며 기본 비활성화된다. URL은 `https://open.kakao.com/o/...`의 host·경로만 허용하고 userinfo, port, query, hash와 과도한 길이를 거부한다. 일반 프로필 API·projection·목록에는 설정이나 URL을 포함하지 않는다.
+7. 연락처 조회는 로그인 사용자가 같은 활성 모집방 또는 미종료 경기의 현재 참가자인 경우에만 허용한다. 대상도 같은 컨텍스트의 확정·대기 명단 참가자여야 하며 본인 조회와 어느 방향의 차단도 거부한다. 종료·취소·무효 컨텍스트와 일반 프로필에서는 연락처를 반환하지 않는다.
+8. 지원 연락 수단은 사용자가 공개를 켠 Kakao 오픈프로필뿐이다. Discord는 로그인·알림 전달 연결로만 사용하고 선수 간 연락 수단으로 노출하지 않는다.
+9. 기존 Discord delivery trigger는 모든 알림 생성 흐름이 새 중앙 큐로 전환되고 안전한 migration 순서가 확보되기 전까지 제거하지 않는다. 새 Push 큐는 기존 Discord 전달의 실행 여부와 독립적으로 동작한다.
+10. 알림 목록은 생성시각과 ID를 결합한 안정 cursor로 20건씩 조회한다. 읽지 않은 개수는 서버 값이 canonical이며 단건·전체 읽음 처리 뒤 현재 화면에서 즉시 감소한다.

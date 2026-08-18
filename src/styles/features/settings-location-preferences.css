@@ -107,11 +107,28 @@
 }
 
 .settings-section-main .discord-link-card {
-  order: 11;
+  order: 12;
 }
 
 .settings-section-main .settings-privacy-card {
-  order: 12;
+  order: 13;
+}
+
+.settings-section-main .external-notification-card {
+  order: 11;
+}
+
+.external-mode-control {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.external-contact-url {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.external-contact-url input {
+  width: 100%;
 }
 
 .settings-section-main .admin-menu-card,

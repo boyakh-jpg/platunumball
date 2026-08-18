@@ -388,6 +388,17 @@ span.referee-hover-card {
   text-decoration: none;
 }
 
+.player-hover-contact {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.player-hover-contact > em {
+  color: var(--muted);
+  font-size: var(--font-size-app-support);
+  text-align: center;
+}
+
 .rank-profile-page .rank-profile-hero .discord-link-badge {
   margin-inline: var(--space-3);
 }

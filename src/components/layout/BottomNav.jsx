@@ -1,4 +1,4 @@
-import { CalendarDays, ClipboardList, Ellipsis, Handshake, House, MessageSquareText, Settings, UserRound, UsersRound } from "lucide-react";
+import { Bell, CalendarDays, ClipboardList, Ellipsis, Handshake, House, MessageSquareText, Settings, UserRound, UsersRound } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { NavLink } from "react-router-dom";
 
@@ -11,12 +11,13 @@ const items = [
 ];
 
 const moreItems = [
+  { to: "/app/notifications", label: "알림", icon: Bell, authenticatedOnly: true },
   { to: "/app/profile", label: "나", icon: UserRound },
   { to: "/app/teams", label: "팀", icon: UsersRound },
   { to: "/app/settings", label: "설정", icon: Settings },
 ];
 
-export default function BottomNav() {
+export default function BottomNav({ guestPreview = false, unreadNotificationCount = 0 }) {
   const moreRef = useRef(null);
 
   useEffect(() => {
@@ -45,16 +46,20 @@ export default function BottomNav() {
           <span>더보기</span>
         </summary>
         <div className="bottom-nav-more-menu" aria-label="더보기 메뉴">
-          {moreItems.map((item) => {
+          {moreItems.filter((item) => !item.authenticatedOnly || !guestPreview).map((item) => {
             const Icon = item.icon;
+            const isNotifications = item.to === "/app/notifications";
             return (
               <NavLink
                 key={item.to}
                 to={item.to}
+                className={isNotifications ? "app-notification-nav" : undefined}
+                aria-label={isNotifications && unreadNotificationCount ? `알림, 읽지 않은 알림 ${unreadNotificationCount}개` : undefined}
                 onClick={(event) => event.currentTarget.closest("details")?.removeAttribute("open")}
               >
                 <Icon size={20} />
                 <span>{item.label}</span>
+                {isNotifications && unreadNotificationCount ? <b className="app-notification-badge" aria-hidden="true">{unreadNotificationCount > 99 ? "99+" : unreadNotificationCount}</b> : null}
               </NavLink>
             );
           })}

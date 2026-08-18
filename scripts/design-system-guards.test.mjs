@@ -300,7 +300,7 @@ test("player and team details share one entity profile hero", () => {
   assert.doesNotMatch(pageSources.playerDetail, /leading=\{<ProfileEmblem|<TierBadge|rank-tier-statement/);
   assert.match(pageSources.playerDetail, /className="player-tier-hero"/);
   assert.match(pageSources.playerDetail, /className="ui-liquid-glass"/);
-  assert.match(pageSources.playerDetail, /subtitle=\{\([\s\S]*<MessageCircle size=\{13\} aria-hidden="true" \/>/);
+  assert.doesNotMatch(pageSources.playerDetail, /getDiscordDmUrl|DM 보내기|Discord에서 DM/);
   assert.match(globalWorkflowStyles, /\.team-tier-hero \.tier-emblem figcaption strong,\s*\.player-tier-hero \.tier-emblem figcaption strong\s*\{[^}]*color:\s*var\(--rb-yellow\);/);
 });
 
@@ -338,18 +338,19 @@ test("player detail uses shared record rows and one support rail", () => {
   assert.match(globalSurfaceStyles, /\.profile-detail-page \.profile-hero\s*\{[^}]*--page-hero-bg:\s*var\(--bg-profile\);/);
 });
 
-test("Discord는 ID 문자 없이 선수 상세에 DM 보내기 pill로 표시한다", () => {
+test("일반 프로필은 연락 수단을 노출하지 않고 컨텍스트 hover만 Kakao를 조회한다", () => {
   const playerHoverCard = read("src/components/profile/PlayerHoverCard.jsx");
   const sidebar = read("src/components/layout/Sidebar.jsx");
   const settingsPrimaryColumn = read("src/pages/SettingsPrimaryColumn.jsx");
 
   assert.doesNotMatch(pageSources.playerDetail, /getDiscordDisplayName|discordDisplayName/);
   assert.doesNotMatch(playerHoverCard, /getDiscordDisplayName|discordDisplayName/);
-  assert.match(pageSources.playerDetail, /getDiscordDmUrl/);
-  assert.match(pageSources.playerDetail, /className="discord-link-badge"[\s\S]*<span>DM 보내기<\/span>/);
-  assert.match(playerHoverCard, /hover-hashtag[\s\S]*aria-label="Discord에서 DM 열기"/);
-  assert.match(playerHoverCard, /<MessageCircle size=\{16\} aria-hidden="true" \/>/);
-  assert.match(sidebar, /sidebar-profile-handle[\s\S]*aria-label="Discord에서 DM 열기"/);
+  assert.doesNotMatch(pageSources.playerDetail, /getDiscordDmUrl|DM 보내기|Discord에서 DM/);
+  assert.doesNotMatch(playerHoverCard, /\/api\/discord\/dm-link|Discord에서 DM/);
+  assert.doesNotMatch(sidebar, /getDiscordProfileUrl|Discord에서 DM|discord-link-badge/);
+  assert.match(playerHoverCard, /contactContext && resolveContact/);
+  assert.match(playerHoverCard, /resolveContact\("\/api\/contacts\/resolve"/);
+  assert.match(playerHoverCard, /contact\?\.kind === "kakao"/);
   assert.match(settingsPrimaryColumn, /<strong>\{app\.currentUser\.name\}<\/strong>/);
 });
 
@@ -409,7 +410,7 @@ test("guest shell replaces the demo identity with login actions", () => {
   const guestAccessNotice = read("src/components/auth/GuestAccessNotice.jsx");
 
   assert.match(appShellSource, /<Sidebar[^>]*guestPreview=\{guestPreview\}/);
-  assert.match(appShellSource, /<BottomNav guestPreview=\{guestPreview\} \/>/);
+  assert.match(appShellSource, /<BottomNav guestPreview=\{guestPreview\} unreadNotificationCount=\{unreadNotificationCount\} \/>/);
   assert.doesNotMatch(appShellSource, /guest-preview-bar/);
   assert.match(sidebar, /guestPreview \? \([\s\S]*?<strong>로그인<\/strong>/);
   assert.match(bottomNav, /<NavLink key=\{item\.to\} to=\{item\.to\}/);

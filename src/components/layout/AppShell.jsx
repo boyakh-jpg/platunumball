@@ -7,6 +7,10 @@ import Sidebar from "./Sidebar.jsx";
 
 export default function AppShell({ app, auth, guestPreview = false }) {
   const remoteLoading = app.remoteReady === false;
+  const loadedUnreadCount = (app.state.notifications ?? []).filter((notification) => !notification.readAt).length;
+  const unreadNotificationCount = guestPreview
+    ? 0
+    : Math.max(0, Number.isFinite(app.state.notificationUnreadCount) ? app.state.notificationUnreadCount : loadedUnreadCount);
 
   useEffect(() => {
     document.documentElement.classList.toggle("rankball-remote-loading", remoteLoading);
@@ -17,12 +21,12 @@ export default function AppShell({ app, auth, guestPreview = false }) {
 
   return (
     <div className="app-shell ui-design-host" data-design="editorial">
-      <Sidebar user={app.currentUser} teams={app.state.teams} auth={auth} guestPreview={guestPreview} />
+      <Sidebar user={app.currentUser} teams={app.state.teams} auth={auth} guestPreview={guestPreview} unreadNotificationCount={unreadNotificationCount} />
       <main className="app-main ui-design-app" aria-busy={remoteLoading}>
         {remoteLoading ? null : <Outlet />}
         {remoteLoading ? null : <DataAttribution />}
       </main>
-      <BottomNav guestPreview={guestPreview} />
+      <BottomNav guestPreview={guestPreview} unreadNotificationCount={unreadNotificationCount} />
       {remoteLoading ? <BasketballLoader overlay randomLabel /> : null}
     </div>
   );

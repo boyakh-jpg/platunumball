@@ -56,7 +56,7 @@ export function createMatchRoomHeroRenderers(context) {
             : sideLeader ? "리더" : "참가";
 
           return (
-            <PlayerHoverCard key={playerId} user={user} teams={app.state.teams} className={ready ? "gm-player-slot ready" : "gm-player-slot"}>
+            <PlayerHoverCard key={playerId} user={user} teams={app.state.teams} className={ready ? "gm-player-slot ready" : "gm-player-slot"} contactContext={{ kind: "match", id: match.id }} resolveContact={app.actions.runServerAction}>
               {roleBadge ? (
                 <span className={`gm-room-slot-crown ${roleBadge.tone}`} title={roleBadge.label} aria-label={roleBadge.label}>
                   <Crown size={12} strokeWidth={3} />
@@ -90,7 +90,7 @@ export function createMatchRoomHeroRenderers(context) {
                 ? { tone: "captain", label: "주장" }
                 : null;
             return (
-              <PlayerHoverCard key={`${sideName}-reserve-${playerId}`} user={user} teams={app.state.teams} className="gm-player-slot reserve ready">
+              <PlayerHoverCard key={`${sideName}-reserve-${playerId}`} user={user} teams={app.state.teams} className="gm-player-slot reserve ready" contactContext={{ kind: "match", id: match.id }} resolveContact={app.actions.runServerAction}>
                 {roleBadge ? (
                   <span className={`gm-room-slot-crown ${roleBadge.tone}`} title={roleBadge.label} aria-label={roleBadge.label}>
                     <Crown size={12} strokeWidth={3} />

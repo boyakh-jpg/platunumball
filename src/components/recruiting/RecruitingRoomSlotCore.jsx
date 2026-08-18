@@ -337,6 +337,8 @@ export function PlayerRoomSlot({
   invite = false,
   onInvite,
   onSelfAction,
+  contactContext = null,
+  resolveContact = null,
   children,
 }) {
   if (empty) {
@@ -381,7 +383,7 @@ export function PlayerRoomSlot({
           {slotContent}
         </button>
       ) : (
-        <PlayerHoverCard user={user} teams={teams} className={slotClassName}>
+        <PlayerHoverCard user={user} teams={teams} className={slotClassName} contactContext={contactContext} resolveContact={resolveContact}>
           {slotContent}
         </PlayerHoverCard>
       )}

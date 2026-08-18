@@ -13,6 +13,7 @@ import RefereeHoverCard from "../components/referee/RefereeHoverCard.jsx";
 import { REFEREE_TRUST_MIN } from "../lib/constants.js";
 import { getCourtHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
 import { DISCORD_NOTIFICATION_EVENTS, getDiscordAvatarClassName, getDiscordAvatarStyle } from "../lib/discord.js";
+import ExternalNotificationSettingsCard from "../components/settings/ExternalNotificationSettingsCard.jsx";
 
 export default function SettingsPrimaryColumn({ controller }) {
   const {
@@ -187,6 +188,8 @@ export default function SettingsPrimaryColumn({ controller }) {
               </div>
             ) : null}
           </Card>
+
+          <ExternalNotificationSettingsCard app={app} discordLinked={discordLinked} />
 
           <Card className="section-card discord-link-card">
             <div className="section-title-row">

@@ -299,6 +299,8 @@ const roomPhaseBadge = sourceMatch ? sourceMatchPhase : roomQueueStatus;
                   mmr={user?.ratings?.integrated ?? getEntryMmr(entry)}
                   position={position}
                   badge={getRoomSlotBadge(playerId, entry, roomOwnerId, false, roomState, { showPartyBadge: false })}
+                  contactContext={{ kind: "recruiting", id: selectedPost.id }}
+                  resolveContact={app.actions.runServerAction}
                 />
               );
             }}
