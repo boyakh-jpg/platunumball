@@ -284,14 +284,6 @@
     text-align: left;
   }
 
-  .tournament-hero {
-    padding: 18px;
-  }
-
-  .tournament-hero h1 {
-    font-size: 2.3rem;
-  }
-
   .tournament-team-list .tier-badge,
   .tournament-team-list b,
   .tournament-team-list button {
@@ -363,6 +355,5 @@
 
   .om-view-card {
     grid-template-columns: minmax(0, 1fr) auto;
-    min-height: 60px;
   }
 }

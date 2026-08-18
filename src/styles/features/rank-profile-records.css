@@ -8,10 +8,9 @@
 .rank-mode-card,
 .rank-leaderboard-card,
 .rank-record-card {
-  border-color: rgba(116, 169, 255, 0.18);
-  background:
-    linear-gradient(180deg, rgba(70, 224, 182, 0.055), rgba(255, 211, 108, 0.018)),
-    rgba(5, 8, 13, 0.94);
+  border: 0;
+  background: transparent;
+  box-shadow: none;
 }
 .rank-profile-head {
   display: flex;
@@ -44,11 +43,11 @@
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
-  gap: var(--space-6);
-  border: var(--ui-stroke-width) solid rgba(255, 211, 108, 0.18);
-  border-radius: var(--radius);
-  background: rgba(255, 211, 108, 0.065);
-  padding: 12px;
+  gap: var(--space-4);
+  border: 0;
+  border-radius: var(--ui-data-cell-radius);
+  background: var(--ui-data-cell-bg);
+  padding: var(--space-4);
 }
 .rank-tier-block strong,
 .rank-record-main strong {
@@ -65,13 +64,13 @@
   display: grid;
   min-width: 0;
   gap: 3px;
-  border: var(--ui-stroke-width) solid rgba(116, 169, 255, 0.14);
-  border-radius: var(--radius);
-  background: rgba(255, 255, 255, 0.045);
+  border: 0;
+  border-radius: var(--ui-data-cell-radius);
+  background: var(--ui-data-cell-bg);
   color: var(--muted);
   font-size: 0.74rem;
   font-weight: 850;
-  padding: 10px;
+  padding: var(--space-3) var(--space-4);
 }
 .rank-stat-grid strong {
   color: var(--text);
@@ -80,7 +79,7 @@
 }
 .rank-profile-tabs {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: var(--space-4);
 }
 .rank-mode-grid {
@@ -92,10 +91,10 @@
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: var(--space-3);
-  border: var(--ui-stroke-width) solid rgba(116, 169, 255, 0.16);
-  border-radius: var(--radius);
-  background: rgba(255, 255, 255, 0.045);
-  padding: 12px;
+  border: 0;
+  border-radius: var(--ui-data-cell-radius);
+  background: var(--ui-data-cell-bg);
+  padding: var(--space-3) var(--space-4);
 }
 .rank-mode-pill .tier-emblem-sm {
   width: 52px;
@@ -137,9 +136,10 @@
 
   .rank-mode-pill strong,
   .rank-mode-pill em {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
 }
 .rank-list {
@@ -169,9 +169,10 @@
 }
 .rank-list .rank-row > strong {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow: visible;
+  text-overflow: clip;
   white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 .rank-list .rank-row > em {
   color: var(--muted);
@@ -181,19 +182,16 @@
   white-space: nowrap;
 }
 .rank-profile-hero {
-  border-color: rgba(116, 169, 255, 0.22);
-  background:
-    linear-gradient(135deg, rgba(116, 169, 255, 0.13), rgba(255, 255, 255, 0.025)),
-    rgba(12, 20, 32, 0.92);
+  border: 0;
+  background: transparent;
+  box-shadow: none;
 }
 .rank-profile-identity p:not(.eyebrow) {
   color: var(--muted);
   font-weight: 800;
 }
 .rank-tier-statement {
-  background:
-    linear-gradient(180deg, rgba(255, 211, 108, 0.1), rgba(255, 211, 108, 0.035)),
-    rgba(8, 11, 16, 0.7);
+  background: var(--ui-data-cell-bg);
 }
 .rank-profile-summary {
   display: grid;
@@ -250,7 +248,7 @@
   }
 
   .rank-search-results a,
-  .home-action-row,
+  .home-action-row:has(.home-action-buttons),
   .home-invitation-row {
     grid-template-columns: auto minmax(0, 1fr);
   }
@@ -262,8 +260,7 @@
   }
 
   .rank-search-results small,
-  .home-action-row b,
-  .home-action-buttons,
+  .home-action-row:has(.home-action-buttons) .home-action-buttons,
   .home-invitation-actions {
     grid-column: 2;
     justify-self: start;
@@ -328,10 +325,13 @@
 }
 .connection-list .ui-profile-identity-inline {
   width: 100%;
-  border: var(--ui-card-border-width) solid rgba(255, 255, 255, 0.1);
-  border-radius: var(--radius);
-  background: rgba(255, 255, 255, 0.045);
-  padding: 10px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: var(--space-3) 0;
+}
+.connection-list > * + * {
+  border-block-start: var(--ui-stroke-width) solid var(--rb-line);
 }
 .recent-match-copy {
   display: grid;
@@ -340,27 +340,24 @@
 }
 .recent-match-matchup {
   display: flex;
-  min-width: 0;
-  max-height: var(--ui-record-team-line-block-size);
   align-items: flex-start;
   justify-content: flex-start;
-  gap: var(--space-2);
-  overflow: hidden;
-  white-space: normal;
+  min-width: 0;
+  max-height: var(--ui-record-team-line-block-size);
+  gap: var(--space-1);
+  overflow: visible;
+  white-space: nowrap;
 }
 .recent-match-matchup > :is(.team-hover-trigger, span) {
   display: block;
   min-width: 0;
-  max-height: var(--ui-record-team-line-block-size);
-  overflow: hidden;
+  overflow: visible;
   line-height: 1.2;
-  text-overflow: clip;
   white-space: normal;
 }
-.recent-match-row .recent-match-matchup .team-hover-trigger > strong {
+.recent-match-matchup .team-hover-trigger > strong {
   display: block;
-  max-height: var(--ui-record-team-line-block-size);
-  overflow: hidden;
+  overflow: visible;
   line-height: 1.2;
   text-overflow: clip;
   white-space: normal;
@@ -374,8 +371,7 @@
   text-align: start;
 }
 .recent-match-row .recent-match-matchup strong {
-  overflow: hidden;
-  text-overflow: clip;
+  overflow: visible;
   white-space: normal;
 }
 .recent-match-vs {
@@ -386,8 +382,9 @@
 .match-record-meta,
 .recent-match-row .match-record-meta {
   display: flex;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-1) var(--space-2);
   min-width: 0;
   color: var(--muted);
   font-size: 0.78rem;
@@ -396,8 +393,7 @@
   white-space: nowrap;
 }
 .recent-match-row .match-record-meta {
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow: visible;
 }
 .match-record-meta > span {
   display: inline;
@@ -427,34 +423,30 @@
 }
 .match-record-meta__prefix,
 .match-record-meta__court {
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow: visible;
 }
 .match-record-meta__court {
   flex: 0 1 auto;
 }
 .recent-match-row strong {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow: visible;
+  white-space: normal;
 }
 .recent-match-row em {
-  overflow: hidden;
+  overflow: visible;
   color: var(--muted);
   font-size: 0.78rem;
   font-style: normal;
   font-weight: 800;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
 }
 .recent-match-row small {
-  overflow: hidden;
+  overflow: visible;
   color: var(--muted);
   font-size: 0.72rem;
   font-weight: 850;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
 }
 .recent-match-row .team-hover-trigger {
   display: inline;
@@ -472,21 +464,17 @@
 }
 .recent-result-pill.result-w,
 .recent-match-row.result-w b {
-  background: var(--blue);
+  background: var(--ui-result-win-border);
 }
 .recent-result-pill.result-l,
 .recent-match-row.result-l b {
-  background: var(--danger);
+  background: var(--ui-result-loss-border);
+}
+.recent-result-pill.result-d {
+  background: var(--ui-result-draw-border);
 }
 @media (max-width: 430px) {
   .recent-match-matchup {
     gap: var(--space-1);
-  }
-  .recent-match-matchup > :is(.team-hover-trigger, span),
-  .recent-match-matchup .team-hover-trigger > strong {
-    max-height: var(--ui-record-team-line-block-size);
-    overflow: hidden;
-    text-overflow: clip;
-    white-space: normal;
   }
 }

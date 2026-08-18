@@ -3,12 +3,12 @@
   span.team-hover-card.touch-open,
   span.court-hover-card.touch-open,
   span.referee-hover-card.touch-open {
-    top: auto !important;
+    top: auto;
     bottom: calc(12px + env(safe-area-inset-bottom, 0px));
-    left: 12px !important;
+    left: 12px;
     min-width: 0;
     max-width: calc(100% - 24px);
-    max-height: min(78dvh, 560px) !important;
+    max-height: min(78dvh, 560px);
     border-radius: var(--radius-md);
     padding: 14px;
   }
@@ -93,12 +93,6 @@
 .tier-emblem img {
   height: auto;
   object-fit: contain;
-  -webkit-mask-image: radial-gradient(ellipse 58% 62% at 50% 52%, #000 0 72%, rgba(0, 0, 0, 0.86) 84%, rgba(0, 0, 0, 0.28) 95%, rgba(0, 0, 0, 0) 100%);
-  mask-image: radial-gradient(ellipse 58% 62% at 50% 52%, #000 0 72%, rgba(0, 0, 0, 0.86) 84%, rgba(0, 0, 0, 0.28) 95%, rgba(0, 0, 0, 0) 100%);
-  -webkit-mask-repeat: no-repeat;
-  mask-repeat: no-repeat;
-  -webkit-mask-size: 100% 100%;
-  mask-size: 100% 100%;
 }
 
 .tier-emblem-sm {
@@ -359,9 +353,9 @@
 
   .profile-rating-mode strong,
   .profile-rating-mode .rating-mmr {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    overflow: visible;
+    overflow-wrap: anywhere;
+    white-space: normal;
   }
 }
 
@@ -403,18 +397,16 @@
 html[data-theme] .app-main .score-line > :is(span, a, .team-hover-trigger) {
   display: grid;
   align-items: center;
-  block-size: 1.96em;
   min-width: 0;
-  overflow: hidden;
-  line-height: 0.98;
+  overflow: visible;
+  line-height: 1.1;
   white-space: normal;
   word-break: keep-all;
 }
 
 html[data-theme] .app-main .score-line > :is(span, a, .team-hover-trigger) > :is(span, a) {
   display: block;
-  max-height: 1.96em;
-  overflow: hidden;
+  overflow: visible;
   color: inherit;
   line-height: inherit;
   white-space: inherit;
@@ -437,7 +429,7 @@ html[data-theme] .app-main .score-line > :is(span, a, .team-hover-trigger) > :is
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  gap: var(--space-6);
+  gap: var(--space-3);
   border: var(--ui-card-border-width) solid var(--ui-card-border);
   border-block-end: var(--ui-stroke-width) solid var(--rb-line);
   border-radius: 0;

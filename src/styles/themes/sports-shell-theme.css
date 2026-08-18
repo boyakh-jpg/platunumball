@@ -29,14 +29,13 @@ a {
 }
 .auth-card {
   width: min(520px, 100%);
-  border-radius: var(--radius-lg);
-  background: rgba(9, 13, 20, 0.92);
+  border-radius: var(--ui-radius-panel);
+  background: var(--rb-surface);
   background-image: none;
-  box-shadow: none;
 }
 .auth-form h1 {
-  font-size: clamp(2.05rem, 7vw, 2.8rem);
-  line-height: 1;
+  font-size: var(--ui-font-title);
+  line-height: var(--ui-leading-title);
 }
 .provider-button {
   border-radius: var(--radius-md);
@@ -68,18 +67,14 @@ a {
   border-radius: var(--radius-md);
 }
 .rank-home .rank-profile-card {
-  border-radius: var(--radius-lg);
+  border-radius: var(--ui-radius-panel);
 }
 .rank-home .rank-mode-card {
-  border-radius: var(--radius-lg);
+  border-radius: var(--ui-radius-panel);
 }
 .home-search-panel {
-  border-radius: var(--radius-lg);
-  background: rgba(10, 14, 21, 0.9);
-}
-.home-action-row {
-  border-left: 3px solid rgba(70, 224, 182, 0.55);
-  border-radius: var(--radius-md);
+  border-radius: var(--ui-radius-panel);
+  background: transparent;
 }
 .home-action-main,
 .home-action-main strong,
@@ -87,9 +82,10 @@ a {
 .compact-list a span,
 .compact-list > div span {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  white-space: normal;
 }
 .rank-summary-grid,
 .home-dashboard-grid,
@@ -99,8 +95,8 @@ a {
   min-width: 0;
 }
 html[data-theme="light"] .auth-card {
-  border-color: rgba(32, 56, 68, 0.14);
-  background: rgba(255, 255, 255, 0.94);
+  border-color: var(--rb-line);
+  background: var(--rb-surface);
 }
 @media (max-width: 1020px) {
   .app-main {
@@ -192,31 +188,23 @@ html[data-theme="light"] .app-main {
   background: var(--button-primary-bg);
 }
 .rank-home .rank-summary-grid {
-  border: var(--ui-stroke-width) solid rgba(242, 184, 75, 0.22);
+  border: 0;
 }
 .rank-home .rank-summary-grid .home-rank-board-head h1 {
   font-variant-numeric: tabular-nums;
 }
 .rank-home .rank-profile-card {
-  border-color: rgba(242, 184, 75, 0.28);
-  background:
-    linear-gradient(180deg, rgba(242, 184, 75, 0.1), transparent 46%),
-    var(--scoreboard-2);
-  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.22);
+  border-color: transparent;
 }
 .rank-home .rank-mode-pill {
   border: var(--ui-card-border-width) solid rgba(199, 223, 232, 0.16);
   background: rgba(255, 255, 255, 0.052);
 }
 .home-action-row {
-  border: var(--ui-card-border-width) solid rgba(199, 223, 232, 0.16);
-  background: rgba(255, 255, 255, 0.052);
+  border-bottom: var(--ui-divider-width) solid var(--rb-line);
 }
 .rank-home .rank-mode-pill {
   box-shadow: none;
-}
-.home-action-row {
-  border-left-color: rgba(199, 223, 232, 0.16);
 }
 .bottom-nav a.active {
   background: rgba(65, 215, 176, 0.16);
@@ -224,13 +212,16 @@ html[data-theme="light"] .app-main {
   box-shadow: none;
 }
 html[data-theme="light"] .rank-home .rank-summary-grid {
-  border-color: rgba(184, 118, 19, 0.2);
+  border-color: transparent;
 }
 html[data-theme="light"] .rank-home .rank-mode-pill,
-html[data-theme="light"] .home-action-row,
 html[data-theme="light"] .home-search-box {
   border-color: rgba(33, 78, 91, 0.14);
-  background: rgba(255, 255, 255, 0.76);
+  background: var(--rb-control);
+}
+html[data-theme="light"] .home-action-row {
+  border-color: var(--rb-line);
+  background: transparent;
 }
 .approval-teaser-card {
   border-radius: var(--radius-lg);
@@ -239,15 +230,16 @@ html[data-theme="light"] .home-search-box {
 .home-side-stack .compact-list > div,
 .home-side-stack .compact-list > .team-hover-trigger {
   min-height: 44px;
-  border-radius: var(--radius-md);
-  background: rgba(255, 255, 255, 0.035);
-  padding: 10px 12px;
+  border-radius: 0;
+  border-bottom: var(--ui-divider-width) solid var(--rb-line);
+  background: transparent;
+  padding: 10px 0;
 }
 html[data-theme="light"] .home-side-stack .compact-list a,
 html[data-theme="light"] .home-side-stack .compact-list > div,
 html[data-theme="light"] .home-side-stack .compact-list > .team-hover-trigger {
-  border-color: rgba(32, 56, 68, 0.12);
-  background: rgba(238, 244, 240, 0.64);
+  border-color: var(--rb-line);
+  background: transparent;
 }
 /* 2026-07-01 imweb fitness tone pass: charcoal surface, orange CTA, condensed heroes. */
 .modal {
@@ -287,11 +279,11 @@ a:focus-visible {
 }
 
 .rank-home .rank-summary-grid .home-rank-board-head h1 {
-  font-size: clamp(46px, 5.5vw, 72px);
+  font-size: clamp(30px, 3.6vw, 44px);
 }
 
 .rank-home .rank-summary-grid .home-rank-board-head h1 {
-  line-height: 0.92;
+  line-height: var(--ui-leading-title);
 }
 .auth-test-login {
   border-color: rgba(101, 217, 159, 0.3);
@@ -306,13 +298,12 @@ a:focus-visible {
 }
 @media (max-width: 1020px) {
   .bottom-nav {
-    --bottom-nav-surface: rgba(29, 30, 31, 0.94);
+    --bottom-nav-surface: var(--rb-bg-2);
     min-height: calc(74px + env(safe-area-inset-bottom, 0px));
     border: 0;
     border-top: var(--ui-stroke-width) solid var(--rb-line);
-    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    border-radius: 0;
     background: var(--bottom-nav-surface);
-    backdrop-filter: blur(18px);
     padding: 8px 8px max(12px, env(safe-area-inset-bottom, 0px));
   }
 
@@ -325,7 +316,7 @@ a:focus-visible {
   }
 
   html[data-theme="light"] .bottom-nav {
-    --bottom-nav-surface: rgba(255, 250, 241, 0.94);
+    --bottom-nav-surface: var(--surface);
   }
 
   html[data-theme="light"] .bottom-nav-more summary {
@@ -399,8 +390,7 @@ a:focus-visible {
     border: var(--ui-stroke-width) solid var(--rb-line);
     border-radius: var(--radius-lg);
     background: var(--bottom-nav-surface);
-    box-shadow: 0 -12px 34px rgba(0, 0, 0, 0.28);
-    backdrop-filter: blur(18px);
+    box-shadow: 0 -1px 0 var(--line);
     padding: var(--space-2);
   }
 
@@ -416,7 +406,10 @@ a:focus-visible {
     display: none;
   }
 
-  .rank-home .rank-summary-grid .home-rank-board-head h1,
+  .rank-home .rank-summary-grid .home-rank-board-head h1 {
+    font-size: clamp(30px, 9vw, 42px);
+  }
+
   .om-match-copy h1,
   .arena-hero-copy h1 {
     font-size: clamp(46px, 12vw, 50px);
@@ -438,18 +431,12 @@ a:focus-visible {
   }
 }
 html[data-theme="light"] body {
-  background:
-    linear-gradient(rgba(30, 24, 18, 0.024) 1px, transparent 1px) 0 0 / 44px 44px,
-    linear-gradient(90deg, rgba(30, 24, 18, 0.024) 1px, transparent 1px) 0 0 / 44px 44px,
-    var(--rb-bg);
+  background: var(--rb-bg);
 }
 /* 2026-07-01 warm cream light mode and shared app controls. */
 .provider-button:hover {
   filter: brightness(0.96);
 }
 html[data-theme="light"] .app-main {
-  background:
-    linear-gradient(rgba(30, 24, 18, 0.024) 1px, transparent 1px) 0 0 / 42px 42px,
-    linear-gradient(90deg, rgba(30, 24, 18, 0.024) 1px, transparent 1px) 0 0 / 42px 42px,
-    var(--rb-bg);
+  background: var(--rb-bg);
 }

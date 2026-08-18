@@ -117,6 +117,7 @@ export default function MatchListCard({
 
       <Button
         className="match-list-card__action ui-button-card-action"
+        variant="secondary"
         onClick={(event) => {
           event.stopPropagation();
           onAction?.(event);

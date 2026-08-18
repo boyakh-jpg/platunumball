@@ -57,8 +57,8 @@ return (
             <span><strong>{displayScheduledCount}</strong>SOON</span>
           </div>
           <div className="om-match-actions">
-            <Button as={Link} to="/app/create" className="ui-button-block"><PlusCircle size={18} /> 방 만들기</Button>
-            <Button as={Link} to="/app/create?intent=record" variant="secondary" className="ui-button-block"><ClipboardCheck size={18} /> 기록하기</Button>
+            <Button className="ui-button-block" as={Link} to="/app/create"><PlusCircle size={18} /> 방 만들기</Button>
+            <Button className="ui-button-block" as={Link} to="/app/create?intent=record" variant="secondary"><ClipboardCheck size={18} /> 기록하기</Button>
           </div>
         </div>
       </section>
@@ -73,7 +73,7 @@ return (
             <button
               key={view.id}
               type="button"
-              className={active ? "om-view-card ui-design-soft-surface ui-design-filter-tile active" : "om-view-card ui-design-soft-surface ui-design-filter-tile"}
+              className={active ? "om-view-card ui-design-soft-surface active" : "om-view-card ui-design-soft-surface"}
               onClick={() => {
                 applyFilterState({
                   panelMode: "schedule",
@@ -94,7 +94,7 @@ return (
             })}
             <button
           type="button"
-          className={panelMode === "team" ? "om-view-card ui-design-soft-surface ui-design-filter-tile active" : "om-view-card ui-design-soft-surface ui-design-filter-tile"}
+          className={panelMode === "team" ? "om-view-card ui-design-soft-surface active" : "om-view-card ui-design-soft-surface"}
           onClick={() => {
             applyFilterState({
               panelMode: "team",
@@ -116,7 +116,7 @@ return (
             </button>
             <button
           type="button"
-          className={panelMode === "tournament" ? "om-view-card ui-design-soft-surface ui-design-filter-tile active" : "om-view-card ui-design-soft-surface ui-design-filter-tile"}
+          className={panelMode === "tournament" ? "om-view-card ui-design-soft-surface active" : "om-view-card ui-design-soft-surface"}
           onClick={() => applyFilterState({ panelMode: "tournament" })}
         >
           <span className="om-view-icon"><Trophy size={22} /></span>
@@ -136,19 +136,12 @@ return (
             <div>
               <span className="eyebrow">SCHEDULE</span>
               <h2>{panelMode === "team" ? "내 팀 일정" : "내 경기 일정"}</h2>
-              <p>
-                {dateFilter
-                  ? `${formatDateLabel(dateFilter)} ${panelMode === "team" ? "내 팀 경기" : "내 경기"}만 표시`
-                  : panelMode === "team"
-                    ? "소속 팀의 시작 전 경기를 날짜별로 표시합니다."
-                    : "내가 참가한 시작 전 경기만 날짜별로 표시합니다."}
-              </p>
             </div>
           </div>
           <section className="om-calendar-filter-bar" aria-label="경기 필터">
             {panelMode !== "team" ? <div className="om-calendar-filter-row">
               <span className="om-calendar-filter-label">관계</span>
-              <div className="ui-segmented-control segmented-control compact-segments om-relation-filter-grid" role="group" aria-label="관계 필터">
+              <div className="ui-segmented-control segmented-control compact-segments om-relation-filter-grid ui-design-filter-tile" role="group" aria-label="관계 필터">
                 <button type="button" className={relationFilter === "all" ? "active" : ""} onClick={() => applyFilterState({ relationFilter: "all" })}>전체</button>
                 <button type="button" className={relationFilter === "created" ? "active" : ""} onClick={() => applyFilterState({ relationFilter: "created" })}>내가 만든 방</button>
                 <button type="button" className={relationFilter === "joined" ? "active" : ""} onClick={() => applyFilterState({ relationFilter: "joined" })}>내 참여방</button>
@@ -157,7 +150,7 @@ return (
             </div> : null}
             {panelMode !== "team" ? <div className="om-calendar-filter-row">
               <span className="om-calendar-filter-label">유형</span>
-              <div className="ui-segmented-control segmented-control compact-segments om-branch-filter-grid" role="group" aria-label="유형 필터">
+              <div className="ui-segmented-control segmented-control compact-segments om-branch-filter-grid ui-design-filter-tile" role="group" aria-label="유형 필터">
                 {SCHEDULE_BRANCH_FILTERS.map((option) => (
                   <button
                     key={option.id}
@@ -177,7 +170,7 @@ return (
 
         {panelMode !== "tournament" ? (
           <section className="om-calendar-panel" aria-label="경기 일정 캘린더">
-        <div className="om-calendar-box ui-design-soft-surface">
+        <div className="om-calendar-box">
           <div className="om-calendar-toolbar">
             <button type="button" aria-label="이전 달" onClick={() => applyFilterState({ calendarMonth: addMonths(calendarMonth, -1) })}>
               <ChevronLeft size={18} />

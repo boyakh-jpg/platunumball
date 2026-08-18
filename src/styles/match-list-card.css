@@ -37,7 +37,7 @@
   grid-area: main;
   display: grid;
   align-content: center;
-  gap: var(--space-1);
+  gap: var(--space-2);
   min-width: 0;
   padding: var(--space-4) var(--space-5) var(--space-4) var(--space-7);
 }
@@ -82,12 +82,12 @@
   max-block-size: 1.96em;
   max-width: 100%;
   margin: 0;
-  overflow: hidden;
+  overflow: visible;
   color: var(--rb-text);
   font-family: var(--sports-display-font);
   font-size: clamp(17px, 1.35vw, 22px);
   font-weight: 1000;
-  line-height: 0.98;
+  line-height: 1.1;
   overflow-wrap: anywhere;
   white-space: normal;
   word-break: keep-all;
@@ -120,8 +120,8 @@
   gap: var(--space-1);
   min-width: 0;
   min-height: var(--ui-match-summary-min-height);
-  margin-block: var(--space-1);
-  overflow: hidden;
+  margin-block: 0;
+  overflow: visible;
   text-align: center;
 }
 
@@ -136,15 +136,13 @@
 .match-list-summary__side {
   display: grid;
   align-items: center;
-  block-size: 1.96em;
   min-width: 0;
   max-width: 100%;
-  overflow: hidden;
   color: var(--rb-text);
   font-family: var(--sports-display-font);
   font-size: clamp(15px, 1.45vw, 22px);
   font-weight: 1000;
-  line-height: 0.98;
+  line-height: 1.1;
   text-align: center;
   overflow-wrap: anywhere;
   white-space: normal;
@@ -155,8 +153,6 @@
   display: block;
   min-width: 0;
   max-width: 100%;
-  max-height: 1.96em;
-  overflow: hidden;
   color: inherit;
   font: inherit;
   overflow-wrap: inherit;
@@ -258,7 +254,7 @@
     --ui-match-list-summary-block-border-width: var(--ui-stroke-width);
     --ui-match-list-summary-inline-border-width: 0;
     min-height: var(--ui-match-summary-min-height-mobile);
-    margin: 0 0 var(--space-1) var(--space-2);
+    margin: 0;
   }
 
   .match-list-summary__side {

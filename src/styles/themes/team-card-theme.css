@@ -8,9 +8,9 @@
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  border: var(--ui-hero-border-width) solid rgba(255, 211, 108, 0.2);
+  border: var(--ui-hero-border-width) solid var(--ui-hero-border);
   border-radius: var(--radius);
-  box-shadow: var(--shadow);
+  box-shadow: var(--ui-page-hero-shadow);
 }
 
 .team-hub-hero > div:first-child {
@@ -118,10 +118,11 @@
 
 .team-card .member-row .badge {
   min-width: 0;
-  max-width: 88px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  max-width: none;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  white-space: normal;
 }
 
 .team-tier-hero,
@@ -303,10 +304,11 @@
 
 .my-team-row strong {
   min-width: 0;
-  overflow: hidden;
+  overflow: visible;
+  overflow-wrap: anywhere;
   color: var(--text);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  text-overflow: clip;
+  white-space: normal;
 }
 
 .my-team-row em {

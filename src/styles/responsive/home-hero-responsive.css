@@ -104,7 +104,7 @@
   grid-template-columns: 1fr;
   gap: var(--page-section-gap);
   align-items: stretch;
-  overflow: hidden;
+  overflow: visible;
 }
 .rank-home .home-rank-board-head,
 .rank-home .rank-tier-rail,
@@ -114,8 +114,7 @@
   min-width: 0;
 }
 .rank-home .rank-summary-grid .rank-hero-top {
-  min-height: clamp(260px, 29vw, 420px);
-  overflow: hidden;
+  overflow: visible;
 }
 .rank-home .rank-summary-grid .rank-hero-top > div {
   min-width: 0;
@@ -420,14 +419,9 @@ html[data-theme="light"] .rank-home .home-top-rail .rank-tier-rail > .rank-profi
   outline: 0;
   box-shadow: none;
 }
-/* 2026-07-02 canonical page-level hero scope guard. */
+/* Flat, non-image hero titles follow the light-theme text token. */
 html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head h1,
-html[data-theme="light"] .page-header h1,
-html[data-theme="light"] .landing-hero h1,
-html[data-theme="light"] .match-hero h1,
-html[data-theme="light"] .team-hub-hero h1,
-html[data-theme="light"] .profile-hero h1,
-html[data-theme="light"] .team-detail-hero h1 {
+html[data-theme="light"] .landing-hero h1 {
   color: var(--hero-title-color);
 }
 /* 2026-07-02 final hero guard: no image wash/blur and one title font. */

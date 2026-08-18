@@ -865,7 +865,7 @@ test("게스트는 실제 공개 매칭을 보고 개인 메뉴는 안내 상태
   assert.match(app, /path="\/app\/recorder"[\s\S]*guestPreview \? \([\s\S]*<GuestAccessNotice/u);
   assert.match(app, /path="\/app\/profile"[\s\S]*guestPreview \? \([\s\S]*<GuestAccessNotice/u);
   assert.match(app, /path="\/app\/settings"[\s\S]*guestPreview \? \([\s\S]*<GuestAccessNotice/u);
-  assert.match(guestAccess, /getLoginPath\(returnTo \|\| currentPath\)/u);
+  assert.match(guestAccess, /getLoginPath\(returnTo \|\| currentPath, currentPath\)/u);
   assert.match(guestAccess, /to="\/app\/recruiting"[\s\S]*공개 매칭 보기/u);
   assert.doesNotMatch(bottomNav, /isGuestProfile|로그인" : item\.label/u);
   assert.match(bootstrap, /regionScope: "all", startFilter: "all"/u);

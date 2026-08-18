@@ -97,12 +97,13 @@
 }
 
 .arena-queue-controls-head strong {
-  overflow: hidden;
+  overflow: visible;
+  overflow-wrap: anywhere;
   color: var(--text);
   font-size: 0.98rem;
   font-weight: 950;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  text-overflow: clip;
+  white-space: normal;
 }
 
 .arena-queue-summary {
@@ -264,18 +265,12 @@
   padding: 18px;
 }
 
-.arena-room-modal .arena-modal-status-row,
-.arena-room-modal .arena-modal-close-row {
+.arena-room-modal .arena-modal-status-row {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-4);
   align-items: center;
   justify-content: space-between;
-}
-
-.arena-room-modal .arena-modal-close-row > :is(.button, .ui-button) {
-  flex: 1 1 0;
-  min-width: 0;
 }
 
 .arena-room-modal .arena-room-subtitle {
@@ -392,9 +387,10 @@
 .arena-team-choice-grid strong,
 .arena-team-choice-grid em {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  white-space: normal;
 }
 
 .arena-team-choice-grid em,

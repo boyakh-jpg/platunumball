@@ -1,7 +1,5 @@
 /* Final CSS cleanup: non-hero layout stability. */
-.team-card,
 .rating-card,
-.home-action-card,
 .rank-leaderboard-card,
 .rank-mode-card,
 .profile-records-summary {
@@ -96,18 +94,53 @@
 .rank-stat-grid span,
 .stat-strip span,
 .rank-record-main,
-.rank-mode-pill,
+.rank-mode-pill {
+  background-color: var(--ui-data-cell-bg);
+  background-image: none;
+}
+
 .team-card .member-row,
 .member-row,
 .ranking-row,
 .delta-row,
-.home-search-box,
 .home-search-results a,
 .home-search-results .team-hover-trigger,
+.search-picker-result-row,
 .rank-quick-links a,
 .favorite-result-row,
 .favorite-mini-chip {
-  background-color: rgba(255, 255, 255, 0.045);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.team-card .member-row + .member-row,
+.member-row + .member-row,
+.ranking-row + .ranking-row,
+.delta-row + .delta-row,
+.home-search-results > * + *,
+.search-picker-result-row + .search-picker-result-row,
+.rank-quick-links > * + *,
+.favorite-result-row + .favorite-result-row {
+  border-top: var(--ui-stroke-width) solid var(--ui-divider-subtle);
+}
+
+.search-picker-result-row.selected {
+  background: var(--ui-selectable-selected-bg);
+  color: var(--ui-selectable-selected-color);
+}
+
+.favorite-result-row strong,
+.favorite-result-row em {
+  overflow: visible;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.home-search-box {
+  background-color: var(--ui-control-bg);
   background-image: none;
 }
 
@@ -118,18 +151,8 @@
 html[data-theme="light"] .rank-stat-grid span,
 html[data-theme="light"] .stat-strip span,
 html[data-theme="light"] .rank-record-main,
-html[data-theme="light"] .rank-mode-pill,
-html[data-theme="light"] .team-card .member-row,
-html[data-theme="light"] .member-row,
-html[data-theme="light"] .ranking-row,
-html[data-theme="light"] .delta-row,
-html[data-theme="light"] .home-search-box,
-html[data-theme="light"] .home-search-results a,
-html[data-theme="light"] .home-search-results .team-hover-trigger,
-html[data-theme="light"] .rank-quick-links a,
-html[data-theme="light"] .favorite-result-row,
-html[data-theme="light"] .favorite-mini-chip {
-  background-color: var(--ui-control-group-bg);
+html[data-theme="light"] .rank-mode-pill {
+  background-color: var(--ui-data-cell-bg);
   background-image: none;
 }
 
@@ -167,13 +190,14 @@ html[data-theme="light"] .favorite-mini-chip {
 .hover-tier-label {
   display: block;
   min-width: 0;
-  overflow: hidden;
+  overflow: visible;
+  overflow-wrap: anywhere;
   color: var(--text);
   font-size: 0.88rem;
   font-weight: 950;
   line-height: 1.15;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  text-overflow: clip;
+  white-space: normal;
 }
 
 .player-hover-team > span {
@@ -445,8 +469,8 @@ html[data-theme="light"] .favorite-mini-chip {
 }
 
 .rank-home .rank-profile-card {
-  background-color: rgba(10, 14, 21, 0.9);
-  background-image: none;
+  background: transparent;
+  box-shadow: none;
 }
 
 html[data-theme="light"] .player-hover-tier-grid > span,
@@ -460,21 +484,11 @@ html[data-theme="light"] .referee-hover-tier > span {
   background-image: none;
 }
 
-html[data-theme="light"] .home-action-card {
-  background-color: rgba(255, 255, 255, 0.92);
-  background-image: none;
-}
-
 html[data-theme="light"] .settings-page .section-card {
   background: transparent;
 }
 
 html[data-theme="light"] .match-card {
   background-color: var(--ui-data-cell-bg);
-  background-image: none;
-}
-
-html[data-theme="light"] .rank-home .rank-profile-card {
-  background-color: rgba(255, 255, 255, 0.92);
   background-image: none;
 }

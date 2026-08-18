@@ -81,7 +81,48 @@ html[data-theme="light"] .arena-filter-bar .arena-start-date-filter {
   scroll-padding-inline: 0;
 }
 @media (max-width: 720px) {
+  .arena-filter-bar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-areas:
+      "region-sido region-district"
+      "segment segment"
+      "mode count"
+      "date date";
+    align-items: center;
+  }
+
+  .arena-filter-bar .arena-region-sido-filter {
+    grid-area: region-sido;
+  }
+
+  .arena-filter-bar .arena-region-district-filter {
+    grid-area: region-district;
+  }
+
+  .arena-filter-bar .arena-region-sido-filter,
+  .arena-filter-bar .arena-region-district-filter,
+  .arena-filter-bar .arena-mode-filter {
+    width: auto;
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .arena-filter-bar .arena-filter-segment {
+    grid-area: segment;
+    width: 100%;
+  }
+
+  .arena-filter-bar .arena-mode-filter {
+    grid-area: mode;
+  }
+
+  .arena-filter-bar .arena-filter-count {
+    grid-area: count;
+    justify-self: end;
+  }
+
   .arena-filter-bar .arena-start-date-filter {
+    grid-area: date;
     grid-auto-flow: row;
     grid-auto-columns: auto;
     grid-template-columns: repeat(4, minmax(0, 1fr));

@@ -43,9 +43,9 @@ function GuestHomePage() {
       <Card className="home-search-panel rank-search-card">
         <SearchPicker value={query} onChange={setQuery} placeholder="선수명, 팀명, 해시태그를 바로 검색" items={[]} remoteSearchType={["profile", "team"]} remoteSearchPublic mapRemoteItem={mapGuestSearchItem} renderItem={renderGuestSearchItem} floating fieldClassName="home-search-box" resultsClassName="home-global-search-results" />
         <div className="home-search-actions">
-          <Button as={Link} to="/app/create" className="home-search-create ui-button-block"><PlusCircle size={18} /> 방 만들기</Button>
-          <Button as={Link} to="/app/create?intent=record" variant="secondary" className="home-search-create ui-button-block"><ClipboardCheck size={18} /> 기록하기</Button>
-          <Button as={Link} to="/app/receipt" variant="secondary" className="home-search-create ui-button-block"><ReceiptText size={18} /> 영수증 발급</Button>
+          <Button as={Link} to="/app/create" className="home-search-create"><PlusCircle size={18} /> 방 만들기</Button>
+          <Button as={Link} to="/app/create?intent=record" variant="secondary" className="home-search-create"><ClipboardCheck size={18} /> 기록하기</Button>
+          <Button as={Link} to="/app/receipt" variant="secondary" className="home-search-create"><ReceiptText size={18} /> 영수증 발급</Button>
         </div>
       </Card>
 
@@ -85,7 +85,7 @@ function GuestHomePage() {
 
       <aside className="page-stack home-right-rail">
         <aside className="page-stack home-top-rail">
-          <Card className="section-card"><div className="section-title-row"><h2>공개 랭크보드</h2></div><p className="muted">전체 선수·팀 순위를 지금 볼 수 있습니다.</p><Button as={Link} to="/app/rankings" variant="secondary" className="ui-button-block"><Trophy size={17} /> 전체 랭크보드</Button></Card>
+          <Card className="section-card"><div className="section-title-row"><h2>공개 랭크보드</h2></div><p className="muted">전체 선수·팀 순위를 지금 볼 수 있습니다.</p><Button as={Link} to="/app/rankings" variant="secondary" className="ui-button-block ui-design-borderless-surface"><Trophy size={17} /> 전체 랭크보드</Button></Card>
           <Card className="section-card home-action-card"><div className="section-title-row"><h2>내가 처리할 일</h2></div><div className="home-action-list ui-design-borderless-list"><div className="home-action-row priority-5"><span className="home-action-icon"><Bell size={18} /></span><span className="home-action-main"><strong>개인 알림</strong><em>로그인 후 초대와 경기 요청이 여기에 표시됩니다.</em></span></div></div></Card>
         </aside>
         <aside className="page-stack home-side-stack"><Card className="section-card home-side-wide-card"><div className="section-title-row"><div><p className="eyebrow">Public</p><h2>로그인 없이 둘러보기</h2></div></div><div className="ui-action-row home-public-actions"><Button as={Link} to="/app/teams" variant="secondary"><UsersRound size={17} /> 팀</Button><Button as={Link} to="/app/community" variant="secondary"><MessageSquareText size={17} /> 커뮤니티</Button><Button as={Link} to="/app/guide/practice"><FlaskConical size={17} /> 연습경기 해보기</Button></div></Card></aside>
@@ -131,9 +131,9 @@ export default function HomePageView({
           resultsClassName="home-global-search-results"
         />
         <div className="home-search-actions">
-          <Button as={Link} to="/app/create" className="home-search-create ui-button-block"><PlusCircle size={18} /> 방 만들기</Button>
-          <Button as={Link} to="/app/create?intent=record" variant="secondary" className="home-search-create ui-button-block"><ClipboardCheck size={18} /> 기록하기</Button>
-          <Button as={Link} to="/app/receipt" variant="secondary" className="home-search-create ui-button-block"><ReceiptText size={18} /> 영수증 발급</Button>
+          <Button as={Link} to="/app/create" className="home-search-create"><PlusCircle size={18} /> 방 만들기</Button>
+          <Button as={Link} to="/app/create?intent=record" variant="secondary" className="home-search-create"><ClipboardCheck size={18} /> 기록하기</Button>
+          <Button as={Link} to="/app/receipt" variant="secondary" className="home-search-create"><ReceiptText size={18} /> 영수증 발급</Button>
         </div>
       </Card>
 

@@ -242,6 +242,7 @@
   --ui-data-cell-bg: color-mix(in srgb, var(--rb-text) 4%, transparent);
   --ui-divider-subtle: color-mix(in srgb, var(--rb-line) 72%, transparent);
   --ui-information-surface-bg: var(--ui-data-cell-bg);
+  --ui-tier-decoration-bg: color-mix(in srgb, var(--gold) 8%, var(--rb-surface));
   --ui-result-win-bg: color-mix(in srgb, var(--ui-result-win-border) 12%, var(--ui-information-surface-bg));
   --ui-result-loss-bg: color-mix(in srgb, var(--ui-result-loss-border) 12%, var(--ui-information-surface-bg));
   --ui-result-draw-bg: color-mix(in srgb, var(--ui-result-draw-border) 12%, var(--ui-information-surface-bg));
@@ -297,8 +298,8 @@
   --ui-room-title-size: clamp(1.3rem, 1.8vw, 1.55rem);
   --ui-room-title-size-mobile: 1.25rem;
   --ui-room-copy-size: 0.8125rem;
-  --hero-title-line-height: 0.95;
-  --hero-title-letter-spacing: 0.018em;
+  --hero-title-line-height: 1.06;
+  --hero-title-letter-spacing: -0.012em;
   --hero-title-color: var(--rb-cream);
   --hero-eyebrow-color: var(--rb-orange-2);
   --hero-title-shadow: none;
@@ -433,6 +434,7 @@ html[data-theme="light"] {
   --ui-liquid-glass-shadow: none;
   --ui-data-cell-bg: #ffffff;
   --ui-information-surface-bg: #ffffff;
+  --ui-tier-decoration-bg: color-mix(in srgb, var(--gold) 6%, #ffffff);
   --ui-liquid-glass-filter: none;
   --ui-page-hero-shadow: none;
   --ui-schedule-hero-mask: none;

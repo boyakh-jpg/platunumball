@@ -208,11 +208,12 @@
   gap: var(--space-1);
 }
 .search-picker-player-identity small {
-  overflow: hidden;
+  overflow: visible;
+  overflow-wrap: anywhere;
   color: var(--muted);
   font-size: var(--font-size-body-sm);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  text-overflow: clip;
+  white-space: normal;
 }
 .search-picker-result-row > span,
 .search-picker-result-row > .team-hover-trigger,
@@ -307,9 +308,10 @@ html[data-theme="light"] .search-picker-result-row.selected {
   min-width: 0;
 }
 .home-side-stack .compact-list span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  white-space: normal;
 }
 .home-search-results strong,
 .connection-list strong {
@@ -475,18 +477,20 @@ html[data-theme="light"] .search-picker-result-row.selected {
   gap: 3px;
 }
 .home-action-main strong {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  white-space: normal;
 }
 .home-action-main em {
-  overflow: hidden;
+  overflow: visible;
+  overflow-wrap: anywhere;
   color: var(--muted);
   font-size: 0.8rem;
   font-style: normal;
   font-weight: 850;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  text-overflow: clip;
+  white-space: normal;
 }
 .home-action-row b {
   border-radius: 999px;

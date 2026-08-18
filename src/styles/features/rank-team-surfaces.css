@@ -5,9 +5,9 @@
 
 .rank-stat-grid span,
 .stat-strip span {
-  min-height: 62px;
+  min-height: 48px;
   align-content: center;
-  padding: 10px 12px;
+  padding: var(--space-3) var(--space-4);
 }
 
 .recent-match-row,
@@ -31,30 +31,26 @@
 }
 
 .recent-match-row strong,
-.recent-match-row em,
 .recent-match-row small,
 .my-team-row strong,
 .my-team-row em,
 .rank-list .rank-row > strong,
 .rank-list .rank-row > em {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
-@media (max-width: 640px) {
-  .my-team-row strong,
-  .my-team-row em {
-    overflow: visible;
-    text-overflow: clip;
-    white-space: normal;
-    overflow-wrap: anywhere;
-  }
+.recent-match-row em {
+  min-width: 0;
+  white-space: nowrap;
 }
 
 .profile-rating-mode,
 .rank-mode-pill {
-  min-height: 132px;
+  min-height: 64px;
 }
 
 .team-card .team-card-top {
@@ -87,20 +83,9 @@ html[data-theme="light"] .rank-stat-grid span,
 html[data-theme="light"] .stat-strip span,
 html[data-theme="light"] .rank-tier-block,
 html[data-theme="light"] .rank-record-main,
-html[data-theme="light"] .rank-mode-pill,
-html[data-theme="light"] .team-hub-board,
-html[data-theme="light"] .team-card .member-row,
-html[data-theme="light"] .member-row,
-html[data-theme="light"] .ranking-row,
-html[data-theme="light"] .delta-row,
-html[data-theme="light"] .home-search-box,
-html[data-theme="light"] .home-search-results a,
-html[data-theme="light"] .home-search-results .team-hover-trigger,
-html[data-theme="light"] .rank-quick-links a,
-html[data-theme="light"] .favorite-result-row,
-html[data-theme="light"] .favorite-mini-chip {
+html[data-theme="light"] .rank-mode-pill {
   border-color: var(--ui-control-group-border);
-  background: var(--ui-control-group-bg);
+  background: var(--ui-data-cell-bg);
 }
 
 html[data-theme="light"] .ranking-filter-card {
@@ -110,13 +95,13 @@ html[data-theme="light"] .ranking-filter-card {
 
 .rank-profile-card .rank-tier-block {
   position: relative;
-  overflow: hidden;
+  overflow: visible;
   min-height: 128px;
-  border-color: rgba(255, 211, 108, 0.28);
+  border: 0;
   background:
     linear-gradient(90deg, rgba(5, 7, 10, 0.96), rgba(5, 7, 10, 0.78) 54%, rgba(5, 7, 10, 0.42)),
     var(--bg-court) var(--hero-bg-position-court) / var(--hero-bg-size) no-repeat;
-  box-shadow: inset 0 0 0 1px rgba(255, 211, 108, 0.08);
+  box-shadow: none;
 }
 
 .rank-profile-card .rank-tier-block .tier-emblem {
@@ -130,11 +115,11 @@ html[data-theme="light"] .ranking-filter-card {
 }
 
 html[data-theme="light"] .rank-profile-card .rank-tier-block {
-  border-color: rgba(184, 118, 19, 0.24);
+  border: 0;
   background:
     linear-gradient(90deg, rgba(255, 250, 241, 0.96), rgba(242, 234, 223, 0.86) 58%, rgba(242, 234, 223, 0.56)),
     var(--bg-court) var(--hero-bg-position-court) / var(--hero-bg-size) no-repeat;
-  box-shadow: inset 0 0 0 1px rgba(184, 118, 19, 0.08), 0 12px 26px rgba(55, 44, 31, 0.1);
+  box-shadow: none;
 }
 
 .rank-home .rank-profile-card .rank-tier-block,
@@ -142,7 +127,7 @@ html[data-theme="light"] .rank-home .rank-profile-card .rank-tier-block {
   min-height: 116px;
   border: 0;
   box-shadow: none;
-  overflow: hidden;
+  overflow: visible;
 }
 
 html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head p:not(.eyebrow) {
@@ -150,9 +135,9 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head p:n
 }
 
 html[data-theme="light"] .rank-home .rank-profile-card {
-  border-color: var(--ui-card-border);
-  background: var(--ui-card-bg);
-  box-shadow: var(--ui-card-shadow);
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
 }
 
 html[data-theme="light"] .rank-home .rank-tier-block strong {
@@ -211,22 +196,22 @@ html[data-theme="light"] .rank-home .rank-mode-pill em {
 
   .rank-home .rank-profile-card {
     min-height: 0;
-    padding: 18px;
-    gap: var(--space-6);
+    padding: var(--space-5);
+    gap: var(--space-4);
   }
 
   .rank-home .rank-tier-block {
-    grid-template-columns: minmax(118px, 0.9fr) minmax(0, 1.1fr);
-    gap: var(--space-9);
+    grid-template-columns: minmax(102px, 0.85fr) minmax(0, 1.15fr);
+    gap: var(--space-5);
   }
 
   .rank-home .rank-tier-block .tier-emblem {
-    width: 124px;
-    height: 124px;
+    width: 108px;
+    height: 108px;
   }
 
   .rank-home .rank-tier-block strong {
-    font-size: 1.8rem;
+    font-size: 1.6rem;
   }
 
   .rank-home .rank-tier-meta-line,
@@ -241,13 +226,13 @@ html[data-theme="light"] .rank-home .rank-mode-pill em {
   }
 
   .rank-home .rank-mode-pill {
-    grid-template-columns: minmax(0, 1fr) 70px;
-    min-height: 108px;
-    padding: 14px 12px;
+    grid-template-columns: minmax(0, 1fr) 56px;
+    min-height: 72px;
+    padding: var(--space-3) var(--space-4);
   }
 
   .rank-home .rank-mode-pill .tier-emblem-sm {
-    width: 70px;
+    width: 56px;
   }
 
   .rank-home .rank-mode-pill strong {
@@ -268,7 +253,7 @@ html[data-theme="light"] .rank-home .rank-mode-pill em {
 
   .profile-rating-mode,
   .rank-mode-pill {
-    min-height: 112px;
+    min-height: 72px;
     padding: 10px;
   }
 }
@@ -291,30 +276,29 @@ html[data-theme="light"] .rank-home .rank-mode-pill em {
   }
 }
 
-/* Team hub keeps the ranked-team hero layout instead of the generic page hero. */
+/* Team hub uses the direct image as an illustration, without a readability mask. */
 .team-hub-hero {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   align-content: end;
   justify-items: start;
-  gap: var(--space-12);
-  min-height: clamp(430px, 46vw, 620px);
-  padding: clamp(22px, 3.4vw, 34px);
-  border-color: rgba(255, 211, 108, 0.2);
-  background:
-    linear-gradient(180deg, rgba(5, 7, 10, 0.2), rgba(5, 7, 10, 0.72) 54%, rgba(5, 7, 10, 0.94)),
-    var(--bg-ball) var(--hero-bg-position-ball) / var(--hero-bg-size) no-repeat;
+  gap: var(--space-5);
+  min-height: clamp(240px, 29vw, 340px);
+  padding: clamp(16px, 2.4vw, 24px);
+  border-color: transparent;
+  background: var(--bg-ball) var(--hero-bg-position-ball) / var(--hero-bg-size) no-repeat;
 }
 
 .team-hub-hero > div:first-child {
   min-height: 0;
   max-width: 720px;
-  gap: var(--space-6);
+  gap: var(--space-4);
 }
 
 .team-hub-hero h1 {
-  font-size: clamp(3.2rem, 6.6vw, 5.6rem);
-  color: #f7fbff;
+  font-size: var(--hero-title-size);
+  color: var(--ui-image-hero-title-color);
+  text-shadow: var(--ui-image-hero-title-shadow);
 }
 
 .team-hub-board {
@@ -324,11 +308,6 @@ html[data-theme="light"] .rank-home .rank-mode-pill em {
   align-content: start;
   justify-self: start;
   gap: var(--space-8);
-  border: var(--ui-card-border-width) solid var(--ui-card-border);
-  border-radius: var(--ui-card-radius);
-  background: var(--ui-card-bg);
-  box-shadow: var(--ui-card-shadow);
-  backdrop-filter: none;
   padding: clamp(24px, 3vw, 32px);
 }
 
@@ -374,19 +353,19 @@ html[data-theme="light"] .rank-home .rank-mode-pill em {
 
 .team-hub-board-name strong {
   color: var(--gold);
-  font-size: clamp(2.1rem, 4.4vw, 3.7rem);
+  font-size: clamp(1.65rem, 3.4vw, 2.7rem);
   line-height: 0.96;
 }
 
-.team-hub-board-identity em {
-  color: rgba(226, 233, 242, 0.82);
+.ui-page-hero .team-hub-board .team-hub-board-identity em {
+  color: var(--rb-yellow);
   font-size: clamp(0.95rem, 1.8vw, 1.15rem);
 }
 
 .team-hub-board-stats {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  padding-top: var(--space-6);
+  padding-top: var(--space-4);
   border-top: var(--ui-stroke-width) solid var(--ui-liquid-glass-divider);
 }
 
@@ -417,34 +396,22 @@ html[data-theme="light"] .rank-home .rank-mode-pill em {
 }
 
 html[data-theme="light"] .team-hub-hero {
-  border-color: rgba(184, 118, 19, 0.24);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0.66) 54%, rgba(255, 255, 255, 0.92)),
-    var(--bg-ball) var(--hero-bg-position-ball) / var(--hero-bg-size) no-repeat;
+  border-color: transparent;
+  background: var(--bg-ball) var(--hero-bg-position-ball) / var(--hero-bg-size) no-repeat;
 }
 
 html[data-theme="light"] .team-hub-hero h1 {
-  color: #142129;
-}
-
-html[data-theme="light"] .team-hub-board {
-  border-color: var(--ui-card-border);
-  background: var(--ui-card-bg);
-  box-shadow: var(--ui-card-shadow);
-}
-
-html[data-theme="light"] .team-hub-board-identity em {
-  color: #50626b;
+  text-shadow: var(--ui-image-hero-title-shadow);
 }
 
 @media (max-width: 720px) {
   .team-hub-hero {
-    min-height: 660px;
-    padding: 20px;
+    min-height: 220px;
+    padding: 16px;
   }
 
   .team-hub-hero h1 {
-    font-size: 3.3rem;
+    font-size: var(--hero-title-size-mobile);
   }
 
   .team-hub-board {
@@ -454,11 +421,11 @@ html[data-theme="light"] .team-hub-board-identity em {
 
 @media (max-width: 480px) {
   .team-hub-hero {
-    min-height: 620px;
-    padding: 18px;
+    min-height: 200px;
+    padding: 14px;
   }
 
   .team-hub-hero h1 {
-    font-size: 2.8rem;
+    font-size: var(--hero-title-size-mobile);
   }
 }

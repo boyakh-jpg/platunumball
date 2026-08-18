@@ -87,12 +87,13 @@
 .bracket-slot-copy strong,
 .bracket-team-row .team-hover-trigger {
   min-width: 0;
-  overflow: hidden;
+  overflow: visible;
+  overflow-wrap: anywhere;
   color: var(--text);
   font-size: 0.83rem;
   font-weight: 950;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  text-overflow: clip;
+  white-space: normal;
 }
 
 .bracket-slot-copy em {
@@ -335,12 +336,6 @@ html[data-theme="light"] .om-match-copy p {
   color: var(--muted);
 }
 
-html[data-theme="light"] .om-match-panel,
-html[data-theme="light"] .om-view-card,
-html[data-theme="light"] .om-calendar-summary,
-html[data-theme="light"] .om-calendar-box,
-html[data-theme="light"] .om-tournament-card,
-html[data-theme="light"] .om-list-head,
 html[data-theme="light"] .tournament-summary-grid > div,
 html[data-theme="light"] .tournament-team-list article,
 html[data-theme="light"] .tournament-referee-list article,
@@ -393,19 +388,8 @@ html[data-theme="light"] .tournament-referee-actions button.secondary {
 }
 
 @media (max-width: 860px) {
-  .om-match-hero {
-    min-height: 0;
-    padding: 16px;
-  }
-
-  .om-match-copy p,
   .om-calendar-summary p {
     display: none;
-  }
-
-  .om-view-card {
-    min-height: 76px;
-    padding: 10px;
   }
 
   .om-view-card em {

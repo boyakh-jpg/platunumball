@@ -1,16 +1,7 @@
 .om-match-hero {
-  position: relative;
-  isolation: isolate;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
   gap: 22px;
-}
-
-.om-match-hero::after {
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
 }
 
 .om-match-copy h1 {
@@ -46,9 +37,12 @@
   width: 100%;
 }
 
+.om-view-grid {
+  display: grid;
+}
+
 .om-view-card {
   position: relative;
-  overflow: hidden;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   gap: 10px;
@@ -57,7 +51,6 @@
   cursor: pointer;
   padding: 12px;
   text-align: left;
-  transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
 }
 
 .om-view-icon {
@@ -83,13 +76,12 @@
 }
 
 .om-view-card em {
-  overflow: hidden;
   color: var(--muted);
   font-size: 0.78rem;
   font-style: normal;
   font-weight: 850;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .om-view-card b {
@@ -213,26 +205,6 @@
   content: none;
 }
 
-.om-calendar-grid button::before,
-.om-calendar-grid > span::before {
-  bottom: 0;
-  left: 25%;
-  width: 50%;
-  height: var(--ui-stroke-width);
-}
-
-.om-calendar-grid button::after,
-.om-calendar-grid > span::after {
-  top: 25%;
-  right: 0;
-  width: var(--ui-stroke-width);
-  height: 50%;
-}
-
-.om-calendar-grid > :nth-child(7n)::after {
-  display: none;
-}
-
 .om-calendar-grid button {
   display: flex;
   align-items: center;
@@ -257,13 +229,13 @@
   position: absolute;
   left: 50%;
   display: inline-flex;
-  min-width: 19px;
-  height: 18px;
+  min-width: 0;
+  height: auto;
   align-items: center;
   justify-content: center;
-  border-radius: 999px;
-  background: var(--gold);
-  color: #141006;
+  border-radius: 0;
+  background: transparent;
+  color: var(--gold);
   font-size: 0.68rem;
   font-weight: 950;
   line-height: 1;
@@ -296,19 +268,6 @@
   font-weight: 950;
 }
 
-.om-tournament-head-actions button {
-  min-height: 32px;
-  border: var(--ui-button-border-width) solid rgba(255, 211, 108, 0.24);
-  border-radius: var(--radius-xs);
-  background: rgba(255, 211, 108, 0.1);
-  color: var(--gold);
-  cursor: pointer;
-  font: inherit;
-  font-size: 0.76rem;
-  font-weight: 950;
-  padding: 0 10px;
-}
-
 .om-tournament-grid {
   grid-template-columns: minmax(0, 1fr);
 }
@@ -328,7 +287,7 @@
 
 .om-tournament-card h3 {
   margin-top: 4px;
-  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
 }
 
 .om-tournament-card p {
@@ -363,16 +322,15 @@
 .om-tournament-meta strong {
   display: inline-flex;
   align-items: center;
-  background: rgba(255, 255, 255, 0.07);
+  background: transparent;
   color: var(--muted);
   font-size: 0.7rem;
   font-weight: 950;
   line-height: 1;
-  padding: 6px 8px;
+  padding: 0;
 }
 
 .om-tournament-meta strong {
-  background: rgba(255, 211, 108, 0.13);
   color: var(--gold);
 }
 
@@ -393,29 +351,17 @@
   min-width: 0;
 }
 
-.om-tournament-actions button {
-  min-height: 36px;
-  border: var(--ui-button-border-width) solid rgba(255, 211, 108, 0.24);
-  border-radius: var(--radius-xs);
-  background: rgba(255, 211, 108, 0.12);
-  color: var(--gold);
-  cursor: pointer;
-  font: inherit;
-  font-size: 0.78rem;
-  font-weight: 950;
-  padding: 0 12px;
-}
-
 .om-tournament-state {
   grid-area: state;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  border: var(--ui-stroke-width) solid rgba(255, 211, 108, 0.14);
-  border-radius: var(--radius-xs);
-  background: rgba(255, 211, 108, 0.07);
-  padding: 9px 10px;
+  border: 0;
+  border-top: var(--ui-stroke-width) solid var(--ui-divider-subtle);
+  border-radius: 0;
+  background: transparent;
+  padding: 8px 0 0;
 }
 
 .om-tournament-state span,
@@ -444,19 +390,11 @@
   grid-template-columns: minmax(0, 1fr) auto;
   gap: var(--page-column-gap);
   align-items: end;
-  overflow: hidden;
-  border: var(--ui-hero-border-width) solid rgba(255, 211, 108, 0.2);
-  border-radius: var(--radius-lg);
-  background:
-    linear-gradient(105deg, rgba(8, 11, 16, 0.92), rgba(8, 11, 16, 0.66)),
-    var(--bg-hoop) var(--hero-bg-position-hoop) / var(--hero-bg-size) no-repeat;
-  padding: var(--page-gutter);
 }
 
 .tournament-hero h1 {
   max-width: 820px;
   margin-top: 8px;
-  font-size: clamp(2rem, 4vw, 4.2rem);
   overflow-wrap: anywhere;
 }
 

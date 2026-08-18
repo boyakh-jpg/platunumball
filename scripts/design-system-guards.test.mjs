@@ -380,8 +380,8 @@ test("referee detail uses the player hero structure and dedicated tier emblems",
 test("signed-in login redirects and settings exposes logout", () => {
   const authStyles = read("src/styles/layout/app-shell-auth.css");
   assert.match(loginSource, /if \(auth\.session\) return <Navigate to=\{from\} replace \/>;/);
+  assert.match(loginSource, /if \(location\.state\?\.authGate\) \{[\s\S]*?navigate\(-1\);[\s\S]*?return;[\s\S]*?\}/);
   assert.match(loginSource, /navigate\(getLoginBackTargetFromLocation\(location\), \{ replace: true \}\);/);
-  assert.doesNotMatch(loginSource, /navigate\(-1\)|hasPreviousHistoryEntry/);
   assert.match(loginSource, /embeddedGoogleOAuthBrowser && showGoogleBrowserFallback/);
   assert.match(loginSource, /providerId === "google" && embeddedGoogleOAuthBrowser[\s\S]*?setShowGoogleBrowserFallback\(true\);[\s\S]*?return;/);
   assert.match(loginSource, /<AuthProviderIcon providerId=\{provider\.id\} \/>/);
@@ -1173,18 +1173,22 @@ test("목록 카드 feature CSS는 primitive 표면을 다시 정의하지 않�
   assert.match(matchListStyles, /--ui-panel-padding:/);
 });
 
-test("경기 목록 상태선과 팀명 높이는 공용 규칙을 사용한다", () => {
+test("경기 목록 상태선과 팀명 줄바꿈은 공용 규칙을 사용한다", () => {
   assert.match(
     matchListStyles,
     /\.match-list-card::before\s*\{[^}]*inset:\s*var\(--ui-status-rail-inset\) auto var\(--ui-status-rail-inset\) 0;[^}]*width:\s*var\(--ui-status-rail-width\);[^}]*border-radius:\s*var\(--ui-status-rail-radius\);/,
   );
   assert.match(
     matchListStyles,
-    /\.match-list-summary__side\s*\{[^}]*display:\s*grid;[^}]*block-size:\s*1\.96em;[^}]*overflow:\s*hidden;[^}]*white-space:\s*normal;/,
+    /\.match-list-summary__side\s*\{[^}]*display:\s*grid;[^}]*max-width:\s*100%;[^}]*overflow-wrap:\s*anywhere;[^}]*white-space:\s*normal;[^}]*word-break:\s*keep-all;/,
   );
   assert.match(
     matchListStyles,
-    /\.match-list-summary__side > :is\(\.team-hover-trigger, a, span\)\s*\{[^}]*display:\s*block;[^}]*max-height:\s*1\.96em;[^}]*overflow:\s*hidden;[^}]*white-space:\s*inherit;/,
+    /\.match-list-summary__side > :is\(\.team-hover-trigger, a, span\)\s*\{[^}]*display:\s*block;[^}]*max-width:\s*100%;[^}]*overflow-wrap:\s*inherit;[^}]*white-space:\s*inherit;[^}]*word-break:\s*inherit;/,
+  );
+  assert.doesNotMatch(
+    getRuleBody(matchListStyles, ".match-list-summary__side"),
+    /(?:block-size|max-height|overflow:\s*hidden)/,
   );
 });
 

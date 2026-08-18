@@ -880,7 +880,7 @@ test("important is limited to inline-position and inline-layout overrides", () =
     });
   }
 
-  assert.equal(declarationCount, 7);
+  assert.equal(declarationCount, 4);
   assert.deepEqual(violations, []);
 });
 
@@ -941,7 +941,7 @@ test("editorial feature cards and buttons inherit border width owners", () => {
     /\.provider-button,\s*\.auth-session-line button,\s*\.auth-form > \.button-secondary\s*\{[^}]*border:\s*0;/,
   );
   assert.match(
-    fs.readFileSync("src/styles/themes/sports-shell-theme.css", "utf8"),
+    fs.readFileSync("src/styles/layout/app-shell-auth.css", "utf8"),
     /\.auth-card\s*\{[^}]*box-shadow:\s*none;/,
   );
   assert.match(

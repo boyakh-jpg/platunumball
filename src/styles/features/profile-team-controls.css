@@ -284,9 +284,10 @@
 .my-team-row .my-team-copy > em {
   min-width: 0;
   grid-column: auto;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .my-team-actions {

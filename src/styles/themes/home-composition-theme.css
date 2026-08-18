@@ -10,18 +10,8 @@
 @media (max-width: 759px) {
 
   .rank-home .rank-summary-grid {
-    min-height: 520px;
+    min-height: 0;
     padding: 14px;
-  }
-
-  .home-action-row {
-    grid-template-columns: 38px minmax(0, 1fr);
-  }
-
-  .home-action-row b,
-  .home-action-buttons {
-    justify-self: start;
-    grid-column: 2;
   }
 
   .landing-primary-actions {
@@ -31,13 +21,10 @@
   }
 }
 .rank-home .home-action-main strong {
-  display: -webkit-box;
-  overflow: hidden;
+  display: block;
+  overflow: visible;
   overflow-wrap: anywhere;
-  text-overflow: clip;
   white-space: normal;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
 }
 @media (max-width: 390px) {
   .landing-actions .landing-primary-actions .landing-create-action {
@@ -75,27 +62,15 @@ html[data-theme="light"] .rank-home .rank-summary-grid {
 }
 html[data-theme="light"] .rank-home .rank-profile-card,
 html[data-theme="light"] .rank-home .rank-mode-card {
-  background: rgba(255, 250, 241, 0.88);
-  border-color: var(--rb-line);
+  background: transparent;
+  border-color: transparent;
 }
-html[data-theme="light"] .rank-home .rank-profile-card .rank-tier-block,
-html[data-theme="light"] .rank-home .rank-mode-pill,
-html[data-theme="light"] .home-action-row,
-html[data-theme="light"] .home-invitation-row,
 html[data-theme="light"] .home-search-box {
-  background: rgba(255, 255, 255, 0.64);
+  background: var(--ui-control-bg);
 }
 /* 2026-07-01 subdued app floor: remove the far-back grid. */
 body {
-  background:
-    radial-gradient(circle at 18% 12%, rgba(255, 255, 255, 0.018), transparent 18rem),
-    var(--bg);
-}
-html[data-theme="light"] body,
-html[data-theme="light"] .app-main {
-  background:
-    radial-gradient(circle at 18% 12%, rgba(255, 250, 241, 0.26), transparent 18rem),
-    var(--rb-bg);
+  background: var(--bg);
 }
 /* 2026-07-01 home search placement: desktop top bar, mobile below hero. */
 @media (min-width: 1080px) {
@@ -136,8 +111,8 @@ html[data-theme="light"] .app-main {
   }
 
   .rank-home .home-search-panel.rank-search-card .home-search-create {
-    margin-left: auto;
-    flex: 0 0 auto;
+    margin-left: 0;
+    flex: 1 1 0;
   }
 
 }
@@ -158,7 +133,7 @@ html[data-theme="light"] .app-main {
     grid-column: 1 / -1;
     grid-row: auto;
     justify-self: start;
-    min-height: clamp(500px, 132vw, 570px);
+    min-height: clamp(280px, 78vw, 360px);
     width: calc(100% + (2 * var(--app-main-pad-x)));
     max-width: none;
     margin-top: -18px;
@@ -184,7 +159,7 @@ html[data-theme="light"] .app-main {
   .rank-home .rank-summary-grid .home-rank-board-head h1 {
     max-width: 8.6ch;
     color: #fff;
-    font-size: clamp(46px, 15vw, 68px);
+    font-size: clamp(30px, 9vw, 42px);
     line-height: 0.84;
   }
 
@@ -211,9 +186,6 @@ html[data-theme="light"] .app-main {
     order: 4;
   }
 
-  html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
-    background: transparent;
-  }
 }
 .eyebrow {
   color: var(--rb-orange-2);
@@ -265,7 +237,7 @@ html[data-theme="light"] .eyebrow {
   }
 
   .rank-home .rank-summary-grid .home-rank-board-head h1 {
-    font-size: clamp(42px, 4.1vw, 62px);
+    font-size: clamp(30px, 3.2vw, 44px);
   }
 
   .rank-home .rank-mode-card,
@@ -386,10 +358,7 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head p:n
   display: grid;
   gap: var(--space-5);
   overflow: visible;
-  border: var(--ui-card-border-width) solid var(--ui-card-border);
-  border-radius: var(--ui-card-radius);
-  background: var(--ui-card-bg);
-  padding: 10px;
+  padding: 0;
 }
 .rank-home .rank-tier-rail > .rank-profile-card,
 .rank-home .rank-tier-rail > .rank-mode-card,
@@ -400,21 +369,20 @@ html[data-theme="light"] .rank-home .rank-tier-rail > .rank-mode-card {
   align-self: stretch;
 }
 html[data-theme="light"] .rank-home .rank-tier-rail {
-  border-color: var(--ui-card-border);
-  background: var(--ui-card-bg);
-  box-shadow: var(--ui-card-shadow);
+  background: transparent;
+  box-shadow: none;
 }
 .rank-home .rank-profile-card .rank-tier-block,
+html[data-theme="light"] .rank-home .rank-profile-card .rank-tier-block {
+  width: 100%;
+  box-sizing: border-box;
+  border-radius: var(--ui-card-radius);
+}
 .rank-home .rank-mode-pill,
-html[data-theme="light"] .rank-home .rank-profile-card .rank-tier-block,
 html[data-theme="light"] .rank-home .rank-mode-pill {
   width: 100%;
   box-sizing: border-box;
-  overflow: visible;
-  border: var(--ui-card-border-width) solid var(--ui-card-border);
   border-radius: var(--ui-card-radius);
-  background: var(--ui-card-bg);
-  box-shadow: var(--ui-card-shadow);
 }
 .rank-home .rank-mode-card,
 html[data-theme="light"] .rank-home .rank-mode-card {
@@ -425,7 +393,7 @@ html[data-theme="light"] .rank-home .rank-mode-card {
   .rank-home .rank-summary-grid {
     grid-template-columns: minmax(0, 1fr) minmax(220px, 250px);
     grid-template-rows: minmax(220px, 1fr);
-    min-height: clamp(340px, 38vh, 440px);
+    min-height: clamp(300px, 32vh, 380px);
   }
 
   .rank-home .rank-tier-rail {

@@ -30,6 +30,10 @@ export default function Login({ auth, app }) {
   if (auth.session) return <Navigate to={from} replace />;
 
   const goBack = () => {
+    if (location.state?.authGate) {
+      navigate(-1);
+      return;
+    }
     navigate(getLoginBackTargetFromLocation(location), { replace: true });
   };
   const enterApp = () => navigate(from, { replace: true });

@@ -17,6 +17,8 @@ html[data-theme="light"] .arena-room-player-slot {
 .arena-lobby-modal .arena-modal-close-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
+  width: min(100%, var(--ui-action-pair-max-inline-size));
+  margin-inline-start: auto;
   gap: var(--ui-control-group-gap);
 }
 

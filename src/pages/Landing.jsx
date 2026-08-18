@@ -60,10 +60,9 @@ export default function Landing({ auth }) {
       <section className="guest-landing-hero">
         <div className="guest-landing-hero-copy">
           <p className="guest-landing-eyebrow">PLAY REAL. RANK REAL.</p>
-          <h1>농구 기록을<br />쌓고 연결하세요.</h1>
+          <h1>농구 기록을 쌓고 연결하세요.</h1>
           <p className="guest-landing-lead">
-            경기방, 출석, 점수와 개인 기록까지 한곳에 쌓고<br />
-            끝난 경기는 영수증으로 저장·공유하세요.
+            경기방부터 개인 기록까지 한곳에 쌓고, 끝난 경기는 영수증으로 저장·공유하세요.
           </p>
           <div className="guest-landing-primary-actions">
             <Button as={Link} to="/app/receipt" className="guest-landing-primary-cta">
@@ -87,8 +86,7 @@ export default function Landing({ auth }) {
       <section className="guest-landing-section guest-landing-record-section">
         <div className="guest-landing-section-heading">
           <p className="guest-landing-eyebrow">HOW BOXTIER WORKS</p>
-          <h2>경기 전부터 종료 후까지<br />하나의 기록으로 이어집니다.</h2>
-          <p>BOXTIER는 영수증 제작만 하는 서비스가 아닙니다.<br />경기 운영과 결과, 팀·개인 기록을 연결합니다.</p>
+          <h2>경기 전부터 종료 후까지 하나의 기록으로 이어집니다.</h2>
         </div>
 
         <ol className="guest-landing-record-flow">

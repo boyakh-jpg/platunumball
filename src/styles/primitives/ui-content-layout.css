@@ -14,7 +14,7 @@ html[data-theme] .ui-design-app .ui-design-borderless-list > :not(.match-receipt
 html[data-theme] .ui-design-app .ui-design-choice-list > :not(.match-receipt-card):not(.match-receipt-card *) {
   border-color: transparent;
   background: transparent;
-  box-shadow: none;
+  box-shadow: var(--ui-page-hero-shadow);
 }
 
 html[data-theme] .ui-design-app .ui-design-borderless-list > :not(.match-receipt-card) + :not(.match-receipt-card) {
@@ -122,14 +122,14 @@ html[data-theme] .app-main .ui-button-block:not(.provider-button):not(.match-rec
   }
 }
 
-html[data-theme] .app-main .page-header {
+.app-main .page-header {
   --ui-page-hero-image: var(--page-hero-bg, var(--bg-court));
   --ui-page-hero-position: var(--page-hero-bg-position, var(--hero-bg-position-court));
   min-height: var(--ui-page-hero-min-height);
   box-shadow: var(--ui-page-hero-shadow);
   padding: var(--ui-page-hero-padding);
-  border: 0;
-  border-radius: var(--ui-card-radius);
+  border: var(--ui-hero-border-width) solid var(--ui-hero-border);
+  border-radius: 0;
 }
 
 html[data-theme] .app-main .page-header :is(p, small):not(.eyebrow) {
@@ -146,22 +146,22 @@ html[data-theme] .app-main .page-header .ui-page-hero__copy > .ui-button {
 html[data-theme] .app-main .team-hub-hero {
   --ui-page-hero-image: var(--bg-ball);
   --ui-page-hero-position: var(--hero-bg-position-ball);
-  min-height: clamp(280px, 26vw, 360px);
+  min-height: var(--ui-page-hero-min-height);
   padding: var(--ui-page-hero-padding);
 }
 
 html[data-theme] .app-main .team-hub-board {
-  gap: var(--space-6);
-  padding: var(--ui-page-hero-padding);
-  border: 0;
-  background: var(--ui-liquid-glass-bg);
-  box-shadow: var(--ui-liquid-glass-shadow);
-  -webkit-backdrop-filter: var(--ui-liquid-glass-filter);
-  backdrop-filter: var(--ui-liquid-glass-filter);
+  border-block: var(--ui-divider-width) solid var(--ui-divider-color);
+  border-inline: 0;
+  border-radius: 0;
+  background: var(--rb-bg-2);
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 
 html[data-theme] .app-main .team-hub-board-name strong {
-  font-size: clamp(1.75rem, 3.4vw, 2.6rem);
+  font-size: var(--ui-content-title-size);
 }
 
 html[data-theme] .app-main .ui-step-nav {
@@ -330,17 +330,17 @@ html[data-theme] .auth-shell {
     max(16px, env(safe-area-inset-bottom))
     max(16px, env(safe-area-inset-left));
   background:
-    var(--bg-court) var(--hero-bg-position-court) / var(--hero-bg-size) no-repeat,
+    var(--bg-court) center / cover no-repeat,
     var(--rb-bg);
 }
 
 html[data-theme] .auth-card {
   width: min(440px, 100%);
-  gap: 14px;
-  padding: 20px;
+  gap: var(--space-5);
+  padding: var(--space-6);
   border: 0;
   border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--rb-bg-2) 96%, transparent);
+  background: var(--rb-bg-2);
   box-shadow: none;
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
@@ -616,7 +616,7 @@ html[data-theme] .ui-design-host .ui-design-list > * {
   }
 
   html[data-theme] .app-main .team-hub-hero {
-    min-height: 340px;
+    min-height: var(--ui-page-hero-min-height-mobile);
     padding: var(--ui-page-hero-padding);
   }
 
@@ -639,6 +639,6 @@ html[data-theme] .ui-design-host .ui-design-list > * {
 
 @media (max-width: 480px) {
   html[data-theme] .app-main .team-hub-hero {
-    min-height: 320px;
+    min-height: var(--ui-page-hero-min-height-mobile);
   }
 }

@@ -21,7 +21,7 @@ export default function GuestAccessNotice({
       className={className}
       action={showActions ? (
         <>
-          <Button as={Link} to={getLoginPath(returnTo || currentPath)}>로그인</Button>
+          <Button as={Link} to={getLoginPath(returnTo || currentPath, currentPath)}>로그인</Button>
           {showPublicMatches ? <Button as={Link} to="/app/recruiting" variant="secondary">공개 매칭 보기</Button> : null}
         </>
       ) : null}

@@ -11,9 +11,9 @@ import QrCode from "../common/QrCode.jsx";
 
 const EMPTY_TEAM_LINE_ART_URLS = Object.freeze({ home: "", away: "" });
 
-function ReceiptScoreDigits({ value }) {
+function ReceiptScoreDigits({ value, className = "match-receipt-score-digits" }) {
   return (
-    <strong className="match-receipt-score-digits" aria-hidden="true">
+    <span className={className} aria-hidden="true">
       {Array.from(String(value)).map((digit, index) => (
         <i
           className="match-receipt-score-digit"
@@ -21,7 +21,7 @@ function ReceiptScoreDigits({ value }) {
           style={{ "--receipt-score-digit": Number(digit) }}
         />
       ))}
-    </strong>
+    </span>
   );
 }
 
@@ -183,8 +183,8 @@ export default function MatchReceiptPreview({
           <strong>{model.hasPersonalStats ? "MY GAME" : "GAME INFO"}</strong>
           {model.hasPersonalStats ? (
             <span className="match-receipt-personal-stats">
-              <b><em>{model.personalPoints ?? 0}</em><small>PTS</small></b>
-              <b><em>{model.personalRebounds ?? 0}</em><small>REB</small></b>
+              <b><ReceiptScoreDigits value={model.personalPoints ?? 0} className="match-receipt-stat-digits" /><small>PTS</small></b>
+              <b><ReceiptScoreDigits value={model.personalRebounds ?? 0} className="match-receipt-stat-digits" /><small>REB</small></b>
             </span>
           ) : (
             <span className="match-receipt-game-info">

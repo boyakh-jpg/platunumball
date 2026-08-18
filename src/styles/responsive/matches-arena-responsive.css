@@ -1,12 +1,7 @@
 
 
-/* 2026-07-14 cross-page hero and mobile card rhythm. */
 .om-match-page {
   gap: var(--page-section-gap);
-}
-.om-match-hero {
-  min-height: 214px;
-  padding: 24px;
 }
 @media (min-width: 721px) {
   .om-match-hero {
@@ -18,10 +13,6 @@
     gap: var(--page-section-gap-mobile);
   }
 
-  .om-match-hero {
-    min-height: 174px;
-    padding: 16px;
-  }
 }
 /* Structural wrappers and section headings never create a second card surface. */
 .om-calendar-panel,
@@ -178,6 +169,9 @@ html[data-theme] .om-calendar-grid button::after {
   align-items: start;
   min-width: 0;
 }
+.om-schedule-rail .om-calendar-heading {
+  grid-template-columns: minmax(0, 1fr);
+}
 .om-calendar-filter-bar,
 html[data-theme="light"] .om-calendar-filter-bar {
   display: grid;
@@ -220,7 +214,7 @@ html[data-theme="light"] .om-calendar-filter-bar {
   padding: 0;
 }
 .om-calendar-filter-row .segmented-control button {
-  width: 0;
+  width: auto;
   min-width: 0;
   min-height: 34px;
   height: 34px;
@@ -254,7 +248,7 @@ html[data-theme="light"] .om-calendar-filter-bar {
   grid-column: auto;
 }
 .om-calendar-filter-row :is(.om-relation-filter-grid, .om-branch-filter-grid) > button {
-  width: 0;
+  width: auto;
 }
 .om-schedule-workspace,
 .om-schedule-rail {
@@ -285,6 +279,71 @@ html[data-theme="light"] .om-calendar-filter-bar {
     grid-column: span 3;
   }
 }
+
+.om-schedule-rail .om-view-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+}
+
+.om-schedule-workspace .om-schedule-rail .om-view-card {
+  grid-column: auto;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-bottom: var(--ui-stroke-width) solid var(--ui-divider-subtle);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  transform: none;
+}
+
+.om-schedule-workspace .om-schedule-rail .om-view-card.active {
+  color: var(--rb-orange-2);
+  background: transparent;
+  box-shadow: none;
+}
+
+.om-schedule-workspace .om-schedule-rail .om-view-card::before {
+  position: absolute;
+  inset: 25% auto 25% 0;
+  width: 3px;
+  border-radius: 999px;
+  background: var(--ui-divider-subtle);
+  content: "";
+}
+
+.om-schedule-workspace .om-schedule-rail .om-view-card.active::before {
+  background: var(--rb-orange-2);
+}
+
+.om-schedule-workspace .om-schedule-rail .om-view-icon,
+.om-schedule-rail .om-view-card :is(small, em) {
+  display: none;
+}
+
+.om-schedule-rail .om-view-card > span:nth-child(2) {
+  display: block;
+  min-width: 0;
+}
+
+.om-schedule-rail .om-view-card strong,
+.om-schedule-rail .om-view-card b {
+  font-size: var(--font-size-control);
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.om-schedule-workspace .om-schedule-rail > .om-calendar-summary {
+  padding: var(--space-3) 0 0;
+  border-top: var(--ui-stroke-width) solid var(--rb-line);
+}
+
 @media (min-width: 900px) {
   .om-schedule-workspace {
     grid-template-columns: minmax(300px, 340px) minmax(0, 1fr);
@@ -312,69 +371,6 @@ html[data-theme="light"] .om-calendar-filter-bar {
     width: 100%;
   }
 
-  .om-schedule-rail .om-view-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0;
-    overflow: hidden;
-    border: var(--ui-stroke-width) solid var(--ui-divider-subtle);
-    border-radius: var(--ui-control-group-radius);
-  }
-
-  .om-schedule-workspace .om-schedule-rail .om-view-card {
-    grid-column: auto;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: center;
-    gap: var(--space-2);
-    min-height: var(--ui-button-height-sm);
-    padding: var(--space-2) var(--space-3);
-    border: 0;
-    border-inline-end: var(--ui-stroke-width) solid var(--ui-divider-subtle);
-    border-bottom: var(--ui-stroke-width) solid var(--ui-divider-subtle);
-    border-radius: 0;
-    background: transparent;
-    box-shadow: none;
-    transform: none;
-  }
-
-  .om-schedule-workspace .om-schedule-rail .om-view-card.active {
-    color: var(--rb-orange-2);
-    background: var(--ui-badge-orange-bg);
-    box-shadow: none;
-  }
-
-  .om-schedule-workspace .om-schedule-rail .om-view-card:nth-child(3n) {
-    border-inline-end: 0;
-  }
-
-  .om-schedule-workspace .om-schedule-rail .om-view-card:nth-child(n + 4) {
-    border-bottom: 0;
-  }
-
-  .om-schedule-workspace .om-schedule-rail .om-view-icon {
-    display: none;
-  }
-
-  .om-schedule-rail .om-view-card > span:nth-child(2) {
-    display: block;
-    min-width: 0;
-  }
-
-  .om-schedule-rail .om-view-card :is(small, em) {
-    display: none;
-  }
-
-  .om-schedule-rail .om-view-card strong,
-  .om-schedule-rail .om-view-card b {
-    font-size: var(--font-size-control);
-    line-height: 1.1;
-    white-space: nowrap;
-  }
-
-  .om-schedule-workspace .om-schedule-rail > .om-calendar-summary {
-    padding: var(--space-3) 0 0;
-    border-top: var(--ui-stroke-width) solid var(--rb-line);
-  }
-
   .om-calendar-filter-row {
     grid-template-columns: 34px minmax(0, 1fr);
   }
@@ -397,7 +393,7 @@ html[data-theme="light"] .om-calendar-filter-bar {
   }
 
   .om-calendar-filter-row :is(.om-relation-filter-grid, .om-branch-filter-grid) > button {
-    width: 0;
+    width: auto;
   }
 
   .om-calendar-summary {
@@ -453,16 +449,15 @@ html[data-theme="light"] .om-calendar-summary {
 /* 2026-07-16 responsive clipping guard for match list cards. */
 /* Match-like lists use one outer card surface; summaries do not add gray panels. */
 .league-fixture-matchup > strong {
-  display: -webkit-box;
+  display: block;
   font-family: var(--sports-display-font);
   font-size: clamp(1rem, 1.4vw, 1.25rem);
-  line-height: 1;
+  line-height: 1.08;
+  overflow: visible;
   overflow-wrap: anywhere;
   text-overflow: clip;
   white-space: normal;
   word-break: keep-all;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
 }
 .league-fixture-matchup > b {
   font-family: var(--sports-display-font);
@@ -493,17 +488,13 @@ html[data-theme="light"] .om-calendar-summary {
   content: "";
 }
 .om-tournament-card h3 {
-  display: -webkit-box;
   max-width: 100%;
-  overflow: hidden;
   color: var(--rb-text);
   font-family: var(--sports-display-font);
   font-size: clamp(22px, 1.9vw, 30px);
   line-height: 0.98;
   letter-spacing: 0;
   white-space: normal;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
 }
 .om-tournament-meta,
 .om-tournament-state,

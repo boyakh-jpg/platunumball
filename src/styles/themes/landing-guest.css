@@ -36,11 +36,11 @@
   top: 0;
   height: 64px;
   border-bottom: var(--ui-stroke-width) solid var(--rb-line);
-  background: color-mix(in srgb, var(--rb-bg) 88%, transparent);
-  backdrop-filter: blur(16px);
+  background: var(--rb-bg);
 }
 
 .guest-landing-header-inner {
+  box-sizing: border-box;
   display: flex;
   width: min(100%, var(--guest-landing-content-width));
   height: 100%;
@@ -79,6 +79,7 @@
 }
 
 .guest-landing-hero {
+  box-sizing: border-box;
   display: grid;
   width: min(100%, var(--guest-landing-content-width));
   min-height: calc(100svh - 64px);
@@ -197,6 +198,7 @@
 }
 
 .guest-landing-section {
+  box-sizing: border-box;
   display: grid;
   width: min(100%, var(--guest-landing-content-width));
   justify-items: center;
@@ -323,10 +325,11 @@
 }
 
 .guest-landing-account-section {
+  box-sizing: border-box;
   width: min(100%, var(--guest-landing-content-width));
   max-width: var(--guest-landing-content-width);
   border-block: var(--ui-stroke-width) solid var(--rb-line);
-  background: color-mix(in srgb, var(--rb-bg-2) 88%, var(--rb-bg));
+  background: transparent;
 }
 
 .guest-landing-benefits {
@@ -482,9 +485,10 @@
 
   .guest-landing-mobile-scoreboard .ui-match-clock-team-label {
     max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    overflow: visible;
+    overflow-wrap: anywhere;
+    text-overflow: clip;
+    white-space: normal;
   }
 
   .guest-landing-mobile-scoreboard .ui-match-clock-team-score {
