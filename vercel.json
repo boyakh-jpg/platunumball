@@ -6,10 +6,6 @@
     {
       "path": "/api/system/maintenance",
       "schedule": "0 18 * * *"
-    },
-    {
-      "path": "/api/notifications/push-worker",
-      "schedule": "* * * * *"
     }
   ],
   "headers": [

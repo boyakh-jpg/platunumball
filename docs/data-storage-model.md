@@ -230,6 +230,7 @@
 - worker 호출은 `Authorization: Bearer <CRON_SECRET>`가 일치할 때만 허용한다.
 - 필요한 env는 `DISCORD_BOT_TOKEN`이다. 값은 가능하면 `Bot ` prefix 없이 순수 Bot token만 넣는다.
 - Vercel Hobby Cron은 알림 worker에 쓰지 않는다. Supabase Cron이 Vault의 `rankball_app_base_url`, `rankball_cron_secret`을 사용해 1분마다 `/api/discord/dm-worker`를 호출한다. 외부 `cron-job.org`는 사용하지 않는다.
+- Push worker도 같은 Vault secret을 사용하는 별도 Supabase Cron이 1분마다 `/api/notifications/push-worker`를 호출한다. Vercel Cron과 외부 `cron-job.org`는 사용하지 않는다.
 - Discord interaction 버튼 수락/거절 처리는 `/api/discord/interactions`가 담당한다. 방 채팅 동기화는 `room_discord_links`와 `/api/discord/room-chat` bridge를 사용한다.
 - 수동 테스트 DM은 `/api/discord/dm-worker` `POST`에서만 Discord username을 받을 수 있다. 서버는 봇이 들어간 Discord 서버 멤버 검색으로 숫자 `discord_user_id`를 찾은 뒤 발송한다. 자동 발송 큐와 프로필 저장 원본은 계속 숫자 `discord_user_id`다. username 테스트에는 봇이 같은 서버에 있어야 하고 Discord Bot의 Server Members Intent가 필요할 수 있다.
 - `/api/discord/dm-worker` `POST`에 `botCheck: true`를 보내면 Bot token 설정, 봇 계정, 참여 서버 수를 토큰 노출 없이 점검한다.

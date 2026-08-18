@@ -4202,7 +4202,7 @@ flowchart TD
 1. 앱 내부 알림이 canonical 원본이다. 외부 전달 실패는 알림 생성이나 방·경기·기록 작업을 롤백하지 않는다. 사용자 외부 알림 모드는 `push`, `discord`, `both`, `none`이고 기본값은 `none`이다.
 2. 외부 알림 카테고리는 경기·모집, 팀, 기록·티어, 서비스다. 기본값은 경기·모집, 팀, 기록·티어가 활성화되고 서비스는 비활성화된다. Discord 사용자 DM 전달과 운영 Discord webhook은 서로 다른 경로·설정으로 유지한다.
 3. Web Push 구독과 배송 큐는 비공개 DB가 소유한다. 알림 원본 생성 trigger는 사용자 모드·카테고리를 확인해 최소 payload `id`, `type`, `title`, `body`, 내부 `path`, `tag`, `timestamp`만 큐에 저장한다. 클라이언트가 제출한 임의 URL이나 프로필·연락처 비밀은 payload에 넣지 않는다.
-4. Push worker 호출 스케줄은 Vercel Cron이 소유하며 Supabase `pg_cron`, DB webhook, `pg_net`을 사용하지 않는다. worker는 만료 endpoint의 `404`, `410`에서 구독을 비활성화하고 `401`, `403`을 재시도하지 않는다. `429`, `5xx`, 네트워크 오류만 최대 5회 지수 backoff와 `Retry-After` 범위 안에서 재시도한다. 중단된 `sending` delivery는 10분 뒤 재회수할 수 있다.
+4. Vercel Hobby Cron은 Push worker에 쓰지 않는다. Supabase Cron이 Vault의 `rankball_app_base_url`, `rankball_cron_secret`을 사용해 1분마다 `/api/notifications/push-worker`를 호출한다. 외부 `cron-job.org`는 사용하지 않는다. worker는 만료 endpoint의 `404`, `410`에서 구독을 비활성화하고 `401`, `403`을 재시도하지 않는다. `429`, `5xx`, 네트워크 오류만 최대 5회 지수 backoff와 `Retry-After` 범위 안에서 재시도한다. 중단된 `sending` delivery는 10분 뒤 재회수할 수 있다.
 5. 서비스 worker는 `push`와 `notificationclick`만 처리하고 `fetch`를 가로채지 않는다. foreground 페이지에는 payload를 전달해 앱 내부 상태만 갱신하고 중복 시스템 알림을 만들지 않는다. click 이동은 검증된 `/app` 내부 경로만 허용한다.
 6. 외부 연락 설정과 Kakao 오픈프로필 URL은 일반 프로필과 분리된 비공개 테이블이 소유하며 기본 비활성화된다. URL은 `https://open.kakao.com/o/...`의 host·경로만 허용하고 userinfo, port, query, hash와 과도한 길이를 거부한다. 일반 프로필 API·projection·목록에는 설정이나 URL을 포함하지 않는다.
 7. 연락처 조회는 로그인 사용자가 같은 활성 모집방 또는 미종료 경기의 현재 참가자인 경우에만 허용한다. 대상도 같은 컨텍스트의 확정·대기 명단 참가자여야 하며 본인 조회와 어느 방향의 차단도 거부한다. 종료·취소·무효 컨텍스트와 일반 프로필에서는 연락처를 반환하지 않는다.

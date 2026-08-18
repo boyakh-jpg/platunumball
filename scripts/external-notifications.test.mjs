@@ -97,17 +97,15 @@ test("notification cursor accepts canonical non-UUID ids without filter injectio
   assert.equal(decodeNotificationCursor(unsafeCursor), null);
 });
 
-test("service worker and migration preserve delivery boundaries", async () => {
-  const [serviceWorker, migration, vercelConfigSource] = await Promise.all([
+test("service worker and migrations preserve delivery boundaries", async () => {
+  const [serviceWorker, migration, cronMigration, vercelConfigSource] = await Promise.all([
     readSource("public/sw.js"),
     readSource("supabase/migrations/20260816193000_external_notification_delivery.sql"),
+    readSource("supabase/migrations/20260818040017_supabase_push_notification_cron.sql"),
     readSource("vercel.json"),
   ]);
   const vercelConfig = JSON.parse(vercelConfigSource);
-  assert.deepEqual(
-    vercelConfig.crons.find(({ path }) => path === "/api/notifications/push-worker"),
-    { path: "/api/notifications/push-worker", schedule: "* * * * *" },
-  );
+  assert.equal(vercelConfig.crons.some(({ path }) => path === "/api/notifications/push-worker"), false);
   assert.match(serviceWorker, /addEventListener\("push"/);
   assert.match(serviceWorker, /addEventListener\("notificationclick"/);
   assert.doesNotMatch(serviceWorker, /addEventListener\("fetch"/);
@@ -116,4 +114,9 @@ test("service worker and migration preserve delivery boundaries", async () => {
   assert.match(migration, /queued\.status = 'sending'.*interval '10 minutes'/s);
   assert.doesNotMatch(migration, /drop trigger[^;]*discord/i);
   assert.doesNotMatch(migration, /\bpg_cron\b|cron\.schedule|\bpg_net\b|net\.http|supabase_functions\.http_request/i);
+  assert.match(cronMigration, /rankball_app_base_url/);
+  assert.match(cronMigration, /rankball_cron_secret/);
+  assert.match(cronMigration, /\/api\/notifications\/push-worker/);
+  assert.match(cronMigration, /rankball-push-notification-worker[\s\S]*'\* \* \* \* \*'/);
+  assert.doesNotMatch(cronMigration, /cron-job\.org|vercel/i);
 });
