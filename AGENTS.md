@@ -2,104 +2,49 @@
 
 Caveman mode.
 
-- Korean only unless asked otherwise.
-- No filler.
-- No greetings.
-- No apologies unless necessary.
-- Short answers.
-- Core points only.
-- Preserve code, commands, filenames, and paths exactly.
+- Korean only unless asked otherwise. No greetings or filler; apologize only when necessary.
+- Keep answers short and core-only. Preserve exact code, commands, filenames, and paths.
 
-# Coding
+# Core Coding
 
 - 제1원칙: 운영 데이터, 사용자 값, 테마 색상, 경로, 화면별 시각 규칙을 하드코딩하지 않는다. canonical DB/API, 공용 helper, 디자인 토큰을 재사용한다.
-- 제2원칙: 업로드 이미지는 용도별 canonical 저장소를 고정한다. DB row 수명주기에 결합된 게시판·사용자 첨부는 Supabase Storage, 고조회 공개 이미지와 서버 전용 비공개 증거는 Cloudflare R2를 사용한다. 파일별 동적 전환과 브라우저 직접 쓰기를 금지하고 DB에는 object key와 검증 메타데이터만 저장한다.
-- Before changing CSS or logic, trace the final applied value and its cascade, inheritance, call path, and data path to the canonical owner.
-- Change the narrowest canonical shared layer intended to govern every affected consumer: canonical DB/API/schema/helper, shared component or semantic variant, design token or primitive, then page-local code only when the behavior is truly page-specific.
-- Do not bypass project-owned shared rules with duplicated page logic, stronger selectors, inline styles, or `!important`.
-- Use `!important` only at an unavoidable third-party CSS boundary. Scope it narrowly and add a comment naming the boundary and reason.
-- When one screen needs a legitimate difference, add or reuse an explicit shared semantic variant. Do not mutate an unrelated global token or create an accidental page override.
-- Inspect relevant current files before editing.
-- Make minimal safe changes. Prefer small targeted patches.
-- Do not rewrite whole files unless necessary.
-- Do not delete assets unless explicitly asked.
-- Do not invent filenames.
-- Preserve existing UI and behavior unless the task requires a change.
-- Preserve unrelated uncommitted changes.
+- 제2원칙: 업로드 이미지는 용도별 canonical 저장소를 고정한다. DB row 수명주기에 결합된 게시판·사용자 첨부는 Supabase Storage, 고조회 공개 이미지와 서버 전용 비공개 증거는 Cloudflare R2에 저장한다. 파일별 동적 전환과 브라우저 직접 쓰기를 금지하고 DB에는 object key와 검증 메타데이터만 저장한다.
+- Before changing CSS or logic, trace the final value through its cascade, inheritance, call path, and data path to the canonical owner.
+- Change the narrowest canonical layer governing every affected consumer: DB/API/schema/helper, shared component or semantic variant, token or primitive, then truly page-specific code.
+- Never bypass project-owned shared rules with duplicated logic, stronger selectors, inline styles, or `!important`. Only unavoidable third-party CSS may use narrowly scoped, reason-commented `!important`.
+- Give legitimate screen differences an explicit shared semantic variant; do not mutate unrelated global tokens or create accidental page overrides.
+- Inspect current files first. Make small targeted patches; avoid unnecessary rewrites. Never invent filenames or delete assets without explicit instruction.
+- Preserve unrelated changes and existing UI/behavior outside the requested scope.
 
-# Request Handling
+# Requests and Policy
 
-- Before non-trivial implementation, restate the request as a clean Korean implementation prompt and state the intended scope, affected screens, and required logic/design documentation.
-- Determine discoverable scope from the repository and proceed without excessive confirmation. Ask only when a conflict or material risk requires a user decision.
-- Do not blindly agree with the user.
-- For affected logic or UI, judge the request against `docs/logic-and-terminology.md` or `docs/design-system.md`.
-- If the request conflicts with an existing principle, explain the conflict and ask whether to change the principle or reject the change.
-- If the user reports a bug, first state the invariant that appears broken.
-- For a UI idea, evaluate clarity, step count, and responsive layout.
-- For a logic change, evaluate room phase, party, permission, MMR, and record rules.
-- Diagnosis, explanation, and review requests are read-only unless the user also asks for implementation.
+- Before non-trivial implementation, restate a clean Korean implementation prompt with scope, affected screens, and required logic/design docs.
+- Discover repository scope and proceed. Ask only for a material conflict, risk, or product decision; otherwise make and state the safest assumption. If a request conflicts with an existing principle, explain it and ask whether to change or reject that principle. Do not blindly agree.
+- For bugs, state the broken invariant first. Evaluate UI ideas for clarity, steps, and responsiveness; logic changes for room phase, party, permission, MMR, and record rules.
+- Diagnosis, explanation, and review are read-only unless implementation is also requested.
+- Canonical policy docs describe current intent; Git stores history. Before work, search the affected doc for duplicate, overlapping, or contradictory rules.
+- User decisions and canonical policy define intent. DB/API/schema, helpers, code, and tests are runtime evidence. Newer dates or code do not replace policy unless scope and superseded rule are explicit.
+- On conflict, inspect the canonical owner and relevant Git history; classify stale docs, implementation regression, or unresolved product decision. Ask only for the last case, otherwise repair the stale side in the same scoped change.
+- When policy changes, replace or remove the superseded statement and update affected code/tests in the same commit. Audit broad existing drift separately; never normalize unrelated policy opportunistically.
 
-# Policy Authority and Drift
+# Project Safety
 
-- Treat canonical policy documents as current-state specifications, not append-only changelogs. Git history stores superseded policy history.
-- Before implementing an affected domain, search its canonical document for duplicate, overlapping, or contradictory rules.
-- Separate intended policy from runtime evidence. Current user decisions and canonical policy define intent; DB/API/schema, shared helpers, code, and tests show what is currently implemented.
-- A newer date or newer code alone does not supersede policy. A replacement must state its affected scope and which prior rule it replaces.
-- When policy, code, schema, and tests conflict, inspect the canonical owner and relevant Git history. Classify the conflict as stale documentation, implementation regression, or an unresolved product decision.
-- If the classification requires a product decision that materially changes behavior, explain the conflicting rules and ask the user. Otherwise repair the stale side in the same scoped change.
-- When policy changes, rewrite or remove the superseded active statement, update affected code and tests in the same commit, and leave historical context to Git instead of retaining conflicting rules in the canonical document.
-- Audit broad existing drift by domain in a separate scoped task. Do not opportunistically normalize unrelated policy while implementing another request.
+- For room, match, party, invite, referee, record, report, MMR, team, tournament, or auth logic, check `docs/logic-and-terminology.md`; update it in the same commit when behavior changes.
+- For UI, CSS, responsive layout, themes, cards, buttons, slots, avatars, hover cards, modals, or heroes, check `docs/design-system.md`; update it in the same commit when design behavior changes.
+- Matching and Matches share one room-modal logic. Keep slot, phase, party, and permission calculations in central helpers. Keep demo data compatible with real creation flow.
+- Supabase migrations are non-destructive by default: no `DROP TABLE`, `TRUNCATE`, or `DELETE` without explicit risk-confirmed instruction. Prefer `ALTER TABLE`, `CREATE POLICY`, `DROP POLICY IF EXISTS`, and `IF EXISTS` / `IF NOT EXISTS`.
+- Execute required non-destructive remote DB SQL when credentials/tools exist. If unavailable, give the exact action under `네가 해야할 것`.
 
-# Development Rules
+# Verification and Completion
 
-- If requirements are ambiguous, make the safest reasonable assumption and mention it.
-- If a build or test fails, include the exact failure summary.
-- Supabase SQL Editor migration SQL must avoid data loss by default. Do not use `DROP TABLE`, `TRUNCATE`, or `DELETE` unless explicitly requested after risk confirmation.
-- Supabase migration SQL should use `ALTER TABLE`, `CREATE POLICY`, `DROP POLICY IF EXISTS`, and `IF EXISTS` / `IF NOT EXISTS` for objects that may already exist.
-- Required non-destructive remote DB SQL may be executed directly when credentials or tools are available. Do not ask "실행해도 됨?" first.
-- If remote DB SQL cannot be executed, report the exact required user action under `네가 해야할 것`.
+- Verify changed files and directly affected paths. Run repository-wide checks only when required or no narrower check exists. Report exact build/test failures.
+- Build success alone is insufficient for affected flows. Test only affected roles/branches (host, party leader, regular/reserve player, referee/no-referee) and screens/breakpoints/themes (desktop/mobile, dark/light).
+- Complete only after implementation, required doc updates, intended-diff review, and scoped verification pass or an exact blocker. Then report and stop.
+- After context compaction, trust the retained summary and current diff unless new evidence invalidates them.
 
-# Project Rules
+# Reporting, Git, and Deployment
 
-- Before changing room, match, party, invite, referee, record, report, MMR, team, tournament, or auth logic, check `docs/logic-and-terminology.md`.
-- If logic changes, update `docs/logic-and-terminology.md` in the same commit.
-- Before changing UI, CSS, responsive layout, light/dark theme, cards, buttons, slots, avatars, hover cards, modals, or page heroes, check `docs/design-system.md`.
-- If design behavior changes, update `docs/design-system.md` in the same commit.
-- Do not create separate menu-specific room modals. Matching and Matches must use the same room modal logic.
-- Do not duplicate slot, phase, party, or permission calculations in page components. Use central helpers first.
-- If demo data changes, keep it compatible with real creation flow.
-
-# Verification
-
-- Limit verification to changed files and directly affected paths.
-- Run a repository-wide build or test suite only when the changed scope requires it or no narrower verification exists.
-- Build success alone is not enough for an affected room or UI flow.
-- For flow changes, test only affected roles and branches. Include host, party leader, regular player, reserve player, and referee/no-referee only when each path is affected.
-- For UI changes, check only affected screens, breakpoints, and themes. Include desktop, mobile, dark mode, and light mode only when each is affected.
-
-# Completion
-
-- A task is complete when the requested change is implemented, required logic/design docs are updated, the intended diff is reviewed, and changed-scope verification passes or an exact blocker is reported.
-- After reaching the completion condition, report and stop. Do not start unrelated investigation, refactoring, audit, or verification.
-- After context compaction, trust the retained summary and current diff. Do not repeat completed inspection or verification unless new changes or evidence invalidate it.
-
-# Reporting
-
-- After an implementation task, report only:
-  1. changed files
-  2. exact changes
-  3. cause
-  4. result
-  5. commands run
-  6. important warnings
-  7. 네가 해야할 것
-- For diagnosis, explanation, or review, report only the conclusion, evidence, and required user action. Do not use the seven-part report or deployment verification.
-
-# Git and Deployment
-
-- Commit and push only implementation work that changes repository files, unless the user says not to.
-- Use `main` as the production branch.
-- After implementation verification, commit only the intended files and push the completed commit to `main`.
-- For deployable production code, configuration, or asset changes, Vercel Git integration must deploy the pushed commit directly to production. Verify that the ready production deployment metadata matches the pushed commit SHA.
-- Do not create a preview deployment and do not run a separate CLI deployment or promotion for the same commit.
-- Diagnosis, explanation, and review tasks do not commit, push, or verify deployment.
+- Implementation reports contain only: changed files, exact changes, cause, result, commands run, important warnings, `네가 해야할 것`.
+- Diagnosis/explanation/review reports contain only conclusion, evidence, and required user action; do not commit, push, or verify deployment.
+- After implementation verification, commit only intended files and push to production branch `main`, unless the user says not to.
+- Deployable production code/config/assets must deploy through Vercel Git integration. Verify ready production metadata matches the pushed SHA; never add a preview or separate CLI deployment/promotion for that commit.
