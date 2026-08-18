@@ -10,6 +10,7 @@ import discordCallback from "../server/api/auth/discord/callback.js";
 import discordComplete from "../server/api/auth/discord/complete.js";
 import discordStart from "../server/api/auth/discord/start.js";
 import communityPosts from "../server/api/community/posts.js";
+import contactResolve from "../server/api/contacts/resolve.js";
 import courtRequestApprove from "../server/api/court-requests/approve.js";
 import courtRequestEvidence from "../server/api/court-requests/evidence.js";
 import courtRequestQuota from "../server/api/court-requests/quota.js";
@@ -37,7 +38,9 @@ import matchClock from "../server/api/matches/clock.js";
 import matchList from "../server/api/matches/list.js";
 import matchSyncMatch from "../server/api/matches/sync-match.js";
 import notificationDelete from "../server/api/notifications/delete.js";
+import notificationExternalSettings from "../server/api/notifications/external-settings.js";
 import notificationList from "../server/api/notifications/list.js";
+import notificationPushWorker from "../server/api/notifications/push-worker.js";
 import notificationRead from "../server/api/notifications/read.js";
 import profileEmblem from "../server/api/profile/emblem.js";
 import profileDiscordDm from "../server/api/profile/discord-dm.js";
@@ -86,6 +89,7 @@ export const API_ROUTES = new Map([
   ["/auth/discord/start", route(discordStart, ["POST"], "user")],
   ["/discord/callback", route(discordCallback, ["GET"], "oauthCallback")],
   ["/community/posts", route(communityPosts, ["POST"], "publicRead")],
+  ["/contacts/resolve", route(contactResolve, ["POST"], "user")],
   ["/court-requests/approve", route(courtRequestApprove, ["POST"], "admin")],
   ["/court-requests/evidence", route(courtRequestEvidence, ["POST"], "admin")],
   ["/court-requests/quota", route(courtRequestQuota, ["POST"], "user")],
@@ -113,7 +117,9 @@ export const API_ROUTES = new Map([
   ["/matches/list", route(matchList, ["POST"], "user")],
   ["/matches/sync-match", route(matchSyncMatch, ["POST"], "user")],
   ["/notifications/delete", route(notificationDelete, ["POST"], "user")],
+  ["/notifications/external-settings", route(notificationExternalSettings, ["POST"], "user")],
   ["/notifications/list", route(notificationList, ["POST"], "user")],
+  ["/notifications/push-worker", route(notificationPushWorker, ["GET", "POST"], "internal")],
   ["/notifications/read", route(notificationRead, ["POST"], "user")],
   ["/profile/emblem", route(profileEmblem, ["POST"], "user")],
   ["/profile/discord-dm", route(profileDiscordDm, ["GET"], "publicRead")],

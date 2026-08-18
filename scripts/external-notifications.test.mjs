@@ -98,13 +98,17 @@ test("notification cursor accepts canonical non-UUID ids without filter injectio
 });
 
 test("service worker and migrations preserve delivery boundaries", async () => {
-  const [serviceWorker, migration, cronMigration, vercelConfigSource] = await Promise.all([
+  const [apiEntry, serviceWorker, migration, cronMigration, vercelConfigSource] = await Promise.all([
+    readSource("api/index.js"),
     readSource("public/sw.js"),
     readSource("supabase/migrations/20260816193000_external_notification_delivery.sql"),
     readSource("supabase/migrations/20260818040017_supabase_push_notification_cron.sql"),
     readSource("vercel.json"),
   ]);
   const vercelConfig = JSON.parse(vercelConfigSource);
+  assert.match(apiEntry, /\["\/contacts\/resolve", route\(contactResolve, \["POST"\], "user"\)\]/);
+  assert.match(apiEntry, /\["\/notifications\/external-settings", route\(notificationExternalSettings, \["POST"\], "user"\)\]/);
+  assert.match(apiEntry, /\["\/notifications\/push-worker", route\(notificationPushWorker, \["GET", "POST"\], "internal"\)\]/);
   assert.equal(vercelConfig.crons.some(({ path }) => path === "/api/notifications/push-worker"), false);
   assert.match(serviceWorker, /addEventListener\("push"/);
   assert.match(serviceWorker, /addEventListener\("notificationclick"/);
