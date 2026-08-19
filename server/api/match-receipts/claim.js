@@ -37,7 +37,7 @@ export default async function handler(request, response) {
   if (!data) return sendJson(response, 409, { error: "receipt_draft_already_claimed" });
   return sendJson(response, 200, {
     publicId,
-    draft: sanitizeReceiptDraftPayload(data.payload, { trustedGuestPublicId: publicId }),
+    draft: sanitizeReceiptDraftPayload(data.payload),
     expiresAt: data.expires_at,
   });
 }

@@ -42,6 +42,7 @@
 .match-receipt-line-art-fields label { display: flex; align-items: center; gap: 7px; font-weight: 900; }
 .match-receipt-line-art-fields input { width: auto; }
 .match-receipt-line-art-fields > small { font-size: 11px; }
+.match-receipt-emblem-guide { margin: 0; color: var(--rb-muted); font-size: var(--font-size-meta); line-height: 1.5; }
 .match-receipt-emblem-upload-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4); }
 .match-receipt-emblem-upload { display: grid; gap: var(--space-3); min-width: 0; }
 .match-receipt-emblem-upload .ui-button { width: 100%; }
@@ -70,6 +71,27 @@
 
 .match-receipt-poster-teams.has-game-detail::after { display: none; }
 .match-receipt-poster-teams .match-receipt-team-tier.is-custom { width: 34%; max-width: 86px; max-height: 86px; object-fit: contain; opacity: 0.9; filter: none; }
+
+.match-receipt-score-colon { position: absolute; left: 50%; transform: translateX(-50%); }
+
+.match-receipt-outcome {
+  position: absolute;
+  z-index: 2;
+  top: 59.2%;
+  left: 7%;
+  right: 7%;
+  background: var(--receipt-paper-texture) center / auto 240% repeat-x;
+  background-clip: text;
+  color: transparent;
+  font-family: "KBO Dia Gothic", sans-serif;
+  font-size: clamp(8px, 2.15cqw, 11px);
+  font-weight: 900;
+  letter-spacing: 0.025em;
+  line-height: 1;
+  text-align: center;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
 
 .match-receipt-game-detail {
   position: absolute;

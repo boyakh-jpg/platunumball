@@ -1,7 +1,6 @@
 import { MATCH_SYNC_DEPENDENCIES } from "./matchSyncDependencies.js";
 import * as MATCH_SYNC_POLICY from "./matchSyncPolicy.js";
 import * as MATCH_SQL_ACTIONS from "./matchSqlActions.js";
-import { copyDraftReceiptEmblems, getSafeMatchReceiptEmblems } from "../api/match-receipts/_emblemStorage.js";
 
 export {
   getCheckedInMatchAttendanceIds,
@@ -47,12 +46,9 @@ const {
 
 const RECEIPT_DRAFT_PUBLIC_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-async function prepareReceiptSpecificEmblems(context, match, existingMatch, action) {
+async function validateReceiptDraftClaim(context, match, existingMatch, action) {
   const nextRules = { ...(match.rules ?? {}) };
   delete nextRules.receiptEmblems;
-
-  const existingEmblems = getSafeMatchReceiptEmblems(existingMatch?.rules?.receiptEmblems, match.id);
-  if (existingEmblems.home || existingEmblems.away) nextRules.receiptEmblems = existingEmblems;
 
   const publicId = String(nextRules.receiptDraftPublicId ?? "").trim();
   delete nextRules.receiptDraftPublicId;
@@ -71,12 +67,6 @@ async function prepareReceiptSpecificEmblems(context, match, existingMatch, acti
     reject(403, "receipt_draft_claim_required");
   }
 
-  const promotedEmblems = await copyDraftReceiptEmblems({
-    payload: receiptDraft.payload,
-    sourcePublicId: receiptDraft.public_id,
-    targetMatchId: match.id,
-  });
-  if (promotedEmblems.home || promotedEmblems.away) nextRules.receiptEmblems = promotedEmblems;
   return { ...match, rules: nextRules };
 }
 
@@ -190,7 +180,7 @@ export async function persistMatchSnapshot(context, { match, notifications = [],
   await validateRefereeEligibility(context.supabase, existingMatch, match, action, context.profileId);
   await validateMatchRosterEligibility(context.supabase, match);
 
-  const persistedMatch = await prepareReceiptSpecificEmblems(context, match, existingMatch, action);
+  const persistedMatch = await validateReceiptDraftClaim(context, match, existingMatch, action);
 
   const matchRow = toAuthoritativeMatchRow(persistedMatch, context.profileId);
   if (expectedUpdatedAt) matchRow.__expectedUpdatedAt = expectedUpdatedAt;

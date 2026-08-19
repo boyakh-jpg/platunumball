@@ -3,23 +3,18 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import {
   canCreatePublicMatchReceiptSnapshot,
-  deleteMatchReceiptEmblem,
   createDefaultMatchReceiptDraft,
   createMatchReceiptViewModel,
   getMatchReceiptDraftFromMatch,
-  getMatchReceiptEmblemScope,
   getMatchReceiptFormatLabel,
   getMatchReceiptSideTeamId,
   getMatchReceiptTeamNameScale,
-  loadMatchReceiptEmblem,
   MATCH_RECEIPT_LIMITS,
   MATCH_RECEIPT_DRAFT_TTL_MS,
   MATCH_RECEIPT_PHOTO_ASPECT,
-  migrateMatchReceiptEmblems,
   normalizeMatchReceiptDraft,
   renewMatchReceiptDraft,
   resolveMatchReceiptTeamEmblems,
-  saveMatchReceiptEmblem,
 } from "../src/lib/matchReceipt.js";
 
 test("receipt team names shrink before they can overflow", () => {
@@ -29,7 +24,7 @@ test("receipt team names shrink before they can overflow", () => {
   assert.equal(getMatchReceiptTeamNameScale("ABCDEFGHIJKLMNOPQRSTU"), 0.68);
 });
 
-test("saved team receipt emblems require an explicit receipt load and lock replacement uploads", async () => {
+test("receipt emblems come only from explicitly loaded canonical teams", async () => {
   const [receiptPage, teamPage, teamView, teamActions, teamApi, teamColumns, migration] = await Promise.all([
     readFile(new URL("../src/pages/MatchReceipt.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/pages/TeamDetail.jsx", import.meta.url), "utf8"),
@@ -40,9 +35,10 @@ test("saved team receipt emblems require an explicit receipt load and lock repla
     readFile(new URL("../supabase/migrations/20260815130000_team_receipt_emblem_upload_policy.sql", import.meta.url), "utf8"),
   ]);
 
-  assert.match(receiptPage, /팀 엠블럼 불러오기/u);
-  assert.match(receiptPage, /팀 저장 엠블럼이 있어 사진 업로드를 사용할 수 없습니다\./u);
-  assert.match(receiptPage, /disabled>\s*<ImagePlus[^>]*\/> \{label\} 사진 올리기/u);
+  assert.match(receiptPage, /로그인 후 팀을 만들고 팀 상세에서 영수증 엠블럼을 저장하면 여기서 사용할 수 있습니다\./u);
+  assert.match(receiptPage, /저장된 팀 엠블럼 없음/u);
+  assert.match(receiptPage, /팀 만들기 · 엠블럼 저장/u);
+  assert.doesNotMatch(receiptPage, /EmblemCropEditor|prepareTeamEmblemUpload|uploadGuestReceiptEmblem/u);
   assert.match(teamView, /영수증 엠블럼 만들기/u);
   assert.match(teamView, /영수증 엠블럼 변경/u);
   assert.match(teamPage, /createMatchReceiptLineArt/u);
@@ -54,9 +50,7 @@ test("saved team receipt emblems require an explicit receipt load and lock repla
   assert.match(migration, /team_receipt_emblem_cooldown/u);
   assert.match(migration, /interval '30 days'/u);
   assert.match(receiptPage, /resolveMatchReceiptTeamEmblems\(/u);
-  assert.match(receiptPage, /local: localTeamLineArtUrls/u);
-  assert.match(receiptPage, /guest: guestTeamReceiptEmblemUrls/u);
-  assert.match(receiptPage, /canonical:\s*\{[\s\S]*canonicalTeamReceiptEmblemUrls\.home[\s\S]*canonicalTeamReceiptEmblemUrls\.away/u);
+  assert.match(receiptPage, /canonical:\s*canonicalTeamReceiptEmblemUrls/u);
   assert.match(receiptPage, /const activeLineArtUrl = selectedTeamLineArtUrls\[side\]/u);
   assert.match(teamView, /disabled=\{receiptEmblemPending \|\| receiptEmblemUploadLocked\}/u);
 });
@@ -88,113 +82,13 @@ test("canonical receipt keeps dedicated team receipt emblems through public relo
   assert.equal(reloaded.teamEmblemUrls.away, "");
 });
 
-function createReceiptIndexedDbFake() {
-  const stores = new Map();
-  let failWrites = false;
-  const request = (transaction, action) => {
-    const result = {};
-    queueMicrotask(() => {
-      if (failWrites && transaction.mode === "readwrite") {
-        const error = new Error("quota");
-        result.error = error;
-        transaction.error = error;
-        result.onerror?.();
-        transaction.onerror?.();
-        return;
-      }
-      try {
-        result.result = action();
-        result.onsuccess?.();
-        queueMicrotask(() => transaction.oncomplete?.());
-      } catch (error) {
-        result.error = error;
-        transaction.error = error;
-        result.onerror?.();
-        transaction.onerror?.();
-      }
-    });
-    return result;
-  };
-  const database = {
-    objectStoreNames: { contains: (name) => stores.has(name) },
-    createObjectStore(name) { stores.set(name, new Map()); },
-    transaction(name, mode) {
-      const transaction = {
-        mode,
-        objectStore() {
-          const store = stores.get(name);
-          return {
-            get: (key) => request(transaction, () => store.get(key)),
-            put: (value, key) => request(transaction, () => { store.set(key, value); return key; }),
-            delete: (key) => request(transaction, () => store.delete(key)),
-          };
-        },
-      };
-      return transaction;
-    },
-    close() {},
-  };
-  return {
-    indexedDB: {
-      open() {
-        const result = {};
-        queueMicrotask(() => {
-          result.result = database;
-          result.onupgradeneeded?.();
-          queueMicrotask(() => result.onsuccess?.());
-        });
-        return result;
-      },
-    },
-    failWrites() { failWrites = true; },
-  };
-}
-
-test("anonymous receipt emblems persist by scope and side for 24 hours", async () => {
-  const previousIndexedDb = globalThis.indexedDB;
-  const fake = createReceiptIndexedDbFake();
-  globalThis.indexedDB = fake.indexedDB;
-  try {
-    const now = Date.UTC(2026, 7, 16, 0, 0, 0);
-    const firstScope = getMatchReceiptEmblemScope({ serialSeed: "first" });
-    const otherScope = getMatchReceiptEmblemScope({ serialSeed: "other" });
-    const publicScope = getMatchReceiptEmblemScope({ publicId: "11111111-1111-4111-8111-111111111111" });
-    const home = new Blob(["home"], { type: "image/webp" });
-    const away = new Blob(["away"], { type: "image/webp" });
-
-    await saveMatchReceiptEmblem(firstScope, "home", home, now);
-    await saveMatchReceiptEmblem(firstScope, "away", away, now);
-    assert.equal(await (await loadMatchReceiptEmblem(firstScope, "home", now + MATCH_RECEIPT_DRAFT_TTL_MS - 1)).text(), "home");
-    assert.equal(await (await loadMatchReceiptEmblem(firstScope, "away", now + MATCH_RECEIPT_DRAFT_TTL_MS - 1)).text(), "away");
-    assert.equal(await loadMatchReceiptEmblem(otherScope, "home", now), null);
-
-    await deleteMatchReceiptEmblem(firstScope, "home");
-    assert.equal(await loadMatchReceiptEmblem(firstScope, "home", now), null);
-    assert.equal(await (await loadMatchReceiptEmblem(firstScope, "away", now)).text(), "away");
-
-    await saveMatchReceiptEmblem(firstScope, "home", home, now);
-    await migrateMatchReceiptEmblems(firstScope, publicScope, now);
-    assert.equal(await loadMatchReceiptEmblem(firstScope, "home", now), null);
-    assert.equal(await (await loadMatchReceiptEmblem(publicScope, "home", now)).text(), "home");
-    assert.equal(await (await loadMatchReceiptEmblem(publicScope, "away", now)).text(), "away");
-    assert.equal(await loadMatchReceiptEmblem(publicScope, "home", now + MATCH_RECEIPT_DRAFT_TTL_MS + 1), null);
-    assert.equal(await (await loadMatchReceiptEmblem(publicScope, "away", now + MATCH_RECEIPT_DRAFT_TTL_MS)).text(), "away");
-
-    fake.failWrites();
-    await assert.rejects(saveMatchReceiptEmblem(otherScope, "home", home, now), /quota/u);
-  } finally {
-    if (previousIndexedDb === undefined) delete globalThis.indexedDB;
-    else globalThis.indexedDB = previousIndexedDb;
-  }
-});
-
-test("receipt emblem resolver uses one preview and canvas priority", () => {
+test("receipt emblem resolver uses canonical team emblems only", () => {
   assert.deepEqual(resolveMatchReceiptTeamEmblems({
     local: { home: "local-home" },
     guest: { home: "guest-home", away: "guest-away" },
     canonical: { home: "team-home", away: "team-away" },
     enabled: { home: true, away: true },
-  }), { home: "local-home", away: "guest-away" });
+  }), { home: "team-home", away: "team-away" });
   assert.deepEqual(resolveMatchReceiptTeamEmblems({
     guest: { home: "guest-home" },
     canonical: { home: "team-home", away: "team-away" },
@@ -313,7 +207,7 @@ test("only trusted canonical receipt payload keeps server-only fields", () => {
   assert.equal("homeEmblemKey" in untrusted, false);
 });
 
-test("guest receipt emblem keys stay scoped to their server-issued receipt", () => {
+test("legacy guest receipt emblem keys are rejected from public drafts", () => {
   const publicId = "11111111-1111-4111-8111-111111111111";
   const otherPublicId = "22222222-2222-4222-8222-222222222222";
   const homeKey = `match-receipt-emblems/drafts/${publicId}/home-0123456789abcdef01234567.webp`;
@@ -331,17 +225,10 @@ test("guest receipt emblem keys stay scoped to their server-issued receipt", () 
   }, publicId), { home: homeKey, away: awayKey });
 
   const untrusted = sanitizeReceiptDraftPayload({ homeGuestEmblemKey: homeKey });
-  const trusted = sanitizeReceiptDraftPayload(
-    { homeGuestEmblemKey: homeKey, awayGuestEmblemKey: awayKey },
-    { trustedGuestPublicId: publicId },
-  );
+  const trusted = sanitizeReceiptDraftPayload({ homeGuestEmblemKey: homeKey, awayGuestEmblemKey: awayKey });
   assert.equal("homeGuestEmblemKey" in untrusted, false);
-  assert.equal(trusted.homeGuestEmblemKey, homeKey);
-  assert.equal(trusted.awayGuestEmblemKey, awayKey);
-  assert.equal(sanitizeReceiptDraftPayload(
-    { homeGuestEmblemKey: homeKey },
-    { trustedGuestPublicId: otherPublicId },
-  ).homeGuestEmblemKey, "");
+  assert.equal("homeGuestEmblemKey" in trusted, false);
+  assert.equal("awayGuestEmblemKey" in trusted, false);
 
   assert.equal(cleanMatchReceiptEmblemKey(matchHomeKey, matchId, "home"), matchHomeKey);
   assert.equal(cleanMatchReceiptEmblemKey(matchHomeKey, "m_other", "home"), "");
@@ -656,7 +543,7 @@ test("receipt capability cookies stay isolated when creation responses arrive ou
 });
 
 test("receipt photo tools stay outside the export card and reference dividers remain", async () => {
-  const [page, preview, qrComponent, styles, tokens, renderer, roomDialog, digitGenerator, syncScript, draftApi, landing, appSource, homeNeutralMark, awayNeutralMark, paperGrain, scoreDigitSource, scoreDigits, wordmark, bebasNeue, bebasLicense, blackHanSans, detailStyles, emblemCropEditor, teamEmblem, lineArt] = await Promise.all([
+  const [page, preview, qrComponent, styles, tokens, renderer, roomDialog, digitGenerator, syncScript, draftApi, emblemApi, landing, appSource, homeNeutralMark, awayNeutralMark, paperGrain, scoreDigitSource, scoreDigits, wordmark, bebasNeue, bebasLicense, blackHanSans, detailStyles, lineArt] = await Promise.all([
     readFile(new URL("../src/pages/MatchReceipt.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/components/match/MatchReceiptPreview.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/components/common/QrCode.jsx", import.meta.url), "utf8"),
@@ -667,6 +554,7 @@ test("receipt photo tools stay outside the export card and reference dividers re
     readFile(new URL("../scripts/generate-receipt-score-digits.mjs", import.meta.url), "utf8"),
     readFile(new URL("../scripts/sync-receipt-assets-to-r2.mjs", import.meta.url), "utf8"),
     readFile(new URL("../server/api/match-receipts/draft.js", import.meta.url), "utf8"),
+    readFile(new URL("../server/api/match-receipts/emblem.js", import.meta.url), "utf8"),
     readFile(new URL("../src/pages/Landing.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/App.jsx", import.meta.url), "utf8"),
     readFile(new URL("../public/assets/tier-emblems/tier-neutral-home-outline-v5.png", import.meta.url)),
@@ -679,8 +567,6 @@ test("receipt photo tools stay outside the export card and reference dividers re
     readFile(new URL("../public/assets/fonts/BebasNeue-OFL.txt", import.meta.url), "utf8"),
     readFile(new URL("../public/assets/fonts/BlackHanSans-Regular.ttf", import.meta.url)),
     readFile(new URL("../src/styles/features/match-receipt-details.css", import.meta.url), "utf8"),
-    readFile(new URL("../src/components/common/EmblemCropEditor.jsx", import.meta.url), "utf8"),
-    readFile(new URL("../shared/lib/teamEmblem.js", import.meta.url), "utf8"),
     readFile(new URL("../src/lib/matchReceiptEmblem.js", import.meta.url), "utf8"),
   ]);
   const receiptSources = `${page}\n${preview}`;
@@ -729,10 +615,6 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(page, /homeMmr: canonicalHomeTeamMmr/);
   assert.match(page, /RECEIPT_PERIOD_FIELDS/);
   assert.match(page, /homeUseLineArt/);
-  assert.match(page, /TEAM_EMBLEM_LINE_ART_PROMPT/);
-  assert.match(page, /배경은 완전 투명\(alpha 0\)/);
-  assert.match(page, /순수 #00FF00/);
-  assert.match(page, /copyTeamEmblemPrompt/);
   assert.match(page, /selectedTeamLineArtUrls/);
   assert.match(preview, /createMatchReceiptLineArt/);
   assert.match(preview, /teamLineArtUrls\.home \|\| createMatchReceiptLineArt/);
@@ -748,30 +630,17 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(preview, /MY TIER · \{model\.personalTier\.label\}/);
   assert.match(preview, /model\.showPersonalTierIdentity \? <span className="match-receipt-poster-profile">/);
   assert.match(page, /CourtMapPicker/);
-  assert.match(page, /EmblemCropEditor/);
-  assert.match(page, /prepareTeamEmblemUpload\(file, crop, \{ circular: true \}\)/);
+  assert.doesNotMatch(page, /EmblemCropEditor|prepareTeamEmblemUpload|uploadGuestReceiptEmblem/);
   assert.match(page, /reserveImageSaveWindow\(\)/);
   assert.match(page, /saveWindow\.location\.replace\(url\)/);
   assert.match(page, /공유 메뉴에서 이미지 저장을 선택하세요/);
-  assert.match(page, /let emblemShareFailed = false;\s*try \{\s*publicId = await ensurePublicDraft\(result\.draft\);\s*\} catch \(error\) \{\s*emblemShareFailed = error\.message === "match_receipt_emblem_sync_failed";/);
-  assert.match(page, /EMBLEM_SHARE_FAILURE_MESSAGE = "이미지는 저장할 수 있지만 엠블럼을 공유 서버에 보관하지 못해 QR은 제외했습니다\."/u);
+  assert.doesNotMatch(page, /emblemShareFailed|match_receipt_emblem_sync_failed|EMBLEM_SHARE_FAILURE_MESSAGE/);
   assert.match(page, /URL\.revokeObjectURL\(url\)/u);
   assert.match(page, /const publicMatchUrl = publicId\s*\? new URL/);
-  assert.match(page, /<EmblemCropEditor\s+file=\{emblemCropTarget\?\.file\}\s+circular/);
-  assert.match(emblemCropEditor, /drawEmblemCrop\([^;]+\{ circular \}\)/);
-  assert.match(teamEmblem, /context\.arc\(dimension \/ 2, dimension \/ 2, dimension \/ 2/);
-  assert.match(teamEmblem, /if \(options\.circular === true\) context\.restore\(\)/);
-  assert.match(page, /setCroppedTeamEmblemUrls/);
-  assert.match(page, /setEmblemCropCandidate\(\{ side, croppedUrl, lineArtUrl, width: prepared\.width, height: prepared\.height \}\)/);
-  assert.match(page, /convertedPreview=\{emblemCropCandidate && emblemCropTarget && emblemCropCandidate\.side === emblemCropTarget\.side/);
-  assert.match(page, /onConvert=\{convertTeamEmblemCrop\}/);
-  assert.doesNotMatch(page, /lineArtPreview|convertTeamEmblemToLineArt|confirmTeamLineArt/);
-  assert.match(emblemCropEditor, /선화로 변경/);
-  assert.match(emblemCropEditor, /disabled=\{pending \|\| \(Boolean\(onConvert\) && !convertedPreview\)\}/);
-  assert.match(emblemCropEditor, /onClick=\{\(\) => onConfirm\?\.\(crop\)\}>확인</);
-  assert.match(page, /자동 변환 결과가 좋지 않으면 AI를 이용해 투명 배경 선화로 바꾼 뒤 다시 업로드하세요/);
-  assert.match(page, /자동 변환 결과는 자동 적용하지 않으며, 미리보기 확인 후 직접 선택합니다/);
-  assert.doesNotMatch(page, /기계 변환/);
+  assert.match(page, /로그인 후 팀을 만들고 팀 상세에서 영수증 엠블럼을 저장하면 여기서 사용할 수 있습니다\./u);
+  assert.match(page, /팀 만들기 · 엠블럼 저장/u);
+  assert.match(emblemApi, /allowRequestMethod\(request, response, \["POST", "DELETE"\]\)/);
+  assert.match(emblemApi, /410, \{ error: "receipt_emblem_upload_disabled" \}/);
   assert.match(page, /getRegisteredCourts/);
   assert.match(page, /mergeCourtSearchCourts/);
   assert.match(page, /inferRegionSelection\(courtMapRegionSource\)/);
@@ -957,7 +826,7 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(renderer, /tier-neutral-away-outline-v5\.png/);
   assert.match(renderer, /getTierDivisionNumber/);
   assert.match(renderer, /`\$\{tier\.name\}\$\{division \? ` \$\{division\}` : ""\}`\.toUpperCase\(\)/);
-  assert.match(renderer, /rankball-record-create-night-v5\.webp/);
+  assert.match(renderer, /rankball-record-create-night-v6\.webp/);
   assert.match(renderer, /document\.fonts\.load\('900 270px "Bebas Neue"'\)/);
   assert.match(renderer, /document\.fonts\.load\('900 58px "Black Han Sans"'\)/);
   assert.match(renderer, /TEAM TIER · \$\{team\.tier\.label\}/);
@@ -986,6 +855,9 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(draftApi, /canClaim/);
   assert.match(draftApi, /trustedCanonical/);
   assert.match(renderer, /label: `\$\{winner\.name\} WIN`/);
+  assert.match(preview, /className="match-receipt-outcome">\{model\.outcome\.label\}/);
+  assert.match(renderer, /ctx\.fillText\(model\.outcome\.label, width \/ 2, compact \? 754 : 1188\)/);
+  assert.match(detailStyles, /\.match-receipt-outcome\s*\{[^}]*top:\s*59\.2%;/);
   assert.match(renderer, /MY TIER · \$\{model\.personalTier\.label\}/);
   assert.doesNotMatch(renderer, /const badgeSize = actualSize \* 0\.14/);
   assert.match(renderer, /const badgeSize = 5/);

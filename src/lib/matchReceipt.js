@@ -14,7 +14,6 @@ const MATCH_RECEIPT_DRAFT_VERSION = 3;
 export const MATCH_RECEIPT_DRAFT_TTL_MS = 24 * 60 * 60 * 1000;
 const PHOTO_DB_NAME = "boxtier-match-receipt";
 const PHOTO_STORE_NAME = "photos";
-const EMBLEM_STORE_NAME = "emblems";
 const PHOTO_KEY = "current";
 const MATCH_RECEIPT_QR_ACCENT = "#d4582b";
 const MATCH_RECEIPT_TEAM_WATERMARK_OPACITY = 0.08;
@@ -216,8 +215,6 @@ export function createDefaultMatchReceiptDraft() {
     otAway: null,
     homeEmblemKey: "",
     awayEmblemKey: "",
-    homeGuestEmblemKey: "",
-    awayGuestEmblemKey: "",
     homeUseLineArt: false,
     awayUseLineArt: false,
     photoZoom: 1,
@@ -270,8 +267,6 @@ export function normalizeMatchReceiptDraft(value = {}) {
     otAway: cleanOptionalScore(value.otAway),
     homeEmblemKey: cleanText(value.homeEmblemKey, 256),
     awayEmblemKey: cleanText(value.awayEmblemKey, 256),
-    homeGuestEmblemKey: cleanText(value.homeGuestEmblemKey, 256),
-    awayGuestEmblemKey: cleanText(value.awayGuestEmblemKey, 256),
     homeUseLineArt: Boolean(value.homeUseLineArt),
     awayUseLineArt: Boolean(value.awayUseLineArt),
     photoZoom: clampNumber(value.photoZoom, 1, 3, 1),
@@ -361,105 +356,16 @@ function openPhotoDatabase() {
     const request = indexedDB.open(PHOTO_DB_NAME, 2);
     request.onupgradeneeded = () => {
       if (!request.result.objectStoreNames.contains(PHOTO_STORE_NAME)) request.result.createObjectStore(PHOTO_STORE_NAME);
-      if (!request.result.objectStoreNames.contains(EMBLEM_STORE_NAME)) request.result.createObjectStore(EMBLEM_STORE_NAME);
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
   });
 }
 
-function cleanMatchReceiptEmblemScope(value) {
-  const scope = String(value ?? "").trim();
-  return /^(serial|draft|match):[A-Za-z0-9:_-]{1,128}$/.test(scope) ? scope : "";
-}
-
-function cleanMatchReceiptEmblemSide(value) {
-  return value === "home" || value === "away" ? value : "";
-}
-
-function getMatchReceiptEmblemStorageKey(scope, side) {
-  const cleanScope = cleanMatchReceiptEmblemScope(scope);
-  const cleanSide = cleanMatchReceiptEmblemSide(side);
-  if (!cleanScope || !cleanSide) throw new Error("match_receipt_emblem_scope");
-  return `${cleanScope}:${cleanSide}`;
-}
-
-async function useEmblemStore(mode, callback) {
-  const database = await openPhotoDatabase();
-  if (!database) throw new Error("match_receipt_emblem_storage_unavailable");
-  try {
-    return await new Promise((resolve, reject) => {
-      const transaction = database.transaction(EMBLEM_STORE_NAME, mode);
-      const request = callback(transaction.objectStore(EMBLEM_STORE_NAME));
-      let result;
-      request.onsuccess = () => { result = request.result ?? true; };
-      request.onerror = () => reject(request.error);
-      transaction.oncomplete = () => resolve(result);
-      transaction.onabort = () => reject(transaction.error || new Error("match_receipt_emblem_storage_failed"));
-      transaction.onerror = () => reject(transaction.error || new Error("match_receipt_emblem_storage_failed"));
-    });
-  } finally {
-    database.close();
-  }
-}
-
-export function getMatchReceiptEmblemScope({ publicId = "", matchId = "", serialSeed = "" } = {}) {
-  if (matchId) return cleanMatchReceiptEmblemScope(`match:${matchId}`);
-  if (publicId) return cleanMatchReceiptEmblemScope(`draft:${publicId}`);
-  return cleanMatchReceiptEmblemScope(`serial:${serialSeed}`);
-}
-
-export async function saveMatchReceiptEmblem(scope, side, blob, savedAt = Date.now()) {
-  if (!(blob instanceof Blob) || blob.type !== "image/webp") throw new Error("match_receipt_emblem_type");
-  const key = getMatchReceiptEmblemStorageKey(scope, side);
-  await useEmblemStore("readwrite", (store) => store.put({ blob, savedAt: Number(savedAt) }, key));
-  return true;
-}
-
-export async function loadMatchReceiptEmblem(scope, side, now = Date.now()) {
-  const key = getMatchReceiptEmblemStorageKey(scope, side);
-  const value = await useEmblemStore("readonly", (store) => store.get(key));
-  if (!value?.blob) return null;
-  if (Number(now) - Number(value.savedAt ?? 0) > MATCH_RECEIPT_DRAFT_TTL_MS) {
-    await deleteMatchReceiptEmblem(scope, side);
-    return null;
-  }
-  return value.blob;
-}
-
-export async function deleteMatchReceiptEmblem(scope, side) {
-  await useEmblemStore("readwrite", (store) => store.delete(getMatchReceiptEmblemStorageKey(scope, side)));
-  return true;
-}
-
-export async function clearMatchReceiptEmblems(scope) {
-  await Promise.all(["home", "away"].map((side) => deleteMatchReceiptEmblem(scope, side)));
-  return true;
-}
-
-export async function migrateMatchReceiptEmblems(fromScope, toScope, now = Date.now()) {
-  const cleanFrom = cleanMatchReceiptEmblemScope(fromScope);
-  const cleanTo = cleanMatchReceiptEmblemScope(toScope);
-  if (!cleanFrom || !cleanTo || cleanFrom === cleanTo) return false;
-  await Promise.all(["home", "away"].map(async (side) => {
-    const sourceKey = getMatchReceiptEmblemStorageKey(cleanFrom, side);
-    const targetKey = getMatchReceiptEmblemStorageKey(cleanTo, side);
-    const value = await useEmblemStore("readonly", (store) => store.get(sourceKey));
-    if (!value?.blob) return;
-    if (Number(now) - Number(value.savedAt ?? 0) > MATCH_RECEIPT_DRAFT_TTL_MS) {
-      await useEmblemStore("readwrite", (store) => store.delete(sourceKey));
-      return;
-    }
-    await useEmblemStore("readwrite", (store) => store.put(value, targetKey));
-    await useEmblemStore("readwrite", (store) => store.delete(sourceKey));
-  }));
-  return true;
-}
-
-export function resolveMatchReceiptTeamEmblems({ local = {}, guest = {}, canonical = {}, enabled = {} } = {}) {
+export function resolveMatchReceiptTeamEmblems({ canonical = {}, enabled = {} } = {}) {
   return {
-    home: enabled.home ? (local.home || guest.home || canonical.home || "") : "",
-    away: enabled.away ? (local.away || guest.away || canonical.away || "") : "",
+    home: enabled.home ? (canonical.home || "") : "",
+    away: enabled.away ? (canonical.away || "") : "",
   };
 }
 
@@ -613,8 +519,6 @@ export function getMatchReceiptDraftFromMatch(match = {}, style = {}, court = nu
     otAway: style.otAway,
     homeEmblemKey: style.homeTeamRecord?.receiptEmblemKey ?? "",
     awayEmblemKey: style.awayTeamRecord?.receiptEmblemKey ?? "",
-    homeGuestEmblemKey: match.rules?.receiptEmblems?.home ?? "",
-    awayGuestEmblemKey: match.rules?.receiptEmblems?.away ?? "",
     homeUseLineArt: Boolean(style.homeUseLineArt),
     awayUseLineArt: Boolean(style.awayUseLineArt),
     homeColor: style.homeColor,
@@ -700,7 +604,7 @@ export function createMatchReceiptViewModel(value, options = {}) {
     matchUrl: String(options.matchUrl ?? ""),
     logoUrl: BOXTIER_LOGO_URL,
     wordmarkUrl: BOXTIER_LETTER_DARK_URL,
-    defaultPhotoUrl: assetUrl("/assets/rankball-record-create-night-v5.webp"),
+    defaultPhotoUrl: assetUrl("/assets/rankball-record-create-night-v6.webp"),
     paperUrl: MATCH_RECEIPT_PAPER_URL,
     paperGrainUrl: MATCH_RECEIPT_PAPER_GRAIN_URL,
     scoreDigitsUrl: MATCH_RECEIPT_SCORE_DIGITS_URL,
@@ -1195,6 +1099,12 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
   ctx.font = `900 ${compact ? 31 : 36}px "Bebas Neue", sans-serif`;
   ctx.letterSpacing = compact ? "0.8px" : "1.2px";
   ctx.fillText(model.matchNatureLabel, width / 2, scoreTop + (compact ? 7 : 17));
+  ctx.letterSpacing = "0px";
+
+  ctx.fillStyle = paperTextPattern;
+  ctx.font = `900 ${compact ? 21 : 26}px "KBO Dia Gothic", sans-serif`;
+  ctx.letterSpacing = compact ? "0.4px" : "0.7px";
+  ctx.fillText(model.outcome.label, width / 2, compact ? 754 : 1188);
   ctx.letterSpacing = "0px";
 
   const teamTop = compact ? 779 : 1192;

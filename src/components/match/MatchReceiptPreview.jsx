@@ -145,6 +145,7 @@ export default function MatchReceiptPreview({
           <ReceiptScoreDigits value={model.awayScore} />
         </div>
       </section>
+      <strong className="match-receipt-outcome">{model.outcome.label}</strong>
       <section className={`match-receipt-poster-teams${hasGameDetail ? " has-game-detail" : ""}`}>
         {posterTeams.map((team, index) => (
           <div key={index} style={{ "--receipt-team-name-size": `${4.8 * getMatchReceiptTeamNameScale(team.name)}cqw` }}>

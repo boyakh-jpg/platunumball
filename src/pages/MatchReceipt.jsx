@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Copy, Download, House, ImagePlus, MapPin, RotateCcw, Share2, Trash2 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import Button from "../components/common/Button.jsx";
-import EmblemCropEditor from "../components/common/EmblemCropEditor.jsx";
 import CourtMapPicker from "../components/court/CourtMapPicker.jsx";
 import MatchReceiptPreview from "../components/match/MatchReceiptPreview.jsx";
 import { assetUrl } from "../lib/assets.js";
@@ -11,8 +10,6 @@ import { getLoginPath, inferRegionSelection } from "../lib/profileSetup.js";
 import { COURT_MAP_SEARCH_LIMIT, COURT_MAP_SEARCH_PURPOSE } from "../lib/queryPolicy.js";
 import { postServerAction } from "../lib/serverActions.js";
 import { getUserHashtag } from "../lib/handles.js";
-import { createMatchReceiptLineArt } from "../lib/matchReceiptEmblem.js";
-import { getTeamEmblemErrorMessage, prepareTeamEmblemUpload } from "../lib/teamEmblem.js";
 import {
   MATCH_RECEIPT_CANVAS_SIZES,
   MATCH_RECEIPT_CREATE_RETURN_TO,
@@ -21,44 +18,23 @@ import {
   MATCH_RECEIPT_LIMITS,
   MATCH_RECEIPT_PHOTO_MAX_BYTES,
   clearMatchReceiptDraft,
-  clearMatchReceiptEmblems,
   clearMatchReceiptPhoto,
   createDefaultMatchReceiptDraft,
-  deleteMatchReceiptEmblem,
   getMatchReceiptDraftFromMatch,
-  getMatchReceiptEmblemScope,
   getMatchReceiptFileName,
   getMatchReceiptOutcome,
   getMatchReceiptSideTeamId,
   loadMatchReceiptPhoto,
   loadMatchReceiptDraft,
-  loadMatchReceiptEmblem,
-  migrateMatchReceiptEmblems,
   normalizeMatchReceiptPhotoFile,
   normalizeMatchReceiptDraft,
   renderMatchReceiptPng,
   resolveMatchReceiptTeamEmblems,
-  saveMatchReceiptEmblem,
   saveMatchReceiptPhoto,
   saveMatchReceiptDraft,
   trackMatchReceiptEvent,
   validateMatchReceiptDraft,
 } from "../lib/matchReceipt.js";
-
-async function dataUrlToBlob(dataUrl) {
-  const response = await fetch(dataUrl);
-  if (!response.ok) throw new Error("match_receipt_emblem_decode_failed");
-  return response.blob();
-}
-
-function blobToBase64(blob) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result ?? "").split(",")[1] ?? "");
-    reader.onerror = () => reject(reader.error ?? new Error("match_receipt_emblem_decode_failed"));
-    reader.readAsDataURL(blob);
-  });
-}
 
 function loadDraft() {
   return loadMatchReceiptDraft() ?? createDefaultMatchReceiptDraft();
@@ -100,20 +76,6 @@ const RECEIPT_PERIOD_FIELDS = [
   ["4Q", "q4Home", "q4Away"],
   ["OT", "otHome", "otAway"],
 ];
-
-const EMPTY_TEAM_LINE_ART_URLS = Object.freeze({ home: "", away: "" });
-const EMPTY_TEAM_EMBLEM_URLS = Object.freeze({ home: "", away: "" });
-const EMBLEM_SHARE_FAILURE_MESSAGE = "이미지는 저장할 수 있지만 엠블럼을 공유 서버에 보관하지 못해 QR은 제외했습니다.";
-const TEAM_EMBLEM_LINE_ART_PROMPT = `첨부한 팀 엠블럼의 형태, 비율, 글자, 상징을 바꾸거나 재디자인하지 마세요.
-출력 조건:
-- 정사각형 PNG
-- 배경은 완전 투명(alpha 0)
-- 엠블럼은 불투명 단색 검정(#000000)의 고대비 선화
-- 닫힌 면과 윤곽을 또렷하게 유지
-- 그림자, 그라데이션, 광택, 발광, 질감, 입체 효과, 배경 없음
-- 중앙 정렬, 사방 15% 안전 여백, 잘림 없음
-- 새 글자나 도형 추가 금지
-- 투명 PNG 출력이 불가능한 경우에만 배경을 균일한 순수 #00FF00으로 사용하고, 다른 초록색, 그림자, 반사, 색 번짐은 넣지 마세요.`;
 
 function isIosBrowser() {
   if (typeof navigator === "undefined") return false;
@@ -187,13 +149,6 @@ export default function MatchReceipt({ auth, app }) {
   const [status, setStatus] = useState("");
   const [photoBlob, setPhotoBlob] = useState(null);
   const [photoUrl, setPhotoUrl] = useState("");
-  const [croppedTeamEmblemUrls, setCroppedTeamEmblemUrls] = useState(EMPTY_TEAM_EMBLEM_URLS);
-  const [localTeamEmblemBlobs, setLocalTeamEmblemBlobs] = useState({ home: null, away: null });
-  const [localTeamLineArtUrls, setLocalTeamLineArtUrls] = useState(EMPTY_TEAM_LINE_ART_URLS);
-  const [loadedTeamLineArtUrls, setLoadedTeamLineArtUrls] = useState(EMPTY_TEAM_LINE_ART_URLS);
-  const [emblemCropTarget, setEmblemCropTarget] = useState(null);
-  const [emblemCropError, setEmblemCropError] = useState("");
-  const [emblemCropCandidate, setEmblemCropCandidate] = useState(null);
   const [publicDraftId, setPublicDraftId] = useState("");
   const [requestedDraftCanClaim, setRequestedDraftCanClaim] = useState(false);
   const [courtMapOpen, setCourtMapOpen] = useState(false);
@@ -215,11 +170,6 @@ export default function MatchReceipt({ auth, app }) {
   const publicDraftSavedRevisionRef = useRef(-1);
   const draftRef = useRef(draft);
   const publicDraftIdRef = useRef("");
-  const localTeamEmblemBlobsRef = useRef({ home: null, away: null });
-  const emblemScopeRef = useRef("");
-  const emblemOperationRef = useRef(0);
-  const receiptInstanceRef = useRef(0);
-  const syncedTeamEmblemsRef = useRef({ publicId: "", home: null, away: null });
   draftRef.current = draft;
   publicDraftIdRef.current = publicDraftId;
   photoTransformRef.current = {
@@ -276,13 +226,6 @@ export default function MatchReceipt({ auth, app }) {
       ?? null
   ), [draft.venue, registeredCourts, selectedCourtId]);
   const activePublicDraftId = publicDraftId || requestedPublicDraftId;
-  const emblemScope = getMatchReceiptEmblemScope({
-    matchId: canonicalMatchId,
-    publicId: activePublicDraftId,
-    serialSeed: draft.serialSeed,
-  });
-  emblemScopeRef.current = emblemScope;
-  localTeamEmblemBlobsRef.current = localTeamEmblemBlobs;
   const receiptIsReadOnly = Boolean(requestedPublicDraftId && !publicDraftId);
   const matchUrl = useMemo(() => {
     if (typeof window === "undefined") return "";
@@ -295,81 +238,14 @@ export default function MatchReceipt({ auth, app }) {
     home: canonicalHomeTeam?.receiptEmblemKey || draft.homeEmblemKey ? assetUrl(canonicalHomeTeam?.receiptEmblemKey || draft.homeEmblemKey) : "",
     away: canonicalAwayTeam?.receiptEmblemKey || draft.awayEmblemKey ? assetUrl(canonicalAwayTeam?.receiptEmblemKey || draft.awayEmblemKey) : "",
   }), [canonicalAwayTeam?.receiptEmblemKey, canonicalHomeTeam?.receiptEmblemKey, draft.awayEmblemKey, draft.homeEmblemKey]);
-  const guestTeamReceiptEmblemUrls = useMemo(() => ({
-    home: draft.homeGuestEmblemKey ? assetUrl(draft.homeGuestEmblemKey) : "",
-    away: draft.awayGuestEmblemKey ? assetUrl(draft.awayGuestEmblemKey) : "",
-  }), [draft.awayGuestEmblemKey, draft.homeGuestEmblemKey]);
   const selectedTeamLineArtUrls = useMemo(() => resolveMatchReceiptTeamEmblems({
-    local: localTeamLineArtUrls,
-    guest: guestTeamReceiptEmblemUrls,
-    canonical: {
-      home: loadedTeamLineArtUrls.home || canonicalTeamReceiptEmblemUrls.home,
-      away: loadedTeamLineArtUrls.away || canonicalTeamReceiptEmblemUrls.away,
-    },
+    canonical: canonicalTeamReceiptEmblemUrls,
     enabled: { home: draft.homeUseLineArt, away: draft.awayUseLineArt },
   }), [
     canonicalTeamReceiptEmblemUrls.away,
     canonicalTeamReceiptEmblemUrls.home,
     draft.awayUseLineArt,
     draft.homeUseLineArt,
-    guestTeamReceiptEmblemUrls.away,
-    guestTeamReceiptEmblemUrls.home,
-    loadedTeamLineArtUrls.away,
-    loadedTeamLineArtUrls.home,
-    localTeamLineArtUrls.away,
-    localTeamLineArtUrls.home,
-  ]);
-
-  useEffect(() => {
-    const urls = { home: "", away: "" };
-    for (const side of ["home", "away"]) {
-      const blob = localTeamEmblemBlobs[side];
-      if (blob) urls[side] = URL.createObjectURL(blob);
-    }
-    setLocalTeamLineArtUrls(urls);
-    return () => {
-      for (const url of Object.values(urls)) {
-        if (url) URL.revokeObjectURL(url);
-      }
-    };
-  }, [localTeamEmblemBlobs]);
-
-  useEffect(() => {
-    if (!emblemScope) return undefined;
-    const operation = emblemOperationRef.current + 1;
-    emblemOperationRef.current = operation;
-    let active = true;
-    const publicScope = canonicalMatchId && activePublicDraftId
-      ? getMatchReceiptEmblemScope({ publicId: activePublicDraftId })
-      : "";
-    Promise.resolve().then(async () => {
-      if (publicScope && publicScope !== emblemScope) {
-        await migrateMatchReceiptEmblems(publicScope, emblemScope);
-      }
-      return Promise.all([
-        loadMatchReceiptEmblem(emblemScope, "home"),
-        loadMatchReceiptEmblem(emblemScope, "away"),
-      ]);
-    }).then(([home, away]) => {
-      if (!active || emblemOperationRef.current !== operation || emblemScopeRef.current !== emblemScope) return;
-      setLocalTeamEmblemBlobs({ home, away });
-    }).catch(() => {
-      if (active && emblemOperationRef.current === operation) {
-        setStatus("저장된 로컬 엠블럼을 불러오지 못했습니다.");
-      }
-    });
-    return () => {
-      active = false;
-    };
-  }, [activePublicDraftId, canonicalMatchId, emblemScope]);
-
-  useEffect(() => {
-    setLoadedTeamLineArtUrls(EMPTY_TEAM_LINE_ART_URLS);
-  }, [
-    canonicalAwayTeam?.id,
-    canonicalAwayTeam?.receiptEmblemKey,
-    canonicalHomeTeam?.id,
-    canonicalHomeTeam?.receiptEmblemKey,
   ]);
 
   useEffect(() => {
@@ -583,137 +459,12 @@ export default function MatchReceipt({ auth, app }) {
     }
   }
 
-  function handleTeamEmblemChange(side, event) {
-    if (receiptIsReadOnly) {
-      event.target.value = "";
-      return;
-    }
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file) return;
-    if (canonicalTeamReceiptEmblemUrls[side]) {
-      setStatus("저장된 팀 엠블럼을 불러와 사용해 주세요.");
-      return;
-    }
-    setEmblemCropError("");
-    setEmblemCropCandidate(null);
-    setEmblemCropTarget({ side, file });
-  }
-
-  async function removeLocalTeamReceiptEmblem(side, { removeServer = true } = {}) {
-    if (receiptIsReadOnly) return;
-    const scope = emblemScopeRef.current;
-    const publicId = publicDraftIdRef.current;
-    const guestKeyField = side === "home" ? "homeGuestEmblemKey" : "awayGuestEmblemKey";
-    const operationId = ++emblemOperationRef.current;
-    const instanceId = receiptInstanceRef.current;
-    if (removeServer && publicId && draftRef.current[guestKeyField]) {
-      await postServerAction("/api/match-receipts/emblem", {
-        action: "delete",
-        publicId,
-        side,
-      }, { allowAnonymous: true, allowWhenDisabled: true });
-      if (operationId !== emblemOperationRef.current || instanceId !== receiptInstanceRef.current) return;
-      setDraft((current) => {
-        const next = normalizeMatchReceiptDraft({ ...current, [guestKeyField]: "" });
-        draftRef.current = next;
-        return next;
-      });
-    }
-    if (scope) {
-      try {
-        await deleteMatchReceiptEmblem(scope, side);
-      } catch {
-        setStatus("엠블럼을 현재 화면에서는 제거했지만 로컬 저장소에서 지우지 못했습니다.");
-      }
-    }
-    if (operationId !== emblemOperationRef.current || instanceId !== receiptInstanceRef.current) return;
-    setLocalTeamEmblemBlobs((current) => ({ ...current, [side]: null }));
-    setCroppedTeamEmblemUrls((current) => ({ ...current, [side]: "" }));
-    syncedTeamEmblemsRef.current = { ...syncedTeamEmblemsRef.current, [side]: null };
-  }
-
-  async function loadSavedTeamReceiptEmblem(side) {
+  function loadSavedTeamReceiptEmblem(side) {
     if (receiptIsReadOnly) return;
     const savedUrl = canonicalTeamReceiptEmblemUrls[side];
     if (!savedUrl) return;
-    try {
-      await removeLocalTeamReceiptEmblem(side);
-    } catch {
-      setStatus("기존 영수증 엠블럼을 삭제하지 못했습니다. 다시 시도해 주세요.");
-      return;
-    }
-    setLoadedTeamLineArtUrls((current) => ({ ...current, [side]: savedUrl }));
     updateField(`${side}UseLineArt`, true);
     setStatus(`${side === "home" ? "TEAM A" : "TEAM B"} 저장 엠블럼을 영수증에 적용했습니다.`);
-  }
-
-  async function convertTeamEmblemCrop(crop) {
-    if (!emblemCropTarget) return;
-    const { side, file } = emblemCropTarget;
-    setBusy(`emblem-crop-${side}`);
-    setStatus("");
-    setEmblemCropError("");
-    try {
-      const prepared = await prepareTeamEmblemUpload(file, crop, { circular: true });
-      const croppedUrl = `data:image/webp;base64,${prepared.imageBase64}`;
-      const lineArtUrl = await createMatchReceiptLineArt(croppedUrl);
-      if (!lineArtUrl) {
-        setEmblemCropError("대비가 부족해 선화로 바꾸지 못했습니다. 대비가 강한 이미지를 선택해 주세요.");
-        return;
-      }
-      setEmblemCropCandidate({ side, croppedUrl, lineArtUrl, width: prepared.width, height: prepared.height });
-    } catch (error) {
-      setEmblemCropError(getTeamEmblemErrorMessage(error?.code ?? error?.message));
-    } finally {
-      setBusy("");
-    }
-  }
-
-  async function confirmTeamEmblemCrop() {
-    if (receiptIsReadOnly) return;
-    if (!emblemCropTarget || !emblemCropCandidate || emblemCropCandidate.side !== emblemCropTarget.side) return;
-    const { side, croppedUrl, lineArtUrl, width, height } = emblemCropCandidate;
-    const field = side === "home" ? "homeUseLineArt" : "awayUseLineArt";
-    const scope = emblemScopeRef.current;
-    const instance = receiptInstanceRef.current;
-    setBusy(`emblem-confirm-${side}`);
-    try {
-      const lineArtBlob = await dataUrlToBlob(lineArtUrl);
-      const prepared = await prepareTeamEmblemUpload(lineArtBlob, {}, { circular: true });
-      const finalBlob = await dataUrlToBlob(`data:image/webp;base64,${prepared.imageBase64}`);
-      if (instance !== receiptInstanceRef.current || scope !== emblemScopeRef.current) return;
-      setCroppedTeamEmblemUrls((current) => ({ ...current, [side]: croppedUrl }));
-      setLocalTeamEmblemBlobs((current) => ({ ...current, [side]: finalBlob }));
-      syncedTeamEmblemsRef.current = { ...syncedTeamEmblemsRef.current, [side]: null };
-      updateField(field, true);
-      setEmblemCropTarget(null);
-      setEmblemCropCandidate(null);
-      setEmblemCropError("");
-      try {
-        await saveMatchReceiptEmblem(scope, side, finalBlob);
-        if (instance === receiptInstanceRef.current) {
-          setStatus(`${side === "home" ? "TEAM A" : "TEAM B"} 엠블럼을 ${width}×${height}px 선화로 영수증에 적용했습니다.`);
-        }
-      } catch {
-        if (instance === receiptInstanceRef.current) {
-          setStatus("현재 화면에서는 사용할 수 있지만 새로고침 후 유지되지 않을 수 있습니다");
-        }
-      }
-    } catch (error) {
-      setEmblemCropError(getTeamEmblemErrorMessage(error?.code ?? error?.message));
-    } finally {
-      if (instance === receiptInstanceRef.current) setBusy("");
-    }
-  }
-
-  async function copyTeamEmblemPrompt() {
-    try {
-      await navigator.clipboard.writeText(TEAM_EMBLEM_LINE_ART_PROMPT);
-      setStatus("AI 선화 변환 프롬프트를 복사했습니다.");
-    } catch {
-      setStatus("프롬프트를 복사하지 못했습니다.");
-    }
   }
 
   async function removePhoto() {
@@ -749,9 +500,6 @@ export default function MatchReceipt({ auth, app }) {
     if (!window.confirm("입력값과 선택 사진을 지우고 새 일련번호로 시작할까요?")) return;
 
     setBusy("reset");
-    const previousScope = emblemScopeRef.current;
-    receiptInstanceRef.current += 1;
-    emblemOperationRef.current += 1;
     try {
       if (publicDraftRequestRef.current) {
         try {
@@ -762,7 +510,6 @@ export default function MatchReceipt({ auth, app }) {
       }
       clearMatchReceiptDraft();
       await clearMatchReceiptPhoto();
-      if (previousScope) await clearMatchReceiptEmblems(previousScope).catch(() => {});
       const next = normalizeMatchReceiptDraft({
         ...createDefaultMatchReceiptDraft(),
         personalMmr,
@@ -777,12 +524,6 @@ export default function MatchReceipt({ auth, app }) {
       draftRef.current = next;
       setDraft(next);
       setPhotoBlob(null);
-      setCroppedTeamEmblemUrls(EMPTY_TEAM_EMBLEM_URLS);
-      setLocalTeamEmblemBlobs({ home: null, away: null });
-      setLoadedTeamLineArtUrls(EMPTY_TEAM_LINE_ART_URLS);
-      setEmblemCropTarget(null);
-      setEmblemCropCandidate(null);
-      setEmblemCropError("");
       setGenerated(false);
       publicDraftIdRef.current = "";
       setPublicDraftId("");
@@ -791,7 +532,6 @@ export default function MatchReceipt({ auth, app }) {
       publicDraftLoadedRevisionRef.current = draftRevisionRef.current;
       publicDraftSavedRevisionRef.current = -1;
       publicDraftSerialSeedRef.current = "";
-      syncedTeamEmblemsRef.current = { publicId: "", home: null, away: null };
       canonicalSnapshotCreatedRef.current = "";
       setSelectedCourtId("");
       setErrors({});
@@ -927,52 +667,13 @@ export default function MatchReceipt({ auth, app }) {
     });
   }
 
-  async function syncPublicTeamEmblems(publicId, instance = receiptInstanceRef.current) {
-    if (!publicId) return;
-    if (syncedTeamEmblemsRef.current.publicId !== publicId) {
-      syncedTeamEmblemsRef.current = { publicId, home: null, away: null };
-    }
-
-    try {
-      for (const side of ["home", "away"]) {
-        const blob = localTeamEmblemBlobsRef.current[side];
-        if (!blob || syncedTeamEmblemsRef.current[side] === blob) continue;
-        const imageBase64 = await blobToBase64(blob);
-        if (instance !== receiptInstanceRef.current || publicDraftIdRef.current !== publicId) {
-          throw new Error("match_receipt_emblem_stale");
-        }
-        const result = await postServerAction("/api/match-receipts/emblem", {
-          publicId,
-          side,
-          imageBase64,
-        }, { allowAnonymous: true, allowWhenDisabled: true });
-        if (!result?.key || instance !== receiptInstanceRef.current || publicDraftIdRef.current !== publicId) {
-          throw new Error("match_receipt_emblem_stale");
-        }
-        const guestKeyField = side === "home" ? "homeGuestEmblemKey" : "awayGuestEmblemKey";
-        setDraft((current) => {
-          const next = normalizeMatchReceiptDraft({ ...current, [guestKeyField]: result.key });
-          draftRef.current = next;
-          return next;
-        });
-        syncedTeamEmblemsRef.current = { ...syncedTeamEmblemsRef.current, [side]: blob };
-      }
-    } catch (error) {
-      const syncError = new Error("match_receipt_emblem_sync_failed");
-      syncError.cause = error;
-      throw syncError;
-    }
-  }
-
   async function ensurePublicDraft(value = draftRef.current, { forClaim = false } = {}) {
     const hasLocalEdits = () => Boolean(
       requestedPublicDraftId
       && draftRevisionRef.current !== publicDraftLoadedRevisionRef.current,
     );
-    const instance = receiptInstanceRef.current;
     if (publicDraftIdRef.current
       && publicDraftSavedRevisionRef.current === draftRevisionRef.current) {
-      await syncPublicTeamEmblems(publicDraftIdRef.current, instance);
       return publicDraftIdRef.current;
     }
     if (requestedPublicDraftId && !hasLocalEdits() && !publicDraftIdRef.current
@@ -984,10 +685,6 @@ export default function MatchReceipt({ auth, app }) {
       while (true) {
         const requestRevision = draftRevisionRef.current;
         const ownedPublicId = publicDraftIdRef.current;
-        const previousScope = getMatchReceiptEmblemScope({
-          publicId: ownedPublicId,
-          serialSeed: draftRef.current.serialSeed,
-        });
         const result = await postServerAction("/api/match-receipts/draft", {
           draft: nextDraft,
           ...(ownedPublicId ? { publicId: ownedPublicId } : {}),
@@ -1000,7 +697,6 @@ export default function MatchReceipt({ auth, app }) {
           allowWhenDisabled: true,
         });
         if (!result?.publicId) throw new Error("receipt_draft_create_failed");
-        if (instance !== receiptInstanceRef.current) throw new Error("match_receipt_emblem_stale");
 
         publicDraftIdRef.current = result.publicId;
         publicDraftSavedRevisionRef.current = requestRevision;
@@ -1012,23 +708,10 @@ export default function MatchReceipt({ auth, app }) {
           const normalized = normalizeMatchReceiptDraft({
             ...current,
             serialSeed,
-            homeGuestEmblemKey: serverDraft.homeGuestEmblemKey ?? current.homeGuestEmblemKey,
-            awayGuestEmblemKey: serverDraft.awayGuestEmblemKey ?? current.awayGuestEmblemKey,
           });
           draftRef.current = normalized;
           return normalized;
         });
-        const publicScope = getMatchReceiptEmblemScope({ publicId: result.publicId });
-        if (previousScope && previousScope !== publicScope) {
-          try {
-            await migrateMatchReceiptEmblems(previousScope, publicScope);
-          } catch {
-            if (instance === receiptInstanceRef.current) {
-              setStatus("현재 화면에서는 사용할 수 있지만 새로고침 후 유지되지 않을 수 있습니다");
-            }
-          }
-        }
-        await syncPublicTeamEmblems(result.publicId, instance);
         if (requestRevision === draftRevisionRef.current) return result.publicId;
         nextDraft = draftRef.current;
       }
@@ -1064,9 +747,7 @@ export default function MatchReceipt({ auth, app }) {
       await ensurePublicDraft(result.draft);
       setStatus("경기 영수증이 완성됐습니다.");
     } catch (error) {
-      setStatus(error.message === "match_receipt_emblem_sync_failed"
-        ? EMBLEM_SHARE_FAILURE_MESSAGE
-        : error.message === "receipt_draft_rate_limited"
+      setStatus(error.message === "receipt_draft_rate_limited"
           ? "공유 영수증 생성 한도를 초과했습니다. 잠시 후 다시 시도해 주세요."
           : "이미지는 완성됐지만 공유 QR을 만들지 못했습니다.");
     } finally {
@@ -1088,11 +769,9 @@ export default function MatchReceipt({ auth, app }) {
       throw new Error("match_receipt_invalid");
     }
     let publicId = "";
-    let emblemShareFailed = false;
     try {
       publicId = await ensurePublicDraft(result.draft);
-    } catch (error) {
-      emblemShareFailed = error.message === "match_receipt_emblem_sync_failed";
+    } catch {
       // A public QR is optional for local image export.
     }
     const publicMatchUrl = publicId
@@ -1108,7 +787,7 @@ export default function MatchReceipt({ auth, app }) {
       teamLineArtUrls: selectedTeamLineArtUrls,
       showPersonalTierIdentity: canShowCurrentUserIdentity,
     });
-    return { blob, emblemShareFailed };
+    return blob;
   }
 
   async function handleDownload(preset) {
@@ -1116,11 +795,9 @@ export default function MatchReceipt({ auth, app }) {
     setBusy(`download-${preset}`);
     setStatus("");
     try {
-      const { blob, emblemShareFailed } = await createPng(preset);
+      const blob = await createPng(preset);
       const method = downloadBlob(blob, getMatchReceiptFileName(draft, preset), saveWindow);
-      setStatus(emblemShareFailed
-        ? EMBLEM_SHARE_FAILURE_MESSAGE
-        : method === "open"
+      setStatus(method === "open"
           ? "이미지를 열었습니다. 공유 메뉴에서 이미지 저장을 선택하세요."
           : `${MATCH_RECEIPT_CANVAS_SIZES[preset].label} 이미지를 저장했습니다.`);
       trackMatchReceiptEvent("receipt_downloaded", { loggedIn: Boolean(auth?.session), imagePreset: preset });
@@ -1140,17 +817,15 @@ export default function MatchReceipt({ auth, app }) {
     setStatus("");
     try {
       const preset = "story";
-      const { blob, emblemShareFailed } = await createPng(preset);
+      const blob = await createPng(preset);
       const file = new File([blob], getMatchReceiptFileName(draft, preset), { type: "image/png" });
       if (navigator.share && navigator.canShare?.({ files: [file] })) {
         await navigator.share({ title: "BOXTIER 경기 영수증", files: [file] });
-        setStatus(emblemShareFailed ? EMBLEM_SHARE_FAILURE_MESSAGE : "공유 화면을 열었습니다.");
+        setStatus("공유 화면을 열었습니다.");
         trackMatchReceiptEvent("receipt_shared", { loggedIn: Boolean(auth?.session), imagePreset: preset, method: "web_share" });
       } else {
         downloadBlob(blob, file.name);
-        setStatus(emblemShareFailed
-          ? EMBLEM_SHARE_FAILURE_MESSAGE
-          : "이 브라우저는 이미지 공유를 지원하지 않아 Story 이미지를 저장했습니다.");
+        setStatus("이 브라우저는 이미지 공유를 지원하지 않아 Story 이미지를 저장했습니다.");
         trackMatchReceiptEvent("receipt_downloaded", { loggedIn: Boolean(auth?.session), imagePreset: preset, method: "share_fallback" });
       }
     } catch (error) {
@@ -1181,9 +856,7 @@ export default function MatchReceipt({ auth, app }) {
       const backTo = `${location.pathname}${location.search}${location.hash}`;
       navigate(getLoginPath(returnTo, backTo));
     } catch (error) {
-      setStatus(error.message === "match_receipt_emblem_sync_failed"
-        ? EMBLEM_SHARE_FAILURE_MESSAGE
-        : error.message === "receipt_draft_rate_limited"
+      setStatus(error.message === "receipt_draft_rate_limited"
           ? "공유 영수증 생성 한도를 초과했습니다. 잠시 후 다시 시도해 주세요."
           : "로그인용 영수증 초안을 만들지 못했습니다.");
     } finally {
@@ -1201,9 +874,7 @@ export default function MatchReceipt({ auth, app }) {
       const publicId = await ensurePublicDraft(draft, { forClaim: true });
       navigate(`${MATCH_RECEIPT_CREATE_RETURN_TO}&receiptDraft=${encodeURIComponent(publicId)}`);
     } catch (error) {
-      setStatus(error.message === "match_receipt_emblem_sync_failed"
-        ? EMBLEM_SHARE_FAILURE_MESSAGE
-        : error.message === "receipt_draft_rate_limited"
+      setStatus(error.message === "receipt_draft_rate_limited"
           ? "공유 영수증 생성 시도를 초과했습니다. 잠시 후 다시 시도해 주세요."
           : "기록으로 이어갈 영수증 초안을 만들지 못했습니다.");
     } finally {
@@ -1290,15 +961,17 @@ export default function MatchReceipt({ auth, app }) {
               <label className="is-wide">짧은 장소 <input value={draft.address} maxLength={MATCH_RECEIPT_LIMITS.address} disabled={isFieldReadOnly("address")} placeholder="경기 장소 대신 주소나 장소를 입력 가능" onChange={(event) => updateField("address", event.target.value)} /></label>
               <label className="is-wide">대회·리그 이름 <input value={draft.tournamentName} maxLength={MATCH_RECEIPT_LIMITS.tournamentName} disabled={isFieldReadOnly("tournamentName")} placeholder="선택 · 20자 이내" onChange={(event) => updateField("tournamentName", event.target.value)} /></label>
               <fieldset className="match-receipt-line-art-fields is-wide">
-                <legend>팀 엠블럼 선화 <small>선택</small></legend>
+                <legend>팀 엠블럼 <small>선택</small></legend>
+                <p className="match-receipt-emblem-guide">
+                  로그인 후 팀을 만들고 팀 상세에서 영수증 엠블럼을 저장하면 여기서 사용할 수 있습니다.
+                </p>
                 <div className="match-receipt-emblem-upload-grid">
                   {[["home", "TEAM A"], ["away", "TEAM B"]].map(([side, label]) => {
                     const savedUrl = canonicalTeamReceiptEmblemUrls[side];
                     const activeLineArtUrl = selectedTeamLineArtUrls[side];
-                    const guestKeyField = side === "home" ? "homeGuestEmblemKey" : "awayGuestEmblemKey";
-                    const hasDirectReceiptEmblem = Boolean(localTeamEmblemBlobs[side] || draft[guestKeyField]);
                     return (
                       <div className="match-receipt-emblem-upload" key={side}>
+                        <strong>{label}</strong>
                         {savedUrl ? (
                           <Button
                             type="button"
@@ -1307,28 +980,13 @@ export default function MatchReceipt({ auth, app }) {
                             disabled={receiptIsReadOnly || Boolean(busy)}
                             onClick={() => loadSavedTeamReceiptEmblem(side)}
                           >
-                            <Download aria-hidden="true" /> {label} 팀 엠블럼 불러오기
-                          </Button>
-                        ) : null}
-                        {savedUrl ? (
-                          <Button type="button" variant="secondary" size="sm" disabled>
-                            <ImagePlus aria-hidden="true" /> {label} 사진 올리기
+                            <Download aria-hidden="true" /> 저장 엠블럼 사용
                           </Button>
                         ) : (
-                          <Button as="label" variant="secondary" size="sm">
-                            <ImagePlus aria-hidden="true" /> {label} 사진 올리기
-                            <input
-                              type="file"
-                              accept="image/png,image/jpeg,image/webp"
-                              disabled={receiptIsReadOnly || Boolean(busy)}
-                              onChange={(event) => handleTeamEmblemChange(side, event)}
-                            />
-                          </Button>
+                          <small>저장된 팀 엠블럼 없음</small>
                         )}
-                        {savedUrl ? <small>팀 저장 엠블럼이 있어 사진 업로드를 사용할 수 없습니다.</small> : null}
-                        {croppedTeamEmblemUrls[side] || activeLineArtUrl ? (
+                        {activeLineArtUrl ? (
                           <div className="match-receipt-emblem-candidates" aria-label={`${label} 엠블럼 후보`}>
-                            {croppedTeamEmblemUrls[side] ? <img src={croppedTeamEmblemUrls[side]} alt={`${label} 크롭 원본`} /> : null}
                             {activeLineArtUrl ? <img src={activeLineArtUrl} alt={`${label} 선화 후보`} /> : null}
                           </div>
                         ) : null}
@@ -1343,35 +1001,31 @@ export default function MatchReceipt({ auth, app }) {
                             {draft[`${side}UseLineArt`] ? "선화 사용 해제" : "선화 다시 사용"}
                           </Button>
                         ) : null}
-                        {hasDirectReceiptEmblem ? (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            disabled={receiptIsReadOnly || Boolean(busy)}
-                            onClick={() => removeLocalTeamReceiptEmblem(side).catch(() => {
-                              setStatus("영수증 엠블럼을 삭제하지 못했습니다. 다시 시도해 주세요.");
-                            })}
-                          >
-                            <Trash2 aria-hidden="true" /> {label} 엠블럼 삭제
-                          </Button>
-                        ) : null}
                       </div>
                     );
                   })}
                 </div>
-                <Button type="button" variant="secondary" size="sm" onClick={copyTeamEmblemPrompt}><Copy aria-hidden="true" /> AI 선화 변환 프롬프트 복사</Button>
-                <small>자동 변환 결과가 좋지 않으면 AI를 이용해 투명 배경 선화로 바꾼 뒤 다시 업로드하세요.</small>
-                <small>대비가 강하고 배경이 투명하거나 단색인 엠블럼만 권장합니다. 자동 변환 결과는 자동 적용하지 않으며, 미리보기 확인 후 직접 선택합니다.</small>
+                {!receiptIsReadOnly ? (
+                  <Button
+                    as={Link}
+                    to={auth?.session
+                      ? "/app/teams"
+                      : getLoginPath("/app/teams", `${location.pathname}${location.search}${location.hash}`)}
+                    variant="secondary"
+                    size="sm"
+                  >
+                    {auth?.session ? "팀 만들기 · 엠블럼 저장" : "로그인하고 팀 만들기"}
+                  </Button>
+                ) : null}
               </fieldset>
               <fieldset className="match-receipt-period-fields is-wide">
                 <legend>쿼터별 점수 <small>선택</small></legend>
                 {RECEIPT_PERIOD_FIELDS.map(([label, homeField, awayField]) => (
                   <label key={label}>
                     <span>{label}</span>
-                    <input type="number" min="0" max={MATCH_RECEIPT_LIMITS.score} inputMode="numeric" value={draft[homeField] ?? ""} disabled={isFieldReadOnly(homeField)} aria-label={`${label} TEAM A 점수`} placeholder="TEAM A" onChange={(event) => updateField(homeField, event.target.value)} />
+                    <input type="number" min="0" max={MATCH_RECEIPT_LIMITS.score} inputMode="numeric" value={draft[homeField] ?? ""} disabled={isFieldReadOnly(homeField)} aria-label={`${label} TEAM A 점수`} placeholder="A" onChange={(event) => updateField(homeField, event.target.value)} />
                     <i>:</i>
-                    <input type="number" min="0" max={MATCH_RECEIPT_LIMITS.score} inputMode="numeric" value={draft[awayField] ?? ""} disabled={isFieldReadOnly(awayField)} aria-label={`${label} TEAM B 점수`} placeholder="TEAM B" onChange={(event) => updateField(awayField, event.target.value)} />
+                    <input type="number" min="0" max={MATCH_RECEIPT_LIMITS.score} inputMode="numeric" value={draft[awayField] ?? ""} disabled={isFieldReadOnly(awayField)} aria-label={`${label} TEAM B 점수`} placeholder="B" onChange={(event) => updateField(awayField, event.target.value)} />
                   </label>
                 ))}
               </fieldset>
@@ -1486,28 +1140,6 @@ export default function MatchReceipt({ auth, app }) {
           ) : null}
         </aside>
       </div>
-      <EmblemCropEditor
-        file={emblemCropTarget?.file}
-        circular
-        pending={busy === `emblem-crop-${emblemCropTarget?.side}`}
-        convertedPreview={emblemCropCandidate && emblemCropTarget && emblemCropCandidate.side === emblemCropTarget.side
-          ? emblemCropCandidate.lineArtUrl
-          : ""}
-        warning="가운데 원 안에 엠블럼을 맞춘 뒤 선화로 변경하세요. 결과를 확인하고 확인을 눌러야 영수증에 적용됩니다."
-        error={emblemCropError}
-        onCancel={() => {
-          if (busy) return;
-          setEmblemCropTarget(null);
-          setEmblemCropCandidate(null);
-          setEmblemCropError("");
-        }}
-        onCropChange={() => {
-          setEmblemCropCandidate(null);
-          setEmblemCropError("");
-        }}
-        onConvert={convertTeamEmblemCrop}
-        onConfirm={confirmTeamEmblemCrop}
-      />
       <CourtMapPicker
         open={courtMapOpen}
         courts={registeredCourts}
