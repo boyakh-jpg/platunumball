@@ -738,7 +738,7 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(styles, /font-size: clamp\(7px, 2\.1cqw, 10px\)/);
   assert.match(styles, /height: 19\.9%/);
   assert.match(styles, /\.match-receipt-team-tier\.is-neutral[\s\S]*opacity: 0\.76/);
-  assert.match(styles, /\.match-receipt-personal-tier[\s\S]*width: 92%[\s\S]*opacity: 0\.64/);
+  assert.match(styles, /\.match-receipt-personal-tier[\s\S]*width: 92%[\s\S]*opacity: 0\.72/);
   assert.match(styles, /\.match-receipt-ticket-qr \.match-receipt-qr[\s\S]*width: 94%[\s\S]*max-height: 94%/);
   assert.match(styles, /\.match-receipt-game-info b\s*\{[^}]*font-family: "Bebas Neue"/);
   assert.match(styles, /\.match-receipt-ticket-game > \.match-receipt-ticket-caption\s*\{[^}]*top: var\(--receipt-ticket-meta-y\);[^}]*font-size: clamp\(8px, 2\.5cqw, 12px\)/);
@@ -759,7 +759,7 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(styles, /@media \(max-width: 900px\)[\s\S]*?\.match-receipt-editor \{[\s\S]*?display: contents;[\s\S]*?\.match-receipt-preview-panel \{[\s\S]*?order: 2;[\s\S]*?\.match-receipt-complete \{[\s\S]*?order: 3;/);
   assert.match(styles, /\.match-receipt-ticket-date[\s\S]*border-top/);
   assert.match(styles, /\.match-receipt-ticket\s*\{[^}]*inset:\s*auto 0 1\.8%;/);
-  assert.match(styles, /--receipt-ticket-personal-stats-shift:\s*-16%/);
+  assert.match(styles, /--receipt-ticket-personal-stats-shift:\s*-28%/);
   assert.match(styles, /\.match-receipt-ticket-game > \.match-receipt-personal-stats\s*\{[^}]*transform:\s*translateY\(var\(--receipt-ticket-personal-stats-shift\)\)/);
   assert.match(styles, /\.match-receipt-personal-stats b \+ b[\s\S]*border-left/);
   assert.match(renderer, /const receiptTop = compact \? 1010 : 1504/);
@@ -875,7 +875,7 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(renderer, /const targetX = \(width - targetWidth\) \/ 2/);
   assert.match(renderer, /ctx\.drawImage\(story, targetX, 0, targetWidth, targetHeight\)/);
   assert.match(renderer, /canvasToBlob\(canvas, "image\/png"\)/);
-  assert.match(landing, /농구 기록을<br \/>쌓고 연결하세요\./u);
+  assert.match(landing, /<h1>농구 기록을 쌓고 연결하세요\.<\/h1>/u);
   assert.match(landing, /가입 없이 영수증 만들기/u);
   assert.match(landing, /별도 가입 없이 로그인/u);
   assert.match(landing, /to="\/app\/receipt"/u);
