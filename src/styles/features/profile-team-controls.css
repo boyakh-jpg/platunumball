@@ -97,7 +97,7 @@
 }
 
 .profile-icon-card-tools .profile-icon-card-actions {
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
 }
 
 @media (min-width: 600px) {

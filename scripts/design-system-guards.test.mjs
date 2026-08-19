@@ -102,6 +102,7 @@ const matchReceiptSource = read("src/pages/MatchReceipt.jsx");
 const notificationsSource = read("src/pages/Notifications.jsx");
 const settingsSource = readSourceGroupSync(read, SETTINGS_PAGE_SOURCE_PATHS);
 const settingsStyles = read("src/styles/features/settings-location-preferences.css");
+const profileTeamControlStyles = read("src/styles/features/profile-team-controls.css");
 const matchesPageSource = readSourceGroupSync(read, MATCHES_PAGE_SOURCE_PATHS);
 const matchRoomPageSource = readSourceGroupSync(read, MATCH_ROOM_SOURCE_PATHS);
 const homePageSource = readSourceGroupSync(read, HOME_PAGE_SOURCE_PATHS);
@@ -2052,6 +2053,13 @@ test("shared visual roles stay on canonical primitives", () => {
   assert.match(primitiveStyles, /\.ui-card\s*\{[^}]*backdrop-filter:\s*none;/);
   assert.match(primitiveStyles, /\.ui-empty-state-compact\s*\{[^}]*font-size:\s*var\(--font-size-meta\);/);
   assert.equal(count(read("src/pages/SettingsPrimaryColumn.jsx"), "onPointerUp={(event) => event.currentTarget.blur()}"), 2);
+});
+
+test("프로필 아이콘 action은 자기 카드 안에서 줄바꿈한다", () => {
+  assert.match(
+    profileTeamControlStyles,
+    /\.profile-icon-card-tools \.profile-icon-card-actions\s*\{[^}]*flex-wrap:\s*wrap;/,
+  );
 });
 
 test("admin court controls use canonical primitives without feature-owned skins", () => {
