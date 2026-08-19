@@ -6,15 +6,15 @@
   --receipt-scoreboard-unlit: rgba(90, 25, 14, 0.24);
   position: absolute;
   z-index: 3;
-  top: 25.2%;
-  left: 62.7%;
+  top: var(--receipt-photo-scoreboard-top);
+  left: var(--receipt-photo-scoreboard-left);
   display: grid;
   grid-template-rows: 38% 45%;
   align-content: space-between;
-  width: 12.4%;
-  height: 12.4%;
-  transform: rotate(-0.25deg);
-  transform-origin: center;
+  width: var(--receipt-photo-scoreboard-width);
+  height: var(--receipt-photo-scoreboard-height);
+  transform: skewY(var(--receipt-photo-scoreboard-skew-y));
+  transform-origin: top left;
   pointer-events: none;
 }
 

@@ -53,11 +53,13 @@ export const MATCH_RECEIPT_CANVAS_SIZES = Object.freeze({
 
 export const MATCH_RECEIPT_PHOTO_ASPECT = 1080 / 885;
 const MATCH_RECEIPT_DEFAULT_PHOTO_FOCUS = Object.freeze({ x: 0, y: 82 });
+const MATCH_RECEIPT_DEFAULT_PHOTO_ASPECT = 941 / 1671;
 const MATCH_RECEIPT_DEFAULT_SCOREBOARD_SOURCE_RECT = Object.freeze({
-  x: 590 / 941,
+  x: 582 / 941,
   y: 275 / 1671,
-  width: 117 / 941,
+  width: 132 / 941,
   height: 96 / 1671,
+  topEdgeRise: -8 / 1671,
 });
 
 export const MATCH_RECEIPT_SEVEN_SEGMENT_PATHS = Object.freeze([
@@ -104,13 +106,35 @@ export function getMatchReceiptPhotoStyle(value, aspect = MATCH_RECEIPT_PHOTO_AS
   const photoX = options.defaultPhoto ? MATCH_RECEIPT_DEFAULT_PHOTO_FOCUS.x : draft.photoX;
   const photoY = options.defaultPhoto ? MATCH_RECEIPT_DEFAULT_PHOTO_FOCUS.y : draft.photoY;
   const panRange = Math.max(0, draft.photoZoom - 1) * 50;
-  return {
+  const style = {
     "--receipt-photo-position-x": `${50 - photoX / 2}%`,
     "--receipt-photo-position-y": `${50 - photoY / 2}%`,
     "--receipt-photo-shift-x": `${photoX / 100 * panRange}%`,
     "--receipt-photo-shift-y": `${photoY / 100 * panRange}%`,
     "--receipt-photo-scale": getMatchReceiptRotationCoverScale(draft.photoRotation, aspect) * draft.photoZoom,
     "--receipt-photo-rotation": `${draft.photoRotation}deg`,
+  };
+  if (!options.defaultPhoto) return style;
+
+  const viewportHeight = 1 / aspect;
+  const photoHeight = 1 / MATCH_RECEIPT_DEFAULT_PHOTO_ASPECT;
+  const positionY = (100 - MATCH_RECEIPT_DEFAULT_PHOTO_FOCUS.y) / 200;
+  const scoreboardTop = (
+    MATCH_RECEIPT_DEFAULT_SCOREBOARD_SOURCE_RECT.y * photoHeight
+    - (photoHeight - viewportHeight) * positionY
+  ) / viewportHeight;
+  const scoreboardHeight = MATCH_RECEIPT_DEFAULT_SCOREBOARD_SOURCE_RECT.height * photoHeight / viewportHeight;
+  const scoreboardSkewY = Math.atan2(
+    MATCH_RECEIPT_DEFAULT_SCOREBOARD_SOURCE_RECT.topEdgeRise * photoHeight,
+    MATCH_RECEIPT_DEFAULT_SCOREBOARD_SOURCE_RECT.width,
+  ) * 180 / Math.PI;
+  return {
+    ...style,
+    "--receipt-photo-scoreboard-top": `${scoreboardTop * 100}%`,
+    "--receipt-photo-scoreboard-left": `${MATCH_RECEIPT_DEFAULT_SCOREBOARD_SOURCE_RECT.x * 100}%`,
+    "--receipt-photo-scoreboard-width": `${MATCH_RECEIPT_DEFAULT_SCOREBOARD_SOURCE_RECT.width * 100}%`,
+    "--receipt-photo-scoreboard-height": `${scoreboardHeight * 100}%`,
+    "--receipt-photo-scoreboard-skew-y": `${scoreboardSkewY}deg`,
   };
 }
 
@@ -765,6 +789,7 @@ function getDefaultPhotoSourceRect(image, rect, sourceRect) {
     y: rect.y - (foregroundHeight - rect.height) * positionY + sourceRect.y * foregroundHeight,
     width: sourceRect.width * foregroundWidth,
     height: sourceRect.height * foregroundHeight,
+    topEdgeRise: sourceRect.topEdgeRise * foregroundHeight,
   };
 }
 
@@ -802,7 +827,17 @@ function drawCanvasSevenSegmentValue(ctx, value, rect) {
 }
 
 function drawCanvasPhotoScoreboard(ctx, image, photoRect, model) {
-  const board = getDefaultPhotoSourceRect(image, photoRect, MATCH_RECEIPT_DEFAULT_SCOREBOARD_SOURCE_RECT);
+  const sourceBoard = getDefaultPhotoSourceRect(image, photoRect, MATCH_RECEIPT_DEFAULT_SCOREBOARD_SOURCE_RECT);
+  ctx.save();
+  ctx.transform(
+    sourceBoard.width,
+    sourceBoard.topEdgeRise,
+    0,
+    sourceBoard.height,
+    sourceBoard.x,
+    sourceBoard.y,
+  );
+  const board = { x: 0, y: 0, width: 1, height: 1 };
   const clockY = board.y;
   const clockHeight = board.height * 0.38;
   const clockDigitAreaWidth = board.width * 0.37;
@@ -846,6 +881,7 @@ function drawCanvasPhotoScoreboard(ctx, image, photoRect, model) {
     width: scoreWidth,
     height: scoreHeight,
   });
+  ctx.restore();
 }
 
 function createCanvasPaperPattern(ctx, paperGrain) {

@@ -8,6 +8,7 @@ import {
   formatMatchReceiptScoreboardScore,
   getMatchReceiptDraftFromMatch,
   getMatchReceiptFormatLabel,
+  getMatchReceiptPhotoStyle,
   getMatchReceiptSevenSegmentMask,
   getMatchReceiptSideTeamId,
   getMatchReceiptTeamNameScale,
@@ -27,9 +28,16 @@ test("receipt team names shrink before they can overflow", () => {
 });
 
 test("receipt photo scoreboard formats canonical final scores as seven segments", () => {
+  assert.equal(MATCH_RECEIPT_LIMITS.score, 999);
   assert.equal(formatMatchReceiptScoreboardScore(7), "07");
   assert.equal(formatMatchReceiptScoreboardScore(72), "72");
+  assert.equal(formatMatchReceiptScoreboardScore(100), "100");
+  assert.equal(formatMatchReceiptScoreboardScore(999), "999");
   assert.equal(getMatchReceiptSevenSegmentMask(8), "1111111");
+
+  const style = getMatchReceiptPhotoStyle({}, undefined, { defaultPhoto: true });
+  assert.ok(parseFloat(style["--receipt-photo-scoreboard-width"]) > 14);
+  assert.ok(parseFloat(style["--receipt-photo-scoreboard-skew-y"]) < -3);
 });
 
 test("receipt emblems come only from explicitly loaded canonical teams", async () => {
@@ -840,7 +848,9 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(preview, /!photoUrl \? <ReceiptPhotoScoreboard homeScore=\{model\.homeScore\} awayScore=\{model\.awayScore\} \/> : null/);
   assert.match(renderer, /if \(!options\.photoBlob\) \{\s*drawCanvasPhotoScoreboard/);
   assert.match(renderer, /formatMatchReceiptScoreboardScore\(model\.homeScore\)/);
-  assert.match(detailStyles, /\.match-receipt-photo-scoreboard\s*\{[^}]*top:\s*25\.2%;[^}]*left:\s*62\.7%;/);
+  assert.match(detailStyles, /\.match-receipt-photo-scoreboard\s*\{[^}]*top:\s*var\(--receipt-photo-scoreboard-top\);[^}]*left:\s*var\(--receipt-photo-scoreboard-left\);/);
+  assert.match(detailStyles, /transform:\s*skewY\(var\(--receipt-photo-scoreboard-skew-y\)\)/);
+  assert.match(renderer, /ctx\.transform\(\s*sourceBoard\.width,\s*sourceBoard\.topEdgeRise/);
   assert.match(renderer, /document\.fonts\.load\('900 270px "Bebas Neue"'\)/);
   assert.match(renderer, /document\.fonts\.load\('900 58px "Black Han Sans"'\)/);
   assert.match(renderer, /TEAM TIER · \$\{team\.tier\.label\}/);
@@ -860,6 +870,7 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.doesNotMatch(digitGenerator, /const DIGIT_PATHS =/);
   assert.doesNotMatch(digitGenerator, /<svg/);
   assert.match(syncScript, /match-receipt-score-digits-v3\.png/);
+  assert.match(syncScript, /rankball-record-create-night-v10\.webp/);
   assert.match(syncScript, /boxtier_letter_dark\.png/);
   assert.match(syncScript, /R2_UPLOAD_MAX_ATTEMPTS = 3/);
   assert.match(syncScript, /response\.status === 429 \|\| response\.status >= 500/);
