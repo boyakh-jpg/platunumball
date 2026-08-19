@@ -345,15 +345,17 @@ html[data-theme="light"] .rank-mode-pill {
 }
 
 .settings-page .page-stack {
-  gap: var(--space-7);
+  gap: calc(var(--page-section-gap) + var(--space-2));
 }
 
 .settings-page .section-card {
   --settings-legend-height: 46px;
+  --settings-card-padding: var(--card-padding);
 
   position: relative;
   gap: var(--space-6);
   margin-top: calc(var(--settings-legend-height) / 2);
+  padding: calc(var(--settings-card-padding) + (var(--settings-legend-height) / 2)) var(--settings-card-padding) var(--settings-card-padding);
   border-width: var(--ui-stroke-width);
   border-style: solid;
   border-color: var(--ui-control-border);
@@ -363,16 +365,25 @@ html[data-theme="light"] .rank-mode-pill {
 }
 
 .settings-page .section-card > .section-title-row:first-child {
+  position: absolute;
+  top: calc(-1 * var(--settings-legend-height) / 2);
+  right: var(--settings-card-padding);
+  left: var(--settings-card-padding);
   min-height: var(--settings-legend-height);
-  margin-top: calc(-1 * var(--card-padding) - (var(--settings-legend-height) / 2));
+  align-items: center;
 }
 
-.settings-page .section-card > .section-title-row:first-child > :first-child,
-.settings-page .section-card > .section-title-row:first-child > :last-child:not(:first-child) {
+.settings-page .section-card > .section-title-row:first-child > :first-child {
   position: relative;
   z-index: 1;
+  margin-left: calc(-1 * var(--space-2));
+  padding-inline: var(--space-2);
   background: var(--rb-bg);
-  box-shadow: 0 0 0 var(--space-2) var(--rb-bg);
+}
+
+.settings-page .settings-toggle-grid > label {
+  min-width: 0;
+  min-height: 42px;
 }
 
 .settings-page .settings-account-card {
@@ -489,7 +500,7 @@ html[data-theme="light"] .rank-mode-pill {
 
 .settings-page .settings-toggle-grid {
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 0;
+  gap: var(--space-2) var(--space-5);
 }
 
 .settings-page .settings-referee-card {

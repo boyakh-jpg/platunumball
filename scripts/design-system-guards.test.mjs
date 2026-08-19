@@ -910,6 +910,18 @@ test("설정 메인은 운영·테스트 카드를 숨기고 표시 설정을 �
     globalWorkflowStyles,
     /\.settings-page \.settings-toggle-grid input\[type="checkbox"\]\s*\{[^}]*width:\s*18px;[^}]*min-height:\s*18px;/,
   );
+  assert.match(
+    globalSurfaceStyles,
+    /\.settings-page \.section-card > \.section-title-row:first-child\s*\{[^}]*position:\s*absolute;[^}]*top:\s*calc\(-1 \* var\(--settings-legend-height\) \/ 2\);/,
+  );
+  assert.doesNotMatch(
+    globalSurfaceStyles,
+    /\.settings-page \.section-card > \.section-title-row:first-child\s*\{[^}]*margin-top:\s*calc\(-1/,
+  );
+  assert.match(
+    globalSurfaceStyles,
+    /\.settings-page \.settings-toggle-grid label \+ label\s*\{[^}]*padding-left:\s*0;[^}]*border-top:\s*0;/,
+  );
 });
 
 test("고정 설명은 제목·상태·조작 문구를 반복하지 않는다", () => {

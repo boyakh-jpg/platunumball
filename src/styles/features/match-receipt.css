@@ -20,24 +20,19 @@
 .match-receipt-save-card h2 { margin: 0 0 16px; font-size: 18px; }
 .match-receipt-team-fields,
 .match-receipt-info-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.match-receipt-team-fields { gap: 0; }
+.match-receipt-team-fields { gap: var(--space-5); }
 .match-receipt-info-fields { gap: var(--space-5) var(--space-6); }
 
 .match-receipt-team-fields fieldset {
   display: grid; grid-template-columns: minmax(0, 1fr) 84px;
   align-items: end; gap: var(--space-4); min-width: 0;
-  margin: 0; padding: 0;
-  border: 0;
-  border-radius: 0;
+  margin: 0; padding: var(--space-5) var(--space-6);
+  border: var(--ui-stroke-width) solid var(--rb-line);
+  border-radius: var(--radius-md);
   background: transparent;
 }
 
-.match-receipt-team-fields fieldset + fieldset {
-  margin-left: var(--space-6); padding-left: var(--space-6);
-  border-left: var(--ui-stroke-width) solid var(--rb-line);
-}
-
-.match-receipt-team-fields legend { padding: 0 6px; color: var(--rb-orange); font-weight: 900; }
+.match-receipt-team-fields legend { padding: 0 var(--space-3); color: var(--rb-orange); font-weight: 900; }
 
 .match-receipt-editor label {
   display: grid;
@@ -783,11 +778,6 @@
 
   .match-receipt-editor > section,
   .match-receipt-save-card { --ui-panel-padding: 0; --ui-panel-radius: 0; }
-
-  .match-receipt-team-fields fieldset + fieldset {
-    margin: var(--space-5) 0 0; padding: var(--space-5) 0 0;
-    border-top: var(--ui-stroke-width) solid var(--rb-line); border-left: 0;
-  }
 
   .match-receipt-card {
     border-radius: 0;
