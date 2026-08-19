@@ -826,7 +826,7 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(renderer, /tier-neutral-away-outline-v5\.png/);
   assert.match(renderer, /getTierDivisionNumber/);
   assert.match(renderer, /`\$\{tier\.name\}\$\{division \? ` \$\{division\}` : ""\}`\.toUpperCase\(\)/);
-  assert.match(renderer, /rankball-record-create-night-v7\.webp/);
+  assert.match(renderer, /rankball-record-create-night-v8\.webp/);
   assert.match(renderer, /document\.fonts\.load\('900 270px "Bebas Neue"'\)/);
   assert.match(renderer, /document\.fonts\.load\('900 58px "Black Han Sans"'\)/);
   assert.match(renderer, /TEAM TIER · \$\{team\.tier\.label\}/);
