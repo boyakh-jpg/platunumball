@@ -2127,7 +2127,7 @@ test("shared control families and fixed labels keep canonical ownership", () => 
   assert.match(uiControlsStyles, /\.ui-folder-tabs button/);
   assert.match(uiControlsStyles, /\.ui-folder-tabs\s*\{[^}]*width:\s*100%;[^}]*max-width:\s*100%;[^}]*border-bottom:\s*0;/);
   assert.match(uiControlsStyles, /\.ui-folder-tabs button\s*\{[^}]*flex:\s*1 1 0;/);
-  assert.match(uiControlsStyles, /\.ui-folder-tabs button\[aria-selected="true"\]\s*\{[^}]*background:\s*transparent;[^}]*font-weight:\s*var\(--font-weight-title\);[^}]*box-shadow:\s*none;[^}]*transform:\s*none;/);
+  assert.match(uiControlsStyles, /\.ui-folder-tabs button:is\(\[aria-selected="true"\], \[aria-checked="true"\]\)\s*\{[^}]*background:\s*transparent;[^}]*font-weight:\s*var\(--font-weight-title\);[^}]*box-shadow:\s*none;[^}]*transform:\s*none;/);
   assert.match(uiControlsStyles, /\.ui-segmented-control:not\(\.create-choice-segments\):not\(\[role="radiogroup"\]\):not\(\.ui-filter-row\)\s*\{[^}]*border:\s*0;[^}]*background:\s*transparent;[^}]*box-shadow:\s*none;/);
   assert.match(uiControlsStyles, /\.ui-segmented-control:not\(\.create-choice-segments\):not\(\[role="radiogroup"\]\) > button:is\(\.active, \[aria-current="page"\], \[aria-selected="true"\]\)\s*\{[^}]*background:\s*transparent;[^}]*font-weight:\s*var\(--font-weight-title\);[^}]*box-shadow:\s*none;/);
   assert.match(profileRecordStyles, /\.profile-record-section-filter,[\s\S]*?\.profile-record-visibility-filter\s*\{[^}]*display:\s*flex;[^}]*width:\s*100%;[^}]*max-width:\s*100%;[^}]*overflow-x:\s*auto;/);

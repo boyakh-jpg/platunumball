@@ -104,10 +104,12 @@ export default function SettingsSideColumn({ controller, onOpenList }) {
                 closeOnResultClick
                 renderItem={renderBlockUserSearchItem}
               />
-              <Button type="submit" variant="secondary" disabled={!selectedBlockUserId || blockSavePending}>{blockSavePending ? "저장 중" : "차단"}</Button>
+              <div className="settings-paired-actions">
+                <Button type="submit" variant="secondary" disabled={!selectedBlockUserId || blockSavePending}>{blockSavePending ? "저장 중" : "차단"}</Button>
+                <Button type="button" variant="secondary" onClick={() => onOpenList?.("blocks")}>차단 플레이어 목록</Button>
+              </div>
               {blockSaveStatus ? <small role="status">{blockSaveStatus}</small> : null}
             </form>
-            <Button type="button" variant="secondary" className="settings-list-open-button" onClick={() => onOpenList?.("blocks")}>차단 플레이어 목록</Button>
           </Card>
 
           <Card className="section-card settings-court-card">

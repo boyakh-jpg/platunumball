@@ -337,6 +337,17 @@ html[data-theme="light"] .rank-mode-pill {
   width: 148px;
 }
 
+.settings-page .settings-paired-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.settings-page .settings-paired-actions > .button {
+  width: 100%;
+  min-width: 0;
+}
+
 .settings-page .page-stack {
   gap: var(--space-7);
 }

@@ -9,7 +9,6 @@ import {
   getMatchReceiptDraftFromMatch,
   getMatchReceiptFormatLabel,
   getMatchReceiptPhotoStyle,
-  getMatchReceiptSevenSegmentMask,
   getMatchReceiptSideTeamId,
   getMatchReceiptTeamNameScale,
   MATCH_RECEIPT_LIMITS,
@@ -27,17 +26,12 @@ test("receipt team names shrink before they can overflow", () => {
   assert.equal(getMatchReceiptTeamNameScale("ABCDEFGHIJKLMNOPQRSTU"), 0.68);
 });
 
-test("receipt photo scoreboard formats canonical final scores as seven segments", () => {
+test("receipt photo scoreboard formats canonical final scores for the PNG atlas", () => {
   assert.equal(MATCH_RECEIPT_LIMITS.score, 999);
   assert.equal(formatMatchReceiptScoreboardScore(7), "07");
   assert.equal(formatMatchReceiptScoreboardScore(72), "72");
   assert.equal(formatMatchReceiptScoreboardScore(100), "100");
   assert.equal(formatMatchReceiptScoreboardScore(999), "999");
-  assert.equal(getMatchReceiptSevenSegmentMask(8), "1111111");
-
-  const style = getMatchReceiptPhotoStyle({}, undefined, { defaultPhoto: true });
-  assert.ok(parseFloat(style["--receipt-photo-scoreboard-width"]) > 14);
-  assert.ok(parseFloat(style["--receipt-photo-scoreboard-skew-y"]) < -3);
 });
 
 test("receipt emblems come only from explicitly loaded canonical teams", async () => {
@@ -559,7 +553,7 @@ test("receipt capability cookies stay isolated when creation responses arrive ou
 });
 
 test("receipt photo tools stay outside the export card and reference dividers remain", async () => {
-  const [page, preview, qrComponent, styles, tokens, renderer, roomDialog, digitGenerator, syncScript, draftApi, emblemApi, landing, appSource, homeNeutralMark, awayNeutralMark, paperGrain, scoreDigitSource, scoreDigits, wordmark, bebasNeue, bebasLicense, blackHanSans, detailStyles, lineArt] = await Promise.all([
+  const [page, preview, qrComponent, styles, tokens, renderer, roomDialog, digitGenerator, displayAssetGenerator, syncScript, draftApi, emblemApi, landing, appSource, homeNeutralMark, awayNeutralMark, paperGrain, scoreDigitSource, scoreDigits, scoreboardDigits, wordmark, bebasNeue, bebasLicense, blackHanSans, detailStyles, lineArt] = await Promise.all([
     readFile(new URL("../src/pages/MatchReceipt.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/components/match/MatchReceiptPreview.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/components/common/QrCode.jsx", import.meta.url), "utf8"),
@@ -568,6 +562,7 @@ test("receipt photo tools stay outside the export card and reference dividers re
     readFile(new URL("../src/lib/matchReceipt.js", import.meta.url), "utf8"),
     readFile(new URL("../src/components/recruiting/RecruitingRoomDialogSection.jsx", import.meta.url), "utf8"),
     readFile(new URL("../scripts/generate-receipt-score-digits.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../scripts/generate-match-receipt-display-assets.mjs", import.meta.url), "utf8"),
     readFile(new URL("../scripts/sync-receipt-assets-to-r2.mjs", import.meta.url), "utf8"),
     readFile(new URL("../server/api/match-receipts/draft.js", import.meta.url), "utf8"),
     readFile(new URL("../server/api/match-receipts/emblem.js", import.meta.url), "utf8"),
@@ -578,7 +573,8 @@ test("receipt photo tools stay outside the export card and reference dividers re
     readFile(new URL("../public/assets/match-receipt-paper-grain-v1.png", import.meta.url)),
     readFile(new URL("../public/assets/match-receipt-score-digits-source-v1.png", import.meta.url)),
     readFile(new URL("../public/assets/match-receipt-score-digits-v3.png", import.meta.url)),
-    readFile(new URL("../public/assets/boxtier_letter_dark.png", import.meta.url)),
+    readFile(new URL("../public/assets/match-receipt-scoreboard-digits-v1.png", import.meta.url)),
+    readFile(new URL("../public/assets/match-receipt-wordmark-v1.png", import.meta.url)),
     readFile(new URL("../public/assets/fonts/BebasNeue-Regular.ttf", import.meta.url)),
     readFile(new URL("../public/assets/fonts/BebasNeue-OFL.txt", import.meta.url), "utf8"),
     readFile(new URL("../public/assets/fonts/BlackHanSans-Regular.ttf", import.meta.url)),
@@ -846,11 +842,13 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(renderer, /`\$\{tier\.name\}\$\{division \? ` \$\{division\}` : ""\}`\.toUpperCase\(\)/);
   assert.match(renderer, /rankball-record-create-night-v10\.webp/);
   assert.match(preview, /!photoUrl \? <ReceiptPhotoScoreboard homeScore=\{model\.homeScore\} awayScore=\{model\.awayScore\} \/> : null/);
+  assert.match(preview, /--receipt-scoreboard-digits/);
+  assert.doesNotMatch(preview, /MATCH_RECEIPT_SEVEN_SEGMENT_PATHS|<svg/);
   assert.match(renderer, /if \(!options\.photoBlob\) \{\s*drawCanvasPhotoScoreboard/);
   assert.match(renderer, /formatMatchReceiptScoreboardScore\(model\.homeScore\)/);
-  assert.match(detailStyles, /\.match-receipt-photo-scoreboard\s*\{[^}]*top:\s*var\(--receipt-photo-scoreboard-top\);[^}]*left:\s*var\(--receipt-photo-scoreboard-left\);/);
-  assert.match(detailStyles, /transform:\s*skewY\(var\(--receipt-photo-scoreboard-skew-y\)\)/);
-  assert.match(renderer, /ctx\.transform\(\s*sourceBoard\.width,\s*sourceBoard\.topEdgeRise/);
+  assert.match(renderer, /loadCanvasImage\(model\.scoreboardDigitsUrl\)/);
+  assert.doesNotMatch(renderer, /MATCH_RECEIPT_SEVEN_SEGMENT_PATHS|Path2D/);
+  assert.match(detailStyles, /\.match-receipt-photo-scoreboard\s*\{[^}]*top:\s*25\.2%;[^}]*left:\s*62\.7%;/);
   assert.match(renderer, /document\.fonts\.load\('900 270px "Bebas Neue"'\)/);
   assert.match(renderer, /document\.fonts\.load\('900 58px "Black Han Sans"'\)/);
   assert.match(renderer, /TEAM TIER · \$\{team\.tier\.label\}/);
@@ -869,9 +867,13 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.doesNotMatch(digitGenerator, /fontfile:/);
   assert.doesNotMatch(digitGenerator, /const DIGIT_PATHS =/);
   assert.doesNotMatch(digitGenerator, /<svg/);
+  assert.match(displayAssetGenerator, /match-receipt-scoreboard-digits-v1\.png/);
+  assert.match(displayAssetGenerator, /match-receipt-wordmark-v1\.png/);
+  assert.doesNotMatch(displayAssetGenerator, /<svg|fontfile:/);
   assert.match(syncScript, /match-receipt-score-digits-v3\.png/);
   assert.match(syncScript, /rankball-record-create-night-v10\.webp/);
-  assert.match(syncScript, /boxtier_letter_dark\.png/);
+  assert.match(syncScript, /match-receipt-scoreboard-digits-v1\.png/);
+  assert.match(syncScript, /match-receipt-wordmark-v1\.png/);
   assert.match(syncScript, /R2_UPLOAD_MAX_ATTEMPTS = 3/);
   assert.match(syncScript, /response\.status === 429 \|\| response\.status >= 500/);
   assert.match(draftApi, /allowRequestMethod\(request, response, \["GET", "POST"\]\)/);
@@ -917,10 +919,12 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.equal(paperGrain.subarray(1, 4).toString("ascii"), "PNG");
   assert.equal(scoreDigitSource.subarray(1, 4).toString("ascii"), "PNG");
   assert.equal(scoreDigits.subarray(1, 4).toString("ascii"), "PNG");
+  assert.equal(scoreboardDigits.subarray(1, 4).toString("ascii"), "PNG");
   assert.equal(wordmark.subarray(1, 4).toString("ascii"), "PNG");
   assert.ok(scoreDigitSource.length > 1_000_000);
   assert.ok(paperGrain.length > 1_000_000);
   assert.ok(scoreDigits.length > 500_000);
+  assert.ok(scoreboardDigits.length > 3_000);
   assert.ok(wordmark.length > 10_000);
   assert.match(tokens, /font-family: "Bebas Neue"/);
   assert.match(tokens, /BebasNeue-Regular\.ttf/);

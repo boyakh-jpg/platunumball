@@ -1,7 +1,7 @@
 import { RECORD_TYPES } from "./constants.js";
 import { isPersonalRecordMatch, isPubliclyReadableConfirmedMatch } from "../../shared/lib/matchRecordTypes.js";
 import { hasVerifiedPlayerStats } from "../../shared/lib/matchSummary.js";
-import { assetUrl, BOXTIER_LETTER_DARK_URL, BOXTIER_LOGO_URL } from "./assets.js";
+import { assetUrl, BOXTIER_LOGO_URL } from "./assets.js";
 import { createQrMatrix } from "./qrCode.js";
 import { getMatchFormatLabel } from "./matchRules.js";
 import { getTier, getTierDivisionNumber } from "./tier.js";
@@ -53,42 +53,12 @@ export const MATCH_RECEIPT_CANVAS_SIZES = Object.freeze({
 
 export const MATCH_RECEIPT_PHOTO_ASPECT = 1080 / 885;
 const MATCH_RECEIPT_DEFAULT_PHOTO_FOCUS = Object.freeze({ x: 0, y: 82 });
-const MATCH_RECEIPT_DEFAULT_PHOTO_ASPECT = 941 / 1671;
 const MATCH_RECEIPT_DEFAULT_SCOREBOARD_SOURCE_RECT = Object.freeze({
-  x: 582 / 941,
+  x: 590 / 941,
   y: 275 / 1671,
-  width: 132 / 941,
+  width: 117 / 941,
   height: 96 / 1671,
-  topEdgeRise: -8 / 1671,
 });
-
-export const MATCH_RECEIPT_SEVEN_SEGMENT_PATHS = Object.freeze([
-  "M9 2H41L46 7L40 12H10L4 7Z",
-  "M47 9L50 13V39L47 43L42 38V14Z",
-  "M47 47L50 51V77L47 81L42 76V52Z",
-  "M10 78H40L46 83L41 88H9L4 83Z",
-  "M3 47L8 52V76L3 81L0 77V51Z",
-  "M3 9L8 14V38L3 43L0 39V13Z",
-  "M9 40H41L46 45L41 50H9L4 45Z",
-]);
-
-const MATCH_RECEIPT_SEVEN_SEGMENT_MASKS = Object.freeze({
-  0: "1111110",
-  1: "0110000",
-  2: "1101101",
-  3: "1111001",
-  4: "0110011",
-  5: "1011011",
-  6: "1011111",
-  7: "1110000",
-  8: "1111111",
-  9: "1111011",
-});
-
-export function getMatchReceiptSevenSegmentMask(value) {
-  return MATCH_RECEIPT_SEVEN_SEGMENT_MASKS[String(value)] ?? "0000000";
-}
-
 export function formatMatchReceiptScoreboardScore(value) {
   return String(cleanScore(value)).padStart(2, "0");
 }
@@ -106,35 +76,13 @@ export function getMatchReceiptPhotoStyle(value, aspect = MATCH_RECEIPT_PHOTO_AS
   const photoX = options.defaultPhoto ? MATCH_RECEIPT_DEFAULT_PHOTO_FOCUS.x : draft.photoX;
   const photoY = options.defaultPhoto ? MATCH_RECEIPT_DEFAULT_PHOTO_FOCUS.y : draft.photoY;
   const panRange = Math.max(0, draft.photoZoom - 1) * 50;
-  const style = {
+  return {
     "--receipt-photo-position-x": `${50 - photoX / 2}%`,
     "--receipt-photo-position-y": `${50 - photoY / 2}%`,
     "--receipt-photo-shift-x": `${photoX / 100 * panRange}%`,
     "--receipt-photo-shift-y": `${photoY / 100 * panRange}%`,
     "--receipt-photo-scale": getMatchReceiptRotationCoverScale(draft.photoRotation, aspect) * draft.photoZoom,
     "--receipt-photo-rotation": `${draft.photoRotation}deg`,
-  };
-  if (!options.defaultPhoto) return style;
-
-  const viewportHeight = 1 / aspect;
-  const photoHeight = 1 / MATCH_RECEIPT_DEFAULT_PHOTO_ASPECT;
-  const positionY = (100 - MATCH_RECEIPT_DEFAULT_PHOTO_FOCUS.y) / 200;
-  const scoreboardTop = (
-    MATCH_RECEIPT_DEFAULT_SCOREBOARD_SOURCE_RECT.y * photoHeight
-    - (photoHeight - viewportHeight) * positionY
-  ) / viewportHeight;
-  const scoreboardHeight = MATCH_RECEIPT_DEFAULT_SCOREBOARD_SOURCE_RECT.height * photoHeight / viewportHeight;
-  const scoreboardSkewY = Math.atan2(
-    MATCH_RECEIPT_DEFAULT_SCOREBOARD_SOURCE_RECT.topEdgeRise * photoHeight,
-    MATCH_RECEIPT_DEFAULT_SCOREBOARD_SOURCE_RECT.width,
-  ) * 180 / Math.PI;
-  return {
-    ...style,
-    "--receipt-photo-scoreboard-top": `${scoreboardTop * 100}%`,
-    "--receipt-photo-scoreboard-left": `${MATCH_RECEIPT_DEFAULT_SCOREBOARD_SOURCE_RECT.x * 100}%`,
-    "--receipt-photo-scoreboard-width": `${MATCH_RECEIPT_DEFAULT_SCOREBOARD_SOURCE_RECT.width * 100}%`,
-    "--receipt-photo-scoreboard-height": `${scoreboardHeight * 100}%`,
-    "--receipt-photo-scoreboard-skew-y": `${scoreboardSkewY}deg`,
   };
 }
 
@@ -175,6 +123,9 @@ const MATCH_RECEIPT_PAPER_URL = assetUrl("/assets/match-receipt-paper-torn-v1.pn
 const MATCH_RECEIPT_PAPER_GRAIN_URL = assetUrl("/assets/match-receipt-paper-grain-v1.png");
 const MATCH_RECEIPT_SCORE_DIGITS_URL = assetUrl("/assets/match-receipt-score-digits-v3.png");
 const MATCH_RECEIPT_SCORE_GLYPH_COUNT = 11;
+const MATCH_RECEIPT_SCOREBOARD_DIGITS_URL = assetUrl("/assets/match-receipt-scoreboard-digits-v1.png");
+const MATCH_RECEIPT_SCOREBOARD_GLYPH_COUNT = 11;
+const MATCH_RECEIPT_SCOREBOARD_ROW_COUNT = 2;
 
 function todayInKorea() {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -664,11 +615,12 @@ export function createMatchReceiptViewModel(value, options = {}) {
     locationLabel: draft.address || draft.venue,
     matchUrl: String(options.matchUrl ?? ""),
     logoUrl: BOXTIER_LOGO_URL,
-    wordmarkUrl: BOXTIER_LETTER_DARK_URL,
+    wordmarkUrl: assetUrl("/assets/match-receipt-wordmark-v1.png"),
     defaultPhotoUrl: assetUrl("/assets/rankball-record-create-night-v10.webp"),
     paperUrl: MATCH_RECEIPT_PAPER_URL,
     paperGrainUrl: MATCH_RECEIPT_PAPER_GRAIN_URL,
     scoreDigitsUrl: MATCH_RECEIPT_SCORE_DIGITS_URL,
+    scoreboardDigitsUrl: MATCH_RECEIPT_SCOREBOARD_DIGITS_URL,
     neutralTeamMarkUrls: MATCH_RECEIPT_NEUTRAL_TEAM_MARK_URLS,
     teamEmblemUrls: {
       home: draft.homeUseLineArt && draft.homeEmblemKey ? assetUrl(`/${draft.homeEmblemKey.replace(/^\/+/, "")}`) : "",
@@ -789,29 +741,30 @@ function getDefaultPhotoSourceRect(image, rect, sourceRect) {
     y: rect.y - (foregroundHeight - rect.height) * positionY + sourceRect.y * foregroundHeight,
     width: sourceRect.width * foregroundWidth,
     height: sourceRect.height * foregroundHeight,
-    topEdgeRise: sourceRect.topEdgeRise * foregroundHeight,
   };
 }
 
-function drawCanvasSevenSegmentDigit(ctx, value, rect) {
-  const mask = getMatchReceiptSevenSegmentMask(value);
-  ctx.save();
-  ctx.translate(rect.x, rect.y);
-  ctx.scale(rect.width / 50, rect.height / 90);
-  MATCH_RECEIPT_SEVEN_SEGMENT_PATHS.forEach((path, index) => {
-    const active = mask[index] === "1";
-    ctx.fillStyle = active ? "#ff6339" : "rgba(90,25,14,0.24)";
-    ctx.shadowColor = active ? "#ff6339" : "transparent";
-    ctx.shadowBlur = active ? 1.2 : 0;
-    ctx.fill(new Path2D(path));
-  });
-  ctx.restore();
+function drawCanvasScoreboardGlyph(ctx, atlas, value, row, rect) {
+  const glyph = value === ":" ? 10 : Math.max(0, Math.min(9, Number(value) || 0));
+  const sourceWidth = atlas.naturalWidth / MATCH_RECEIPT_SCOREBOARD_GLYPH_COUNT;
+  const sourceHeight = atlas.naturalHeight / MATCH_RECEIPT_SCOREBOARD_ROW_COUNT;
+  ctx.drawImage(
+    atlas,
+    glyph * sourceWidth,
+    row * sourceHeight,
+    sourceWidth,
+    sourceHeight,
+    rect.x,
+    rect.y,
+    rect.width,
+    rect.height,
+  );
 }
 
-function drawCanvasSevenSegmentValue(ctx, value, rect) {
+function drawCanvasScoreboardValue(ctx, atlas, value, row, rect) {
   const digits = Array.from(String(value));
   const gap = rect.height * 0.035;
-  const naturalDigitWidth = rect.height * 50 / 90;
+  const naturalDigitWidth = rect.height * 64 / 112;
   const naturalWidth = naturalDigitWidth * digits.length + gap * Math.max(0, digits.length - 1);
   const scale = Math.min(1, rect.width / naturalWidth);
   const digitWidth = naturalDigitWidth * scale;
@@ -821,67 +774,50 @@ function drawCanvasSevenSegmentValue(ctx, value, rect) {
   let x = rect.x + (rect.width - totalWidth) / 2;
   const y = rect.y + (rect.height - digitHeight) / 2;
   digits.forEach((digit) => {
-    drawCanvasSevenSegmentDigit(ctx, digit, { x, y, width: digitWidth, height: digitHeight });
+    drawCanvasScoreboardGlyph(ctx, atlas, digit, row, { x, y, width: digitWidth, height: digitHeight });
     x += digitWidth + scaledGap;
   });
 }
 
-function drawCanvasPhotoScoreboard(ctx, image, photoRect, model) {
-  const sourceBoard = getDefaultPhotoSourceRect(image, photoRect, MATCH_RECEIPT_DEFAULT_SCOREBOARD_SOURCE_RECT);
-  ctx.save();
-  ctx.transform(
-    sourceBoard.width,
-    sourceBoard.topEdgeRise,
-    0,
-    sourceBoard.height,
-    sourceBoard.x,
-    sourceBoard.y,
-  );
-  const board = { x: 0, y: 0, width: 1, height: 1 };
+function drawCanvasPhotoScoreboard(ctx, image, atlas, photoRect, model) {
+  const board = getDefaultPhotoSourceRect(image, photoRect, MATCH_RECEIPT_DEFAULT_SCOREBOARD_SOURCE_RECT);
   const clockY = board.y;
   const clockHeight = board.height * 0.38;
   const clockDigitAreaWidth = board.width * 0.37;
-  drawCanvasSevenSegmentValue(ctx, "00", {
+  drawCanvasScoreboardValue(ctx, atlas, "00", 1, {
     x: board.x + board.width * 0.1,
     y: clockY,
     width: clockDigitAreaWidth,
     height: clockHeight,
   });
-  drawCanvasSevenSegmentValue(ctx, "00", {
+  drawCanvasScoreboardValue(ctx, atlas, "00", 1, {
     x: board.x + board.width * 0.53,
     y: clockY,
     width: clockDigitAreaWidth,
     height: clockHeight,
   });
-  ctx.save();
-  ctx.fillStyle = "#ff6339";
-  ctx.shadowColor = "#ff6339";
-  ctx.shadowBlur = 1.2;
-  const colonX = board.x + board.width * 0.5;
-  const colonRadius = board.width * 0.012;
-  [0.39, 0.61].forEach((position) => {
-    ctx.beginPath();
-    ctx.arc(colonX, clockY + clockHeight * position, colonRadius, 0, Math.PI * 2);
-    ctx.fill();
+  drawCanvasScoreboardGlyph(ctx, atlas, ":", 1, {
+    x: board.x + board.width * 0.475,
+    y: clockY,
+    width: board.width * 0.05,
+    height: clockHeight,
   });
-  ctx.restore();
 
   const scoreY = board.y + board.height * 0.53;
   const scoreHeight = board.height * 0.45;
   const scoreWidth = board.width * 0.41;
-  drawCanvasSevenSegmentValue(ctx, formatMatchReceiptScoreboardScore(model.homeScore), {
+  drawCanvasScoreboardValue(ctx, atlas, formatMatchReceiptScoreboardScore(model.homeScore), 0, {
     x: board.x + board.width * 0.02,
     y: scoreY,
     width: scoreWidth,
     height: scoreHeight,
   });
-  drawCanvasSevenSegmentValue(ctx, formatMatchReceiptScoreboardScore(model.awayScore), {
+  drawCanvasScoreboardValue(ctx, atlas, formatMatchReceiptScoreboardScore(model.awayScore), 0, {
     x: board.x + board.width * 0.57,
     y: scoreY,
     width: scoreWidth,
     height: scoreHeight,
   });
-  ctx.restore();
 }
 
 function createCanvasPaperPattern(ctx, paperGrain) {
@@ -1128,7 +1064,7 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
   const receiptTop = compact ? 1010 : 1504;
   const photoPromise = loadCanvasImage(options.photoBlob || model.defaultPhotoUrl)
     .catch((error) => (options.photoBlob ? loadCanvasImage(model.defaultPhotoUrl) : Promise.reject(error)));
-  const [photo, wordmark, homeTier, awayTier, homeNeutralTeamMark, awayNeutralTeamMark, personalTier, paper, paperGrain, scoreDigits, homeLineArtUrl, awayLineArtUrl] = await Promise.all([
+  const [photo, wordmark, homeTier, awayTier, homeNeutralTeamMark, awayNeutralTeamMark, personalTier, paper, paperGrain, scoreDigits, scoreboardDigits, homeLineArtUrl, awayLineArtUrl] = await Promise.all([
     photoPromise,
     loadCanvasImage(model.wordmarkUrl).catch(() => null),
     model.showTeamTierEmblems && model.homeTier ? loadCanvasImage(model.homeTier.outlineSrc).catch(() => null) : null,
@@ -1139,6 +1075,7 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
     loadCanvasImage(model.paperUrl),
     loadCanvasImage(model.paperGrainUrl),
     loadCanvasImage(model.scoreDigitsUrl),
+    loadCanvasImage(model.scoreboardDigitsUrl),
     options.teamLineArtUrls?.home || createMatchReceiptLineArt(model.teamEmblemUrls.home),
     options.teamLineArtUrls?.away || createMatchReceiptLineArt(model.teamEmblemUrls.away),
   ]);
@@ -1152,7 +1089,7 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
   ctx.fillRect(0, 0, width, height);
   drawCoverPhoto(ctx, photo, { x: 0, y: 0, width, height: photoHeight }, model, { defaultPhoto: !options.photoBlob });
   if (!options.photoBlob) {
-    drawCanvasPhotoScoreboard(ctx, photo, { x: 0, y: 0, width, height: photoHeight }, model);
+    drawCanvasPhotoScoreboard(ctx, photo, scoreboardDigits, { x: 0, y: 0, width, height: photoHeight }, model);
   }
 
   const blurredPhoto = document.createElement("canvas");

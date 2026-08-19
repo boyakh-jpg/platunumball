@@ -269,7 +269,6 @@ export default function SettingsPrimaryColumn({ controller }) {
                 <Button
                   type="button"
                   variant="secondary"
-                  size="sm"
                   disabled={generalSettingsSavePending}
                   onClick={() => setDiscordDraft((current) => ({
                     ...current,
@@ -280,7 +279,7 @@ export default function SettingsPrimaryColumn({ controller }) {
                   <Unlink2 size={15} /> {discordDraft.unlink ? "해제 취소" : "연동 해제"}
                 </Button>
               ) : (
-                <Button type="button" variant="secondary" size="sm" disabled={generalSettingsSavePending || discordLinkPending} onClick={connectDiscord}>
+                <Button type="button" variant="secondary" disabled={generalSettingsSavePending || discordLinkPending} onClick={connectDiscord}>
                   {discordLinkPending ? "연동 준비 중" : "Discord 연동"}
                 </Button>
               )}

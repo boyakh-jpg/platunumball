@@ -231,12 +231,12 @@ html[data-theme] .ui-button.ui-button-secondary:active:not(:disabled) {
   cursor: pointer;
 }
 
-.ui-folder-tabs button:hover:not([aria-selected="true"]) {
+.ui-folder-tabs button:hover:not(:is([aria-selected="true"], [aria-checked="true"])) {
   background: transparent;
   color: var(--rb-text);
 }
 
-.ui-folder-tabs button[aria-selected="true"] {
+.ui-folder-tabs button:is([aria-selected="true"], [aria-checked="true"]) {
   border-color: transparent;
   background: transparent;
   color: var(--rb-orange-2);

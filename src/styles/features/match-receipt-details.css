@@ -2,25 +2,23 @@
 .match-receipt-editor input[aria-invalid="true"]::placeholder { color: var(--danger); opacity: 1; }
 
 .match-receipt-photo-scoreboard {
-  --receipt-scoreboard-lit: #ff6339;
-  --receipt-scoreboard-unlit: rgba(90, 25, 14, 0.24);
   position: absolute;
   z-index: 3;
-  top: var(--receipt-photo-scoreboard-top);
-  left: var(--receipt-photo-scoreboard-left);
+  top: 25.2%;
+  left: 62.7%;
   display: grid;
   grid-template-rows: 38% 45%;
   align-content: space-between;
-  width: var(--receipt-photo-scoreboard-width);
-  height: var(--receipt-photo-scoreboard-height);
-  transform: skewY(var(--receipt-photo-scoreboard-skew-y));
-  transform-origin: top left;
+  width: 12.4%;
+  height: 12.4%;
+  transform: rotate(-0.25deg);
+  transform-origin: center;
   pointer-events: none;
 }
 
 .match-receipt-photo-scoreboard-clock,
 .match-receipt-photo-scoreboard-scores,
-.match-receipt-seven-segment-value {
+.match-receipt-scoreboard-value {
   display: flex;
   min-width: 0;
   height: 100%;
@@ -38,38 +36,20 @@
   gap: 14%;
 }
 
-.match-receipt-seven-segment-value {
+.match-receipt-scoreboard-value {
   justify-content: center;
   gap: 2%;
 }
 
-.match-receipt-seven-segment-digit {
+.match-receipt-scoreboard-glyph {
   display: block;
   width: auto;
   height: 100%;
-  overflow: visible;
-}
-
-.match-receipt-seven-segment-digit path { fill: var(--receipt-scoreboard-unlit); }
-.match-receipt-seven-segment-digit path.is-active {
-  fill: var(--receipt-scoreboard-lit);
-  filter: drop-shadow(0 0 1.2px var(--receipt-scoreboard-lit));
-}
-
-.match-receipt-seven-segment-colon {
-  display: grid;
-  flex: 0 0 5%;
-  align-content: center;
-  gap: 18%;
-  height: 62%;
-}
-
-.match-receipt-seven-segment-colon > i {
-  display: block;
-  aspect-ratio: 1;
-  border-radius: 50%;
-  background: var(--receipt-scoreboard-lit);
-  box-shadow: 0 0 1.2px var(--receipt-scoreboard-lit);
+  aspect-ratio: 64 / 112;
+  background-image: var(--receipt-scoreboard-digits);
+  background-repeat: no-repeat;
+  background-size: 1100% 200%;
+  background-position: calc(var(--receipt-scoreboard-glyph) * 10%) calc(var(--receipt-scoreboard-row) * 100%);
 }
 
 .match-receipt-wordmark small {

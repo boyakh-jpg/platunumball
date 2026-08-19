@@ -5,9 +5,7 @@ import {
   formatMatchReceiptScoreboardScore,
   getMatchReceiptFormatLabel,
   getMatchReceiptPhotoStyle,
-  getMatchReceiptSevenSegmentMask,
   getMatchReceiptTeamNameScale,
-  MATCH_RECEIPT_SEVEN_SEGMENT_PATHS,
 } from "../../lib/matchReceipt.js";
 import { createMatchReceiptLineArt } from "../../lib/matchReceiptEmblem.js";
 import QrCode from "../common/QrCode.jsx";
@@ -28,22 +26,15 @@ function ReceiptScoreDigits({ value, className = "match-receipt-score-digits" })
   );
 }
 
-function ReceiptSevenSegmentDigit({ value }) {
-  const mask = getMatchReceiptSevenSegmentMask(value);
-  return (
-    <svg className="match-receipt-seven-segment-digit" viewBox="0 0 50 90" aria-hidden="true">
-      {MATCH_RECEIPT_SEVEN_SEGMENT_PATHS.map((path, index) => (
-        <path className={mask[index] === "1" ? "is-active" : undefined} d={path} key={path} />
-      ))}
-    </svg>
-  );
+function ReceiptScoreboardGlyph({ value, row }) {
+  return <i className="match-receipt-scoreboard-glyph" style={{ "--receipt-scoreboard-glyph": value === ":" ? 10 : Number(value), "--receipt-scoreboard-row": row }} />;
 }
 
-function ReceiptSevenSegmentValue({ value }) {
+function ReceiptScoreboardValue({ value, row }) {
   return (
-    <span className="match-receipt-seven-segment-value">
+    <span className="match-receipt-scoreboard-value">
       {Array.from(String(value)).map((digit, index) => (
-        <ReceiptSevenSegmentDigit value={digit} key={`${digit}-${index}`} />
+        <ReceiptScoreboardGlyph value={digit} row={row} key={`${digit}-${index}`} />
       ))}
     </span>
   );
@@ -57,13 +48,13 @@ function ReceiptPhotoScoreboard({ homeScore, awayScore }) {
       aria-label={`경기 종료 ${homeScore} 대 ${awayScore}`}
     >
       <span className="match-receipt-photo-scoreboard-clock" aria-hidden="true">
-        <ReceiptSevenSegmentValue value="00" />
-        <i className="match-receipt-seven-segment-colon"><i /><i /></i>
-        <ReceiptSevenSegmentValue value="00" />
+        <ReceiptScoreboardValue value="00" row={1} />
+        <ReceiptScoreboardGlyph value=":" row={1} />
+        <ReceiptScoreboardValue value="00" row={1} />
       </span>
       <span className="match-receipt-photo-scoreboard-scores" aria-hidden="true">
-        <ReceiptSevenSegmentValue value={formatMatchReceiptScoreboardScore(homeScore)} />
-        <ReceiptSevenSegmentValue value={formatMatchReceiptScoreboardScore(awayScore)} />
+        <ReceiptScoreboardValue value={formatMatchReceiptScoreboardScore(homeScore)} row={0} />
+        <ReceiptScoreboardValue value={formatMatchReceiptScoreboardScore(awayScore)} row={0} />
       </span>
     </div>
   );
@@ -129,6 +120,7 @@ export default function MatchReceiptPreview({
         "--receipt-paper-texture": `url("${model.paperGrainUrl}")`,
         "--receipt-paper-grain": `url("${model.paperGrainUrl}")`,
         "--receipt-score-digits": `url("${model.scoreDigitsUrl}")`,
+        "--receipt-scoreboard-digits": `url("${model.scoreboardDigitsUrl}")`,
         ...getMatchReceiptPhotoStyle(model, undefined, { defaultPhoto: !photoUrl }),
       }}
       aria-label="경기 영수증 미리보기"
@@ -151,7 +143,7 @@ export default function MatchReceiptPreview({
               const image = event.currentTarget;
               if (image.dataset.localFallback !== "true") {
                 image.dataset.localFallback = "true";
-                image.src = "/assets/boxtier_letter_dark.png";
+                image.src = "/assets/match-receipt-wordmark-v1.png";
                 return;
               }
               image.hidden = true;

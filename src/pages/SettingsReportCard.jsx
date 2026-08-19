@@ -249,10 +249,12 @@ export function SettingsReportCard({ controller, onOpenList }) {
                 />
                 {isVoidRestoreReport ? <small>{reportMemo.trim().length}/10자 이상</small> : null}
               </label>
-              <Button type="submit" variant="secondary" disabled={!canSubmitReport || reportSubmitPending}>{reportSubmitPending ? "저장 중" : "신고 접수"}</Button>
+              <div className="settings-paired-actions">
+                <Button type="submit" variant="secondary" disabled={!canSubmitReport || reportSubmitPending}>{reportSubmitPending ? "저장 중" : "신고 접수"}</Button>
+                <Button type="button" variant="secondary" onClick={() => onOpenList?.("reports")}>신고 목록 열람 {app.state.reports?.length ?? 0}건</Button>
+              </div>
               {reportSubmitStatus ? <small role="status">{reportSubmitStatus}</small> : null}
             </form>
-            <Button type="button" variant="secondary" className="settings-list-open-button" onClick={() => onOpenList?.("reports")}>신고 목록 열람 {app.state.reports?.length ?? 0}건</Button>
           </Card>
   );
 }

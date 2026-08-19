@@ -103,6 +103,11 @@
   overflow: visible;
 }
 
+.arena-filter-tabs {
+  flex: 1 1 100%;
+  width: 100%;
+}
+
 .arena-filter-bar .arena-start-date-filter button {
   min-height: 42px;
   max-width: 72px;
@@ -429,6 +434,19 @@ html[data-theme="light"] .arena-filter-bar {
   border-color: var(--rb-line);
   background: var(--rb-surface);
   box-shadow: var(--shadow);
+}
+
+html[data-theme="light"] .arena-hero-panel {
+  box-shadow: none;
+}
+
+.arena-filter-bar .arena-filter-tabs button,
+html[data-theme="light"] .arena-filter-bar .arena-filter-tabs button {
+  min-height: var(--ui-button-height-sm);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 html[data-theme="light"] .arena-lobby-arena::before {
