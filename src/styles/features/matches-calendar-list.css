@@ -109,8 +109,7 @@
   align-items: start;
 }
 
-.om-calendar-summary h2 {
-  margin-top: 2px;
+.om-calendar-summary legend strong {
   font-size: 1.08rem;
 }
 

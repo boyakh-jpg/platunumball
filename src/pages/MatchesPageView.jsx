@@ -130,41 +130,38 @@ return (
           </section>
 
           {panelMode !== "tournament" ? (
-            <div className="om-calendar-summary">
-          <div className="om-calendar-heading">
-            <span className="om-view-icon"><CalendarDays size={22} /></span>
-            <div>
-              <span className="eyebrow">SCHEDULE</span>
-              <h2>{panelMode === "team" ? "내 팀 일정" : "내 경기 일정"}</h2>
-            </div>
-          </div>
-          <section className="om-calendar-filter-bar" aria-label="경기 필터">
-            {panelMode !== "team" ? <div className="om-calendar-filter-row">
-              <span className="om-calendar-filter-label">관계</span>
-              <div className="ui-segmented-control segmented-control compact-segments om-relation-filter-grid ui-design-filter-tile" role="group" aria-label="관계 필터">
-                <button type="button" className={relationFilter === "all" ? "active" : ""} onClick={() => applyFilterState({ relationFilter: "all" })}>전체</button>
-                <button type="button" className={relationFilter === "created" ? "active" : ""} onClick={() => applyFilterState({ relationFilter: "created" })}>내가 만든 방</button>
-                <button type="button" className={relationFilter === "joined" ? "active" : ""} onClick={() => applyFilterState({ relationFilter: "joined" })}>내 참여방</button>
-                <button type="button" className={relationFilter === "invited" ? "active" : ""} onClick={() => applyFilterState({ relationFilter: "invited" })}>초대받은 방</button>
-              </div>
-            </div> : null}
-            {panelMode !== "team" ? <div className="om-calendar-filter-row">
-              <span className="om-calendar-filter-label">유형</span>
-              <div className="ui-segmented-control segmented-control compact-segments om-branch-filter-grid ui-design-filter-tile" role="group" aria-label="유형 필터">
-                {SCHEDULE_BRANCH_FILTERS.map((option) => (
-                  <button
-                    key={option.id}
-                    type="button"
-                    className={branchFilter === option.id ? "active" : ""}
-                    onClick={() => applyFilterState({ branchFilter: option.id })}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-            </div> : null}
-          </section>
-            </div>
+            <fieldset className="om-calendar-summary">
+              <legend className="om-calendar-heading">
+                <strong>{panelMode === "team" ? "내 팀 일정" : "내 경기 일정"}</strong>
+                <span className="eyebrow">SCHEDULE</span>
+              </legend>
+              <section className="om-calendar-filter-bar" aria-label="경기 필터">
+                {panelMode !== "team" ? <div className="om-calendar-filter-row">
+                  <span className="om-calendar-filter-label">관계</span>
+                  <div className="ui-segmented-control segmented-control compact-segments om-relation-filter-grid ui-design-filter-tile" role="group" aria-label="관계 필터">
+                    <button type="button" className={relationFilter === "all" ? "active" : ""} onClick={() => applyFilterState({ relationFilter: "all" })}>전체</button>
+                    <button type="button" className={relationFilter === "created" ? "active" : ""} onClick={() => applyFilterState({ relationFilter: "created" })}>내가 만든 방</button>
+                    <button type="button" className={relationFilter === "joined" ? "active" : ""} onClick={() => applyFilterState({ relationFilter: "joined" })}>내 참여방</button>
+                    <button type="button" className={relationFilter === "invited" ? "active" : ""} onClick={() => applyFilterState({ relationFilter: "invited" })}>초대받은 방</button>
+                  </div>
+                </div> : null}
+                {panelMode !== "team" ? <div className="om-calendar-filter-row">
+                  <span className="om-calendar-filter-label">유형</span>
+                  <div className="ui-segmented-control segmented-control compact-segments om-branch-filter-grid ui-design-filter-tile" role="group" aria-label="유형 필터">
+                    {SCHEDULE_BRANCH_FILTERS.map((option) => (
+                      <button
+                        key={option.id}
+                        type="button"
+                        className={branchFilter === option.id ? "active" : ""}
+                        onClick={() => applyFilterState({ branchFilter: option.id })}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </div> : null}
+              </section>
+            </fieldset>
           ) : null}
         </aside>
 
