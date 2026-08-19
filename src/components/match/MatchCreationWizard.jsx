@@ -111,7 +111,7 @@ export function MatchIntentPresetSelector({ matchPurpose, formationMode, onPurpo
     <div className="match-intent-axis-grid">
       <div className="match-intent-axis">
         <span className="field-label create-choice-heading">경기 목적</span>
-        <div className="match-intent-preset-grid is-compact-control-grid match-purpose-options" role="radiogroup" aria-label="경기 목적">
+        <div className="match-intent-preset-grid is-compact-control-grid has-supporting-copy match-purpose-options" role="radiogroup" aria-label="경기 목적">
           {MATCH_PURPOSE_OPTIONS.map((option) => (
             <button
               key={option.id}

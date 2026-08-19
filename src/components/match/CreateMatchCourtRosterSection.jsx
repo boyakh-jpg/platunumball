@@ -257,7 +257,7 @@ export function CreateMatchCourtRosterSection({ context }) {
                   </div>
                   <Badge tone={ageRestrictionBlocked ? "orange" : "green"}>{ageRestrictionBlocked ? "차단" : "허용"}</Badge>
                 </div>
-                <div className="ui-segmented-control segmented-control compact-segments create-choice-segments age-restriction-segments" role="group" aria-label="연령 제한 허용 그룹">
+                <div className="ui-segmented-control segmented-control compact-segments create-choice-segments is-three age-restriction-segments" role="group" aria-label="연령 제한 허용 그룹">
                   {AGE_GROUPS.map((option) => (
                     <button
                       key={option.id}

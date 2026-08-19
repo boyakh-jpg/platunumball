@@ -23,7 +23,7 @@ export function CreateMatchIntentSection({ context }) {
             </div>
             <Badge tone={isTournamentRoom ? "gold" : isPublicRoom ? "green" : "neutral"}>{getRoomKindLabel(currentRoomKind)}</Badge>
           </div>
-          <div className={isRecordCreateIntent ? "create-mode-grid" : "create-mode-grid is-compact-control-grid"}>
+          <div className={isRecordCreateIntent ? "create-mode-grid" : "create-mode-grid is-compact-control-grid has-supporting-copy"}>
             {!isRecordCreateIntent ? (
               <>
                 <button

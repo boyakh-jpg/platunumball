@@ -56,6 +56,8 @@ const nonTokenStyleSources = styleFiles
 
 const componentSource = read("src/components/match/MatchListCard.jsx");
 const matchCreationWizardSource = read("src/components/match/MatchCreationWizard.jsx");
+const createMatchIntentSectionSource = read("src/components/match/CreateMatchIntentSection.jsx");
+const createMatchCourtRosterSectionSource = read("src/components/match/CreateMatchCourtRosterSection.jsx");
 const matchRecordMetaSource = read("src/components/match/MatchRecordMeta.jsx");
 const recentMatchRowSource = read("src/components/match/RecentMatchRow.jsx");
 const mmrRangeSelectorSource = read("src/components/match/MmrRangeSelector.jsx");
@@ -1005,7 +1007,27 @@ test("매칭과 기록 생성 선택 영역은 같은 제목과 버튼 타이포
   );
   assert.match(
     matchCreateOperationsStyles,
-    /\.create-match-page \.age-restriction-segments > button\s*\{[^}]*min-inline-size:\s*max-content;[^}]*white-space:\s*nowrap;[^}]*word-break:\s*keep-all;/,
+    /@media \(min-width:\s*1101px\)[\s\S]*?\.create-match-info-grid\.is-standard-room > :is\([\s\S]*?\.create-title-field,[\s\S]*?\.create-capacity-field[\s\S]*?\)\s*\{[^}]*grid-template-columns:\s*max-content minmax\(0, 1fr\);[^}]*align-items:\s*center;/,
+  );
+  assert.match(
+    matchCreateOperationsStyles,
+    /\.create-match-page \.ui-segmented-control\.create-choice-segments\.age-restriction-segments > button\s*\{[^}]*min-inline-size:\s*max-content;[^}]*white-space:\s*nowrap;[^}]*word-break:\s*keep-all;/,
+  );
+  assert.match(
+    createMatchCourtRosterSectionSource,
+    /create-choice-segments is-three age-restriction-segments/,
+  );
+  assert.match(
+    createMatchIntentSectionSource,
+    /create-mode-grid is-compact-control-grid has-supporting-copy/,
+  );
+  assert.match(
+    matchCreationWizardSource,
+    /match-intent-preset-grid is-compact-control-grid has-supporting-copy match-purpose-options/,
+  );
+  assert.match(
+    matchCreateOperationsStyles,
+    /\.is-compact-control-grid\.has-supporting-copy > button\s*\{[^}]*min-height:\s*calc\(var\(--ui-button-height\) \+ var\(--space-4\)\);[^}]*height:\s*auto;[^}]*padding-block:\s*var\(--space-2\);/,
   );
 });
 

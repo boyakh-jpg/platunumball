@@ -235,7 +235,7 @@
   padding-inline-start: var(--space-5);
 }
 
-.create-match-page .age-restriction-segments > button {
+.create-match-page .ui-segmented-control.create-choice-segments.age-restriction-segments > button {
   min-inline-size: max-content;
   padding-inline: var(--space-2);
   white-space: nowrap;
@@ -244,6 +244,30 @@
 }
 
 @media (min-width: 1101px) {
+  .create-match-info-grid.is-standard-room > :is(
+    .create-title-field,
+    .create-format-field,
+    .create-timing-field,
+    .create-date-field,
+    .create-time-field,
+    .create-capacity-field
+  ) {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    align-items: center;
+    column-gap: var(--space-3);
+  }
+
+  .create-match-info-grid.is-standard-room > :is(
+    .create-format-field,
+    .create-timing-field,
+    .create-date-field,
+    .create-time-field,
+    .create-capacity-field
+  ) > :is(small, .form-warning) {
+    grid-column: 1 / -1;
+  }
+
   .create-visibility-card {
     display: grid;
     grid-template-columns: minmax(190px, max-content) minmax(0, 1fr);
@@ -341,9 +365,15 @@
   grid-template-columns: auto minmax(0, 1fr);
 }
 
-.create-match-page .create-mode-grid.is-compact-control-grid > button em,
-.create-match-page .match-intent-preset-grid.is-compact-control-grid > button > span {
+.create-match-page .create-mode-grid.is-compact-control-grid:not(.has-supporting-copy) > button em,
+.create-match-page .match-intent-preset-grid.is-compact-control-grid:not(.has-supporting-copy) > button > span {
   display: none;
+}
+
+.create-match-page :is(.create-mode-grid, .match-intent-preset-grid).is-compact-control-grid.has-supporting-copy > button {
+  min-height: calc(var(--ui-button-height) + var(--space-4));
+  height: auto;
+  padding-block: var(--space-2);
 }
 
 .match-roster-policy-fields {
