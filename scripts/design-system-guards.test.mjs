@@ -251,6 +251,13 @@ test("앱은 분류 박스 없는 표준 디자인을 사용하고 비교 데모
   assert.doesNotMatch(pageSources.matches, /om-view-card ui-design-soft-surface/);
   assert.match(pageSources.matches, /<fieldset className="om-calendar-summary">/);
   assert.match(pageSources.matches, /<legend className="om-calendar-heading">/);
+  assert.match(matchesStyles, /\.om-schedule-rail \.om-view-grid\s*\{[^}]*gap:\s*var\(--space-3\);[^}]*border:\s*0;/);
+  assert.match(matchesStyles, /\.om-schedule-workspace \.om-schedule-rail \.om-view-card\s*\{[^}]*border:\s*0;[^}]*background:\s*color-mix\(in srgb,\s*var\(--ui-control-bg\) 58%,\s*transparent\);/);
+  assert.match(matchesStyles, /\.om-schedule-workspace \.om-schedule-rail \.om-view-card\.active\s*\{[^}]*background:\s*color-mix\(in srgb,\s*var\(--rb-orange-2\) 12%,\s*var\(--ui-control-bg\)\);/);
+  assert.match(matchesStyles, /\.om-schedule-workspace \.om-schedule-rail > \.om-calendar-summary\s*\{[^}]*padding:\s*var\(--space-5\) var\(--space-6\) var\(--space-6\) var\(--space-10\);/);
+  assert.match(matchesStyles, /\.om-schedule-workspace\.is-calendar\s*\{[^}]*justify-content:\s*space-between;/);
+  assert.match(matchesStyles, /\.om-schedule-workspace > \.om-calendar-panel\s*\{[^}]*height:\s*100%;[^}]*align-self:\s*stretch;/);
+  assert.match(matchesStyles, /\.om-schedule-workspace \.om-calendar-box\s*\{[^}]*height:\s*100%;[^}]*grid-template-rows:\s*auto auto minmax\(0, 1fr\);/);
   assert.match(pageSources.recruiting, /arena-queue-controls ui-design-soft-surface/);
   assert.match(createMatchPageSource, /create-eligibility-control ui-design-borderless-surface/);
   assert.match(createMatchPageSource, /create-public-note ui-design-borderless-surface/);

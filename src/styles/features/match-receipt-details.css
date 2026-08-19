@@ -11,8 +11,8 @@
   align-content: space-between;
   width: 12.4%;
   height: 12.4%;
-  transform: rotate(-0.25deg);
-  transform-origin: center;
+  transform: skewY(-5.37deg);
+  transform-origin: top left;
   pointer-events: none;
 }
 

@@ -849,6 +849,10 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(renderer, /loadCanvasImage\(model\.scoreboardDigitsUrl\)/);
   assert.doesNotMatch(renderer, /MATCH_RECEIPT_SEVEN_SEGMENT_PATHS|Path2D/);
   assert.match(detailStyles, /\.match-receipt-photo-scoreboard\s*\{[^}]*top:\s*25\.2%;[^}]*left:\s*62\.7%;/);
+  assert.match(detailStyles, /transform:\s*skewY\(-5\.37deg\)/);
+  assert.match(detailStyles, /transform-origin:\s*top left/);
+  assert.match(renderer, /topEdgeRise:\s*-11 \/ 1671/);
+  assert.match(renderer, /ctx\.transform\(1, sourceBoard\.topEdgeRise \/ sourceBoard\.width, 0, 1, 0, 0\)/);
   assert.match(renderer, /document\.fonts\.load\('900 270px "Bebas Neue"'\)/);
   assert.match(renderer, /document\.fonts\.load\('900 58px "Black Han Sans"'\)/);
   assert.match(renderer, /TEAM TIER · \$\{team\.tier\.label\}/);
@@ -868,6 +872,8 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.doesNotMatch(digitGenerator, /const DIGIT_PATHS =/);
   assert.doesNotMatch(digitGenerator, /<svg/);
   assert.match(displayAssetGenerator, /match-receipt-scoreboard-digits-v1\.png/);
+  assert.match(displayAssetGenerator, /const COLORS = \[\[200, 120, 66\], \[205, 173, 145\]\]/);
+  assert.match(displayAssetGenerator, /const GLOW_RADIUS = 2/);
   assert.match(displayAssetGenerator, /match-receipt-wordmark-v1\.png/);
   assert.doesNotMatch(displayAssetGenerator, /<svg|fontfile:/);
   assert.match(syncScript, /match-receipt-score-digits-v3\.png/);

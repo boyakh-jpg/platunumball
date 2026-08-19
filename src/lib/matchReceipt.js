@@ -58,6 +58,7 @@ const MATCH_RECEIPT_DEFAULT_SCOREBOARD_SOURCE_RECT = Object.freeze({
   y: 275 / 1671,
   width: 117 / 941,
   height: 96 / 1671,
+  topEdgeRise: -11 / 1671,
 });
 export function formatMatchReceiptScoreboardScore(value) {
   return String(cleanScore(value)).padStart(2, "0");
@@ -741,6 +742,7 @@ function getDefaultPhotoSourceRect(image, rect, sourceRect) {
     y: rect.y - (foregroundHeight - rect.height) * positionY + sourceRect.y * foregroundHeight,
     width: sourceRect.width * foregroundWidth,
     height: sourceRect.height * foregroundHeight,
+    topEdgeRise: sourceRect.topEdgeRise * foregroundHeight,
   };
 }
 
@@ -780,7 +782,11 @@ function drawCanvasScoreboardValue(ctx, atlas, value, row, rect) {
 }
 
 function drawCanvasPhotoScoreboard(ctx, image, atlas, photoRect, model) {
-  const board = getDefaultPhotoSourceRect(image, photoRect, MATCH_RECEIPT_DEFAULT_SCOREBOARD_SOURCE_RECT);
+  const sourceBoard = getDefaultPhotoSourceRect(image, photoRect, MATCH_RECEIPT_DEFAULT_SCOREBOARD_SOURCE_RECT);
+  ctx.save();
+  ctx.translate(sourceBoard.x, sourceBoard.y);
+  ctx.transform(1, sourceBoard.topEdgeRise / sourceBoard.width, 0, 1, 0, 0);
+  const board = { x: 0, y: 0, width: sourceBoard.width, height: sourceBoard.height };
   const clockY = board.y;
   const clockHeight = board.height * 0.38;
   const clockDigitAreaWidth = board.width * 0.37;
@@ -818,6 +824,7 @@ function drawCanvasPhotoScoreboard(ctx, image, atlas, photoRect, model) {
     width: scoreWidth,
     height: scoreHeight,
   });
+  ctx.restore();
 }
 
 function createCanvasPaperPattern(ctx, paperGrain) {

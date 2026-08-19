@@ -291,7 +291,7 @@ html[data-theme="light"] .om-calendar-filter-bar {
 
 .om-schedule-rail .om-view-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-2);
+  gap: var(--space-3);
   overflow: visible;
   padding: 0;
   border: 0;
@@ -306,15 +306,15 @@ html[data-theme="light"] .om-calendar-filter-bar {
   min-height: 60px;
   padding: var(--space-4) var(--space-5) var(--space-4) var(--space-6);
   border: 0;
-  border-radius: 0;
-  background: transparent;
+  border-radius: var(--ui-control-radius);
+  background: color-mix(in srgb, var(--ui-control-bg) 58%, transparent);
   box-shadow: none;
   transform: none;
 }
 
 .om-schedule-workspace .om-schedule-rail .om-view-card.active {
   color: var(--rb-orange-2);
-  background: transparent;
+  background: color-mix(in srgb, var(--rb-orange-2) 12%, var(--ui-control-bg));
   box-shadow: none;
 }
 
@@ -348,7 +348,7 @@ html[data-theme="light"] .om-calendar-filter-bar {
 .om-schedule-workspace .om-schedule-rail > .om-calendar-summary {
   min-width: 0;
   margin: 0;
-  padding: var(--space-4) var(--space-5) var(--space-5);
+  padding: var(--space-5) var(--space-6) var(--space-6) var(--space-10);
   border: var(--ui-stroke-width) solid var(--rb-line);
   border-radius: var(--radius-md);
   background: transparent;
@@ -364,9 +364,7 @@ html[data-theme="light"] .om-calendar-filter-bar {
 
   .om-schedule-workspace.is-calendar {
     grid-template-columns: minmax(300px, 420px) minmax(400px, 560px);
-    align-items: start;
-    justify-content: center;
-    gap: var(--space-6);
+    justify-content: space-between;
   }
 
   .om-schedule-rail {
@@ -375,14 +373,8 @@ html[data-theme="light"] .om-calendar-filter-bar {
     grid-template-rows: auto minmax(0, 1fr);
   }
 
-  .om-schedule-workspace.is-calendar .om-schedule-rail {
-    grid-template-rows: auto auto;
-    align-self: start;
-    height: auto;
-  }
-
-  .om-schedule-workspace.is-calendar .om-schedule-rail > .om-calendar-summary {
-    height: auto;
+  .om-schedule-workspace .om-schedule-rail > .om-calendar-summary {
+    height: 100%;
     align-content: start;
   }
 
@@ -394,17 +386,17 @@ html[data-theme="light"] .om-calendar-filter-bar {
 
   .om-schedule-workspace > .om-calendar-panel {
     width: min(100%, 560px);
-    height: auto;
-    align-items: start;
-    align-self: start;
+    height: 100%;
+    align-items: stretch;
+    align-self: stretch;
     justify-self: stretch;
   }
 
   .om-schedule-workspace .om-calendar-box {
     width: 100%;
-    height: auto;
+    height: 100%;
     min-height: 0;
-    grid-template-rows: auto auto auto;
+    grid-template-rows: auto auto minmax(0, 1fr);
   }
 
   .om-schedule-workspace .om-calendar-grid {
