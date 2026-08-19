@@ -246,9 +246,23 @@ const reportRemoteSearchTypes = reportTargetType === REPORT_TARGET_TYPES.courtRe
         : reportTargetType === REPORT_TARGET_TYPES.court
           ? ["court"]
           : reportTargetType === REPORT_TARGET_TYPES.mixed
-            ? ["court", "court_review"]
-            : [];
+            ? ["court", "court_review", "match_code"]
+            : reportNeedsMatchData
+              ? ["match_code"]
+              : [];
 const mapRemoteReportTarget = (item) => {
+    if (item?.kind === "match_code") {
+      const match = reportableMatchCandidates.find((candidate) => candidate.id === item.matchId);
+      if (!match) return null;
+      return {
+        id: `match:${match.id}`,
+        kind: "match",
+        match,
+        title: getMatchReportTitle(match),
+        subtitle: `${match.scheduledDate || match.scheduledAt || "일정 미정"} · ${match.court || "구장 미정"}`,
+        meta: getMatchHashtag(match),
+      };
+    }
     if (item?.kind === "court_request") {
       return {
         id: `court-request:${item.id}`,

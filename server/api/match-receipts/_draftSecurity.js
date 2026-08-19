@@ -1,4 +1,5 @@
 import { createHash, createHmac, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
+import { normalizeMatchPublicCode } from "../../../shared/lib/matchPublicCode.js";
 
 export const RECEIPT_CAPABILITY_COOKIE = "boxtier_receipt_capability";
 export const RECEIPT_DRAFT_TTL_SECONDS = 30 * 24 * 60 * 60;
@@ -139,9 +140,11 @@ export function projectPublicReceiptDraft(value = {}, options = {}) {
   const { originalAddress, personalMmr, profileHashtag, ...publicDraft } = sanitizeReceiptDraftPayload(value, {
     trustedCanonical: value?._canonicalReceipt === true,
   });
-  return legacyMatchId
+  const projected = legacyMatchId
     ? { ...publicDraft, serialSeed: createCanonicalReceiptSerialSeed(legacyMatchId, options.serialSecret) }
     : publicDraft;
+  const publicCode = normalizeMatchPublicCode(options.publicCode);
+  return publicCode ? { ...projected, publicCode } : projected;
 }
 
 export function createReceiptClonePayload(value = {}) {

@@ -175,6 +175,18 @@ export function useHomeSearchModel({
     return <Link key={item.id} className="home-search-entity-trigger" to={item.href}>{content}</Link>;
   };
   const mapRemoteHomeSearchItem = (item) => {
+    if (item.kind === "match_code") {
+      return {
+        id: `remote-match-code-${item.id}`,
+        entityId: item.id,
+        label: item.label,
+        kind: "MATCH",
+        meta: "경기 일련번호",
+        href: item.href,
+        hashtag: `#${item.publicCode}`,
+        searchText: item.searchText,
+      };
+    }
     if (["player", "referee"].includes(item.kind) && blockedUserIdSet.has(item.id)) return null;
     if (item.kind === "team") {
       const hashtag = getTeamHashtag(item);

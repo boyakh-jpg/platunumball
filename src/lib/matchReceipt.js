@@ -6,6 +6,7 @@ import { createQrMatrix } from "./qrCode.js";
 import { getMatchFormatLabel } from "./matchRules.js";
 import { getTier, getTierDivisionNumber } from "./tier.js";
 import { createMatchReceiptLineArt } from "./matchReceiptEmblem.js";
+import { formatMatchPublicCode, normalizeMatchPublicCode } from "../../shared/lib/matchPublicCode.js";
 
 export const MATCH_RECEIPT_DRAFT_STORAGE_KEY = "boxtier.match-receipt.draft.v1";
 export const MATCH_RECEIPT_CREATE_RETURN_TO = "/app/create?intent=record&source=receipt";
@@ -201,6 +202,7 @@ function cleanSerialSeed(value) {
 export function createDefaultMatchReceiptDraft() {
   return {
     serialSeed: createMatchReceiptSerialSeed(),
+    publicCode: "",
     homeTeam: "",
     awayTeam: "",
     homeScore: 0,
@@ -253,6 +255,7 @@ export function normalizeMatchReceiptDraft(value = {}) {
     : "competitive";
   return {
     serialSeed: cleanSerialSeed(value.serialSeed),
+    publicCode: normalizeMatchPublicCode(value.publicCode),
     homeTeam: cleanText(value.homeTeam, MATCH_RECEIPT_LIMITS.teamName),
     awayTeam: cleanText(value.awayTeam, MATCH_RECEIPT_LIMITS.teamName),
     homeScore: cleanScore(value.homeScore),
@@ -460,6 +463,7 @@ export function validateMatchReceiptDraft(value) {
 export function renewMatchReceiptDraft(value) {
   return normalizeMatchReceiptDraft({
     ...normalizeMatchReceiptDraft(value),
+    publicCode: "",
     serialSeed: createMatchReceiptSerialSeed(),
   });
 }
@@ -507,6 +511,7 @@ export function getMatchReceiptDraftFromMatch(match = {}, style = {}, court = nu
   );
   return normalizeMatchReceiptDraft({
     serialSeed: style.serialSeed,
+    publicCode: style.publicCode ?? match.publicCode ?? match.public_code,
     homeTeam: match.teamA?.name || summary.teamAName || "",
     awayTeam: match.teamB?.name || summary.teamBName || "",
     homeScore: match.result?.scoreA ?? match.teamA?.score ?? 0,
@@ -582,6 +587,8 @@ export function getMatchReceiptNatureLabel(matchNature) {
 }
 
 function receiptHashtag(draft) {
+  const publicCode = formatMatchPublicCode(draft.publicCode);
+  if (publicCode) return publicCode;
   const input = draft.serialSeed;
   let hash = 2166136261;
   for (let index = 0; index < input.length; index += 1) {
@@ -763,7 +770,7 @@ function drawCanvasScoreboardGlyph(ctx, atlas, value, row, rect) {
   );
 }
 
-function drawCanvasScoreboardValue(ctx, atlas, value, row, rect) {
+function drawCanvasScoreboardValue(ctx, atlas, value, row, rect, align = "center") {
   const digits = Array.from(String(value));
   const gap = rect.height * 0.035;
   const naturalDigitWidth = rect.height * 64 / 112;
@@ -774,6 +781,8 @@ function drawCanvasScoreboardValue(ctx, atlas, value, row, rect) {
   const scaledGap = gap * scale;
   const totalWidth = digitWidth * digits.length + scaledGap * Math.max(0, digits.length - 1);
   let x = rect.x + (rect.width - totalWidth) / 2;
+  if (align === "end") x = rect.x + rect.width - totalWidth;
+  if (align === "start") x = rect.x;
   const y = rect.y + (rect.height - digitHeight) / 2;
   digits.forEach((digit) => {
     drawCanvasScoreboardGlyph(ctx, atlas, digit, row, { x, y, width: digitWidth, height: digitHeight });
@@ -817,7 +826,7 @@ function drawCanvasPhotoScoreboard(ctx, image, atlas, photoRect, model) {
     y: scoreY,
     width: scoreWidth,
     height: scoreHeight,
-  });
+  }, "end");
   drawCanvasScoreboardGlyph(ctx, atlas, ":", 0, {
     x: board.x + board.width * 0.475,
     y: scoreY,
@@ -825,11 +834,11 @@ function drawCanvasPhotoScoreboard(ctx, image, atlas, photoRect, model) {
     height: scoreHeight,
   });
   drawCanvasScoreboardValue(ctx, atlas, formatMatchReceiptScoreboardScore(model.awayScore), 0, {
-    x: board.x + board.width * 0.57,
+    x: board.x + board.width * 0.535,
     y: scoreY,
     width: scoreWidth,
     height: scoreHeight,
-  });
+  }, "start");
   ctx.restore();
 }
 

@@ -98,8 +98,10 @@ export function toAuthoritativeMatchRow(match = {}, actorProfileId = "") {
   const persistedEndedAt = recordStartedAt
     ? new Date(recordStartedAt.getTime() + (30 * MINUTE_MS)).toISOString()
     : match.endedAt ?? null;
+  const publicCode = nullableText(match.publicCode ?? match.public_code);
   return {
     id: match.id,
+    ...(publicCode ? { public_code: publicCode } : {}),
     title: match.title ?? "경기",
     mode: match.mode ?? "5v5",
     court_id: courtId,

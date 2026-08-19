@@ -17,6 +17,16 @@ import { getProfileIcon } from "../lib/profileIcons.js";
 const FOUNDING_PLAYER_ICON = getProfileIcon("341-founding-player-s0");
 
 function mapGuestSearchItem(item = {}) {
+  if (item.kind === "match_code") {
+    return {
+      ...item,
+      kind: "MATCH",
+      label: item.label,
+      meta: "경기 일련번호",
+      href: item.href,
+      hashtag: `#${item.publicCode}`,
+    };
+  }
   const kind = item.kind === "profile" ? "player" : item.kind;
   return {
     ...item,
@@ -31,7 +41,7 @@ function renderGuestSearchItem(item) {
   return (
     <Link key={`${item.kind}-${item.id}`} className="home-search-entity-trigger" to={item.href} state={item.kind === "team" ? { teamPreview: item } : { playerPreview: item }}>
       <span className="rank-result-main"><strong>{item.label}</strong><em>{item.meta}</em></span>
-      <small>{item.kind === "team" ? "TEAM" : "PLAYER"}</small>
+      <small>{item.kind === "MATCH" ? `${item.kind} · ${item.hashtag}` : item.kind === "team" ? "TEAM" : "PLAYER"}</small>
     </Link>
   );
 }
@@ -41,7 +51,7 @@ function GuestHomePage() {
   return (
     <div className="page-stack rank-home">
       <Card className="home-search-panel rank-search-card">
-        <SearchPicker value={query} onChange={setQuery} placeholder="선수명, 팀명, 해시태그를 바로 검색" items={[]} remoteSearchType={["profile", "team"]} remoteSearchPublic mapRemoteItem={mapGuestSearchItem} renderItem={renderGuestSearchItem} floating fieldClassName="home-search-box" resultsClassName="home-global-search-results" />
+        <SearchPicker value={query} onChange={setQuery} placeholder="선수명, 팀명, 경기 일련번호를 바로 검색" items={[]} remoteSearchType={["profile", "team", "match_code"]} remoteSearchPublic mapRemoteItem={mapGuestSearchItem} renderItem={renderGuestSearchItem} floating fieldClassName="home-search-box" resultsClassName="home-global-search-results" />
         <div className="home-search-actions">
           <Button as={Link} to="/app/create" className="home-search-create"><PlusCircle size={18} /> 방 만들기</Button>
           <Button as={Link} to="/app/create?intent=record" variant="secondary" className="home-search-create"><ClipboardCheck size={18} /> 기록하기</Button>
@@ -114,7 +124,7 @@ export default function HomePageView({
         <SearchPicker
           value={query}
           onChange={setQuery}
-          placeholder="이름, 팀명, 코트명, 해시태그를 바로 검색"
+          placeholder="이름, 팀명, 코트명, 경기 일련번호를 바로 검색"
           items={searchResults}
           remoteSearchType="all"
           mapRemoteItem={mapRemoteHomeSearchItem}

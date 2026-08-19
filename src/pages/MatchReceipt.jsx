@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Copy, Download, House, ImagePlus, MapPin, RotateCcw, Share2, Trash2 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import Button from "../components/common/Button.jsx";
+import EmblemCropEditor from "../components/common/EmblemCropEditor.jsx";
 import CourtMapPicker from "../components/court/CourtMapPicker.jsx";
 import MatchReceiptPreview from "../components/match/MatchReceiptPreview.jsx";
 import { assetUrl } from "../lib/assets.js";
@@ -10,6 +11,8 @@ import { getLoginPath, inferRegionSelection } from "../lib/profileSetup.js";
 import { COURT_MAP_SEARCH_LIMIT, COURT_MAP_SEARCH_PURPOSE } from "../lib/queryPolicy.js";
 import { postServerAction } from "../lib/serverActions.js";
 import { getUserHashtag } from "../lib/handles.js";
+import { MATCH_RECEIPT_LINE_ART_AI_PROMPT, createMatchReceiptLineArt } from "../lib/matchReceiptEmblem.js";
+import { getTeamEmblemErrorMessage, prepareTeamEmblemUpload } from "../lib/teamEmblem.js";
 import {
   MATCH_RECEIPT_CANVAS_SIZES,
   MATCH_RECEIPT_CREATE_RETURN_TO,
@@ -35,7 +38,6 @@ import {
   trackMatchReceiptEvent,
   validateMatchReceiptDraft,
 } from "../lib/matchReceipt.js";
-import { createMatchReceiptLineArt } from "../lib/matchReceiptEmblem.js";
 
 function loadDraft() {
   return loadMatchReceiptDraft() ?? createDefaultMatchReceiptDraft();
@@ -77,6 +79,8 @@ const RECEIPT_PERIOD_FIELDS = [
   ["4Q", "q4Home", "q4Away"],
   ["OT", "otHome", "otAway"],
 ];
+
+const EMPTY_EMBLEM_EDITOR = { side: "", file: null, preview: "", error: "" };
 
 function isIosBrowser() {
   if (typeof navigator === "undefined") return false;
@@ -139,11 +143,15 @@ export default function MatchReceipt({ auth, app }) {
     () => new URLSearchParams(location.search).get("draft")?.trim() ?? "",
     [location.search],
   );
+  const requestedPublicCode = useMemo(
+    () => new URLSearchParams(location.search).get("code")?.trim() ?? "",
+    [location.search],
+  );
   const sourceDraftRef = useRef(location.state?.receiptDraft
     ? normalizeMatchReceiptDraft(location.state.receiptDraft)
     : null);
   const [draft, setDraft] = useState(() => sourceDraftRef.current
-    ?? (matchId || requestedPublicDraftId ? createDefaultMatchReceiptDraft() : loadDraft()));
+    ?? (matchId || requestedPublicDraftId || requestedPublicCode ? createDefaultMatchReceiptDraft() : loadDraft()));
   const [errors, setErrors] = useState({});
   const [generated, setGenerated] = useState(false);
   const [busy, setBusy] = useState("");
@@ -157,6 +165,8 @@ export default function MatchReceipt({ auth, app }) {
   const [selectedCourtId, setSelectedCourtId] = useState("");
   const [discoveredCourts, setDiscoveredCourts] = useState([]);
   const [courtMapDirectoryStatus, setCourtMapDirectoryStatus] = useState({ loading: false, error: "" });
+  const [emblemEditor, setEmblemEditor] = useState(EMPTY_EMBLEM_EDITOR);
+  const [emblemPending, setEmblemPending] = useState(false);
   const startedRef = useRef(false);
   const requestedMatchIdRef = useRef("");
   const courtMapRequestIdRef = useRef(0);
@@ -202,7 +212,9 @@ export default function MatchReceipt({ auth, app }) {
   const canonicalAwayTeamMmr = getCanonicalTeamMmr(canonicalAwayTeam);
   const currentUserId = app?.currentUser?.id ?? "";
   const currentUserMmr = Number(app?.currentUser?.ratings?.integrated);
-  const canShowCurrentUserIdentity = Boolean(auth?.session && currentUserId && !requestedPublicDraftId);
+  const canShowCurrentUserIdentity = Boolean(
+    auth?.session && currentUserId && !requestedPublicDraftId && !requestedPublicCode,
+  );
   const personalMmr = canShowCurrentUserIdentity && Number.isFinite(currentUserMmr) ? currentUserMmr : null;
   const profileHashtag = canShowCurrentUserIdentity && app?.currentUser
     ? getUserHashtag(app.currentUser)
@@ -232,9 +244,10 @@ export default function MatchReceipt({ auth, app }) {
   const matchUrl = useMemo(() => {
     if (typeof window === "undefined") return "";
     const url = new URL("/app/receipt", window.location.origin);
-    if (activePublicDraftId) url.searchParams.set("draft", activePublicDraftId);
+    if (draft.publicCode) url.searchParams.set("code", draft.publicCode);
+    else if (activePublicDraftId) url.searchParams.set("draft", activePublicDraftId);
     return url.toString();
-  }, [activePublicDraftId]);
+  }, [activePublicDraftId, draft.publicCode]);
   const receiptPublicId = activePublicDraftId;
   const canonicalTeamReceiptEmblemUrls = useMemo(() => ({
     home: canonicalHomeTeam?.receiptEmblemKey || draft.homeEmblemKey ? assetUrl(canonicalHomeTeam?.receiptEmblemKey || draft.homeEmblemKey) : "",
@@ -252,6 +265,27 @@ export default function MatchReceipt({ auth, app }) {
     localTeamLineArtUrls.away,
     localTeamLineArtUrls.home,
   ]);
+
+  useEffect(() => {
+    if (!requestedPublicCode) return;
+    let active = true;
+    fetch(`/api/match-receipts/resolve?code=${encodeURIComponent(requestedPublicCode)}`, {
+      credentials: "same-origin",
+    })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("match_public_code_not_found");
+        return response.json();
+      })
+      .then((result) => {
+        if (!active) return;
+        if (result.matchId) navigate(`/app/matches?match=${encodeURIComponent(result.matchId)}`, { replace: true });
+        else if (result.publicId) navigate(`/app/receipt?draft=${encodeURIComponent(result.publicId)}`, { replace: true });
+      })
+      .catch(() => {
+        if (active) setStatus("해당 일련번호의 경기를 찾을 수 없습니다.");
+      });
+    return () => { active = false; };
+  }, [navigate, requestedPublicCode]);
 
   useEffect(() => {
     if (!matchId) return;
@@ -291,11 +325,11 @@ export default function MatchReceipt({ auth, app }) {
   ]);
 
   useEffect(() => {
-    if (requestedPublicDraftId || canonicalMatchId) return;
+    if (requestedPublicDraftId || requestedPublicCode || canonicalMatchId) return;
     setDraft((current) => current.personalMmr === personalMmr && current.profileHashtag === profileHashtag
       ? current
       : normalizeMatchReceiptDraft({ ...current, personalMmr, profileHashtag }));
-  }, [canonicalMatchId, personalMmr, profileHashtag, requestedPublicDraftId]);
+  }, [canonicalMatchId, personalMmr, profileHashtag, requestedPublicCode, requestedPublicDraftId]);
 
   useEffect(() => {
     if (!requestedPublicDraftId || canonicalMatchId) return;
@@ -332,7 +366,7 @@ export default function MatchReceipt({ auth, app }) {
   }, [canonicalMatchId, requestedPublicDraftId]);
 
   useEffect(() => {
-    if (requestedPublicDraftId) return undefined;
+    if (requestedPublicDraftId || requestedPublicCode) return undefined;
     let active = true;
     loadMatchReceiptPhoto().then((blob) => {
       if (active && blob) setPhotoBlob(blob);
@@ -340,7 +374,7 @@ export default function MatchReceipt({ auth, app }) {
     return () => {
       active = false;
     };
-  }, [requestedPublicDraftId]);
+  }, [requestedPublicCode, requestedPublicDraftId]);
 
   useEffect(() => {
     if (!courtMapOpen) return undefined;
@@ -389,8 +423,8 @@ export default function MatchReceipt({ auth, app }) {
   }, [auth?.session]);
 
   useEffect(() => {
-    if (!requestedPublicDraftId) saveMatchReceiptDraft(draft);
-  }, [draft, requestedPublicDraftId]);
+    if (!requestedPublicDraftId && !requestedPublicCode) saveMatchReceiptDraft(draft);
+  }, [draft, requestedPublicCode, requestedPublicDraftId]);
 
   function updateField(name, value) {
     if (isFieldReadOnly(name)) return;
@@ -473,36 +507,52 @@ export default function MatchReceipt({ auth, app }) {
     setStatus(`${side === "home" ? "TEAM A" : "TEAM B"} 저장 엠블럼을 영수증에 적용했습니다.`);
   }
 
-  async function handleLocalTeamEmblemChange(side, event) {
-    if (receiptIsReadOnly) {
-      event.target.value = "";
-      return;
-    }
+  function handleLocalTeamEmblemChange(side, event) {
     const file = event.target.files?.[0];
     event.target.value = "";
-    if (!file) return;
-    if (!/^image\/(jpeg|png|webp|avif)$/u.test(file.type)) {
-      setStatus("엠블럼 이미지는 JPG, PNG, WebP, AVIF만 사용할 수 있습니다.");
-      return;
-    }
-    if (file.size > MATCH_RECEIPT_PHOTO_MAX_BYTES) {
-      setStatus(`엠블럼 이미지는 ${Math.round(MATCH_RECEIPT_PHOTO_MAX_BYTES / 1024 / 1024)}MB 이하만 사용할 수 있습니다.`);
-      return;
-    }
-    setBusy(`emblem-${side}`);
+    if (receiptIsReadOnly || !file) return;
+    setEmblemEditor({ side, file, preview: "", error: "" });
     setStatus("");
-    const sourceUrl = URL.createObjectURL(file);
+  }
+
+  function resetLocalTeamEmblemConversion() {
+    setEmblemEditor((current) => ({ ...current, preview: "", error: "" }));
+  }
+
+  async function convertLocalTeamEmblem(crop) {
+    if (!emblemEditor.file) return;
+    setEmblemPending(true);
+    setEmblemEditor((current) => ({ ...current, error: "" }));
     try {
-      const lineArtUrl = await createMatchReceiptLineArt(sourceUrl);
-      if (!lineArtUrl) throw new Error("match_receipt_emblem_conversion_failed");
-      setLocalTeamLineArtUrls((current) => ({ ...current, [side]: lineArtUrl }));
-      updateField(`${side}UseLineArt`, true);
-      setStatus(`${side === "home" ? "TEAM A" : "TEAM B"} 선화 엠블럼을 적용했습니다. 서버에는 저장하지 않습니다.`);
-    } catch {
-      setStatus("엠블럼을 선화로 바꾸지 못했습니다. 배경과 형태가 분명한 이미지를 사용해 주세요.");
+      const prepared = await prepareTeamEmblemUpload(emblemEditor.file, crop, { circular: true });
+      const preview = await createMatchReceiptLineArt(`data:image/webp;base64,${prepared.imageBase64}`);
+      if (!preview) throw new Error("match_receipt_line_art_failed");
+      setEmblemEditor((current) => ({ ...current, preview, error: "" }));
+    } catch (error) {
+      const message = error.message === "match_receipt_line_art_failed"
+        ? "선화를 만들지 못했습니다. 대비가 분명한 엠블럼 이미지를 선택해 주세요."
+        : getTeamEmblemErrorMessage(error.code || error.message);
+      setEmblemEditor((current) => ({ ...current, preview: "", error: message }));
     } finally {
-      URL.revokeObjectURL(sourceUrl);
-      setBusy("");
+      setEmblemPending(false);
+    }
+  }
+
+  function confirmLocalTeamEmblem() {
+    if (!emblemEditor.side || !emblemEditor.preview) return;
+    const side = emblemEditor.side;
+    setLocalTeamLineArtUrls((current) => ({ ...current, [side]: emblemEditor.preview }));
+    updateField(`${side}UseLineArt`, true);
+    setEmblemEditor(EMPTY_EMBLEM_EDITOR);
+    setStatus(`${side === "home" ? "TEAM A" : "TEAM B"} 선화를 이번 영수증에 적용했습니다. 서버에는 저장하지 않습니다.`);
+  }
+
+  async function copyLineArtPrompt() {
+    try {
+      await navigator.clipboard.writeText(MATCH_RECEIPT_LINE_ART_AI_PROMPT);
+      setStatus("AI 선화 프롬프트를 복사했습니다.");
+    } catch {
+      setStatus("프롬프트를 복사하지 못했습니다. 브라우저의 클립보드 권한을 확인해 주세요.");
     }
   }
 
@@ -564,6 +614,7 @@ export default function MatchReceipt({ auth, app }) {
       setDraft(next);
       setPhotoBlob(null);
       setLocalTeamLineArtUrls({ home: "", away: "" });
+      setEmblemEditor(EMPTY_EMBLEM_EDITOR);
       setGenerated(false);
       publicDraftIdRef.current = "";
       setPublicDraftId("");
@@ -743,11 +794,13 @@ export default function MatchReceipt({ auth, app }) {
         setPublicDraftId(result.publicId);
         const serverDraft = result.draft ?? {};
         const serialSeed = result.serialSeed || serverDraft.serialSeed || draftRef.current.serialSeed;
+        const publicCode = result.publicCode || serverDraft.publicCode || draftRef.current.publicCode;
         publicDraftSerialSeedRef.current = serialSeed;
         setDraft((current) => {
           const normalized = normalizeMatchReceiptDraft({
             ...current,
             serialSeed,
+            publicCode,
           });
           draftRef.current = normalized;
           return normalized;
@@ -815,11 +868,15 @@ export default function MatchReceipt({ auth, app }) {
       // A public QR is optional for local image export.
     }
     const publicMatchUrl = publicId
-      ? new URL(`/app/receipt?draft=${encodeURIComponent(publicId)}`, window.location.origin).toString()
+      ? new URL(draftRef.current.publicCode
+        ? `/app/receipt?code=${encodeURIComponent(draftRef.current.publicCode)}`
+        : `/app/receipt?draft=${encodeURIComponent(publicId)}`, window.location.origin).toString()
       : "";
-    const renderDraft = publicDraftSerialSeedRef.current
-      ? normalizeMatchReceiptDraft({ ...result.draft, serialSeed: publicDraftSerialSeedRef.current })
-      : result.draft;
+    const renderDraft = normalizeMatchReceiptDraft({
+      ...result.draft,
+      ...(publicDraftSerialSeedRef.current ? { serialSeed: publicDraftSerialSeedRef.current } : {}),
+      ...(draftRef.current.publicCode ? { publicCode: draftRef.current.publicCode } : {}),
+    });
     const blob = await renderMatchReceiptPng(renderDraft, preset, {
       publicId,
       matchUrl: publicMatchUrl,
@@ -1013,12 +1070,17 @@ export default function MatchReceipt({ auth, app }) {
                       <div className="match-receipt-emblem-upload" key={side}>
                         <strong>{label}</strong>
                         {!receiptIsReadOnly ? (
-                          <Button as="label" variant="secondary" size="sm">
+                          <Button
+                            as="label"
+                            variant="secondary"
+                            size="sm"
+                            disabled={Boolean(busy) || emblemPending}
+                          >
                             <ImagePlus aria-hidden="true" /> 선화 엠블럼 선택
                             <input
                               type="file"
-                              accept="image/jpeg,image/png,image/webp,image/avif"
-                              disabled={Boolean(busy)}
+                              accept="image/jpeg,image/png,image/webp,image/avif,image/heic,image/heif"
+                              disabled={Boolean(busy) || emblemPending}
                               onChange={(event) => handleLocalTeamEmblemChange(side, event)}
                             />
                           </Button>
@@ -1057,6 +1119,12 @@ export default function MatchReceipt({ auth, app }) {
                   })}
                 </div>
                 <small>직접 선택한 이미지는 이번 영수증에서만 유지됩니다.</small>
+                <div className="match-receipt-ai-prompt">
+                  <span>외부 AI에서 선화 PNG를 만들 때 사용할 지시문입니다.</span>
+                  <Button type="button" variant="ghost" size="sm" onClick={copyLineArtPrompt}>
+                    <Copy aria-hidden="true" /> AI 선화 프롬프트 복사
+                  </Button>
+                </div>
                 {!receiptIsReadOnly ? (
                   <Button
                     as={Link}
@@ -1066,7 +1134,7 @@ export default function MatchReceipt({ auth, app }) {
                     variant="secondary"
                     size="sm"
                   >
-                    {auth?.session ? "팀 만들기 · 엠블럼 저장" : "로그인 · 팀 만들고 엠블럼 저장"}
+                    {auth?.session ? "팀 만들고 엠블럼 저장" : "로그인 · 팀 만들고 엠블럼 저장"}
                   </Button>
                 ) : null}
               </fieldset>
@@ -1201,6 +1269,18 @@ export default function MatchReceipt({ auth, app }) {
         loadError={courtMapDirectoryStatus.error}
         onSelect={selectCourt}
         onClose={() => setCourtMapOpen(false)}
+      />
+      <EmblemCropEditor
+        file={emblemEditor.file}
+        circular
+        pending={emblemPending}
+        convertedPreview={emblemEditor.preview}
+        warning="조정한 이미지는 이번 영수증에서만 사용되며 서버에 저장되지 않습니다."
+        error={emblemEditor.error}
+        onCropChange={resetLocalTeamEmblemConversion}
+        onCancel={() => setEmblemEditor(EMPTY_EMBLEM_EDITOR)}
+        onConvert={convertLocalTeamEmblem}
+        onConfirm={confirmLocalTeamEmblem}
       />
     </section>
   );

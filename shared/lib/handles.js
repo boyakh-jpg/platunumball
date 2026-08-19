@@ -1,4 +1,5 @@
 import { BRAND_NAME, BRAND_NAME_KO } from "./brand.js";
+import { formatMatchPublicCode } from "./matchPublicCode.js";
 
 export const PROFILE_HASHTAG_MIN_LENGTH = 3;
 const RESERVED_OPERATOR_IDENTITIES = [BRAND_NAME.toLowerCase(), BRAND_NAME_KO];
@@ -96,6 +97,8 @@ export function getCourtHashtag(court = {}) {
 }
 
 export function getMatchHashtag(match = {}) {
+  const publicCode = formatMatchPublicCode(match.publicCode ?? match.public_code);
+  if (publicCode) return publicCode;
   if (match.hashtag) return toHashtag(match.hashtag, match.id ?? "match");
   return `#m${getNumericHandle(match)}`;
 }

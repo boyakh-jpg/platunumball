@@ -13,11 +13,13 @@ import { isRefereeGrade } from "../../shared/lib/constants.js";
 import { COURT_MAP_SEARCH_LIMIT, COURT_MAP_SEARCH_PURPOSE } from "../../shared/lib/queryPolicy.js";
 import { fromRemoteApprovedCourt, getRemotePayload } from "../../shared/lib/remotePayloadMappers.js";
 import { isWithinOneEdit, preferExactSearchMatches } from "../../shared/lib/fuzzyText.js";
+import { formatMatchPublicCode, normalizeMatchPublicCode } from "../../shared/lib/matchPublicCode.js";
+import { resolveMatchPublicCode } from "../lib/matchPublicCodeResolver.js";
 
 const REFEREE_APPOINTMENT_COLUMNS = "user_id,role,grade,status,starts_at,ends_at";
 const REFEREE_QUALIFICATION_SEARCH_LIMIT = 500;
 const TYPE_ALIASES = {
-  all: ["profile", "team", "court", "referee"],
+  all: ["profile", "team", "court", "referee", "match_code"],
   player: ["profile"],
   profile: ["profile"],
   team: ["team"],
@@ -27,6 +29,7 @@ const TYPE_ALIASES = {
   referee: ["referee"],
   affiliation: ["affiliation"],
   organization: ["affiliation"],
+  match_code: ["match_code"],
 };
 
 function normalizeSearchQuery(value = "") {
@@ -386,6 +389,24 @@ async function searchAffiliations(supabase, query, limit) {
   }));
 }
 
+async function searchMatchCode(supabase, query) {
+  const publicCode = normalizeMatchPublicCode(query);
+  if (!publicCode) return [];
+  const result = await resolveMatchPublicCode(supabase, publicCode);
+  if (!result) return [];
+  return [{
+    kind: "match_code",
+    id: publicCode,
+    publicCode,
+    label: `경기 ${formatMatchPublicCode(publicCode)}`,
+    name: `경기 ${formatMatchPublicCode(publicCode)}`,
+    href: `/app/receipt?code=${encodeURIComponent(publicCode)}`,
+    matchId: result.matchId ?? "",
+    publicId: result.publicId ?? "",
+    searchText: `${publicCode} ${formatMatchPublicCode(publicCode)}`,
+  }];
+}
+
 export default async function handler(request, response) {
   if (!allowRequestMethod(request, response)) return;
 
@@ -397,7 +418,7 @@ export default async function handler(request, response) {
     const queryLength = query.replace(/\s+/g, "").length;
     const hasToken = Boolean(getBearerToken(request));
     const types = getRequestedTypes(body.type ?? body.types ?? "all")
-      .filter((type) => hasToken || ["profile", "team", "court", "referee", "affiliation"].includes(type));
+      .filter((type) => hasToken || ["profile", "team", "court", "referee", "affiliation", "match_code"].includes(type));
     const refereeDiscovery = forceSearch && queryLength === 0 && types.length === 1 && types[0] === "referee";
     if ((!forceSearch && queryLength < minLength) || (forceSearch && queryLength < 1 && !refereeDiscovery)) {
       sendJson(response, 200, { ok: true, items: [] });
@@ -418,6 +439,7 @@ export default async function handler(request, response) {
       court_review: () => searchCourtReviews(context.supabase, context.profileId, query, limit),
       referee: () => searchReferees(context.supabase, query, limit, searchContext),
       affiliation: () => searchAffiliations(context.supabase, query, limit),
+      match_code: () => searchMatchCode(context.supabase, query),
     };
     const chunks = await Promise.all(types.map((type) => loaders[type]?.() ?? []));
     const seen = new Set();

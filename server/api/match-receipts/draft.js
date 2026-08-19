@@ -119,8 +119,11 @@ async function createCanonicalPayload(request, sourceMatchId, styleDraft) {
     awayTeamRecord: awayTeam,
   });
   return {
-    ...sanitizeReceiptDraftPayload(canonicalDraft, { trustedCanonical: true }),
-    _canonicalReceipt: true,
+    payload: {
+      ...sanitizeReceiptDraftPayload(canonicalDraft, { trustedCanonical: true }),
+      _canonicalReceipt: true,
+    },
+    publicCode: match.publicCode ?? match.public_code ?? "",
   };
 }
 
@@ -128,7 +131,7 @@ async function clonePublicPayload(supabase, publicId) {
   if (!publicId) return null;
   const { data, error } = await supabase
     .from("match_receipt_drafts")
-    .select("payload")
+    .select("payload,public_code")
     .eq("public_id", publicId)
     .gt("expires_at", new Date().toISOString())
     .maybeSingle();
@@ -166,7 +169,7 @@ export default async function handler(request, response) {
     if (!allowed) return sendJson(response, 429, { error: "receipt_draft_rate_limited" });
     const { data, error } = await supabase
       .from("match_receipt_drafts")
-      .select("public_id,capability_hash,payload,expires_at,claimed_at")
+      .select("public_id,public_code,capability_hash,payload,expires_at,claimed_at")
       .eq("public_id", publicId)
       .gt("expires_at", new Date().toISOString())
       .maybeSingle();
@@ -182,7 +185,8 @@ export default async function handler(request, response) {
     response.setHeader("Cache-Control", "private, no-store");
     return sendJson(response, 200, {
       publicId: data.public_id,
-      draft: projectPublicReceiptDraft(data.payload, { publicId: data.public_id }),
+      publicCode: data.public_code,
+      draft: projectPublicReceiptDraft(data.payload, { publicId: data.public_id, publicCode: data.public_code }),
       expiresAt: data.expires_at,
       claimed: Boolean(data.claimed_at),
       canClaim,
@@ -203,7 +207,7 @@ export default async function handler(request, response) {
   if (publicId) {
     const { data: existing, error: existingError } = await supabase
       .from("match_receipt_drafts")
-      .select("id,public_id,capability_hash,payload,expires_at,claimed_at")
+      .select("id,public_id,public_code,capability_hash,payload,expires_at,claimed_at")
       .eq("public_id", publicId)
       .gt("expires_at", new Date().toISOString())
       .maybeSingle();
@@ -223,22 +227,24 @@ export default async function handler(request, response) {
       .update({ payload, updated_at: new Date().toISOString() })
       .eq("id", existing.id)
       .is("claimed_at", null)
-      .select("public_id,expires_at")
+      .select("public_id,public_code,expires_at")
       .maybeSingle();
     if (error) throw error;
     if (!data) return sendJson(response, 409, { error: "receipt_draft_claimed" });
     return sendJson(response, 200, {
       publicId: data.public_id,
+      publicCode: data.public_code,
       serialSeed: payload.serialSeed,
       expiresAt: data.expires_at,
-      draft: projectPublicReceiptDraft(payload, { publicId: data.public_id }),
+      draft: projectPublicReceiptDraft(payload, { publicId: data.public_id, publicCode: data.public_code }),
     });
   }
 
   const capability = createReceiptCapability();
   const clone = clonePublicId ? await clonePublicPayload(supabase, clonePublicId) : null;
+  const canonical = sourceMatchId ? await createCanonicalPayload(request, sourceMatchId, body.draft) : null;
   const payload = sourceMatchId
-    ? await createCanonicalPayload(request, sourceMatchId, body.draft)
+    ? canonical?.payload ?? null
     : clonePublicId
       ? clone?.payload ?? null
       : sanitizeReceiptDraftPayload(body.draft);
@@ -259,16 +265,18 @@ export default async function handler(request, response) {
       public_id: capability.publicId,
       capability_hash: hashReceiptCapability(capability.secret),
       payload,
+      ...(canonical?.publicCode ? { public_code: canonical.publicCode } : {}),
     })
-    .select("public_id,expires_at")
+    .select("public_id,public_code,expires_at")
     .single();
   if (error) throw error;
 
   setReceiptCapabilityCookie(response, capability);
   return sendJson(response, 201, {
     publicId: data.public_id,
+    publicCode: data.public_code,
     serialSeed: payload.serialSeed,
     expiresAt: data.expires_at,
-    draft: projectPublicReceiptDraft(payload, { publicId: data.public_id }),
+    draft: projectPublicReceiptDraft(payload, { publicId: data.public_id, publicCode: data.public_code }),
   });
 }

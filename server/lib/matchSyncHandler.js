@@ -58,7 +58,7 @@ async function validateReceiptDraftClaim(context, match, existingMatch, action) 
 
   const { data: receiptDraft, error } = await context.supabase
     .from("match_receipt_drafts")
-    .select("public_id, payload, expires_at, claimed_by, claimed_at")
+    .select("public_id, public_code, payload, expires_at, claimed_by, claimed_at")
     .eq("public_id", publicId)
     .maybeSingle();
   if (error) throw error;
@@ -67,7 +67,7 @@ async function validateReceiptDraftClaim(context, match, existingMatch, action) 
     reject(403, "receipt_draft_claim_required");
   }
 
-  return { ...match, rules: nextRules };
+  return { ...match, publicCode: receiptDraft.public_code, rules: nextRules };
 }
 
 function getRatingCommitProfileIds(ratingCommit = {}) {
@@ -145,7 +145,7 @@ export async function persistMatchSnapshot(context, { match, notifications = [],
 
   const { data: existingMatch, error: existingError } = await context.supabase
       .from("matches")
-      .select("id, visibility, status, created_by, referee_id, former_referee_id, referee_trust_min, stat_recorders, played_player_ids, reserve_players, score_a, score_b, rating_result, team_rating_result, agreed_at, started_at, ended_at, confirmed_at, rules")
+      .select("id, public_code, visibility, status, created_by, referee_id, former_referee_id, referee_trust_min, stat_recorders, played_player_ids, reserve_players, score_a, score_b, rating_result, team_rating_result, agreed_at, started_at, ended_at, confirmed_at, rules")
       .eq("id", match.id)
       .maybeSingle();
   if (existingError) throw existingError;
@@ -183,6 +183,7 @@ export async function persistMatchSnapshot(context, { match, notifications = [],
   const persistedMatch = await validateReceiptDraftClaim(context, match, existingMatch, action);
 
   const matchRow = toAuthoritativeMatchRow(persistedMatch, context.profileId);
+  if (existingMatch?.public_code) matchRow.public_code = existingMatch.public_code;
   if (expectedUpdatedAt) matchRow.__expectedUpdatedAt = expectedUpdatedAt;
   const playerRows = getSidePlayerRows(persistedMatch);
   const shouldCommitRating = canCommitRatingResult(action, existingResult, persistedMatch);

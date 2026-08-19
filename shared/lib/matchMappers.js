@@ -266,6 +266,7 @@ export function fromRemoteMatch(row, context) {
 
   return {
     id: row.id,
+    publicCode: row.public_code ?? "",
     title: row.title,
     mode: row.mode,
     courtId: row.court_id ?? null,

@@ -18,6 +18,11 @@ import {
   renewMatchReceiptDraft,
   resolveMatchReceiptTeamEmblems,
 } from "../src/lib/matchReceipt.js";
+import { getMatchHashtag } from "../shared/lib/handles.js";
+import {
+  formatMatchPublicCode,
+  normalizeMatchPublicCode,
+} from "../shared/lib/matchPublicCode.js";
 
 test("receipt team names shrink before they can overflow", () => {
   assert.equal(getMatchReceiptTeamNameScale("SHORT TEAM"), 1);
@@ -32,9 +37,10 @@ test("receipt photo scoreboard formats canonical final scores for the PNG atlas"
   assert.equal(formatMatchReceiptScoreboardScore(72), "72");
   assert.equal(formatMatchReceiptScoreboardScore(100), "100");
   assert.equal(formatMatchReceiptScoreboardScore(999), "999");
+  assert.equal(formatMatchReceiptScoreboardScore(108), "108");
 });
 
-test("receipt emblems support transient local line art and reusable canonical team assets", async () => {
+test("receipt emblems allow local fine adjustment while canonical teams remain reusable", async () => {
   const [receiptPage, teamPage, teamView, teamActions, teamApi, teamColumns, migration] = await Promise.all([
     readFile(new URL("../src/pages/MatchReceipt.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/pages/TeamDetail.jsx", import.meta.url), "utf8"),
@@ -48,11 +54,13 @@ test("receipt emblems support transient local line art and reusable canonical te
   assert.match(receiptPage, /사진을 골라 선화 엠블럼으로 바로 사용할 수 있습니다\./u);
   assert.match(receiptPage, /로그인 후 팀을 만들면 팀 상세에 저장해 다음 영수증에서도 재사용할 수 있습니다\./u);
   assert.match(receiptPage, /직접 선택한 이미지는 이번 영수증에서만 유지됩니다\./u);
+  assert.match(receiptPage, /AI 선화 프롬프트 복사/u);
   assert.match(receiptPage, /저장된 팀 엠블럼 없음/u);
   assert.match(receiptPage, /로그인 · 팀 만들고 엠블럼 저장/u);
-  assert.doesNotMatch(receiptPage, /EmblemCropEditor|prepareTeamEmblemUpload|uploadGuestReceiptEmblem/u);
-  assert.match(receiptPage, /handleLocalTeamEmblemChange/u);
-  assert.match(receiptPage, /createMatchReceiptLineArt/u);
+  assert.match(receiptPage, /EmblemCropEditor/u);
+  assert.match(receiptPage, /prepareTeamEmblemUpload/u);
+  assert.match(receiptPage, /MATCH_RECEIPT_LINE_ART_AI_PROMPT/u);
+  assert.doesNotMatch(receiptPage, /uploadGuestReceiptEmblem/u);
   assert.match(teamView, /영수증 엠블럼 만들기/u);
   assert.match(teamView, /영수증 엠블럼 변경/u);
   assert.match(teamPage, /createMatchReceiptLineArt/u);
@@ -66,6 +74,7 @@ test("receipt emblems support transient local line art and reusable canonical te
   assert.match(receiptPage, /resolveMatchReceiptTeamEmblems\(/u);
   assert.match(receiptPage, /local:\s*localTeamLineArtUrls/u);
   assert.match(receiptPage, /canonical:\s*canonicalTeamReceiptEmblemUrls/u);
+  assert.match(receiptPage, /local:\s*localTeamLineArtUrls/u);
   assert.match(receiptPage, /const activeLineArtUrl = selectedTeamLineArtUrls\[side\]/u);
   assert.match(teamView, /disabled=\{receiptEmblemPending \|\| receiptEmblemUploadLocked\}/u);
 });
@@ -97,7 +106,7 @@ test("canonical receipt keeps dedicated team receipt emblems through public relo
   assert.equal(reloaded.teamEmblemUrls.away, "");
 });
 
-test("receipt emblem resolver prefers current local line art before canonical team assets", () => {
+test("receipt emblem resolver prefers current local line art over canonical team emblems", () => {
   assert.deepEqual(resolveMatchReceiptTeamEmblems({
     local: { home: "local-home" },
     guest: { home: "guest-home", away: "guest-away" },
@@ -425,6 +434,7 @@ test("receipt view model uses compact game labels, venue fallback, and a safe ha
   assert.notEqual(createMatchReceiptViewModel({ ...draft, address: "" }).locationLabel, draft.originalAddress);
   assert.match(model.serial, /^#BT-[A-Z0-9]{6}$/);
   assert.equal(model.serial.includes("public-receipt-id"), false);
+  assert.equal(createMatchReceiptViewModel({ ...draft, publicCode: "BT-00000108" }).serial, "#BT-00000108");
   assert.equal(createMatchReceiptViewModel({ ...draft, personalMmr: 1400 }).showPersonalTierIdentity, false);
   const identifiedTier = createMatchReceiptViewModel({
     ...draft,
@@ -437,6 +447,13 @@ test("receipt view model uses compact game labels, venue fallback, and a safe ha
   assert.equal(createMatchReceiptViewModel(identifiedTier, {
     showPersonalTierIdentity: false,
   }).showPersonalTierIdentity, false);
+});
+
+test("match public code is the canonical receipt serial and match hashtag", () => {
+  assert.equal(normalizeMatchPublicCode("#bt-00000108"), "BT-00000108");
+  assert.equal(normalizeMatchPublicCode("BT-108"), "");
+  assert.equal(formatMatchPublicCode("bt-00000108"), "#BT-00000108");
+  assert.equal(getMatchHashtag({ publicCode: "BT-00000108" }), "#BT-00000108");
 });
 
 test("receipt optional details and team line art stay user controlled", () => {
@@ -466,6 +483,7 @@ test("receipt serial stays stable until a new receipt is explicitly started", ()
   const draft = createDefaultMatchReceiptDraft();
   const edited = normalizeMatchReceiptDraft({
     ...draft,
+    publicCode: "BT-00000108",
     homeTeam: "EDITED",
     homeScore: 99,
     comment: "123456789012345",
@@ -473,6 +491,7 @@ test("receipt serial stays stable until a new receipt is explicitly started", ()
   const renewed = renewMatchReceiptDraft(edited);
   const match = {
     id: "match-123",
+    publicCode: "BT-00000109",
     status: "confirmed",
     visibility: "public",
     rules: {
@@ -490,13 +509,17 @@ test("receipt serial stays stable until a new receipt is explicitly started", ()
   }, { serialSeed: "canonical:opaque-seed" });
 
   assert.equal(edited.serialSeed, draft.serialSeed);
+  assert.equal(edited.publicCode, "BT-00000108");
   assert.equal(edited.comment, "12345678901");
-  assert.equal(createMatchReceiptViewModel(edited).serial, createMatchReceiptViewModel(draft).serial);
+  assert.equal(createMatchReceiptViewModel(edited).serial, "#BT-00000108");
   assert.notEqual(renewed.serialSeed, edited.serialSeed);
+  assert.equal(renewed.publicCode, "");
   assert.notEqual(createMatchReceiptViewModel(renewed).serial, createMatchReceiptViewModel(edited).serial);
   assert.equal(canonicalA.serialSeed, "canonical:opaque-seed");
+  assert.equal(canonicalA.publicCode, "BT-00000109");
   assert.equal(canonicalB.serialSeed, canonicalA.serialSeed);
   assert.equal(createMatchReceiptViewModel(canonicalA).serial, createMatchReceiptViewModel(canonicalB).serial);
+  assert.equal(createMatchReceiptViewModel(canonicalA).serial, "#BT-00000109");
 });
 
 test("canonical receipt serial seed is stable and does not expose the match id", () => {
@@ -555,6 +578,29 @@ test("receipt capability cookies stay isolated when creation responses arrive ou
 
   assert.deepEqual(getReceiptCapabilityCookie(request, first.publicId), first);
   assert.deepEqual(getReceiptCapabilityCookie(request, second.publicId), second);
+});
+
+test("public match codes resolve consistently across receipt and search APIs", async () => {
+  const [migration, resolver, resolveApi, draftApi, searchApi, syncHandler] = await Promise.all([
+    readFile(new URL("../supabase/migrations/20260819120000_match_public_code.sql", import.meta.url), "utf8"),
+    readFile(new URL("../server/lib/matchPublicCodeResolver.js", import.meta.url), "utf8"),
+    readFile(new URL("../server/api/match-receipts/resolve.js", import.meta.url), "utf8"),
+    readFile(new URL("../server/api/match-receipts/draft.js", import.meta.url), "utf8"),
+    readFile(new URL("../server/api/search.js", import.meta.url), "utf8"),
+    readFile(new URL("../server/lib/matchSyncHandler.js", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(migration, /alter table public\.matches add column if not exists public_code text/);
+  assert.match(migration, /create unique index if not exists matches_public_code_key/);
+  assert.match(migration, /create trigger assign_match_public_code before insert on public\.matches/);
+  assert.match(migration, /create trigger preserve_match_public_code/);
+  assert.match(resolver, /isPubliclyReadableConfirmedMatch/);
+  assert.match(resolver, /payload\?\._canonicalReceipt/);
+  assert.match(resolveApi, /resolveMatchPublicCode/);
+  assert.match(draftApi, /publicCode: data\.public_code/);
+  assert.match(searchApi, /kind: "match_code"/);
+  assert.match(searchApi, /normalizeMatchPublicCode\(query\)/);
+  assert.match(syncHandler, /publicCode: receiptDraft\.public_code/);
 });
 
 test("receipt photo tools stay outside the export card and reference dividers remain", async () => {
@@ -647,7 +693,9 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(preview, /MY TIER · \{model\.personalTier\.label\}/);
   assert.match(preview, /model\.showPersonalTierIdentity \? <span className="match-receipt-poster-profile">/);
   assert.match(page, /CourtMapPicker/);
-  assert.doesNotMatch(page, /EmblemCropEditor|prepareTeamEmblemUpload|uploadGuestReceiptEmblem/);
+  assert.match(page, /EmblemCropEditor/);
+  assert.match(page, /prepareTeamEmblemUpload/);
+  assert.doesNotMatch(page, /uploadGuestReceiptEmblem/);
   assert.match(page, /reserveImageSaveWindow\(\)/);
   assert.match(page, /saveWindow\.location\.replace\(url\)/);
   assert.match(page, /공유 메뉴에서 이미지 저장을 선택하세요/);
@@ -679,9 +727,11 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.doesNotMatch(page, /model\.comment \|\| "내 경기 기록"/);
   assert.match(preview, /className="match-receipt-qr" branded/);
   assert.match(page, /new URL\("\/app\/receipt", window\.location\.origin\)/);
-  assert.match(page, /if \(activePublicDraftId\) url\.searchParams\.set\("draft", activePublicDraftId\)/);
+  assert.match(page, /if \(draft\.publicCode\) url\.searchParams\.set\("code", draft\.publicCode\)/);
+  assert.match(page, /else if \(activePublicDraftId\) url\.searchParams\.set\("draft", activePublicDraftId\)/);
   assert.match(receiptSources, /\/app\/receipt\?draft=/);
-  assert.doesNotMatch(receiptSources, /\/app\/matches\?match=/);
+  assert.match(receiptSources, /\/app\/receipt\?code=/);
+  assert.match(receiptSources, /\/app\/matches\?match=/);
   assert.match(page, /sourceMatchId: canonicalMatchId/);
   assert.match(page, /const currentUserId = app\?\.currentUser\?\.id \?\? "";/);
   assert.doesNotMatch(page, /const currentUserId = auth\?\.session\?\.user\?\.id/);
@@ -863,6 +913,10 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(detailStyles, /transform-origin:\s*top left/);
   assert.match(renderer, /topEdgeRise:\s*-11 \/ 1671/);
   assert.match(renderer, /ctx\.transform\(1, sourceBoard\.topEdgeRise \/ sourceBoard\.width, 0, 1, 0, 0\)/);
+  assert.match(detailStyles, /\.match-receipt-photo-scoreboard-scores > \.match-receipt-scoreboard-value:first-child\s*\{[^}]*justify-content:\s*flex-end;/);
+  assert.match(detailStyles, /\.match-receipt-photo-scoreboard-scores > \.match-receipt-scoreboard-value:last-child\s*\{[^}]*justify-content:\s*flex-start;[^}]*transform:\s*translateX\(-3%\);/);
+  assert.match(renderer, /board\.x \+ board\.width \* 0\.535/);
+  assert.match(renderer, /formatMatchReceiptScoreboardScore\(model\.homeScore\)[\s\S]*\}, "end"\);[\s\S]*formatMatchReceiptScoreboardScore\(model\.awayScore\)[\s\S]*\}, "start"\);/);
   assert.match(renderer, /document\.fonts\.load\('900 270px "Bebas Neue"'\)/);
   assert.match(renderer, /document\.fonts\.load\('900 58px "Black Han Sans"'\)/);
   assert.match(renderer, /TEAM TIER · \$\{team\.tier\.label\}/);
