@@ -293,7 +293,13 @@
 }
 
 .settings-page .content-grid.settings-section-grid {
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (max-width: 900px) {
+  .settings-page .content-grid.settings-section-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 @media (max-width: 1079px) {

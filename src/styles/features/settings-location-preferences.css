@@ -15,12 +15,12 @@
   border: 0;
   border-radius: 0;
   background: transparent;
-  padding: 10px;
+  padding: var(--space-3) 0;
   box-shadow: none;
 }
 
 .settings-page .settings-toggle-grid label + label {
-  padding-left: 10px;
+  padding-left: 0;
   border-left: 0;
 }
 
@@ -60,22 +60,22 @@
 }
 
 .settings-section-grid {
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .settings-nav-grid {
   display: grid;
-  gap: 0;
+  gap: var(--space-3);
 }
 
 .settings-nav-grid a {
   display: grid;
   gap: var(--space-2);
-  min-height: 72px;
+  min-height: var(--ui-button-height);
   align-content: center;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
+  border: var(--ui-button-border-width) solid var(--ui-control-border);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
   color: var(--rb-text);
   padding: 12px;
   text-decoration: none;
@@ -83,11 +83,22 @@
 }
 
 .settings-nav-grid a + a {
-  border-top: var(--ui-stroke-width) solid var(--ui-divider-subtle);
+  border-top-color: var(--ui-control-border);
 }
 
 .settings-nav-grid a span {
   display: none;
+}
+
+.settings-list-open-button {
+  width: min(100%, var(--ui-action-button-max-inline-size));
+  justify-self: end;
+}
+
+.settings-report-card > .form-stack > .ui-button,
+.settings-block-card > .form-stack > .ui-button {
+  width: min(100%, var(--ui-action-button-max-inline-size));
+  justify-self: end;
 }
 
 .settings-section-main .favorite-management-card,

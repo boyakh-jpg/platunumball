@@ -170,6 +170,7 @@
   --ui-profile-popup-shadow: var(--shadow-strong);
   --ui-profile-popup-backdrop-filter: blur(16px) saturate(1.08);
   --ui-liquid-glass-bg: var(--rb-bg-3);
+  --ui-hero-information-surface-bg: color-mix(in srgb, var(--ui-liquid-glass-bg) 54%, transparent);
   --ui-liquid-glass-color: var(--rb-cream);
   --ui-liquid-glass-muted-color: color-mix(in srgb, var(--rb-cream) 72%, transparent);
   --ui-liquid-glass-button-bg: var(--button-secondary-bg);

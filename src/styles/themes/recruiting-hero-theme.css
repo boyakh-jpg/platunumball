@@ -132,8 +132,9 @@ html[data-theme="light"] .arena-recruit-hero::after {
 
 .arena-hero-panel,
 html[data-theme="light"] .arena-hero-panel {
+  --ui-liquid-glass-surface-bg: var(--ui-hero-information-surface-bg);
   border: 0;
-  background: var(--ui-liquid-glass-bg);
+  background: var(--ui-hero-information-surface-bg);
   background-image: none;
   box-shadow: none;
   backdrop-filter: none;

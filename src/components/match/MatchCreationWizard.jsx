@@ -111,7 +111,7 @@ export function MatchIntentPresetSelector({ matchPurpose, formationMode, onPurpo
     <div className="match-intent-axis-grid">
       <div className="match-intent-axis">
         <span className="field-label create-choice-heading">경기 목적</span>
-        <div className="match-intent-preset-grid" role="radiogroup" aria-label="경기 목적">
+        <div className="match-intent-preset-grid is-compact-control-grid" role="radiogroup" aria-label="경기 목적">
           {MATCH_PURPOSE_OPTIONS.map((option) => (
             <button
               key={option.id}
@@ -132,7 +132,7 @@ export function MatchIntentPresetSelector({ matchPurpose, formationMode, onPurpo
       </div>
       <div className="match-intent-axis">
         <span className="field-label create-choice-heading">팀 구성</span>
-        <div className="match-intent-preset-grid" role="radiogroup" aria-label="팀 구성 방식">
+        <div className="match-intent-preset-grid is-compact-control-grid" role="radiogroup" aria-label="팀 구성 방식">
           {MATCH_FORMATION_OPTIONS.map((option) => {
             const active = pickup ? option.id === "pickup" : option.id === "prearranged";
             return (
@@ -165,11 +165,13 @@ export function MatchRosterPolicyFields({ draft, onChange }) {
     <div className="match-roster-policy-fields">
       <div className="field-block">
         <span className="field-label">{pickup ? "추가 참가 인원" : "후보 정원"}</span>
-        <div className="ui-segmented-control segmented-control compact-segments match-bench-capacity-control">
+        <div className="ui-segmented-control segmented-control compact-segments match-bench-capacity-control" role="radiogroup" aria-label={pickup ? "추가 참가 인원" : "후보 정원"}>
           {BENCH_CAPACITY_OPTIONS.map((benchCapacity) => (
             <button
               key={benchCapacity}
               type="button"
+              role="radio"
+              aria-checked={policy.benchCapacity === benchCapacity}
               className={policy.benchCapacity === benchCapacity ? "active" : ""}
               aria-label={benchCapacity === 0 ? (pickup ? "추가 참가자 없음" : "후보 없음") : pickup ? `추가 참가자 ${benchCapacity * 2}명` : `후보 ${benchCapacity}명`}
               onClick={() => onChange({

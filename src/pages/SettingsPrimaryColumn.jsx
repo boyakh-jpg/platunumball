@@ -69,7 +69,7 @@ export default function SettingsPrimaryColumn({ controller }) {
               </div>
               <ShieldCheck size={22} />
             </div>
-            <div className="settings-nav-grid ui-design-choice-list">
+            <div className="settings-nav-grid">
               <Link to="/app/settings/favorites"><strong>즐겨찾기</strong><span>프로필/팀/구장/심판</span></Link>
               <Link to="/app/settings/courts"><strong>구장 신청</strong><span>주소 검색/등록 요청</span></Link>
               <Link to="/app/settings/referee"><strong>심판</strong><span>룰북/시험/등록 요청</span></Link>
@@ -84,10 +84,15 @@ export default function SettingsPrimaryColumn({ controller }) {
               </div>
               {themeDraft === "light" ? <Sun size={22} /> : <Moon size={22} />}
             </div>
-            <div className="ui-segmented-control segmented-control">
+            <div
+              className="ui-segmented-control segmented-control"
+              role="radiogroup"
+              aria-label="화면 테마"
+            >
               <button
                 type="button"
                 className={themeDraft === "light" ? "active" : ""}
+                aria-pressed={themeDraft === "light"}
                 onPointerUp={(event) => event.currentTarget.blur()}
                 onClick={() => selectTheme("light")}
               >
@@ -96,6 +101,7 @@ export default function SettingsPrimaryColumn({ controller }) {
               <button
                 type="button"
                 className={themeDraft === "dark" ? "active" : ""}
+                aria-pressed={themeDraft === "dark"}
                 onPointerUp={(event) => event.currentTarget.blur()}
                 onClick={() => selectTheme("dark")}
               >

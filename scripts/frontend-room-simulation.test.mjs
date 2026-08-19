@@ -2830,6 +2830,20 @@ test("a stale notification refresh preserves newer reads and deletions", async (
   assert.equal(notifications.some((notification) => notification.id === "n2"), false);
 });
 
+test("notification pagination appends without removing the visible page", () => {
+  const current = [
+    { id: "n1", title: "first", readAt: "2026-08-10T01:00:00.000Z" },
+    { id: "n2", title: "second", readAt: null },
+  ];
+  const merged = mergeNotificationRefresh(current, [
+    { id: "n2", title: "second updated", readAt: null },
+    { id: "n3", title: "third", readAt: null },
+  ], { append: true, preserveLocalChanges: true });
+
+  assert.deepEqual(merged.map((notification) => notification.id), ["n1", "n2", "n3"]);
+  assert.equal(merged.find((notification) => notification.id === "n2")?.title, "second updated");
+});
+
 test("overlapping recruiting mutations keep the room protected until every request settles", () => {
   const pendingCounts = new Map();
   const pendingIds = new Set();

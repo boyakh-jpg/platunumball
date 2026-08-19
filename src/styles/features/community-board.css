@@ -387,15 +387,16 @@
     grid-template-areas:
       "title author"
       "meta author";
-    column-gap: var(--space-3); row-gap: calc(var(--space-3) * 0.7);
-    min-height: 68px; padding: var(--space-4) 0;
+    align-content: center;
+    column-gap: var(--space-3); row-gap: calc(var(--space-2) * 0.7);
+    min-height: 60px; padding: var(--space-3) 0;
   }
 
   .community-post-labels { display: none; }
   .community-post-title-line, .community-post-meta-line {
     display: flex; align-items: center; min-width: 0; gap: var(--space-4);
   }
-  .community-post-meta-line { gap: calc(var(--space-4) * 0.7); }
+  .community-post-meta-line { gap: calc(var(--space-3) * 0.7); }
   .community-post-title-line { grid-area: title; } .community-post-meta-line { grid-area: meta; }
   .community-post-title-cell { flex: 0 1 auto; }
 
@@ -419,7 +420,7 @@
     width: var(--space-10);
     height: var(--space-10);
     flex-basis: var(--space-10);
-    font-size: var(--font-size-caption);
+    font-size: calc(var(--font-size-caption) * 0.86);
   }
 
   .community-post-author-cell .community-author {
@@ -429,11 +430,16 @@
   .community-post-count {
     justify-content: flex-start;
     gap: var(--space-1);
-    font-size: var(--font-size-caption);
+    font-size: calc(var(--font-size-caption) * 0.86);
     line-height: 1.2;
   }
 
-  .community-post-date { text-align: left; font-size: var(--font-size-caption); line-height: 1.2; }
+  .community-post-date { text-align: left; font-size: calc(var(--font-size-caption) * 0.86); line-height: 1.2; }
+
+  .community-post-meta-line svg {
+    width: 12px;
+    height: 12px;
+  }
 
   .community-post-views {
     display: none;

@@ -19,7 +19,7 @@ html[data-theme] .app-main :is(.ui-liquid-glass, .page-header > .ui-button) {
   position: relative;
   isolation: isolate;
   border: 0;
-  background: var(--ui-liquid-glass-bg);
+  background: var(--ui-liquid-glass-surface-bg, var(--ui-liquid-glass-bg));
   color: var(--ui-liquid-glass-color);
   box-shadow: none;
   -webkit-backdrop-filter: none;

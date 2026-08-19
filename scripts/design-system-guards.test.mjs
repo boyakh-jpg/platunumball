@@ -247,16 +247,16 @@ test("앱은 분류 박스 없는 표준 디자인을 사용하고 비교 데모
   assert.match(pageSources.home, /home-upcoming-card ui-design-category-surface/);
   assert.match(pageSources.home, /ui-design-borderless-list/);
   assert.match(pageSources.home, /ui-button-block ui-design-borderless-surface/);
-  assert.match(pageSources.matches, /om-view-card ui-design-soft-surface/);
+  assert.match(pageSources.matches, /om-view-card ui-design-filter-tile/);
   assert.match(pageSources.matches, /ui-design-filter-tile/);
-  assert.match(pageSources.matches, /om-calendar-summary ui-design-soft-surface/);
+  assert.match(pageSources.matches, /className="om-calendar-summary"/);
   assert.match(pageSources.recruiting, /arena-queue-controls ui-design-soft-surface/);
   assert.match(createMatchPageSource, /create-eligibility-control ui-design-borderless-surface/);
   assert.match(createMatchPageSource, /create-public-note ui-design-borderless-surface/);
   assert.match(matchCreationWizardSource, /match-creation-summary-grid ui-design-borderless-list/);
   assert.match(matchCreationWizardSource, /match-creation-validation-list is-error ui-design-borderless-surface/);
   assert.match(pageSources.settings, /favorite-type-grid ui-design-borderless-list ui-design-borderless-surface/);
-  assert.equal(count(settingsSource, "ui-design-choice-list"), 4);
+  assert.equal(count(settingsSource, "ui-design-choice-list"), 3);
   assert.match(pageSources.teams, /my-team-list ui-design-borderless-list/);
   assert.match(teamsSource, /favorite-search-label ui-field-span-all/);
   assert.match(primitiveStyles, /\.ui-field-span-all\s*\{[^}]*grid-column:\s*1 \/ -1;[^}]*width:\s*100%;/);
@@ -755,8 +755,8 @@ test("공용 CTA는 좁은 화면에서도 내용 너비를 유지한다", () =>
     read("src/styles/responsive/home-dashboard-responsive.css"),
     /\.home-public-actions\s*\{[^}]*flex-wrap:\s*nowrap;/,
   );
-  assert.equal(countClassToken(pageSources.matches, "ui-button-block"), 2);
-  assert.equal(countClassToken(pageSources.recruiting, "ui-button-block"), 2);
+  assert.equal(countClassToken(pageSources.matches, "ui-button-block"), 0);
+  assert.equal(countClassToken(pageSources.recruiting, "ui-button-block"), 0);
   assert.equal(countClassToken(pageSources.season, "ui-button-block"), 1);
   assert.match(primitiveStyles, /\.ui-button-block\s*\{\s*width:\s*fit-content;\s*max-width:\s*100%;\s*\}/);
   assert.match(tokenStyles, /--ui-action-button-max-inline-size:\s*176px;/);
@@ -799,7 +799,7 @@ test("데스크톱 side rail은 공용 중성 표면과 무테 활성 상태를 
 test("공용 버튼과 badge 라벨은 한 줄을 유지한다", () => {
   assert.match(primitiveStyles, /\.ui-button\s*\{[\s\S]*?white-space:\s*nowrap;/);
   assert.match(primitiveStyles, /\.ui-button\s*\{[\s\S]*?height:\s*var\(--ui-button-height\);/);
-  assert.match(read("src/styles/primitives/shared-controls.css"), /select\s*\{\s*height:\s*var\(--ui-button-height\);/);
+  assert.match(read("src/styles/primitives/shared-controls.css"), /input:not\([\s\S]*?select,[\s\S]*?height:\s*var\(--ui-button-height\);/);
   assert.match(primitiveStyles, /\.ui-button\.ui-button-sm\s*\{[\s\S]*?height:\s*var\(--ui-button-height-sm\);/);
   assert.match(read("src/styles/features/match-create-operations.css"), /\.create-match-info-grid\.is-standard-room select,[\s\S]*?min-height:\s*var\(--ui-button-height\);/);
   assert.match(primitiveStyles, /\.ui-badge\s*\{[\s\S]*?flex:\s*0 0 auto;[\s\S]*?white-space:\s*nowrap;/);
@@ -1098,14 +1098,14 @@ test("공용 방모달은 배경 페이지와 섞이지 않는 전용 표면을 
   );
 });
 
-test("공용 빈 상태와 compact filter 높이는 canonical token을 유지한다", () => {
+test("공용 빈 상태와 일정 filter 높이는 canonical control token을 유지한다", () => {
   assert.doesNotMatch(globalWorkflowStyles, /(?:^|\n)\s*\.empty-state\s*\{/);
   assert.doesNotMatch(globalWorkflowStyles, /(?:^|\n)\s*\.ui-empty-state\s*\{/);
   assert.match(primitiveStyles, /\.ui-empty-state-compact\s*\{/);
   assert.match(recruitingStyles, /\.arena-modal-close-button\s*\{\s*min-height:\s*var\(--ui-button-height\);/);
   assert.match(
     matchesStyles,
-    /@media \(max-width:\s*480px\)[\s\S]*?\.om-calendar-filter-row \.segmented-control button\s*\{[\s\S]*?min-height:\s*var\(--ui-button-height-sm\);[\s\S]*?height:\s*var\(--ui-button-height-sm\);/,
+    /@media \(max-width:\s*480px\)[\s\S]*?\.om-calendar-filter-row \.segmented-control button\s*\{[\s\S]*?min-height:\s*var\(--ui-button-height\);[\s\S]*?height:\s*var\(--ui-button-height\);/,
   );
   assert.match(
     matchesStyles,
@@ -1405,7 +1405,7 @@ test("hero inner boards share one restrained solid surface system", () => {
   assert.doesNotMatch(tokenStyles, /--ui-liquid-glass-(?:caustic|edge-inset|refraction-inner)/);
   assert.match(tokenStyles, /--ui-liquid-glass-divider:\s*rgba\(255,\s*255,\s*255,\s*0\.11\);/);
   assert.match(tokenStyles, /--ui-liquid-glass-divider:\s*rgba\(35,\s*50,\s*59,\s*0\.12\);/);
-  assert.match(primitiveStyles, /html\[data-theme\] \.app-main :is\(\.ui-liquid-glass,\s*\.page-header > \.ui-button\)\s*\{[^}]*border:\s*0;[^}]*background:\s*var\(--ui-liquid-glass-bg\);[^}]*box-shadow:\s*none;[^}]*backdrop-filter:\s*none;/);
+  assert.match(primitiveStyles, /html\[data-theme\] \.app-main :is\(\.ui-liquid-glass,\s*\.page-header > \.ui-button\)\s*\{[^}]*border:\s*0;[^}]*background:\s*var\(--ui-liquid-glass-surface-bg,\s*var\(--ui-liquid-glass-bg\)\);[^}]*box-shadow:\s*none;[^}]*backdrop-filter:\s*none;/);
   assert.match(primitiveStyles, /html\[data-theme\] \.app-main :is\(\.ui-liquid-glass,\s*\.page-header > \.ui-button\)\s*\{[^}]*text-shadow:\s*none;/);
   assert.match(primitiveStyles, /html\[data-theme\] \.app-main \.ui-liquid-glass :where\(\*\)\s*\{[^}]*text-shadow:\s*none;/);
   assert.doesNotMatch(primitiveStyles, /html\[data-theme\] \.app-main \.ui-page-hero :where\(\*\),[\s\S]*?\.guest-landing-hero :where\(\*\)\s*\{[^}]*text-shadow:\s*none;/);

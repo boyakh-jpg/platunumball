@@ -219,6 +219,9 @@
   display: grid;
   min-width: 0;
   gap: var(--space-4);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
+  padding: var(--space-4);
 }
 .share-card strong {
   font-size: 2rem;

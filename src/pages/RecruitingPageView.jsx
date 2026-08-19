@@ -37,10 +37,10 @@ export default function RecruitingPageView({
             <span><strong>{friendlyCount}</strong>FRIENDLY</span>
           </div>
           <div className="arena-hero-actions">
-            <Button as={Link} to="/app/create" className="ui-button-block">
+            <Button as={Link} to="/app/create">
               <PlusCircle size={18} /> 방 만들기
             </Button>
-            <Button as={Link} to="/app/create?intent=record" variant="secondary" className="ui-button-block">
+            <Button as={Link} to="/app/create?intent=record" variant="secondary">
               <ClipboardCheck size={18} /> 기록하기
             </Button>
           </div>

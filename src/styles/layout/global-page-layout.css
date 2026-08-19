@@ -153,8 +153,8 @@ html[data-theme="light"] .app-main .ui-page-hero .eyebrow {
   overflow: hidden;
   border: var(--ui-card-border-width) solid var(--ui-card-border);
   border-radius: var(--ui-card-radius);
-  background: var(--ui-card-bg);
-  box-shadow: var(--ui-card-shadow);
+  background: var(--ui-hero-information-surface-bg);
+  box-shadow: none;
 }
 .home-hero-next {
   position: relative;
@@ -294,6 +294,7 @@ html[data-theme] .app-main :is(.om-match-hero, .arena-recruit-hero) {
   padding: var(--ui-operations-hero-padding);
 }
 html[data-theme] .app-main :is(.om-match-panel, .arena-hero-panel) {
+  --ui-liquid-glass-surface-bg: var(--ui-hero-information-surface-bg);
   display: grid;
   width: min(100%, var(--ui-hero-status-width));
   align-self: end;
@@ -302,7 +303,9 @@ html[data-theme] .app-main :is(.om-match-panel, .arena-hero-panel) {
   align-items: stretch;
   gap: var(--space-3);
   padding: var(--space-3);
-  background: color-mix(in srgb, var(--ui-liquid-glass-bg) 82%, transparent);
+  border-color: transparent;
+  background: var(--ui-hero-information-surface-bg);
+  box-shadow: none;
 }
 html[data-theme] .app-main :is(.om-match-stats, .arena-hero-stats) {
   display: grid;

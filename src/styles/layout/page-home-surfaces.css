@@ -145,7 +145,7 @@ html[data-theme="light"] .page-header p:not(.eyebrow) {
   border-radius: var(--radius);
   padding: 18px;
   background: var(--surface);
-  box-shadow: var(--shadow);
+  box-shadow: none;
 }
 
 .home-rank-board-head .rank-hero-top {

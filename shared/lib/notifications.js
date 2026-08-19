@@ -219,13 +219,21 @@ export function mergeNotificationRefresh(currentNotifications = [], remoteNotifi
     ? options.deletedIds
     : new Set(options.deletedIds ?? []);
   const currentById = new Map((currentNotifications ?? []).map((notification) => [String(notification.id), notification]));
-  return (remoteNotifications ?? [])
+  const refreshed = (remoteNotifications ?? [])
     .filter((notification) => !deletedIds.has(String(notification.id)))
     .map((notification) => {
       if (!options.preserveLocalChanges) return notification;
       const current = currentById.get(String(notification.id));
       return current?.readAt ? { ...notification, readAt: current.readAt } : notification;
     });
+  if (options.append !== true) return refreshed;
+
+  const refreshedById = new Map(refreshed.map((notification) => [String(notification.id), notification]));
+  const retained = (currentNotifications ?? [])
+    .filter((notification) => !deletedIds.has(String(notification.id)))
+    .map((notification) => refreshedById.get(String(notification.id)) ?? notification);
+  const retainedIds = new Set(retained.map((notification) => String(notification.id)));
+  return [...retained, ...refreshed.filter((notification) => !retainedIds.has(String(notification.id)))];
 }
 
 export function isNotificationDisplayable(notification = {}, options = {}) {

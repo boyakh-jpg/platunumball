@@ -91,9 +91,11 @@ input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
 select,
 .auth-card select,
 .home-search-box input {
+  box-sizing: border-box;
   width: 100%;
+  height: var(--ui-button-height);
   min-height: var(--ui-button-height);
-  padding: 10px 12px;
+  padding: 0 12px;
   border: var(--ui-stroke-width) solid var(--ui-control-border);
   border-radius: var(--ui-control-radius);
   outline: none;
@@ -104,7 +106,8 @@ select,
   touch-action: manipulation;
 }
 select {
-  height: var(--ui-button-height);
+  padding-block: 0;
+  line-height: normal;
 }
 select option,
 select optgroup {

@@ -107,7 +107,7 @@ export default function SettingsSideColumn({ controller, onOpenList }) {
               <Button type="submit" variant="secondary" disabled={!selectedBlockUserId || blockSavePending}>{blockSavePending ? "저장 중" : "차단"}</Button>
               {blockSaveStatus ? <small role="status">{blockSaveStatus}</small> : null}
             </form>
-            <Button type="button" variant="secondary" className="ui-button-block" onClick={() => onOpenList?.("blocks")}>차단 플레이어 목록</Button>
+            <Button type="button" variant="secondary" className="settings-list-open-button" onClick={() => onOpenList?.("blocks")}>차단 플레이어 목록</Button>
           </Card>
 
           <Card className="section-card settings-court-card">
@@ -417,7 +417,7 @@ export default function SettingsSideColumn({ controller, onOpenList }) {
                 </section>
               </form>
             ) : null}
-            <Button type="button" variant="secondary" className="ui-button-block" onClick={() => onOpenList?.("courtRequests")}>구장 신청 목록 {courtRequests.length}건</Button>
+            <Button type="button" variant="secondary" className="settings-list-open-button" onClick={() => onOpenList?.("courtRequests")}>구장 신청 목록 {courtRequests.length}건</Button>
           </Card>
 
 <SettingsReportCard controller={controller} onOpenList={onOpenList} />

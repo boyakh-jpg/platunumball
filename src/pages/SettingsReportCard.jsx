@@ -252,7 +252,7 @@ export function SettingsReportCard({ controller, onOpenList }) {
               <Button type="submit" variant="secondary" disabled={!canSubmitReport || reportSubmitPending}>{reportSubmitPending ? "저장 중" : "신고 접수"}</Button>
               {reportSubmitStatus ? <small role="status">{reportSubmitStatus}</small> : null}
             </form>
-            <Button type="button" variant="secondary" className="ui-button-block" onClick={() => onOpenList?.("reports")}>신고 목록 열람 {app.state.reports?.length ?? 0}건</Button>
+            <Button type="button" variant="secondary" className="settings-list-open-button" onClick={() => onOpenList?.("reports")}>신고 목록 열람 {app.state.reports?.length ?? 0}건</Button>
           </Card>
   );
 }

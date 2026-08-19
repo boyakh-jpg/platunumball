@@ -406,6 +406,7 @@ const currentUser = useMemo(() => {
           prev.notifications,
           filterBlockedIncomingNotifications(result.notifications, prev),
           {
+            append,
             deletedIds: deletedNotificationIdsRef.current,
             preserveLocalChanges: userMutationTrackerRef.current !== tracker
               || Boolean(tracker.notifications?.pending)

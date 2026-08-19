@@ -57,8 +57,8 @@ return (
             <span><strong>{displayScheduledCount}</strong>SOON</span>
           </div>
           <div className="om-match-actions">
-            <Button className="ui-button-block" as={Link} to="/app/create"><PlusCircle size={18} /> 방 만들기</Button>
-            <Button className="ui-button-block" as={Link} to="/app/create?intent=record" variant="secondary"><ClipboardCheck size={18} /> 기록하기</Button>
+            <Button as={Link} to="/app/create"><PlusCircle size={18} /> 방 만들기</Button>
+            <Button as={Link} to="/app/create?intent=record" variant="secondary"><ClipboardCheck size={18} /> 기록하기</Button>
           </div>
         </div>
       </section>
@@ -73,7 +73,7 @@ return (
             <button
               key={view.id}
               type="button"
-              className={active ? "om-view-card ui-design-soft-surface active" : "om-view-card ui-design-soft-surface"}
+              className={active ? "om-view-card ui-design-filter-tile active" : "om-view-card ui-design-filter-tile"}
               onClick={() => {
                 applyFilterState({
                   panelMode: "schedule",
@@ -94,7 +94,7 @@ return (
             })}
             <button
           type="button"
-          className={panelMode === "team" ? "om-view-card ui-design-soft-surface active" : "om-view-card ui-design-soft-surface"}
+          className={panelMode === "team" ? "om-view-card ui-design-filter-tile active" : "om-view-card ui-design-filter-tile"}
           onClick={() => {
             applyFilterState({
               panelMode: "team",
@@ -116,7 +116,7 @@ return (
             </button>
             <button
           type="button"
-          className={panelMode === "tournament" ? "om-view-card ui-design-soft-surface active" : "om-view-card ui-design-soft-surface"}
+          className={panelMode === "tournament" ? "om-view-card ui-design-filter-tile active" : "om-view-card ui-design-filter-tile"}
           onClick={() => applyFilterState({ panelMode: "tournament" })}
         >
           <span className="om-view-icon"><Trophy size={22} /></span>
@@ -130,7 +130,7 @@ return (
           </section>
 
           {panelMode !== "tournament" ? (
-            <div className="om-calendar-summary ui-design-soft-surface">
+            <div className="om-calendar-summary">
           <div className="om-calendar-heading">
             <span className="om-view-icon"><CalendarDays size={22} /></span>
             <div>

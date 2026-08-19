@@ -14,7 +14,7 @@
 
 .affiliation-editor-actions > .button,
 .profile-icon-card-actions > .button {
-  min-width: 112px;
+  width: min(100%, var(--ui-action-button-max-inline-size));
 }
 
 .affiliation-search-result > span {
