@@ -1046,7 +1046,7 @@ export default function MatchReceipt({ auth, app }) {
 
         <aside className="match-receipt-preview-panel" ref={previewRef}>
           <div className="match-receipt-preview-head">
-            <div><span>미리보기</span><strong>{outcome.label}</strong></div>
+            <div><span>미리보기</span></div>
             <span>9:16 STORY</span>
           </div>
           <div className="match-receipt-preview-stage">

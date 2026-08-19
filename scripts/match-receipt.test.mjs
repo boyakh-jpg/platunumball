@@ -5,8 +5,10 @@ import {
   canCreatePublicMatchReceiptSnapshot,
   createDefaultMatchReceiptDraft,
   createMatchReceiptViewModel,
+  formatMatchReceiptScoreboardScore,
   getMatchReceiptDraftFromMatch,
   getMatchReceiptFormatLabel,
+  getMatchReceiptSevenSegmentMask,
   getMatchReceiptSideTeamId,
   getMatchReceiptTeamNameScale,
   MATCH_RECEIPT_LIMITS,
@@ -22,6 +24,12 @@ test("receipt team names shrink before they can overflow", () => {
   assert.equal(getMatchReceiptTeamNameScale("ABCDEFGHIJKLM"), 0.88);
   assert.equal(getMatchReceiptTeamNameScale("ABCDEFGHIJKLMNOPQ"), 0.78);
   assert.equal(getMatchReceiptTeamNameScale("ABCDEFGHIJKLMNOPQRSTU"), 0.68);
+});
+
+test("receipt photo scoreboard formats canonical final scores as seven segments", () => {
+  assert.equal(formatMatchReceiptScoreboardScore(7), "07");
+  assert.equal(formatMatchReceiptScoreboardScore(72), "72");
+  assert.equal(getMatchReceiptSevenSegmentMask(8), "1111111");
 });
 
 test("receipt emblems come only from explicitly loaded canonical teams", async () => {
@@ -680,7 +688,7 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.doesNotMatch(page, /publicDraftId && !requestedPublicDraftId/);
   assert.doesNotMatch(page, /receipt_draft_stale/);
   assert.doesNotMatch(page, /state:\s*\{\s*receiptDraft: getMatchReceiptCreateDraft\(draft\)/);
-  assert.match(preview, /match-receipt-photo-backdrop/);
+  assert.doesNotMatch(preview, /match-receipt-photo-backdrop/);
   assert.doesNotMatch(receiptSources, /index \? "AWAY" : "HOME"/);
   assert.match(preview, /index \? "TEAM B" : "TEAM A"/);
   assert.doesNotMatch(preview, /HOME TEAM|AWAY TEAM/);
@@ -729,7 +737,7 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.doesNotMatch(styles, /\.match-receipt-ticket::after/);
   assert.match(styles, /font-family: "Black Han Sans", "KBO Dia Gothic", sans-serif/);
   assert.match(styles, /transform: scaleX\(0\.92\)/);
-  assert.match(styles, /scale\(calc\(var\(--receipt-photo-scale\) \* 0\.92\)\)/);
+  assert.match(styles, /scale\(var\(--receipt-photo-scale\)\)/);
   assert.match(styles, /\.match-receipt-team-watermarks[\s\S]*height: 34%/);
   assert.match(styles, /\.match-receipt-team-watermarks img \{[\s\S]*opacity: 0\.08;[\s\S]*filter: grayscale\(1\) brightness\(0\) invert\(1\)/);
   assert.doesNotMatch(detailStyles, /\.match-receipt-team-watermarks img\.is-custom/);
@@ -785,7 +793,9 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(renderer, /defaultPhoto: !options\.photoBlob/);
   assert.match(renderer, /const shiftX = rect\.width \* panRange \* photoX \/ 100/);
   assert.match(renderer, /MATCH_RECEIPT_DEFAULT_PHOTO_FOCUS = Object\.freeze\(\{ x: 0, y: 82 \}\)/);
-  assert.match(renderer, /const foregroundScale = options\.defaultPhoto \? 0\.92 : 1/);
+  assert.match(renderer, /const foregroundWidth = width/);
+  assert.doesNotMatch(renderer, /const backdropScale|blur\(16px\).*brightness\(0\.62\)/);
+  assert.doesNotMatch(styles, /\.match-receipt-photo\.is-default \.match-receipt-photo-image/);
   assert.match(renderer, /photoHeight \* 0\.42/);
   assert.match(renderer, /blurFade\.addColorStop\(0\.68, "rgba\(0,0,0,0\.72\)"\)/);
   assert.match(renderer, /fadeIn: 0\.24/);
@@ -826,7 +836,11 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(renderer, /tier-neutral-away-outline-v5\.png/);
   assert.match(renderer, /getTierDivisionNumber/);
   assert.match(renderer, /`\$\{tier\.name\}\$\{division \? ` \$\{division\}` : ""\}`\.toUpperCase\(\)/);
-  assert.match(renderer, /rankball-record-create-night-v9\.webp/);
+  assert.match(renderer, /rankball-record-create-night-v10\.webp/);
+  assert.match(preview, /!photoUrl \? <ReceiptPhotoScoreboard homeScore=\{model\.homeScore\} awayScore=\{model\.awayScore\} \/> : null/);
+  assert.match(renderer, /if \(!options\.photoBlob\) \{\s*drawCanvasPhotoScoreboard/);
+  assert.match(renderer, /formatMatchReceiptScoreboardScore\(model\.homeScore\)/);
+  assert.match(detailStyles, /\.match-receipt-photo-scoreboard\s*\{[^}]*top:\s*25\.2%;[^}]*left:\s*62\.7%;/);
   assert.match(renderer, /document\.fonts\.load\('900 270px "Bebas Neue"'\)/);
   assert.match(renderer, /document\.fonts\.load\('900 58px "Black Han Sans"'\)/);
   assert.match(renderer, /TEAM TIER · \$\{team\.tier\.label\}/);
@@ -855,9 +869,14 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(draftApi, /canClaim/);
   assert.match(draftApi, /trustedCanonical/);
   assert.match(renderer, /label: `\$\{winner\.name\} WIN`/);
-  assert.match(preview, /className="match-receipt-outcome">\{model\.outcome\.label\}/);
-  assert.match(renderer, /ctx\.fillText\(model\.outcome\.label, width \/ 2, compact \? 754 : 1188\)/);
-  assert.match(detailStyles, /\.match-receipt-outcome\s*\{[^}]*top:\s*59\.2%;/);
+  assert.match(preview, /<small>\{model\.outcome\.label\}<\/small>/);
+  assert.doesNotMatch(preview, /className="match-receipt-outcome"/);
+  assert.match(renderer, /ctx\.fillText\(model\.outcome\.label, 44, 105\)/);
+  assert.doesNotMatch(renderer, /ctx\.fillText\(model\.outcome\.label, width \/ 2/);
+  assert.doesNotMatch(detailStyles, /\.match-receipt-outcome/);
+  assert.match(detailStyles, /\.match-receipt-wordmark small/);
+  assert.match(page, /<div><span>미리보기<\/span><\/div>/);
+  assert.doesNotMatch(page, /<strong>\{outcome\.label\}<\/strong>/);
   assert.match(renderer, /MY TIER · \$\{model\.personalTier\.label\}/);
   assert.doesNotMatch(renderer, /const badgeSize = actualSize \* 0\.14/);
   assert.match(renderer, /const badgeSize = 5/);

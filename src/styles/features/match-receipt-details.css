@@ -1,6 +1,90 @@
 .match-receipt-editor input[aria-invalid="true"] { border-color: var(--danger); }
 .match-receipt-editor input[aria-invalid="true"]::placeholder { color: var(--danger); opacity: 1; }
 
+.match-receipt-photo-scoreboard {
+  --receipt-scoreboard-lit: #ff6339;
+  --receipt-scoreboard-unlit: rgba(90, 25, 14, 0.24);
+  position: absolute;
+  z-index: 3;
+  top: 25.2%;
+  left: 62.7%;
+  display: grid;
+  grid-template-rows: 38% 45%;
+  align-content: space-between;
+  width: 12.4%;
+  height: 12.4%;
+  transform: rotate(-0.25deg);
+  transform-origin: center;
+  pointer-events: none;
+}
+
+.match-receipt-photo-scoreboard-clock,
+.match-receipt-photo-scoreboard-scores,
+.match-receipt-seven-segment-value {
+  display: flex;
+  min-width: 0;
+  height: 100%;
+}
+
+.match-receipt-photo-scoreboard-clock {
+  align-items: center;
+  justify-content: center;
+  gap: 3%;
+}
+
+.match-receipt-photo-scoreboard-scores {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 14%;
+}
+
+.match-receipt-seven-segment-value {
+  justify-content: center;
+  gap: 2%;
+}
+
+.match-receipt-seven-segment-digit {
+  display: block;
+  width: auto;
+  height: 100%;
+  overflow: visible;
+}
+
+.match-receipt-seven-segment-digit path { fill: var(--receipt-scoreboard-unlit); }
+.match-receipt-seven-segment-digit path.is-active {
+  fill: var(--receipt-scoreboard-lit);
+  filter: drop-shadow(0 0 1.2px var(--receipt-scoreboard-lit));
+}
+
+.match-receipt-seven-segment-colon {
+  display: grid;
+  flex: 0 0 5%;
+  align-content: center;
+  gap: 18%;
+  height: 62%;
+}
+
+.match-receipt-seven-segment-colon > i {
+  display: block;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--receipt-scoreboard-lit);
+  box-shadow: 0 0 1.2px var(--receipt-scoreboard-lit);
+}
+
+.match-receipt-wordmark small {
+  width: 220%;
+  overflow: hidden;
+  color: var(--receipt-orange);
+  font-family: "KBO Dia Gothic", sans-serif;
+  font-size: 0.62em;
+  font-weight: 900;
+  letter-spacing: 0.025em;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .match-receipt-info-fields > label { width: 100%; min-width: 0; max-width: 100%; contain: inline-size; }
 .match-receipt-info-fields input[type="date"] {
   display: block; box-sizing: border-box; overflow: hidden;
@@ -73,25 +157,6 @@
 .match-receipt-poster-teams .match-receipt-team-tier.is-custom { width: 34%; max-width: 86px; max-height: 86px; object-fit: contain; opacity: 0.9; filter: none; }
 
 .match-receipt-score-colon { position: absolute; left: 50%; transform: translateX(-50%); }
-
-.match-receipt-outcome {
-  position: absolute;
-  z-index: 2;
-  top: 59.2%;
-  left: 7%;
-  right: 7%;
-  background: var(--receipt-paper-texture) center / auto 240% repeat-x;
-  background-clip: text;
-  color: transparent;
-  font-family: "KBO Dia Gothic", sans-serif;
-  font-size: clamp(8px, 2.15cqw, 11px);
-  font-weight: 900;
-  letter-spacing: 0.025em;
-  line-height: 1;
-  text-align: center;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
 
 .match-receipt-game-detail {
   position: absolute;

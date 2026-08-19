@@ -53,6 +53,43 @@ export const MATCH_RECEIPT_CANVAS_SIZES = Object.freeze({
 
 export const MATCH_RECEIPT_PHOTO_ASPECT = 1080 / 885;
 const MATCH_RECEIPT_DEFAULT_PHOTO_FOCUS = Object.freeze({ x: 0, y: 82 });
+const MATCH_RECEIPT_DEFAULT_SCOREBOARD_SOURCE_RECT = Object.freeze({
+  x: 590 / 941,
+  y: 275 / 1671,
+  width: 117 / 941,
+  height: 96 / 1671,
+});
+
+export const MATCH_RECEIPT_SEVEN_SEGMENT_PATHS = Object.freeze([
+  "M9 2H41L46 7L40 12H10L4 7Z",
+  "M47 9L50 13V39L47 43L42 38V14Z",
+  "M47 47L50 51V77L47 81L42 76V52Z",
+  "M10 78H40L46 83L41 88H9L4 83Z",
+  "M3 47L8 52V76L3 81L0 77V51Z",
+  "M3 9L8 14V38L3 43L0 39V13Z",
+  "M9 40H41L46 45L41 50H9L4 45Z",
+]);
+
+const MATCH_RECEIPT_SEVEN_SEGMENT_MASKS = Object.freeze({
+  0: "1111110",
+  1: "0110000",
+  2: "1101101",
+  3: "1111001",
+  4: "0110011",
+  5: "1011011",
+  6: "1011111",
+  7: "1110000",
+  8: "1111111",
+  9: "1111011",
+});
+
+export function getMatchReceiptSevenSegmentMask(value) {
+  return MATCH_RECEIPT_SEVEN_SEGMENT_MASKS[String(value)] ?? "0000000";
+}
+
+export function formatMatchReceiptScoreboardScore(value) {
+  return String(cleanScore(value)).padStart(2, "0");
+}
 
 export function getMatchReceiptRotationCoverScale(rotation, aspect = MATCH_RECEIPT_PHOTO_ASPECT) {
   const radians = Math.abs(Number(rotation) || 0) * Math.PI / 180;
@@ -604,7 +641,7 @@ export function createMatchReceiptViewModel(value, options = {}) {
     matchUrl: String(options.matchUrl ?? ""),
     logoUrl: BOXTIER_LOGO_URL,
     wordmarkUrl: BOXTIER_LETTER_DARK_URL,
-    defaultPhotoUrl: assetUrl("/assets/rankball-record-create-night-v9.webp"),
+    defaultPhotoUrl: assetUrl("/assets/rankball-record-create-night-v10.webp"),
     paperUrl: MATCH_RECEIPT_PAPER_URL,
     paperGrainUrl: MATCH_RECEIPT_PAPER_GRAIN_URL,
     scoreDigitsUrl: MATCH_RECEIPT_SCORE_DIGITS_URL,
@@ -686,27 +723,13 @@ function drawCoverPhoto(ctx, image, rect, draft, options = {}) {
   const photoY = options.defaultPhoto ? MATCH_RECEIPT_DEFAULT_PHOTO_FOCUS.y : draft.photoY;
   const positionX = (100 - photoX) / 200;
   const positionY = (100 - photoY) / 200;
-  const foregroundScale = options.defaultPhoto ? 0.92 : 1;
-  const foregroundWidth = width * foregroundScale;
-  const foregroundHeight = height * foregroundScale;
+  const foregroundWidth = width;
+  const foregroundHeight = height;
   const frame = document.createElement("canvas");
   frame.width = rect.width;
   frame.height = rect.height;
   const frameCtx = frame.getContext("2d");
   if (!frameCtx) throw new Error("match_receipt_canvas_unavailable");
-  if (options.defaultPhoto) {
-    const backdropScale = 1.08;
-    const backdropWidth = width * backdropScale;
-    const backdropHeight = height * backdropScale;
-    frameCtx.filter = "blur(16px) brightness(0.62) contrast(1.08) saturate(0.92)";
-    frameCtx.drawImage(
-      image,
-      -(backdropWidth - rect.width) * positionX,
-      -(backdropHeight - rect.height) * positionY,
-      backdropWidth,
-      backdropHeight,
-    );
-  }
   frameCtx.filter = "brightness(0.78) contrast(1.08) saturate(0.92)";
   frameCtx.drawImage(
     image,
@@ -729,6 +752,100 @@ function drawCoverPhoto(ctx, image, rect, draft, options = {}) {
   ctx.scale(scale, scale);
   ctx.drawImage(frame, -rect.width / 2, -rect.height / 2);
   ctx.restore();
+}
+
+function getDefaultPhotoSourceRect(image, rect, sourceRect) {
+  const cover = Math.max(rect.width / image.naturalWidth, rect.height / image.naturalHeight);
+  const foregroundWidth = image.naturalWidth * cover;
+  const foregroundHeight = image.naturalHeight * cover;
+  const positionX = (100 - MATCH_RECEIPT_DEFAULT_PHOTO_FOCUS.x) / 200;
+  const positionY = (100 - MATCH_RECEIPT_DEFAULT_PHOTO_FOCUS.y) / 200;
+  return {
+    x: rect.x - (foregroundWidth - rect.width) * positionX + sourceRect.x * foregroundWidth,
+    y: rect.y - (foregroundHeight - rect.height) * positionY + sourceRect.y * foregroundHeight,
+    width: sourceRect.width * foregroundWidth,
+    height: sourceRect.height * foregroundHeight,
+  };
+}
+
+function drawCanvasSevenSegmentDigit(ctx, value, rect) {
+  const mask = getMatchReceiptSevenSegmentMask(value);
+  ctx.save();
+  ctx.translate(rect.x, rect.y);
+  ctx.scale(rect.width / 50, rect.height / 90);
+  MATCH_RECEIPT_SEVEN_SEGMENT_PATHS.forEach((path, index) => {
+    const active = mask[index] === "1";
+    ctx.fillStyle = active ? "#ff6339" : "rgba(90,25,14,0.24)";
+    ctx.shadowColor = active ? "#ff6339" : "transparent";
+    ctx.shadowBlur = active ? 1.2 : 0;
+    ctx.fill(new Path2D(path));
+  });
+  ctx.restore();
+}
+
+function drawCanvasSevenSegmentValue(ctx, value, rect) {
+  const digits = Array.from(String(value));
+  const gap = rect.height * 0.035;
+  const naturalDigitWidth = rect.height * 50 / 90;
+  const naturalWidth = naturalDigitWidth * digits.length + gap * Math.max(0, digits.length - 1);
+  const scale = Math.min(1, rect.width / naturalWidth);
+  const digitWidth = naturalDigitWidth * scale;
+  const digitHeight = rect.height * scale;
+  const scaledGap = gap * scale;
+  const totalWidth = digitWidth * digits.length + scaledGap * Math.max(0, digits.length - 1);
+  let x = rect.x + (rect.width - totalWidth) / 2;
+  const y = rect.y + (rect.height - digitHeight) / 2;
+  digits.forEach((digit) => {
+    drawCanvasSevenSegmentDigit(ctx, digit, { x, y, width: digitWidth, height: digitHeight });
+    x += digitWidth + scaledGap;
+  });
+}
+
+function drawCanvasPhotoScoreboard(ctx, image, photoRect, model) {
+  const board = getDefaultPhotoSourceRect(image, photoRect, MATCH_RECEIPT_DEFAULT_SCOREBOARD_SOURCE_RECT);
+  const clockY = board.y;
+  const clockHeight = board.height * 0.38;
+  const clockDigitAreaWidth = board.width * 0.37;
+  drawCanvasSevenSegmentValue(ctx, "00", {
+    x: board.x + board.width * 0.1,
+    y: clockY,
+    width: clockDigitAreaWidth,
+    height: clockHeight,
+  });
+  drawCanvasSevenSegmentValue(ctx, "00", {
+    x: board.x + board.width * 0.53,
+    y: clockY,
+    width: clockDigitAreaWidth,
+    height: clockHeight,
+  });
+  ctx.save();
+  ctx.fillStyle = "#ff6339";
+  ctx.shadowColor = "#ff6339";
+  ctx.shadowBlur = 1.2;
+  const colonX = board.x + board.width * 0.5;
+  const colonRadius = board.width * 0.012;
+  [0.39, 0.61].forEach((position) => {
+    ctx.beginPath();
+    ctx.arc(colonX, clockY + clockHeight * position, colonRadius, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  ctx.restore();
+
+  const scoreY = board.y + board.height * 0.53;
+  const scoreHeight = board.height * 0.45;
+  const scoreWidth = board.width * 0.41;
+  drawCanvasSevenSegmentValue(ctx, formatMatchReceiptScoreboardScore(model.homeScore), {
+    x: board.x + board.width * 0.02,
+    y: scoreY,
+    width: scoreWidth,
+    height: scoreHeight,
+  });
+  drawCanvasSevenSegmentValue(ctx, formatMatchReceiptScoreboardScore(model.awayScore), {
+    x: board.x + board.width * 0.57,
+    y: scoreY,
+    width: scoreWidth,
+    height: scoreHeight,
+  });
 }
 
 function createCanvasPaperPattern(ctx, paperGrain) {
@@ -998,6 +1115,9 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
   ctx.fillStyle = "#111111";
   ctx.fillRect(0, 0, width, height);
   drawCoverPhoto(ctx, photo, { x: 0, y: 0, width, height: photoHeight }, model, { defaultPhoto: !options.photoBlob });
+  if (!options.photoBlob) {
+    drawCanvasPhotoScoreboard(ctx, photo, { x: 0, y: 0, width, height: photoHeight }, model);
+  }
 
   const blurredPhoto = document.createElement("canvas");
   blurredPhoto.width = width;
@@ -1045,6 +1165,13 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
     ctx.font = '900 27px "Arial Black", Impact, sans-serif';
     ctx.fillText("BOXTIER", 44, 79);
   }
+  let outcomeFontSize = 15;
+  ctx.font = `900 ${outcomeFontSize}px "KBO Dia Gothic", sans-serif`;
+  while (ctx.measureText(model.outcome.label).width > 235 && outcomeFontSize > 10) {
+    outcomeFontSize -= 1;
+    ctx.font = `900 ${outcomeFontSize}px "KBO Dia Gothic", sans-serif`;
+  }
+  ctx.fillText(model.outcome.label, 44, 105);
   ctx.fillStyle = "#f05a2a";
   ctx.textAlign = "right";
   ctx.font = '900 25px "KBO Dia Gothic", sans-serif';
@@ -1099,12 +1226,6 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
   ctx.font = `900 ${compact ? 31 : 36}px "Bebas Neue", sans-serif`;
   ctx.letterSpacing = compact ? "0.8px" : "1.2px";
   ctx.fillText(model.matchNatureLabel, width / 2, scoreTop + (compact ? 7 : 17));
-  ctx.letterSpacing = "0px";
-
-  ctx.fillStyle = paperTextPattern;
-  ctx.font = `900 ${compact ? 21 : 26}px "KBO Dia Gothic", sans-serif`;
-  ctx.letterSpacing = compact ? "0.4px" : "0.7px";
-  ctx.fillText(model.outcome.label, width / 2, compact ? 754 : 1188);
   ctx.letterSpacing = "0px";
 
   const teamTop = compact ? 779 : 1192;

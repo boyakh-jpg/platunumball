@@ -225,8 +225,7 @@
   z-index: 2; background: linear-gradient(180deg, transparent 42%, rgba(16, 17, 16, 0.12) 58%, rgba(16, 17, 16, 0.58) 78%, rgba(16, 17, 16, 0.92) 94%, #101110 100%);
 }
 
-.match-receipt-photo-image,
-.match-receipt-photo-backdrop {
+.match-receipt-photo-image {
   position: absolute; top: 50%; left: 50%;
   width: 100%; height: 100%; object-fit: cover;
   object-position: var(--receipt-photo-position-x) var(--receipt-photo-position-y);
@@ -236,15 +235,6 @@
 .match-receipt-photo-image {
   transform: translate(calc(-50% + var(--receipt-photo-shift-x)), calc(-50% + var(--receipt-photo-shift-y))) rotate(var(--receipt-photo-rotation)) scale(var(--receipt-photo-scale));
   filter: brightness(0.78) contrast(1.08) saturate(0.92);
-}
-
-.match-receipt-photo-backdrop {
-  transform: translate(calc(-50% + var(--receipt-photo-shift-x)), calc(-50% + var(--receipt-photo-shift-y))) rotate(var(--receipt-photo-rotation)) scale(calc(var(--receipt-photo-scale) * 1.08));
-  filter: blur(12px) brightness(0.62) contrast(1.08) saturate(0.92);
-}
-
-.match-receipt-photo.is-default .match-receipt-photo-image {
-  transform: translate(calc(-50% + var(--receipt-photo-shift-x)), calc(-50% + var(--receipt-photo-shift-y))) rotate(var(--receipt-photo-rotation)) scale(calc(var(--receipt-photo-scale) * 0.92));
 }
 
 .match-receipt-poster-head {
@@ -263,9 +253,11 @@
 
 .match-receipt-wordmark {
   display: flex;
+  flex-direction: column;
   width: 12%;
   min-width: 0;
-  align-items: center;
+  align-items: flex-start;
+  gap: 0.28em;
 }
 
 .match-receipt-wordmark img {
@@ -350,6 +342,7 @@
   font-variant-numeric: tabular-nums;
   line-height: 0.92;
 }
+
 .match-receipt-poster-teams > div:not(.match-receipt-game-detail) > strong {
   background: var(--receipt-paper-texture) center / auto 240% repeat-x;
   background-clip: text;

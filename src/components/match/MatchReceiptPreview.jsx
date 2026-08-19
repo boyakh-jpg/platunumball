@@ -2,9 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import { MapPin } from "lucide-react";
 import {
   createMatchReceiptViewModel,
+  formatMatchReceiptScoreboardScore,
   getMatchReceiptFormatLabel,
   getMatchReceiptPhotoStyle,
+  getMatchReceiptSevenSegmentMask,
   getMatchReceiptTeamNameScale,
+  MATCH_RECEIPT_SEVEN_SEGMENT_PATHS,
 } from "../../lib/matchReceipt.js";
 import { createMatchReceiptLineArt } from "../../lib/matchReceiptEmblem.js";
 import QrCode from "../common/QrCode.jsx";
@@ -22,6 +25,47 @@ function ReceiptScoreDigits({ value, className = "match-receipt-score-digits" })
         />
       ))}
     </span>
+  );
+}
+
+function ReceiptSevenSegmentDigit({ value }) {
+  const mask = getMatchReceiptSevenSegmentMask(value);
+  return (
+    <svg className="match-receipt-seven-segment-digit" viewBox="0 0 50 90" aria-hidden="true">
+      {MATCH_RECEIPT_SEVEN_SEGMENT_PATHS.map((path, index) => (
+        <path className={mask[index] === "1" ? "is-active" : undefined} d={path} key={path} />
+      ))}
+    </svg>
+  );
+}
+
+function ReceiptSevenSegmentValue({ value }) {
+  return (
+    <span className="match-receipt-seven-segment-value">
+      {Array.from(String(value)).map((digit, index) => (
+        <ReceiptSevenSegmentDigit value={digit} key={`${digit}-${index}`} />
+      ))}
+    </span>
+  );
+}
+
+function ReceiptPhotoScoreboard({ homeScore, awayScore }) {
+  return (
+    <div
+      className="match-receipt-photo-scoreboard"
+      role="img"
+      aria-label={`경기 종료 ${homeScore} 대 ${awayScore}`}
+    >
+      <span className="match-receipt-photo-scoreboard-clock" aria-hidden="true">
+        <ReceiptSevenSegmentValue value="00" />
+        <i className="match-receipt-seven-segment-colon"><i /><i /></i>
+        <ReceiptSevenSegmentValue value="00" />
+      </span>
+      <span className="match-receipt-photo-scoreboard-scores" aria-hidden="true">
+        <ReceiptSevenSegmentValue value={formatMatchReceiptScoreboardScore(homeScore)} />
+        <ReceiptSevenSegmentValue value={formatMatchReceiptScoreboardScore(awayScore)} />
+      </span>
+    </div>
   );
 }
 
@@ -95,8 +139,8 @@ export default function MatchReceiptPreview({
         aria-label={photoUrl ? "영수증 배경 사진 편집" : undefined}
         {...photoGestureHandlers}
       >
-        {!photoUrl ? <img className="match-receipt-photo-backdrop" src={backgroundUrl} alt="" aria-hidden="true" /> : null}
         <img className="match-receipt-photo-image" src={backgroundUrl} alt="" />
+        {!photoUrl ? <ReceiptPhotoScoreboard homeScore={model.homeScore} awayScore={model.awayScore} /> : null}
       </div>
       <header className="match-receipt-poster-head">
         <span className="match-receipt-wordmark">
@@ -115,6 +159,7 @@ export default function MatchReceiptPreview({
             }}
           />
           <strong hidden>BOXTIER</strong>
+          <small>{model.outcome.label}</small>
         </span>
         <span className="match-receipt-poster-id">
           <span>{model.serial}</span>
@@ -145,7 +190,6 @@ export default function MatchReceiptPreview({
           <ReceiptScoreDigits value={model.awayScore} />
         </div>
       </section>
-      <strong className="match-receipt-outcome">{model.outcome.label}</strong>
       <section className={`match-receipt-poster-teams${hasGameDetail ? " has-game-detail" : ""}`}>
         {posterTeams.map((team, index) => (
           <div key={index} style={{ "--receipt-team-name-size": `${4.8 * getMatchReceiptTeamNameScale(team.name)}cqw` }}>
