@@ -332,8 +332,10 @@
 }
 
 .settings-signout-row {
-  justify-content: flex-end;
-  padding-block: var(--space-6);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--space-3);
+  padding-block: 0;
 }
 
 .settings-test-account-switcher { border-top: var(--ui-stroke-width) solid var(--line); padding-top: var(--space-4); }
@@ -343,10 +345,10 @@
 
 .settings-auth-identities {
   display: grid;
-  width: min(100%, 680px);
+  width: 100%;
   grid-template-columns: minmax(0, 1fr);
   gap: var(--space-6);
-  border-top: var(--ui-stroke-width) solid var(--line);
+  border-top: var(--ui-stroke-width) solid var(--ui-divider-subtle);
   padding-top: var(--space-6);
 }
 
@@ -374,7 +376,7 @@
   gap: var(--space-2);
 }
 
-.settings-auth-identities-copy h2,
+.settings-auth-identities-copy h3,
 .settings-auth-identities-copy p {
   margin: 0;
 }
@@ -417,12 +419,12 @@
 }
 
 .settings-auth-identity-list .button {
-  width: 148px;
-  justify-self: end;
+  width: 100%;
+  justify-self: stretch;
 }
 
 .settings-signout-row .button {
-  width: 148px;
+  width: 100%;
 }
 
 @media (max-width: 560px) {

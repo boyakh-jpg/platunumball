@@ -301,13 +301,13 @@ html[data-theme="light"] .om-calendar-filter-bar {
 .om-schedule-workspace .om-schedule-rail .om-view-card {
   position: relative;
   overflow: hidden;
-  padding-inline-start: calc(var(--space-4) + 3px);
   grid-column: auto;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--space-3);
   min-height: 60px;
   padding: var(--space-4) var(--space-5) var(--space-4) var(--space-6);
+  padding-inline-start: calc(var(--space-6) + var(--ui-status-rail-width) + var(--space-2));
   border: 0;
   border-radius: var(--ui-control-radius);
   background: color-mix(in srgb, var(--ui-control-bg) 58%, transparent);
@@ -323,9 +323,9 @@ html[data-theme="light"] .om-calendar-filter-bar {
 
 .om-schedule-workspace .om-schedule-rail .om-view-card::before {
   position: absolute;
-  inset: 0 auto 0 0;
-  width: 3px;
-  border-radius: 999px;
+  inset: var(--ui-status-rail-inset) auto var(--ui-status-rail-inset) 0;
+  width: var(--ui-status-rail-width);
+  border-radius: var(--ui-status-rail-radius);
   background: var(--ui-divider-subtle);
   content: "";
 }

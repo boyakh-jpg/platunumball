@@ -405,7 +405,7 @@ test("signed-in login redirects and settings exposes logout", () => {
   assert.match(settingsSource, /window\.confirm\("로그아웃하시겠습니까\?"\)/);
   assert.match(settingsSource, /<LogOut size=\{16\} \/> 로그아웃/);
   assert.doesNotMatch(settingsSource, /<header[^>]*>[\s\S]*?auth\.signOut[\s\S]*?<\/header>/);
-  assert.match(settingsSource, /<SettingsRefereeSection controller=\{controller\} \/>[\s\S]*?settings-signout-row/);
+  assert.match(settingsSource, /className=\{`content-grid[\s\S]*?settings-account-card[\s\S]*?settings-signout-row[\s\S]*?<SettingsRefereeSection controller=\{controller\} \/>/);
   assert.match(settingsSource, /settings-signout-row[\s\S]*?variant="danger"/);
   assert.match(settingsSource, /canSwitchTestAccount[\s\S]*?<details className="settings-test-account-switcher"/);
   assert.match(settingsSource, /auth\.switchTestAccount\(testLoginId\)/);

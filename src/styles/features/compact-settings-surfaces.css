@@ -323,10 +323,6 @@ html[data-theme="light"] .rank-mode-pill {
   gap: var(--page-column-gap);
 }
 
-.settings-page .settings-auth-identities {
-  margin-inline: auto;
-}
-
 .settings-page .settings-address-actions {
   justify-content: flex-end;
 }
@@ -353,11 +349,34 @@ html[data-theme="light"] .rank-mode-pill {
 }
 
 .settings-page .section-card {
+  --settings-legend-height: 46px;
+
+  position: relative;
   gap: var(--space-6);
-  border: 0;
-  border-radius: 0;
+  margin-top: calc(var(--settings-legend-height) / 2);
+  border-width: var(--ui-stroke-width);
+  border-style: solid;
+  border-color: var(--ui-control-border);
+  border-radius: var(--radius);
   background: transparent;
   box-shadow: none;
+}
+
+.settings-page .section-card > .section-title-row:first-child {
+  min-height: var(--settings-legend-height);
+  margin-top: calc(-1 * var(--card-padding) - (var(--settings-legend-height) / 2));
+}
+
+.settings-page .section-card > .section-title-row:first-child > :first-child,
+.settings-page .section-card > .section-title-row:first-child > :last-child:not(:first-child) {
+  position: relative;
+  z-index: 1;
+  background: var(--rb-bg);
+  box-shadow: 0 0 0 var(--space-2) var(--rb-bg);
+}
+
+.settings-page .settings-account-card {
+  grid-column: auto;
 }
 
 .settings-page .contract-grid.single {
