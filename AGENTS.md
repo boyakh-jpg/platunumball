@@ -22,14 +22,15 @@ Caveman mode.
 - Discover repository scope and proceed. Ask only for a material conflict, risk, or product decision; otherwise make and state the safest assumption. If a request conflicts with an existing principle, explain it and ask whether to change or reject that principle. Do not blindly agree.
 - For bugs, state the broken invariant first. Evaluate UI ideas for clarity, steps, and responsiveness; logic changes for room phase, party, permission, MMR, and record rules.
 - Diagnosis, explanation, and review are read-only unless implementation is also requested.
-- Canonical policy docs describe current intent; Git stores history. Before work, search the affected doc for duplicate, overlapping, or contradictory rules.
+- Canonical policy docs describe current intent, not append-only changelogs; Git stores history. Before work, search the affected doc for duplicate, overlapping, or contradictory rules.
 - User decisions and canonical policy define intent. DB/API/schema, helpers, code, and tests are runtime evidence. Newer dates or code do not replace policy unless scope and superseded rule are explicit.
 - On conflict, inspect the canonical owner and relevant Git history; classify stale docs, implementation regression, or unresolved product decision. Ask only for the last case, otherwise repair the stale side in the same scoped change.
 - When policy changes, replace or remove the superseded statement and update affected code/tests in the same commit. Audit broad existing drift separately; never normalize unrelated policy opportunistically.
 
 # Project Safety
 
-- For room, match, party, invite, referee, record, report, MMR, team, tournament, or auth logic, check `docs/logic-and-terminology.md`; update it in the same commit when behavior changes.
+- For room, match, party, invite, referee, record, report, MMR, team, tournament, auth, notification, or contact logic, check `docs/logic-and-terminology.md`; update it in the same commit when behavior changes.
+- For database, schema, RLS, storage, upload, or delivery changes, check `docs/data-storage-model.md`; update it in the same commit when data or storage behavior changes.
 - For UI, CSS, responsive layout, themes, cards, buttons, slots, avatars, hover cards, modals, or heroes, check `docs/design-system.md`; update it in the same commit when design behavior changes.
 - Matching and Matches share one room-modal logic. Keep slot, phase, party, and permission calculations in central helpers. Keep demo data compatible with real creation flow.
 - Supabase migrations are non-destructive by default: no `DROP TABLE`, `TRUNCATE`, or `DELETE` without explicit risk-confirmed instruction. Prefer `ALTER TABLE`, `CREATE POLICY`, `DROP POLICY IF EXISTS`, and `IF EXISTS` / `IF NOT EXISTS`.
