@@ -604,7 +604,7 @@ export function createMatchReceiptViewModel(value, options = {}) {
     matchUrl: String(options.matchUrl ?? ""),
     logoUrl: BOXTIER_LOGO_URL,
     wordmarkUrl: BOXTIER_LETTER_DARK_URL,
-    defaultPhotoUrl: assetUrl("/assets/rankball-record-create-night-v8.webp"),
+    defaultPhotoUrl: assetUrl("/assets/rankball-record-create-night-v9.webp"),
     paperUrl: MATCH_RECEIPT_PAPER_URL,
     paperGrainUrl: MATCH_RECEIPT_PAPER_GRAIN_URL,
     scoreDigitsUrl: MATCH_RECEIPT_SCORE_DIGITS_URL,

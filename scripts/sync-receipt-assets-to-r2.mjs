@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { extname, resolve } from "node:path";
 
 const RECEIPT_ASSETS = [
-  "public/assets/rankball-record-create-night-v8.webp",
+  "public/assets/rankball-record-create-night-v9.webp",
   "public/assets/rankball-record-create-night-v3.webp",
   "public/assets/rankball-record-create-night-v2.webp",
   "public/assets/match-receipt-paper-torn-v1.png",
