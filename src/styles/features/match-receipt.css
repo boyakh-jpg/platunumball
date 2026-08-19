@@ -136,6 +136,7 @@
 /* Poster receipt. Canvas export in matchReceipt.js mirrors this layout. */
 .match-receipt-card {
   --receipt-orange: #ed5a2c;
+  --receipt-ink: #151515;
   container-type: inline-size;
   isolation: isolate;
   padding: 0;
@@ -555,6 +556,7 @@
 .match-receipt-personal-stats b {
   display: grid;
   justify-items: center;
+  color: var(--receipt-ink);
   font-size: clamp(15px, 6.6cqw, 32px);
   font-variant-numeric: tabular-nums;
   line-height: 0.86;
@@ -567,6 +569,10 @@
   gap: clamp(0px, 0.12cqw, 1px);
   height: 1em;
   overflow: visible;
+}
+
+.match-receipt-stat-digits > .match-receipt-score-digit {
+  filter: brightness(0);
 }
 
 .match-receipt-personal-stats b + b {

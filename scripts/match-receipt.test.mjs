@@ -843,6 +843,9 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(styles, /--receipt-ticket-personal-stats-shift:\s*-28%/);
   assert.match(styles, /\.match-receipt-ticket-game > \.match-receipt-personal-stats\s*\{[^}]*transform:\s*translateY\(var\(--receipt-ticket-personal-stats-shift\)\)/);
   assert.match(styles, /\.match-receipt-personal-stats b \+ b[\s\S]*border-left/);
+  assert.match(styles, /\.match-receipt-personal-stats b\s*\{[^}]*color:\s*var\(--receipt-ink\)/);
+  assert.match(styles, /\.match-receipt-stat-digits > \.match-receipt-score-digit\s*\{[^}]*filter:\s*brightness\(0\)/);
+  assert.match(renderer, /if \(model\.hasPersonalStats\) \{\s*ctx\.fillStyle = "#151515"/);
   assert.match(renderer, /const receiptTop = compact \? 1010 : 1504/);
   assert.match(renderer, /ctx\.fillStyle = "#d4582b";\s*ctx\.font = '900 27px "KBO Dia Gothic", sans-serif';\s*ctx\.fillText\(model\.playedOn/);
   assert.match(renderer, /ctx\.drawImage\(paper, 0, receiptTop, width, height - receiptTop - \(compact \? 26 : 34\)\)/);
