@@ -248,7 +248,7 @@ test("앱은 분류 박스 없는 표준 디자인을 사용하고 비교 데모
   assert.match(pageSources.home, /ui-design-borderless-list/);
   assert.match(pageSources.home, /ui-button-block ui-design-borderless-surface/);
   assert.match(pageSources.matches, /om-view-card ui-design-filter-tile/);
-  assert.match(pageSources.matches, /ui-design-filter-tile/);
+  assert.doesNotMatch(pageSources.matches, /om-view-card ui-design-soft-surface/);
   assert.match(pageSources.matches, /className="om-calendar-summary"/);
   assert.match(pageSources.recruiting, /arena-queue-controls ui-design-soft-surface/);
   assert.match(createMatchPageSource, /create-eligibility-control ui-design-borderless-surface/);

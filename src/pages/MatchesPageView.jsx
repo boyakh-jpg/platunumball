@@ -63,7 +63,7 @@ return (
         </div>
       </section>
 
-      <div className="om-schedule-workspace">
+      <div className={panelMode === "tournament" ? "om-schedule-workspace" : "om-schedule-workspace is-calendar"}>
         <aside className="om-schedule-rail">
           <section className="om-view-grid" aria-label="경기 상태">
             {VIEWS.map((view) => {

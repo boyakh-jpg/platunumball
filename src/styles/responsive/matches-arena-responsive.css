@@ -292,8 +292,9 @@ html[data-theme="light"] .om-calendar-filter-bar {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-3);
   overflow: visible;
-  border: 0;
-  border-radius: 0;
+  padding: var(--space-2);
+  border: var(--ui-stroke-width) solid var(--rb-line);
+  border-radius: var(--radius-md);
 }
 
 .om-schedule-workspace .om-schedule-rail .om-view-card {
@@ -303,29 +304,21 @@ html[data-theme="light"] .om-calendar-filter-bar {
   gap: var(--space-3);
   min-height: 60px;
   padding: var(--space-4) var(--space-5) var(--space-4) var(--space-6);
+  border: 0;
   border-radius: var(--ui-control-radius);
-  background: color-mix(in srgb, var(--ui-control-bg) 86%, transparent);
+  background: color-mix(in srgb, var(--ui-control-bg) 58%, transparent);
   box-shadow: none;
   transform: none;
 }
 
 .om-schedule-workspace .om-schedule-rail .om-view-card.active {
   color: var(--rb-orange-2);
-  background: color-mix(in srgb, var(--rb-orange-2) 10%, var(--ui-control-bg));
+  background: color-mix(in srgb, var(--rb-orange-2) 12%, var(--ui-control-bg));
   box-shadow: none;
 }
 
 .om-schedule-workspace .om-schedule-rail .om-view-card::before {
-  position: absolute;
-  inset: 25% auto 25% var(--space-2);
-  width: 3px;
-  border-radius: 999px;
-  background: var(--ui-divider-subtle);
-  content: "";
-}
-
-.om-schedule-workspace .om-schedule-rail .om-view-card.active::before {
-  background: var(--rb-orange-2);
+  content: none;
 }
 
 .om-schedule-workspace .om-schedule-rail .om-view-icon,
@@ -345,6 +338,12 @@ html[data-theme="light"] .om-calendar-filter-bar {
   white-space: nowrap;
 }
 
+@media (max-width: 640px) {
+  .om-schedule-rail .om-view-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 .om-schedule-workspace .om-schedule-rail > .om-calendar-summary {
   padding: var(--space-5);
   border-radius: var(--ui-control-radius);
@@ -356,6 +355,11 @@ html[data-theme="light"] .om-calendar-filter-bar {
     grid-template-columns: minmax(300px, 340px) minmax(0, 1fr);
     align-items: stretch;
     gap: var(--space-2);
+  }
+
+  .om-schedule-workspace.is-calendar {
+    grid-template-columns: minmax(300px, 420px) minmax(400px, 560px);
+    justify-content: space-between;
   }
 
   .om-schedule-rail {
@@ -376,7 +380,7 @@ html[data-theme="light"] .om-calendar-filter-bar {
   }
 
   .om-schedule-workspace > .om-calendar-panel {
-    width: 100%;
+    width: min(100%, 560px);
     height: 100%;
     align-items: stretch;
     align-self: stretch;
@@ -430,7 +434,7 @@ html[data-theme="light"] .om-calendar-filter-bar {
   }
 
   .om-calendar-box {
-    width: min(100%, 700px);
+    width: min(100%, 560px);
     justify-self: end;
   }
 }
