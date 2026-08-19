@@ -350,9 +350,7 @@
   font-variant-numeric: tabular-nums;
   line-height: 0.92;
 }
-
 .match-receipt-score-colon { position: absolute; left: 50%; transform: translateX(-50%); }
-
 .match-receipt-poster-teams > div:not(.match-receipt-game-detail) > strong {
   background: var(--receipt-paper-texture) center / auto 240% repeat-x;
   background-clip: text;
