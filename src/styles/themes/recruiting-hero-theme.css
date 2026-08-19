@@ -10,8 +10,6 @@
   white-space: nowrap;
 }
 
-.arena-filter-bar button.active,
-.arena-filter-bar .segmented-control button.active,
 .arena-filter-bar .arena-start-date-filter button.active,
 .arena-filter-bar .arena-start-date-filter button.sat.active,
 .arena-filter-bar .arena-start-date-filter button.sun.active {
@@ -68,14 +66,12 @@ html[data-theme="light"] .arena-slot-command-popover {
 
 /* 2026-07-01 clip-safe filter groups. */
 
-.arena-filter-bar .segmented-control,
 .arena-filter-bar .arena-start-date-filter {
   box-sizing: border-box;
   padding: 0;
   scroll-padding-inline: 0;
 }
 
-.arena-filter-bar .segmented-control button,
 .arena-filter-bar .arena-start-date-filter button {
   box-sizing: border-box;
   border: 0;
@@ -83,7 +79,6 @@ html[data-theme="light"] .arena-slot-command-popover {
   background: transparent;
 }
 
-.arena-filter-bar .segmented-control button.active,
 .arena-filter-bar .arena-start-date-filter button.active,
 .arena-filter-bar .arena-start-date-filter button.sat.active,
 .arena-filter-bar .arena-start-date-filter button.sun.active {

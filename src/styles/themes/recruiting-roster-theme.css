@@ -80,7 +80,7 @@
   }
 }
 
-html[data-theme="light"] .arena-filter-bar button {
+html[data-theme="light"] .arena-filter-bar .arena-start-date-filter button {
   border: 0;
   border-radius: 0;
   background: transparent;
@@ -88,8 +88,6 @@ html[data-theme="light"] .arena-filter-bar button {
   color: var(--rb-text);
 }
 
-html[data-theme="light"] .arena-filter-bar button.active,
-html[data-theme="light"] .arena-filter-bar .segmented-control button.active,
 html[data-theme="light"] .arena-filter-bar .arena-start-date-filter button.active,
 html[data-theme="light"] .arena-filter-bar .arena-start-date-filter button.sat.active,
 html[data-theme="light"] .arena-filter-bar .arena-start-date-filter button.sun.active {

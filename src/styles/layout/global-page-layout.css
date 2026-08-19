@@ -290,6 +290,8 @@ html[data-theme] .app-main .ui-page-hero .team-hub-board .team-hub-board-identit
 html[data-theme] .app-main :is(.om-match-hero, .arena-recruit-hero) {
   grid-template-columns: minmax(0, 1fr) minmax(0, var(--ui-hero-status-width));
   gap: var(--space-6);
+  min-height: var(--ui-operations-hero-min-height);
+  padding: var(--ui-operations-hero-padding);
 }
 html[data-theme] .app-main :is(.om-match-panel, .arena-hero-panel) {
   display: grid;
@@ -334,6 +336,11 @@ html[data-theme] .app-main :is(.om-match-actions, .arena-hero-actions) > .ui-but
   }
 }
 @media (max-width: 720px) {
+  html[data-theme] .app-main :is(.om-match-hero, .arena-recruit-hero) {
+    min-height: var(--ui-operations-hero-min-height-mobile);
+    padding: var(--ui-operations-hero-padding-mobile);
+  }
+
   html[data-theme] .app-main :is(.om-match-panel, .arena-hero-panel) {
     width: 100%;
     grid-template-columns: minmax(0, 1fr);

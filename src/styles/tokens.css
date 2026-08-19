@@ -284,6 +284,10 @@
   --ui-page-hero-min-height: 164px;
   --ui-page-hero-min-height-mobile: 144px;
   --ui-page-hero-padding: clamp(16px, 2vw, 22px);
+  --ui-operations-hero-min-height: 214px;
+  --ui-operations-hero-min-height-mobile: 174px;
+  --ui-operations-hero-padding: 24px;
+  --ui-operations-hero-padding-mobile: 16px;
   --ui-page-hero-shadow: none;
   --ui-schedule-hero-mask: none;
   --ui-image-hero-title-color: var(--rb-cream);

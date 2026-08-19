@@ -2,10 +2,6 @@
 .arena-recruit-page {
   gap: var(--page-section-gap);
 }
-.arena-recruit-hero {
-  min-height: 214px;
-  padding: 24px;
-}
 @media (min-width: 721px) {
   .arena-recruit-hero {
     grid-template-columns: minmax(0, 1fr) minmax(280px, 330px);
@@ -14,11 +10,6 @@
 @media (max-width: 720px) {
   .arena-recruit-page {
     gap: var(--page-section-gap-mobile);
-  }
-
-  .arena-recruit-hero {
-    min-height: 174px;
-    padding: 16px;
   }
 }
 @media (max-width: 720px) {

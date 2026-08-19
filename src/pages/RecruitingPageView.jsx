@@ -84,10 +84,10 @@ export default function RecruitingPageView({
                   {regionDistrictOptions.map((district) => <option key={district} value={district}>{district}</option>)}
                 </select>
               </label>
-              <div className="ui-segmented-control segmented-control compact-segments arena-filter-segment">
-                <button type="button" className={queue === "all" ? "active" : ""} onClick={() => setQueue("all")}>전체</button>
-                <button type="button" className={queue === "ranked" ? "active" : ""} onClick={() => setQueue("ranked")}>정규전</button>
-                <button type="button" className={queue === "friendly" ? "active" : ""} onClick={() => setQueue("friendly")}>친선전</button>
+              <div className="ui-segmented-control ui-filter-row segmented-control compact-segments arena-filter-segment" role="radiogroup" aria-label="경기 유형">
+                <button type="button" role="radio" className={queue === "all" ? "active" : ""} aria-checked={queue === "all"} onClick={() => setQueue("all")}>전체</button>
+                <button type="button" role="radio" className={queue === "ranked" ? "active" : ""} aria-checked={queue === "ranked"} onClick={() => setQueue("ranked")}>정규전</button>
+                <button type="button" role="radio" className={queue === "friendly" ? "active" : ""} aria-checked={queue === "friendly"} onClick={() => setQueue("friendly")}>친선전</button>
               </div>
               <label className="arena-filter-select arena-mode-filter">
                 <select className="ui-control" aria-label="경기 방식" value={modeFilter} onChange={(event) => setModeFilter(event.target.value)}>
