@@ -2336,6 +2336,10 @@ test("모집 목록은 공용 경기 생성 경로만 사용한다", async () =>
   assert.match(app, /<Route path="\/app\/create" element=\{<CreateMatch app=\{app\} \/>\}/);
   assert.match(view, /to="\/app\/create"/);
   assert.match(view, /to="\/app\/create\?intent=record"/);
+  assert.match(view, /className="ui-segmented-control segmented-control ui-filter-row arena-queue-filter" role="radiogroup" aria-label="경기 유형"/);
+  assert.match(view, /\["all", "전체"\][\s\S]*\["ranked", "정규전"\][\s\S]*\["friendly", "친선전"\]/);
+  assert.match(view, /role="radio"[\s\S]*aria-checked=\{queue === value\}[\s\S]*onClick=\{\(\) => setQueue\(value\)\}/);
+  assert.doesNotMatch(view, /<select[^>]*aria-label="경기 유형"/);
   assert.doesNotMatch(page, /composeOpen|setComposeOpen|createPending|createRecruitingPost/);
   assert.doesNotMatch(view, /arena-compose-drawer|arena-compose-form/);
 });

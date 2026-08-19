@@ -84,13 +84,24 @@ export default function RecruitingPageView({
                   {regionDistrictOptions.map((district) => <option key={district} value={district}>{district}</option>)}
                 </select>
               </label>
-              <label className="arena-filter-select arena-queue-filter">
-                <select className="ui-control" aria-label="경기 유형" value={queue} onChange={(event) => setQueue(event.target.value)}>
-                  <option value="all">전체 경기</option>
-                  <option value="ranked">정규전</option>
-                  <option value="friendly">친선전</option>
-                </select>
-              </label>
+              <div className="ui-segmented-control segmented-control ui-filter-row arena-queue-filter" role="radiogroup" aria-label="경기 유형">
+                {[
+                  ["all", "전체"],
+                  ["ranked", "정규전"],
+                  ["friendly", "친선전"],
+                ].map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    role="radio"
+                    className={queue === value ? "active" : ""}
+                    aria-checked={queue === value}
+                    onClick={() => setQueue(value)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
               <label className="arena-filter-select arena-mode-filter">
                 <select className="ui-control" aria-label="경기 방식" value={modeFilter} onChange={(event) => setModeFilter(event.target.value)}>
                   <option value="all">전체 방식</option>

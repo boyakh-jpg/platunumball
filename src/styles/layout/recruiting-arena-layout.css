@@ -319,7 +319,7 @@ html[data-theme="light"] .arena-lobby-arena {
 .arena-modal-close-button {
   min-height: var(--ui-button-height);
 }
-.arena-filter-bar .segmented-control button {
+.arena-filter-bar .segmented-control:not(.ui-filter-row) button {
   min-width: max-content;
   max-width: none;
   flex: 0 0 auto;
