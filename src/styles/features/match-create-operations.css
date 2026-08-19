@@ -236,13 +236,14 @@
 }
 
 .create-match-page .age-restriction-segments > button {
+  min-inline-size: max-content;
   padding-inline: var(--space-2);
   white-space: nowrap;
   word-break: keep-all;
   overflow-wrap: normal;
 }
 
-@media (min-width: 1280px) {
+@media (min-width: 1101px) {
   .create-visibility-card {
     display: grid;
     grid-template-columns: minmax(190px, max-content) minmax(0, 1fr);

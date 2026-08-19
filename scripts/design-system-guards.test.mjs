@@ -998,6 +998,14 @@ test("매칭과 기록 생성 선택 영역은 같은 제목과 버튼 타이포
     courtControlStyles,
     /\.create-match-page \.create-mode-grid button em,[\s\S]*?font-size:\s*var\(--create-choice-option-copy-font-size\);[\s\S]*?line-height:\s*1\.45;/,
   );
+  assert.match(
+    matchCreateOperationsStyles,
+    /@media \(min-width:\s*1101px\)[\s\S]*?\.create-visibility-card\s*\{[^}]*grid-template-columns:[^}]*\}[\s\S]*?\.match-intent-axis\s*\{[^}]*grid-template-columns:/,
+  );
+  assert.match(
+    matchCreateOperationsStyles,
+    /\.create-match-page \.age-restriction-segments > button\s*\{[^}]*min-inline-size:\s*max-content;[^}]*white-space:\s*nowrap;[^}]*word-break:\s*keep-all;/,
+  );
 });
 
 test("공용 방의 A/B 출전·후보 슬롯은 같은 간격과 반응형 정렬을 사용한다", () => {
