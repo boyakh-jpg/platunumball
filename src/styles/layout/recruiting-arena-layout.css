@@ -337,16 +337,29 @@ html[data-theme="light"] .arena-lobby-arena {
   flex: 0 1 132px;
   max-width: 150px;
 }
+.arena-filter-bar .arena-queue-filter {
+  flex: 0 1 132px;
+  max-width: 150px;
+}
 @media (min-width: 1080px) {
-  .arena-filter-bar .arena-start-date-filter {
-    flex: 1 1 520px;
+  .arena-filter-bar {
+    display: grid;
+    grid-template-columns: minmax(150px, 190px) minmax(130px, 170px) minmax(120px, 140px) minmax(120px, 140px) minmax(0, 1fr) max-content;
+  }
+  .arena-filter-bar .arena-filter-select {
     width: auto;
+    min-width: 0;
+    max-width: none;
+  }
+  .arena-filter-bar .arena-start-date-filter {
+    width: 100%;
     max-width: none;
   }
 }
 @media (max-width: 720px) {
   .arena-filter-bar .arena-region-sido-filter,
   .arena-filter-bar .arena-region-district-filter,
+  .arena-filter-bar .arena-queue-filter,
   .arena-filter-bar .arena-mode-filter {
     width: 100%;
     max-width: none;

@@ -15,7 +15,7 @@ export function CreateMatchIntentSection({ context }) {
   return (
     <>
 {wizardStep === 1 ? (
-        <Card className="section-card full-span">
+        <Card className="section-card full-span create-visibility-card">
           <div className="section-title-row">
             <div>
               <p className="eyebrow">Room visibility</p>

@@ -231,6 +231,45 @@
   text-align: left;
 }
 
+.match-purpose-options > button {
+  padding-inline-start: var(--space-5);
+}
+
+.create-match-page .age-restriction-segments > button {
+  padding-inline: var(--space-2);
+  white-space: nowrap;
+  word-break: keep-all;
+  overflow-wrap: normal;
+}
+
+@media (min-width: 1280px) {
+  .create-visibility-card {
+    display: grid;
+    grid-template-columns: minmax(190px, max-content) minmax(0, 1fr);
+    align-items: center;
+    column-gap: var(--space-6);
+  }
+
+  .create-visibility-card > .section-title-row {
+    align-self: center;
+    margin: 0;
+  }
+
+  .create-visibility-card > .create-mode-grid {
+    min-width: 0;
+  }
+
+  .create-visibility-card > :not(.section-title-row, .create-mode-grid) {
+    grid-column: 1 / -1;
+  }
+
+  .match-intent-axis {
+    grid-template-columns: minmax(100px, max-content) minmax(0, 1fr);
+    align-items: center;
+    gap: var(--space-4);
+  }
+}
+
 .match-intent-preset-grid > button:not(.active) > span {
   color: var(--muted);
 }

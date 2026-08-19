@@ -3,6 +3,7 @@ import Card from "../common/Card.jsx";
 import HelpDisclosure from "../common/HelpDisclosure.jsx";
 import { PLAYER_STAT_FIELDS } from "../../lib/constants.js";
 import { filterProfileRecords, groupProfileRecordsByCourt, summarizeProfileRecords } from "../../lib/matchUtils.js";
+import { MATCH_FORMAT_FILTERS, getMatchFormatFilterLabel } from "../../../shared/lib/matchFormats.js";
 
 export const PROFILE_RECORD_FOLDERS = [
   { id: "summary", label: "종합" },
@@ -26,10 +27,7 @@ const PERSONAL_VISIBILITY_FILTERS = [
 
 const MODE_FILTERS = [
   { id: "all", label: "통합" },
-  { id: "1v1", label: "1v1" },
-  { id: "2v2", label: "2v2" },
-  { id: "3v3", label: "3v3" },
-  { id: "5v5", label: "5v5" },
+  ...MATCH_FORMAT_FILTERS,
 ];
 
 const PERSONAL_SUMMARY_FIELDS = [
@@ -99,7 +97,7 @@ export default function ProfileRecordSummaryCard({
     : [];
   const folderLabel = PROFILE_RECORD_FOLDERS.find(({ id }) => id === recordFolder)?.label ?? "종합";
   const sectionLabel = OFFICIAL_SECTIONS.find(({ id }) => id === officialSection)?.label ?? "일반";
-  const summaryTitle = `${modeFilter === "all" || recordFolder === "personal" ? "" : `${modeFilter} `}${recordFolder === "official" ? `공식기록 ${sectionLabel}` : folderLabel} 통계`;
+  const summaryTitle = `${modeFilter === "all" || recordFolder === "personal" ? "" : `${getMatchFormatFilterLabel(modeFilter)} `}${recordFolder === "official" ? `공식기록 ${sectionLabel}` : folderLabel} 통계`;
 
   return (
     <Card className="section-card profile-records-summary">

@@ -130,6 +130,9 @@ html[data-theme] .app-main .ui-page-hero {
   --hero-title-shadow: var(--ui-image-hero-title-shadow);
   --hero-copy-shadow: var(--ui-image-hero-copy-shadow);
 }
+html[data-theme="light"] .app-main .ui-page-hero {
+  box-shadow: none;
+}
 html[data-theme="light"] .app-main .ui-page-hero .eyebrow {
   color: var(--hero-eyebrow-color);
 }
@@ -264,8 +267,6 @@ html[data-theme] .app-main :is(
   .home-hero-stats em,
   .team-hub-board em,
   .home-hero-next > svg:last-child,
-  .om-match-stats > span,
-  .arena-hero-stats > span,
   .gm-reserve-panel,
   .gm-room-actions > div
 ) {
@@ -278,9 +279,7 @@ html[data-theme] .app-main .ui-page-hero .ui-liquid-glass :is(
   .home-hero-next > em,
   .home-hero-stats em,
   .team-hub-board em,
-  .home-hero-next > svg:last-child,
-  .om-match-stats > span,
-  .arena-hero-stats > span
+  .home-hero-next > svg:last-child
 ) {
   color: var(--ui-liquid-glass-muted-color);
 }
@@ -316,14 +315,16 @@ html[data-theme] .app-main :is(.om-match-stats, .arena-hero-stats) > span {
   justify-items: center;
   gap: var(--space-1);
   padding: var(--space-2) var(--space-3);
-  color: var(--hero-copy-color);
+  color: var(--text);
   opacity: 1;
+  text-shadow: none;
 }
 html[data-theme] .app-main :is(.om-match-stats, .arena-hero-stats) strong {
-  color: var(--hero-title-color);
+  color: var(--text);
   font-family: var(--sports-display-font);
   font-variant-numeric: tabular-nums;
   opacity: 1;
+  text-shadow: none;
 }
 html[data-theme] .app-main :is(.om-match-actions, .arena-hero-actions) {
   display: grid;

@@ -1,3 +1,7 @@
+import { getMatchFormatLabel, isFiba3x3Rules } from "../../shared/lib/matchFormats.js";
+
+export { getMatchFormatLabel, isFiba3x3Rules };
+
 const PERIOD_COUNTS = new Set([1, 2, 4]);
 const END_CONDITIONS = new Set(["time", "target_or_time"]);
 const CLOCK_MODES = new Set(["running", "stopped"]);
@@ -248,24 +252,6 @@ export function getMatchRulesPayload(source = {}, options = {}) {
     meetingPoint: rules.meetingPoint,
     meetBeforeMinutes: rules.meetBeforeMinutes,
   };
-}
-
-export function isFiba3x3Rules(mode = "", rules = {}) {
-  if (mode !== "3v3") return false;
-  const ruleSet = String(rules?.ruleSet ?? "").trim().toLowerCase();
-  if (ruleSet === "fiba_3x3") return true;
-  if (ruleSet) return false;
-  return (
-    Number(rules?.targetScore) === 21
-    && Number(rules?.periodCount) === 1
-    && Number(rules?.periodMinutes) === 12
-    && rules?.endCondition === "target_or_time"
-    && rules?.winByTwo === true
-  );
-}
-
-export function getMatchFormatLabel(mode = "", rules = {}) {
-  return isFiba3x3Rules(mode, rules) ? "3x3" : mode;
 }
 
 export function resolveMatchRuleSource(primary = {}, fallback = {}) {

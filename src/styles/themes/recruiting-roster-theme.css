@@ -1,6 +1,5 @@
 @media (max-width: 720px) {
 
-  .arena-filter-segment,
   .arena-filter-bar .segmented-control,
   .arena-filter-bar .arena-start-date-filter {
     overflow-x: auto;
@@ -8,7 +7,6 @@
     scrollbar-width: none;
   }
 
-  .arena-filter-segment::-webkit-scrollbar,
   .arena-filter-bar .segmented-control::-webkit-scrollbar,
   .arena-filter-bar .arena-start-date-filter::-webkit-scrollbar {
     display: none;

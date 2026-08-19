@@ -299,6 +299,9 @@ html[data-theme="light"] .om-calendar-filter-bar {
 }
 
 .om-schedule-workspace .om-schedule-rail .om-view-card {
+  position: relative;
+  overflow: hidden;
+  padding-inline-start: calc(var(--space-4) + 3px);
   grid-column: auto;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
@@ -319,7 +322,16 @@ html[data-theme="light"] .om-calendar-filter-bar {
 }
 
 .om-schedule-workspace .om-schedule-rail .om-view-card::before {
-  content: none;
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  border-radius: 999px;
+  background: var(--ui-divider-subtle);
+  content: "";
+}
+
+.om-schedule-workspace .om-schedule-rail .om-view-card.active::before {
+  background: var(--rb-orange-2);
 }
 
 .om-schedule-workspace .om-schedule-rail .om-view-icon,

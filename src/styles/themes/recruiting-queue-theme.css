@@ -91,23 +91,6 @@
   max-width: none;
 }
 
-.arena-filter-segment {
-  width: auto;
-  max-width: 100%;
-  flex-wrap: wrap;
-  gap: var(--ui-control-group-gap);
-  border: var(--ui-control-group-border-width) solid var(--ui-control-group-border);
-  padding: var(--ui-control-group-padding);
-  border-radius: var(--ui-control-group-radius);
-  background: var(--ui-control-group-bg);
-  overflow: visible;
-}
-
-.arena-filter-tabs {
-  flex: 1 1 100%;
-  width: 100%;
-}
-
 .arena-filter-bar .arena-start-date-filter button {
   min-height: 42px;
   max-width: 72px;
@@ -264,7 +247,6 @@ html[data-theme="light"] .arena-room-player-slot.empty.invite {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .arena-filter-segment,
   .arena-filter-bar .segmented-control {
     display: flex;
   }
@@ -437,15 +419,6 @@ html[data-theme="light"] .arena-filter-bar {
 }
 
 html[data-theme="light"] .arena-hero-panel {
-  box-shadow: none;
-}
-
-.arena-filter-bar .arena-filter-tabs button,
-html[data-theme="light"] .arena-filter-bar .arena-filter-tabs button {
-  min-height: var(--ui-button-height-sm);
-  border: 0;
-  border-radius: 0;
-  background: transparent;
   box-shadow: none;
 }
 

@@ -71,28 +71,12 @@ html[data-theme="light"] .arena-filter-bar .arena-start-date-filter {
   padding: 0;
   scroll-padding-inline: 0;
 }
-.arena-filter-bar .arena-filter-segment > button {
-  min-width: 0;
-  height: var(--ui-button-height);
-  min-height: var(--ui-button-height);
-  border: var(--ui-button-border-width) solid var(--ui-control-border);
-  border-radius: var(--ui-button-radius);
-  background: var(--ui-control-bg);
-  color: var(--ui-button-color);
-}
-.arena-filter-bar .arena-filter-segment > button.active,
-.arena-filter-bar .arena-filter-segment > button[aria-checked="true"] {
-  border-color: var(--ui-selectable-selected-border);
-  background: var(--ui-selectable-selected-bg);
-  color: var(--ui-selectable-selected-color);
-}
 @media (max-width: 720px) {
   .arena-filter-bar {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     grid-template-areas:
       "region-sido region-district"
-      "segment segment"
-      "mode count"
+      "queue mode"
       "date date";
     align-items: center;
   }
@@ -113,9 +97,8 @@ html[data-theme="light"] .arena-filter-bar .arena-start-date-filter {
     flex: 1 1 auto;
   }
 
-  .arena-filter-bar .arena-filter-segment {
-    grid-area: segment;
-    width: 100%;
+  .arena-filter-bar .arena-queue-filter {
+    grid-area: queue;
   }
 
   .arena-filter-bar .arena-mode-filter {
@@ -123,7 +106,7 @@ html[data-theme="light"] .arena-filter-bar .arena-start-date-filter {
   }
 
   .arena-filter-bar .arena-filter-count {
-    grid-area: count;
+    grid-column: 1 / -1;
     justify-self: end;
   }
 

@@ -33,6 +33,7 @@ import {
   isSyntheticMatchRoomId,
   isNationalRecruitingPost,
 } from "../lib/recruiting.js";
+import { matchesMatchFormatFilter } from "../../shared/lib/matchFormats.js";
 import {
   getLocalDateInputValue,
   getRoomScheduleLabel,
@@ -398,7 +399,7 @@ function RecruitingReady({ app, readOnly = false }) {
         return isRegionRecruitingPost(post, selectedRegionKey, app.currentUser) || isNationalRecruitingPost(post, app.state);
       })
       .filter((post) => queue === "all" || (queue === "ranked" ? post.ranked !== false : post.ranked === false))
-      .filter((post) => modeFilter === "all" || post.mode === modeFilter)
+      .filter((post) => matchesMatchFormatFilter(post, modeFilter))
       .filter((post) => {
         if (startFilter === "all" || post.id === targetPostId) return true;
         if (startFilter === "instant") return isInstantRoom(post);

@@ -2,6 +2,7 @@ import { PLAYER_STAT_FIELDS } from "./constants.js";
 import { isMatchRecordMatch, isPersonalRecordMatch } from "./matchRecordTypes.js";
 import { getActualMatchPlayerSideName } from "./matchRoster.js";
 import { getMatchSideResult, getMatchSideScore, hasVerifiedPlayerStats } from "./matchSummary.js";
+import { matchesMatchFormatFilter } from "./matchFormats.js";
 
 const VERIFIED_STAT_SOURCES = new Set(["referee", "dispute_operator"]);
 
@@ -45,7 +46,7 @@ export function filterProfileRecords(records = [], {
     if (folder === "personal") {
       return visibility === "all" || (record.visibility ?? record.rules?.visibility ?? "private") === visibility;
     }
-    return mode === "all" || record.mode === mode;
+    return matchesMatchFormatFilter(record, mode);
   });
 }
 

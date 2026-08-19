@@ -6,7 +6,7 @@ import CourtHoverCard from "../components/court/CourtHoverCard.jsx";
 import MatchListCard from "../components/match/MatchListCard.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
-import { MATCH_MODES } from "../lib/constants.js";
+import { MATCH_FORMAT_FILTERS, getMatchFormatFilterLabel } from "../../shared/lib/matchFormats.js";
 import { REGION_TREE } from "../lib/profileSetup.js";
 import { getRecruitingListCardLobby, getRecruitingRoomOwnerId, hasPendingRecruitingInvitation, isRecruitingPostForUser, isNationalRecruitingPost, isPaidRecruitingCourt } from "../lib/recruiting.js";
 import { getRoomCompetitionLabel, getRoomRefereeLabel, getRoomVisibilityLabel, getRoomScheduleLabel } from "../lib/matchUtils.js";
@@ -84,15 +84,17 @@ export default function RecruitingPageView({
                   {regionDistrictOptions.map((district) => <option key={district} value={district}>{district}</option>)}
                 </select>
               </label>
-              <div className="ui-folder-tabs arena-filter-tabs arena-filter-segment" role="radiogroup" aria-label="경기 유형">
-                <button type="button" role="radio" aria-checked={queue === "all"} onClick={() => setQueue("all")}>전체</button>
-                <button type="button" role="radio" aria-checked={queue === "ranked"} onClick={() => setQueue("ranked")}>정규전</button>
-                <button type="button" role="radio" aria-checked={queue === "friendly"} onClick={() => setQueue("friendly")}>친선전</button>
-              </div>
+              <label className="arena-filter-select arena-queue-filter">
+                <select className="ui-control" aria-label="경기 유형" value={queue} onChange={(event) => setQueue(event.target.value)}>
+                  <option value="all">전체 경기</option>
+                  <option value="ranked">정규전</option>
+                  <option value="friendly">친선전</option>
+                </select>
+              </label>
               <label className="arena-filter-select arena-mode-filter">
                 <select className="ui-control" aria-label="경기 방식" value={modeFilter} onChange={(event) => setModeFilter(event.target.value)}>
                   <option value="all">전체 방식</option>
-                  {MATCH_MODES.map((mode) => <option key={mode.id} value={mode.id}>{mode.label}</option>)}
+                  {MATCH_FORMAT_FILTERS.map((mode) => <option key={mode.id} value={mode.id}>{mode.label}</option>)}
                 </select>
               </label>
               <div className="arena-start-date-filter" aria-label="start date">
@@ -120,7 +122,7 @@ export default function RecruitingPageView({
           <div id="recruiting-queue-filters" className="arena-queue-summary">
             <span>{regionFilterLabel}</span>
             <span>{queue === "ranked" ? "정규전" : queue === "friendly" ? "친선전" : "전체"}</span>
-            <span>{modeFilter === "all" ? "전체 방식" : MATCH_MODES.find((mode) => mode.id === modeFilter)?.label ?? modeFilter}</span>
+            <span>{getMatchFormatFilterLabel(modeFilter)}</span>
             <span>{startFilterLabel}</span>
           </div>
         )}
