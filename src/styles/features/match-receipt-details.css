@@ -32,9 +32,11 @@
 
 .match-receipt-photo-scoreboard-scores {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 14%;
+  grid-template-columns: 41% 5% 41%;
+  justify-content: space-between;
 }
+
+.match-receipt-photo-scoreboard-scores > .match-receipt-scoreboard-glyph { width: 100%; height: 100%; aspect-ratio: auto; }
 
 .match-receipt-scoreboard-value {
   justify-content: center;
@@ -134,7 +136,7 @@
 .match-receipt-period-fields i { color: var(--rb-muted); font-style: normal; font-weight: 900; }
 
 .match-receipt-poster-teams.has-game-detail::after { display: none; }
-.match-receipt-poster-teams .match-receipt-team-tier.is-custom { width: 34%; max-width: 86px; max-height: 86px; object-fit: contain; opacity: 0.9; filter: none; }
+.match-receipt-poster-teams .match-receipt-team-tier.is-custom { object-fit: contain; opacity: 0.9; filter: none; }
 
 .match-receipt-score-colon { position: absolute; left: 50%; transform: translateX(-50%); }
 

@@ -2,6 +2,8 @@ const CACHE = new Map();
 const SIZE = 256;
 const GOLD = [214, 165, 34];
 const CROP_EDGE_GUARD = 5;
+const EMBLEM_CONTENT_WIDTH = 210;
+const EMBLEM_CONTENT_HEIGHT = 230;
 
 function loadImage(url) {
   return new Promise((resolve, reject) => {
@@ -65,6 +67,10 @@ async function convert(url) {
 
     const output = context.createImageData(SIZE, SIZE);
     let edgeCount = 0;
+    let outputMinX = SIZE;
+    let outputMinY = SIZE;
+    let outputMaxX = 0;
+    let outputMaxY = 0;
     const cropCenter = (SIZE - 1) / 2;
     const cropEdgeRadius = SIZE / 2 - CROP_EDGE_GUARD;
     for (let y = 1; y < SIZE - 1; y += 1) {
@@ -83,11 +89,17 @@ async function convert(url) {
         edgeCount += 1;
         for (let dy = -1; dy <= 1; dy += 1) {
           for (let dx = -1; dx <= 1; dx += 1) {
-            const target = ((y + dy) * SIZE + x + dx) * 4;
+            const targetX = x + dx;
+            const targetY = y + dy;
+            const target = (targetY * SIZE + targetX) * 4;
             output.data[target] = GOLD[0];
             output.data[target + 1] = GOLD[1];
             output.data[target + 2] = GOLD[2];
             output.data[target + 3] = Math.max(output.data[target + 3], dx || dy ? 105 : 235);
+            outputMinX = Math.min(outputMinX, targetX);
+            outputMinY = Math.min(outputMinY, targetY);
+            outputMaxX = Math.max(outputMaxX, targetX);
+            outputMaxY = Math.max(outputMaxY, targetY);
           }
         }
       }
@@ -96,7 +108,28 @@ async function convert(url) {
     if (edgeRatio < 0.004 || edgeRatio > 0.3) return "";
     context.clearRect(0, 0, SIZE, SIZE);
     context.putImageData(output, 0, 0);
-    return canvas.toDataURL("image/png");
+    const outputWidth = outputMaxX - outputMinX + 1;
+    const outputHeight = outputMaxY - outputMinY + 1;
+    const normalizedScale = Math.min(EMBLEM_CONTENT_WIDTH / outputWidth, EMBLEM_CONTENT_HEIGHT / outputHeight);
+    const normalizedWidth = outputWidth * normalizedScale;
+    const normalizedHeight = outputHeight * normalizedScale;
+    const normalizedCanvas = document.createElement("canvas");
+    normalizedCanvas.width = SIZE;
+    normalizedCanvas.height = SIZE;
+    const normalizedContext = normalizedCanvas.getContext("2d");
+    if (!normalizedContext) return canvas.toDataURL("image/png");
+    normalizedContext.drawImage(
+      canvas,
+      outputMinX,
+      outputMinY,
+      outputWidth,
+      outputHeight,
+      (SIZE - normalizedWidth) / 2,
+      (SIZE - normalizedHeight) / 2,
+      normalizedWidth,
+      normalizedHeight,
+    );
+    return normalizedCanvas.toDataURL("image/png");
   } catch {
     return "";
   }

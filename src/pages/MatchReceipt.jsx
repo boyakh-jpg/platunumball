@@ -35,6 +35,7 @@ import {
   trackMatchReceiptEvent,
   validateMatchReceiptDraft,
 } from "../lib/matchReceipt.js";
+import { createMatchReceiptLineArt } from "../lib/matchReceiptEmblem.js";
 
 function loadDraft() {
   return loadMatchReceiptDraft() ?? createDefaultMatchReceiptDraft();
@@ -148,6 +149,7 @@ export default function MatchReceipt({ auth, app }) {
   const [busy, setBusy] = useState("");
   const [status, setStatus] = useState("");
   const [photoBlob, setPhotoBlob] = useState(null);
+  const [localTeamLineArtUrls, setLocalTeamLineArtUrls] = useState({ home: "", away: "" });
   const [photoUrl, setPhotoUrl] = useState("");
   const [publicDraftId, setPublicDraftId] = useState("");
   const [requestedDraftCanClaim, setRequestedDraftCanClaim] = useState(false);
@@ -239,6 +241,7 @@ export default function MatchReceipt({ auth, app }) {
     away: canonicalAwayTeam?.receiptEmblemKey || draft.awayEmblemKey ? assetUrl(canonicalAwayTeam?.receiptEmblemKey || draft.awayEmblemKey) : "",
   }), [canonicalAwayTeam?.receiptEmblemKey, canonicalHomeTeam?.receiptEmblemKey, draft.awayEmblemKey, draft.homeEmblemKey]);
   const selectedTeamLineArtUrls = useMemo(() => resolveMatchReceiptTeamEmblems({
+    local: localTeamLineArtUrls,
     canonical: canonicalTeamReceiptEmblemUrls,
     enabled: { home: draft.homeUseLineArt, away: draft.awayUseLineArt },
   }), [
@@ -246,6 +249,8 @@ export default function MatchReceipt({ auth, app }) {
     canonicalTeamReceiptEmblemUrls.home,
     draft.awayUseLineArt,
     draft.homeUseLineArt,
+    localTeamLineArtUrls.away,
+    localTeamLineArtUrls.home,
   ]);
 
   useEffect(() => {
@@ -463,8 +468,42 @@ export default function MatchReceipt({ auth, app }) {
     if (receiptIsReadOnly) return;
     const savedUrl = canonicalTeamReceiptEmblemUrls[side];
     if (!savedUrl) return;
+    setLocalTeamLineArtUrls((current) => ({ ...current, [side]: "" }));
     updateField(`${side}UseLineArt`, true);
     setStatus(`${side === "home" ? "TEAM A" : "TEAM B"} 저장 엠블럼을 영수증에 적용했습니다.`);
+  }
+
+  async function handleLocalTeamEmblemChange(side, event) {
+    if (receiptIsReadOnly) {
+      event.target.value = "";
+      return;
+    }
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    if (!/^image\/(jpeg|png|webp|avif)$/u.test(file.type)) {
+      setStatus("엠블럼 이미지는 JPG, PNG, WebP, AVIF만 사용할 수 있습니다.");
+      return;
+    }
+    if (file.size > MATCH_RECEIPT_PHOTO_MAX_BYTES) {
+      setStatus(`엠블럼 이미지는 ${Math.round(MATCH_RECEIPT_PHOTO_MAX_BYTES / 1024 / 1024)}MB 이하만 사용할 수 있습니다.`);
+      return;
+    }
+    setBusy(`emblem-${side}`);
+    setStatus("");
+    const sourceUrl = URL.createObjectURL(file);
+    try {
+      const lineArtUrl = await createMatchReceiptLineArt(sourceUrl);
+      if (!lineArtUrl) throw new Error("match_receipt_emblem_conversion_failed");
+      setLocalTeamLineArtUrls((current) => ({ ...current, [side]: lineArtUrl }));
+      updateField(`${side}UseLineArt`, true);
+      setStatus(`${side === "home" ? "TEAM A" : "TEAM B"} 선화 엠블럼을 적용했습니다. 서버에는 저장하지 않습니다.`);
+    } catch {
+      setStatus("엠블럼을 선화로 바꾸지 못했습니다. 배경과 형태가 분명한 이미지를 사용해 주세요.");
+    } finally {
+      URL.revokeObjectURL(sourceUrl);
+      setBusy("");
+    }
   }
 
   async function removePhoto() {
@@ -524,6 +563,7 @@ export default function MatchReceipt({ auth, app }) {
       draftRef.current = next;
       setDraft(next);
       setPhotoBlob(null);
+      setLocalTeamLineArtUrls({ home: "", away: "" });
       setGenerated(false);
       publicDraftIdRef.current = "";
       setPublicDraftId("");
@@ -963,7 +1003,7 @@ export default function MatchReceipt({ auth, app }) {
               <fieldset className="match-receipt-line-art-fields is-wide">
                 <legend>팀 엠블럼 <small>선택</small></legend>
                 <p className="match-receipt-emblem-guide">
-                  로그인 후 팀을 만들고 팀 상세에서 영수증 엠블럼을 저장하면 여기서 사용할 수 있습니다.
+                  사진을 골라 선화 엠블럼으로 바로 사용할 수 있습니다. 로그인 후 팀을 만들면 팀 상세에 저장해 다음 영수증에서도 재사용할 수 있습니다.
                 </p>
                 <div className="match-receipt-emblem-upload-grid">
                   {[["home", "TEAM A"], ["away", "TEAM B"]].map(([side, label]) => {
@@ -972,6 +1012,17 @@ export default function MatchReceipt({ auth, app }) {
                     return (
                       <div className="match-receipt-emblem-upload" key={side}>
                         <strong>{label}</strong>
+                        {!receiptIsReadOnly ? (
+                          <Button as="label" variant="secondary" size="sm">
+                            <ImagePlus aria-hidden="true" /> 선화 엠블럼 선택
+                            <input
+                              type="file"
+                              accept="image/jpeg,image/png,image/webp,image/avif"
+                              disabled={Boolean(busy)}
+                              onChange={(event) => handleLocalTeamEmblemChange(side, event)}
+                            />
+                          </Button>
+                        ) : null}
                         {savedUrl ? (
                           <Button
                             type="button"
@@ -1005,6 +1056,7 @@ export default function MatchReceipt({ auth, app }) {
                     );
                   })}
                 </div>
+                <small>직접 선택한 이미지는 이번 영수증에서만 유지됩니다.</small>
                 {!receiptIsReadOnly ? (
                   <Button
                     as={Link}
@@ -1014,7 +1066,7 @@ export default function MatchReceipt({ auth, app }) {
                     variant="secondary"
                     size="sm"
                   >
-                    {auth?.session ? "팀 만들기 · 엠블럼 저장" : "로그인하고 팀 만들기"}
+                    {auth?.session ? "팀 만들기 · 엠블럼 저장" : "로그인 · 팀 만들고 엠블럼 저장"}
                   </Button>
                 ) : null}
               </fieldset>

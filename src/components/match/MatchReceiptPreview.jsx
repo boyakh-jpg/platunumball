@@ -54,6 +54,7 @@ function ReceiptPhotoScoreboard({ homeScore, awayScore }) {
       </span>
       <span className="match-receipt-photo-scoreboard-scores" aria-hidden="true">
         <ReceiptScoreboardValue value={formatMatchReceiptScoreboardScore(homeScore)} row={0} />
+        <ReceiptScoreboardGlyph value=":" row={0} />
         <ReceiptScoreboardValue value={formatMatchReceiptScoreboardScore(awayScore)} row={0} />
       </span>
     </div>
@@ -192,7 +193,7 @@ export default function MatchReceiptPreview({
               alt=""
               aria-hidden="true"
             />
-            {!team.lineArtUrl && model.showTeamTierEmblems && team.tier ? <span>{`TEAM TIER · ${team.tier.label}`}</span> : null}
+            {model.showTeamTierEmblems && team.tier ? <span>{`TEAM TIER · ${team.tier.label}`}</span> : null}
           </div>
         ))}
         {hasGameDetail ? (

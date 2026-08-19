@@ -124,7 +124,7 @@ const MATCH_RECEIPT_PAPER_URL = assetUrl("/assets/match-receipt-paper-torn-v1.pn
 const MATCH_RECEIPT_PAPER_GRAIN_URL = assetUrl("/assets/match-receipt-paper-grain-v1.png");
 const MATCH_RECEIPT_SCORE_DIGITS_URL = assetUrl("/assets/match-receipt-score-digits-v3.png");
 const MATCH_RECEIPT_SCORE_GLYPH_COUNT = 11;
-const MATCH_RECEIPT_SCOREBOARD_DIGITS_URL = assetUrl("/assets/match-receipt-scoreboard-digits-v1.png");
+const MATCH_RECEIPT_SCOREBOARD_DIGITS_URL = assetUrl("/assets/match-receipt-scoreboard-digits-v2.png");
 const MATCH_RECEIPT_SCOREBOARD_GLYPH_COUNT = 11;
 const MATCH_RECEIPT_SCOREBOARD_ROW_COUNT = 2;
 
@@ -375,10 +375,10 @@ function openPhotoDatabase() {
   });
 }
 
-export function resolveMatchReceiptTeamEmblems({ canonical = {}, enabled = {} } = {}) {
+export function resolveMatchReceiptTeamEmblems({ local = {}, canonical = {}, enabled = {} } = {}) {
   return {
-    home: enabled.home ? (canonical.home || "") : "",
-    away: enabled.away ? (canonical.away || "") : "",
+    home: enabled.home ? (local.home || canonical.home || "") : "",
+    away: enabled.away ? (local.away || canonical.away || "") : "",
   };
 }
 
@@ -818,6 +818,12 @@ function drawCanvasPhotoScoreboard(ctx, image, atlas, photoRect, model) {
     width: scoreWidth,
     height: scoreHeight,
   });
+  drawCanvasScoreboardGlyph(ctx, atlas, ":", 0, {
+    x: board.x + board.width * 0.475,
+    y: scoreY,
+    width: board.width * 0.05,
+    height: scoreHeight,
+  });
   drawCanvasScoreboardValue(ctx, atlas, formatMatchReceiptScoreboardScore(model.awayScore), 0, {
     x: board.x + board.width * 0.57,
     y: scoreY,
@@ -825,6 +831,22 @@ function drawCanvasPhotoScoreboard(ctx, image, atlas, photoRect, model) {
     height: scoreHeight,
   });
   ctx.restore();
+}
+
+function drawCanvasContainedImage(ctx, image, rect) {
+  const naturalWidth = image?.naturalWidth || image?.width;
+  const naturalHeight = image?.naturalHeight || image?.height;
+  if (!naturalWidth || !naturalHeight) return;
+  const scale = Math.min(rect.width / naturalWidth, rect.height / naturalHeight);
+  const width = naturalWidth * scale;
+  const height = naturalHeight * scale;
+  ctx.drawImage(
+    image,
+    rect.x + (rect.width - width) / 2,
+    rect.y + (rect.height - height) / 2,
+    width,
+    height,
+  );
 }
 
 function createCanvasPaperPattern(ctx, paperGrain) {
@@ -1192,7 +1214,12 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
     ctx.globalAlpha = MATCH_RECEIPT_TEAM_WATERMARK_OPACITY;
     ctx.filter = "grayscale(1) brightness(0) invert(1)";
     const centerX = index ? width - 72 : 72;
-    ctx.drawImage(team.image, centerX - teamWatermarkSize / 2, teamWatermarkY, teamWatermarkSize, teamWatermarkSize);
+    drawCanvasContainedImage(ctx, team.image, {
+      x: centerX - teamWatermarkSize / 2,
+      y: teamWatermarkY,
+      width: teamWatermarkSize,
+      height: teamWatermarkSize,
+    });
     ctx.restore();
   });
 
@@ -1231,10 +1258,15 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
     if (team.image) {
       ctx.save();
       ctx.globalAlpha = model.showTeamTierEmblems && team.tier ? 0.82 : 0.76;
-      ctx.drawImage(team.image, columns[index] - teamTierSize / 2, teamTierY, teamTierSize, teamTierSize);
+      drawCanvasContainedImage(ctx, team.image, {
+        x: columns[index] - teamTierSize / 2,
+        y: teamTierY,
+        width: teamTierSize,
+        height: teamTierSize,
+      });
       ctx.restore();
     }
-    if (!team.custom && model.showTeamTierEmblems && team.tier) {
+    if (model.showTeamTierEmblems && team.tier) {
       ctx.fillStyle = "#c69a4b";
       ctx.font = `900 ${compact ? 14 : 15}px "KBO Dia Gothic", sans-serif`;
       ctx.fillText(`TEAM TIER · ${team.tier.label}`, columns[index], teamLabelY);

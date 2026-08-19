@@ -34,7 +34,7 @@ test("receipt photo scoreboard formats canonical final scores for the PNG atlas"
   assert.equal(formatMatchReceiptScoreboardScore(999), "999");
 });
 
-test("receipt emblems come only from explicitly loaded canonical teams", async () => {
+test("receipt emblems support transient local line art and reusable canonical team assets", async () => {
   const [receiptPage, teamPage, teamView, teamActions, teamApi, teamColumns, migration] = await Promise.all([
     readFile(new URL("../src/pages/MatchReceipt.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/pages/TeamDetail.jsx", import.meta.url), "utf8"),
@@ -45,10 +45,14 @@ test("receipt emblems come only from explicitly loaded canonical teams", async (
     readFile(new URL("../supabase/migrations/20260815130000_team_receipt_emblem_upload_policy.sql", import.meta.url), "utf8"),
   ]);
 
-  assert.match(receiptPage, /로그인 후 팀을 만들고 팀 상세에서 영수증 엠블럼을 저장하면 여기서 사용할 수 있습니다\./u);
+  assert.match(receiptPage, /사진을 골라 선화 엠블럼으로 바로 사용할 수 있습니다\./u);
+  assert.match(receiptPage, /로그인 후 팀을 만들면 팀 상세에 저장해 다음 영수증에서도 재사용할 수 있습니다\./u);
+  assert.match(receiptPage, /직접 선택한 이미지는 이번 영수증에서만 유지됩니다\./u);
   assert.match(receiptPage, /저장된 팀 엠블럼 없음/u);
-  assert.match(receiptPage, /팀 만들기 · 엠블럼 저장/u);
+  assert.match(receiptPage, /로그인 · 팀 만들고 엠블럼 저장/u);
   assert.doesNotMatch(receiptPage, /EmblemCropEditor|prepareTeamEmblemUpload|uploadGuestReceiptEmblem/u);
+  assert.match(receiptPage, /handleLocalTeamEmblemChange/u);
+  assert.match(receiptPage, /createMatchReceiptLineArt/u);
   assert.match(teamView, /영수증 엠블럼 만들기/u);
   assert.match(teamView, /영수증 엠블럼 변경/u);
   assert.match(teamPage, /createMatchReceiptLineArt/u);
@@ -60,6 +64,7 @@ test("receipt emblems come only from explicitly loaded canonical teams", async (
   assert.match(migration, /team_receipt_emblem_cooldown/u);
   assert.match(migration, /interval '30 days'/u);
   assert.match(receiptPage, /resolveMatchReceiptTeamEmblems\(/u);
+  assert.match(receiptPage, /local:\s*localTeamLineArtUrls/u);
   assert.match(receiptPage, /canonical:\s*canonicalTeamReceiptEmblemUrls/u);
   assert.match(receiptPage, /const activeLineArtUrl = selectedTeamLineArtUrls\[side\]/u);
   assert.match(teamView, /disabled=\{receiptEmblemPending \|\| receiptEmblemUploadLocked\}/u);
@@ -92,15 +97,15 @@ test("canonical receipt keeps dedicated team receipt emblems through public relo
   assert.equal(reloaded.teamEmblemUrls.away, "");
 });
 
-test("receipt emblem resolver uses canonical team emblems only", () => {
+test("receipt emblem resolver prefers current local line art before canonical team assets", () => {
   assert.deepEqual(resolveMatchReceiptTeamEmblems({
     local: { home: "local-home" },
     guest: { home: "guest-home", away: "guest-away" },
     canonical: { home: "team-home", away: "team-away" },
     enabled: { home: true, away: true },
-  }), { home: "team-home", away: "team-away" });
+  }), { home: "local-home", away: "team-away" });
   assert.deepEqual(resolveMatchReceiptTeamEmblems({
-    guest: { home: "guest-home" },
+    local: { home: "local-home" },
     canonical: { home: "team-home", away: "team-away" },
     enabled: { home: false, away: true },
   }), { home: "", away: "team-away" });
@@ -573,7 +578,7 @@ test("receipt photo tools stay outside the export card and reference dividers re
     readFile(new URL("../public/assets/match-receipt-paper-grain-v1.png", import.meta.url)),
     readFile(new URL("../public/assets/match-receipt-score-digits-source-v1.png", import.meta.url)),
     readFile(new URL("../public/assets/match-receipt-score-digits-v3.png", import.meta.url)),
-    readFile(new URL("../public/assets/match-receipt-scoreboard-digits-v1.png", import.meta.url)),
+    readFile(new URL("../public/assets/match-receipt-scoreboard-digits-v2.png", import.meta.url)),
     readFile(new URL("../public/assets/match-receipt-wordmark-v1.png", import.meta.url)),
     readFile(new URL("../public/assets/fonts/BebasNeue-Regular.ttf", import.meta.url)),
     readFile(new URL("../public/assets/fonts/BebasNeue-OFL.txt", import.meta.url), "utf8"),
@@ -649,8 +654,9 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.doesNotMatch(page, /emblemShareFailed|match_receipt_emblem_sync_failed|EMBLEM_SHARE_FAILURE_MESSAGE/);
   assert.match(page, /URL\.revokeObjectURL\(url\)/u);
   assert.match(page, /const publicMatchUrl = publicId\s*\? new URL/);
-  assert.match(page, /로그인 후 팀을 만들고 팀 상세에서 영수증 엠블럼을 저장하면 여기서 사용할 수 있습니다\./u);
-  assert.match(page, /팀 만들기 · 엠블럼 저장/u);
+  assert.match(page, /사진을 골라 선화 엠블럼으로 바로 사용할 수 있습니다\./u);
+  assert.match(page, /로그인 후 팀을 만들면 팀 상세에 저장해 다음 영수증에서도 재사용할 수 있습니다\./u);
+  assert.match(page, /로그인 · 팀 만들고 엠블럼 저장/u);
   assert.match(emblemApi, /allowRequestMethod\(request, response, \["POST", "DELETE"\]\)/);
   assert.match(emblemApi, /410, \{ error: "receipt_emblem_upload_disabled" \}/);
   assert.match(page, /getRegisteredCourts/);
@@ -823,6 +829,9 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(renderer, /footerY \+ footerCommentOffset/);
   assert.match(renderer, /hasSingleGameInfoMeta \? footerDateOffset : footerTierLabelOffset/);
   assert.match(lineArt, /const CROP_EDGE_GUARD = 5/);
+  assert.match(lineArt, /const EMBLEM_CONTENT_WIDTH = 210/);
+  assert.match(lineArt, /const EMBLEM_CONTENT_HEIGHT = 230/);
+  assert.match(lineArt, /const normalizedCanvas = document\.createElement\("canvas"\)/);
   assert.match(lineArt, /const boundary = !isCropEdge && neighbors\.some/);
   assert.match(renderer, /const tierSize = compact \? 150 : 192/);
   assert.match(renderer, /ctx\.moveTo\(footerMiddleX, footerY \+ personalStatsDividerTopOffset\)/);
@@ -847,6 +856,7 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(renderer, /if \(!options\.photoBlob\) \{\s*drawCanvasPhotoScoreboard/);
   assert.match(renderer, /formatMatchReceiptScoreboardScore\(model\.homeScore\)/);
   assert.match(renderer, /loadCanvasImage\(model\.scoreboardDigitsUrl\)/);
+  assert.match(renderer, /function drawCanvasContainedImage/);
   assert.doesNotMatch(renderer, /MATCH_RECEIPT_SEVEN_SEGMENT_PATHS|Path2D/);
   assert.match(detailStyles, /\.match-receipt-photo-scoreboard\s*\{[^}]*top:\s*25\.2%;[^}]*left:\s*62\.7%;/);
   assert.match(detailStyles, /transform:\s*skewY\(-5\.37deg\)/);
@@ -856,6 +866,10 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(renderer, /document\.fonts\.load\('900 270px "Bebas Neue"'\)/);
   assert.match(renderer, /document\.fonts\.load\('900 58px "Black Han Sans"'\)/);
   assert.match(renderer, /TEAM TIER · \$\{team\.tier\.label\}/);
+  assert.match(preview, /<ReceiptScoreboardGlyph value=":" row=\{0\} \/>/);
+  assert.doesNotMatch(preview, /!team\.lineArtUrl && model\.showTeamTierEmblems/);
+  assert.match(detailStyles, /grid-template-columns:\s*41% 5% 41%/);
+  assert.doesNotMatch(detailStyles, /\.match-receipt-poster-teams \.match-receipt-team-tier\.is-custom\s*\{[^}]*width:/);
   assert.doesNotMatch(renderer, /index \? "AWAY" : "HOME"/);
   assert.match(roomDialog, /sourceMatch\?\.status === "confirmed"/);
   assert.match(roomDialog, /\/app\/receipt\?match=/);
@@ -871,14 +885,17 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.doesNotMatch(digitGenerator, /fontfile:/);
   assert.doesNotMatch(digitGenerator, /const DIGIT_PATHS =/);
   assert.doesNotMatch(digitGenerator, /<svg/);
-  assert.match(displayAssetGenerator, /match-receipt-scoreboard-digits-v1\.png/);
-  assert.match(displayAssetGenerator, /const COLORS = \[\[200, 120, 66\], \[205, 173, 145\]\]/);
-  assert.match(displayAssetGenerator, /const GLOW_RADIUS = 2/);
+  assert.match(displayAssetGenerator, /match-receipt-scoreboard-digits-v2\.png/);
+  assert.match(displayAssetGenerator, /const COLORS = \[\[178, 111, 70\], \[181, 143, 112\]\]/);
+  assert.match(displayAssetGenerator, /const GLOW_RADIUS = 1\.5/);
+  assert.match(displayAssetGenerator, /const SEGMENT_ALPHA = 0\.76/);
+  assert.match(displayAssetGenerator, /const GLOW_ALPHA = 0\.08/);
   assert.match(displayAssetGenerator, /match-receipt-wordmark-v1\.png/);
   assert.doesNotMatch(displayAssetGenerator, /<svg|fontfile:/);
   assert.match(syncScript, /match-receipt-score-digits-v3\.png/);
   assert.match(syncScript, /rankball-record-create-night-v10\.webp/);
   assert.match(syncScript, /match-receipt-scoreboard-digits-v1\.png/);
+  assert.match(syncScript, /match-receipt-scoreboard-digits-v2\.png/);
   assert.match(syncScript, /match-receipt-wordmark-v1\.png/);
   assert.match(syncScript, /R2_UPLOAD_MAX_ATTEMPTS = 3/);
   assert.match(syncScript, /response\.status === 429 \|\| response\.status >= 500/);

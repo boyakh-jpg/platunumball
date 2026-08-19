@@ -13,8 +13,10 @@ const SEGMENTS = {
   f: [[13, 13], [18, 18], [16, 48], [11, 53], [7, 48], [9, 18]],
   g: [[13, 55], [18, 50], [45, 50], [49, 55], [44, 60], [18, 60]],
 };
-const COLORS = [[200, 120, 66], [205, 173, 145]];
-const GLOW_RADIUS = 2;
+const COLORS = [[178, 111, 70], [181, 143, 112]];
+const GLOW_RADIUS = 1.5;
+const SEGMENT_ALPHA = 0.76;
+const GLOW_ALPHA = 0.08;
 const width = CELL_WIDTH * GLYPHS.length;
 const height = CELL_HEIGHT * COLORS.length;
 const pixels = Buffer.alloc(width * height * 4);
@@ -63,7 +65,7 @@ function drawPolygon(glyphIndex, row, polygon, color) {
       const inside = pointInPolygon(sampleX, sampleY, polygon);
       const distance = inside ? 0 : distanceToPolygon(sampleX, sampleY, polygon);
       if (!inside && distance > GLOW_RADIUS) continue;
-      const alpha = inside ? 0.9 : Math.max(0, 1 - distance / GLOW_RADIUS) * 0.18;
+      const alpha = inside ? SEGMENT_ALPHA : Math.max(0, 1 - distance / GLOW_RADIUS) * GLOW_ALPHA;
       blendPixel(glyphIndex * CELL_WIDTH + x, row * CELL_HEIGHT + y, color, alpha);
     }
   }
@@ -82,7 +84,7 @@ COLORS.forEach((color, row) => {
 
 await sharp(pixels, { raw: { width, height, channels: 4 } })
   .png({ compressionLevel: 9, palette: true })
-  .toFile(resolve("public/assets/match-receipt-scoreboard-digits-v1.png"));
+  .toFile(resolve("public/assets/match-receipt-scoreboard-digits-v2.png"));
 
 await sharp(resolve("public/assets/boxtier_letter_dark.png"))
   .trim({ background: { r: 0, g: 0, b: 0, alpha: 0 } })
