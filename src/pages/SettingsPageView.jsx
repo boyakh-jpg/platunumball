@@ -1,11 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ArrowRightLeft, LogOut, Trash2 } from "lucide-react";
 import AuthProviderIcon from "../components/auth/AuthProviderIcon.jsx";
 import Button from "../components/common/Button.jsx";
 import ModalShell from "../components/common/ModalShell.jsx";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
-import { getAuthProviderLabel } from "../lib/authProviders.js";
+import {
+  getAccountRecoveryConnectionRequest,
+  getAuthProviderLabel,
+} from "../lib/authProviders.js";
 import SettingsPrimaryColumn from "./SettingsPrimaryColumn.jsx";
 import SettingsSideColumn from "./SettingsSideColumn.jsx";
 import SettingsRefereeSection from "./SettingsRefereeSection.jsx";
@@ -23,12 +26,14 @@ export default function SettingsPageView({ controller, auth }) {
   const [testSwitchStatus, setTestSwitchStatus] = useState("");
   const [identityStatus, setIdentityStatus] = useState("");
   const [identityStatusTone, setIdentityStatusTone] = useState("");
+  const automaticConnectionRef = useRef("");
   const [withdrawalOpen, setWithdrawalOpen] = useState(false);
   const [withdrawalAcknowledged, setWithdrawalAcknowledged] = useState(false);
   const [withdrawalStatus, setWithdrawalStatus] = useState("");
   const linkedProviderIds = auth?.linkedProviderIds ?? [];
   const enabledProviders = auth?.enabledProviders ?? [];
-  const requestedProviderId = new URLSearchParams(location.search).get("connectProvider") ?? "";
+  const connectionRequest = getAccountRecoveryConnectionRequest(location.search);
+  const requestedProviderId = connectionRequest.providerId;
   const validRequestedProviderId = enabledProviders.some((provider) => provider.id === requestedProviderId)
     ? requestedProviderId
     : "";
@@ -47,6 +52,36 @@ export default function SettingsPageView({ controller, auth }) {
     const nextSearch = nextParams.toString();
     navigate(`${location.pathname}${nextSearch ? `?${nextSearch}` : ""}`, { replace: true });
   }, [location.pathname, location.search, navigate, requestedProviderLinked, validRequestedProviderId]);
+
+  useEffect(() => {
+    if (!connectionRequest.autoConnect || !validRequestedProviderId || requestedProviderLinked) return;
+    if (auth?.loading || auth?.authActionPending) return;
+    if (automaticConnectionRef.current === validRequestedProviderId) return;
+    automaticConnectionRef.current = validRequestedProviderId;
+
+    const nextParams = new URLSearchParams(location.search);
+    nextParams.delete("autoConnect");
+    const nextSearch = nextParams.toString();
+    navigate(`${location.pathname}${nextSearch ? `?${nextSearch}` : ""}`, { replace: true });
+    setIdentityStatus(`${getAuthProviderLabel(validRequestedProviderId)} 로그인 소유권을 확인합니다.`);
+    setIdentityStatusTone("");
+
+    const returnTo = `/app/settings?section=main&connectProvider=${encodeURIComponent(validRequestedProviderId)}`;
+    void auth.linkIdentityWithProvider(validRequestedProviderId, returnTo).then((result) => {
+      if (!result?.ok && result?.error !== "auth_action_pending") {
+        setIdentityStatus(result?.message || "로그인 연결을 시작하지 못했습니다.");
+        setIdentityStatusTone("error");
+      }
+    });
+  }, [
+    auth,
+    connectionRequest.autoConnect,
+    location.pathname,
+    location.search,
+    navigate,
+    requestedProviderLinked,
+    validRequestedProviderId,
+  ]);
 
   const switchTestAccount = async (event) => {
     event.preventDefault();
@@ -129,7 +164,7 @@ export default function SettingsPageView({ controller, auth }) {
         <section className="settings-auth-identities" aria-labelledby="settings-auth-identities-title">
           {validRequestedProviderId && !requestedProviderLinked ? (
             <p className="settings-auth-recovery-callout">
-              기존 아이디로 로그인했습니다. 이제 {getAuthProviderLabel(validRequestedProviderId)} 로그인을 이 프로필에 연결하세요.
+              기존 아이디로 로그인했습니다. {getAuthProviderLabel(validRequestedProviderId)} 소유권 확인 뒤 이 프로필에 연결됩니다.
             </p>
           ) : null}
           <div className="settings-auth-identities-copy">

@@ -8,6 +8,7 @@ import ProfileBasicsFields from "../components/profile/ProfileBasicsFields.jsx";
 import { BASKETBALL_POSITIONS } from "../lib/constants.js";
 import { getUserHashtag, hasReservedOperatorIdentity, makeRandomDigitSuffix, makeSuggestedHashtagBody, PROFILE_HASHTAG_MIN_LENGTH, sameHashtag, stripHandle, toHashtag } from "../lib/handles.js";
 import {
+  getAccountRecoveryLoginPath,
   getAuthProviderLabel,
   getAuthProviderProfileName,
   getSingleRecoverableProviderId,
@@ -115,8 +116,7 @@ export default function Signup({ app, auth }) {
         return;
       }
       const releasedProvider = result.releasedProvider || recoverableProviderId;
-      const returnTo = `/app/settings?section=main&connectProvider=${encodeURIComponent(releasedProvider)}`;
-      window.location.assign(`/login?recoverAccount=1&excludeProvider=${encodeURIComponent(releasedProvider)}&redirect=${encodeURIComponent(returnTo)}`);
+      window.location.assign(getAccountRecoveryLoginPath(releasedProvider));
     } catch {
       setAccountRecoveryError("기존 아이디 연결을 시작하지 못했습니다.");
     } finally {

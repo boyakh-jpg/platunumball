@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import {
+  getAccountRecoveryConnectionRequest,
+  getAccountRecoveryLoginPath,
   getAuthProviderProfileName,
   getEnabledAuthProviders,
   getLinkedProviderIds,
@@ -76,6 +78,23 @@ test("account recovery only releases one supported OAuth identity", () => {
   assert.equal(getSingleRecoverableProviderId({ identities: [{ provider: "naver" }] }), "");
 });
 
+test("account recovery resumes the released provider connection after the existing login", () => {
+  const loginPath = getAccountRecoveryLoginPath("google");
+  const loginUrl = new URL(loginPath, "https://boxtier.kr");
+  assert.equal(loginUrl.pathname, "/login");
+  assert.equal(loginUrl.searchParams.get("recoverAccount"), "1");
+  assert.equal(loginUrl.searchParams.get("excludeProvider"), "google");
+  assert.equal(
+    loginUrl.searchParams.get("redirect"),
+    "/app/settings?section=main&connectProvider=google&autoConnect=1",
+  );
+  assert.deepEqual(
+    getAccountRecoveryConnectionRequest(loginUrl.searchParams.get("redirect").split("?")[1]),
+    { providerId: "google", autoConnect: true },
+  );
+  assert.equal(getAccountRecoveryLoginPath("naver"), "/login");
+});
+
 test("KakaoTalk embedded browser detection stays explicit", () => {
   assert.equal(isKakaoTalkInAppBrowser("Mozilla/5.0 KAKAOTALK 11.0.0"), true);
   assert.equal(isKakaoTalkInAppBrowser("Mozilla/5.0 Chrome/140"), false);
@@ -103,6 +122,7 @@ test("login entry points share the provider chooser and settings links identitie
   assert.match(signup, /getAuthProviderProfileName/);
   assert.match(settings, /연결된 로그인/);
   assert.match(settings, /linkIdentityWithProvider/);
+  assert.match(settings, /connectionRequest\.autoConnect/);
   assert.match(settings, /연결 마무리/);
   assert.match(settings, /result\?\.message/);
   assert.match(releaseRoute, /admin\.deleteUser/);

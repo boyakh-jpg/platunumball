@@ -107,7 +107,7 @@ export default function Login({ auth, app }) {
               <strong>기존 BOXTIER 아이디로 로그인하세요.</strong>
               <p>
                 {getAuthProviderLabel(excludedProviderId)} 외의 로그인으로 기존 아이디에 들어가면,
-                가입정보 설정에서 {getAuthProviderLabel(excludedProviderId)} 연결을 마무리할 수 있습니다.
+                이어서 {getAuthProviderLabel(excludedProviderId)} 소유권 확인 화면이 자동으로 열립니다.
               </p>
             </div>
           ) : null}

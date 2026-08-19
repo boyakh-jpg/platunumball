@@ -82,6 +82,23 @@ export function getSingleRecoverableProviderId(user = {}) {
   return RECOVERABLE_PROVIDER_IDS.has(providerId) ? providerId : "";
 }
 
+export function getAccountRecoveryLoginPath(providerId) {
+  if (!RECOVERABLE_PROVIDER_IDS.has(providerId)) return "/login";
+
+  const encodedProviderId = encodeURIComponent(providerId);
+  const returnTo = `/app/settings?section=main&connectProvider=${encodedProviderId}&autoConnect=1`;
+  return `/login?recoverAccount=1&excludeProvider=${encodedProviderId}&redirect=${encodeURIComponent(returnTo)}`;
+}
+
+export function getAccountRecoveryConnectionRequest(search = "") {
+  const searchParams = new URLSearchParams(search);
+  const providerId = searchParams.get("connectProvider") ?? "";
+  return {
+    providerId: RECOVERABLE_PROVIDER_IDS.has(providerId) ? providerId : "",
+    autoConnect: searchParams.get("autoConnect") === "1",
+  };
+}
+
 export function getAuthProviderLabel(providerId) {
   return AUTH_PROVIDERS[providerId]?.label ?? providerId;
 }
