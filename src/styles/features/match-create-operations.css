@@ -224,7 +224,7 @@
 .match-intent-preset-grid > button {
   display: grid;
   min-width: 0;
-  min-height: 74px;
+  min-height: 60px;
   align-content: center;
   gap: 5px;
   padding: 10px 12px;
@@ -244,7 +244,7 @@
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: var(--space-5);
-  padding: 12px;
+  padding: 10px 12px;
 }
 
 .match-intent-preset-grid > button.has-icon:not(.active) > svg {
@@ -322,6 +322,38 @@
   white-space: normal;
 }
 
+html[data-theme] .app-main .create-match-page :is(
+  .ui-segmented-control.create-choice-segments,
+  .match-bench-capacity-control,
+  .age-restriction-segments
+) {
+  gap: var(--space-2);
+  border: 0;
+  background: transparent;
+  padding: 0;
+}
+
+html[data-theme] .app-main .create-match-page :is(
+  .ui-segmented-control.create-choice-segments,
+  .match-bench-capacity-control,
+  .age-restriction-segments
+) > button {
+  min-height: var(--ui-button-height-sm);
+  border: var(--ui-button-border-width) solid var(--ui-control-border);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
+}
+
+html[data-theme] .app-main .create-match-page :is(
+  .ui-segmented-control.create-choice-segments,
+  .match-bench-capacity-control,
+  .age-restriction-segments
+) > button:is(.active, [aria-checked="true"], [aria-selected="true"]) {
+  border-color: color-mix(in srgb, var(--rb-orange) 58%, var(--ui-control-border));
+  background: color-mix(in srgb, var(--rb-orange) 12%, var(--ui-control-bg));
+  color: var(--rb-orange);
+}
+
 .match-bench-capacity-control {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -393,6 +425,20 @@
 
 .match-cost-components-grid label {
   min-width: 0;
+}
+
+.match-cost-policy-fields :is(label, select) {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.match-cost-policy-fields .form-grid.two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.match-cost-policy-fields select {
+  width: 100%;
+  text-overflow: ellipsis;
 }
 
 .match-cost-summary {

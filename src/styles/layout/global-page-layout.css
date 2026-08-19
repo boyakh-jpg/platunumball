@@ -296,10 +296,11 @@ html[data-theme] .app-main :is(.om-match-panel, .arena-hero-panel) {
   width: min(100%, var(--ui-hero-status-width));
   align-self: end;
   justify-self: end;
-  grid-template-columns: minmax(0, 1fr) minmax(220px, 0.85fr);
+  grid-template-columns: minmax(0, 1fr);
   align-items: stretch;
   gap: var(--space-3);
   padding: var(--space-3);
+  background: color-mix(in srgb, var(--ui-liquid-glass-bg) 82%, transparent);
 }
 html[data-theme] .app-main :is(.om-match-stats, .arena-hero-stats) {
   display: grid;
@@ -337,6 +338,7 @@ html[data-theme] .app-main :is(.om-match-actions, .arena-hero-actions) > .ui-but
     width: 100%;
     grid-template-columns: minmax(0, 1fr);
     gap: var(--space-2);
+    padding: var(--space-2);
   }
 }
 @media (max-width: 759px) {

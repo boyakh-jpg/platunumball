@@ -138,7 +138,7 @@ export default function HomeRightRail({
               <h2>알림</h2>
             </div>
             <div className="ui-action-row home-alert-heading-actions">
-              <Button as={Link} to="/app/notifications" variant="secondary" size="sm">지난 알림</Button>
+              <Button as={Link} to="/app/notifications?view=all" variant="secondary" size="sm">전체 알림</Button>
               <Badge tone={homeNoticeItems.length ? "orange" : "neutral"}>{homeNoticeItems.length}개</Badge>
             </div>
           </div>
@@ -173,7 +173,7 @@ export default function HomeRightRail({
                   );
                 })}
                 {homeNoticeItems.length > priorityNoticeItems.length ? (
-                  <Link to="/app/notifications" className="home-action-row priority-5">
+                  <Link to="/app/notifications?view=all" className="home-action-row priority-5">
                     <span className="home-action-icon"><Bell size={18} /></span>
                     <span className="home-action-main">
                       <strong>더 많은 알림</strong>

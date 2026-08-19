@@ -323,6 +323,20 @@ html[data-theme="light"] .rank-mode-pill {
   gap: var(--page-column-gap);
 }
 
+.settings-page .settings-auth-identities {
+  margin-inline: auto;
+}
+
+.settings-page .settings-address-actions {
+  justify-content: flex-end;
+}
+
+.settings-page .settings-address-actions > .button,
+.settings-page .settings-save-row > .button {
+  flex: 0 0 148px;
+  width: 148px;
+}
+
 .settings-page .page-stack {
   gap: var(--space-7);
 }

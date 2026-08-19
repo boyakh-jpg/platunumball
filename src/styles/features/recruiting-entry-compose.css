@@ -212,7 +212,7 @@
 
 .arena-recruit-list {
   display: grid;
-  gap: 10px;
+  gap: var(--space-4);
 }
 
 .arena-details-memo {

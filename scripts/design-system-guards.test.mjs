@@ -598,7 +598,7 @@ test("record result cards share matchup and date mode court metadata", () => {
   for (const page of ["home", "profile", "profileRecords", "teamDetail"]) {
     assert.match(pageSources[page], /RecentMatchRow/);
   }
-  assert.match(globalSearchStyles, /\.recent-match-list\s*\{[^}]*--recent-match-list-gap:\s*var\(--ui-compact-list-gap\);[^}]*gap:\s*var\(--recent-match-list-gap\);/);
+  assert.match(globalSearchStyles, /\.recent-match-list\s*\{[^}]*--recent-match-list-gap:\s*calc\(var\(--ui-compact-list-gap\) \* 2\);[^}]*gap:\s*var\(--recent-match-list-gap\);/);
   assert.match(
     globalSearchStyles,
     /\.recent-match-matchup\s*\{[^}]*display:\s*flex;[^}]*align-items:\s*flex-start;[^}]*justify-content:\s*flex-start;/,
@@ -1109,7 +1109,7 @@ test("공용 빈 상태와 compact filter 높이는 canonical token을 유지한
   );
   assert.match(
     matchesStyles,
-    /\.om-calendar-filter-label\s*\{[^}]*font-size:\s*var\(--font-size-caption\);/,
+    /\.om-calendar-filter-label\s*\{[^}]*font-size:\s*var\(--font-size-meta\);/,
   );
   const filterButtonRules = [
     ...matchesStyles.matchAll(/\.om-calendar-filter-row \.segmented-control button\s*\{([^}]*)\}/g),
@@ -1120,7 +1120,7 @@ test("공용 빈 상태와 compact filter 높이는 canonical token을 유지한
   );
   assert.match(
     filterButtonRules[0][1],
-    /font-size:\s*var\(--font-size-caption\);/,
+    /font-size:\s*var\(--font-size-meta\);/,
   );
 });
 
@@ -1192,14 +1192,14 @@ test("경기 목록 상태선과 팀명 줄바꿈은 공용 규칙을 사용한�
   );
 });
 
-test("경기 목록 제목과 요약은 실제 정보량만큼 조밀하게 유지한다", () => {
+test("경기 목록 제목과 요약은 데스크톱 여백과 모바일 밀도를 분리한다", () => {
   const titleBody = getRuleBody(matchListStyles, ".match-list-card__title");
   const mainBody = getRuleBody(matchListStyles, ".match-list-card__main");
 
   assert.match(titleBody, /min-block-size:\s*0\.98em;/);
   assert.match(titleBody, /max-block-size:\s*1\.96em;/);
   assert.doesNotMatch(titleBody, /(?:^|\n)\s*block-size:\s*1\.96em;/m);
-  assert.match(mainBody, /padding:\s*var\(--space-4\) var\(--space-5\) var\(--space-4\) var\(--space-7\);/);
+  assert.match(mainBody, /padding:\s*var\(--space-5\) var\(--space-7\) var\(--space-5\) var\(--space-8\);/);
   assert.match(matchListStyles, /\.match-list-badge\s*\{[^}]*min-height:\s*var\(--ui-match-badge-min-height\);/);
   assert.match(tokenStyles, /--ui-match-badge-min-height:\s*18px;/);
   assert.match(tokenStyles, /--ui-match-summary-min-height:\s*0px;/);

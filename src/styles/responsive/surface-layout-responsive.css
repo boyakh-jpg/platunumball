@@ -70,4 +70,10 @@ html[data-theme="light"] .rank-home .rank-mode-card {
     border-top: var(--ui-stroke-width) solid var(--ui-divider-subtle);
     border-left: 0;
   }
+
+  .settings-page .settings-address-actions > .button,
+  .settings-page .settings-save-row > .button {
+    flex-basis: 100%;
+    width: 100%;
+  }
 }

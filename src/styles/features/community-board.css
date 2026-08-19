@@ -387,7 +387,7 @@
     grid-template-areas:
       "title author"
       "meta author";
-    column-gap: var(--space-3); row-gap: var(--space-3);
+    column-gap: var(--space-3); row-gap: calc(var(--space-3) * 0.7);
     min-height: 68px; padding: var(--space-4) 0;
   }
 
@@ -395,6 +395,7 @@
   .community-post-title-line, .community-post-meta-line {
     display: flex; align-items: center; min-width: 0; gap: var(--space-4);
   }
+  .community-post-meta-line { gap: calc(var(--space-4) * 0.7); }
   .community-post-title-line { grid-area: title; } .community-post-meta-line { grid-area: meta; }
   .community-post-title-cell { flex: 0 1 auto; }
 
@@ -427,11 +428,12 @@
 
   .community-post-count {
     justify-content: flex-start;
-    gap: var(--space-2);
-    font-size: var(--font-size-meta);
+    gap: var(--space-1);
+    font-size: var(--font-size-caption);
+    line-height: 1.2;
   }
 
-  .community-post-date { text-align: left; }
+  .community-post-date { text-align: left; font-size: var(--font-size-caption); line-height: 1.2; }
 
   .community-post-views {
     display: none;

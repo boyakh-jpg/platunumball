@@ -294,6 +294,7 @@
 
 .om-match-list {
   display: grid;
+  gap: var(--space-4);
 }
 
 .om-list-head {

@@ -55,6 +55,8 @@
 .match-receipt-period-fields input[type="number"] {
   min-width: 0;
   padding-inline: var(--space-3);
+  border: var(--ui-stroke-width) solid var(--line);
+  background: var(--surface-3);
   text-align: center;
   appearance: textfield;
   -moz-appearance: textfield;

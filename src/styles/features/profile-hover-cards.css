@@ -203,7 +203,7 @@
 }
 
 .profile-overview-grid {
-  grid-template-columns: minmax(0, 1.05fr) minmax(420px, 0.95fr);
+  grid-template-columns: minmax(0, 1fr) minmax(380px, 1fr);
 }
 
 .profile-side-grid {
@@ -218,7 +218,7 @@
 
 @media (min-width: 1180px) {
   .profile-side-grid {
-    grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .profile-side-grid .favorite-management-card,

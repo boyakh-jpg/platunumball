@@ -91,7 +91,7 @@ export default function SettingsPrimaryColumn({ controller }) {
                 onPointerUp={(event) => event.currentTarget.blur()}
                 onClick={() => selectTheme("light")}
               >
-                라이트
+                <Sun size={15} aria-hidden="true" /> 라이트
               </button>
               <button
                 type="button"
@@ -99,7 +99,7 @@ export default function SettingsPrimaryColumn({ controller }) {
                 onPointerUp={(event) => event.currentTarget.blur()}
                 onClick={() => selectTheme("dark")}
               >
-                다크
+                <Moon size={15} aria-hidden="true" /> 다크
               </button>
             </div>
             <div className="settings-save-row">

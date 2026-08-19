@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { Bell, Trash2 } from "lucide-react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Bell, Check, Trash2 } from "lucide-react";
 import Card from "../components/common/Card.jsx";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
@@ -29,7 +29,9 @@ function formatCount(value) {
 
 export default function Notifications({ app }) {
   const navigate = useNavigate();
-  const [notificationView, setNotificationView] = useState("unread");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedView = searchParams.get("view");
+  const notificationView = ["all", "unread", "past"].includes(requestedView) ? requestedView : "unread";
   const [deletingNotificationId, setDeletingNotificationId] = useState("");
   const [pendingInvitationKeys, setPendingInvitationKeys] = useState([]);
   const [invitationActionErrors, setInvitationActionErrors] = useState({});
@@ -109,13 +111,22 @@ export default function Notifications({ app }) {
   const totalUnreadCount = Number.isFinite(app.state.notificationUnreadCount)
     ? app.state.notificationUnreadCount
     : unreadCount;
-  const displayedNotifications = notificationView === "past" ? pastNotifications : unreadNotifications;
+  const displayedNotifications = notificationView === "all"
+    ? visibleNotifications
+    : notificationView === "past" ? pastNotifications : unreadNotifications;
+  const selectNotificationView = (view) => {
+    const nextParams = new URLSearchParams(searchParams);
+    if (view === "unread") nextParams.delete("view");
+    else nextParams.set("view", view);
+    setSearchParams(nextParams, { replace: true });
+  };
   const pendingInvitations = getPendingRecruitingInvitations(app.state, app.currentUser.id);
   const pendingTeamInvitations = (app.state.teamInvitations ?? []).filter((invitation) => (
     invitation.targetUserId === app.currentUser.id &&
     invitation.requestKind !== "request" &&
     invitation.status === "pending"
   ));
+
   const captainTeamIds = new Set(app.state.teams
     .filter((team) => team.members.some((member) => member.userId === app.currentUser.id && member.role === "captain"))
     .map((team) => team.id));
@@ -346,16 +357,25 @@ export default function Notifications({ app }) {
         <div className="section-title-row">
           <div>
             <p className="eyebrow">Inbox</p>
-            <h2>{notificationView === "past" ? `지난 알림 ${pastNotifications.length}개` : `읽지 않은 알림 ${formatCount(totalUnreadCount)}개`}</h2>
+            <h2>{notificationView === "all" ? `전체 알림 ${visibleNotifications.length}개` : notificationView === "past" ? `지난 알림 ${pastNotifications.length}개` : `읽지 않은 알림 ${formatCount(totalUnreadCount)}개`}</h2>
           </div>
           <div className="notification-inbox-controls">
             <div className="ui-segmented-control segmented-control notification-view-tabs" role="tablist" aria-label="알림 보기">
               <button
                 type="button"
                 role="tab"
+                aria-selected={notificationView === "all"}
+                className={notificationView === "all" ? "active" : ""}
+                onClick={() => selectNotificationView("all")}
+              >
+                전체 <span>{visibleNotifications.length}</span>
+              </button>
+              <button
+                type="button"
+                role="tab"
                 aria-selected={notificationView === "unread"}
                 className={notificationView === "unread" ? "active" : ""}
-                onClick={() => setNotificationView("unread")}
+                onClick={() => selectNotificationView("unread")}
               >
                 읽지 않음 <span>{formatCount(totalUnreadCount)}</span>
               </button>
@@ -364,7 +384,7 @@ export default function Notifications({ app }) {
                 role="tab"
                 aria-selected={notificationView === "past"}
                 className={notificationView === "past" ? "active" : ""}
-                onClick={() => setNotificationView("past")}
+                onClick={() => selectNotificationView("past")}
               >
                 지난 알림 <span>{pastNotifications.length}</span>
               </button>
@@ -425,7 +445,7 @@ export default function Notifications({ app }) {
                       보기
                     </Link>
                   ) : null}
-                {notificationView === "past" ? (
+                {notification.readAt ? (
                   <button
                     type="button"
                     className="ui-compact-action notification-delete-button"
@@ -437,16 +457,16 @@ export default function Notifications({ app }) {
                     <Trash2 size={16} aria-hidden="true" />
                   </button>
                 ) : (
-                  <button type="button" className="notification-action-control notification-read-button" title="읽음 처리" aria-label={`${displayContent.title} 읽음 처리`} disabled={Boolean(notificationReadPendingId)} onClick={() => { void readNotifications(notification.id, () => app.actions.markNotificationRead(notification.id)); }}>
-                    {notificationReadPendingId === notification.id ? "처리 중" : "읽음"}
-                  </button>
+                  <Button type="button" variant="secondary" size="sm" className="notification-action-control notification-read-button" title="읽음 처리" aria-label={`${displayContent.title} 읽음 처리`} disabled={Boolean(notificationReadPendingId)} onClick={() => { void readNotifications(notification.id, () => app.actions.markNotificationRead(notification.id)); }}>
+                    <Check size={14} aria-hidden="true" /> {notificationReadPendingId === notification.id ? "처리 중" : "읽음"}
+                  </Button>
                 )}
               </span>
               </article>
             );
           }) : (
             <div className="ui-empty-state-compact">
-              {notificationView === "past" ? "지난 알림이 없습니다." : "읽지 않은 알림이 없습니다."}
+              {notificationView === "all" ? "알림이 없습니다." : notificationView === "past" ? "지난 알림이 없습니다." : "읽지 않은 알림이 없습니다."}
             </div>
           )}
         </div>

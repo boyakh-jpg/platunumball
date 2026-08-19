@@ -20,8 +20,8 @@
 }
 
 .settings-page .settings-toggle-grid label + label {
-  padding-left: calc(10px + var(--space-3));
-  border-left: var(--ui-stroke-width) solid var(--ui-divider-subtle);
+  padding-left: 10px;
+  border-left: 0;
 }
 
 .settings-page .settings-toggle-grid input[type="checkbox"] {
@@ -321,6 +321,7 @@
 }
 
 .settings-signout-row {
+  justify-content: flex-end;
   padding-block: var(--space-6);
 }
 
@@ -331,7 +332,8 @@
 
 .settings-auth-identities {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(220px, 0.7fr);
+  width: min(100%, 680px);
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-6);
   border-top: var(--ui-stroke-width) solid var(--line);
   padding-top: var(--space-6);
@@ -404,11 +406,12 @@
 }
 
 .settings-auth-identity-list .button {
-  width: 100%;
+  width: 148px;
+  justify-self: end;
 }
 
 .settings-signout-row .button {
-  width: 100%;
+  width: 148px;
 }
 
 @media (max-width: 560px) {
@@ -416,7 +419,13 @@
   .settings-test-account-form .button { width: 100%; }
 
   .settings-auth-identities {
+    width: 100%;
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .settings-auth-identity-list .button,
+  .settings-signout-row .button {
+    width: 100%;
   }
 
   .settings-address-results button {

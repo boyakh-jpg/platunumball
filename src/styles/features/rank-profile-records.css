@@ -300,7 +300,7 @@
   font-weight: 950;
 }
 .recent-match-list {
-  --recent-match-list-gap: var(--ui-compact-list-gap);
+  --recent-match-list-gap: calc(var(--ui-compact-list-gap) * 2);
   display: grid;
   gap: var(--recent-match-list-gap);
 }

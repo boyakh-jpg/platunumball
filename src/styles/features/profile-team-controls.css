@@ -9,6 +9,12 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--ui-control-group-gap);
+  justify-content: flex-end;
+}
+
+.affiliation-editor-actions > .button,
+.profile-icon-card-actions > .button {
+  min-width: 112px;
 }
 
 .affiliation-search-result > span {
