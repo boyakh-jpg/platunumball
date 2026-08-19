@@ -393,7 +393,7 @@
   white-space: nowrap;
 }
 .recent-match-row .match-record-meta {
-  overflow: visible;
+  overflow: hidden;
 }
 .match-record-meta > span {
   display: inline;
@@ -427,6 +427,15 @@
 }
 .match-record-meta__court {
   flex: 0 1 auto;
+}
+.recent-match-row .match-record-meta__prefix {
+  flex: none;
+}
+.recent-match-row .match-record-meta__court {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .recent-match-row strong {
   min-width: 0;

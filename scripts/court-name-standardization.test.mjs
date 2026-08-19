@@ -1,11 +1,27 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  getCompactCourtDisplayName,
   getCourtCanonicalName,
   getCourtFacilityBaseName,
   getCourtStandardName,
   normalizeCourtSigungu,
 } from "../src/lib/courts.js";
+
+test("최근 경기용 구장명은 지역과 복합 시설명을 짧게 표시한다", () => {
+  assert.equal(
+    getCompactCourtDisplayName("마포구 경성중고등학교, 홍익디자인고등학교 농구장 2코트"),
+    "마포 홍익디자인고등학교 농구장 2코트",
+  );
+  assert.equal(
+    getCompactCourtDisplayName("서울특별시 마포구 경성중고등학교 / 홍익디자인고등학교 실내 농구장 2코트"),
+    "마포 홍익디자인고등학교 실내 농구장…",
+  );
+  assert.equal(
+    getCompactCourtDisplayName("경기도 수원시 영통구 광교호수공원 농구장"),
+    "영통 광교호수공원 농구장",
+  );
+});
 
 test("주소에서 시군구를 추출한다", () => {
   assert.equal(normalizeCourtSigungu("", "부산광역시 해운대구 명장로 10"), "해운대구");

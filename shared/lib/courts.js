@@ -16,6 +16,34 @@ export function normalizeCourtNamePart(value = "") {
     .replace(/([A-Z0-9]+)\s+코트/gi, "$1코트");
 }
 
+export const COMPACT_COURT_DISPLAY_NAME_MAX_LENGTH = 20;
+
+const COURT_ADMINISTRATIVE_SUFFIX_PATTERN = /(?:특별자치시|특별시|광역시|특별자치도|도|시|군|구)$/u;
+const COURT_FACILITY_SEPARATOR_PATTERN = /\s*(?:,|，|\/|／|\||>|›|→)\s*/u;
+
+function getCompactCourtRegionToken(value = "") {
+  return normalizeCourtNamePart(value).replace(COURT_ADMINISTRATIVE_SUFFIX_PATTERN, "");
+}
+
+function truncateCourtDisplayName(value = "", maxLength = COMPACT_COURT_DISPLAY_NAME_MAX_LENGTH) {
+  const characters = [...normalizeCourtNamePart(value)];
+  if (characters.length <= maxLength) return characters.join("");
+  return `${characters.slice(0, Math.max(1, maxLength - 1)).join("")}…`;
+}
+
+export function getCompactCourtDisplayName(value = "") {
+  const tokens = normalizeCourtNamePart(value).split(" ").filter(Boolean);
+  const administrativeTokens = [];
+  while (tokens.length && COURT_ADMINISTRATIVE_SUFFIX_PATTERN.test(tokens[0])) {
+    administrativeTokens.push(tokens.shift());
+  }
+
+  const facilityParts = tokens.join(" ").split(COURT_FACILITY_SEPARATOR_PATTERN).filter(Boolean);
+  const facilityName = facilityParts.at(-1) ?? "";
+  const regionName = getCompactCourtRegionToken(administrativeTokens.at(-1));
+  return truncateCourtDisplayName([regionName, facilityName].filter(Boolean).join(" "));
+}
+
 export function normalizeCourtFacilityName(value = "") {
   const normalized = normalizeCourtNamePart(value)
     .replace(/^\[\s*\d+\s*\]\s*/, "")

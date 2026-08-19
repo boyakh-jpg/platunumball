@@ -1,4 +1,5 @@
 import { getMatchPlayedDate } from "../../lib/matchUtils.js";
+import { getCompactCourtDisplayName } from "../../lib/courts.js";
 
 export function PersonalRecordMetaLabels({ visibility = "private" }) {
   const isPublic = visibility === "public";
@@ -16,6 +17,7 @@ export default function MatchRecordMeta({ record = {}, afterCourt = null, classN
   const date = getMatchPlayedDate(record);
   const mode = record.mode ?? "";
   const court = record.court ?? "";
+  const courtLabel = getCompactCourtDisplayName(court);
   const prefix = [date, mode].filter(Boolean).join(" · ");
   const rootClassName = ["match-record-meta", className].filter(Boolean).join(" ");
 
@@ -23,7 +25,7 @@ export default function MatchRecordMeta({ record = {}, afterCourt = null, classN
   return (
     <span className={rootClassName}>
       {prefix ? <span className="match-record-meta__prefix">{prefix}</span> : null}
-      {court ? <span className="match-record-meta__court">· {court}</span> : null}
+      {court ? <span className="match-record-meta__court" title={court}>· {courtLabel}</span> : null}
       {afterCourt}
     </span>
   );
