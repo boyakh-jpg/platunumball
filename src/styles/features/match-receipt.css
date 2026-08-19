@@ -331,6 +331,8 @@
 }
 
 .match-receipt-poster-score > span {
+  display: inline-block;
+  transform: translateY(-5px);
   color: var(--receipt-orange); font-family: "Bebas Neue", sans-serif;
   font-size: clamp(10px, 3.3cqw, 16px); font-weight: 900; letter-spacing: 0.025em;
 }

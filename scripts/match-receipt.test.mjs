@@ -40,6 +40,16 @@ test("receipt photo scoreboard formats canonical final scores for the PNG atlas"
   assert.equal(formatMatchReceiptScoreboardScore(108), "108");
 });
 
+test("receipt nature label keeps the same five pixel score clearance in preview and saved images", async () => {
+  const [styles, renderer] = await Promise.all([
+    readFile(new URL("../src/styles/features/match-receipt.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/lib/matchReceipt.js", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(styles, /\.match-receipt-poster-score > span\s*\{[^}]*transform:\s*translateY\(-5px\)/s);
+  assert.match(renderer, /ctx\.fillText\(model\.matchNatureLabel, width \/ 2, scoreTop \+ \(compact \? 2 : 12\)\)/);
+});
+
 test("receipt emblems allow local fine adjustment while canonical teams remain reusable", async () => {
   const [receiptPage, teamPage, teamView, teamActions, teamApi, teamColumns, migration] = await Promise.all([
     readFile(new URL("../src/pages/MatchReceipt.jsx", import.meta.url), "utf8"),
@@ -60,6 +70,9 @@ test("receipt emblems allow local fine adjustment while canonical teams remain r
   assert.match(receiptPage, /EmblemCropEditor/u);
   assert.match(receiptPage, /prepareTeamEmblemUpload/u);
   assert.match(receiptPage, /MATCH_RECEIPT_LINE_ART_AI_PROMPT/u);
+  const emblemSource = await readFile(new URL("../src/lib/matchReceiptEmblem.js", import.meta.url), "utf8");
+  assert.match(emblemSource, /Convert the attached team emblem into clean line art/u);
+  assert.doesNotMatch(emblemSource, /첨부한 팀 엠블럼/u);
   assert.doesNotMatch(receiptPage, /uploadGuestReceiptEmblem/u);
   assert.match(teamView, /영수증 엠블럼 만들기/u);
   assert.match(teamView, /영수증 엠블럼 변경/u);

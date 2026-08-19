@@ -1241,7 +1241,7 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
   ctx.fillStyle = "#f05a2a";
   ctx.font = `900 ${compact ? 31 : 36}px "Bebas Neue", sans-serif`;
   ctx.letterSpacing = compact ? "0.8px" : "1.2px";
-  ctx.fillText(model.matchNatureLabel, width / 2, scoreTop + (compact ? 7 : 17));
+  ctx.fillText(model.matchNatureLabel, width / 2, scoreTop + (compact ? 2 : 12));
   ctx.letterSpacing = "0px";
 
   const teamTop = compact ? 779 : 1192;

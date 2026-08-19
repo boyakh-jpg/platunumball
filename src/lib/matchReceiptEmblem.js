@@ -6,12 +6,12 @@ const EMBLEM_CONTENT_WIDTH = 210;
 const EMBLEM_CONTENT_HEIGHT = 230;
 
 export const MATCH_RECEIPT_LINE_ART_AI_PROMPT = [
-  "첨부한 팀 엠블럼을 영수증용 선화 PNG로 변환해 줘.",
-  "원형 구도, 원본 비율, 모든 글자와 상징 형태를 정확히 유지하고 새 요소를 추가하지 마.",
-  "굵고 끊기지 않는 고대비 단색 선만 사용하고 내부 음영, 그라데이션, 그림자, 광택, 배경, 장식은 제거해.",
-  "피사체는 1:1 정사각형 캔버스 중앙에 최대 크기로 배치하되 잘리지 않게 해.",
-  "완전 투명 alpha 배경 PNG로 출력하고, 투명 배경이 불가능하면 배경은 균일한 순수 #00FF00만 사용해.",
-  "결과 이미지만 출력해.",
+  "Convert the attached team emblem into clean line art for a match receipt PNG.",
+  "Preserve the original composition, proportions, lettering, and symbols exactly; do not add new elements.",
+  "Use only bold, continuous, high-contrast monochrome lines, removing all shading, gradients, shadows, gloss, background, and decoration.",
+  "Center the emblem at the largest uncropped size on a square 1:1 canvas.",
+  "Export a PNG with a fully transparent alpha background; if transparency is unavailable, use a flat pure #00FF00 background only.",
+  "Return only the finished image.",
 ].join(" ");
 
 function loadImage(url) {
