@@ -113,9 +113,12 @@ export function getMatchRoomPhase(match = {}, now = new Date()) {
   if (match.status === "void") return ROOM_PHASE_META.void;
   if (match.status === "confirmed") return ROOM_PHASE_META.record;
   if (match.status === "disputed" && getOpenMatchDisputes(match).length) return ROOM_PHASE_META.dispute;
-  if ((match.status === "approval" || match.status === "disputed") && getMatchRecordWindow(match, now).disputeExpired) {
-    return ROOM_PHASE_META.record;
+  if ((match.status === "approval" || match.status === "disputed") && hasMatchFinalSubmission(match)) {
+    return getMatchRecordWindow(match, now).disputeExpired
+      ? ROOM_PHASE_META.record
+      : ROOM_PHASE_META.dispute;
   }
+  if (match.status === "approval" && match.endedAt) return ROOM_PHASE_META.postgame;
   if (match.status === "approval" || match.status === "disputed") return ROOM_PHASE_META.dispute;
   if (match.endedAt) return ROOM_PHASE_META.postgame;
   if (getMatchStartDate(match)) return ROOM_PHASE_META.live;
@@ -175,8 +178,13 @@ export function getMatchRecordWindow(match = {}, now = Date.now()) {
 
   const nowMs = typeof now === "number" ? now : new Date(now).getTime();
   const endMs = endAt.getTime();
+  const finalSubmittedAtMs = new Date(getMatchFinalSubmittedAt(match) ?? "").getTime();
+  const disputeBaseAt = new Date(Math.max(
+    endMs,
+    Number.isFinite(finalSubmittedAtMs) ? finalSubmittedAtMs : 0,
+  ));
   const statClosesAt = addMinutes(endAt, statEntryMinutes);
-  const disputeClosesAt = addMinutes(endAt, disputeMinutes);
+  const disputeClosesAt = addMinutes(disputeBaseAt, disputeMinutes);
 
   return {
     endAt,
@@ -190,12 +198,18 @@ export function getMatchRecordWindow(match = {}, now = Date.now()) {
   };
 }
 
+export function getMatchFinalSubmittedAt(match = {}) {
+  return match?.result?.finalSubmittedAt ?? match?.result?.final_submitted_at ?? null;
+}
+
+export function hasMatchFinalSubmission(match = {}) {
+  return Boolean(getMatchFinalSubmittedAt(match));
+}
+
 export function getMatchFinalizationWindow(match = {}, now = Date.now()) {
   const sourceMatch = match ?? {};
   const nowMs = typeof now === "number" ? now : new Date(now).getTime();
-  const submittedAtMs = new Date(
-    sourceMatch.result?.submittedAt ?? sourceMatch.result?.submitted_at ?? "",
-  ).getTime();
+  const submittedAtMs = new Date(getMatchFinalSubmittedAt(sourceMatch) ?? "").getTime();
   const endedAtMs = new Date(sourceMatch.endedAt ?? sourceMatch.ended_at ?? "").getTime();
   const baseMs = Math.max(
     Number.isFinite(submittedAtMs) ? submittedAtMs : 0,
@@ -204,9 +218,13 @@ export function getMatchFinalizationWindow(match = {}, now = Date.now()) {
   const availableAtMs = baseMs
     ? baseMs + MATCH_FINALIZATION_MINIMUM_MINUTES * MINUTE_MS
     : 0;
+  const automaticAvailableAt = getMatchRecordWindow(sourceMatch, nowMs).disputeClosesAt;
+  const automaticAvailableAtMs = automaticAvailableAt?.getTime() ?? NaN;
   return {
     availableAt: availableAtMs ? new Date(availableAtMs) : null,
     ready: availableAtMs > 0 && nowMs >= availableAtMs,
+    automaticAvailableAt,
+    automaticReady: Number.isFinite(automaticAvailableAtMs) && nowMs >= automaticAvailableAtMs,
   };
 }
 
@@ -229,7 +247,7 @@ export function getMatchNoDisputeStatus(match = {}, userId = "") {
 
 export function getMatchManualFinalizationStatus(match = {}, now = Date.now(), userId = "") {
   const sourceMatch = match ?? {};
-  const submittedAt = sourceMatch.result?.submittedAt ?? sourceMatch.result?.submitted_at ?? null;
+  const submittedAt = getMatchFinalSubmittedAt(sourceMatch);
   const nowMs = typeof now === "number" ? now : new Date(now).getTime();
   const { availableAt, ready: timeReady } = getMatchFinalizationWindow(sourceMatch, nowMs);
   const noDispute = getMatchNoDisputeStatus(sourceMatch, userId);
@@ -248,8 +266,8 @@ export function getMatchManualFinalizationStatus(match = {}, now = Date.now(), u
 }
 
 export function canOperatorSubmitMissingPostgameResult(match = {}, canOperatePostStart = false, now = Date.now()) {
-  if (!canOperatePostStart || match.result) return false;
-  if (["confirmed", "void", "cancelled", "disputed"].includes(match.status)) return false;
+  if (!canOperatePostStart || hasMatchFinalSubmission(match)) return false;
+  if (match.status !== "agreed") return false;
   if (!getMatchEndDate(match)) return false;
   return getMatchRoomPhase(match, now).phase === "postgame";
 }

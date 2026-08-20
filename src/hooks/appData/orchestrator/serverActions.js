@@ -293,7 +293,10 @@ const currentUser = useMemo(() => {
     const operation = getServerOperation(meta);
     if (!tournament?.id && !operation) return Promise.resolve(false);
     const payload = operation ? { operation } : { tournament, notifications, ...meta };
-    return runServerAction("/api/tournaments/sync-tournament", payload).then((result) => {
+    const requestOptions = operation?.action === "loadTournament"
+      ? { quietError: "tournament_not_found" }
+      : {};
+    return runServerAction("/api/tournaments/sync-tournament", payload, requestOptions).then((result) => {
       if (result?.state) {
         const remoteState = normalizeServerState(result.state);
         setState((prev) => mergeRemoteTournamentState(prev, remoteState ?? {}));

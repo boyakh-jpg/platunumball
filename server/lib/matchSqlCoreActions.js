@@ -150,10 +150,20 @@ if (operation.action === "submitMatchResult" && (match?.id || operation.matchId)
     if (sourceMatch?.rules?.recordType === RECORD_TYPES.matchRecord && sourceMatch.rules?.recordSetupReady !== true) {
       reject(409, "match_record_setup_required");
     }
+    const recordType = sourceMatch?.rules?.recordType ?? RECORD_TYPES.match;
+    const explicitFinalSubmission = Boolean(
+      sourceMatch?.endedAt
+      && sourceMatch?.status === "agreed"
+      && ![RECORD_TYPES.matchRecord, RECORD_TYPES.personalRecord, "personal_record", "solo"].includes(recordType)
+      && !sourceMatch?.result?.finalSubmittedAt,
+    );
+    const resultPayload = operation.result && typeof operation.result === "object" && !Array.isArray(operation.result)
+      ? { ...operation.result, finalSubmission: explicitFinalSubmission }
+      : { finalSubmission: explicitFinalSubmission };
     const { data, error } = await context.supabase.rpc("rankball_match_result_action", {
       p_actor_profile_id: context.profileId,
       p_match_id: matchId,
-      p_result: operation.result ?? {},
+      p_result: resultPayload,
     });
     if (error) {
       if (isMissingSqlMatchReducer(error)) reject(503, "match_result_rpc_required");

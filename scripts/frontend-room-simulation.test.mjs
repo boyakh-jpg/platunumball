@@ -463,6 +463,14 @@ function runActualMatchLifecycle({
     if (substitutedPlayerId) {
       assert.ok(Object.hasOwn(match.result.playerStats, substitutedPlayerId), `${postId}: 교체 출전자 기록 보존`);
     }
+  } else {
+    state = submitMatchResult(asActor(state, hostId), match.id, {
+      scoreA: match.result.scoreA,
+      scoreB: match.result.scoreB,
+      playerStats: {},
+    });
+    match = state.matches[0];
+    assert.equal(match.status, "approval", `${postId}: 무심판 방장 기록 제출`);
   }
   const submittedBy = match.result.submittedBy;
   state = submitMatchResult(asActor(state, unauthorizedId), match.id, {
@@ -664,7 +672,7 @@ function runTeamRoom({ mode, benchCapacity, referee }) {
       playerIds: teamBIds.slice(0, capacity),
       reservePlayerIds: teamBIds.slice(capacity, capacity + benchCapacity),
     },
-  ], teamBIds[0], "B팀장 명단 확정");
+  ], teamBIds[0], `B팀장 명단 확정 ${mode}/후보${benchCapacity}/심판${referee}`);
 
   const confirmed = confirmRoom(state, created.postId);
   state = completePracticeAttendance(confirmed.state, confirmed.matchId);
@@ -1253,7 +1261,10 @@ test("로컬 프론트 경기시계는 정규 쿼터와 반복 연장을 순서�
 test("최종 승인은 결과 제출과 경기 종료 중 늦은 시각부터 3분 뒤 열린다", () => {
   const match = {
     endedAt: "2026-07-31T12:10:00.000Z",
-    result: { submittedAt: "2026-07-31T12:00:00.000Z" },
+    result: {
+      submittedAt: "2026-07-31T12:00:00.000Z",
+      finalSubmittedAt: "2026-07-31T12:00:00.000Z",
+    },
   };
   assert.equal(getMatchManualFinalizationStatus(match, "2026-07-31T12:12:59.999Z").ready, false);
   assert.equal(getMatchManualFinalizationStatus(match, "2026-07-31T12:13:00.000Z").ready, true);
@@ -1316,7 +1327,10 @@ test("실제 출전자 2/3가 이의 없음을 누르면 3분 전에도 최종 �
     teamB: { players: ["c"] },
     reservePlayers: { teamA: ["reserve"], teamB: [] },
     endedAt: "2026-07-31T12:10:00.000Z",
-    result: { submittedAt: "2026-07-31T12:10:00.000Z" },
+    result: {
+      submittedAt: "2026-07-31T12:10:00.000Z",
+      finalSubmittedAt: "2026-07-31T12:10:00.000Z",
+    },
     rules: { noDisputeUserIds: ["a", "b"] },
   };
   assert.deepEqual(getMatchNoDisputeStatus(match).participantIds.sort(), ["a", "b", "c"]);

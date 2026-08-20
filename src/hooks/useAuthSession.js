@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { getTestAccountDisplayLabel, normalizeTestLoginId, TEST_ACCOUNT_COUNT } from "../lib/constants.js";
 import {
   getAuthProviderLabel,
   getEnabledAuthProviders,
   getLinkedProviderIds,
 } from "../lib/authProviders.js";
-import { getSafeAppRedirect } from "../lib/profileSetup.js";
+import { getOAuthCallbackRedirectUrl, getOAuthCallbackState } from "../lib/authCallback.js";
+import { getLoginPath, getSafeAppRedirect } from "../lib/profileSetup.js";
 import { isSupabaseConfigured, supabase } from "../lib/supabase.js";
 import { postServerAction, setClientActionSession } from "../lib/serverActions.js";
 
@@ -104,24 +106,6 @@ function isDemoLoginAllowed() {
   return import.meta.env.DEV || DEMO_LOGIN_ENV === "true";
 }
 
-function getOAuthCode() {
-  if (typeof window === "undefined") return "";
-  return new URLSearchParams(window.location.search).get("code") ?? "";
-}
-
-function getOAuthCallbackError() {
-  if (typeof window === "undefined") return "";
-  const search = new URLSearchParams(window.location.search);
-  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
-  return search.get("error_description")
-    ?? search.get("error_code")
-    ?? search.get("error")
-    ?? hash.get("error_description")
-    ?? hash.get("error_code")
-    ?? hash.get("error")
-    ?? "";
-}
-
 function formatAuthError(message) {
   if (!message) return "";
   const normalizedMessage = String(message).toLowerCase();
@@ -144,30 +128,8 @@ function formatAuthError(message) {
   return "로그인 정보를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.";
 }
 
-function hasOAuthCallbackParams() {
-  if (typeof window === "undefined") return false;
-  const search = new URLSearchParams(window.location.search);
-  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
-  return search.has("code")
-    || search.has("error")
-    || search.has("error_code")
-    || search.has("error_description")
-    || hash.has("access_token")
-    || hash.has("refresh_token")
-    || hash.has("error")
-    || hash.has("error_code")
-    || hash.has("error_description");
-}
-
-function cleanOAuthCallbackUrl() {
-  if (typeof window === "undefined") return;
-  const url = new URL(window.location.href);
-  ["code", "error", "error_code", "error_description"].forEach((key) => url.searchParams.delete(key));
-  if (window.location.hash) url.hash = "";
-  window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
-}
-
 export function useAuthSession() {
+  const navigate = useNavigate();
   const [session, setSession] = useState(() => (isSupabaseConfigured ? null : readTestSession()));
   const [loading, setLoading] = useState(() => isSupabaseConfigured);
   const [message, setMessage] = useState("");
@@ -187,12 +149,19 @@ export function useAuthSession() {
       return undefined;
     }
 
-    const hasCallback = hasOAuthCallbackParams();
-    const callbackError = getOAuthCallbackError();
-    const authCode = getOAuthCode();
+    const callbackState = getOAuthCallbackState(window.location.href);
+    const { hasCallback, error: callbackError, code: authCode } = callbackState;
+
+    const finishOAuthCallback = (nextSession) => {
+      if (!hasCallback) return;
+      if (callbackError && !nextSession && callbackState.pathname !== "/login") {
+        navigate(getLoginPath(getSafeAppRedirect(callbackState.cleanedPath), callbackState.cleanedPath), { replace: true });
+        return;
+      }
+      navigate(callbackState.cleanedPath, { replace: true });
+    };
 
     if (callbackError) {
-      cleanOAuthCallbackUrl();
       setError(formatAuthError(callbackError));
     }
 
@@ -204,7 +173,7 @@ export function useAuthSession() {
     const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       setClientActionSession(nextSession);
       setSession(nextSession ?? null);
-      if (hasCallback && nextSession) cleanOAuthCallbackUrl();
+      if (hasCallback && nextSession) finishOAuthCallback(nextSession);
       if (!resolvingInitialSession) setLoading(false);
     });
 
@@ -216,7 +185,7 @@ export function useAuthSession() {
       if (sessionError) setError(formatAuthError(sessionError.message));
       setClientActionSession(sessionData.session);
       setSession(sessionData.session ?? null);
-      if (hasCallback && (sessionData.session || !authCode)) cleanOAuthCallbackUrl();
+      if (hasCallback && (sessionData.session || !authCode)) finishOAuthCallback(sessionData.session);
       setLoading(false);
     }).catch((sessionError) => {
       if (!mounted) return;
@@ -231,7 +200,7 @@ export function useAuthSession() {
       mounted = false;
       data.subscription.unsubscribe();
     };
-  }, []);
+  }, [navigate]);
 
   const actions = useMemo(() => ({
     signInWithProvider: async (provider, redirectPath = "/app") => {
@@ -249,7 +218,10 @@ export function useAuthSession() {
       setMessage("");
       try {
         if (isSupabaseConfigured) {
-          const redirectTo = `${window.location.origin}${getSafeAppRedirect(redirectPath)}`;
+          const redirectTo = getOAuthCallbackRedirectUrl(
+            window.location.origin,
+            getSafeAppRedirect(redirectPath),
+          );
           const { error: authError } = await supabase.auth.signInWithOAuth({
             provider,
             options: {
@@ -313,7 +285,10 @@ export function useAuthSession() {
       setError("");
       setMessage("");
       try {
-        const redirectTo = `${window.location.origin}${getSafeAppRedirect(redirectPath)}`;
+        const redirectTo = getOAuthCallbackRedirectUrl(
+          window.location.origin,
+          getSafeAppRedirect(redirectPath),
+        );
         const { data: linkData, error: linkError } = await supabase.auth.linkIdentity({
           provider,
           options: { redirectTo },

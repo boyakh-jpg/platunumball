@@ -32,7 +32,7 @@ const location = useLocation();
   const tournament = (app.state.tournaments ?? []).find((item) => item.id === tournamentId);
   const requestedTournamentIdRef = useRef("");
   const tournamentLoadRequestRef = useRef(0);
-  const [tournamentMissing, setTournamentMissing] = useState(false);
+  const [tournamentLoadStatus, setTournamentLoadStatus] = useState("loading");
   const [scheduleDialog, setScheduleDialog] = useState(null);
   const [savingScheduleId, setSavingScheduleId] = useState("");
   const savingScheduleRef = useRef("");
@@ -53,7 +53,7 @@ const location = useLocation();
   useEffect(() => {
     tournamentLoadRequestRef.current += 1;
     requestedTournamentIdRef.current = "";
-    setTournamentMissing(false);
+    setTournamentLoadStatus("loading");
     setScheduleDialog(null);
     setSavingScheduleId("");
     savingScheduleRef.current = "";
@@ -71,34 +71,35 @@ const location = useLocation();
 
   useEffect(() => {
     if (!tournamentId || app.remoteReady === false || requestedTournamentIdRef.current === tournamentId) return;
-    setTournamentMissing(false);
+    setTournamentLoadStatus("loading");
     requestedTournamentIdRef.current = tournamentId;
     const requestId = tournamentLoadRequestRef.current + 1;
     tournamentLoadRequestRef.current = requestId;
     Promise.resolve().then(() => app.actions.loadTournament?.(tournamentId)).then((count) => {
       if (!isCurrentScopedRequest(requestedTournamentIdRef.current, tournamentLoadRequestRef.current, tournamentId, requestId)) return;
-      if (!count) setTournamentMissing(true);
+      if (!count) setTournamentLoadStatus("missing");
     }).catch(() => {
       if (!isCurrentScopedRequest(requestedTournamentIdRef.current, tournamentLoadRequestRef.current, tournamentId, requestId)) return;
-      setTournamentMissing(true);
+      setTournamentLoadStatus("error");
     });
-  }, [app.actions, app.remoteReady, tournamentId, tournamentMissing]);
+  }, [app.actions, app.remoteReady, tournamentId, tournamentLoadStatus]);
 
-  if (!tournament && !tournamentMissing) {
+  if (!tournament && tournamentLoadStatus === "loading") {
     return <BasketballLoader overlay label="대회 불러오는 중" />;
   }
 
   if (!tournament) {
+    const loadFailed = tournamentLoadStatus === "error";
     return (
       <div className="page-stack tournament-detail-page">
         <Button as={Link} variant="secondary" className="tournament-back-link" to="/app/matches"><ChevronLeft size={17} /> 경기로</Button>
         <section className="tournament-empty">
-          <strong>대회 없음</strong>
-          <p>삭제되었거나 아직 불러오지 못한 대회입니다.</p>
+          <strong>{loadFailed ? "대회를 불러오지 못했습니다" : "대회 없음"}</strong>
+          <p>{loadFailed ? "연결 상태를 확인한 뒤 다시 시도해 주세요." : "삭제되었거나 존재하지 않는 대회입니다."}</p>
           <Button type="button" variant="secondary" onClick={() => {
             tournamentLoadRequestRef.current += 1;
             requestedTournamentIdRef.current = "";
-            setTournamentMissing(false);
+            setTournamentLoadStatus("loading");
           }}>다시 시도</Button>
         </section>
       </div>

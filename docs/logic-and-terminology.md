@@ -130,7 +130,7 @@
 7. `favorites.target_type`은 `player`, `team`, `court`, `referee`를 모두 허용한다. 기존 DB 제약도 같은 네 종류로 교체해 심판 즐겨찾기를 별도 관계로 저장한다.
 8. 설정의 `app_settings` 저장이 성공하면 대기 Discord 알림 정리는 부가 작업으로 취급한다. 정리 실패를 설정 저장 실패로 되돌리지 않으며 발송 worker가 최신 수신 설정과 차단 목록을 다시 확인한다.
 9. 심판 등록요청은 사용자당 열린 `pending` 요청을 하나만 유지한다. 요청 저장 뒤 자기 알림 저장이 실패해도 등록요청 자체는 성공으로 처리한다.
-10. 로그아웃은 Supabase 원격 세션 해제를 먼저 시도하되 만료·손상 토큰이나 네트워크 오류가 로컬 로그아웃을 막지 않는다. 원격 해제가 실패하면 해당 브라우저의 Supabase 저장 세션을 직접 지우고 화면 세션과 테스트 세션을 비운다.
+10. 로그아웃은 설정 메인 최하단의 단일 진입점에서 Supabase 원격 세션 해제를 먼저 시도하되 만료·손상 토큰이나 네트워크 오류가 로컬 로그아웃을 막지 않는다. 원격 해제가 실패하면 해당 브라우저의 Supabase 저장 세션을 직접 지우고 화면 세션과 테스트 세션을 비운다.
 11. 유효한 로그인 세션으로 `/login`에 진입하면 로그인 선택 화면을 다시 표시하지 않고 안전한 원래 앱 경로 또는 `/app`으로 이동한다. 가입정보 필요 여부는 앱의 프로필 hydration guard가 이어서 판정한다.
 12. 비로그인 사용자는 공개 앱 경로에서 실제 공개 데이터만 읽는다. 공개 범위는 홈, 가이드·연습, 공개 경기·매칭, 커뮤니티, 랭크보드, 팀·선수 조회다. 게스트 상태는 인증 세션이나 서버 권한을 만들지 않으며 번들 데모 데이터를 운영 조회 결과로 사용하지 않는다.
 13. 생성·참가·채팅·추천·신고·즐겨찾기·관리·개인 기록·알림·설정처럼 토큰이 필요한 경로와 action은 로그인으로 보내며 원래 내부 경로와 query/hash를 보존한다.
@@ -160,7 +160,7 @@
 3. 프로필, 가입 프로필, 일반 설정, Discord 연결·해제, 구장 검색·핀·등록요청, 알림 초대 응답은 저장 중 중복 실행을 막고 서버 실패를 성공으로 표시하지 않는다.
 4. 비동기 주소 검색은 최신 검색 요청의 결과만 화면에 반영한다. 검색어가 바뀌면 이전 요청 결과는 폐기한다.
 5. 심판 등록요청과 관리자 임명을 한 번에 완료하고 요청 상태까지 닫는 원자 처리 방식은 별도 DB 설계가 필요한 후속 작업이다. 현재 임명 action만으로 등록요청을 승인 완료로 간주하지 않는다.
-6. OAuth 로그인과 로그아웃은 하나의 인증 action만 실행한다. SDK가 오류를 반환하거나 Promise를 reject해도 pending을 해제하며, 로그인 실패는 표시하고 로그아웃은 로컬 세션 정리를 완료한다.
+6. OAuth 로그인과 로그아웃은 하나의 인증 action만 실행한다. SDK가 오류를 반환하거나 Promise를 reject해도 pending을 해제하며, 로그인 실패는 표시하고 로그아웃은 로컬 세션 정리를 완료한다. 공급자 복귀는 대상 앱 경로를 `redirect`로 보존한 `/login` 전용 callback으로 고정해 경기 영수증의 canonical `?code=`와 인증 code를 분리한다. 세션 없는 OAuth callback 오류는 OAuth 전용 query/hash를 제거한 원래 안전 경로를 `backTo`로 보존해 `/login`의 기존 오류 surface에서 표시한다.
 7. 알림 화면의 최신 알림·팀 정보 조회와 팀 초대 수락 뒤 팀 상세 조회는 명시적인 `false`도 실패로 처리한다. 최신 팀 정보를 못 받으면 팀 상세로 이동하지 않는다.
 
 ## 2026-07-31 팀 상세 원격 권한·삭제
@@ -278,13 +278,13 @@
 5. 교체는 같은 사이드의 현재 출전선수와 후보선수 사이에서만 수행한다. 후보 본인은 자신이 들어가는 자진 교체를 실행할 수 있고 배정 심판은 양 사이드를 교체할 수 있다. 무심판 방장·파티장·다른 출전선수는 타인의 교체를 실행할 수 없다.
 6. 교체 transaction은 출전·후보 명단, 교체 이벤트, 출전시간 interval만 하나의 서버 transaction·서버시간으로 갱신한다. 기록자 생성·승계·교대는 포함하지 않는다.
 7. 신규 교체 사유는 `self`, `late`, `ejection`, `operator`만 허용한다. `injury`와 `recorder_handoff` 신규 저장은 거부한다. 과거 `injury`는 화면에서 `일반 교체`로 읽을 수 있다.
-8. 일반 경기의 최종 승인은 결과 제출과 경기 종료 중 늦은 시각부터 3분이 지났거나 실제 출전자의 2/3 이상이 `이의 없음`을 누르면 배정 심판이 있으면 배정 심판만, 무심판이면 방장만 실행한다. 종료 action은 결과 제출 직후부터 표시하되 두 조건을 모두 충족하지 않으면 `3분이 지나지 않았거나 이의 없음 인원이 충족되지 않았습니다.`를 표시하고 차단한다. 조건 하나가 충족되면 `더 이상 이의가 없음을 확인하셨나요?` 확인 checkbox를 표시하고 `disputesAcknowledged=true`를 서버에 보낸다. 열린 이의신청이 있으면 항상 먼저 처리한다.
+8. 일반 경기의 최종 승인은 `match_results.final_submitted_at`과 경기 종료 중 늦은 시각부터 3분이 지났거나 실제 출전자의 2/3 이상이 `이의 없음`을 누르면 배정 심판이 있으면 배정 심판만, 무심판이면 방장만 실행한다. 종료 action은 명시 최종 제출 직후부터 표시하되 두 조건을 모두 충족하지 않으면 `3분이 지나지 않았거나 이의 없음 인원이 충족되지 않았습니다.`를 표시하고 차단한다. 조건 하나가 충족되면 `더 이상 이의가 없음을 확인하셨나요?` 확인 checkbox를 표시하고 `disputesAcknowledged=true`를 서버에 보낸다. 열린 이의신청이 있으면 항상 먼저 처리한다.
 9. 참가자는 최종 승인 전에 이의신청을 제출할 수 있다. 배정 심판 경기의 이의는 배정 심판만, 무심판 경기의 이의는 방장만 처리하며 처리 사유·처리자·서버시각·이전값·변경값을 감사 기록으로 남긴다. 열린 이의신청이 하나라도 있으면 최종 승인을 거부하고 마지막 판정은 경기를 `approval`로 되돌릴 뿐 자동 확정하지 않는다. 승인 뒤 신규 이의신청은 거부하고 이후 문제 제기는 경기 신고로 전환한다.
 10. `governanceVersion=2` 대회 경기는 중립 배정 심판이 필수다. 배정 심판만 점수·개인 스탯·이의 처리·최종 승인을 수행하며 대회 방장은 해당 권한을 갖지 않는다.
 10-1. 대회 생성은 팀 초대·고정 명단을 사용하는 `경쟁전 + 경기 전 구성`으로 고정한다. 일반 경기에서 선택한 현장 픽업 설정을 대회 폼이나 저장값으로 이어받지 않는다.
 11. 일반 live 경기, `match_record`, `personal_record`는 서로 다른 기록 유형이다. `match_record`는 실제 참가자의 2/3 이상이 `내 참가 확인`으로 본인 참가 사실과 결과를 확인한다. 확인자는 1v1 10%, 2v2 20%, 3v3 35%, 5v5 50%의 개인 MMR만 반영하고 미확인자는 승패·개인/모드 MMR·연승에서 제외하며 팀 MMR과 개인 스탯은 만들지 않는다. 24시간 뒤 기준 미달이면 `확인 부족`, 기준 충족과 열린 공통 신고 0건이면 시스템이 확정한다. `personal_record`는 작성자 본인 소유·본인 저장·MMR 미반영 규칙을 유지한다.
 12. 무심판 경기의 방장이 부재하거나 계정 문제로 승인할 수 있어도 다른 참가자에게 최종 승인 권한을 자동 승계하지 않는다. 경기 신고를 통해 관리자 처리 경로로 전환하며 관리자 조치는 사유와 감사 기록을 필수로 남긴다.
-13. 일반 경기의 수동 승인이 없으면 결과 제출과 경기 종료 중 늦은 시각부터 전체 `disputeMinutes`가 지난 뒤 유효한 결과, 열린 이의 0건, 심판 경기의 실제 출전자 개인 스탯 완성을 확인해 `system`이 자동 확정할 수 있다. 자동 확정은 0 개인기록을 보충하지 않으며 수동 확정과 같은 lock·멱등 MMR transaction을 사용한다.
+13. 일반 경기의 수동 승인이 없으면 `match_results.final_submitted_at`과 경기 종료 중 늦은 시각부터 전체 `disputeMinutes`가 지난 뒤 유효한 결과, 열린 이의 0건, 심판 경기의 실제 출전자 개인 스탯 완성을 확인해 `system`이 자동 확정할 수 있다. 자동 확정은 0 개인기록을 보충하지 않으며 수동 확정과 같은 lock·멱등 MMR transaction을 사용한다.
 14. 프로필 통계는 서버가 검증 출처로 읽어 준 대회 개인 스탯을 집계한다. 대회 row가 축약되어 클라이언트에 심판 ID가 없더라도 `tournamentId`와 확정 스탯이 있으면 통계에서 누락하지 않는다.
 15. 타인 선수 프로필의 기록 API는 대상 선수가 참가한 공개 경기와 대상 선수가 작성한 공개 `personal_record`를 함께 제공한다. 비공개 기록은 제외하고, 프로필의 `teamHistory`·`statSummary` 공개 설정은 기존대로 각 섹션 노출에 적용한다. `statSummary`가 켜져 있을 때만 대상 선수의 심판 검증 스탯과 공개 개인기록 통계를 반환하며, 꺼져 있으면 서버 응답에서도 통계값을 제거한다. 공개 개인 기록은 공식 통계·업적·MMR과 합산하지 않는다.
 16. `personal_record` 이름 기록의 다른 선수는 실제 경기 참가자로 등록하지 않는다. 유효한 선수 해시태그를 선택하거나 입력하면 익명 슬롯에 `linkedProfileId`와 서버가 정규화한 이름·포지션만 연결한다. 이 참조는 프로필 열람 보조이며 일정·알림·승패·MMR·출전 통계의 참가 관계를 만들지 않는다. 저장 표시명에는 해시태그를 남기지 않는다.
@@ -370,9 +370,9 @@
 4. 방장 또는 배정 심판은 경기 시작 전에 출석 인원 기준 정리를 실행할 수 있다. 양쪽 출석 인원이 들어가는 가장 큰 지원 방식 `5v5 → 3v3 → 2v2 → 1v1`을 고르되 현재 방식보다 키우지 않고 사이드별 후보 3명 한도를 지킨다. 미출석자는 `no_show`로 남기며 이 정리와 축소는 방 수정 1회를 소모하지 않는다.
 5. 실제 출전은 후보 본인이 같은 사이드 출전 선수를 골라 `교체`를 누르면 성립한다. 후보 본인에게는 자기 행만 보인다. 배정 심판만 양 사이드 후보 전체를 교체하고 `일반 교체·지각·퇴장` 사유를 지정한다. 심판 없는 경기의 방장·파티장·출전 선수는 타인을 교체할 수 없다. `지각` 사유는 DB 출석 상태가 실제 `late`인 선수에게만 허용한다. 교체 시각, 들어간 선수, 나온 선수, 사이드, 실제 요청자, 경기시계 상태와 사유를 저장한다.
 6. 교체로 들어온 후보의 의미 있는 최소 출전시간은 예상 경기시간의 10%이며 최소 1분, 최대 3분이다. 실제 출전 구간은 경기시계의 누적 진행시간으로 계산해 일시정지·휴식 시간을 제외한다. 합계가 기준보다 짧으면 MMR 반영 대상에서 제외하고, 기준을 채운 선수의 정확한 MMR 계수는 별도 정책 확정 전까지 기존 반영 방식을 유지한다.
-7. 경기 종료 뒤 결과 제출 전 기록 입력 가능 시간에는 방장 또는 배정 심판이 누락된 가입 선수나 무기명 선수를 실제 출전 명단에 추가할 수 있다. 실시간 팀 점수만 저장된 `match_results` 행은 결과 제출로 보지 않는다. 이 흐름으로 추가된 선수만 다시 제거할 수 있으며 모두 MMR에서 제외한다.
+7. 경기 종료 뒤 결과 제출 전 기록 입력 가능 시간에는 방장 또는 배정 심판이 누락된 가입 선수나 무기명 선수를 실제 출전 명단에 추가할 수 있다. 실시간 팀 점수만 저장된 `match_results` 행은 결과 제출로 보지 않고, 일반 경기는 `final_submitted_at`과 `final_submitted_by`를 명시 최종 제출의 canonical 원본으로 사용한다. 종료된 무심판 일반 경기는 점수 증감 UI를 다시 열지 않으며, `agreed` 상태의 방장만 현재 `matches.score_a/score_b`를 그대로 명시 제출한다. 이 흐름으로 추가된 선수만 다시 제거할 수 있으며 모두 MMR에서 제외한다.
 8. 출석 신뢰도 정책의 목표값은 지각 `-1`, 미출석 `-4`다. 다른 신뢰도 규칙과 함께 확정하기 전에는 자동 차감하지 않는다.
-9. QR 링크는 공용 매칭 목록의 `match` query로 해당 경기의 공통 방 모달을 연다. 구형 `/app/matches/:matchId` QR 링크는 기존 query와 hash를 보존한 채 canonical `/app/matches?match=:matchId`로 `replace` 이동하며, 독립 경기 상세 화면을 렌더하지 않는다. 출석 결과는 스캔한 경기 모달 안에서 표시한다.
+9. QR 링크는 공용 매칭 목록의 `match` query로 해당 경기의 공통 방 모달을 연다. 구형 `/app/matches/:matchId` QR 링크는 기존 query와 hash를 보존한 채 canonical `/app/matches?match=:matchId`로 `replace` 이동하며, 독립 경기 상세 화면을 렌더하지 않는다. 이 명시적 legacy 경로 외의 미등록 URL은 홈으로 강제 이동하지 않고 공용 404 화면을 표시한다. 출석 결과는 스캔한 경기 모달 안에서 표시한다.
 10. 얇은 경기 일정 카드는 이미 불러온 경기 상세의 `rules`, 출전·후보 명단, 출석, 동의, 기록 데이터를 덮지 않는다. 목록 표기값은 합치되 상세 응답을 우선한다.
 11. QR 예정 경기의 공통 방 단계는 QR API와 같은 시작 20분 전부터 `checkin`으로 전환한다. 선수로 참가하는 방장은 일반 선수와 같은 출석 대상이고, 선수로 참가하지 않는 방장과 배정 심판은 출석 완료 인원에서 제외한다.
 12. 경기시계 점수판은 기존 시계 조회와 함께 3초마다 `match_results`를 다시 읽는다. 현재 경기시계 담당자나 심판이 저장한 점수는 별도 전역 polling 없이 다음 시계 조회에 반영한다.
@@ -476,7 +476,7 @@
 
 1. 플레이어 사유는 `reports.type='player'`로 저장하고 서버가 최근 7일 안에 신고자와 대상이 함께 참여한 `sourceMatchId`를 검증해 snapshot으로 남긴다. 경기 기록 전체 신고만 `type='match'`를 사용한다.
 2. 플레이어 신고는 한 번에 한 명만 선택한다. 신고자 본인, 공동 경기 없음, 7일 초과 경기는 서버에서 거부한다.
-3. 신고 폼은 서버 저장 완료 전 입력을 지우지 않는다. 저장 중·성공·실패를 표시하고 실패하면 선택 대상, 사유, 메모를 유지한다.
+3. 신고 폼은 서버 저장 완료 전 입력을 지우지 않는다. 저장 중·성공·실패를 표시하고 실패하면 선택 대상, 사유, 메모를 유지한다. 신고 가능한 최근 경기 조회 실패도 같은 입력을 유지한 채 동일 범위를 다시 조회할 수 있어야 한다.
 4. 관리자 section state는 현재 탭 응답으로 교체한다. 이전에 방문한 탭의 신고를 다음 탭 모델에 섞지 않으며 페이지 추가 로드만 같은 section 안에서 병합한다.
 5. `validReport`, `dismissReport`는 level 30 이상이 처리할 수 있다. 직접 제재, 악성신고자 제재, 구장·리뷰 숨김, 이름·엠블럼 강제조치, 무효 경기 판정은 level 50 이상만 실행한다.
 6. `maliciousReporter` 대상은 선택한 신고의 신고자로 고정한다. `suspendTarget`은 서버가 검증해 저장한 `reportedUserIds`만, `refereeDiscipline`은 해당 경기의 현재·이전 심판 중 신고 대상에 포함된 사용자만 허용한다.
@@ -564,7 +564,7 @@
 1. 현재 사용자가 참가·후보·기록자로 연결된 확정 경기와 즉시 경기 준비방은 날짜 필터가 없어도 경기 메뉴의 `내 일정` 또는 `처리 필요`에 표시한다.
 2. `내 팀 경기`에는 현재 사용자의 소속팀이 `team_a_id` 또는 `team_b_id`로 확정된 경기만 표시한다. 모집방 참가 관계만으로 팀 경기로 분류하지 않는다.
 3. 비공개 대회 목록과 대회 초대 처리 항목은 차단한 생성자의 대회와 종료일이 지난 draft 대회를 제외한다.
-4. 경기 조회는 `match_players` 출전 관계와 `matches.stat_recorders`, `played_player_ids`, `reserve_players` JSON 관계를 서버에서 직접 보강해 오래된 feed 때문에 출전자·후보·기록자 일정이 누락되지 않게 한다.
+4. 경기 조회는 `match_players` 현재 출전 관계와 `played_player_ids`, `reserve_players` JSON 관계를 서버에서 직접 보강해 오래된 feed 때문에 현재·기출전자와 후보 일정이 누락되지 않게 한다. 과거 `stat_recorders` 관계만으로는 현행 경기 운영 메뉴 접근권한을 부여하지 않는다.
 5. 팀 엔트리는 참가자가 1명이어도 명시된 `kind`, `joinMode`, `teamId`를 팀 소속·팀명·팀 MMR 판정에 사용한다. `isRecruitingPartyEntry`의 2명 기준은 슬롯을 하나의 파티 묶음으로 그릴 때만 사용한다.
 6. 대회 승인 권한은 명시적으로 저장된 대표팀만 사용한다. 대회 경기 집계는 몰수 side와 저장 점수를 결과 객체보다 우선 보강하고, 저장된 `matchIds`와 후속 생성 경기를 합쳐 계산한다.
 7. 홈 처리 항목은 상태 문자열만 믿지 않는다. 만료된 즉시 경기와 오늘보다 이전 일정에 머문 준비·동의 경기는 숨기고, 유효한 기록 입력·이의·승인 기간만 예외로 유지한다.
@@ -632,7 +632,7 @@
 1. `/app/matches`의 화면 메뉴명은 `일정`, `/app/recorder`의 화면 메뉴명은 `플레이`다.
 2. 일정 메뉴는 공개/비공개 모집방과 `locked`, `checkin` 단계의 시작 전 경기만 표시한다.
 3. 경기 시작으로 `startedAt`이 생기면 해당 경기는 일정 메뉴에서 즉시 빠지고 플레이 메뉴로 이동한다.
-4. 플레이 메뉴는 `live`, `postgame`, `dispute` 단계만 표시한다. 방장, 현재·이전 심판, 출전·후보·교체 선수, 기록자, 결과 제출자 관계를 인정한다.
+4. 플레이 메뉴는 `live`, `postgame`, `dispute` 단계만 표시한다. 방장, 현재 배정 심판, 현재 `match_players`, `played_player_ids`, `reserve_players` 관계만 인정한다. 이전 심판, 과거 기록자, 결과 제출자 관계만으로는 표시하지 않는다.
 5. 이의신청 시간이 끝나 phase가 `record`가 되거나 status가 `confirmed`가 되면 플레이 메뉴에서 즉시 빠지고 나/팀 기록에서만 조회한다.
 6. 취소·무효·만료 경기는 일정 메뉴 상태 카드로 유지하지 않는다. 알림과 직접 URL에서는 종료 상태를 확인할 수 있어야 한다.
 
@@ -2701,9 +2701,9 @@ flowchart TD
 28-3. Home `내 확정 경기` shows confirmed real match schedule rows from `matches` only. Current-user open recruiting schedule rooms stay in the Matches menu schedule source and Recruiting relation filters. Home does not render a recruiting teaser list.
 28-3-1. Matches uses the recruiting schedule relation helper: owner/player/referee/applicant/reserve/lobby entry all count as the current user's recruiting schedule relation.
 28-4. Matches recruiting schedule uses the same current-user `user_room_feed` + `room_feed_cards.card_json` loader as recruiting mine lists. When every schedule row has a feed card, it may read only the matching `recruiting_posts` court/schedule/timing columns and referenced approved court names; it must not detail-read full recruiting rows, `recruiting_applications`, profiles, or full team rows.
-29. `user_room_feed` match rows are the first-page source for owned/participant/referee matches. `rankball_refresh_match_feed_for_match()` must keep match list `card_json` fresh whenever match or match player rows change. If the feed table/RPC is unavailable, `/api/matches/list` must fall back to current-profile candidate ids from `match_players.user_id`, `matches.created_by`, `matches.referee_id`, and `matches.former_referee_id`; it must not page through broad latest `matches` rows.
-30. `/app/recorder` must load `recorderOnly` match state on direct entry or after thin-route navigation before showing the final empty state. Recorder state includes only active `agreed`/`approval`/`disputed` matches related to the current profile.
-30-1. `recorderOnly` match loads must include fallback candidate ids from `matches.stat_recorders`, `matches.reserve_players`, and `matches.played_player_ids` so candidate/reserve stat recorders can enter `/app/recorder` even when their `user_room_feed` card is stale or missing.
+29. `user_room_feed` match rows are the first-page source for general owned/participant/referee match lists. `rankball_refresh_match_feed_for_match()` must keep match list `card_json` fresh whenever match or match player rows change. If the feed table/RPC is unavailable, `/api/matches/list` uses a bounded relation fallback rather than paging through broad latest `matches` rows. 플레이 전용 조회는 feed의 legacy relation을 권한으로 인정하지 않고 원본 경기 관계를 다시 검사한다.
+30. `/app/recorder` must load `recorderOnly` match state on direct entry or after thin-route navigation before showing the final empty state. Play state includes only `live`/`postgame`/`dispute` phase matches related to the current profile as owner, current assigned referee, current `match_players`, `played_player_ids`, or `reserve_players`.
+30-1. `recorderOnly` fallback loads candidate ids from the same owner/current referee/current `match_players`/`played_player_ids`/`reserve_players` relation set. Hydration rechecks this relation and phase before pagination, so stale `user_room_feed` referee rows, former referees, legacy `stat_recorders`, and result submitters do not gain Play access.
 30-1-1. `recorderOnly` match loads use the recorder candidate path directly and do not also load the normal match feed or closed notice feed. The client tracks `recorderMatchesLoaded` so direct `/app/recorder` entry does not immediately repeat the same request when the result is empty.
 30-2. 과거 이력(폐기): 직접 `handoffMatchRecorder`와 takeover 요청·승인 체계는 모두 신규 실행 경로에서 제거됐다.
 30-2-1. 과거 이력(폐기): 방 모달의 기록자 인계·takeover 패널과 기록자 CAS 변경 규칙은 더 이상 사용하지 않는다.
@@ -3444,7 +3444,7 @@ flowchart TD
 
 1. 웹 알림의 예약 시각은 `notifications.due_at`이 원본이다. 홈과 알림 목록은 `due_at <= now()`를 DB 조회 제한 전에 적용하며, 전체 읽음도 아직 도래하지 않은 알림을 변경하지 않는다.
 2. 일반 경기 feed는 `rules.recordType='match'`인 경기만 페이지 제한 전에 포함한다. `match_record`와 `personal_record`는 일반 경기 페이지 수를 소비하지 않는다.
-3. 플레이 메뉴 전용 조회는 `agreed`, `approval`, `disputed` 상태, `live`/`postgame`/`dispute` phase와 현재 사용자 관계를 DB에서 먼저 판정한 뒤 페이지를 자른다. 관계에는 방장, 현재·이전 심판, 출전·후보·교체 선수, 기록자, 결과 제출자가 포함된다. 이의신청 시간이 끝난 `record` phase와 `confirmed` 상태는 제외한다.
+3. 플레이 메뉴 전용 조회는 보안 함수 `rankball_recorder_match_page`가 `agreed`, `approval`, `disputed` 상태, `live`/`postgame`/`dispute` phase와 현재 사용자 관계를 DB에서 먼저 판정한 뒤 페이지를 자른다. 관계는 방장, 현재 배정 심판, 현재 `match_players`, `played_player_ids`, `reserve_players`만 허용한다. 이전 심판, 과거 기록자, 결과 제출자라는 이유만으로는 포함하지 않는다. `personal_record`와 `solo`는 프로필 기록 전용이라 제외하고, `match_record`는 관계·phase가 맞으면 포함한다. 이의신청 시간이 끝난 `record` phase와 `confirmed` 상태는 제외하고 immutable `created_at`+`id` keyset cursor를 사용한다. 클라이언트는 RPC가 반환한 ID 순서를 그대로 hydration하며 RPC 장애 fallback은 같은 관계·phase를 적용해 반복 overfetch한다.
 3-1. 플레이 메뉴의 feed 조회는 상태와 사용자 관계를 먼저 제한하고 그 결과를 페이지 단위로 자른다. 오래된 참가 경기 수가 목록 제한을 넘더라도 방금 생성한 경기 기록을 후보 절단 전에 누락하지 않는다.
 4. 심판 자격 ID는 `candidate`, `silver`, `gold`, `platinum`, `official`만 사용한다. 현재 배정 심판의 기록, 이의 접수, 판정 전 draft 보정은 활성 임명, 임기, 등급, 최소 신뢰도를 모두 다시 확인한다. 항목별 가결·부결은 방장만 한다.
 5. 선수 기록과 이의 득점의 단일 필드 상한은 `999`다. 이의 득점이 상한을 넘으면 저장 전에 거부한다.
@@ -3807,7 +3807,7 @@ flowchart TD
 16. 장기 보관 인덱스 `match_record_participants`는 `record_type`, `visibility`, `owner_profile_id`를 보존한다. 타인 프로필 조회는 archive payload를 읽기 전에 `personal_record + public + owner` 조건으로 먼저 제한한다.
 17. 일반 무심판 경기의 점수 증감은 `live` 단계에서만 허용하고 종료 후에는 정확한 사이드·요청 점수 이의의 수락·거절만 사용한다. 배정 심판은 종료 후 최종 확정 전까지 점수와 개인 스탯을 수정할 수 있다. 사후 `match_record`는 명단 확정 뒤 생성자에게 최초 팀 점수 입력을 허용하되 이의 상태에서는 직접 수정하지 않는다.
 18. 경기시계를 사용하지 않는 경기에도 `incrementMatchScore`와 같은 revision 기반 점수 control을 표시한다. 경기시계를 사용하는 1v1·2v2·3v3·5v5는 시계 점수판에서 같은 control을 사용하며 개인 PTS 제출로 팀 점수를 다시 계산하지 않는다.
-19. 실시간 팀 점수만 저장된 무심판 경기는 종료 직후에도 `postgame` 단계다. `match_results` 행 존재만으로 이의 단계에 들어가지 않으며, 명시적 결과 제출·이의·최종확정 상태 전환을 단계 기준으로 사용한다.
+19. 실시간 팀 점수만 저장된 무심판 경기는 종료 직후에도 `postgame` 단계다. `match_results` 행 존재만으로 이의 단계에 들어가지 않으며 `final_submitted_at`이 있는 명시 최종 제출·이의·최종확정 상태 전환을 단계 기준으로 사용한다. 전환 migration은 종료된 일반 경기 중 이미 `approval` 또는 `disputed` 상태이며 결과 행이 있는 구형 경기만 기존 제출·종료 시각으로 marker를 backfill한다. `agreed` 상태의 결과·점수 이벤트는 최종 제출 클릭의 증거가 아니므로 backfill하지 않으며, 현재 배정 심판 또는 무심판 방장이 현재 canonical 점수를 명시 제출할 때까지 `postgame`에 둔다. 결과 행이 없는 경기도 건드리지 않는다.
 
 ## 2026-07-28 픽업 자동배치 방장 A사이드 기준
 
@@ -4021,7 +4021,7 @@ flowchart TD
 3. 네이버 지도 SDK 또는 지도 생성이 실패하면 삽입한 script·overlay를 정리해 같은 화면에서 재시도할 수 있게 한다. 사용자의 지도 취소는 저장 실패로 취급하지 않는다.
 4. 구장 근접 중복 조회가 실패한 상태에서는 구장 등록을 허용하지 않는다. 원격 신고 검색의 구장 요청 ID는 로컬 항목과 같은 canonical key를 사용한다.
 5. 팀 라이벌 전적은 결과가 확정된 경기만 집계한다. 팀 상세의 현재 기록과 archive에 같은 match ID가 있으면 현재 상세 기록 한 건만 표시한다.
-6. 공용 방 렌더 실패는 모든 진입점에서 같은 경계가 복구한다. 개인 기록 삭제와 팀 명단 저장은 서버 성공 전 팝업을 닫지 않는다.
+6. 공용 방 렌더 실패는 모든 진입점에서 같은 경계가 복구한다. 조회된 경기의 방 모델 구성 실패를 재시도할 때는 해당 경기의 상세 조회 중복 방지를 해제하고 같은 경기 ID를 다시 조회한다. 개인 기록 삭제와 팀 명단 저장은 서버 성공 전 팝업을 닫지 않는다.
 7. 닉네임은 공백만 입력한 값을 기존 이름으로 대체하지 않고 검증 실패로 처리한다. 관리자 임명 연장은 유효한 날짜 파싱 결과만 사용한다.
 
 ## 2026-08-01 대회 운영 작업 후 재조회 규칙

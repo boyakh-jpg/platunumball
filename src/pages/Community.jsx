@@ -42,14 +42,14 @@ export default function Community({ app }) {
   }, [linkedPostId]);
 
   const retryLoad = () => {
-    if (!linkedPostId) {
-      void controller.retryList();
+    if (controller.detailError) {
+      if (linkedPostId) openedPostIdRef.current = linkedPostId;
+      void controller.retryDetail().then((opened) => {
+        if (linkedPostId && !opened && openedPostIdRef.current === linkedPostId) openedPostIdRef.current = "";
+      });
       return;
     }
-    openedPostIdRef.current = linkedPostId;
-    void controller.openPost({ id: linkedPostId }).then((opened) => {
-      if (!opened && openedPostIdRef.current === linkedPostId) openedPostIdRef.current = "";
-    });
+    void controller.retryList();
   };
 
   const closePost = () => {
@@ -114,9 +114,9 @@ export default function Community({ app }) {
         ) : null}
         {controller.loading ? (
           <div className="community-post-list"><div className="ui-empty-state">게시글 불러오는 중</div></div>
-        ) : controller.error && !controller.selectedPost ? (
+        ) : (controller.detailError || controller.error) && !controller.selectedPost ? (
           <div className="form-warning" role="status">
-            <span>{controller.error}</span>
+            <span>{controller.detailError || controller.error}</span>
             <Button type="button" variant="secondary" size="sm" onClick={retryLoad}>다시 시도</Button>
           </div>
         ) : (

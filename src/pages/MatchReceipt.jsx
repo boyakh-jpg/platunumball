@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Copy, Download, House, ImagePlus, MapPin, RotateCcw, Share2, Trash2 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import Button from "../components/common/Button.jsx";
+import EmptyState from "../components/common/EmptyState.jsx";
 import EmblemCropEditor from "../components/common/EmblemCropEditor.jsx";
 import CourtMapPicker from "../components/court/CourtMapPicker.jsx";
 import MatchReceiptPreview from "../components/match/MatchReceiptPreview.jsx";
@@ -156,6 +157,8 @@ export default function MatchReceipt({ auth, app }) {
   const [generated, setGenerated] = useState(false);
   const [busy, setBusy] = useState("");
   const [status, setStatus] = useState("");
+  const [publicCodeLookup, setPublicCodeLookup] = useState(() => requestedPublicCode ? "loading" : "idle");
+  const [publicCodeLookupAttempt, setPublicCodeLookupAttempt] = useState(0);
   const [photoBlob, setPhotoBlob] = useState(null);
   const [localTeamLineArtUrls, setLocalTeamLineArtUrls] = useState({ home: "", away: "" });
   const [photoUrl, setPhotoUrl] = useState("");
@@ -243,11 +246,12 @@ export default function MatchReceipt({ auth, app }) {
   const receiptIsReadOnly = Boolean(requestedPublicDraftId && !publicDraftId);
   const matchUrl = useMemo(() => {
     if (typeof window === "undefined") return "";
+    if (requestedPublicCode && !draft.publicCode) return "";
     const url = new URL("/app/receipt", window.location.origin);
     if (draft.publicCode) url.searchParams.set("code", draft.publicCode);
     else if (activePublicDraftId) url.searchParams.set("draft", activePublicDraftId);
     return url.toString();
-  }, [activePublicDraftId, draft.publicCode]);
+  }, [activePublicDraftId, draft.publicCode, requestedPublicCode]);
   const receiptPublicId = activePublicDraftId;
   const canonicalTeamReceiptEmblemUrls = useMemo(() => ({
     home: canonicalHomeTeam?.receiptEmblemKey || draft.homeEmblemKey ? assetUrl(canonicalHomeTeam?.receiptEmblemKey || draft.homeEmblemKey) : "",
@@ -267,25 +271,48 @@ export default function MatchReceipt({ auth, app }) {
   ]);
 
   useEffect(() => {
-    if (!requestedPublicCode) return;
+    if (!requestedPublicCode) {
+      setPublicCodeLookup("idle");
+      return undefined;
+    }
     let active = true;
+    setPublicCodeLookup("loading");
     fetch(`/api/match-receipts/resolve?code=${encodeURIComponent(requestedPublicCode)}`, {
       credentials: "same-origin",
     })
       .then(async (response) => {
-        if (!response.ok) throw new Error("match_public_code_not_found");
-        return response.json();
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          const lookupError = new Error(result.error || "match_public_code_resolution_failed");
+          lookupError.status = response.status;
+          throw lookupError;
+        }
+        return result;
       })
       .then((result) => {
         if (!active) return;
-        if (result.matchId) navigate(`/app/matches?match=${encodeURIComponent(result.matchId)}`, { replace: true });
-        else if (result.publicId) navigate(`/app/receipt?draft=${encodeURIComponent(result.publicId)}`, { replace: true });
+        if (result.matchId) {
+          navigate(`/app/matches?match=${encodeURIComponent(result.matchId)}`, { replace: true });
+          return;
+        }
+        if (result.publicId) {
+          navigate(`/app/receipt?draft=${encodeURIComponent(result.publicId)}`, { replace: true });
+          return;
+        }
+        const lookupError = new Error("match_public_code_not_found");
+        lookupError.status = 404;
+        throw lookupError;
       })
-      .catch(() => {
-        if (active) setStatus("해당 일련번호의 경기를 찾을 수 없습니다.");
+      .catch((lookupError) => {
+        if (!active) return;
+        setPublicCodeLookup(
+          lookupError.status === 404 || lookupError.message === "match_public_code_not_found"
+            ? "not-found"
+            : "error",
+        );
       });
     return () => { active = false; };
-  }, [navigate, requestedPublicCode]);
+  }, [navigate, publicCodeLookupAttempt, requestedPublicCode]);
 
   useEffect(() => {
     if (!matchId) return;
@@ -1005,7 +1032,29 @@ export default function MatchReceipt({ auth, app }) {
         </nav>
       </header>
 
-      <div className="match-receipt-workspace">
+      {requestedPublicCode ? (
+        <section className="ui-panel">
+          <EmptyState
+            tone={publicCodeLookup === "loading" || publicCodeLookup === "idle" ? "loading" : "error"}
+            title={publicCodeLookup === "loading" || publicCodeLookup === "idle"
+              ? "경기 찾는 중"
+              : publicCodeLookup === "not-found"
+                ? "경기를 찾을 수 없습니다"
+                : "경기를 불러오지 못했습니다"}
+            description={publicCodeLookup === "loading" || publicCodeLookup === "idle"
+              ? "일련번호로 경기 기록을 확인하고 있습니다."
+              : publicCodeLookup === "not-found"
+                ? "일련번호를 확인하거나 새 영수증을 만들어 주세요."
+                : "잠시 후 다시 시도해 주세요."}
+            action={publicCodeLookup === "not-found" ? (
+              <Button as={Link} to="/app/receipt" variant="secondary">새 영수증 만들기</Button>
+            ) : publicCodeLookup === "error" ? (
+              <Button type="button" variant="secondary" onClick={() => setPublicCodeLookupAttempt((current) => current + 1)}>다시 시도</Button>
+            ) : null}
+          />
+        </section>
+      ) : (
+        <div className="match-receipt-workspace">
         <form className="match-receipt-editor" onSubmit={completeReceipt}>
           <section className="ui-panel">
             <h2>경기 결과</h2>
@@ -1259,29 +1308,34 @@ export default function MatchReceipt({ auth, app }) {
             </section>
           ) : null}
         </aside>
-      </div>
-      <CourtMapPicker
-        open={courtMapOpen}
-        courts={registeredCourts}
-        selectedCourt={selectedCourt}
-        currentRegion={courtMapRegion}
-        loading={courtMapDirectoryStatus.loading}
-        loadError={courtMapDirectoryStatus.error}
-        onSelect={selectCourt}
-        onClose={() => setCourtMapOpen(false)}
-      />
-      <EmblemCropEditor
-        file={emblemEditor.file}
-        circular
-        pending={emblemPending}
-        convertedPreview={emblemEditor.preview}
-        warning="조정한 이미지는 이번 영수증에서만 사용되며 서버에 저장되지 않습니다."
-        error={emblemEditor.error}
-        onCropChange={resetLocalTeamEmblemConversion}
-        onCancel={() => setEmblemEditor(EMPTY_EMBLEM_EDITOR)}
-        onConvert={convertLocalTeamEmblem}
-        onConfirm={confirmLocalTeamEmblem}
-      />
+        </div>
+      )}
+      {!requestedPublicCode ? (
+        <>
+          <CourtMapPicker
+            open={courtMapOpen}
+            courts={registeredCourts}
+            selectedCourt={selectedCourt}
+            currentRegion={courtMapRegion}
+            loading={courtMapDirectoryStatus.loading}
+            loadError={courtMapDirectoryStatus.error}
+            onSelect={selectCourt}
+            onClose={() => setCourtMapOpen(false)}
+          />
+          <EmblemCropEditor
+            file={emblemEditor.file}
+            circular
+            pending={emblemPending}
+            convertedPreview={emblemEditor.preview}
+            warning="조정한 이미지는 이번 영수증에서만 사용되며 서버에 저장되지 않습니다."
+            error={emblemEditor.error}
+            onCropChange={resetLocalTeamEmblemConversion}
+            onCancel={() => setEmblemEditor(EMPTY_EMBLEM_EDITOR)}
+            onConvert={convertLocalTeamEmblem}
+            onConfirm={confirmLocalTeamEmblem}
+          />
+        </>
+      ) : null}
     </section>
   );
 }

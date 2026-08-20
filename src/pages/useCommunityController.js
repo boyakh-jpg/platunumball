@@ -75,10 +75,12 @@ export default function useCommunityController(app) {
   const [canModerate, setCanModerate] = useState(false);
   const [loading, setLoading] = useState(remote);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const listRequestRef = useRef(0);
   const detailRequestRef = useRef(0);
+  const detailTargetRef = useRef(null);
   const localViewedPostIdsRef = useRef(new Set());
 
   const requireLogin = () => {
@@ -94,6 +96,8 @@ export default function useCommunityController(app) {
     setLocalComments(demoBoard.comments);
     setSelectedPost(null);
     setComments([]);
+    setDetailError("");
+    detailTargetRef.current = null;
     localViewedPostIdsRef.current.clear();
   }, [demoBoard, remote]);
 
@@ -139,9 +143,11 @@ export default function useCommunityController(app) {
 
   const openPost = async (post) => {
     const requestId = ++detailRequestRef.current;
+    detailTargetRef.current = post;
     setSelectedPost(remote && !post.title ? null : post);
     setComments([]);
     setError("");
+    setDetailError("");
     if (!remote) {
       const currentPost = localPosts.find((item) => item.id === post.id) ?? post;
       const nextPost = localViewedPostIdsRef.current.has(post.id)
@@ -150,6 +156,7 @@ export default function useCommunityController(app) {
       localViewedPostIdsRef.current.add(post.id);
       setLocalPosts((current) => current.map((item) => item.id === post.id ? nextPost : item));
       setSelectedPost(nextPost);
+      detailTargetRef.current = nextPost;
       setComments(localComments.filter((comment) => comment.postId === post.id));
       return true;
     }
@@ -161,13 +168,13 @@ export default function useCommunityController(app) {
       setRemotePosts((current) => current.map((item) => item.id === post.id ? { ...item, ...result.post } : item));
       setRemotePopularPosts((current) => current.map((item) => item.id === post.id ? { ...item, ...result.post } : item));
       setSelectedPost(result.post);
+      detailTargetRef.current = result.post;
       setComments(result.comments ?? []);
       setCanModerate(result.canModerate === true);
       return true;
-    } catch (detailError) {
+    } catch (loadError) {
       if (isLatestRequest(detailRequestRef.current, requestId)) {
-        setError(getCommunityErrorMessage(detailError.message));
-        setSelectedPost(null);
+        setDetailError(getCommunityErrorMessage(loadError.message));
       }
       return false;
     } finally {
@@ -175,10 +182,16 @@ export default function useCommunityController(app) {
     }
   };
 
+  const retryDetail = () => detailTargetRef.current
+    ? openPost(detailTargetRef.current)
+    : Promise.resolve(false);
+
   const applyPostUpdate = (post) => {
     setRemotePosts((current) => current.map((item) => item.id === post.id ? { ...item, ...post } : item));
     setRemotePopularPosts((current) => selectPopularCommunityPosts(current.map((item) => item.id === post.id ? { ...item, ...post } : item)));
     setSelectedPost(post);
+    setDetailError("");
+    detailTargetRef.current = post;
   };
 
   const savePost = async (draft, postId = "") => {
@@ -193,6 +206,8 @@ export default function useCommunityController(app) {
         const targetPage = postId ? pageIndex : 0;
         await loadPosts(targetPage);
         setSelectedPost(result.post);
+        setDetailError("");
+        detailTargetRef.current = result.post;
         setComments(result.comments ?? []);
         return true;
       }
@@ -205,6 +220,8 @@ export default function useCommunityController(app) {
         ? current.map((post) => post.id === postId ? savedPost : post)
         : [savedPost, ...current]);
       setSelectedPost(savedPost);
+      setDetailError("");
+      detailTargetRef.current = savedPost;
       setComments(localComments.filter((comment) => comment.postId === savedPost.id));
       return true;
     } catch (saveError) {
@@ -231,6 +248,8 @@ export default function useCommunityController(app) {
       }
       setSelectedPost(null);
       setComments([]);
+      setDetailError("");
+      detailTargetRef.current = null;
       return true;
     } catch (deleteError) {
       setError(getCommunityErrorMessage(deleteError.message));
@@ -255,7 +274,11 @@ export default function useCommunityController(app) {
         const currentPost = localPosts.find((post) => post.id === postId);
         const nextPost = currentPost ? { ...currentPost, liked: !currentPost.liked, likeCount: Math.max(0, currentPost.likeCount + (currentPost.liked ? -1 : 1)) } : null;
         if (nextPost) setLocalPosts((current) => current.map((post) => post.id === postId ? nextPost : post));
-        if (nextPost) setSelectedPost(nextPost);
+        if (nextPost) {
+          setSelectedPost(nextPost);
+          setDetailError("");
+          detailTargetRef.current = nextPost;
+        }
       }
     } catch (likeError) {
       setError(getCommunityErrorMessage(likeError.message));
@@ -323,15 +346,17 @@ export default function useCommunityController(app) {
     setSelectedPost(null);
     setComments([]);
     setDetailLoading(false);
+    setDetailError("");
+    detailTargetRef.current = null;
   }, []);
 
   return {
     posts, popularPosts, page: currentPage, pageIndex, category, setCategory, selectedPost, comments, commentThreads,
     canModerate,
     canWriteCategory: !app.demoPreview && (canModerate || !COMMUNITY_POST_ADMIN_CATEGORIES.includes(category)),
-    loading, detailLoading, pending, error, setError,
+    loading, detailLoading, detailError, pending, error, setError,
     requireLogin,
-    retryList: () => loadPosts(pageIndex),
+    retryList: () => loadPosts(pageIndex), retryDetail,
     openPost, closePost,
     goToPage: (targetPage) => {
       const maxPage = Math.max(0, Math.ceil(currentPage.total / COMMUNITY_PAGE_SIZE) - 1);

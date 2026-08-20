@@ -294,7 +294,7 @@ return (
       ) : null}
 
       {!attendanceQrFlow && !selectedMatchDetailLoading && !selectedMatchDetailFailed && selectedMatch && selectedMatchRoomError ? (
-        <RoomModalErrorView error={selectedMatchRoomError} onClose={closeSelectedMatch} />
+        <RoomModalErrorView error={selectedMatchRoomError} onClose={closeSelectedMatch} onRetry={() => requestMatchDetail(activeSelectedMatchId, { force: true })} />
       ) : null}
 
       {!attendanceQrFlow && selectedMatchDetailLoading && !selectedMatchDetailFailed ? (

@@ -260,3 +260,74 @@ export async function fetchMatchRowsByIds(client, matchIds = []) {
   const order = new Map(ids.map((id, index) => [id, index]));
   return [...(data ?? [])].sort((a, b) => (order.get(a.id) ?? 9999) - (order.get(b.id) ?? 9999));
 }
+
+async function fetchCurrentUserCompletedFallbackMatchIds(client, profileId = "", limit = REMOTE_CLIENT_MATCH_LIMIT, completedSince = "") {
+  if (!profileId) return { ids: [], exhausted: true, source: "completed_fallback" };
+  const cappedLimit = Math.max(1, Math.min(MATCH_LIST_MAX_LIMIT, Number(limit) || REMOTE_CLIENT_MATCH_LIMIT));
+  const rowLimit = Math.min(RECENT_COMPLETED_FEED_ROW_MAX_LIMIT, Math.max(cappedLimit, cappedLimit * 2));
+  const { data: playerRows, error: playerError } = await client
+    .from("match_players")
+    .select("match_id")
+    .eq("user_id", profileId)
+    .limit(rowLimit);
+  if (playerError) throw playerError;
+  const candidateIds = unique((playerRows ?? []).map((row) => row?.match_id)).slice(0, rowLimit);
+  if (!candidateIds.length) return { ids: [], exhausted: true, source: "completed_fallback" };
+  const rows = await fetchMatchRowsByIds(client, candidateIds);
+  const ids = rows
+    .filter((row) => {
+      if (row.status !== "confirmed") return false;
+      if (!completedSince) return true;
+      const rowTime = row.confirmed_at ?? row.updated_at ?? row.scheduled_at ?? row.created_at ?? "";
+      return String(rowTime) >= completedSince;
+    })
+    .sort((a, b) => String(b.updated_at ?? b.created_at ?? "").localeCompare(String(a.updated_at ?? a.created_at ?? "")))
+    .map((row) => row.id)
+    .slice(0, cappedLimit);
+  return {
+    ids,
+    exhausted: candidateIds.length < rowLimit || ids.length < cappedLimit,
+    source: "completed_fallback",
+  };
+}
+
+export async function fetchCurrentUserCompletedMatchIds(client, profileId = "", limit = REMOTE_CLIENT_MATCH_LIMIT, completedSince = "", allowLegacyFallback = false) {
+  if (!profileId) return { ids: [], cards: [], exhausted: true, source: "completed_feed" };
+  const cappedLimit = Math.max(1, Math.min(MATCH_LIST_MAX_LIMIT, Number(limit) || REMOTE_CLIENT_MATCH_LIMIT));
+  const rowLimit = cappedLimit;
+  if (!userRoomFeedAvailable) {
+    if (!allowLegacyFallback) return { ids: [], cards: [], exhausted: true, source: "completed_feed_unavailable" };
+    return fetchCurrentUserCompletedFallbackMatchIds(client, profileId, cappedLimit, completedSince);
+  }
+  let query = client
+    .from("user_room_feed")
+    .select("entity_id,sort_at,relation,status")
+    .eq("entity_type", "match")
+    .eq("profile_id", profileId)
+    .eq("is_active", true)
+    .eq("status", "confirmed")
+    .eq("relation", "participant");
+  if (completedSince) query = query.gte("sort_at", completedSince);
+  const { data, error } = await query
+    .order("sort_at", { ascending: false, nullsFirst: false })
+    .order("entity_id", { ascending: false })
+    .range(0, rowLimit - 1);
+  if (error) {
+    if (isMissingUserRoomFeed(error)) {
+      disableUserRoomFeed();
+      console.warn("Completed match feed skipped.", error.message);
+      if (!allowLegacyFallback) return { ids: [], cards: [], exhausted: true, source: "completed_feed_unavailable" };
+      return fetchCurrentUserCompletedFallbackMatchIds(client, profileId, cappedLimit, completedSince);
+    }
+    throw error;
+  }
+  const rows = await attachRoomFeedCards(client, data ?? [], "match");
+  const ids = unique(rows.map((row) => row?.entity_id)).slice(0, cappedLimit);
+  const cards = uniqueFeedCards(rows, ids);
+  return {
+    ids,
+    cards,
+    exhausted: rows.length < rowLimit || ids.length < cappedLimit,
+    source: cards.length === ids.length ? "completed_feed_card" : (cards.length ? "completed_feed_card_partial" : "completed_feed"),
+  };
+}

@@ -57,7 +57,7 @@ function CommunityComment({ comment, replies = [], teams, currentUserId, canMode
 }
 
 export default function CommunityPostDialog({ app, controller }) {
-  const { selectedPost: post, commentThreads, canModerate, detailLoading, pending, error } = controller;
+  const { selectedPost: post, commentThreads, canModerate, detailLoading, detailError, pending, error } = controller;
   const [editing, setEditing] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [replyTo, setReplyTo] = useState(null);
@@ -162,13 +162,18 @@ export default function CommunityPostDialog({ app, controller }) {
               <CommunityAuthorLink author={post.author} teams={app.state.teams} />
               <time>{formatKoreanDateTime(post.createdAt)}</time>
             </div>
-            {detailLoading ? null : (
+            {detailError ? (
+              <div className="form-warning" role="alert">
+                <span>{detailError}</span>
+                <Button type="button" variant="secondary" size="sm" onClick={() => { void controller.retryDetail(); }}>다시 시도</Button>
+              </div>
+            ) : detailLoading ? null : (
               <>
                 {imageUrl ? <img className="community-post-image" src={imageUrl} alt={post.title} /> : null}
                 <p className="community-post-body">{post.body}</p>
               </>
             )}
-            <div className="ui-action-row community-post-actions">
+            {!detailError ? <div className="ui-action-row community-post-actions">
               <Button type="button" variant={post.liked ? "primary" : "secondary"} disabled={pending || detailLoading} aria-pressed={post.liked} onClick={() => controller.toggleLike(post.id)}>
                 <ThumbsUp size={16} /> 추천 {post.likeCount}
               </Button>
@@ -176,11 +181,11 @@ export default function CommunityPostDialog({ app, controller }) {
               <span><MessageCircle size={15} /> 댓글 {post.commentCount}</span>
               {ownsPost ? <Button type="button" variant="secondary" size="sm" disabled={pending || detailLoading} onClick={() => setEditing(true)}><Pencil size={15} /> 수정</Button> : null}
               {canDeletePost ? <Button type="button" variant="secondary" size="sm" disabled={pending} onClick={() => setConfirmingDelete(true)}><Trash2 size={15} /> 삭제</Button> : null}
-            </div>
+            </div> : null}
           </>
         )}
 
-        {confirmingDelete ? (
+        {!detailError && confirmingDelete ? (
           <div className="community-delete-confirm" role="alert">
             <strong>이 글을 삭제할까요?</strong>
             <div className="ui-action-row">
@@ -191,7 +196,7 @@ export default function CommunityPostDialog({ app, controller }) {
         ) : null}
         {error ? <small className="form-warning" role="status">{error}</small> : null}
 
-        {!detailLoading && !editing ? (
+        {!detailLoading && !detailError && !editing ? (
           <section className="community-comments" aria-labelledby="community-comments-title">
             <div className="section-title-row">
               <h3 id="community-comments-title">댓글</h3>

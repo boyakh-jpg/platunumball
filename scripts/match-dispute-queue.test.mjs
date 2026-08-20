@@ -62,6 +62,8 @@ function makeState(currentUserId = "host") {
         statSubmissions: {},
         submittedBy: "host",
         submittedAt: endedAt,
+        finalSubmittedBy: "referee",
+        finalSubmittedAt: endedAt,
       },
       approvals: { teamA: ["host"], teamB: ["guest"] },
       disputes: [],
@@ -356,6 +358,7 @@ test("심판 개인기록이 미완성이면 disputeMinutes 뒤에도 보험성 
     result: {
       ...state.matches[0].result,
       submittedAt,
+      finalSubmittedAt: submittedAt,
       playerStats: { host: state.matches[0].result.playerStats.host },
     },
   };
@@ -442,5 +445,5 @@ test("방장과 배정 심판에게 이의신청 종료 가능 시점을 안내�
   const model = await readSource("src/components/recruiting/RecruitingRoomMatchModel.jsx");
   const actions = await readSource("src/components/recruiting/RecruitingRoomActionSection.jsx");
   assert.match(model, /const canManageSourceMatchFinalization = Boolean\(/);
-  assert.match(actions, /sourceManualFinalizationStatus\.delayMinutes\}분부터 이의신청 종료가 가능합니다/);
+  assert.match(actions, /sourceManualFinalizationStatus\.delayMinutes\}분 경과 또는 실제 출전자 2\/3의 이의 없음 확인 시 종료할 수 있습니다/);
 });

@@ -98,12 +98,17 @@ export function getMatchResultEntryPermission(match = {}, userId = "", options =
     && !match.endedAt
     && recordWindow.beforeEnd
   );
-  const canSubmitMissingPostgameResult = hasReferee
-    && canOperatorSubmitMissingPostgameResult(match, canOperatePostStart, now);
+  const canSubmitMissingPostgameResult = canOperatorSubmitMissingPostgameResult(
+    match,
+    canOperatePostStart,
+    now,
+  );
   const canSubmitPostgame = Boolean(
-    canOperatePostgame
-    && postgameEntry
-    && (recordWindow.statOpen || canSubmitMissingPostgameResult)
+    postgameEntry
+    && (
+      (canOperatePostgame && recordWindow.statOpen)
+      || canSubmitMissingPostgameResult
+    )
   );
 
   return {

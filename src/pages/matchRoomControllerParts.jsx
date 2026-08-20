@@ -143,7 +143,10 @@ export function createMatchRoomActions(context) {
     try {
       const response = await app.actions.submitMatchResult(
         match.id,
-        buildMatchResultSubmission(match, score, resultEntryPermission.getEditableStatFields, { editableScoreSides: resultEntryPermission.editableScoreSides }),
+        buildMatchResultSubmission(match, score, resultEntryPermission.getEditableStatFields, {
+          editableScoreSides: resultEntryPermission.editableScoreSides,
+          preserveCanonicalScores: currentUserCanSubmitMissingPostgameResult,
+        }),
       );
       if (!isCurrentScopedOperation(resultSaveOperationRef.current, operation, currentMatchIdRef.current)) return;
       setResultSaveFeedback(!response || response?.ok === false ? "경기 결과를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요." : canEditDisputeDraft ? "수정되었습니다." : "저장되었습니다.");

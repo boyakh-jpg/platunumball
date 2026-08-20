@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { createQrPath } from "../../lib/qrCode.js";
 import useBodyScrollLock from "../../hooks/useBodyScrollLock.js";
@@ -74,12 +74,18 @@ export default function QrCode({ value, label = "QR 코드", className = "", exp
 
   useBodyScrollLock(expanded);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!expanded) return undefined;
     restoreFocusRef.current = document.activeElement;
-    const focusFrame = window.requestAnimationFrame(() => {
-      dialogRef.current?.querySelector("button:not([disabled])")?.focus();
-    });
+    dialogRef.current?.querySelector("button:not([disabled])")?.focus();
+    return () => {
+      const target = restoreFocusRef.current;
+      if (target instanceof window.HTMLElement && target.isConnected) target.focus();
+    };
+  }, [expanded]);
+
+  useEffect(() => {
+    if (!expanded) return undefined;
     const handleKeyDown = (event) => {
       if (event.key === "Escape") {
         setExpanded(false);
@@ -107,10 +113,7 @@ export default function QrCode({ value, label = "QR 코드", className = "", exp
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => {
-      window.cancelAnimationFrame(focusFrame);
       window.removeEventListener("keydown", handleKeyDown);
-      const target = restoreFocusRef.current;
-      if (target instanceof window.HTMLElement && target.isConnected) target.focus();
     };
   }, [expanded]);
 

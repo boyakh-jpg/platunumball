@@ -112,6 +112,7 @@ export function submitMatchResult(state, matchId, result) {
   const currentUserCanDisputeDraft = resultEntryPermission.canEditDisputeDraft;
   const currentUserCanRecord = currentUserCanDisputeDraft
     || resultEntryPermission.editablePlayerIds.length > 0
+    || resultEntryPermission.canSubmitMissingPostgameResult
     || (isMatchRecordMatch(match) && resultEntryPermission.canSubmit);
 
   if (hasReferee && !currentUserIsEligibleReferee) {
@@ -219,6 +220,14 @@ export function submitMatchResult(state, matchId, result) {
   const draftEntry = currentUserCanDisputeDraft;
   const liveEntry = !draftEntry && liveRecordAllowed;
   const matchRecordRoom = isMatchRecordMatch(match);
+  const explicitFinalEntry = Boolean(
+    !draftEntry
+    && !liveEntry
+    && !matchRecordRoom
+    && match.status === "agreed"
+    && match.endedAt
+    && !match.result?.finalSubmittedAt,
+  );
   const recordPlayerIds = getMatchRecordPlayerIds(match);
   const existingStats = normalizePlayerStats((draftEntry ? match.disputeDraftResult : match.result)?.playerStats ?? match.result?.playerStats ?? {}, recordPlayerIds);
   const endedAt = liveEntry ? match.endedAt : match.endedAt ?? recordWindow.endAt?.toISOString() ?? now;
@@ -260,10 +269,14 @@ export function submitMatchResult(state, matchId, result) {
     !Number.isInteger(nextScoreA) || nextScoreA < 0 || nextScoreA > 999
     || !Number.isInteger(nextScoreB) || nextScoreB < 0 || nextScoreB > 999
   ) return state;
-  const periodScoreResult = validateMatchPeriodScores(result.periodScores, match.rules, {
+  const periodScoreResult = validateMatchPeriodScores(
+    result.periodScores ?? currentResult?.periodScores ?? [],
+    match.rules,
+    {
     scoreA: nextScoreA,
     scoreB: nextScoreB,
-  });
+    },
+  );
   if (!periodScoreResult.valid) return state;
   const nextResult = {
     scoreA: nextScoreA,
@@ -273,6 +286,8 @@ export function submitMatchResult(state, matchId, result) {
     statSubmissions: nextSubmissions,
     submittedBy: currentUserId,
     submittedAt: (draftEntry ? match.disputeDraftResult?.submittedAt : match.result?.submittedAt) ?? now,
+    finalSubmittedBy: explicitFinalEntry ? currentUserId : match.result?.finalSubmittedBy ?? null,
+    finalSubmittedAt: explicitFinalEntry ? now : match.result?.finalSubmittedAt ?? null,
     updatedAt: now,
   };
 
@@ -301,12 +316,20 @@ export function submitMatchResult(state, matchId, result) {
     notifications: [
       {
         id: makeId("n"),
-        title: matchRecordRoom ? "참가 확인 요청" : draftEntry ? "이의 수정안 저장" : "심판 기록 제출",
+        title: matchRecordRoom
+          ? "참가 확인 요청"
+          : draftEntry
+            ? "이의 수정안 저장"
+            : hasReferee
+              ? "심판 기록 제출"
+              : "경기 결과 제출",
         body: draftEntry
           ? `${match.title} 이의 수정안이 임시 저장됐습니다. ${match.refereeId ? "배정 심판" : "방장"}이 최종 승인해야 확정됩니다.`
           : matchRecordRoom
             ? `${match.title} 점수가 저장됐습니다. 참가자 ${getPostgameRecordRequiredParticipantIds(match).length}명에게 내 참가 확인을 요청합니다.`
-            : `${match.title} 스코어와 전체 개인 활약이 저장됐습니다.`,
+            : hasReferee
+              ? `${match.title} 스코어와 전체 개인 활약이 저장됐습니다.`
+              : `${match.title} 현재 스코어를 최종 결과로 제출했습니다.`,
         tone: "match",
         matchId,
       },

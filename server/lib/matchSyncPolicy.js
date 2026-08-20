@@ -1,18 +1,14 @@
 import { MATCH_SYNC_DEPENDENCIES } from "./matchSyncDependencies.js";
 import { DEFAULT_TOURNAMENT_MMR_GAP, MATCH_SIDES, PLAYER_STAT_FIELDS, RECORD_TYPES, getMatchPlayedIdMap, getParticipantIds, isRefereeGrade, projectTournamentDbIdentity, sortPlainObject, toArray, toNotificationRows, uniqueIds, toFiniteNumber, toTournamentRow, toTournamentTeamRows, persistTournamentSnapshot, normalizePlayerStats, normalizeStatRows, normalizeResultSnapshot, isActiveReferee } from "./matchSyncPolicyData.js";
 export { toFiniteNumber, toTournamentRow, toTournamentTeamRows, persistTournamentSnapshot, normalizePlayerStats, normalizeStatRows, normalizeResultSnapshot, isActiveReferee } from "./matchSyncPolicyData.js";
-
 export const configuredDiscordQueueTimeoutMs = Number(process.env.DISCORD_QUEUE_TIMEOUT_MS || 2500);
-
 export const DISCORD_QUEUE_TIMEOUT_MS = Number.isFinite(configuredDiscordQueueTimeoutMs) && configuredDiscordQueueTimeoutMs > 0
   ? configuredDiscordQueueTimeoutMs : 2500;
-
 export function reject(statusCode, message) {
   const error = new Error(message);
   error.statusCode = statusCode;
   throw error;
 }
-
 export function getMatchBenchPolicyError(error = {}) {
   const errorText = [error.message, error.details, error.hint].filter(Boolean).join(" ");
   if (errorText.includes("invalid_bench_capacity")) return { statusCode: 400, message: "invalid_bench_capacity" };
@@ -51,7 +47,6 @@ export function getMatchBenchPolicyError(error = {}) {
   if (errorText.includes("court_not_found") || errorText.includes("invalid_room_court")) return { statusCode: 400, message: "invalid_room_court" };
   return null;
 }
-
 export function withTimeout(promise, timeoutMs, message) {
   let timeoutId;
   const timeout = new Promise((_, reject) => {

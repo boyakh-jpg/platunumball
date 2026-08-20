@@ -19,20 +19,14 @@ import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { MATCH_SIDE_FALLBACK_NAMES, MATCH_SIDES, normalizeDisputeWindowMinutes } from "../lib/constants.js";
 import { getMatchFormatLabel } from "../lib/matchRules.js";
 import { formatMatchWindowTime, formatStatLine, getMatchSideRecordPlayerIds, getPlayerStatSubmitted } from "../lib/matchUtils.js";
-import {
-  getRecordPlayerDisplayName,
-  isAnonymousDisplayUser,
-  getAvatarInitial,
-  getPlayerMetaLabel,
-  COURT_REVIEW_FIELDS,
-} from "./matchRoomModel.js";
+import { getRecordPlayerDisplayName, isAnonymousDisplayUser, getAvatarInitial, getPlayerMetaLabel, COURT_REVIEW_FIELDS } from "./matchRoomModel.js";
 import { CourtReviewRating } from "./MatchRoomParts.jsx";
 import { MatchRoomReviewPanels } from "./MatchRoomReviewPanels.jsx";
 import { MatchRoomStatEditor } from "./MatchRoomStatEditor.jsx";
 export default function MatchRoomView({ controller }) {
   const { app, match, score, setScore, disputeReason, setDisputeReason, disputeCustomReason, setDisputeCustomReason, disputeRequestedStats, setDisputeRequestedStats, disputeRequestedScoreA, setDisputeRequestedScoreA, disputeRequestedScoreB, setDisputeRequestedScoreB, reportReason, setReportReason, statEditorPlayerId, setStatEditorPlayerId, reviewControlsOpen, setReviewControlsOpen, resultSaveFeedback, resultSavePending, courtReviewSaveFeedback, courtReviewSaving, matchDetailRefreshing, soloRecordDeleteOpen, setSoloRecordDeleteOpen, managementActionPending, managementActionFeedback, voidDialogOpen, setVoidDialogOpen, voidActionPending, finalizeDialogOpen, setFinalizeDialogOpen, finalizeActionPending, finalizeActionError, voidRestoreDetail, setVoidRestoreDetail, voidRestoreStatus, existingCourtReview, courtReviewDraft, userMap, statEditorPlayer, isSharedRecord, status, cancelCopy, cancelActionLabel, teamAAgreement, teamBAgreement, currentUserSideName, recordWindow, referee, hasReferee, isSoloRecord, currentUserIsEligibleReferee, currentUserSubmitted, benchCapacity, isMatchHost, matchPhase, startedAuthorityPhase, currentUserCanEndMatch, currentUserCanResolveDispute, currentUserCanRefreshReview, resultEntryPermission, canEditDisputeDraft, canSubmitLiveResult, canSubmitResult, canCancel, requestCancelMatch, agreeCurrentUser, confirmCurrentUserParticipation, canFinalizeMatch, finalAuthorityLabel, openDisputes, hasOwnOpenDispute, canDispute, canRequestMatchDispute, canRequestOwnPointDispute, canRequestScoreDispute, canVoid, canRequestVoidRestore, canDeleteSoloRecord, requestFinalizeMatch, submitFinalizeMatch, canReport, isContractStage, shouldShowResultEntry, shouldShowWaitingPanel, scoreA, scoreB, draftScoreA, draftScoreB, liveStatScoreA, liveStatScoreB, teamASide, teamBSide, teamA, teamB, teamAMmr, teamBMmr, winnerName, matchKind, recordLockReason, renderHeroRoster, renderHeroReserves, updatePlayerStat, submitResult, submitDispute, submitVoidMatch, submitVoidRestoreRequest, refreshMatchDetail, canEditPlayerStat, editableStatFields, getPlayerStatState, permissionTitle, permissionDetail, nextAction, statTrustSteps, statTrustPercent, canSubmitCourtReview, courtReviewRatingReady, updateCourtReviewDraft, submitCourtReview, deleteSoloRecord, confirmDeleteSoloRecord, normalizedRules, ruleItems } = controller;
   const { manualFinalizationStatus } = controller;
-return (
+  return (
     <div className="page-stack match-room">
       <section className={match.ranked === false ? "gm-room-hero ui-page-hero gm-friendly" : "gm-room-hero ui-page-hero gm-ranked"}>
         <div className="gm-room-topline">
@@ -63,7 +57,6 @@ return (
             <strong>{scoreB}</strong>
             <span>{winnerName ? `${winnerName} 우세` : "전투 준비"}</span>
           </div>
-
           <div className="gm-team-panel team-b">
             <div className="gm-team-head">
               <span>OPPONENT</span>
@@ -73,12 +66,10 @@ return (
             {renderHeroRoster("teamB")}
           </div>
         </div>
-
         {benchCapacity > 0 ? <div className="gm-reserve-panel">
           {renderHeroReserves("teamA")}
           {renderHeroReserves("teamB")}
         </div> : null}
-
         <div className="gm-room-actions">
           <div><CalendarDays size={17} /><span>{match.scheduledDate ?? "일정"} {match.scheduledTime ?? ""}</span></div>
           <div><UsersRound size={17} /><span>{teamASide.players.length} vs {teamBSide.players.length}</span></div>
@@ -104,7 +95,6 @@ return (
           </ModalShell>
         </div>
       ) : null}
-
       <Card className="gm-next-action-card">
         <div>
           <span>NEXT</span>
@@ -124,7 +114,6 @@ return (
         )}
         {managementActionFeedback ? <small role="status" className="form-warning">{managementActionFeedback}</small> : null}
       </Card>
-
       <Card className="section-card gm-rule-summary-card">
           <div className="section-title-row">
             <div>
@@ -142,7 +131,6 @@ return (
             ))}
           </div>
         </Card>
-
       {isMatchHost || (startedAuthorityPhase && currentUserIsEligibleReferee) ? (
         <Card className="section-card">
           <div className="section-title-row">
@@ -160,7 +148,6 @@ return (
           {managementActionFeedback ? <small role="status" className="form-warning">{managementActionFeedback}</small> : null}
         </Card>
       ) : null}
-
       {matchPhase === "live" && match.rules?.gameClockEnabled !== false ? (
         <MatchClockPanel
           match={match}
@@ -500,21 +487,11 @@ return (
         </div>
       )}
       <MatchRoomStatEditor controller={controller} />
-      <MatchVoidDialog
-        open={voidDialogOpen}
-        pending={voidActionPending}
-        onClose={() => setVoidDialogOpen(false)}
-        onConfirm={submitVoidMatch}
-      />
-      <MatchFinalizeDialog
-        open={finalizeDialogOpen}
-        pending={finalizeActionPending}
-        error={finalizeActionError}
-        eligible={manualFinalizationStatus.ready}
-        openDisputeCount={openDisputes.length}
-        authorityLabel={finalAuthorityLabel}
-        onClose={() => setFinalizeDialogOpen(false)}
-        onConfirm={submitFinalizeMatch}
+      <MatchVoidDialog open={voidDialogOpen} pending={voidActionPending} onClose={() => setVoidDialogOpen(false)} onConfirm={submitVoidMatch} />
+      <MatchFinalizeDialog open={finalizeDialogOpen} pending={finalizeActionPending}
+        error={finalizeActionError} eligible={manualFinalizationStatus.ready}
+        openDisputeCount={openDisputes.length} authorityLabel={finalAuthorityLabel}
+        onClose={() => setFinalizeDialogOpen(false)} onConfirm={submitFinalizeMatch}
       />
     </div>
   );

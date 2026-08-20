@@ -155,18 +155,33 @@ function getMatchUserIds(match = {}) {
   return unique([
     match.createdBy,
     match.refereeId,
-    match.formerRefereeId,
     ...(match.teamA?.players ?? []),
     ...(match.teamB?.players ?? []),
+    ...(match.playedPlayerIds?.teamA ?? []),
+    ...(match.playedPlayerIds?.teamB ?? []),
     ...(match.reservePlayers?.teamA ?? []),
     ...(match.reservePlayers?.teamB ?? []),
   ]);
 }
 
-export function isPlayableMatch(match = {}, profileId = "", isAdmin = false) {
+export function isPlayableMatch(match = {}, profileId = "") {
+  const recordType = String(match.rules?.recordType ?? "").trim().toLowerCase();
+  if (["personal_record", "solo"].includes(recordType)) return false;
   if (!["agreed", "approval", "disputed"].includes(match.status)) return false;
-  if (isAdmin) return true;
   return getMatchUserIds(match).includes(profileId);
+}
+
+export function isPlayableMatchRow(row = {}, players = [], profileId = "") {
+  const recordType = String(row.rules?.recordType ?? row.rules?.record_type ?? "").trim().toLowerCase();
+  if (["personal_record", "solo"].includes(recordType)) return false;
+  if (!["agreed", "approval", "disputed"].includes(row.status)) return false;
+  return unique([
+    row.created_by,
+    row.referee_id,
+    ...players.map((player) => player.user_id),
+    ...flattenIdValues(row.played_player_ids),
+    ...flattenIdValues(row.reserve_players),
+  ]).includes(profileId);
 }
 
 export function getMatchRowActorIds(row = {}, players = []) {
@@ -246,6 +261,8 @@ function toClientMatchResult(resultRow = null, statRows = [], allowPersonalStats
     statSubmissions: allowPersonalStats ? getReadableMatchStatSubmissions(safeStatRows, resultRow?.stat_submissions) : {},
     submittedBy: resultRow?.submitted_by ?? "",
     submittedAt: resultRow?.submitted_at ?? "",
+    finalSubmittedBy: resultRow?.final_submitted_by ?? "",
+    finalSubmittedAt: resultRow?.final_submitted_at ?? "",
     updatedAt: resultRow?.submitted_at ?? "",
   };
 }

@@ -39,6 +39,7 @@ export function SettingsReportCard({ controller, onOpenList }) {
     reportSubmitStatus,
     reportMatchesLoading,
     reportMatchesError,
+    retryReportMatches,
     courtAddressQuery,
     setCourtAddressQuery,
     naverAddressResults,
@@ -144,6 +145,13 @@ export function SettingsReportCard({ controller, onOpenList }) {
                       renderItem={renderReportTargetSearchItem}
                     />
                   </label>
+                  {reportNeedsMatchData && reportMatchesError ? (
+                    <div className="ui-action-row">
+                      <Button type="button" variant="secondary" size="sm" onClick={retryReportMatches}>
+                        다시 시도
+                      </Button>
+                    </div>
+                  ) : null}
                   <small>
                     {reportTargetType === REPORT_TARGET_TYPES.courtRequest
                       ? "허위 구장 등록은 타인의 검토 대기·신고 상태 등록요청만 표시됩니다."

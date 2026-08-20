@@ -300,19 +300,6 @@ body.rankball-scroll-locked .app-main {
   max-width: none;
 }
 
-.sidebar-signout {
-  display: grid;
-  width: 36px;
-  height: 36px;
-  margin-left: auto;
-  place-items: center;
-  border: var(--ui-stroke-width) solid var(--line);
-  border-radius: var(--radius);
-  background: rgba(255, 255, 255, 0.055);
-  color: var(--muted);
-  cursor: pointer;
-}
-
 .auth-shell {
   min-height: 100vh;
   display: grid;

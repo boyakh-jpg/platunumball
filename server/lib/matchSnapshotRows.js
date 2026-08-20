@@ -157,6 +157,8 @@ export function toResultRow(match = {}, actorProfileId = "") {
     result_revision: Number(match.result.revision ?? 0),
     stat_submissions: match.result.statSubmissions ?? {},
     submitted_at: match.result.submittedAt ?? new Date().toISOString(),
+    final_submitted_by: match.result.finalSubmittedBy ?? null,
+    final_submitted_at: match.result.finalSubmittedAt ?? null,
   };
 }
 

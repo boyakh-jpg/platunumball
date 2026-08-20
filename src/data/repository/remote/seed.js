@@ -235,6 +235,8 @@ export async function saveNormalizedRemoteState(state, options = {}) {
       score_submissions: match.result.scoreSubmissions ?? {},
       stat_submissions: match.result.statSubmissions ?? {},
       submitted_at: match.result.submittedAt,
+      final_submitted_by: match.result.finalSubmittedBy ?? null,
+      final_submitted_at: match.result.finalSubmittedAt ?? null,
     }));
   const statRows = state.matches.flatMap(toSeedPlayerStatRows);
   const agreementRows = state.matches.flatMap((match) => [

@@ -97,16 +97,20 @@ function getHostPlayerCount(row = {}, capacity = 5) {
   return row.player_id ? 1 : 0;
 }
 
-function isDueApprovalRow(row = {}, nowMs = Date.now(), resultSubmittedAt = null) {
+function isDueApprovalRow(row = {}, nowMs = Date.now(), finalSubmittedAt = null) {
   const recordType = String(row.rules?.recordType ?? "").trim().toLowerCase();
   if (recordType === "match_record") {
     const createdAtMs = row.created_at ? new Date(row.created_at).getTime() : NaN;
     return Number.isFinite(createdAtMs) && nowMs >= createdAtMs + 24 * 60 * MINUTE_MS;
   }
-  const submittedAtMs = resultSubmittedAt ? new Date(resultSubmittedAt).getTime() : NaN;
-  if (!Number.isFinite(submittedAtMs)) return false;
+  const finalSubmittedAtMs = finalSubmittedAt ? new Date(finalSubmittedAt).getTime() : NaN;
+  if (!Number.isFinite(finalSubmittedAtMs)) return false;
+  const endedAtMs = row.ended_at ? new Date(row.ended_at).getTime() : NaN;
+  const windowStartedAtMs = Number.isFinite(endedAtMs)
+    ? Math.max(finalSubmittedAtMs, endedAtMs)
+    : finalSubmittedAtMs;
   const disputeMinutes = normalizeDisputeWindowMinutes(row.dispute_minutes);
-  return nowMs >= submittedAtMs + disputeMinutes * MINUTE_MS;
+  return nowMs >= windowStartedAtMs + disputeMinutes * MINUTE_MS;
 }
 
 async function getCandidateMatchIds(client, limit, nowMs) {
@@ -123,16 +127,18 @@ async function getCandidateMatchIds(client, limit, nowMs) {
 
   const { data: resultRows, error: resultError } = await client
     .from("match_results")
-    .select("match_id, submitted_at")
+    .select("match_id, final_submitted_at")
     .in("match_id", (rows ?? []).map((row) => row.id).filter(Boolean));
   if (resultError) throw resultError;
 
-  const submittedAtByMatchId = new Map(
-    (resultRows ?? []).map((row) => [row.match_id, row.submitted_at]),
+  const finalSubmittedAtByMatchId = new Map(
+    (resultRows ?? [])
+      .filter((row) => row.final_submitted_at)
+      .map((row) => [row.match_id, row.final_submitted_at]),
   );
   return (rows ?? [])
-    .filter((row) => submittedAtByMatchId.has(row.id))
-    .filter((row) => isDueApprovalRow(row, nowMs, submittedAtByMatchId.get(row.id)))
+    .filter((row) => finalSubmittedAtByMatchId.has(row.id))
+    .filter((row) => isDueApprovalRow(row, nowMs, finalSubmittedAtByMatchId.get(row.id)))
     .map((row) => row.id)
     .filter(Boolean)
     .slice(0, limit);

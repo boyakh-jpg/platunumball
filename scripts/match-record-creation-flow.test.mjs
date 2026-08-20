@@ -554,10 +554,11 @@ test("personal quick record ignores stale names and creates no approval room", (
 test("play list keeps match_record participants without reviving recorder authority", () => {
   assert.match(
     matchListSource,
-    /fetchPlayMatchPage[\s\S]*from\("user_room_feed"\)[\s\S]*\.in\("status", \["agreed", "approval", "disputed"\]\)[\s\S]*\.range\(0, rowLimit - 1\)/u,
+    /fetchPlayMatchPage[\s\S]*rpc\("rankball_recorder_match_page"[\s\S]*from\("user_room_feed"\)/u,
   );
-  assert.match(matchListSource, /if \(!isMissingUserRoomFeed\(error\)\) throw error;[\s\S]*fetchCurrentUserMatchCandidateIds/u);
-  assert.doesNotMatch(matchListSource, /rankball_recorder_match_list/u);
+  assert.match(matchListSource, /while \(scanned < MATCH_FEED_ROW_MAX_LIMIT/u);
+  assert.match(matchListSource, /\["stat_recorders", \{ teamA: profileId \}\][\s\S]*\["stat_recorders", \{ teamB: profileId \}\]/u);
+  assert.match(matchListSource, /\.from\("match_results"\)[\s\S]*\.eq\("submitted_by", profileId\)/u);
 });
 
 test("match_record 시간은 시작 기준 30분이며 자정 경계를 다음 날로 넘긴다", () => {

@@ -31,11 +31,18 @@ export default function Notifications({ app }) {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedView = searchParams.get("view");
-  const notificationView = ["all", "unread", "past"].includes(requestedView) ? requestedView : "unread";
+  const notificationView = requestedView === "past" ? "past" : "unread";
   const [deletingNotificationId, setDeletingNotificationId] = useState("");
   const [pendingInvitationKeys, setPendingInvitationKeys] = useState([]);
   const [invitationActionErrors, setInvitationActionErrors] = useState({});
   const [notificationDeleteError, setNotificationDeleteError] = useState(null);
+
+  useEffect(() => {
+    if (requestedView !== "all") return;
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete("view");
+    setSearchParams(nextParams, { replace: true });
+  }, [requestedView, searchParams, setSearchParams]);
   const [notificationsLoadError, setNotificationsLoadError] = useState("");
   const [notificationReadPendingId, setNotificationReadPendingId] = useState("");
   const [notificationReadError, setNotificationReadError] = useState("");
@@ -111,9 +118,7 @@ export default function Notifications({ app }) {
   const totalUnreadCount = Number.isFinite(app.state.notificationUnreadCount)
     ? app.state.notificationUnreadCount
     : unreadCount;
-  const displayedNotifications = notificationView === "all"
-    ? visibleNotifications
-    : notificationView === "past" ? pastNotifications : unreadNotifications;
+  const displayedNotifications = notificationView === "past" ? pastNotifications : unreadNotifications;
   const selectNotificationView = (view) => {
     const nextParams = new URLSearchParams(searchParams);
     if (view === "unread") nextParams.delete("view");
@@ -357,19 +362,10 @@ export default function Notifications({ app }) {
         <div className="section-title-row">
           <div>
             <p className="eyebrow">Inbox</p>
-            <h2>{notificationView === "all" ? `전체 알림 ${visibleNotifications.length}개` : notificationView === "past" ? `지난 알림 ${pastNotifications.length}개` : `읽지 않은 알림 ${formatCount(totalUnreadCount)}개`}</h2>
+            <h2>{notificationView === "past" ? `지난 알림 ${pastNotifications.length}개` : `읽지 않은 알림 ${formatCount(totalUnreadCount)}개`}</h2>
           </div>
           <div className="notification-inbox-controls">
             <div className="ui-segmented-control segmented-control notification-view-tabs" role="tablist" aria-label="알림 보기">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={notificationView === "all"}
-                className={notificationView === "all" ? "active" : ""}
-                onClick={() => selectNotificationView("all")}
-              >
-                전체 <span>{visibleNotifications.length}</span>
-              </button>
               <button
                 type="button"
                 role="tab"
@@ -466,7 +462,7 @@ export default function Notifications({ app }) {
             );
           }) : (
             <div className="ui-empty-state-compact">
-              {notificationView === "all" ? "알림이 없습니다." : notificationView === "past" ? "지난 알림이 없습니다." : "읽지 않은 알림이 없습니다."}
+              {notificationView === "past" ? "지난 알림이 없습니다." : "읽지 않은 알림이 없습니다."}
             </div>
           )}
         </div>

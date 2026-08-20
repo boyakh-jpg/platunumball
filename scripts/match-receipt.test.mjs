@@ -50,6 +50,28 @@ test("receipt nature label keeps the same five pixel score clearance in preview 
   assert.match(renderer, /ctx\.fillText\(model\.matchNatureLabel, width \/ 2, scoreTop \+ \(compact \? 2 : 12\)\)/);
 });
 
+test("public receipt lookup blocks editor and QR fallback while paper stats use ink digits", async () => {
+  const [page, preview, styles, qrComponent] = await Promise.all([
+    readFile(new URL("../src/pages/MatchReceipt.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/match/MatchReceiptPreview.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/styles/features/match-receipt.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/common/QrCode.jsx", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(page, /const \[publicCodeLookup, setPublicCodeLookup\]/);
+  assert.match(page, /requestedPublicCode && !draft\.publicCode/);
+  assert.match(page, /lookupError\.status === 404/);
+  assert.match(page, /setPublicCodeLookupAttempt/);
+  assert.match(page, /requestedPublicCode \? \(/);
+  assert.match(preview, /tone="paper-ink"/);
+  assert.match(
+    styles,
+    /\.match-receipt-stat-digits\.is-paper-ink[\s\S]*?filter:\s*brightness\(0\) saturate\(100%\)/,
+  );
+  assert.match(qrComponent, /useLayoutEffect/);
+  assert.doesNotMatch(qrComponent, /requestAnimationFrame/);
+});
+
 test("receipt emblems allow local fine adjustment while canonical teams remain reusable", async () => {
   const [receiptPage, teamPage, teamView, teamActions, teamApi, teamColumns, migration] = await Promise.all([
     readFile(new URL("../src/pages/MatchReceipt.jsx", import.meta.url), "utf8"),
@@ -87,7 +109,6 @@ test("receipt emblems allow local fine adjustment while canonical teams remain r
   assert.match(receiptPage, /resolveMatchReceiptTeamEmblems\(/u);
   assert.match(receiptPage, /local:\s*localTeamLineArtUrls/u);
   assert.match(receiptPage, /canonical:\s*canonicalTeamReceiptEmblemUrls/u);
-  assert.match(receiptPage, /local:\s*localTeamLineArtUrls/u);
   assert.match(receiptPage, /const activeLineArtUrl = selectedTeamLineArtUrls\[side\]/u);
   assert.match(teamView, /disabled=\{receiptEmblemPending \|\| receiptEmblemUploadLocked\}/u);
 });
@@ -844,7 +865,7 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(styles, /\.match-receipt-ticket-game > \.match-receipt-personal-stats\s*\{[^}]*transform:\s*translateY\(var\(--receipt-ticket-personal-stats-shift\)\)/);
   assert.match(styles, /\.match-receipt-personal-stats b \+ b[\s\S]*border-left/);
   assert.match(styles, /\.match-receipt-personal-stats b\s*\{[^}]*color:\s*var\(--receipt-ink\)/);
-  assert.match(styles, /\.match-receipt-stat-digits > \.match-receipt-score-digit\s*\{[^}]*filter:\s*brightness\(0\)/);
+  assert.match(styles, /\.match-receipt-stat-digits\.is-paper-ink \.match-receipt-score-digit\s*\{[^}]*filter:\s*brightness\(0\) saturate\(100%\)/);
   assert.match(renderer, /if \(model\.hasPersonalStats\) \{\s*ctx\.fillStyle = "#151515"/);
   assert.match(renderer, /const receiptTop = compact \? 1010 : 1504/);
   assert.match(renderer, /ctx\.fillStyle = "#d4582b";\s*ctx\.font = '900 27px "KBO Dia Gothic", sans-serif';\s*ctx\.fillText\(model\.playedOn/);

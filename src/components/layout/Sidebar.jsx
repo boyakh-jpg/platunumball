@@ -1,4 +1,4 @@
-import { Bell, CalendarDays, ClipboardList, Handshake, House, LogIn, LogOut, MessageSquareText, Settings, Trophy, UserRound, UsersRound } from "lucide-react";
+import { Bell, CalendarDays, ClipboardList, Handshake, House, LogIn, MessageSquareText, Settings, Trophy, UserRound, UsersRound } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import BrandLockup from "../common/BrandLockup.jsx";
 import PlayerHoverCard from "../profile/PlayerHoverCard.jsx";
@@ -67,11 +67,6 @@ export default function Sidebar({ user, teams = [], auth, guestPreview = false, 
             <span className="sidebar-profile-handle"><small>{displayHashtag}</small></span>
             <TierBadge mmr={integratedRating} ratings={safeUser.ratings} compact />
           </div>
-          {auth?.session ? (
-            <button type="button" className="sidebar-signout" onClick={() => window.confirm("로그아웃하시겠습니까?") && void auth.signOut()} aria-label="로그아웃" disabled={auth.authActionPending}>
-              <LogOut size={17} />
-            </button>
-          ) : null}
         </PlayerHoverCard>
       )}
     </aside>

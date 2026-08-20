@@ -1,7 +1,7 @@
 import { MATCH_SIDES } from "../../../lib/constants.js";
 import { SIDE_LABEL_TEXT } from "../../../lib/constants.js";
 import { getMatchOverlapConflict } from "../../../lib/matchUtils.js";
-import { getMatchManualFinalizationStatus } from "../../../lib/matchUtils.js";
+import { getMatchManualFinalizationStatus, hasMatchFinalSubmission } from "../../../lib/matchUtils.js";
 import { getActualMatchPlayerIds } from "../../../lib/matchUtils.js";
 import { getMatchReservePlayerIds } from "../../../lib/matchUtils.js";
 import { getMatchRoomPhase } from "../../../lib/matchUtils.js";
@@ -139,7 +139,7 @@ export function incrementMatchScore(state, matchId, deltaA = 0, deltaB = 0, revi
 export function finalizeMatchByAuthority(state, matchId, options = {}) {
   const match = state.matches.find((item) => item.id === matchId);
   if (isMatchRecordMatch(match)) return state;
-  if (!match?.endedAt || !match.result || match.confirmedAt) return state;
+  if (!match?.endedAt || !match.result || !hasMatchFinalSubmission(match) || match.confirmedAt) return state;
   if ((match.disputes ?? []).some((dispute) => dispute.status === "open")) return state;
   if (options.disputesAcknowledged !== true) return state;
   const nowMs = new Date(options.now ?? Date.now()).getTime();
@@ -177,7 +177,7 @@ export function finalizeMatchByAuthority(state, matchId, options = {}) {
 export function acknowledgeMatchNoDispute(state, matchId) {
   const match = state.matches.find((item) => item.id === matchId);
   const userId = state.currentUserId;
-  if (isMatchRecordMatch(match) || !match?.endedAt || !match.result || match.confirmedAt) return state;
+  if (isMatchRecordMatch(match) || !match?.endedAt || !match.result || !hasMatchFinalSubmission(match) || match.confirmedAt) return state;
   if (!getActualMatchPlayerIds(match).includes(userId)) return state;
   if ((match.disputes ?? []).some((dispute) => dispute.by === userId)) return state;
   const current = Array.isArray(match.rules?.noDisputeUserIds) ? match.rules.noDisputeUserIds : [];

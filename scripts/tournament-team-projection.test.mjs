@@ -71,3 +71,20 @@ test("대회 governance 성공은 후속 재조회 실패와 분리한다", asyn
   assert.match(detailSource, /setGovernanceFeedback\(successMessage\);\s*Promise\.resolve\(\)\s*\.then\(\(\) => app\.actions\.loadTournament\?\.\(tournament\.id\)\)\s*\.catch\(\(\) => false\);\s*return true;/);
   assert.doesNotMatch(detailSource, /await app\.actions\.loadTournament\?\.\(tournament\.id\)/);
 });
+
+test("대회 상세 조회는 미존재와 일시 오류를 분리한다", async () => {
+  const [detailSource, matchActionsSource, serverActionsSource] = await Promise.all([
+    readFile(new URL("../src/pages/TournamentDetail.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/hooks/appData/actions/matchActions.js", import.meta.url), "utf8"),
+    readFile(new URL("../src/hooks/appData/orchestrator/serverActions.js", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(matchActionsSource, /result\.error === "tournament_not_found" \|\| Number\(result\.statusCode\) === 404/);
+  assert.match(matchActionsSource, /throw error;/);
+  assert.match(serverActionsSource, /operation\?\.action === "loadTournament"[\s\S]*quietError: "tournament_not_found"/);
+  assert.match(detailSource, /setTournamentLoadStatus\("missing"\)/);
+  assert.match(detailSource, /setTournamentLoadStatus\("error"\)/);
+  assert.match(detailSource, /대회를 불러오지 못했습니다/);
+  assert.match(detailSource, /삭제되었거나 존재하지 않는 대회입니다/);
+  assert.doesNotMatch(detailSource, /삭제되었거나 아직 불러오지 못한 대회입니다/);
+});

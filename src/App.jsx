@@ -27,6 +27,7 @@ const Landing = lazy(() => import("./pages/Landing.jsx"));
 const Login = lazy(() => import("./pages/Login.jsx"));
 const Matches = lazy(() => import("./pages/Matches.jsx"));
 const Notifications = lazy(() => import("./pages/Notifications.jsx"));
+const NotFound = lazy(() => import("./pages/NotFound.jsx"));
 const PlayerDetail = lazy(() => import("./pages/PlayerDetail.jsx"));
 const RefereeDetail = lazy(() => import("./pages/RefereeDetail.jsx"));
 const Privacy = lazy(() => import("./pages/Privacy.jsx"));
@@ -285,7 +286,7 @@ export default function App() {
             <Route path="/app/signup" element={<Signup app={app} auth={auth} />} />
           </Route>
         </Route>
-        <Route path="*" element={<Navigate to="/app" replace />} />
+        <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>
     </AppErrorBoundary>

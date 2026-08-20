@@ -345,3 +345,21 @@ test("게시판 페이지와 프로필 활동은 같은 30개 페이지 규칙�
   assert.match(hoverCard, /userTeams\.find[\s\S]*projectedRepresentativeTeam[\s\S]*getRepresentativeTeam/);
   assert.match(settings, /"communityPosts", "communityComments"/);
 });
+
+test("상세 조회 실패는 목록 문맥을 보존하고 같은 게시글을 재시도한다", async () => {
+  const [controller, page, dialog] = await Promise.all([
+    readFile(new URL("../src/pages/useCommunityController.js", import.meta.url), "utf8"),
+    readFile(new URL("../src/pages/Community.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/pages/CommunityPostDialog.jsx", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(controller, /const \[detailError, setDetailError\] = useState\(""\)/);
+  assert.match(controller, /const detailTargetRef = useRef\(null\)/);
+  assert.match(controller, /setDetailError\(getCommunityErrorMessage\(loadError\.message\)\)/);
+  assert.match(controller, /const retryDetail = \(\) => detailTargetRef\.current/);
+  assert.match(page, /controller\.detailError/);
+  assert.match(page, /controller\.retryDetail/);
+  assert.match(dialog, /detailError \?/);
+  assert.match(dialog, /controller\.retryDetail\(\)/);
+  assert.match(dialog, /!detailLoading && !detailError && !editing/);
+});

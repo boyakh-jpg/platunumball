@@ -474,7 +474,12 @@ export function submitPracticeSampleResult(state, matchId) {
     if (updatedScoreA === currentScoreA && updatedScoreB === currentScoreB) break;
     next = updated;
   }
-  return nextMatchEnded(next, matchId);
+  const endedState = nextMatchEnded(next, matchId);
+  return withPracticeActor(endedState, operatorId, repository.submitMatchResult, matchId, {
+    scoreA,
+    scoreB,
+    playerStats: {},
+  });
 }
 
 function nextMatchEnded(state, matchId) {

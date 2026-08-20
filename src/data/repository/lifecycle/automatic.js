@@ -2,6 +2,7 @@ import { MATCH_SIDES } from "../../../lib/constants.js";
 import { adjustUserTrust } from "../../trustUtils.js";
 import { fillMatchDecision } from "../../../lib/matchUtils.js";
 import { getPostgameRecordVerification } from "../../../lib/postgameRecordVerification.js";
+import { getMatchFinalizationWindow, hasMatchFinalSubmission } from "../../../lib/matchUtils.js";
 import { getPublicRoomTimingStatus } from "../../../lib/matchUtils.js";
 import { getRecruitingApplicantKey } from "../../../lib/recruiting.js";
 import { getRecruitingLobby } from "../../../lib/recruiting.js";
@@ -13,7 +14,6 @@ import { isAutoDecisionDue } from "../../../lib/matchUtils.js";
 import { isMatchRecordMatch } from "../../../lib/matchUtils.js";
 import { isRecruitingPartyEntry } from "../../../lib/recruiting.js";
 import { makeId } from "../../rowUtils.js";
-import { normalizeDisputeWindowMinutes } from "../../../lib/constants.js";
 import { normalizeRecruitingApplicants } from "../../../lib/recruiting.js";
 import { normalizeRecruitingPost } from "../../../lib/recruiting.js";
 import { normalizeRecruitingRoomState } from "../../../lib/recruiting.js";
@@ -82,10 +82,9 @@ function applyAutomaticMatchDecisions(state, now = new Date()) {
       continue;
     }
 
-    if (current.status === "approval" && current.result) {
-      const submittedAtMs = new Date(current.result.submittedAt ?? "").getTime();
-      const disputeMinutes = normalizeDisputeWindowMinutes(current.disputeMinutes);
-      if (!Number.isFinite(submittedAtMs) || nowMs < submittedAtMs + disputeMinutes * 60 * 1000) continue;
+    if (current.status === "approval" && current.result && hasMatchFinalSubmission(current)) {
+      const finalizationWindow = getMatchFinalizationWindow(current, nowMs);
+      if (!finalizationWindow.automaticReady) continue;
       if ((current.disputes ?? []).some((dispute) => dispute.status === "open")) continue;
       const resultValid = [current.result.scoreA, current.result.scoreB]
         .every((value) => Number.isFinite(Number(value)) && Number(value) >= 0 && Number(value) <= 999);

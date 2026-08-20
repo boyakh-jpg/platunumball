@@ -566,8 +566,8 @@
   overflow: visible;
 }
 
-.match-receipt-stat-digits > .match-receipt-score-digit {
-  filter: brightness(0);
+.match-receipt-stat-digits.is-paper-ink .match-receipt-score-digit {
+  filter: brightness(0) saturate(100%);
 }
 
 .match-receipt-personal-stats b + b {

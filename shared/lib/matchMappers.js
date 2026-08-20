@@ -340,6 +340,8 @@ export function fromRemoteMatch(row, context) {
           statSubmissions: allowPersonalStats ? getReadableMatchStatSubmissions(statRows, resultRow.stat_submissions) : {},
           submittedBy: resultRow.submitted_by,
           submittedAt: resultRow.submitted_at,
+          finalSubmittedBy: resultRow.final_submitted_by,
+          finalSubmittedAt: resultRow.final_submitted_at,
         }
       : null,
     ratingResult: Array.isArray(row.rating_result) ? row.rating_result : null,

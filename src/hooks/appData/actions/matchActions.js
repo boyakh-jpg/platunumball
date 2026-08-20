@@ -164,9 +164,17 @@ switchUser: (userId) => {
         action: "loadTournament",
         tournamentId,
       },
-    }).then((result) => (
-      result?.state?.tournaments?.some((item) => item?.id === tournamentId) ? 1 : 0
-    ));
+    }).then((result) => {
+      if (result?.ok === false) {
+        if (result.error === "tournament_not_found" || Number(result.statusCode) === 404) return 0;
+        const error = new Error(result.error || "tournament_load_failed");
+        error.code = result.error || "tournament_load_failed";
+        error.statusCode = result.statusCode ?? null;
+        error.details = result.details ?? null;
+        throw error;
+      }
+      return result?.state?.tournaments?.some((item) => item?.id === tournamentId) ? 1 : 0;
+    });
   },
   approveTournamentTeam: (tournamentId, teamId) => {
     if (isSupabaseConfigured) {

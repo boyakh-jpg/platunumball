@@ -705,7 +705,7 @@ test("계정·설정 변경은 선택 대상과 저장 요청을 안전하게 �
   assert.ok(authSession.indexOf("await supabase.auth.signOut()") < authSession.indexOf("writeTestSession(null)", authSession.indexOf("signOut: async")));
   assert.match(loginPage, /disabled=\{auth\.authActionPending \|\| auth\.testLoginPending\}/u);
   assert.match(loginPage, /if \(auth\.session\) return <Navigate to=\{from\} replace \/>/u);
-  assert.match(sidebar, /disabled=\{auth\.authActionPending\}/u);
+  assert.doesNotMatch(sidebar, /로그아웃|auth\.signOut/u);
 });
 
 test("관리자 조치는 현재 선택 대상과 서버 전체 대기 건수를 보존한다", async () => {
@@ -906,6 +906,23 @@ test("경로 없는 검색과 방 팝업은 키보드 이동과 조회 실패 �
   assert.match(navigation, /retryRecruitingRoom/);
   assert.match(home, /RecruitingRoomLoadFailedView/);
   assert.match(notifications, /RecruitingRoomLoadingView/);
+});
+
+test("신고 경기 조회와 경기 방 모델 오류는 현재 문맥에서 다시 조회한다", async () => {
+  const [reportController, reportCard, settingsController, matchesController, matchesView] = await Promise.all([
+    read("src/pages/useSettingsReportController.jsx"),
+    read("src/pages/SettingsReportCard.jsx"),
+    read("src/pages/useSettingsPageController.jsx"),
+    read("src/pages/useMatchesPageController.jsx"),
+    read("src/pages/MatchesPageView.jsx"),
+  ]);
+
+  assert.match(reportController, /const retryReportMatches = useCallback\(\(\) => \{[\s\S]*reportMatchesLoadRef\.current = "";[\s\S]*return requestReportableMatches\(\)/u);
+  assert.match(reportController, /catch \{[\s\S]*setReportMatchesError\("신고 가능한 경기를 불러오지 못했습니다\./u);
+  assert.match(settingsController, /reportMatchesError,[\s\S]*retryReportMatches/u);
+  assert.match(reportCard, /reportNeedsMatchData && reportMatchesError[\s\S]*onClick=\{retryReportMatches\}[\s\S]*다시 시도/u);
+  assert.match(matchesController, /const requestMatchDetail = \(matchId, \{ force = false \} = \{\}\) => \{[\s\S]*if \(force\) requestedMatchDetailsRef\.current\.delete\(matchId\)/u);
+  assert.match(matchesView, /selectedMatchRoomError[\s\S]*onRetry=\{\(\) => requestMatchDetail\(activeSelectedMatchId, \{ force: true \}\)\}/u);
 });
 
 test("팀 링크와 기록 목록은 부분 hydration과 중복 archive를 안전하게 처리한다", async () => {

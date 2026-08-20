@@ -145,6 +145,7 @@ export function buildMatchResultSubmission(
 ) {
   const sourcePlayerStats = draft.playerStats ?? {};
   const editableScoreSides = new Set(options.editableScoreSides ?? []);
+  const preserveCanonicalScores = options.preserveCanonicalScores === true;
   const playerStats = Object.fromEntries(
     getMatchRecordPlayerIds(match)
       .map((playerId) => {
@@ -166,6 +167,7 @@ export function buildMatchResultSubmission(
       ?? match[sideName]?.score
       ?? 0;
     if (!editableScoreSides.has(sideName)) {
+      if (preserveCanonicalScores) return Number(currentScore);
       return getMergedResultScore(match, sourcePlayerStats, sideName, currentScore);
     }
     const nextScore = Number(draft[resultKey]);

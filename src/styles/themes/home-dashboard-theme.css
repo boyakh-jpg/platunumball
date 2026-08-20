@@ -245,15 +245,11 @@ body {
   color: var(--rb-text);
   box-shadow: none;
 }
-.sidebar-profile,
-.sidebar-signout {
+.sidebar-profile {
   border-radius: var(--radius-md);
   border: 0;
   background: transparent;
   box-shadow: none;
-}
-.sidebar-signout:hover {
-  background: var(--ui-rail-item-hover-bg);
 }
 .modal {
   border: var(--ui-stroke-width) solid var(--rb-line);

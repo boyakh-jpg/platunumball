@@ -805,7 +805,7 @@ test("데스크톱 side rail은 공용 중성 표면과 무테 활성 상태를 
   assert.match(dashboardThemeStyles, /\.sidebar\s*\{[^}]*border-right:\s*0;[^}]*background:\s*var\(--ui-rail-bg\);[^}]*backdrop-filter:\s*none;/);
   assert.match(dashboardThemeStyles, /\.sidebar-nav a\s*\{[^}]*min-height:\s*var\(--ui-button-height\);[^}]*border:\s*0;/);
   assert.match(dashboardThemeStyles, /\.sidebar-nav a\.active\s*\{[^}]*background:\s*var\(--ui-rail-item-active-bg\);/);
-  assert.match(dashboardThemeStyles, /\.sidebar-profile,[\s\S]*?\.sidebar-signout\s*\{[^}]*border:\s*0;[^}]*background:\s*transparent;/);
+  assert.match(dashboardThemeStyles, /\.sidebar-profile\s*\{[^}]*border:\s*0;[^}]*background:\s*transparent;/);
   assert.match(compositionThemeStyles, /html\[data-theme="light"\] \.sidebar\s*\{[^}]*background:\s*var\(--ui-rail-bg\);[^}]*border-right-color:\s*transparent;/);
 });
 

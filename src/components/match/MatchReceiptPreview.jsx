@@ -12,9 +12,10 @@ import QrCode from "../common/QrCode.jsx";
 
 const EMPTY_TEAM_LINE_ART_URLS = Object.freeze({ home: "", away: "" });
 
-function ReceiptScoreDigits({ value, className = "match-receipt-score-digits" }) {
+function ReceiptScoreDigits({ value, className = "match-receipt-score-digits", tone = "" }) {
+  const classes = [className, tone ? `is-${tone}` : ""].filter(Boolean).join(" ");
   return (
-    <span className={className} aria-hidden="true">
+    <span className={classes} aria-hidden="true">
       {Array.from(String(value)).map((digit, index) => (
         <i
           className="match-receipt-score-digit"
@@ -221,8 +222,8 @@ export default function MatchReceiptPreview({
           <strong>{model.hasPersonalStats ? "MY GAME" : "GAME INFO"}</strong>
           {model.hasPersonalStats ? (
             <span className="match-receipt-personal-stats">
-              <b><ReceiptScoreDigits value={model.personalPoints ?? 0} className="match-receipt-stat-digits" /><small>PTS</small></b>
-              <b><ReceiptScoreDigits value={model.personalRebounds ?? 0} className="match-receipt-stat-digits" /><small>REB</small></b>
+              <b><ReceiptScoreDigits value={model.personalPoints ?? 0} className="match-receipt-stat-digits" tone="paper-ink" /><small>PTS</small></b>
+              <b><ReceiptScoreDigits value={model.personalRebounds ?? 0} className="match-receipt-stat-digits" tone="paper-ink" /><small>REB</small></b>
             </span>
           ) : (
             <span className="match-receipt-game-info">

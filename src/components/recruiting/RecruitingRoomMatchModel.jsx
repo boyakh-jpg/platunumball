@@ -2,7 +2,7 @@ export function buildRecruitingRoomMatchModel(context) {
   const {
     MATCH_SIDES, ROOM_BODY_MODES, activeInviteDraftRaw, activeSelfSlotDraftRaw, app, attendanceStartStatus,
     canChat, canUserResolveMatchDispute, currentUserIsAdmin, entryPoint, getActualMatchPlayerIds, getMatchManualFinalizationStatus, getMatchRecordPlayerIds,
-    getMatchRecordWindow, getMatchParticipationCancellationState, getMatchReservePlayerIds, getMatchResultEntryPermission, getMatchRoomPhase, getMatchSideLeaderId, getMatchSidePlayerIds,
+    getMatchRecordWindow, getMatchParticipationCancellationState, getMatchReservePlayerIds, getMatchResultEntryPermission, getMatchRoomPhase, getMatchSideLeaderId, getMatchSidePlayerIds, hasMatchFinalSubmission,
     getMissingStartAttendanceIds, getOpenMatchDisputes, getPickupRerollState, getPostgameRecordVerification, getRecruitingBenchCapacity, getRecruitingPostTerminalState,
     getRecruitingRoomStatus, getRecruitingSideCapacity, getRecruitingSideLeaderId, getTeamCaptainId, getTournamentRosterTeam, individualOnlyRoom,
     isMatchPregameSlotManagementOpen, isMatchRecordMatch, isMatchRecordParticipantSetupOpen, isMatchRecordParticipantSetupRequired, isMatchReferee, isPersonalRecordMatch,
@@ -228,7 +228,7 @@ const roomQueueStatus = getRecruitingRoomStatus(lobby, { post: selectedPost, myE
         const sourceManualFinalizationStatus = getMatchManualFinalizationStatus(sourceMatch, Date.now(), app.currentUser.id);
         const canManageSourceMatchFinalization = Boolean(
           matchRoom && !sourceMatchIsRecordRoom
-          && sourceMatch?.endedAt && sourceMatch.result && !sourceMatch?.confirmedAt
+          && sourceMatch?.endedAt && sourceMatch.result && hasMatchFinalSubmission(sourceMatch) && !sourceMatch?.confirmedAt
           && (sourceMatch.refereeId ? currentUserIsSourceReferee : mine)
         );
         const canFinalizeSourceMatch = canManageSourceMatchFinalization;
@@ -246,7 +246,7 @@ const roomQueueStatus = getRecruitingRoomStatus(lobby, { post: selectedPost, myE
           ? "누락 득점 저장"
           : currentUserIsSourceReferee
             ? "심판 기록 제출"
-            : "내 득점 저장";
+            : "경기 결과 제출";
         const canCancelSourceMatch = Boolean(matchRoom && sourceMatch && ["contract", "agreed"].includes(sourceMatch.status) && (sourceMatchStarted || sourceMatch.endedAt || sourceMatch.result ? currentUserCanOperateStartedSourceMatch : mine));
         const sourceParticipationCancellation = sourceMatch
           ? getMatchParticipationCancellationState(sourceMatch, app.currentUser.id)
@@ -266,6 +266,7 @@ const roomQueueStatus = getRecruitingRoomStatus(lobby, { post: selectedPost, myE
         );
         const sourceMatchApprovalOpen = Boolean(
           sourceMatch?.result &&
+          hasMatchFinalSubmission(sourceMatch) &&
           sourceMatchRecordWindow?.disputeOpen &&
           (["approval", "disputed"].includes(sourceMatch.status) || (sourceMatch.status === "agreed" && sourceMatch.endedAt)),
         );
@@ -289,7 +290,7 @@ const roomQueueStatus = getRecruitingRoomStatus(lobby, { post: selectedPost, myE
           sourceMatch?.result &&
           ["postgame", "dispute", "record"].includes(sourceMatchPhase?.phase),
         );
-        const canShowSourceMatchRecordEditor = Boolean(sourceMatch?.refereeId) && (canReviewSourceMatch || canSubmitSourceMatchLiveResult || canSubmitSourceMatchPostgameResult);
+        const canShowSourceMatchRecordEditor = canReviewSourceMatch || canSubmitSourceMatchLiveResult || canSubmitSourceMatchPostgameResult;
         const sourceMatchRecordBoardFirst = Boolean(
           matchRoom && Boolean(sourceMatch?.refereeId) &&
           (

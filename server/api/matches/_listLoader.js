@@ -120,7 +120,7 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
       scheduleOnly,
       includeCancelledSchedule,
     });
-    if (playOnly) filtered = filtered.filter((match) => isMatchInPlayMenu(match) && isPlayableMatch(match, context.profileId, adminLevel >= 30));
+    if (playOnly) filtered = filtered.filter((match) => isMatchInPlayMenu(match) && isPlayableMatch(match, context.profileId));
     if (completedOnly) filtered = filtered.filter((match) => (
       match.status === "confirmed" &&
       (projectMatchActivePlayerIds(match).includes(context.profileId) || match.__feedRelations?.includes("participant"))
@@ -163,6 +163,7 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
   let pageExhausted = feedPage?.exhausted ?? true;
   let matchRows = [];
   let matches = [];
+  let playPageIds = [];
   if (refereeProfileId) {
     const refereePage = await timeStep(debugTiming, "refereeMatchesMs", () => (
       fetchRefereeMatchPage(context.supabase, refereeProfileId, limit)
@@ -197,7 +198,7 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
         fetchMatchRowsByIds(context.supabase, rowFallbackIds)
       ));
     }
-  } else {
+  } else if (!playOnly) {
     pageSource = allowLegacyFallback ? "fallback_mine" : "feed_unavailable";
     if (allowLegacyFallback) {
       const minePage = await timeStep(debugTiming, "fallbackMineMs", () => (
@@ -214,6 +215,7 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
       fetchPlayMatchPage(context.supabase, context.profileId, limit, cursor)
     ));
     const playRows = playPage?.rows ?? [];
+    playPageIds = playRows.map((row) => row?.id).filter(Boolean);
     matchRows = mergeMatchRowsById(matchRows, playRows);
     pageSource = "play";
     pageCursor = playPage?.cursor ?? "";
@@ -376,9 +378,11 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
   const countedMatches = matches.length
     ? await attachMatchPlayerCountsToCards(context.supabase, matches, debugTiming)
     : matches;
-  matches = feedPage?.ids?.length
-    ? sortByFeedOrder(mergeMatchCardsWithRows(countedMatches, rowMatches), feedPage.ids)
-    : rowMatches.sort((a, b) => String(b.updatedAt ?? b.createdAt ?? "").localeCompare(String(a.updatedAt ?? a.createdAt ?? "")));
+  matches = playOnly
+    ? sortByFeedOrder(rowMatches, playPageIds)
+    : feedPage?.ids?.length
+      ? sortByFeedOrder(mergeMatchCardsWithRows(countedMatches, rowMatches), feedPage.ids)
+      : rowMatches.sort((a, b) => String(b.updatedAt ?? b.createdAt ?? "").localeCompare(String(a.updatedAt ?? a.createdAt ?? "")));
   matches = await attachOpenDisputeQueues(context.supabase, matches, debugTiming);
   const state = normalizeState({
     currentUserId: currentUser.id,

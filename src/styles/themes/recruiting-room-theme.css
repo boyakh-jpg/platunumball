@@ -369,7 +369,7 @@ html[data-theme="light"] .arena-side-roster .arena-room-player-slot:not(.empty) 
 }
 
 .arena-room-party-group::before {
-  inset: -7px;
+  inset: 0;
   border: var(--ui-stroke-width) solid rgba(255, 118, 88, 0.42);
   border-radius: var(--radius-lg);
   background:

@@ -596,6 +596,8 @@ test("심판 경기의 기록·이의·최종 확정은 심판만 수행하고 �
       scoreA: 21,
       scoreB: 20,
       submittedAt: now,
+      finalSubmittedBy: "referee-1",
+      finalSubmittedAt: now,
       playerStats: {
         "host-1": { points: 21 },
         "guest-1": { points: 20 },
@@ -709,7 +711,13 @@ test("무심판 경기의 최종 확정은 방장만 수행한다", () => {
     ranked: false,
     teamA: { name: "A", players: ["host-1"], score: 15 },
     teamB: { name: "B", players: ["guest-1"], score: 13 },
-    result: { scoreA: 15, scoreB: 13, submittedAt: now },
+    result: {
+      scoreA: 15,
+      scoreB: 13,
+      submittedAt: now,
+      finalSubmittedBy: "host-1",
+      finalSubmittedAt: now,
+    },
     disputes: [],
     rules: { recordType: "match", gameClockEnabled: false },
   };

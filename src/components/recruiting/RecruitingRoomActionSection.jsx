@@ -162,7 +162,7 @@ export function RecruitingRoomActionSection({ context }) {
                         refreshing={sourceMatchReviewRefreshing}
                       />
                     ) : null}
-                    {!sourceMatchRecordBoardFirst && !sourceMatchIsRecordRoom && Boolean(sourceMatch.refereeId) && !sourceMatchAction.disputed && (canSubmitSourceMatchLiveResult || canSubmitSourceMatchPostgameResult) ? (
+                    {!sourceMatchRecordBoardFirst && !sourceMatchIsRecordRoom && !sourceMatchAction.disputed && (canSubmitSourceMatchLiveResult || canSubmitSourceMatchPostgameResult) ? (
                       <SourceMatchDisputeEditor
                         match={sourceMatch}
                         userById={userById}

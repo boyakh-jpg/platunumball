@@ -197,8 +197,10 @@ const location = useLocation();
     next.delete("attendanceQr");
     setSearchParams(next, { replace: true });
   };
-  const requestMatchDetail = (matchId) => {
-    if (!matchId || app.remoteReady === false || requestedMatchDetailsRef.current.has(matchId)) return;
+  const requestMatchDetail = (matchId, { force = false } = {}) => {
+    if (!matchId || app.remoteReady === false) return;
+    if (force) requestedMatchDetailsRef.current.delete(matchId);
+    if (requestedMatchDetailsRef.current.has(matchId)) return;
     setSelectedMatchDetailFailedId((currentId) => currentId === matchId ? null : currentId);
     setSelectedMatchDetailLoadingId(matchId);
     requestMatchDetailOnce({

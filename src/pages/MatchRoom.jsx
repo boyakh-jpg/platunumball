@@ -5,33 +5,7 @@ import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import { EVIDENCE_OPTIONS, PLAYER_STAT_FIELDS, REPORT_MATCH_WINDOW_MS, normalizeBenchCapacity, normalizeDisputeWindowMinutes } from "../lib/constants.js";
 import { DEFAULT_REPORT_REASON } from "../lib/reportReasons.js";
 import { normalizeMatchPeriodScores } from "../../shared/lib/matchPeriodScores.js";
-import {
-  MATCH_DISPUTE_REASON_OPTIONS,
-  canOperateAssignedMatchReferee,
-  canUserResolveMatchDispute,
-  canRequestVoidMatchRestore,
-  getAgreementStatus,
-  getMatchHostPlayerId,
-  getMatchCancelCopy,
-  getOpenMatchDisputes,
-  getMatchRecordWindow,
-  getMatchManualFinalizationStatus,
-  getMatchReferee,
-  getMatchRecordPlayerIds,
-  getMatchReviewParticipantIds,
-  getMatchResultEntryPermission,
-  getMatchRoomPhase,
-  getMatchPlayerIds,
-  getReportableMatchTimeMs,
-  getReportableMatchUserIds,
-  getSafeMatchSide,
-  getPlayerSideName,
-  getPlayerStatSubmitted,
-  getStatSubmissionStatus,
-  isMatchReferee,
-  isMatchRecordMatch,
-  isPersonalRecordMatch,
-} from "../lib/matchUtils.js";
+import { MATCH_DISPUTE_REASON_OPTIONS, canOperateAssignedMatchReferee, canUserResolveMatchDispute, canRequestVoidMatchRestore, getAgreementStatus, getMatchHostPlayerId, getMatchCancelCopy, getOpenMatchDisputes, getMatchRecordWindow, getMatchManualFinalizationStatus, getMatchReferee, getMatchRecordPlayerIds, getMatchReviewParticipantIds, getMatchResultEntryPermission, getMatchRoomPhase, getMatchPlayerIds, getReportableMatchTimeMs, getReportableMatchUserIds, getSafeMatchSide, getPlayerSideName, getPlayerStatSubmitted, getStatSubmissionStatus, hasMatchFinalSubmission, isMatchReferee, isMatchRecordMatch, isPersonalRecordMatch } from "../lib/matchUtils.js";
 import { getMatchRuleDetailRows, getMeetingPointSummary, normalizeMatchRules } from "../lib/matchRules.js";
 import { getLinkedPersonalRecordDisplayUser } from "../lib/personalRecordRoster.js";
 import { userNeedsPostgameRecordParticipation } from "../lib/postgameRecordVerification.js";
@@ -250,7 +224,9 @@ export default function MatchRoom({ app }) {
   const canEditDisputeDraft = resultEntryPermission.canEditDisputeDraft;
   const currentUserCanSubmitMissingPostgameResult = resultEntryPermission.canSubmitMissingPostgameResult;
   const currentUserEditablePlayerIds = resultEntryPermission.editablePlayerIds;
-  const currentUserCanSubmit = canEditDisputeDraft || currentUserEditablePlayerIds.length > 0;
+  const currentUserCanSubmit = canEditDisputeDraft
+    || currentUserEditablePlayerIds.length > 0
+    || currentUserCanSubmitMissingPostgameResult;
   const canSubmitLiveResult = resultEntryPermission.canSubmitLive;
   const canSubmitResult = resultEntryPermission.canSubmit;
   const canCancel = ["contract", "agreed"].includes(match.status)
@@ -287,13 +263,16 @@ export default function MatchRoom({ app }) {
     return () => window.clearTimeout(timerId);
   }, [manualFinalizationStatus.timeReady, manualFinalizationStatus.remainingMs]);
   const canFinalizeMatch = Boolean(!isSharedRecord && match.endedAt && match.result
+    && hasMatchFinalSubmission(match)
     && !match.confirmedAt
     && (hasReferee ? currentUserIsEligibleReferee : isMatchHost));
   const finalAuthorityLabel = hasReferee ? "배정 심판" : "방장";
   const openDisputes = getOpenMatchDisputes(match);
   const hasOwnOpenDispute = openDisputes.some((dispute) => dispute.by === app.currentUser.id);
   const hasOwnDispute = (match.disputes ?? []).some((dispute) => dispute.by === app.currentUser.id);
-  const matchApprovalOpen = Boolean(match.result && (["approval", "disputed"].includes(match.status) || (match.status === "agreed" && match.endedAt && !recordWindow.disputeExpired)));
+  const matchApprovalOpen = Boolean(match.result
+    && hasMatchFinalSubmission(match)
+    && (["approval", "disputed"].includes(match.status) || (match.status === "agreed" && match.endedAt && !recordWindow.disputeExpired)));
   const noDisputeStatus = manualFinalizationStatus.noDispute;
   const showNoDisputeAction = matchApprovalOpen && noDisputeStatus.participantIds.includes(app.currentUser.id);
   const canAcknowledgeNoDispute = showNoDisputeAction && !noDisputeStatus.acknowledged && !hasOwnDispute;
