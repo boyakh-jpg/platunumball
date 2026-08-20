@@ -6,7 +6,7 @@
   gap: var(--page-section-gap);
 }
 .settings-page .section-card {
-  padding: var(--card-padding);
+  padding: 0 var(--settings-card-padding, var(--card-padding)) var(--settings-card-padding, var(--card-padding));
 }
 @media (max-width: 1180px) {
   .content-grid:not(.home-dashboard-grid),
@@ -29,11 +29,6 @@
 
   .settings-page .content-grid {
     gap: var(--page-section-gap-mobile);
-  }
-}
-@media (max-width: 720px) {
-  .settings-page .section-card {
-    padding: 14px;
   }
 }
 @container (max-width: 999px) {

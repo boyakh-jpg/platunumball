@@ -912,11 +912,11 @@ test("설정 메인은 운영·테스트 카드를 숨기고 표시 설정을 �
   );
   assert.match(
     globalSurfaceStyles,
-    /\.settings-page \.section-card > \.section-title-row:first-child\s*\{[^}]*position:\s*absolute;[^}]*top:\s*calc\(-1 \* var\(--settings-legend-height\) \/ 2\);/,
+    /\.settings-page \.section-card > \.section-title-row:first-child\s*\{[^}]*min-height:\s*var\(--settings-legend-height\);[^}]*margin-bottom:\s*calc\(-1 \* var\(--settings-legend-offset\)\);[^}]*transform:\s*translateY\(calc\(-1 \* var\(--settings-legend-offset\)\)\);/,
   );
   assert.doesNotMatch(
     globalSurfaceStyles,
-    /\.settings-page \.section-card > \.section-title-row:first-child\s*\{[^}]*margin-top:\s*calc\(-1/,
+    /\.settings-page \.section-card > \.section-title-row:first-child\s*\{[^}]*position:\s*absolute;/,
   );
   assert.match(
     globalSurfaceStyles,

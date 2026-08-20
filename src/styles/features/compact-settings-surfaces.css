@@ -351,11 +351,11 @@ html[data-theme="light"] .rank-mode-pill {
 .settings-page .section-card {
   --settings-legend-height: 46px;
   --settings-card-padding: var(--card-padding);
+  --settings-legend-offset: calc(var(--settings-legend-height) / 2);
 
   position: relative;
   gap: var(--space-6);
-  margin-top: calc(var(--settings-legend-height) / 2);
-  padding: calc(var(--settings-card-padding) + (var(--settings-legend-height) / 2)) var(--settings-card-padding) var(--settings-card-padding);
+  margin-top: var(--settings-legend-offset);
   border-width: var(--ui-stroke-width);
   border-style: solid;
   border-color: var(--ui-control-border);
@@ -365,18 +365,18 @@ html[data-theme="light"] .rank-mode-pill {
 }
 
 .settings-page .section-card > .section-title-row:first-child {
-  position: absolute;
-  top: calc(-1 * var(--settings-legend-height) / 2);
-  right: var(--settings-card-padding);
-  left: var(--settings-card-padding);
+  min-width: 0;
   min-height: var(--settings-legend-height);
   align-items: center;
+  margin-bottom: calc(-1 * var(--settings-legend-offset));
+  transform: translateY(calc(-1 * var(--settings-legend-offset)));
 }
 
 .settings-page .section-card > .section-title-row:first-child > :first-child {
   position: relative;
   z-index: 1;
-  margin-left: calc(-1 * var(--space-2));
+  min-width: 0;
+  margin-inline-start: calc(-1 * var(--space-2));
   padding-inline: var(--space-2);
   background: var(--rb-bg);
 }
@@ -541,6 +541,26 @@ html[data-theme="light"] .referee-hover-tier > span {
 
 html[data-theme="light"] .settings-page .section-card {
   background: transparent;
+}
+
+@media (max-width: 720px) {
+  .settings-page .section-card {
+    --settings-legend-height: 40px;
+
+    gap: var(--space-5);
+  }
+
+  .settings-page .section-card > .section-title-row:first-child {
+    align-items: center;
+    flex-wrap: wrap;
+    column-gap: var(--space-3);
+    row-gap: var(--space-2);
+  }
+
+  .settings-page .section-card > .section-title-row:first-child > :first-child {
+    flex: 1 1 180px;
+    overflow-wrap: anywhere;
+  }
 }
 
 html[data-theme="light"] .match-card {
