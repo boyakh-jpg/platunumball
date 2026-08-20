@@ -41,14 +41,21 @@ function makeMatch(overrides = {}) {
   };
 }
 
-test("라이브 결과 행은 명시 최종 제출 전까지 postgame과 Play에 남는다", () => {
+test("명시 최종 제출 없는 종료 경기는 기록 입력창까지만 Play에 남는다", () => {
   const agreed = makeMatch();
   const legacyApproval = makeMatch({ status: "approval" });
+  const openDispute = makeMatch({
+    status: "disputed",
+    disputes: [{ id: "open-dispute", status: "open" }],
+  });
 
   assert.equal(hasMatchFinalSubmission(agreed), false);
   assert.equal(getMatchRoomPhase(agreed, "2026-08-21T01:00:00.000Z").phase, "postgame");
   assert.equal(getMatchRoomPhase(legacyApproval, "2026-08-21T01:00:00.000Z").phase, "postgame");
-  assert.equal(isMatchInPlayMenu(agreed, "2026-08-21T01:00:00.000Z"), true);
+  assert.equal(isMatchInPlayMenu(agreed, "2026-08-21T00:05:00.000Z"), true);
+  assert.equal(isMatchInPlayMenu(agreed, "2026-08-21T01:00:00.000Z"), false);
+  assert.equal(isMatchInPlayMenu(legacyApproval, "2026-08-21T01:00:00.000Z"), false);
+  assert.equal(isMatchInPlayMenu(openDispute, "2026-08-21T01:00:00.000Z"), true);
 });
 
 test("명시 최종 제출 시각부터 이의·확정 창을 계산한다", () => {
@@ -89,6 +96,13 @@ test("무심판 경기 방장은 canonical 점수만 명시 제출하고 +/-는 
   assert.equal(host.canSubmitMissingPostgameResult, true);
   assert.deepEqual(host.editableScoreSides, []);
   assert.equal(regular.canSubmitMissingPostgameResult, false);
+  assert.equal(
+    getMatchResultEntryPermission(match, "host", {
+      canOperatePostStart: true,
+      now: "2026-08-21T01:00:00.000Z",
+    }).canSubmitMissingPostgameResult,
+    true,
+  );
   assert.equal(
     getMatchResultEntryPermission({ ...match, status: "approval" }, "host", {
       canOperatePostStart: true,
@@ -157,7 +171,7 @@ test("자동 확정과 Play 조회는 marker·phase·relation을 pagination 전�
     readSource("server/api/matches/_listQueries.js"),
     readSource("server/api/matches/_listProjection.js"),
     readSource("server/api/matches/_listLoader.js"),
-    readSource("supabase/migrations/20260821150000_explicit_match_final_submission_and_recorder_page.sql"),
+    readSource("supabase/migrations/20260821210000_expire_unsubmitted_postgame_play_rows.sql"),
   ]);
   const recorderStart = migrationSource.indexOf("create or replace function public.rankball_recorder_match_page");
   const recorderEnd = migrationSource.indexOf("$function$;", recorderStart);
@@ -200,6 +214,7 @@ test("자동 확정과 Play 조회는 marker·phase·relation을 pagination 전�
   assert.match(recorderSource, /match_row\.reserve_players -> 'teamA'/u);
   assert.doesNotMatch(recorderSource, /former_referee|stat_recorders|submitted_by/u);
   assert.match(recorderSource, /recordType', 'standard'\) not in \('personal_record', 'solo'\)/u);
+  assert.match(recorderSource, /result\.final_submitted_at is null[\s\S]*clock_timestamp\(\) <= match_row\.ended_at[\s\S]*stat_entry_minutes/u);
   assert.doesNotMatch(recorderSource, /recordType'[^\n]*not in \([^\n]*'match_record'/u);
   const relationIndex = recorderSource.indexOf("match_row.created_by = safe_profile_id");
   const phaseIndex = recorderSource.indexOf("and match_row.status in ('agreed', 'approval', 'disputed')");

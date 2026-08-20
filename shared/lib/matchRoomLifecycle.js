@@ -153,7 +153,15 @@ export function isMatchInScheduleMenu(match = {}, now = new Date()) {
 }
 
 export function isMatchInPlayMenu(match = {}, now = new Date()) {
-  return ["live", "postgame", "dispute"].includes(getMatchRoomPhase(match, now).phase);
+  const phase = getMatchRoomPhase(match, now).phase;
+  if (!["live", "postgame", "dispute"].includes(phase)) return false;
+  if (
+    !hasMatchFinalSubmission(match)
+    && getMatchEndDate(match)
+    && getOpenMatchDisputes(match).length === 0
+    && getMatchRecordWindow(match, now).statExpired
+  ) return false;
+  return true;
 }
 
 export function getMatchRecordWindow(match = {}, now = Date.now()) {
