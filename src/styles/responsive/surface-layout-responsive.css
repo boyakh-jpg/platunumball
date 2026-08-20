@@ -79,9 +79,12 @@ html[data-theme="light"] .rank-home .rank-mode-card {
     border-left: 0;
   }
 
-  .settings-page .settings-address-actions > .button,
-  .settings-page .settings-save-row > .button {
+  .settings-page .settings-address-actions > .button {
     flex-basis: 100%;
     width: 100%;
+  }
+
+  .settings-page .settings-save-row:has(> .button) {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

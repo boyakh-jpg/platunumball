@@ -68,25 +68,18 @@
   gap: var(--space-3);
 }
 
-.settings-nav-grid a {
-  display: grid;
-  gap: var(--space-2);
-  min-height: var(--ui-button-height);
-  align-content: center;
-  border: var(--ui-button-border-width) solid var(--ui-control-border);
-  border-radius: var(--ui-control-radius);
-  background: var(--ui-control-bg);
-  color: var(--rb-text);
-  padding: 12px;
-  text-decoration: none;
-  box-shadow: none;
+.settings-nav-grid > .button {
+  width: 100%;
+  min-width: 0;
+  justify-content: center;
+  text-align: center;
 }
 
-.settings-nav-grid a + a {
-  border-top-color: var(--ui-control-border);
+.settings-nav-grid > .button strong {
+  font: inherit;
 }
 
-.settings-nav-grid a span {
+.settings-nav-grid > .button span {
   display: none;
 }
 
@@ -130,7 +123,14 @@
 }
 
 .external-mode-control {
+  display: grid;
+  width: 100%;
+  max-width: 100%;
   grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.external-mode-control > button {
+  min-width: 0;
 }
 
 .external-contact-url {

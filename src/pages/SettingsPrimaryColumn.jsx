@@ -69,9 +69,9 @@ export default function SettingsPrimaryColumn({ controller }) {
               </div>
             </legend>
             <div className="settings-nav-grid">
-              <Link to="/app/settings/favorites"><strong>즐겨찾기</strong><span>프로필/팀/구장/심판</span></Link>
-              <Link to="/app/settings/courts"><strong>구장 신청</strong><span>주소 검색/등록 요청</span></Link>
-              <Link to="/app/settings/referee"><strong>심판</strong><span>룰북/시험/등록 요청</span></Link>
+              <Button as={Link} variant="secondary" to="/app/settings/favorites"><strong>즐겨찾기</strong><span>프로필/팀/구장/심판</span></Button>
+              <Button as={Link} variant="secondary" to="/app/settings/courts"><strong>구장 신청</strong><span>주소 검색/등록 요청</span></Button>
+              <Button as={Link} variant="secondary" to="/app/settings/referee"><strong>심판</strong><span>룰북/시험/등록 요청</span></Button>
             </div>
           </Card>
 
@@ -201,6 +201,11 @@ export default function SettingsPrimaryColumn({ controller }) {
                 <h2>디스코드 알림</h2>
               </div>
             </legend>
+            <div className="settings-fieldset-status-row">
+              <Badge tone={discordLinked && !discordDraft.unlink && discordDraft.enabled ? "green" : "neutral"}>
+                {discordLinked && !discordDraft.unlink && discordDraft.enabled ? "DM ON" : "앱 알림"}
+              </Badge>
+            </div>
             <div className="contract-grid single ui-support-grid">
               {discordLinked ? (
                 <div className="discord-profile-line">
@@ -276,9 +281,6 @@ export default function SettingsPrimaryColumn({ controller }) {
                   {discordLinkPending ? "연동 준비 중" : "Discord 연동"}
                 </Button>
               )}
-              <Badge tone={discordLinked && !discordDraft.unlink && discordDraft.enabled ? "green" : "neutral"}>
-                {discordLinked && !discordDraft.unlink && discordDraft.enabled ? "DM ON" : "앱 알림"}
-              </Badge>
             </div>
             {discordSaveStatus ? <small>{discordSaveStatus}</small> : null}
           </Card>

@@ -119,11 +119,14 @@ export default function ExternalNotificationSettingsCard({ app, discordLinked })
   return (
     <Card as="fieldset" className="section-card settings-fieldset-card settings-preference-card external-notification-card">
       <legend className="section-title-row"><div><p className="eyebrow">External notifications</p><h2>외부 알림·연락</h2></div></legend>
+      <div className="settings-fieldset-status-row">
+        <Badge tone={devicePushEnabled ? "green" : "neutral"}>{devicePushEnabled ? `PUSH ON · ${draft.pushSubscriptionCount}대` : "PUSH OFF"}</Badge>
+      </div>
       <div className="settings-preference-group">
         <div className="settings-preference-heading"><strong>알림 경로</strong><span>앱 내부 알림은 항상 유지됩니다. Discord는 아래 DM 설정도 켜야 합니다.</span></div>
-        <div className="ui-segmented-control segmented-control external-mode-control">
+        <div className="ui-segmented-control segmented-control external-mode-control" role="radiogroup" aria-label="알림 경로">
           {[["push", "푸시"], ["discord", "Discord"], ["both", "둘 다"], ["none", "사용 안 함"]].map(([mode, label]) => (
-            <button key={mode} type="button" className={draft.preferences.mode === mode ? "active" : ""} disabled={pending || ((mode === "discord" || mode === "both") && !discordLinked)} onClick={() => setDraft((current) => ({ ...current, preferences: { ...current.preferences, mode } }))}>{label}</button>
+            <button key={mode} type="button" className={draft.preferences.mode === mode ? "active" : ""} aria-pressed={draft.preferences.mode === mode} disabled={pending || ((mode === "discord" || mode === "both") && !discordLinked)} onClick={() => setDraft((current) => ({ ...current, preferences: { ...current.preferences, mode } }))}>{label}</button>
           ))}
         </div>
         <div className="settings-toggle-grid ui-design-choice-list">
@@ -131,8 +134,7 @@ export default function ExternalNotificationSettingsCard({ app, discordLinked })
         </div>
         {needsIosHomeScreen ? <small>iPhone은 Safari 공유 → 홈 화면에 추가한 뒤 앱에서 푸시를 켜세요.</small> : null}
         <div className="ui-action-row settings-address-actions">
-          <Button type="button" size="sm" variant="secondary" disabled={pending || !pushSupported || needsIosHomeScreen} onClick={devicePushEnabled ? disablePush : enablePush}>{devicePushEnabled ? "이 기기 푸시 해제" : "이 기기 푸시 연결"}</Button>
-          <Badge tone={devicePushEnabled ? "green" : "neutral"}>{devicePushEnabled ? `PUSH ON · ${draft.pushSubscriptionCount}대` : "PUSH OFF"}</Badge>
+          <Button type="button" variant="secondary" disabled={pending || !pushSupported || needsIosHomeScreen} onClick={devicePushEnabled ? disablePush : enablePush}>{devicePushEnabled ? "이 기기 푸시 해제" : "이 기기 푸시 연결"}</Button>
         </div>
       </div>
       <div className="settings-preference-group">
@@ -143,7 +145,7 @@ export default function ExternalNotificationSettingsCard({ app, discordLinked })
         </div>
         <label className="external-contact-url"><span>오픈프로필 URL</span><input type="url" value={draft.contact.kakaoOpenProfileUrl} disabled={pending || !draft.contact.enabled || !draft.contact.kakaoEnabled} placeholder="https://open.kakao.com/o/..." onChange={(event) => setDraft((current) => ({ ...current, contact: { ...current.contact, kakaoOpenProfileUrl: event.target.value } }))} /></label>
       </div>
-      <div className="settings-save-row"><small>{status}</small><Button type="button" disabled={pending} onClick={save}>{pending ? "처리 중" : "저장"}</Button></div>
+      <div className="settings-save-row"><small role="status" aria-live="polite">{status}</small><Button type="button" disabled={pending} onClick={save}>{pending ? "처리 중" : "저장"}</Button></div>
     </Card>
   );
 }

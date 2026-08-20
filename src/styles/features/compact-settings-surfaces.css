@@ -318,6 +318,8 @@ html[data-theme="light"] .rank-mode-pill {
 }
 
 .settings-page .content-grid {
+  --settings-action-inline-size: 148px;
+
   grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: start;
   gap: var(--page-column-gap);
@@ -327,10 +329,25 @@ html[data-theme="light"] .rank-mode-pill {
   justify-content: flex-end;
 }
 
-.settings-page .settings-address-actions > .button,
-.settings-page .settings-save-row > .button {
-  flex: 0 0 148px;
-  width: 148px;
+.settings-page .settings-address-actions > .button {
+  flex: 0 0 var(--settings-action-inline-size);
+  width: var(--settings-action-inline-size);
+}
+
+.settings-page .settings-save-row:has(> .button) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--settings-action-inline-size);
+  align-items: center;
+}
+
+.settings-page .settings-save-row:has(> .button) > small {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.settings-page .settings-save-row:has(> .button) > .button {
+  width: 100%;
+  min-width: 0;
 }
 
 .settings-page .settings-paired-actions {
