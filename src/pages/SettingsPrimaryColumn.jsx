@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { MessageCircle, Moon, ShieldCheck, Star, Sun, Unlink2 } from "lucide-react";
+import { MessageCircle, Moon, ShieldCheck, Sun, Unlink2 } from "lucide-react";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import Badge from "../components/common/Badge.jsx";
@@ -67,7 +67,6 @@ export default function SettingsPrimaryColumn({ controller }) {
                 <p className="eyebrow">Setting pages</p>
                 <h2>세부 설정</h2>
               </div>
-              <ShieldCheck size={22} />
             </legend>
             <div className="settings-nav-grid">
               <Link to="/app/settings/favorites"><strong>즐겨찾기</strong><span>프로필/팀/구장/심판</span></Link>
@@ -82,7 +81,6 @@ export default function SettingsPrimaryColumn({ controller }) {
                 <p className="eyebrow">화면 테마</p>
                 <h2>밝기</h2>
               </div>
-              {themeDraft === "light" ? <Sun size={22} /> : <Moon size={22} />}
             </legend>
             <div
               className="ui-segmented-control segmented-control"
@@ -119,7 +117,6 @@ export default function SettingsPrimaryColumn({ controller }) {
                 <p className="eyebrow">Favorites</p>
                 <h2>즐겨찾기 설정</h2>
               </div>
-              <Star size={20} />
             </legend>
             <SearchPicker
               key={favoriteSearchResetKey}
@@ -203,13 +200,6 @@ export default function SettingsPrimaryColumn({ controller }) {
                 <p className="eyebrow">Discord</p>
                 <h2>디스코드 알림</h2>
               </div>
-              {discordLinked ? (
-                <a className="discord-link-badge" href={discordProfileUrl} target="_blank" rel="noreferrer">
-                  <MessageCircle size={14} /> 연동됨
-                </a>
-              ) : (
-                <MessageCircle size={20} />
-              )}
             </legend>
             <div className="contract-grid single ui-support-grid">
               {discordLinked ? (
@@ -218,6 +208,9 @@ export default function SettingsPrimaryColumn({ controller }) {
                     {app.currentUser.name.slice(0, 1)}
                   </span>
                   <strong>{app.currentUser.name}</strong>
+                  <a className="discord-link-badge" href={discordProfileUrl} target="_blank" rel="noreferrer">
+                    <MessageCircle size={14} /> 연동됨
+                  </a>
                 </div>
               ) : null}
               <div>
@@ -296,7 +289,6 @@ export default function SettingsPrimaryColumn({ controller }) {
                 <p className="eyebrow">Display</p>
                 <h2>표시 설정</h2>
               </div>
-              <Badge tone={generalSettingsDirty ? "orange" : "neutral"}>{generalSettingsDirty ? "변경 있음" : "저장됨"}</Badge>
             </legend>
 
             <div className="settings-preference-group settings-home-guide-group">
@@ -387,7 +379,6 @@ export default function SettingsPrimaryColumn({ controller }) {
                   <p className="eyebrow">Operations</p>
                   <h2>관리자 메뉴</h2>
                 </div>
-                <ShieldCheck size={22} />
               </legend>
               <div className="contract-grid single ui-support-grid">
                 <div>

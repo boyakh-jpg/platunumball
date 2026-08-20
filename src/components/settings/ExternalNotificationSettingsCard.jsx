@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { BellRing } from "lucide-react";
 import Badge from "../common/Badge.jsx";
 import Button from "../common/Button.jsx";
 import Card from "../common/Card.jsx";
@@ -119,7 +118,7 @@ export default function ExternalNotificationSettingsCard({ app, discordLinked })
   ];
   return (
     <Card as="fieldset" className="section-card settings-fieldset-card settings-preference-card external-notification-card">
-      <legend className="section-title-row"><div><p className="eyebrow">External notifications</p><h2>외부 알림·연락</h2></div><BellRing size={21} /></legend>
+      <legend className="section-title-row"><div><p className="eyebrow">External notifications</p><h2>외부 알림·연락</h2></div></legend>
       <div className="settings-preference-group">
         <div className="settings-preference-heading"><strong>알림 경로</strong><span>앱 내부 알림은 항상 유지됩니다. Discord는 아래 DM 설정도 켜야 합니다.</span></div>
         <div className="ui-segmented-control segmented-control external-mode-control">

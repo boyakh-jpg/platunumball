@@ -85,7 +85,6 @@ export default function SettingsSideColumn({ controller, onOpenList }) {
                 <p className="eyebrow">차단</p>
                 <h2>플레이어 숨김</h2>
               </div>
-              <Badge tone={blockedUserIds.length ? "orange" : "neutral"}>{blockedUserIds.length}명</Badge>
             </legend>
             <form className="form-stack" onSubmit={submitBlock}>
               <SearchPicker
@@ -106,7 +105,7 @@ export default function SettingsSideColumn({ controller, onOpenList }) {
               />
               <div className="settings-paired-actions">
                 <Button type="submit" variant="secondary" disabled={!selectedBlockUserId || blockSavePending}>{blockSavePending ? "저장 중" : "차단"}</Button>
-                <Button type="button" variant="secondary" onClick={() => onOpenList?.("blocks")}>차단 플레이어 목록</Button>
+                <Button type="button" variant="secondary" onClick={() => onOpenList?.("blocks")}>차단 플레이어 목록 {blockedUserIds.length}명</Button>
               </div>
               {blockSaveStatus ? <small role="status">{blockSaveStatus}</small> : null}
             </form>
@@ -118,8 +117,10 @@ export default function SettingsSideColumn({ controller, onOpenList }) {
                 <p className="eyebrow">Court</p>
                 <h2>구장 등록요청</h2>
               </div>
-              <Badge tone={courtQuotaBlocked ? "orange" : "neutral"}>{courtQuotaLabel}</Badge>
             </legend>
+            <div className="settings-fieldset-status-row">
+              <Badge tone={courtQuotaBlocked ? "orange" : "neutral"}>{courtQuotaLabel}</Badge>
+            </div>
             {!canOpenCourtRequestForm ? (
               <div className="tier-range-note tier-range-note-warning">
                 <div>

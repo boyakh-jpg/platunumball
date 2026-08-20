@@ -142,7 +142,6 @@ export default function SettingsPageView({ controller, auth }) {
                 <p className="eyebrow">ACCOUNT</p>
                 <h2>계정 관리</h2>
               </div>
-              <ArrowRightLeft size={20} aria-hidden="true" />
             </legend>
             {canSwitchTestAccount ? (
               <details className="settings-test-account-switcher">

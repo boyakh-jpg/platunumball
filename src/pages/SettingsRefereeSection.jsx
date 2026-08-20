@@ -39,7 +39,6 @@ export default function SettingsRefereeSection({ controller }) {
                 <p className="eyebrow">Referee</p>
                 <h2>심판 등록요청</h2>
               </div>
-              <ShieldCheck size={22} />
             </legend>
             <div className="referee-rulebook-panel compact ui-design-info-surface">
               <div className="section-title-row referee-rulebook-head">

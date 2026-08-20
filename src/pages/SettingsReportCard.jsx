@@ -1,7 +1,6 @@
 import { Database, MapPin } from "lucide-react";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
-import Badge from "../components/common/Badge.jsx";
 import SearchPicker from "../components/common/SearchPicker.jsx";
 import ProfileEmblem from "../components/profile/ProfileEmblem.jsx";
 import TeamEmblem from "../components/team/TeamEmblem.jsx";
@@ -101,7 +100,6 @@ export function SettingsReportCard({ controller, onOpenList }) {
                 <p className="eyebrow">신고</p>
                 <h2>신고 접수</h2>
               </div>
-              <Badge tone={app.state.reports?.length ? "orange" : "neutral"}>{app.state.reports?.length ?? 0}건</Badge>
             </legend>
             <form className="form-stack" onSubmit={submitReport}>
               <label>

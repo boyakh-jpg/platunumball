@@ -921,6 +921,10 @@ test("설정 메인은 운영·테스트 카드를 숨기고 표시 설정을 �
     /\.settings-page fieldset\.settings-fieldset-card > legend\.section-title-row:first-child\s*\{[^}]*(?:position:\s*absolute|transform:|margin-bottom:\s*-)/,
   );
   assert.match(
+    globalSurfaceStyles,
+    /\.settings-page fieldset\.settings-fieldset-card > legend\.section-title-row:first-child\s*\{[^}]*display:\s*block;/,
+  );
+  assert.match(
     primitiveStyles,
     /\.section-card\.ui-design-category-surface:not\(\.match-receipt-card\):not\(\.settings-fieldset-card\)/,
   );
@@ -944,6 +948,15 @@ test("설정 메인은 운영·테스트 카드를 숨기고 표시 설정을 �
     externalNotificationSettingsCardSource,
     /as="fieldset" className="section-card settings-fieldset-card[^"]*"[\s\S]*?<legend className="section-title-row">/,
   );
+  const settingsLegendSources = [pageSources.settings, externalNotificationSettingsCardSource];
+  const settingsLegends = settingsLegendSources.flatMap((source) =>
+    [...source.matchAll(/<legend className="section-title-row">([\s\S]*?)<\/legend>/g)].map((match) => match[1]),
+  );
+  assert.equal(settingsLegends.length, 12);
+  settingsLegends.forEach((legend) => {
+    assert.match(legend, /^\s*<div>[\s\S]*<\/div>\s*$/);
+    assert.doesNotMatch(legend, /<Badge|<button|<a\s|<(?:BellRing|ShieldCheck|Star|ArrowRightLeft|MessageCircle)\b/);
+  });
   assert.match(
     globalSurfaceStyles,
     /\.settings-page \.settings-toggle-grid label \+ label\s*\{[^}]*padding-left:\s*0;[^}]*border-top:\s*0;/,
