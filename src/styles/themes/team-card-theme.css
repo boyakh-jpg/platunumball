@@ -361,6 +361,6 @@
 }
 
 .match-focus-card,
-.result-card {
+.result-card:not(.workflow-fieldset) {
   border-color: rgba(255, 211, 108, 0.24);
 }

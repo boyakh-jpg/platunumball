@@ -15,12 +15,14 @@ export function CreateMatchIntentSection({ context }) {
   return (
     <>
 {wizardStep === 1 ? (
-        <Card className="section-card full-span create-visibility-card">
-          <div className="section-title-row">
+        <Card as="fieldset" className="section-card full-span create-visibility-card workflow-fieldset">
+          <legend className="section-title-row">
             <div>
               <p className="eyebrow">Room visibility</p>
               <h2 className="create-choice-heading">{isRecordCreateIntent ? "기록 방식" : "공개 범위"}</h2>
             </div>
+          </legend>
+          <div className="workflow-fieldset-status-row">
             <Badge tone={isTournamentRoom ? "gold" : isPublicRoom ? "green" : "neutral"}>{getRoomKindLabel(currentRoomKind)}</Badge>
           </div>
           <div className={isRecordCreateIntent ? "create-mode-grid" : "create-mode-grid is-compact-control-grid has-supporting-copy"}>

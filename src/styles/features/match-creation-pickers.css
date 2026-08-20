@@ -276,6 +276,9 @@ label {
   position: relative;
   z-index: 10;
   overflow: visible;
+}
+
+.selector-panel:not(.workflow-fieldset) {
   border-color: rgba(70, 224, 182, 0.2);
 }
 .search-controls {

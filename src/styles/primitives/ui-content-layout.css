@@ -9,7 +9,7 @@ html[data-theme] .ui-design-app :is(
   .ui-design-info-surface,
   .ui-design-soft-surface,
   .ui-design-borderless-surface
-):not(.ui-liquid-glass):not(.ui-design-category-surface):not(.ui-design-decorative-surface):not(.ui-design-record-surface):not(.ui-match-list-surface):not(.arena-queue-controls):not(.match-receipt-card):not(.match-receipt-card *),
+):not(.ui-liquid-glass):not(.ui-design-category-surface):not(.ui-design-decorative-surface):not(.ui-design-record-surface):not(.ui-match-list-surface):not(.arena-queue-controls):not(.workflow-fieldset):not(.match-receipt-card):not(.match-receipt-card *),
 html[data-theme] .ui-design-app .ui-design-borderless-list > :not(.match-receipt-card):not(.match-receipt-card *),
 html[data-theme] .ui-design-app .ui-design-choice-list > :not(.match-receipt-card):not(.match-receipt-card *) {
   border-color: transparent;
@@ -23,7 +23,7 @@ html[data-theme] .ui-design-app .ui-design-borderless-list > :not(.match-receipt
 
 html[data-theme]
   .ui-design-app
-  .section-card.ui-design-category-surface:not(.match-receipt-card):not(.settings-fieldset-card) {
+  .section-card.ui-design-category-surface:not(.match-receipt-card):not(.settings-fieldset-card):not(.workflow-fieldset) {
   border-width: var(--ui-stroke-width) 0 0;
   border-style: solid;
   border-color: var(--rb-line) transparent transparent;
@@ -33,6 +33,51 @@ html[data-theme]
   box-shadow: none;
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
+}
+
+html[data-theme] .ui-design-app fieldset.workflow-fieldset {
+  --workflow-fieldset-padding: var(--card-padding);
+  position: relative;
+  display: grid;
+  min-inline-size: 0;
+  gap: var(--space-6);
+  margin: 0;
+  padding: var(--space-4) var(--workflow-fieldset-padding) var(--workflow-fieldset-padding);
+  border: var(--ui-stroke-width) solid var(--ui-control-border);
+  border-radius: var(--radius);
+  background: transparent;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+html[data-theme] .ui-design-app fieldset.workflow-fieldset > legend.section-title-row:first-child {
+  display: block;
+  inline-size: auto;
+  max-inline-size: calc(100% - var(--space-4));
+  min-inline-size: 0;
+  margin: 0;
+  padding-inline: var(--space-2);
+}
+
+html[data-theme] .ui-design-app fieldset.workflow-fieldset > legend.section-title-row:first-child > :first-child {
+  min-inline-size: 0;
+}
+
+html[data-theme] .ui-design-app .workflow-fieldset-status-row {
+  display: flex;
+  min-inline-size: 0;
+  justify-content: flex-end;
+}
+
+@media (max-width: 720px) {
+  html[data-theme] .ui-design-app fieldset.workflow-fieldset {
+    gap: var(--space-5);
+  }
+
+  html[data-theme] .ui-design-app fieldset.workflow-fieldset > legend.section-title-row:first-child > :first-child {
+    overflow-wrap: anywhere;
+  }
 }
 
 html[data-theme] .ui-design-app .ui-design-content-surface.ui-design-info-surface:not(.ui-design-record-surface):not(.ui-match-list-surface):not(.match-receipt-card *) {

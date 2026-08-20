@@ -218,12 +218,14 @@ return (
               </Card>
             ) : null}
             {(hasReferee || isSoloRecord) && shouldShowResultEntry ? (
-            <Card id="result-entry" className="section-card result-card">
-            <div className="section-title-row">
+            <Card as="fieldset" id="result-entry" className="section-card result-card workflow-fieldset">
+            <legend className="section-title-row">
               <div>
                 <p className="eyebrow">Result entry</p>
                 <h2>경기 결과 입력</h2>
               </div>
+            </legend>
+            <div className="workflow-fieldset-status-row">
               <Badge tone={canSubmitResult ? "green" : recordWindow.statExpired ? "orange" : "neutral"}>{recordLockReason}</Badge>
             </div>
             {!canSubmitResult ? (
@@ -435,12 +437,14 @@ return (
             onSubmit={app.actions.submitMatchThumbs}
           />
           {canSubmitCourtReview || existingCourtReview ? (
-            <Card className="section-card court-review-card">
-              <div className="section-title-row">
+            <Card as="fieldset" className="section-card court-review-card workflow-fieldset">
+              <legend className="section-title-row">
                 <div>
                   <p className="eyebrow">Court review</p>
                   <h2>구장 리뷰</h2>
                 </div>
+              </legend>
+              <div className="workflow-fieldset-status-row">
                 <Badge tone={existingCourtReview ? "gold" : canSubmitCourtReview ? "green" : "neutral"}>{existingCourtReview ? "제출됨" : canSubmitCourtReview ? "작성 가능" : "잠김"}</Badge>
               </div>
               <p className="muted">{match.court}에서 경기한 참가자만 남길 수 있습니다. 별점은 구장 카드 평균에 반영됩니다.</p>

@@ -17,13 +17,13 @@ export function CreateMatchPolicyReviewSection({ context }) {
         ) : null}
 
         {wizardStep === 3 || wizardStep === 5 || (isMatchRecordRoom && wizardStep === 1) ? (
-        <Card className="section-card full-span">
-          <div className="section-title-row">
+        <Card as="fieldset" className="section-card full-span workflow-fieldset">
+          <legend className="section-title-row">
             <div>
               <p className="eyebrow">{isSoloRecord || isMatchRecordRoom ? "Record Note" : "계약 조건"}</p>
               <h2>{isSoloRecord || isMatchRecordRoom ? "기록 메모" : "약속과 메모"}</h2>
             </div>
-          </div>
+          </legend>
           {isStandardCreateWizard || isTournamentRoom ? (
             <MatchOperationsPolicyFields draft={draft} onChange={update} />
           ) : null}

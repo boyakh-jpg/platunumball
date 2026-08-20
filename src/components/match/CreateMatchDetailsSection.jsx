@@ -76,13 +76,13 @@ export function CreateMatchDetailsSection({ context }) {
   return (
     <>
 {wizardStep === 1 ? (
-        <Card className="section-card full-span">
-          <div className="section-title-row">
+        <Card as="fieldset" className="section-card full-span workflow-fieldset">
+          <legend className="section-title-row">
             <div>
               <p className="eyebrow">기본 설정</p>
               <h2>경기 정보와 일정</h2>
             </div>
-          </div>
+          </legend>
           <div className={`form-grid create-match-info-grid ${!isTournamentRoom && !isSoloRecord && !isMatchRecordRoom ? "is-standard-room" : ""}`}>
             <label className="create-title-field">
               {isTournamentRoom ? "대회 이름" : "제목"}

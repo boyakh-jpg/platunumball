@@ -23,12 +23,14 @@ export function CreateMatchCourtRosterSection({ context }) {
   return (
     <>
 {wizardStep === finalWizardStep ? (
-        <Card className="section-card full-span selector-panel">
-          <div className="section-title-row">
+        <Card as="fieldset" className="section-card full-span selector-panel workflow-fieldset">
+          <legend className="section-title-row">
             <div>
               <p className="eyebrow">Court Finder</p>
               <h2>코트 검색</h2>
             </div>
+          </legend>
+          <div className="workflow-fieldset-status-row">
             <Badge tone={selectedCourt ? "green" : recordCourtOptional ? "neutral" : "orange"}>
               {selectedCourt?.name ?? (recordCourtOptional ? "구장 미정" : "구장 선택 필요")}
             </Badge>
@@ -183,13 +185,13 @@ export function CreateMatchCourtRosterSection({ context }) {
         />
 
         {wizardStep === 1 ? (
-        <Card className="section-card full-span selector-panel">
-          <div className="section-title-row">
+        <Card as="fieldset" className="section-card full-span selector-panel workflow-fieldset">
+          <legend className="section-title-row">
             <div>
               <p className="eyebrow">{isSoloRecord ? "Solo Record" : isMatchRecordRoom ? "Record Setup" : isTournamentRoom || isTeamRoom ? "Team Finder" : "Match Criteria"}</p>
               <h2>{isSoloRecord ? "개인 스탯" : isMatchRecordRoom ? "방에서 참가자 구성" : isTournamentRoom ? "초대 팀 선택" : isTeamRoom ? "방 생성 후 팀 선택" : "개인전 매칭 기준"}</h2>
             </div>
-          </div>
+          </legend>
           {isSoloRecord ? (
             <>
               <div className="create-public-note">

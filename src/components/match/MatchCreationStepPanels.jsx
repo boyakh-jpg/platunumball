@@ -9,13 +9,13 @@ export function MatchCreationRulePanel({
   onChange,
 }) {
   return (
-    <Card className="section-card full-span">
-      <div className="section-title-row">
+    <Card as="fieldset" className="section-card full-span workflow-fieldset">
+      <legend className="section-title-row">
         <div>
           <p className="eyebrow">규칙</p>
           <h2>룰 설정</h2>
         </div>
-      </div>
+      </legend>
       <RuleSelector draft={draft} onChange={onChange} />
       <div className={`form-grid two create-rules-grid${isTournamentRoom ? " has-schedule-note" : ""}`}>
         <label>

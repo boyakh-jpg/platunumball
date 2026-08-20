@@ -230,13 +230,13 @@ test("앱은 분류 박스 없는 표준 디자인을 사용하고 비교 데모
   assert.doesNotMatch(pageSources.home, /STANDARD_HOME_LAYOUT|ui-design-home-page|ui-design-main-hero/);
   assert.match(
     editorialAppStyles,
-    /\.ui-design-category-surface\.ui-design-surface:not\(\.settings-fieldset-card\)\s*\{[\s\S]*?border-width:\s*var\(--ui-stroke-width\) 0 0;[\s\S]*?background:\s*transparent;[\s\S]*?box-shadow:\s*none;/,
+    /\.ui-design-category-surface\.ui-design-surface:not\(\.settings-fieldset-card\):not\(\.workflow-fieldset\)\s*\{[\s\S]*?border-width:\s*var\(--ui-stroke-width\) 0 0;[\s\S]*?background:\s*transparent;[\s\S]*?box-shadow:\s*none;/,
   );
-  assert.match(editorialAppStyles, /\.ui-design-surface:not\(\.settings-fieldset-card\)\s*\{[\s\S]*?border-width:\s*var\(--ui-card-border-width\);/);
+  assert.match(editorialAppStyles, /\.ui-design-surface:not\(\.settings-fieldset-card\):not\(\.workflow-fieldset\)\s*\{[\s\S]*?border-width:\s*var\(--ui-card-border-width\);/);
   assert.match(tokenStyles, /\[data-design="editorial"\] \.ui-design-app\s*\{[\s\S]*?--ui-card-border-width:\s*0px;[\s\S]*?--ui-button-border-width:\s*0px;[\s\S]*?--ui-control-group-border-width:\s*0px;[\s\S]*?--ui-room-modal-border-width:\s*0px;[\s\S]*?--ui-room-panel-border-width:\s*0px;[\s\S]*?--ui-hero-border-width:\s*0px;[\s\S]*?\}/);
   assert.match(editorialAppStyles, /--ui-design-section-rule-space:\s*calc\(var\(--card-padding\) \* 2\);/);
   assert.match(editorialAppStyles, /--ui-design-soft-surface-bg:\s*color-mix\(in srgb,\s*var\(--rb-bg-2\) 86%,\s*var\(--rb-bg\)\);/);
-  assert.match(editorialAppStyles, /\.ui-design-info-surface:not\(\.settings-fieldset-card\),[\s\S]*?html\[data-theme\][\s\S]*?\.ui-design-borderless-list > \*\s*\{[\s\S]*?border-width:\s*var\(--ui-design-surface-border-width\);[\s\S]*?border-radius:\s*var\(--ui-card-radius\);[\s\S]*?background-color:\s*var\(--ui-design-soft-surface-bg\);/);
+  assert.match(editorialAppStyles, /\.ui-design-info-surface:not\(\.settings-fieldset-card\):not\(\.workflow-fieldset\),[\s\S]*?html\[data-theme\][\s\S]*?\.ui-design-borderless-list > \*\s*\{[\s\S]*?border-width:\s*var\(--ui-design-surface-border-width\);[\s\S]*?border-radius:\s*var\(--ui-card-radius\);[\s\S]*?background-color:\s*var\(--ui-design-soft-surface-bg\);/);
   assert.match(editorialAppStyles, /\.ui-design-info-surface\.ui-design-info-accent\s*\{[\s\S]*?border-inline-start:\s*4px solid var\(--ui-info-accent, transparent\);/);
   assert.match(editorialAppStyles, /\.ui-design-record-surface\.ui-design-info-surface\s*\{[\s\S]*?border:\s*0;[\s\S]*?border-radius:\s*0;[\s\S]*?background:\s*transparent;[\s\S]*?box-shadow:\s*none;/);
   assert.match(editorialAppStyles, /html\[data-theme\][\s\S]*?\.ui-design-soft-surface\s*\{[\s\S]*?border-width:\s*var\(--ui-card-border-width\);[\s\S]*?background:\s*var\(--ui-design-soft-surface-bg\);/);
@@ -963,6 +963,41 @@ test("설정 메인은 운영·테스트 카드를 숨기고 표시 설정을 �
   );
 });
 
+test("방 생성과 경기 입력 workflow는 실제 fieldset 흐름을 사용한다", () => {
+  const workflowSources = [
+    createMatchIntentSectionSource,
+    read("src/components/match/CreateMatchDetailsSection.jsx"),
+    createMatchCourtRosterSectionSource,
+    read("src/components/match/MatchCreationStepPanels.jsx"),
+    read("src/components/match/CreateMatchPolicyReviewSection.jsx"),
+    read("src/pages/MatchRoomView.jsx"),
+  ].join("\n");
+
+  assert.equal(count(workflowSources, 'as="fieldset"'), 8);
+  assert.equal(countClassToken(workflowSources, "workflow-fieldset"), 8);
+  assert.match(
+    primitiveStyles,
+    /fieldset\.workflow-fieldset\s*\{[^}]*display:\s*grid;[^}]*margin:\s*0;[^}]*border:\s*var\(--ui-stroke-width\) solid var\(--ui-control-border\);[^}]*background:\s*transparent;/,
+  );
+  assert.doesNotMatch(
+    primitiveStyles,
+    /fieldset\.workflow-fieldset > legend\.section-title-row:first-child\s*\{[^}]*(?:position:\s*absolute|transform:|margin-bottom:\s*-)/,
+  );
+  assert.match(
+    primitiveStyles,
+    /fieldset\.workflow-fieldset > legend\.section-title-row:first-child\s*\{[^}]*display:\s*block;/,
+  );
+  const workflowLegends = [
+    ...workflowSources.matchAll(/<legend className="section-title-row">([\s\S]*?)<\/legend>/g),
+  ].map((match) => match[1]);
+
+  assert.equal(workflowLegends.length, 8);
+  workflowLegends.forEach((legend) => {
+    assert.match(legend, /^\s*<div>[\s\S]*<\/div>\s*$/);
+    assert.doesNotMatch(legend, /<Badge|<button|<a\s/);
+  });
+});
+
 test("고정 설명은 제목·상태·조작 문구를 반복하지 않는다", () => {
   assert.match(pageSources.settings, /현장에서 직접 촬영하면 자동승인 가능성이 높아집니다/);
   assert.match(pageSources.settings, /!canOpenCourtRequestForm \? \([\s\S]*tier-range-note tier-range-note-warning/);
@@ -1052,9 +1087,10 @@ test("매칭과 기록 생성 선택 영역은 같은 제목과 버튼 타이포
     courtControlStyles,
     /\.create-match-page \.create-mode-grid button em,[\s\S]*?font-size:\s*var\(--create-choice-option-copy-font-size\);[\s\S]*?line-height:\s*1\.45;/,
   );
+  assert.match(createMatchIntentSectionSource, /as="fieldset" className="section-card full-span create-visibility-card workflow-fieldset"/);
   assert.match(
     matchCreateOperationsStyles,
-    /@media \(min-width:\s*1101px\)[\s\S]*?\.create-visibility-card\s*\{[^}]*grid-template-columns:[^}]*\}[\s\S]*?\.match-intent-axis\s*\{[^}]*grid-template-columns:/,
+    /@media \(min-width:\s*1101px\)[\s\S]*?\.match-intent-axis\s*\{[^}]*grid-template-columns:/,
   );
   assert.match(
     matchCreateOperationsStyles,
@@ -1622,7 +1658,7 @@ test("shared primitives own application-wide density, surfaces, and modals", () 
   assert.equal(fs.existsSync("src/styles/primitives/app-consistency.css"), false);
   assert.match(
     primitiveStyles,
-    /\.section-card\.ui-design-category-surface:not\(\.match-receipt-card\):not\(\.settings-fieldset-card\)\s*\{[^}]*border-width:\s*var\(--ui-stroke-width\) 0 0;[^}]*background:\s*transparent;[^}]*box-shadow:\s*none;/,
+    /\.section-card\.ui-design-category-surface:not\(\.match-receipt-card\):not\(\.settings-fieldset-card\):not\(\.workflow-fieldset\)\s*\{[^}]*border-width:\s*var\(--ui-stroke-width\) 0 0;[^}]*background:\s*transparent;[^}]*box-shadow:\s*none;/,
   );
   assert.match(
     primitiveStyles,

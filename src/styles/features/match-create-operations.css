@@ -268,23 +268,23 @@
     grid-column: 1 / -1;
   }
 
-  .create-visibility-card {
+  .create-visibility-card:not(.workflow-fieldset) {
     display: grid;
     grid-template-columns: minmax(190px, max-content) minmax(0, 1fr);
     align-items: center;
     column-gap: var(--space-6);
   }
 
-  .create-visibility-card > .section-title-row {
+  .create-visibility-card:not(.workflow-fieldset) > .section-title-row {
     align-self: center;
     margin: 0;
   }
 
-  .create-visibility-card > .create-mode-grid {
+  .create-visibility-card:not(.workflow-fieldset) > .create-mode-grid {
     min-width: 0;
   }
 
-  .create-visibility-card > :not(.section-title-row, .create-mode-grid) {
+  .create-visibility-card:not(.workflow-fieldset) > :not(.section-title-row, .create-mode-grid) {
     grid-column: 1 / -1;
   }
 
