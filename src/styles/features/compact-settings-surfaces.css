@@ -348,14 +348,14 @@ html[data-theme="light"] .rank-mode-pill {
   gap: calc(var(--page-section-gap) + var(--space-2));
 }
 
-.settings-page .section-card {
-  --settings-legend-height: 46px;
+.settings-page fieldset.settings-fieldset-card {
   --settings-card-padding: var(--card-padding);
-  --settings-legend-offset: calc(var(--settings-legend-height) / 2);
 
   position: relative;
+  min-inline-size: 0;
   gap: var(--space-6);
-  margin-top: var(--settings-legend-offset);
+  margin: 0;
+  padding: var(--space-4) var(--settings-card-padding) var(--settings-card-padding);
   border-width: var(--ui-stroke-width);
   border-style: solid;
   border-color: var(--ui-control-border);
@@ -364,21 +364,20 @@ html[data-theme="light"] .rank-mode-pill {
   box-shadow: none;
 }
 
-.settings-page .section-card > .section-title-row:first-child {
+.settings-page fieldset.settings-fieldset-card > legend.section-title-row:first-child {
+  display: flex;
+  width: auto;
+  max-width: calc(100% - var(--space-4));
   min-width: 0;
-  min-height: var(--settings-legend-height);
   align-items: center;
-  margin-bottom: calc(-1 * var(--settings-legend-offset));
-  transform: translateY(calc(-1 * var(--settings-legend-offset)));
+  justify-content: flex-start;
+  gap: var(--space-3);
+  margin: 0;
+  padding-inline: var(--space-2);
 }
 
-.settings-page .section-card > .section-title-row:first-child > :first-child {
-  position: relative;
-  z-index: 1;
+.settings-page fieldset.settings-fieldset-card > legend.section-title-row:first-child > :first-child {
   min-width: 0;
-  margin-inline-start: calc(-1 * var(--space-2));
-  padding-inline: var(--space-2);
-  background: var(--rb-bg);
 }
 
 .settings-page .settings-toggle-grid > label {
@@ -539,26 +538,24 @@ html[data-theme="light"] .referee-hover-tier > span {
   background-image: none;
 }
 
-html[data-theme="light"] .settings-page .section-card {
+html[data-theme="light"] .settings-page fieldset.settings-fieldset-card {
   background: transparent;
 }
 
 @media (max-width: 720px) {
-  .settings-page .section-card {
-    --settings-legend-height: 40px;
-
+  .settings-page fieldset.settings-fieldset-card {
     gap: var(--space-5);
   }
 
-  .settings-page .section-card > .section-title-row:first-child {
+  .settings-page fieldset.settings-fieldset-card > legend.section-title-row:first-child {
     align-items: center;
     flex-wrap: wrap;
     column-gap: var(--space-3);
     row-gap: var(--space-2);
   }
 
-  .settings-page .section-card > .section-title-row:first-child > :first-child {
-    flex: 1 1 180px;
+  .settings-page fieldset.settings-fieldset-card > legend.section-title-row:first-child > :first-child {
+    flex: 1 1 150px;
     overflow-wrap: anywhere;
   }
 }

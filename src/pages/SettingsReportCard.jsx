@@ -95,14 +95,14 @@ export function SettingsReportCard({ controller, onOpenList }) {
     toggleReportedUser,
   } = controller;
   return (
-          <Card className="section-card settings-report-card">
-            <div className="section-title-row">
+          <Card as="fieldset" className="section-card settings-fieldset-card settings-report-card">
+            <legend className="section-title-row">
               <div>
                 <p className="eyebrow">신고</p>
                 <h2>신고 접수</h2>
               </div>
               <Badge tone={app.state.reports?.length ? "orange" : "neutral"}>{app.state.reports?.length ?? 0}건</Badge>
-            </div>
+            </legend>
             <form className="form-stack" onSubmit={submitReport}>
               <label>
                 사유

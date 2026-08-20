@@ -23,7 +23,7 @@ html[data-theme] .ui-design-app .ui-design-borderless-list > :not(.match-receipt
 
 html[data-theme]
   .ui-design-app
-  .section-card.ui-design-category-surface:not(.match-receipt-card) {
+  .section-card.ui-design-category-surface:not(.match-receipt-card):not(.settings-fieldset-card) {
   border-width: var(--ui-stroke-width) 0 0;
   border-style: solid;
   border-color: var(--rb-line) transparent transparent;

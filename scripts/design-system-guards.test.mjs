@@ -72,6 +72,7 @@ const matchOperationsFieldsSource = matchCreationWizardSource.slice(
 const ruleSelectorSource = read("src/components/match/RuleSelector.jsx");
 const matchListStyles = read("src/styles/match-list-card.css");
 const primitiveStyles = readCssTree("src/styles/ui-primitives.css");
+const editorialApplicationStyles = read("src/styles/themes/design-editorial-application.css");
 const tokenStyles = read("src/styles/tokens.css");
 const modalShellSource = read("src/components/common/ModalShell.jsx");
 const foundationStyles = readCssTree("src/styles/global-foundation.css");
@@ -97,6 +98,7 @@ const visualDirectionDemoSource = read("src/pages/VisualDirectionDemo.jsx");
 const globalStyleManifest = read("src/styles/globals.css");
 const appShellSource = read("src/components/layout/AppShell.jsx");
 const cardSource = read("src/components/common/Card.jsx");
+const externalNotificationSettingsCardSource = read("src/components/settings/ExternalNotificationSettingsCard.jsx");
 const brandLockupSource = read("src/components/common/BrandLockup.jsx");
 const sidebarSource = read("src/components/layout/Sidebar.jsx");
 const loginSource = read("src/pages/Login.jsx");
@@ -228,13 +230,13 @@ test("앱은 분류 박스 없는 표준 디자인을 사용하고 비교 데모
   assert.doesNotMatch(pageSources.home, /STANDARD_HOME_LAYOUT|ui-design-home-page|ui-design-main-hero/);
   assert.match(
     editorialAppStyles,
-    /\.ui-design-category-surface\.ui-design-surface\s*\{[\s\S]*?border-width:\s*var\(--ui-stroke-width\) 0 0;[\s\S]*?background:\s*transparent;[\s\S]*?box-shadow:\s*none;/,
+    /\.ui-design-category-surface\.ui-design-surface:not\(\.settings-fieldset-card\)\s*\{[\s\S]*?border-width:\s*var\(--ui-stroke-width\) 0 0;[\s\S]*?background:\s*transparent;[\s\S]*?box-shadow:\s*none;/,
   );
-  assert.match(editorialAppStyles, /\.ui-design-surface\s*\{[\s\S]*?border-width:\s*var\(--ui-card-border-width\);/);
+  assert.match(editorialAppStyles, /\.ui-design-surface:not\(\.settings-fieldset-card\)\s*\{[\s\S]*?border-width:\s*var\(--ui-card-border-width\);/);
   assert.match(tokenStyles, /\[data-design="editorial"\] \.ui-design-app\s*\{[\s\S]*?--ui-card-border-width:\s*0px;[\s\S]*?--ui-button-border-width:\s*0px;[\s\S]*?--ui-control-group-border-width:\s*0px;[\s\S]*?--ui-room-modal-border-width:\s*0px;[\s\S]*?--ui-room-panel-border-width:\s*0px;[\s\S]*?--ui-hero-border-width:\s*0px;[\s\S]*?\}/);
   assert.match(editorialAppStyles, /--ui-design-section-rule-space:\s*calc\(var\(--card-padding\) \* 2\);/);
   assert.match(editorialAppStyles, /--ui-design-soft-surface-bg:\s*color-mix\(in srgb,\s*var\(--rb-bg-2\) 86%,\s*var\(--rb-bg\)\);/);
-  assert.match(editorialAppStyles, /\.ui-design-info-surface,[\s\S]*?html\[data-theme\][\s\S]*?\.ui-design-borderless-list > \*\s*\{[\s\S]*?border-width:\s*var\(--ui-design-surface-border-width\);[\s\S]*?border-radius:\s*var\(--ui-card-radius\);[\s\S]*?background-color:\s*var\(--ui-design-soft-surface-bg\);/);
+  assert.match(editorialAppStyles, /\.ui-design-info-surface:not\(\.settings-fieldset-card\),[\s\S]*?html\[data-theme\][\s\S]*?\.ui-design-borderless-list > \*\s*\{[\s\S]*?border-width:\s*var\(--ui-design-surface-border-width\);[\s\S]*?border-radius:\s*var\(--ui-card-radius\);[\s\S]*?background-color:\s*var\(--ui-design-soft-surface-bg\);/);
   assert.match(editorialAppStyles, /\.ui-design-info-surface\.ui-design-info-accent\s*\{[\s\S]*?border-inline-start:\s*4px solid var\(--ui-info-accent, transparent\);/);
   assert.match(editorialAppStyles, /\.ui-design-record-surface\.ui-design-info-surface\s*\{[\s\S]*?border:\s*0;[\s\S]*?border-radius:\s*0;[\s\S]*?background:\s*transparent;[\s\S]*?box-shadow:\s*none;/);
   assert.match(editorialAppStyles, /html\[data-theme\][\s\S]*?\.ui-design-soft-surface\s*\{[\s\S]*?border-width:\s*var\(--ui-card-border-width\);[\s\S]*?background:\s*var\(--ui-design-soft-surface-bg\);/);
@@ -912,11 +914,35 @@ test("설정 메인은 운영·테스트 카드를 숨기고 표시 설정을 �
   );
   assert.match(
     globalSurfaceStyles,
-    /\.settings-page \.section-card > \.section-title-row:first-child\s*\{[^}]*min-height:\s*var\(--settings-legend-height\);[^}]*margin-bottom:\s*calc\(-1 \* var\(--settings-legend-offset\)\);[^}]*transform:\s*translateY\(calc\(-1 \* var\(--settings-legend-offset\)\)\);/,
+    /\.settings-page fieldset\.settings-fieldset-card\s*\{[^}]*margin:\s*0;[^}]*border-width:\s*var\(--ui-stroke-width\);[^}]*border-radius:\s*var\(--radius\);[^}]*background:\s*transparent;/,
   );
   assert.doesNotMatch(
     globalSurfaceStyles,
-    /\.settings-page \.section-card > \.section-title-row:first-child\s*\{[^}]*position:\s*absolute;/,
+    /\.settings-page fieldset\.settings-fieldset-card > legend\.section-title-row:first-child\s*\{[^}]*(?:position:\s*absolute|transform:|margin-bottom:\s*-)/,
+  );
+  assert.match(
+    primitiveStyles,
+    /\.section-card\.ui-design-category-surface:not\(\.match-receipt-card\):not\(\.settings-fieldset-card\)/,
+  );
+  assert.match(
+    editorialApplicationStyles,
+    /\.ui-design-category-surface\.ui-design-surface:not\(\.settings-fieldset-card\)/,
+  );
+  assert.match(
+    editorialApplicationStyles,
+    /\.ui-design-surface:not\(\.settings-fieldset-card\)/,
+  );
+  assert.match(
+    editorialApplicationStyles,
+    /\.ui-design-info-surface:not\(\.settings-fieldset-card\)/,
+  );
+  assert.equal(
+    count(pageSources.settings, 'as="fieldset" className="section-card settings-fieldset-card'),
+    11,
+  );
+  assert.match(
+    externalNotificationSettingsCardSource,
+    /as="fieldset" className="section-card settings-fieldset-card[^"]*"[\s\S]*?<legend className="section-title-row">/,
   );
   assert.match(
     globalSurfaceStyles,
@@ -1583,7 +1609,7 @@ test("shared primitives own application-wide density, surfaces, and modals", () 
   assert.equal(fs.existsSync("src/styles/primitives/app-consistency.css"), false);
   assert.match(
     primitiveStyles,
-    /\.section-card\.ui-design-category-surface:not\(\.match-receipt-card\)\s*\{[^}]*border-width:\s*var\(--ui-stroke-width\) 0 0;[^}]*background:\s*transparent;[^}]*box-shadow:\s*none;/,
+    /\.section-card\.ui-design-category-surface:not\(\.match-receipt-card\):not\(\.settings-fieldset-card\)\s*\{[^}]*border-width:\s*var\(--ui-stroke-width\) 0 0;[^}]*background:\s*transparent;[^}]*box-shadow:\s*none;/,
   );
   assert.match(
     primitiveStyles,

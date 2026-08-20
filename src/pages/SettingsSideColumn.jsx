@@ -79,14 +79,14 @@ export default function SettingsSideColumn({ controller, onOpenList }) {
   const courtLocationMethodPending = courtFieldLocationPending || courtPinPending || courtSubmitPending;
   return (
 <aside className="page-stack settings-side-column">
-          <Card className="section-card settings-block-card">
-            <div className="section-title-row">
+          <Card as="fieldset" className="section-card settings-fieldset-card settings-block-card">
+            <legend className="section-title-row">
               <div>
                 <p className="eyebrow">차단</p>
                 <h2>플레이어 숨김</h2>
               </div>
               <Badge tone={blockedUserIds.length ? "orange" : "neutral"}>{blockedUserIds.length}명</Badge>
-            </div>
+            </legend>
             <form className="form-stack" onSubmit={submitBlock}>
               <SearchPicker
                 value={blockUserQuery}
@@ -112,14 +112,14 @@ export default function SettingsSideColumn({ controller, onOpenList }) {
             </form>
           </Card>
 
-          <Card className="section-card settings-court-card">
-            <div className="section-title-row">
+          <Card as="fieldset" className="section-card settings-fieldset-card settings-court-card">
+            <legend className="section-title-row">
               <div>
                 <p className="eyebrow">Court</p>
                 <h2>구장 등록요청</h2>
               </div>
               <Badge tone={courtQuotaBlocked ? "orange" : "neutral"}>{courtQuotaLabel}</Badge>
-            </div>
+            </legend>
             {!canOpenCourtRequestForm ? (
               <div className="tier-range-note tier-range-note-warning">
                 <div>

@@ -61,14 +61,14 @@ export default function SettingsPrimaryColumn({ controller }) {
   } = controller;
   return (
 <div className="page-stack settings-main-column">
-          <Card className="section-card settings-nav-card">
-            <div className="section-title-row">
+          <Card as="fieldset" className="section-card settings-fieldset-card settings-nav-card">
+            <legend className="section-title-row">
               <div>
                 <p className="eyebrow">Setting pages</p>
                 <h2>세부 설정</h2>
               </div>
               <ShieldCheck size={22} />
-            </div>
+            </legend>
             <div className="settings-nav-grid">
               <Link to="/app/settings/favorites"><strong>즐겨찾기</strong><span>프로필/팀/구장/심판</span></Link>
               <Link to="/app/settings/courts"><strong>구장 신청</strong><span>주소 검색/등록 요청</span></Link>
@@ -76,14 +76,14 @@ export default function SettingsPrimaryColumn({ controller }) {
             </div>
           </Card>
 
-          <Card className="section-card theme-choice-card">
-            <div className="section-title-row">
+          <Card as="fieldset" className="section-card settings-fieldset-card theme-choice-card">
+            <legend className="section-title-row">
               <div>
                 <p className="eyebrow">화면 테마</p>
                 <h2>밝기</h2>
               </div>
               {themeDraft === "light" ? <Sun size={22} /> : <Moon size={22} />}
-            </div>
+            </legend>
             <div
               className="ui-segmented-control segmented-control"
               role="radiogroup"
@@ -113,14 +113,14 @@ export default function SettingsPrimaryColumn({ controller }) {
             </div>
           </Card>
 
-          <Card className="section-card favorite-management-card">
-            <div className="section-title-row">
+          <Card as="fieldset" className="section-card settings-fieldset-card favorite-management-card">
+            <legend className="section-title-row">
               <div>
                 <p className="eyebrow">Favorites</p>
                 <h2>즐겨찾기 설정</h2>
               </div>
               <Star size={20} />
-            </div>
+            </legend>
             <SearchPicker
               key={favoriteSearchResetKey}
               value={favoriteQuery}
@@ -197,8 +197,8 @@ export default function SettingsPrimaryColumn({ controller }) {
 
           <ExternalNotificationSettingsCard app={app} discordLinked={discordLinked} />
 
-          <Card className="section-card discord-link-card">
-            <div className="section-title-row">
+          <Card as="fieldset" className="section-card settings-fieldset-card discord-link-card">
+            <legend className="section-title-row">
               <div>
                 <p className="eyebrow">Discord</p>
                 <h2>디스코드 알림</h2>
@@ -210,7 +210,7 @@ export default function SettingsPrimaryColumn({ controller }) {
               ) : (
                 <MessageCircle size={20} />
               )}
-            </div>
+            </legend>
             <div className="contract-grid single ui-support-grid">
               {discordLinked ? (
                 <div className="discord-profile-line">
@@ -290,14 +290,14 @@ export default function SettingsPrimaryColumn({ controller }) {
             {discordSaveStatus ? <small>{discordSaveStatus}</small> : null}
           </Card>
 
-          <Card className="section-card settings-privacy-card settings-preference-card">
-            <div className="section-title-row">
+          <Card as="fieldset" className="section-card settings-fieldset-card settings-privacy-card settings-preference-card">
+            <legend className="section-title-row">
               <div>
                 <p className="eyebrow">Display</p>
                 <h2>표시 설정</h2>
               </div>
               <Badge tone={generalSettingsDirty ? "orange" : "neutral"}>{generalSettingsDirty ? "변경 있음" : "저장됨"}</Badge>
-            </div>
+            </legend>
 
             <div className="settings-preference-group settings-home-guide-group">
               <div className="settings-preference-heading">
@@ -381,14 +381,14 @@ export default function SettingsPrimaryColumn({ controller }) {
           </Card>
 
           {canOpenAdminMenu ? (
-            <Card className="section-card admin-menu-card">
-              <div className="section-title-row">
+            <Card as="fieldset" className="section-card settings-fieldset-card admin-menu-card">
+              <legend className="section-title-row">
                 <div>
                   <p className="eyebrow">Operations</p>
                   <h2>관리자 메뉴</h2>
                 </div>
                 <ShieldCheck size={22} />
-              </div>
+              </legend>
               <div className="contract-grid single ui-support-grid">
                 <div>
                   <span>정렬 기준</span>

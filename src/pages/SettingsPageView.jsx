@@ -136,14 +136,14 @@ export default function SettingsPageView({ controller, auth }) {
 
         <SettingsSideColumn controller={controller} onOpenList={setActivityList} />
         {settingsSection === "main" && auth ? (
-          <Card className="section-card settings-account-card">
-            <div className="section-title-row">
+          <Card as="fieldset" className="section-card settings-fieldset-card settings-account-card">
+            <legend className="section-title-row">
               <div>
                 <p className="eyebrow">ACCOUNT</p>
                 <h2>계정 관리</h2>
               </div>
               <ArrowRightLeft size={20} aria-hidden="true" />
-            </div>
+            </legend>
             {canSwitchTestAccount ? (
               <details className="settings-test-account-switcher">
                 <summary>테스트 계정 전환</summary>

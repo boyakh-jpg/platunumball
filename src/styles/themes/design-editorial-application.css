@@ -138,7 +138,7 @@
   gap: var(--ui-design-app-inner-gap);
 }
 
-[data-design="editorial"] .ui-design-app .ui-design-surface {
+[data-design="editorial"] .ui-design-app .ui-design-surface:not(.settings-fieldset-card) {
   border-width: var(--ui-card-border-width);
   border-style: solid;
   border-color: var(--ui-card-border);
@@ -147,7 +147,7 @@
   box-shadow: var(--ui-card-shadow);
 }
 
-[data-design="editorial"] .ui-design-app .ui-design-info-surface,
+[data-design="editorial"] .ui-design-app .ui-design-info-surface:not(.settings-fieldset-card),
 html[data-theme] [data-design="editorial"] .ui-design-app .ui-design-borderless-list > * {
   border-width: var(--ui-design-surface-border-width);
   border-style: solid;
@@ -186,7 +186,7 @@ html[data-theme] [data-design="editorial"] .ui-design-app .ui-design-record-surf
   background: var(--ui-design-soft-surface-bg);
 }
 
-[data-design="editorial"] .ui-design-app .ui-design-category-surface.ui-design-surface {
+[data-design="editorial"] .ui-design-app .ui-design-category-surface.ui-design-surface:not(.settings-fieldset-card) {
   border-width: var(--ui-stroke-width) 0 0;
   border-style: solid;
   border-color: var(--ui-design-app-section-rule) transparent transparent;

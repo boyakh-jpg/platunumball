@@ -33,14 +33,14 @@ export default function SettingsRefereeSection({ controller }) {
     submitRefereeRequest,
   } = controller;
   return (
-<Card className="section-card settings-referee-card">
-            <div className="section-title-row">
+<Card as="fieldset" className="section-card settings-fieldset-card settings-referee-card">
+            <legend className="section-title-row">
               <div>
                 <p className="eyebrow">Referee</p>
                 <h2>심판 등록요청</h2>
               </div>
               <ShieldCheck size={22} />
-            </div>
+            </legend>
             <div className="referee-rulebook-panel compact ui-design-info-surface">
               <div className="section-title-row referee-rulebook-head">
                 <div>
