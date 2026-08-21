@@ -15,6 +15,18 @@ export const THERMAL_PRINT_ROLES = Object.freeze({
   qr: Object.freeze({ mask: null, opacity: 1 }),
 });
 
+const MATCH_RECEIPT_FORMAT_PLAYER_COUNT = Object.freeze({
+  "1v1": 2,
+  "2v2": 4,
+  "3v3": 6,
+  "3x3": 6,
+  "5v5": 10,
+});
+
+export function getMatchReceiptFormatPlayerCount(format = "") {
+  return MATCH_RECEIPT_FORMAT_PLAYER_COUNT[String(format).trim().toLowerCase()] ?? 0;
+}
+
 export function sanitizeMatchReceiptComment(value = "") {
   const source = String(value)
     .replace(/<[^>]*>/g, "")
@@ -37,7 +49,7 @@ export function getThermalReceiptTextWeight(value = "") {
 }
 
 export const sanitizeThermalReceiptComment = sanitizeMatchReceiptComment;
-
+export const getMatchReceiptCommentLines = splitMatchReceiptComment;
 export function suggestReceiptShortName(value = "") {
   const cleaned = String(value).replace(/[<>\u0000-\u001f\u007f]/g, "").replace(/\s+/g, " ").trim();
   return cleaned.split(" ")[0]?.slice(0, 12) ?? "";
@@ -83,52 +95,28 @@ export function getThermalReceiptLayout(options = {}) {
   const hasPhoto = Boolean(options.hasPhoto);
   const hasPeriods = options.hasPeriods !== false;
   const hasComment = options.hasComment !== false;
-  const periodReduction = hasPeriods ? 0 : 188;
-  const commentReduction = hasComment ? 0 : 40;
-  const resultHeight = hasComment ? 248 : 208;
-  const sectionOffset = hasPhoto ? 144 : 0;
-  const basePaperHeight = hasPhoto ? 1872 : 1584;
-  const infoY = 874 + sectionOffset;
+  const teamsY = hasPhoto ? 540 : 280;
+  const scoreY = teamsY + 238;
+  const infoY = scoreY + 238;
+  const periodsY = infoY + 142;
+  const resultY = hasPeriods ? periodsY + 186 : infoY + 142;
+  const resultHeight = hasComment ? 270 : 230;
+  const footerY = resultY + resultHeight + 14;
+  const footerHeight = 216;
+  const paperY = hasPhoto ? 24 : 168;
+  const paperBottom = hasPhoto ? 1896 : Math.min(1896, footerY + footerHeight + 24);
 
   return Object.freeze({
-    paper: Object.freeze({
-      x: 142,
-      y: hasPhoto ? 24 : 168,
-      width: 796,
-      height: basePaperHeight - periodReduction - commentReduction,
-    }),
+    paper: Object.freeze({ x: 142, y: paperY, width: 796, height: paperBottom - paperY }),
     content: Object.freeze({ x: 198, width: 684 }),
-    brand: Object.freeze({ x: 198, y: hasPhoto ? 40 : 184, width: 684, height: 184 }),
-    photo: hasPhoto ? Object.freeze({ x: 198, y: 248, width: 684, height: 288 }) : null,
-    teams: Object.freeze({ x: 198, y: 392 + sectionOffset, width: 684, height: 220 }),
-    score: Object.freeze({ x: 198, y: 634 + sectionOffset, width: 684, height: 224 }),
-    info: Object.freeze({
-      x: 198,
-      y: infoY,
-      width: 684,
-      height: 148,
-      finalBaseline: infoY + 28,
-      dateBaseline: infoY + 70,
-      venueBaseline: infoY + 102,
-      wrappedVenueBaseline: infoY + 88,
-      venueLineGap: 22,
-      summaryBaseline: infoY + 140,
-    }),
-    periods: hasPeriods
-      ? Object.freeze({ x: 198, y: 1036 + sectionOffset, width: 684, height: 170 })
-      : null,
-    result: Object.freeze({
-      x: 198,
-      y: 1224 + sectionOffset - periodReduction,
-      width: 684,
-      height: resultHeight,
-    }),
-    footer: Object.freeze({
-      x: 198,
-      y: 1492 + sectionOffset - periodReduction - commentReduction,
-      width: 684,
-      height: 218,
-    }),
+    brand: Object.freeze({ x: 198, y: hasPhoto ? 40 : 184, width: 684, height: hasPhoto ? 162 : 80 }),
+    photo: hasPhoto ? Object.freeze({ x: 198, y: 226, width: 684, height: 288 }) : null,
+    teams: Object.freeze({ x: 198, y: teamsY, width: 684, height: 220 }),
+    score: Object.freeze({ x: 198, y: scoreY, width: 684, height: 224 }),
+    info: Object.freeze({ x: 198, y: infoY, width: 684, height: 126 }),
+    periods: hasPeriods ? Object.freeze({ x: 198, y: periodsY, width: 684, height: 170 }) : null,
+    result: Object.freeze({ x: 198, y: resultY, width: 684, height: resultHeight }),
+    footer: Object.freeze({ x: 198, y: footerY, width: 684, height: footerHeight }),
     hasPhoto,
     hasPeriods,
     hasComment,

@@ -69,6 +69,7 @@ const CANONICAL_RECEIPT_FIELDS = [
   "verified",
   "officialMatchId",
   "playerCount",
+  "playerCountSource",
   "refereeAssigned",
 ];
 

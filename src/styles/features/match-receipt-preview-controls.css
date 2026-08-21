@@ -51,28 +51,55 @@
   gap: var(--space-3);
 }
 
-.match-receipt-photo-settings {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-4);
-  padding: var(--space-5);
+.match-receipt-photo-editor-shell {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+}
+
+.match-receipt-photo-editor {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
   border: var(--ui-stroke-width) solid var(--rb-line);
   border-radius: var(--radius-lg);
-  background: var(--rb-surface);
+  background: var(--rb-surface-strong);
+  cursor: grab;
+  overscroll-behavior: contain;
+  touch-action: none;
 }
 
-.match-receipt-photo-settings label {
-  display: grid;
-  gap: var(--space-3);
-  min-width: 0;
-  color: var(--rb-muted);
-  font-size: 11px;
-  font-weight: 800;
-}
+.match-receipt-photo-editor:active { cursor: grabbing; }
 
-.match-receipt-photo-settings input[type="range"] {
+.match-receipt-photo-editor-image {
+  position: absolute;
+  top: 50%;
+  left: 50%;
   width: 100%;
-  accent-color: var(--rb-orange);
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+  transform: translate(calc(-50% + var(--receipt-photo-shift-x)), calc(-50% + var(--receipt-photo-shift-y))) rotate(var(--receipt-photo-rotation)) scale(var(--receipt-photo-scale));
+  transform-origin: center;
+  user-select: none;
+}
+
+button.match-receipt-photo-editor-rotate {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  z-index: 2;
+  display: grid;
+  width: 42px;
+  min-width: 42px;
+  height: 42px;
+  min-height: 42px;
+  padding: 0;
+  place-items: center;
+  border-radius: 50%;
+  cursor: grab;
+  touch-action: none;
 }
 
 .match-receipt-check-field {
@@ -145,8 +172,5 @@
 .match-receipt-actions svg { width: 17px; height: 17px; }
 
 @media (max-width: 560px) {
-  .match-receipt-actions,
-  .match-receipt-photo-settings {
-    grid-template-columns: 1fr;
-  }
+  .match-receipt-photo-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }

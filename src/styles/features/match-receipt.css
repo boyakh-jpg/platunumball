@@ -212,47 +212,6 @@
   background: #202220;
 }
 
-.match-receipt-photo.is-editable {
-  cursor: grab;
-  touch-action: none;
-  overscroll-behavior: contain;
-}
-
-.match-receipt-photo.is-editable:active {
-  cursor: grabbing;
-}
-
-.match-receipt-preview-stage button.ui-button.match-receipt-photo-rotate-handle {
-  position: absolute; z-index: 4;
-  top: 0; right: 0;
-  width: 38px; height: 38px;
-  min-width: 38px; min-height: 38px;
-  display: grid; place-items: center;
-  padding: 0;
-  border-radius: 50%; color: var(--rb-orange);
-  background: var(--rb-surface);
-  box-shadow: inset 0 0 0 var(--ui-stroke-width) var(--rb-orange);
-  transform: translate(58%, -58%);
-  cursor: grab; touch-action: none;
-}
-
-.match-receipt-preview-stage button.match-receipt-photo-rotate-handle svg { width: 18px; height: 18px; }
-
-.match-receipt-preview-stage button.match-receipt-photo-rotate-handle:active {
-  cursor: grabbing;
-}
-
-.match-receipt-preview-stage.is-thermal button.ui-button.match-receipt-photo-rotate-handle {
-  top: 12.9167%;
-  right: 18.3333%;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .match-receipt-photo.is-editable {
-    box-shadow: inset 0 0 0 2px rgba(237, 90, 44, 0.72);
-  }
-}
-
 .match-receipt-photo::before,
 .match-receipt-photo::after {
   content: "";
@@ -675,6 +634,7 @@
   font-size: clamp(8px, 2.5cqw, 12px);
   font-weight: 900;
   line-height: var(--receipt-ticket-meta-line-height);
+  overflow: hidden;
   text-overflow: clip;
   white-space: pre-line;
 }
@@ -764,10 +724,8 @@
   .match-receipt-page-head-nav { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
   .match-receipt-page-head-nav .ui-button { width: 100%; }
 
-  .match-receipt-team-fields,
-  .match-receipt-info-fields {
-    grid-template-columns: 1fr;
-  }
+  .match-receipt-team-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .match-receipt-info-fields { grid-template-columns: 1fr; }
 
   .match-receipt-info-fields .is-wide { grid-column: auto; }
 
@@ -776,11 +734,18 @@
   .match-receipt-editor > section,
   .match-receipt-save-card { --ui-panel-padding: 0; --ui-panel-radius: 0; }
 
+  .match-receipt-team-fields fieldset + fieldset {
+    margin: 0 0 0 var(--space-3); padding: 0 0 0 var(--space-3);
+    border-top: 0; border-left: var(--ui-stroke-width) solid var(--rb-line);
+  }
+
+  .match-receipt-team-fields fieldset {
+    grid-template-columns: minmax(0, 1fr) 58px;
+    gap: var(--space-2);
+  }
+
   .match-receipt-card {
     border-radius: 0;
   }
 
-  .match-receipt-preview-stage button.match-receipt-photo-rotate-handle {
-    transform: translate(18%, -58%);
-  }
 }

@@ -29,6 +29,7 @@ import {
   getMatchReceiptDraftFromMatch,
   getMatchReceiptFileName,
   getMatchReceiptOutcome,
+  getMatchReceiptPhotoStyle,
   getMatchReceiptSideTeamId,
   loadMatchReceiptPhoto,
   loadMatchReceiptDraft,
@@ -46,7 +47,6 @@ import {
   MATCH_RECEIPT_LOCALES,
   MATCH_RECEIPT_STYLES,
   sanitizeMatchReceiptComment,
-  suggestReceiptShortName,
 } from "../../shared/lib/thermalReceipt.js";
 
 function loadDraft() {
@@ -82,8 +82,6 @@ const RECEIPT_TEXT_FIELDS = new Set([
   "address",
   "comment",
   "receiptComment",
-  "homeReceiptShortName",
-  "awayReceiptShortName",
   "tournamentName",
 ]);
 
@@ -154,29 +152,8 @@ const RECEIPT_PAGE_COPY = Object.freeze({
   },
 });
 
-function isIosBrowser() {
-  if (typeof navigator === "undefined") return false;
-  return /iP(?:hone|ad|od)/u.test(navigator.userAgent)
-    || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-}
-
-function reserveImageSaveWindow(copy) {
-  if (typeof window === "undefined" || !isIosBrowser()) return null;
-  const saveWindow = window.open("", "_blank");
-  if (saveWindow) {
-    saveWindow.document.title = copy.imageWindowTitle;
-    saveWindow.document.body.textContent = copy.imageWindowBody;
-  }
-  return saveWindow;
-}
-
-function downloadBlob(blob, fileName, saveWindow = null) {
+function downloadBlob(blob, fileName) {
   const url = URL.createObjectURL(blob);
-  if (saveWindow && !saveWindow.closed) {
-    saveWindow.location.replace(url);
-    window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
-    return "open";
-  }
   const anchor = document.createElement("a");
   anchor.href = url;
   anchor.download = fileName;
@@ -184,7 +161,6 @@ function downloadBlob(blob, fileName, saveWindow = null) {
   anchor.click();
   anchor.remove();
   window.setTimeout(() => URL.revokeObjectURL(url), 10_000);
-  return "download";
 }
 
 function getPhotoGestureSnapshot(pointers) {
@@ -255,6 +231,7 @@ export default function MatchReceipt({ auth, app }) {
   const requestedMatchIdRef = useRef("");
   const courtMapRequestIdRef = useRef(0);
   const previewRef = useRef(null);
+  const photoEditorRef = useRef(null);
   const photoGestureRef = useRef({ pointers: new Map(), baseline: null });
   const photoRotationRef = useRef(null);
   const photoTransformRef = useRef(null);
@@ -563,12 +540,6 @@ export default function MatchReceipt({ auth, app }) {
       if (isCommentField) {
         next = { ...next, comment: normalizedValue, receiptComment: normalizedValue };
       }
-      if (name === "homeTeam" && !current.homeReceiptShortName) {
-        next = { ...next, homeReceiptShortName: suggestReceiptShortName(normalizedValue) };
-      }
-      if (name === "awayTeam" && !current.awayReceiptShortName) {
-        next = { ...next, awayReceiptShortName: suggestReceiptShortName(normalizedValue) };
-      }
       draftRef.current = next;
       return next;
     });
@@ -857,7 +828,7 @@ export default function MatchReceipt({ auth, app }) {
     if (!photoUrl) return;
     event.preventDefault();
     event.stopPropagation();
-    const bounds = previewRef.current?.querySelector(".match-receipt-photo, .match-receipt-thermal-photo-hitarea")?.getBoundingClientRect();
+    const bounds = photoEditorRef.current?.getBoundingClientRect();
     if (!bounds) return;
     const centerX = bounds.left + bounds.width / 2;
     const centerY = bounds.top + bounds.height / 2;
@@ -1029,18 +1000,14 @@ export default function MatchReceipt({ auth, app }) {
   }
 
   async function handleDownload(preset) {
-    const saveWindow = reserveImageSaveWindow(receiptCopy);
     setBusy(`download-${preset}`);
     setStatus("");
     try {
       const blob = await createPng(preset);
-      const method = downloadBlob(blob, getMatchReceiptFileName(draft, preset), saveWindow);
-      setStatus(method === "open"
-          ? receiptCopy.imageOpened
-          : receiptCopy.imageSaved(MATCH_RECEIPT_CANVAS_SIZES[preset].label));
+      downloadBlob(blob, getMatchReceiptFileName(draft, preset));
+      setStatus(receiptCopy.imageSaved(MATCH_RECEIPT_CANVAS_SIZES[preset].label));
       trackMatchReceiptEvent("receipt_downloaded", { loggedIn: Boolean(auth?.session), imagePreset: preset });
     } catch (error) {
-      if (saveWindow && !saveWindow.closed) saveWindow.close();
       if (error.message !== "match_receipt_invalid") {
         console.error("[match-receipt] image export failed", preset, error?.message, error?.stack);
         setStatus(receiptCopy.imageFailed);
@@ -1129,16 +1096,6 @@ export default function MatchReceipt({ auth, app }) {
     navigate(-1);
   }
 
-  const photoGestureHandlers = receiptIsReadOnly ? undefined : {
-    onPointerDown: beginPhotoGesture,
-    onPointerMove: movePhotoGesture,
-    onPointerUp: endPhotoGesture,
-    onPointerCancel: endPhotoGesture,
-    onLostPointerCapture: endPhotoGesture,
-    onWheel: zoomPhotoWithWheel,
-    onDoubleClick: resetPhotoTransform,
-  };
-
   return (
     <section className="page-stack match-receipt-page">
       <header className="page-header match-receipt-page-head ui-page-hero ui-design-app-hero">
@@ -1206,7 +1163,6 @@ export default function MatchReceipt({ auth, app }) {
                   {receiptCopy.score}
                   <input type="number" inputMode="numeric" min="0" max={MATCH_RECEIPT_LIMITS.score} value={draft.homeScore} disabled={isFieldReadOnly("homeScore")} onFocus={(event) => event.currentTarget.select()} onClick={(event) => event.currentTarget.value === "0" && event.currentTarget.select()} onChange={(event) => updateField("homeScore", event.target.value)} />
                 </label>
-                <label>{receiptCopy.shortName}<input value={draft.homeReceiptShortName} maxLength={MATCH_RECEIPT_LIMITS.receiptShortName} disabled={isFieldReadOnly("homeReceiptShortName")} placeholder="A" onChange={(event) => updateField("homeReceiptShortName", event.target.value)} /></label>
               </fieldset>
 
               <fieldset>
@@ -1219,7 +1175,6 @@ export default function MatchReceipt({ auth, app }) {
                   {receiptCopy.score}
                   <input type="number" inputMode="numeric" min="0" max={MATCH_RECEIPT_LIMITS.score} value={draft.awayScore} disabled={isFieldReadOnly("awayScore")} onFocus={(event) => event.currentTarget.select()} onClick={(event) => event.currentTarget.value === "0" && event.currentTarget.select()} onChange={(event) => updateField("awayScore", event.target.value)} />
                 </label>
-                <label>{receiptCopy.shortName}<input value={draft.awayReceiptShortName} maxLength={MATCH_RECEIPT_LIMITS.receiptShortName} disabled={isFieldReadOnly("awayReceiptShortName")} placeholder="B" onChange={(event) => updateField("awayReceiptShortName", event.target.value)} /></label>
               </fieldset>
             </div>
           </section>
@@ -1229,7 +1184,6 @@ export default function MatchReceipt({ auth, app }) {
             <div className="match-receipt-info-fields">
               <label>{receiptCopy.date}<input type="date" value={draft.playedOn} disabled={isFieldReadOnly("playedOn")} onChange={(event) => updateField("playedOn", event.target.value)} /></label>
               <label>{receiptCopy.time}<input type="time" value={draft.playedTime} disabled={isFieldReadOnly("playedTime")} onChange={(event) => updateField("playedTime", event.target.value)} /></label>
-              <label>{receiptCopy.players}<input type="number" inputMode="numeric" min="0" max={MATCH_RECEIPT_LIMITS.playerCount} value={draft.playerCount ?? ""} disabled={isFieldReadOnly("playerCount")} onChange={(event) => updateField("playerCount", event.target.value)} /></label>
               <label>{receiptCopy.format}<select value={draft.format} disabled={isFieldReadOnly("format")} onChange={(event) => updateField("format", event.target.value)}>{MATCH_RECEIPT_FORMATS.map((item) => <option key={item.value} value={item.value}>{isEnglish ? item.value.toUpperCase() : item.label}</option>)}</select></label>
               <label>{receiptCopy.nature}<select value={draft.matchNature} disabled={isFieldReadOnly("matchNature")} onChange={(event) => updateField("matchNature", event.target.value)}>{MATCH_RECEIPT_NATURES.map((item) => <option key={item.value} value={item.value}>{isEnglish ? item.value.toUpperCase() : item.label}</option>)}</select></label>
               {!isEnglish ? <label className="is-wide">
@@ -1369,7 +1323,6 @@ export default function MatchReceipt({ auth, app }) {
                 matchUrl={matchUrl}
                 publicId={receiptPublicId}
                 teamLineArtUrls={selectedTeamLineArtUrls}
-                photoGestureHandlers={photoGestureHandlers}
               />
             ) : (
               <MatchReceiptPreview
@@ -1380,27 +1333,44 @@ export default function MatchReceipt({ auth, app }) {
                 showPersonalTierIdentity={canShowCurrentUserIdentity}
                 locale={receiptLocale}
                 teamLineArtUrls={selectedTeamLineArtUrls}
-                photoGestureHandlers={photoGestureHandlers}
               />
             )}
-            {photoUrl && draft.includePhoto && !receiptIsReadOnly ? (
-              <Button
-                variant="secondary"
-                className="match-receipt-photo-rotate-handle"
-                aria-label={receiptCopy.rotatePhotoAria}
-                title={receiptCopy.rotatePhotoTitle}
-                onPointerDown={beginPhotoRotation}
-                onPointerMove={movePhotoRotation}
-                onPointerUp={endPhotoRotation}
-                onPointerCancel={endPhotoRotation}
-                onLostPointerCapture={endPhotoRotation}
-                onKeyDown={nudgePhotoRotation}
-              >
-                <RotateCcw aria-hidden="true" />
-              </Button>
-            ) : null}
           </div>
           {!receiptIsReadOnly ? <div className="match-receipt-photo-tools">
+            {photoUrl ? (
+              <div className="match-receipt-photo-editor-shell">
+                <div
+                  ref={photoEditorRef}
+                  className="match-receipt-photo-editor"
+                  style={getMatchReceiptPhotoStyle(draft)}
+                  aria-label={receiptCopy.photoActionsAria}
+                  onPointerDown={beginPhotoGesture}
+                  onPointerMove={movePhotoGesture}
+                  onPointerUp={endPhotoGesture}
+                  onPointerCancel={endPhotoGesture}
+                  onLostPointerCapture={endPhotoGesture}
+                  onWheel={zoomPhotoWithWheel}
+                  onDoubleClick={resetPhotoTransform}
+                >
+                  <img className="match-receipt-photo-editor-image" src={photoUrl} alt="" draggable="false" />
+                </div>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="match-receipt-photo-editor-rotate"
+                  aria-label={receiptCopy.rotatePhotoAria}
+                  title={receiptCopy.rotatePhotoTitle}
+                  onPointerDown={beginPhotoRotation}
+                  onPointerMove={movePhotoRotation}
+                  onPointerUp={endPhotoRotation}
+                  onPointerCancel={endPhotoRotation}
+                  onLostPointerCapture={endPhotoRotation}
+                  onKeyDown={nudgePhotoRotation}
+                >
+                  <RotateCcw aria-hidden="true" />
+                </Button>
+              </div>
+            ) : null}
             <div className="match-receipt-photo-actions" aria-label={receiptCopy.photoActionsAria}>
               <Button as="label" variant="secondary">
                 <ImagePlus aria-hidden="true" /> {receiptCopy.selectPhoto}
@@ -1417,13 +1387,6 @@ export default function MatchReceipt({ auth, app }) {
                 <RotateCcw aria-hidden="true" /> {receiptCopy.reset}
               </Button>
             </div>
-            {photoUrl && draft.includePhoto ? (
-              <div className="match-receipt-photo-settings" aria-label={receiptCopy.thermalPhotoCrop}>
-                <label>{receiptCopy.zoom}<input type="range" min="1" max="3" step="0.01" value={draft.photoZoom} onChange={(event) => updateField("photoZoom", event.target.value)} /></label>
-                <label>{receiptCopy.horizontal}<input type="range" min="-100" max="100" step="1" value={draft.photoX} onChange={(event) => updateField("photoX", event.target.value)} /></label>
-                <label>{receiptCopy.vertical}<input type="range" min="-100" max="100" step="1" value={draft.photoY} onChange={(event) => updateField("photoY", event.target.value)} /></label>
-              </div>
-            ) : null}
             <p className="match-receipt-photo-note">
               {photoUrl
                 ? receiptCopy.photoEditHelp

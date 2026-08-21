@@ -9,6 +9,7 @@ import {
   getMatchReceiptDraftFromMatch,
   getMatchReceiptFormatLabel,
   getMatchReceiptPhotoStyle,
+  getRecordedMatchReceiptPlayerCount,
   getMatchReceiptSideTeamId,
   getMatchReceiptTeamNameScale,
   MATCH_RECEIPT_LIMITS,
@@ -75,6 +76,23 @@ test("receipt nature label keeps the same five pixel score clearance in preview 
 
   assert.match(styles, /\.match-receipt-poster-score > span\s*\{[^}]*transform:\s*translateY\(-5px\)/s);
   assert.match(renderer, /ctx\.fillText\(model\.matchNatureLabel, width \/ 2, scoreTop \+ \(compact \? 2 : 12\)\)/);
+});
+
+test("official receipt player count includes played players and reserves without duplicates", () => {
+  const match = {
+    teamA: { players: ["a", "b", "c"] },
+    teamB: { players: ["d", "e", "f"] },
+    playedPlayerIds: { teamA: ["a", "g"], teamB: ["h"] },
+    reservePlayers: { teamA: ["i", "a"], teamB: ["j"] },
+    reserve_players: { home: ["k"], away: ["j"] },
+    rules: {
+      playedPlayerIds: { teamA: ["l"], teamB: [] },
+      reservePlayers: { teamA: ["m"], teamB: [] },
+    },
+  };
+
+  assert.equal(getRecordedMatchReceiptPlayerCount(match), 13);
+  assert.equal(getRecordedMatchReceiptPlayerCount({ result: { playerCount: 12 } }), 12);
 });
 
 test("public receipt lookup blocks editor and QR fallback while paper stats use ink digits", async () => {
@@ -217,7 +235,7 @@ test("public receipt draft keeps only bounded safe fields", () => {
     homeEmblemKey: "team-emblems/home.png",
     homeUseLineArt: true,
     matchNature: "semifinal",
-    comment: "123456789012345",
+    comment: "1234567890123456789012345",
     homeColor: "red",
     awayColor: "#ABCDEF",
     homeMmr: 1300,
@@ -243,7 +261,7 @@ test("public receipt draft keeps only bounded safe fields", () => {
   assert.equal(payload.homeUseLineArt, true);
   assert.equal("homeEmblemKey" in payload, false);
   assert.equal(payload.matchNature, "semifinal");
-  assert.equal(payload.comment, "123456789012345");
+  assert.equal(payload.comment, "1234567890123456789012");
   assert.equal(payload.homeColor, "#f05a46");
   assert.equal(payload.awayColor, "#abcdef");
   assert.equal(payload.homeMmr, 1300);
@@ -701,13 +719,17 @@ test("receipt photo tools stay outside the export card and reference dividers re
   const receiptSources = `${page}\n${preview}`;
   const localizedReceiptSources = `${receiptSources}\n${renderer}`;
 
-  assert.doesNotMatch(page, /match-receipt-photo-editor|match-receipt-photo-crop/);
-  assert.match(page, /photoGestureHandlers/);
+  assert.match(page, /className="match-receipt-photo-editor-shell"/);
+  assert.match(page, /className="match-receipt-photo-editor"/);
+  assert.match(page, /onPointerDown=\{beginPhotoGesture\}/);
+  assert.match(page, /onPointerMove=\{movePhotoGesture\}/);
+  assert.match(page, /onPointerUp=\{endPhotoGesture\}/);
   assert.doesNotMatch(page, /photoRotationHandleHandlers/);
   assert.doesNotMatch(page, /getPhotoRotationHandleStyle/);
-  assert.match(page, /querySelector\("\.match-receipt-photo, \.match-receipt-thermal-photo-hitarea"\)/);
+  assert.doesNotMatch(page, /querySelector\("\.match-receipt-photo"\)/);
   assert.match(page, /사진 자유 회전/);
-  assert.match(page, /className="match-receipt-photo-rotate-handle"/);
+  assert.match(page, /className="match-receipt-photo-editor-rotate"/);
+  assert.match(page, /onPointerDown=\{beginPhotoRotation\}/);
   assert.doesNotMatch(page, /<RotateCcw aria-hidden="true" \/> 자유 회전/);
   assert.match(page, /<Button as="label" variant="secondary">/);
   assert.match(page, /<Button variant="danger" disabled=\{!photoUrl \|\| Boolean\(busy\)\} onClick=\{removePhoto\}>/);
@@ -720,12 +742,10 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(page, /clearMatchReceiptPhoto\(\)/);
   assert.match(page, /createDefaultMatchReceiptDraft\(\)/);
   assert.doesNotMatch(page, /hardRefreshReceipt|match-receipt-hard-reset|window\.caches|cache: "reload"|location\.reload|FilePlus2|startNewReceipt/);
-  assert.match(page, /onWheel: zoomPhotoWithWheel/);
-  assert.match(page, /onDoubleClick: resetPhotoTransform/);
-  assert.match(page, /className="match-receipt-photo-tools"/);
-  assert.match(preview, /addEventListener\("touchmove", preventBrowserGesture, \{ passive: false \}\)/);
-  assert.match(preview, /addEventListener\("gesturestart", preventBrowserGesture, \{ passive: false \}\)/);
-  assert.match(preview, /addEventListener\("gesturechange", preventBrowserGesture, \{ passive: false \}\)/);
+  assert.match(page, /onWheel=\{zoomPhotoWithWheel\}/);
+  assert.match(page, /onDoubleClick=\{resetPhotoTransform\}/);
+  assert.match(page, /className="match-receipt-photo-actions"/);
+  assert.doesNotMatch(preview, /preventBrowserGesture|gesturestart|gesturechange|touchmove/);
   assert.match(detailStyles, /\.match-receipt-info-fields > label\s*\{[^}]*contain:\s*inline-size;/);
   assert.match(detailStyles, /\.match-receipt-info-fields input\[type="date"\]\s*\{[^}]*min-inline-size:\s*0;[^}]*max-inline-size:\s*100%;/);
   assert.match(landing, /children = "로그인"/);
@@ -770,7 +790,7 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(page, /setCourtMapOpen\(false\);/);
   assert.match(page, /locale=\{receiptLocale\}/);
   assert.match(page, /\{!isEnglish \? <CourtMapPicker/);
-  assert.match(page, /value=\{draft\.playerCount \?\? ""\}/);
+  assert.doesNotMatch(page, /value=\{draft\.playerCount \?\? ""\}/);
   assert.match(preview, /lang=\{model\.locale\}/);
   assert.match(renderer, /model\.locale === "en" \? "★  GAME RECEIPT  ★"/);
   for (const label of [
@@ -798,9 +818,8 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(page, /EmblemCropEditor/);
   assert.match(page, /prepareTeamEmblemUpload/);
   assert.doesNotMatch(page, /uploadGuestReceiptEmblem/);
-  assert.match(page, /reserveImageSaveWindow\(receiptCopy\)/);
-  assert.match(page, /saveWindow\.location\.replace\(url\)/);
-  assert.match(page, /공유 메뉴에서 이미지 저장을 선택하세요/);
+  assert.doesNotMatch(page, /reserveImageSaveWindow|saveWindow\.location\.replace/);
+  assert.match(page, /downloadBlob\(blob, getMatchReceiptFileName\(draft, preset\)\)/);
   assert.doesNotMatch(page, /emblemShareFailed|match_receipt_emblem_sync_failed|EMBLEM_SHARE_FAILURE_MESSAGE/);
   assert.match(page, /URL\.revokeObjectURL\(url\)/u);
   assert.match(page, /const publicMatchUrl = publicId\s*\? applyReceiptLocaleToUrl\(new URL/);
@@ -824,8 +843,9 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(page, /RECEIPT_TEXT_FIELDS\.has\(name\)/);
   assert.match(page, /normalizeMatchReceiptDraft\(\{ \.\.\.current, venue, address, originalAddress \}\)/);
   assert.match(preview, /const commentLineCount = model\.commentLines\.length/);
+  assert.match(preview, /const commentText = getMatchReceiptCommentLines\(model\.comment\)\.join\("\\n"\)/);
   assert.match(preview, /match-receipt-ticket-game--comment-lines-\$\{commentLineCount\}/);
-  assert.match(preview, /<span className="match-receipt-ticket-caption">\{model\.commentLines\.join\("\\n"\) \|\| "\\u00a0"\}<\/span>/);
+  assert.match(preview, /<span className="match-receipt-ticket-caption">\{commentText \|\| "\\u00a0"\}<\/span>/);
   assert.doesNotMatch(page, /model\.comment \|\| "내 경기 기록"/);
   assert.match(preview, /className="match-receipt-qr" branded/);
   assert.match(page, /new URL\("\/app\/receipt", window\.location\.origin\)/);
@@ -878,12 +898,12 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(renderer, /const MATCH_RECEIPT_QR_ACCENT = "#d4582b"/);
   assert.doesNotMatch(renderer, /#fa5030/);
   assert.match(renderer, /function drawQrBrandBadge/);
-  assert.match(styles, /\.match-receipt-photo\.is-editable[\s\S]*touch-action: none/);
+  assert.match(styles, /\.match-receipt-photo-editor\s*\{[\s\S]*touch-action: none/);
   assert.match(styles, /\.match-receipt-photo \{[\s\S]*height: 46\.09375%/);
   assert.match(styles, /\.match-receipt-poster-teams > div:not\(\.match-receipt-game-detail\) > strong[\s\S]*overflow-wrap: anywhere[\s\S]*word-break: normal/);
-  assert.match(styles, /\.match-receipt-photo-rotate-handle/);
-  assert.match(styles, /\.match-receipt-photo-rotate-handle[\s\S]*position: absolute[\s\S]*top: 0[\s\S]*right: 0[\s\S]*cursor: grab[\s\S]*touch-action: none/);
-  assert.match(styles, /\.match-receipt-photo-tools/);
+  assert.match(styles, /button\.match-receipt-photo-editor-rotate/);
+  assert.match(styles, /button\.match-receipt-photo-editor-rotate[\s\S]*position: absolute[\s\S]*right: 8px[\s\S]*bottom: 8px[\s\S]*touch-action: none/);
+  assert.match(styles, /\.match-receipt-photo-actions/);
   assert.match(styles, /\.match-receipt-game-info/);
   assert.match(styles, /\.match-receipt-poster-score > span[\s\S]*font-family: "Bebas Neue"/);
   assert.match(styles, /font-size: clamp\(10px, 3\.3cqw, 16px\)/);
@@ -926,7 +946,7 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(detailStyles, /\.match-receipt-line-art-fields legend,[\s\S]*?\.match-receipt-period-fields legend\s*\{[^}]*color:\s*var\(--ui-fieldset-legend-title-color\);[^}]*white-space:\s*nowrap;/);
   assert.match(detailStyles, /\.match-receipt-line-art-fields legend small\s*\{[^}]*color:\s*var\(--ui-fieldset-legend-support-color\);/);
   assert.match(detailStyles, /\.match-receipt-period-fields legend small\s*\{[^}]*color:\s*var\(--ui-fieldset-legend-support-color\);/);
-  assert.match(styles, /\.match-receipt-photo-tools[\s\S]*grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/);
+  assert.match(styles, /\.match-receipt-photo-actions[\s\S]*grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/);
   assert.match(detailStyles, /input\[type="date"\][\s\S]*min-inline-size: 0[\s\S]*max-inline-size: 100%/);
   assert.match(detailStyles, /\.match-receipt-period-fields input\[type="number"\][\s\S]*appearance: textfield/);
   assert.match(detailStyles, /::-webkit-inner-spin-button,[\s\S]*::-webkit-outer-spin-button[\s\S]*-webkit-appearance: none/);

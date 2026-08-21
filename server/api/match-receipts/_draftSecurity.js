@@ -3,6 +3,7 @@ import { normalizeMatchPublicCode } from "../../../shared/lib/matchPublicCode.js
 import {
   MATCH_RECEIPT_LOCALES,
   MATCH_RECEIPT_STYLES,
+  getMatchReceiptFormatPlayerCount,
   sanitizeMatchReceiptComment,
 } from "../../../shared/lib/thermalReceipt.js";
 
@@ -19,6 +20,7 @@ const TEXT_LIMITS = Object.freeze({
   originalAddress: 96,
   format: 5,
   matchNature: 11,
+  comment: 22,
   receiptShortName: 12,
   officialMatchId: 96,
   tournamentName: 32,
@@ -83,10 +85,11 @@ function cleanSerialSeed(value) {
 export function sanitizeReceiptDraftPayload(value = {}, options = {}) {
   const trustedCanonical = options.trustedCanonical === true;
   const format = ["1v1", "2v2", "3v3", "3x3", "5v5"].includes(value.format) ? value.format : "3v3";
+  const comment = sanitizeMatchReceiptComment(value.comment || value.receiptComment);
+  const playerCountSource = trustedCanonical && value.playerCountSource === "record" ? "record" : "format";
   const matchNature = ["friendly", "competitive", "revenge", "semifinal", "final"].includes(value.matchNature)
     ? value.matchNature
     : "competitive";
-  const comment = sanitizeMatchReceiptComment(value.comment || value.receiptComment);
   return {
     serialSeed: cleanSerialSeed(value.serialSeed),
     homeTeam: cleanText(value.homeTeam, TEXT_LIMITS.homeTeam),
@@ -145,9 +148,12 @@ export function sanitizeReceiptDraftPayload(value = {}, options = {}) {
       homeEmblemKey: cleanTeamEmblemKey(value.homeEmblemKey),
       awayEmblemKey: cleanTeamEmblemKey(value.awayEmblemKey),
       officialMatchId: cleanText(value.officialMatchId, TEXT_LIMITS.officialMatchId),
-      playerCount: Math.round(cleanNumber(value.playerCount, 0, 1000, 0)),
       refereeAssigned: Boolean(value.refereeAssigned),
     } : {}),
+    playerCountSource,
+    playerCount: playerCountSource === "record"
+      ? Math.round(cleanNumber(value.playerCount, 0, 1000, 0))
+      : getMatchReceiptFormatPlayerCount(format),
     verified: trustedCanonical && value.verified === true,
   };
 }

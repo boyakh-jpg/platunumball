@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { MapPin } from "lucide-react";
 import {
   createMatchReceiptViewModel,
@@ -9,6 +9,7 @@ import {
 } from "../../lib/matchReceipt.js";
 import { createMatchReceiptLineArt } from "../../lib/matchReceiptEmblem.js";
 import QrCode from "../common/QrCode.jsx";
+import { getMatchReceiptCommentLines } from "../../../shared/lib/thermalReceipt.js";
 
 const EMPTY_TEAM_LINE_ART_URLS = Object.freeze({ home: "", away: "" });
 
@@ -69,33 +70,13 @@ export default function MatchReceiptPreview({
   publicId = "",
   locale = "ko",
   showPersonalTierIdentity = true,
-  photoGestureHandlers = {},
   teamLineArtUrls = EMPTY_TEAM_LINE_ART_URLS,
 }) {
-  const photoElementRef = useRef(null);
   const [lineArtUrls, setLineArtUrls] = useState({ home: "", away: "" });
-
-  useEffect(() => {
-    const photoElement = photoElementRef.current;
-    if (!photoElement || !photoUrl) return undefined;
-
-    const preventBrowserGesture = (event) => {
-      if (event.cancelable) event.preventDefault();
-    };
-
-    photoElement.addEventListener("touchmove", preventBrowserGesture, { passive: false });
-    photoElement.addEventListener("gesturestart", preventBrowserGesture, { passive: false });
-    photoElement.addEventListener("gesturechange", preventBrowserGesture, { passive: false });
-
-    return () => {
-      photoElement.removeEventListener("touchmove", preventBrowserGesture);
-      photoElement.removeEventListener("gesturestart", preventBrowserGesture);
-      photoElement.removeEventListener("gesturechange", preventBrowserGesture);
-    };
-  }, [photoUrl]);
 
   const model = createMatchReceiptViewModel(draft, { matchUrl, publicId, showPersonalTierIdentity, locale });
   const commentLineCount = model.commentLines.length;
+  const commentText = getMatchReceiptCommentLines(model.comment).join("\n");
   useEffect(() => {
     let active = true;
     Promise.all([
@@ -106,7 +87,7 @@ export default function MatchReceiptPreview({
     });
     return () => { active = false; };
   }, [model.teamEmblemUrls.away, model.teamEmblemUrls.home, teamLineArtUrls.away, teamLineArtUrls.home]);
-  const backgroundUrl = photoUrl || model.defaultPhotoUrl;
+  const backgroundUrl = model.includePhoto ? (photoUrl || model.defaultPhotoUrl) : "";
   const posterTeams = [
     { name: model.homeTeam, tier: model.homeTier, neutralMarkUrl: model.neutralTeamMarkUrls.home, lineArtUrl: lineArtUrls.home },
     { name: model.awayTeam, tier: model.awayTier, neutralMarkUrl: model.neutralTeamMarkUrls.away, lineArtUrl: lineArtUrls.away },
@@ -129,13 +110,10 @@ export default function MatchReceiptPreview({
       aria-label={model.locale === "en" ? "Game receipt preview" : "경기 영수증 미리보기"}
     >
       <div
-        ref={photoElementRef}
-        className={`match-receipt-photo${photoUrl ? " is-editable" : " is-default"}`}
-        aria-label={photoUrl ? (model.locale === "en" ? "Edit receipt background photo" : "영수증 배경 사진 편집") : undefined}
-        {...photoGestureHandlers}
+        className={`match-receipt-photo${photoUrl ? "" : " is-default"}`}
       >
-        <img className="match-receipt-photo-image" src={backgroundUrl} alt="" />
-        {!photoUrl ? <ReceiptPhotoScoreboard homeScore={model.homeScore} awayScore={model.awayScore} locale={model.locale} /> : null}
+        {backgroundUrl ? <img className="match-receipt-photo-image" src={backgroundUrl} alt="" /> : null}
+        {model.includePhoto && !photoUrl ? <ReceiptPhotoScoreboard homeScore={model.homeScore} awayScore={model.awayScore} locale={model.locale} /> : null}
       </div>
       <header className="match-receipt-poster-head">
         <span className="match-receipt-wordmark">
@@ -232,7 +210,7 @@ export default function MatchReceiptPreview({
               <small>{model.matchNatureLabel}</small>
             </span>
           )}
-          <span className="match-receipt-ticket-caption">{model.commentLines.join("\n") || "\u00a0"}</span>
+          <span className="match-receipt-ticket-caption">{commentText || "\u00a0"}</span>
           {model.personalTier ? <small className="match-receipt-personal-tier-label">MY TIER · {model.personalTier.label}</small> : null}
         </div>
         <div className="match-receipt-ticket-qr">

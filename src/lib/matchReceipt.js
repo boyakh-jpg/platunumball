@@ -9,19 +9,25 @@ import { createMatchReceiptLineArt } from "./matchReceiptEmblem.js";
 import { formatMatchPublicCode, normalizeMatchPublicCode } from "../../shared/lib/matchPublicCode.js";
 import { getActualMatchPlayerIds } from "../../shared/lib/matchParticipation.js";
 import {
+  flattenPlayerIdValues,
+  flattenMatchReservePlayerIds,
+  projectMatchParticipationIds,
+  uniquePlayerIds,
+} from "../../shared/lib/playerIds.js";
+import {
   MATCH_RECEIPT_COMMENT_MAX_LENGTH,
   MATCH_RECEIPT_LOCALES,
   MATCH_RECEIPT_STYLES,
+  getMatchReceiptFormatPlayerCount,
   sanitizeMatchReceiptComment,
   splitMatchReceiptComment,
-  suggestReceiptShortName,
 } from "../../shared/lib/thermalReceipt.js";
 import { renderThermalReceiptCanvas } from "./thermalReceipt.js";
 
 export const MATCH_RECEIPT_DRAFT_STORAGE_KEY = "boxtier.match-receipt.draft.v1";
 export const MATCH_RECEIPT_CREATE_RETURN_TO = "/app/create?intent=record&source=receipt";
 export const MATCH_RECEIPT_PHOTO_MAX_BYTES = 15 * 1024 * 1024;
-const MATCH_RECEIPT_DRAFT_VERSION = 4;
+const MATCH_RECEIPT_DRAFT_VERSION = 5;
 export const MATCH_RECEIPT_DRAFT_TTL_MS = 24 * 60 * 60 * 1000;
 const PHOTO_DB_NAME = "boxtier-match-receipt";
 const PHOTO_STORE_NAME = "photos";
@@ -51,6 +57,20 @@ export const MATCH_RECEIPT_FORMATS = Object.freeze([
   { value: "3x3", label: "3x3" },
   { value: "5v5", label: "5대5" },
 ]);
+
+export function getRecordedMatchReceiptPlayerCount(match = {}) {
+  const participantIds = uniquePlayerIds([
+    ...projectMatchParticipationIds(match),
+    ...flattenMatchReservePlayerIds(match),
+    ...flattenPlayerIdValues(match.reserve_players),
+    ...flattenPlayerIdValues(match.played_player_ids),
+    ...flattenPlayerIdValues(match.rules?.reservePlayers),
+    ...flattenPlayerIdValues(match.rules?.playedPlayerIds),
+  ]);
+  if (participantIds.length) return participantIds.length;
+  const canonicalCount = Number(match.result?.playerCount);
+  return Number.isFinite(canonicalCount) ? Math.max(0, Math.round(canonicalCount)) : 0;
+}
 
 export const MATCH_RECEIPT_NATURES = Object.freeze([
   { value: "friendly", label: "FRIENDLY" },
@@ -266,7 +286,8 @@ export function createDefaultMatchReceiptDraft() {
     hasCanonicalTeamMatch: false,
     verified: false,
     officialMatchId: "",
-    playerCount: null,
+    playerCountSource: "format",
+    playerCount: getMatchReceiptFormatPlayerCount("3v3"),
     refereeAssigned: false,
   };
 }
@@ -277,6 +298,8 @@ export function normalizeMatchReceiptDraft(value = {}) {
     ? value.matchNature
     : "competitive";
   const sharedComment = sanitizeMatchReceiptComment(String(value.comment ?? "").trim() || value.receiptComment || "");
+  const verified = Boolean(value.verified);
+  const playerCountSource = value.playerCountSource === "record" ? "record" : "format";
   return {
     serialSeed: cleanSerialSeed(value.serialSeed),
     publicCode: normalizeMatchPublicCode(value.publicCode),
@@ -332,11 +355,12 @@ export function normalizeMatchReceiptDraft(value = {}) {
     personalRebounds: cleanOptionalNumber(value.personalRebounds),
     personalStatsEligible: Boolean(value.personalStatsEligible),
     hasCanonicalTeamMatch: Boolean(value.hasCanonicalTeamMatch),
-    verified: Boolean(value.verified),
+    verified,
     officialMatchId: cleanText(value.officialMatchId, 96),
-    playerCount: value.playerCount === "" || value.playerCount === null || value.playerCount === undefined
-      ? null
-      : Math.round(clampNumber(value.playerCount, 0, MATCH_RECEIPT_LIMITS.playerCount)),
+    playerCountSource,
+    playerCount: playerCountSource === "record"
+      ? Math.round(clampNumber(value.playerCount, 0, 1000))
+      : getMatchReceiptFormatPlayerCount(format),
     refereeAssigned: Boolean(value.refereeAssigned),
   };
 }
@@ -384,7 +408,7 @@ export function loadMatchReceiptDraft(storage) {
   try {
     const value = JSON.parse(target.getItem(MATCH_RECEIPT_DRAFT_STORAGE_KEY) || "null");
     const savedAt = Number(value?.savedAt);
-    if (![1, 2, 3, MATCH_RECEIPT_DRAFT_VERSION].includes(value?.version) || !Number.isFinite(savedAt) || Date.now() - savedAt > MATCH_RECEIPT_DRAFT_TTL_MS) {
+    if (![1, 2, 3, 4, MATCH_RECEIPT_DRAFT_VERSION].includes(value?.version) || !Number.isFinite(savedAt) || Date.now() - savedAt > MATCH_RECEIPT_DRAFT_TTL_MS) {
       if (value) target.removeItem(MATCH_RECEIPT_DRAFT_STORAGE_KEY);
       return null;
     }
@@ -550,7 +574,6 @@ export function getMatchReceiptDraftFromMatch(match = {}, style = {}, court = nu
     || (isPersonalRecordMatch(match) && match.createdBy === currentUserId)
   );
   const sharedComment = style.comment ?? style.receiptComment ?? "";
-  const actualPlayerCount = getActualMatchPlayerIds(match).length;
   return normalizeMatchReceiptDraft({
     serialSeed: style.serialSeed,
     publicCode: style.publicCode ?? match.publicCode ?? match.public_code,
@@ -569,8 +592,8 @@ export function getMatchReceiptDraftFromMatch(match = {}, style = {}, court = nu
     receiptLocale: style.receiptLocale,
     includePhoto: style.includePhoto,
     receiptComment: sharedComment,
-    homeReceiptShortName: style.homeReceiptShortName || suggestReceiptShortName(match.teamA?.name || summary.teamAName),
-    awayReceiptShortName: style.awayReceiptShortName || suggestReceiptShortName(match.teamB?.name || summary.teamBName),
+    homeReceiptShortName: "",
+    awayReceiptShortName: "",
     playedTime: style.playedTime || String(match.scheduledTime ?? match.startTime ?? "20:30").slice(0, 5),
     tournamentName: style.tournamentName || style.tournament?.name || style.tournament?.title || "",
     periodScores: Array.isArray(match.result?.periodScores) ? match.result.periodScores : [],
@@ -607,7 +630,8 @@ export function getMatchReceiptDraftFromMatch(match = {}, style = {}, court = nu
     ),
     verified,
     officialMatchId: verified ? String(match.id ?? "") : "",
-    playerCount: verified ? Number(actualPlayerCount || match.result?.playerCount || 0) : null,
+    playerCountSource: "record",
+    playerCount: getRecordedMatchReceiptPlayerCount(match),
     refereeAssigned: verified ? Boolean(match.refereeId ?? match.referee?.id) : false,
   });
 }

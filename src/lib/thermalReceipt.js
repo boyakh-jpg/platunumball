@@ -2,17 +2,18 @@ import { assetUrl } from "./assets.js";
 import { createQrMatrix } from "./qrCode.js";
 import {
   createThermalRandom,
+  getMatchReceiptCommentLines,
   getThermalReceiptLayout,
   getThermalScoreSlotLayout,
   sanitizeMatchReceiptComment,
-  suggestReceiptShortName,
   THERMAL_PRINT_ROLES,
 } from "../../shared/lib/thermalReceipt.js";
 
 const PAPER = "#eeeae1";
 const INK = "#151515";
-const LATIN_FONT = '"Anton"';
-const DATA_FONT = '"Pretendard Variable"';
+const BRAND_FONT = '"Anton"';
+const DATA_FONT = '"IBM Plex Mono"';
+const KOREAN_FONT = '"Dotum", "돋움", sans-serif';
 const DIGIT_ATLAS_PATH = "/assets/match-receipt-score-digits-v3.png";
 const THERMAL_ASSET_ROOT = "/assets/thermal-receipt";
 const THERMAL_ASSET_PATHS = Object.freeze({
@@ -94,10 +95,16 @@ function fillMaskedPanel(ctx, box, role = "heavy") {
   ctx.drawImage(layer, box.x, box.y);
 }
 
-function fitText(ctx, text, maxWidth, start, minimum, font = DATA_FONT) {
+function getThermalFont(text, font) {
+  if (font) return font;
+  return /[ㄱ-ㅎㅏ-ㅣ가-힣]/u.test(String(text)) ? KOREAN_FONT : DATA_FONT;
+}
+
+function fitText(ctx, text, maxWidth, start, minimum, font) {
+  const resolvedFont = getThermalFont(text, font);
   let size = start;
   do {
-    ctx.font = `800 ${size}px ${font}`;
+    ctx.font = `800 ${size}px ${resolvedFont}`;
     if (ctx.measureText(text).width <= maxWidth) return size;
     size -= 2;
   } while (size >= minimum);
@@ -159,7 +166,7 @@ function drawThermalText(ctx, text, x, y, options = {}) {
   if (!value) return;
   const size = Math.max(10, Number(options.size) || 24);
   const scale = options.dotScale || (size >= 34 ? 2 : 1);
-  const font = options.font || DATA_FONT;
+  const font = getThermalFont(value, options.font);
   const weight = options.weight || 800;
   const measuringContext = createCanvas(1, 1).getContext("2d");
   measuringContext.font = `${weight} ${size}px ${font}`;
@@ -332,10 +339,11 @@ function drawPhoto(ctx, image, layout, draft) {
 
 function drawBrand(ctx, model, layout) {
   const center = layout.content.x + layout.content.width / 2;
+  const compact = !layout.hasPhoto;
   const serial = String(model.serial || "BT-000");
-  drawThermalText(ctx, "BOXTIER", center, layout.brand.y + 70, { size: 76, font: LATIN_FONT, align: "center", maxWidth: 500, dotScale: 2 });
-  drawThermalText(ctx, "BASKETBALL  GAME RECEIPT", center, layout.brand.y + 122, { size: 25, align: "center", maxWidth: 520 });
-  drawThermalText(ctx, `MATCH NO. ${serial.replace(/^#?BT-?/i, "").slice(-3).padStart(3, "0")}`, center, layout.brand.y + 156, { size: 23, align: "center", maxWidth: 400 });
+  drawThermalText(ctx, "BOXTIER", center, layout.brand.y + (compact ? 21 : 54), { size: compact ? 62 : 76, font: BRAND_FONT, align: "center", maxWidth: 500, dotScale: 2 });
+  drawThermalText(ctx, "BASKETBALL  GAME RECEIPT", center, layout.brand.y + (compact ? 63 : 112), { size: 25, align: "center", maxWidth: 520 });
+  drawThermalText(ctx, `MATCH NO. ${serial.replace(/^#?BT-?/i, "").slice(-3).padStart(3, "0")}`, center, layout.brand.y + (compact ? 91 : 154), { size: 23, align: "center", maxWidth: 400 });
   drawRule(ctx, layout.content.x, layout.brand.y + layout.brand.height - 4, layout.content.width);
 }
 
@@ -382,7 +390,7 @@ function drawEmblem(ctx, image, x, y, name) {
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(bitmap, x - 84, y - 84, 168, 168);
   } else {
-    drawThermalText(ctx, String(name || "?").trim().slice(0, 1), x, y, { size: 86, font: LATIN_FONT, align: "center", maxWidth: 120, dotScale: 2 });
+    drawThermalText(ctx, String(name || "?").trim().slice(0, 1), x, y, { size: 86, align: "center", maxWidth: 120, dotScale: 2 });
   }
   ctx.restore();
 }
@@ -393,10 +401,10 @@ function drawTeams(ctx, model, layout, emblems) {
   const right = layout.teams.x + layout.teams.width - 126;
   drawEmblem(ctx, emblems.home, left, y, model.homeTeam);
   drawEmblem(ctx, emblems.away, right, y, model.awayTeam);
-  drawThermalText(ctx, "VS", layout.teams.x + layout.teams.width / 2, y, { size: 42, font: LATIN_FONT, align: "center", maxWidth: 80, dotScale: 2 });
+  drawThermalText(ctx, "VS", layout.teams.x + layout.teams.width / 2, y, { size: 48, align: "center", maxWidth: 88, dotScale: 2 });
   [[model.homeTeam || "Team A", left], [model.awayTeam || "Team B", right]].forEach(([name, x]) => {
-    const size = fitText(ctx, name, 286, 46, 30);
-    drawThermalText(ctx, name, x, layout.teams.y + 188, { size, align: "center", maxWidth: 300, dotScale: 2, printRole: "team" });
+    const size = fitText(ctx, name, 286, 44, 26);
+    drawThermalText(ctx, name, x, layout.teams.y + 188, { size, align: "center", maxWidth: 286, dotScale: 2, printRole: "team" });
   });
 }
 
@@ -409,7 +417,7 @@ function drawAtlasScore(ctx, atlas, score, slotX, centerY, slotWidth, tone = PAP
   Array.from(metrics.score).forEach((digit, index) => {
     const x = index * (metrics.glyphWidth + metrics.gap);
     if (atlas) maskCtx.drawImage(atlas, Number(digit) * cellWidth, 0, cellWidth, atlas.naturalHeight, x, 0, metrics.glyphWidth, metrics.height);
-    else drawThermalText(maskCtx, digit, x, metrics.height / 2, { size: metrics.height, font: LATIN_FONT, maxWidth: metrics.glyphWidth });
+    else drawThermalText(maskCtx, digit, x, metrics.height / 2, { size: metrics.height, font: DATA_FONT, maxWidth: metrics.glyphWidth });
   });
   maskCtx.globalCompositeOperation = "source-in";
   maskCtx.fillStyle = tone;
@@ -421,7 +429,7 @@ function drawAtlasColon(ctx, atlas, slotX, centerY, slotWidth, height, tone = PA
   if (!atlas) {
     drawThermalText(ctx, ":", slotX + slotWidth / 2, centerY, {
       size: height,
-      font: LATIN_FONT,
+      font: DATA_FONT,
       align: "center",
       maxWidth: slotWidth,
       dotScale: 2,
@@ -471,26 +479,10 @@ function drawInfo(ctx, model, layout) {
   const center = layout.info.x + layout.info.width / 2;
   const playedOn = String(model.playedOn || "").replaceAll("-", ".");
   const periodCount = Array.isArray(model.periodScores) && model.periodScores.length ? model.periodScores.length : 4;
-  drawThermalText(ctx, "FINAL", center, layout.info.finalBaseline, { size: 38, font: LATIN_FONT, align: "center", maxWidth: 220, dotScale: 1, printRole: "team" });
-  drawThermalText(ctx, `${playedOn} · ${model.playedTime || ""}`, center, layout.info.dateBaseline, { size: 24, align: "center", maxWidth: 520 });
-  const venue = model.venue || model.address || "VENUE";
-  let venueSize = 26;
-  const measuringContext = createCanvas(1, 1).getContext("2d");
-  measuringContext.font = `800 ${venueSize}px ${DATA_FONT}`;
-  const shouldWrapVenue = measuringContext.measureText(venue).width > 620;
-  if (shouldWrapVenue) venueSize = 20;
-  let venueLines = shouldWrapVenue ? splitThermalText(venue, 620, venueSize) : [venue];
-  while (shouldWrapVenue && venueLines.length < 2 && venueSize > 20) {
-    venueSize -= 2;
-    venueLines = splitThermalText(venue, 620, venueSize);
-  }
-  const venueStartY = venueLines.length > 1 ? layout.info.wrappedVenueBaseline : layout.info.venueBaseline;
-  venueLines.slice(0, 2).forEach((line, index) => drawThermalText(ctx, line, center, venueStartY + index * layout.info.venueLineGap, {
-    size: venueSize,
-    align: "center",
-    maxWidth: 620,
-  }));
-  drawThermalText(ctx, `${String(model.format || "5v5").toUpperCase()} · ${periodCount} QUARTERS${model.refereeAssigned ? " · REFEREE" : ""}`, center, layout.info.summaryBaseline, { size: 22, align: "center", maxWidth: 620 });
+  drawThermalText(ctx, "FINAL", center, layout.info.y + 23, { size: 34, font: DATA_FONT, align: "center", maxWidth: 200, dotScale: 2 });
+  drawThermalText(ctx, `${playedOn} · ${model.playedTime || ""}`, center, layout.info.y + 58, { size: 24, align: "center", maxWidth: 520 });
+  drawThermalText(ctx, model.venue || model.address || "VENUE", center, layout.info.y + 88, { size: 26, align: "center", maxWidth: 620 });
+  drawThermalText(ctx, `${String(model.format || "5v5").toUpperCase()} · ${periodCount} QUARTERS${model.refereeAssigned ? " · REFEREE" : ""}`, center, layout.info.y + 118, { size: 22, align: "center", maxWidth: 620 });
 }
 
 function drawPeriods(ctx, model, layout) {
@@ -510,10 +502,11 @@ function drawPeriods(ctx, model, layout) {
   labels.forEach((label, index) => drawThermalText(ctx, label, x + 214 + index * colWidth, layout.periods.y + 30, { size: 21, align: "center", maxWidth: 70 }));
   drawThermalText(ctx, "TOTAL", x + layout.periods.width, layout.periods.y + 30, { size: 21, align: "right", maxWidth: 90 });
   drawRule(ctx, x, layout.periods.y + 50, layout.periods.width, true);
-  const shortNames = [model.homeReceiptShortName || suggestReceiptShortName(model.homeTeam) || "A", model.awayReceiptShortName || suggestReceiptShortName(model.awayTeam) || "B"];
+  const teamNames = [model.homeTeam || "Team A", model.awayTeam || "Team B"];
   [0, 1].forEach((side) => {
     const rowY = layout.periods.y + 82 + side * 38;
-    drawThermalText(ctx, shortNames[side], x, rowY, { size: 24, maxWidth: 150 });
+    const size = fitText(ctx, teamNames[side], 150, 24, 16);
+    drawThermalText(ctx, teamNames[side], x, rowY, { size, maxWidth: 150 });
     rows.forEach((row, index) => drawThermalText(ctx, row[side + 1] ?? "-", x + 214 + index * colWidth, rowY, { size: 22, align: "center", maxWidth: 70 }));
     drawThermalText(ctx, side ? model.awayScore : model.homeScore, x + layout.periods.width, rowY, { size: 23, align: "right", maxWidth: 90 });
   });
@@ -523,10 +516,10 @@ function drawPeriods(ctx, model, layout) {
 function drawResult(ctx, model, layout, atlas) {
   const box = layout.result;
   fillMaskedPanel(ctx, box);
-  const shortHome = model.homeReceiptShortName || suggestReceiptShortName(model.homeTeam) || "A";
-  const shortAway = model.awayReceiptShortName || suggestReceiptShortName(model.awayTeam) || "B";
-  drawThermalText(ctx, shortHome, box.x + 22, box.y + 28, { size: 25, maxWidth: 220, color: PAPER });
-  drawThermalText(ctx, shortAway, box.x + box.width - 22, box.y + 28, { size: 25, align: "right", maxWidth: 220, color: PAPER });
+  const homeName = model.homeTeam || "Team A";
+  const awayName = model.awayTeam || "Team B";
+  drawThermalText(ctx, homeName, box.x + 22, box.y + 28, { size: fitText(ctx, homeName, 250, 25, 16), maxWidth: 250, color: PAPER });
+  drawThermalText(ctx, awayName, box.x + box.width - 22, box.y + 28, { size: fitText(ctx, awayName, 250, 25, 16), align: "right", maxWidth: 250, color: PAPER });
   ctx.fillStyle = PAPER;
   ctx.fillRect(box.x + 20, box.y + 47, box.width - 40, 1);
   const scoreY = box.y + 101;
@@ -541,8 +534,12 @@ function drawResult(ctx, model, layout, atlas) {
   drawThermalText(ctx, outcome, box.x + 22, box.y + 169, { size: 24, maxWidth: box.width - 44, color: PAPER });
   if (layout.hasComment) {
     ctx.fillStyle = PAPER;
-    ctx.fillRect(box.x + 22, box.y + 191, box.width - 44, 1);
-    drawThermalText(ctx, `${model.receiptLocale === "en" ? "NOTE" : "한줄평"}  ${model.receiptComment}`, box.x + 22, box.y + 216, { size: 21, maxWidth: box.width - 44, color: PAPER });
+    ctx.fillRect(box.x + 22, box.y + 198, box.width - 44, 1);
+    const lines = getMatchReceiptCommentLines(model.comment);
+    lines.forEach((line, index) => {
+      const label = index === 0 ? `${model.receiptLocale === "en" ? "NOTE" : "한줄평"}  ` : "";
+      drawThermalText(ctx, `${label}${line}`, box.x + 22, box.y + 226 + index * 30, { size: 21, maxWidth: box.width - 44, color: PAPER });
+    });
   }
 }
 
@@ -566,7 +563,7 @@ function drawFooter(ctx, model, layout) {
   const y = layout.footer.y;
   const url = model.matchUrl || "https://boxtier.kr";
   const matchId = model.officialMatchId || String(model.serial || "BT-000").replace(/^#/, "");
-  drawThermalText(ctx, `${model.receiptLocale === "en" ? "PLAYERS" : "참가 인원"}                ${Number(model.playerCount) || 0}`, x, y + 26, { size: 22, maxWidth: 390 });
+  drawThermalText(ctx, `PLAYERS                ${Number(model.playerCount) || 0}`, x, y + 26, { size: 22, maxWidth: 390 });
   drawRule(ctx, x, y + 44, 390, true);
   drawThermalText(ctx, `GAME ID   ${matchId}`, x, y + 72, { size: 21, maxWidth: 390 });
   drawRule(ctx, x, y + 90, 390, true);
@@ -574,8 +571,8 @@ function drawFooter(ctx, model, layout) {
   drawRule(ctx, x, y + 136, 390, true);
   drawThermalText(ctx, "boxtier.kr", x, y + 174, { size: 23, maxWidth: 240 });
   drawThermalText(ctx, "KEEP YOUR GAME.", x, y + 196, { size: 17, maxWidth: 240 });
-  drawThermalText(ctx, "SCAN MATCH", x + layout.footer.width - 92, y + 20, { size: 20, align: "center", maxWidth: 190 });
-  drawQr(ctx, url, x + layout.footer.width - 184, y + 34, 184);
+  drawThermalText(ctx, "SCAN MATCH", x + layout.footer.width - 104, y + 18, { size: 20, align: "center", maxWidth: 208 });
+  drawQr(ctx, url, x + layout.footer.width - 208, y + 30, 208);
 }
 
 function normalizeThermalData(value, options) {
@@ -586,8 +583,6 @@ function normalizeThermalData(value, options) {
     ...model,
     comment: sharedComment,
     receiptComment: sharedComment,
-    homeReceiptShortName: model.homeReceiptShortName || suggestReceiptShortName(model.homeTeam),
-    awayReceiptShortName: model.awayReceiptShortName || suggestReceiptShortName(model.awayTeam),
     matchUrl: String(options.matchUrl || model.matchUrl || ""),
     periodScores,
   };
@@ -596,8 +591,9 @@ function normalizeThermalData(value, options) {
 export async function renderThermalReceiptCanvas(value, preset = "story", options = {}) {
   await document.fonts?.ready;
   await Promise.all([
-    document.fonts?.load?.(`48px ${LATIN_FONT}`),
+    document.fonts?.load?.(`48px ${BRAND_FONT}`),
     document.fonts?.load?.(`24px ${DATA_FONT}`),
+    document.fonts?.load?.(`24px ${KOREAN_FONT}`),
   ]);
   const model = normalizeThermalData(value, options);
   const renderSeed = model.serialSeed || model.serial || "thermal";

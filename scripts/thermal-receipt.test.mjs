@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   createThermalRandom,
+  getMatchReceiptCommentLines,
+  getMatchReceiptFormatPlayerCount,
   getThermalReceiptLayout,
   getThermalReceiptTextWeight,
   getThermalScoreSlotLayout,
@@ -15,34 +17,25 @@ test("thermal receipt keeps the canonical Story paper geometry", () => {
   const plain = getThermalReceiptLayout({ hasPhoto: false, hasPeriods: true, hasComment: true });
 
   assert.deepEqual(photo.paper, { x: 142, y: 24, width: 796, height: 1872 });
-  assert.deepEqual(plain.paper, { x: 142, y: 168, width: 796, height: 1584 });
+  assert.deepEqual(plain.paper, { x: 142, y: 168, width: 796, height: 1440 });
   assert.deepEqual(photo.content, { x: 198, width: 684 });
   assert.equal(photo.photo.height, 288);
   assert.equal(photo.brand.y - photo.paper.y, plain.brand.y - plain.paper.y);
-  assert.equal(plain.teams.y, 392);
-  assert.equal(plain.score.y, 634);
-  assert.equal(plain.info.y, 874);
-  assert.equal(plain.info.finalBaseline, 902);
-  assert.ok(
-    plain.info.finalBaseline - 38 * 1.45 / 2 >= plain.score.y + plain.score.height + 16,
-    "FINAL keeps a visible gap below the score panel",
-  );
-  assert.ok(
-    plain.info.summaryBaseline + 22 * 1.45 / 2 < plain.periods.y,
-    "match summary stays clear of the period table",
-  );
-  assert.equal(plain.periods.y, 1036);
-  assert.equal(plain.result.y, 1224);
-  assert.equal(plain.footer.y, 1492);
+  assert.equal(plain.teams.y, 280);
+  assert.equal(plain.score.y, 518);
+  assert.equal(plain.info.y, 756);
+  assert.equal(plain.periods.y, 898);
+  assert.equal(plain.result.y, 1084);
+  assert.equal(plain.footer.y, 1368);
   for (const region of ["teams", "score", "info", "periods", "footer"]) {
     assert.equal(
       photo[region].y - photo.paper.y - (plain[region].y - plain.paper.y),
-      288,
-      `${region} removes only the photo slot`,
+      404,
+      `${region} accounts for the compact no-photo header`,
     );
   }
-  assert.equal(photo.paper.y + photo.paper.height - (photo.footer.y + photo.footer.height), 42);
-  assert.equal(plain.paper.y + plain.paper.height - (plain.footer.y + plain.footer.height), 42);
+  assert.equal(photo.paper.y + photo.paper.height - (photo.footer.y + photo.footer.height), 52);
+  assert.equal(plain.paper.y + plain.paper.height - (plain.footer.y + plain.footer.height), 24);
 });
 
 test("thermal receipt reuses the shared emblem chain before monogram fallback", () => {
@@ -68,9 +61,9 @@ test("optional thermal rows collapse without leaving internal gaps", () => {
   const compact = getThermalReceiptLayout({ hasPhoto: false, hasPeriods: false, hasComment: false });
 
   assert.equal(noPeriods.periods, null);
-  assert.equal(full.result.y - noPeriods.result.y, 188);
-  assert.equal(full.footer.y - noPeriods.footer.y, 188);
-  assert.equal(full.paper.height - noPeriods.paper.height, 188);
+  assert.equal(full.result.y - noPeriods.result.y, 186);
+  assert.equal(full.footer.y - noPeriods.footer.y, 186);
+  assert.equal(full.paper.height - noPeriods.paper.height, 186);
   assert.equal(full.result.height - noComment.result.height, 40);
   assert.equal(full.footer.y - noComment.footer.y, 40);
   assert.equal(full.paper.height - noComment.paper.height, 40);
@@ -78,7 +71,7 @@ test("optional thermal rows collapse without leaving internal gaps", () => {
   assert.ok(full.periods.y + full.periods.height < full.result.y);
   assert.ok(full.result.y + full.result.height < full.footer.y);
   for (const layout of [full, noPeriods, noComment, compact]) {
-    assert.equal(layout.paper.y + layout.paper.height - (layout.footer.y + layout.footer.height), 42);
+    assert.equal(layout.paper.y + layout.paper.height - (layout.footer.y + layout.footer.height), 24);
   }
 });
 
@@ -90,6 +83,16 @@ test("thermal comment removes markup and controls then enforces the shared 22-ch
   const limited = sanitizeThermalReceiptComment("가".repeat(40));
   assert.equal(limited, "가".repeat(22));
   assert.equal(getThermalReceiptTextWeight(limited), 22);
+  assert.deepEqual(getMatchReceiptCommentLines("가".repeat(22)), ["가".repeat(11), "가".repeat(11)]);
+});
+
+test("manual receipt player count is derived from the canonical match format", () => {
+  assert.equal(getMatchReceiptFormatPlayerCount("1v1"), 2);
+  assert.equal(getMatchReceiptFormatPlayerCount("2v2"), 4);
+  assert.equal(getMatchReceiptFormatPlayerCount("3v3"), 6);
+  assert.equal(getMatchReceiptFormatPlayerCount("3x3"), 6);
+  assert.equal(getMatchReceiptFormatPlayerCount("5v5"), 10);
+  assert.equal(getMatchReceiptFormatPlayerCount("unknown"), 0);
 });
 
 test("thermal score slots center every supported score inside 284 pixels", () => {

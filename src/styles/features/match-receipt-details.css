@@ -102,10 +102,11 @@
   display: block; box-sizing: border-box; overflow: hidden;
   inline-size: 100%; min-inline-size: 0; max-inline-size: 100%;
   -webkit-appearance: none; appearance: none;
-  line-height: 22px;
+  padding-block: 0;
+  line-height: 42px;
 }
 .match-receipt-info-fields input[type="date"]::-webkit-date-and-time-value {
-  display: block; width: 100%; min-width: 0; margin: 0; padding: 0; text-align: left;
+  display: flex; width: 100%; min-width: 0; height: 42px; margin: 0; padding: 0; align-items: center; text-align: left;
 }
 .match-receipt-info-fields input[type="date"]::-webkit-calendar-picker-indicator { flex: 0 0 auto; margin: 0; }
 .match-receipt-venue-control { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-4); }
