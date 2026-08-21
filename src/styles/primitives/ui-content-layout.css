@@ -76,10 +76,10 @@ html[data-theme] .ui-design-app :is(
   fieldset.settings-fieldset-card,
   fieldset.workflow-fieldset
 ) > legend.section-title-row:first-child h2 {
-  min-inline-size: 0;
-  overflow: hidden;
+  flex: 0 0 auto;
   color: var(--ui-fieldset-legend-title-color);
-  text-overflow: ellipsis;
+  overflow: visible;
+  text-overflow: clip;
   white-space: nowrap;
 }
 
@@ -87,10 +87,11 @@ html[data-theme] .ui-design-app :is(
   fieldset.settings-fieldset-card,
   fieldset.workflow-fieldset
 ) > legend.section-title-row:first-child .eyebrow {
+  flex: 1 1 auto;
   min-inline-size: 0;
   overflow: hidden;
   color: var(--ui-fieldset-legend-support-color);
-  text-overflow: ellipsis;
+  text-overflow: clip;
   text-shadow: none;
   white-space: nowrap;
 }
@@ -378,11 +379,14 @@ html[data-theme] .app-main .ui-page-hero :is(h1, h2),
   max-width: 18ch;
   color: var(--hero-title-color);
   font-family: var(--hero-title-font);
-  font-size: var(--hero-title-size);
   line-height: var(--hero-title-line-height);
   letter-spacing: var(--hero-title-letter-spacing);
   text-shadow: var(--hero-title-shadow);
   text-wrap: balance;
+}
+
+html[data-theme] .app-main .ui-page-hero :is(h1, h2) {
+  font-size: var(--hero-title-size);
 }
 
 html[data-theme] .app-main .ui-page-hero .ui-page-hero__copy > p:not(.eyebrow),
@@ -686,8 +690,7 @@ html[data-theme] .ui-design-host .ui-design-list > * {
     font-size: var(--ui-content-title-size-mobile);
   }
 
-  html[data-theme] .app-main .ui-page-hero :is(h1, h2),
-  .guest-landing-hero h1 {
+  html[data-theme] .app-main .ui-page-hero :is(h1, h2) {
     font-size: var(--hero-title-size-mobile);
   }
 

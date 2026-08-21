@@ -20,7 +20,7 @@
 
 .getting-started-section__head > span {
   color: var(--rb-muted);
-  font-size: 0.72rem;
+  font-size: var(--font-size-caption);
   font-weight: 900;
   white-space: nowrap;
 }
@@ -202,7 +202,7 @@
 
 .getting-started-pager > span {
   color: var(--rb-muted);
-  font-size: 0.72rem;
+  font-size: var(--font-size-caption);
   font-weight: 900;
   text-align: center;
   white-space: nowrap;
@@ -279,7 +279,7 @@
   .getting-started-chapter-nav__toggle > span,
   .getting-started-chapter-nav__toggle > small {
     color: var(--rb-muted);
-    font-size: 0.68rem;
+    font-size: var(--font-size-caption);
     font-weight: 900;
     white-space: nowrap;
   }
@@ -318,7 +318,7 @@
   .getting-started-chapter-nav__links a {
     gap: var(--space-2);
     padding-inline: var(--space-2);
-    font-size: 0.72rem;
+    font-size: var(--font-size-caption);
   }
 
   .getting-started-chapter-nav__links a > span {
@@ -383,13 +383,13 @@
 
 @media (max-width: 480px) {
   .getting-started-topbar > span {
-    font-size: 0.62rem;
+    font-size: var(--font-size-caption);
     letter-spacing: 0.04em;
   }
 
   .getting-started-chapter-nav__links a {
     min-height: var(--ui-button-height-sm);
-    font-size: 0.68rem;
+    font-size: var(--font-size-caption);
   }
 
   .getting-started-shot figcaption {

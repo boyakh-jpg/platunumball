@@ -738,7 +738,7 @@ test("KBO는 스포츠 표시, Pretendard는 읽기와 조작 UI에 사용한다
   assert.match(tokenStyles, /--font-weight-control:\s*700;/);
   assert.match(tokenStyles, /--font-weight-title:\s*850;/);
   assert.match(tokenStyles, /--font-weight-sports:\s*700;/);
-  assert.match(tokenStyles, /--font-size-caption:\s*0\.72rem;/);
+  assert.match(tokenStyles, /--font-size-caption:\s*0\.75rem;/);
   assert.match(tokenStyles, /--font-size-control:\s*0\.78rem;/);
   assert.match(tokenStyles, /--font-size-meta:\s*0\.82rem;/);
   assert.match(tokenStyles, /--font-size-body:\s*0\.9375rem;/);
@@ -1006,11 +1006,11 @@ test("방 생성과 경기 입력 workflow는 실제 fieldset 흐름을 사용�
   );
   assert.match(
     primitiveStyles,
-    /:is\(\s*fieldset\.settings-fieldset-card,\s*fieldset\.workflow-fieldset\s*\) > legend\.section-title-row:first-child h2\s*\{[^}]*color:\s*var\(--ui-fieldset-legend-title-color\);[^}]*text-overflow:\s*ellipsis;[^}]*white-space:\s*nowrap;/,
+    /:is\(\s*fieldset\.settings-fieldset-card,\s*fieldset\.workflow-fieldset\s*\) > legend\.section-title-row:first-child h2\s*\{[^}]*flex:\s*0 0 auto;[^}]*color:\s*var\(--ui-fieldset-legend-title-color\);[^}]*overflow:\s*visible;[^}]*text-overflow:\s*clip;[^}]*white-space:\s*nowrap;/,
   );
   assert.match(
     primitiveStyles,
-    /:is\(\s*fieldset\.settings-fieldset-card,\s*fieldset\.workflow-fieldset\s*\) > legend\.section-title-row:first-child \.eyebrow\s*\{[^}]*color:\s*var\(--ui-fieldset-legend-support-color\);[^}]*text-overflow:\s*ellipsis;[^}]*white-space:\s*nowrap;/,
+    /:is\(\s*fieldset\.settings-fieldset-card,\s*fieldset\.workflow-fieldset\s*\) > legend\.section-title-row:first-child \.eyebrow\s*\{[^}]*flex:\s*1 1 auto;[^}]*min-inline-size:\s*0;[^}]*overflow:\s*hidden;[^}]*color:\s*var\(--ui-fieldset-legend-support-color\);[^}]*text-overflow:\s*clip;[^}]*white-space:\s*nowrap;/,
   );
 });
 
@@ -1575,6 +1575,13 @@ test("hero inner boards share one restrained solid surface system", () => {
   assert.match(visualSystemStyles, /html\[data-theme\] \.app-main \.ui-page-hero \.ui-liquid-glass :where\(\*\)\s*\{[^}]*color:\s*inherit;/);
   assert.match(visualSystemStyles, /\.ui-page-hero \.ui-liquid-glass :is\([\s\S]*?\.home-hero-stats em[\s\S]*?\)\s*\{[^}]*color:\s*var\(--ui-liquid-glass-muted-color\);/);
   assert.match(visualSystemStyles, /\.home-hero-next > strong,[\s\S]*?\.arena-hero-stats strong[\s\S]*?color:\s*var\(--hero-title-color\);/);
+  assert.match(landingGuestStyles, /\.guest-landing-hero h1\s*\{[^}]*font-size:\s*clamp\(2\.15rem,\s*4vw,\s*3\.35rem\);/);
+  assert.match(primitiveStyles, /html\[data-theme\] \.app-main \.ui-page-hero :is\(h1, h2\)\s*\{[^}]*font-size:\s*var\(--hero-title-size\);/);
+  const sharedHeroHeadingBlock = primitiveStyles.match(
+    /html\[data-theme\] \.app-main \.ui-page-hero :is\(h1, h2\),\s*\.guest-landing-hero h1\s*\{([^}]*)\}/,
+  );
+  assert.ok(sharedHeroHeadingBlock);
+  assert.doesNotMatch(sharedHeroHeadingBlock[1], /font-size:/);
   assert.match(landingGuestStyles, /\.guest-landing-header\s*\{[^}]*position:\s*sticky;[^}]*height:\s*64px;/);
   assert.match(landingGuestStyles, /@media \(max-width:\s*760px\)[\s\S]*?\.guest-landing-hero\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\);/);
   assert.match(landingGuestStyles, /\.guest-landing-record-flow\s*\{[^}]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\);/);
@@ -2278,6 +2285,19 @@ test("shared control families and fixed labels keep canonical ownership", () => 
   assert.match(uiControlsStyles, /\.ui-folder-tabs button:is\(\[aria-selected="true"\], \[aria-checked="true"\]\)\s*\{[^}]*background:\s*transparent;[^}]*font-weight:\s*var\(--font-weight-title\);[^}]*box-shadow:\s*none;[^}]*transform:\s*none;/);
   assert.match(uiControlsStyles, /\.ui-segmented-control:not\(\.create-choice-segments\):not\(\[role="radiogroup"\]\):not\(\.ui-filter-row\)\s*\{[^}]*border:\s*0;[^}]*background:\s*transparent;[^}]*box-shadow:\s*none;/);
   assert.match(uiControlsStyles, /\.ui-segmented-control:not\(\.create-choice-segments\):not\(\[role="radiogroup"\]\) > button:is\(\.active, \[aria-current="page"\], \[aria-selected="true"\]\)\s*\{[^}]*background:\s*transparent;[^}]*font-weight:\s*var\(--font-weight-title\);[^}]*box-shadow:\s*none;/);
+  assert.match(tokenStyles, /--ui-mobile-filter-control-height:\s*40px;/);
+  assert.match(
+    uiControlsStyles,
+    /@media \(max-width:\s*720px\)\s*\{[\s\S]*?\.ui-folder-tabs button,[\s\S]*?\.ui-filter-row > button\s*\{[^}]*min-height:\s*var\(--ui-mobile-filter-control-height\);/,
+  );
+  assert.match(
+    profileTeamControlStyles,
+    /@media \(max-width:\s*520px\)[\s\S]*?\.ranking-filter-card \.segmented-control button\s*\{[^}]*font-size:\s*var\(--font-size-caption\);/,
+  );
+  assert.doesNotMatch(
+    gettingStartedStyles,
+    /font-size:\s*0\.(?:62|66|68|7|70|72|74)rem;/,
+  );
   assert.match(profileRecordStyles, /\.profile-record-section-filter,[\s\S]*?\.profile-record-visibility-filter\s*\{[^}]*display:\s*flex;[^}]*width:\s*100%;[^}]*max-width:\s*100%;[^}]*overflow-x:\s*auto;/);
   assert.match(profileRecordStyles, /\.profile-record-section-filter button,[\s\S]*?\.profile-record-visibility-filter button\s*\{[^}]*flex:\s*1 1 0;[^}]*min-width:\s*0;[^}]*white-space:\s*nowrap;/);
   assert.doesNotMatch(profileRecordStyles, /\.profile-record-(?:section|mode|visibility)-filter\s*\{[^}]*grid-template-columns:/);

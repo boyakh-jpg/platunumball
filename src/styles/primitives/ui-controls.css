@@ -679,3 +679,11 @@ html[data-theme] .ui-design-app .ui-filter-row > * {
   width: 0;
   min-width: 0;
 }
+
+@media (max-width: 720px) {
+  .ui-folder-tabs button,
+  html[data-theme] .app-main .ui-segmented-control:not(.create-choice-segments):not([role="radiogroup"]):not(.ui-filter-row) > button,
+  html[data-theme] .ui-design-app .ui-filter-row > button {
+    min-height: var(--ui-mobile-filter-control-height);
+  }
+}

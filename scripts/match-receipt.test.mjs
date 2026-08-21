@@ -787,6 +787,10 @@ test("receipt photo tools stay outside the export card and reference dividers re
     assert.equal(localizedReceiptSources.includes(label), true, `missing English receipt label: ${label}`);
   }
   assert.match(detailStyles, /\.match-receipt-locale-switch\s*\{/);
+  assert.match(
+    detailStyles,
+    /\.match-receipt-locale-switch \.ui-button\s*\{[^}]*width:\s*var\(--ui-button-height-sm\);[^}]*height:\s*var\(--ui-button-height-sm\);[^}]*min-height:\s*var\(--ui-button-height-sm\);/,
+  );
   assert.match(detailStyles, /\.match-receipt-card:lang\(en\) \.match-receipt-ticket-game > strong/);
   assert.match(page, /EmblemCropEditor/);
   assert.match(page, /prepareTeamEmblemUpload/);

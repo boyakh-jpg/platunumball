@@ -210,7 +210,7 @@
     min-width: 0;
     grid-column: auto;
     padding-inline: 2px;
-    font-size: 0.72rem;
+    font-size: var(--font-size-caption);
   }
 
   .ranking-filter-card .segmented-control button:nth-last-child(-n + 3) {
@@ -237,7 +237,7 @@
   .ranking-filter-card .segmented-control button:nth-last-child(-n + 3) {
     grid-column: auto;
     padding-inline: 1px;
-    font-size: 0.66rem;
+    font-size: var(--font-size-caption);
   }
 
   .ranking-filter-card .segmented-control button:nth-child(-n + 3) {

@@ -2903,7 +2903,7 @@ UI 수정 전:
 
 ## 2026-08-16 애플리케이션 정보 밀도
 
-1. page hero와 랭킹·모집 목록의 핵심 제목은 기존 강조 위계를 유지한다. 카드 내부 섹션 제목은 공용 `--font-size-app-section-title`, 보조 문구는 `--font-size-app-support`를 사용하며 화면별 확대값을 만들지 않는다.
+1. page hero와 랭킹·모집 목록의 핵심 제목은 기존 강조 위계를 유지한다. 카드 내부 섹션 제목은 공용 `--font-size-app-section-title`, 보조 문구는 `--font-size-app-support`를 사용하며 화면별 확대값을 만들지 않는다. 고정 캡션과 보조 조작 문구는 `--font-size-caption`의 `0.75rem`을 하한으로 사용한다.
 2. 기본 button·input·select는 공용 `--control-height`, 작은 control은 `--control-height-sm`을 사용한다. control의 좌우 여백과 segmented group 간격도 공용 control 토큰만 사용한다.
 3. badge는 공용 `--ui-badge-padding`을 사용한다. 화면별로 큰 pill, 과도한 둥근 카드, 설명용 eyebrow를 추가해 정보 위계를 부풀리지 않는다.
 4. 밀도 조정은 글자 크기와 control 외형만 바꾸며 기능, 클릭 경로, 목록의 우선순위, hero의 시각 정체성을 바꾸지 않는다.
@@ -2924,14 +2924,14 @@ UI 수정 전:
 19. dark 배경·표면은 공용 색상 토큰만 사용하고 완전한 검정 대신 중성 회색 단계로 구분한다. 모든 이미지 hero는 gradient·overlay·가상 요소 mask·컨테이너 그림자를 사용하지 않고 원본 이미지를 노출한다. 이미지와 글자의 대비는 `--ui-image-hero-title-*`, `--ui-image-hero-copy-*` 공용 토큰으로만 보정한다.
 20. 랜딩·로그인은 앱 내부와 같은 control 높이·button 내용 너비·본문 크기를 사용한다. 랜딩의 비로그인 둘러보기 경로는 항상 유지하고, 인증 여부에 따라 제거하거나 전체 폭 핵심 action으로 바꾸지 않는다.
 21. 일반 dialog는 공용 `ModalShell`을 사용하고 면색·테두리·radius·그림자를 개별 모달 CSS에서 정의하지 않는다. 방 dialog는 같은 셸에 `.ui-room-modal`만 추가한다. 방 slot 내부, 영수증 미리보기·출력물, 전체 화면 경기 시계만 기능상 예외다.
-22. page hero 제목은 `--hero-title-size`, 문서·인증·가이드·카드 대표 제목은 `.ui-content-title`과 `--ui-content-title-size`를 사용한다. 개별 화면에서 큰 제목 크기를 다시 지정하지 않으며, 목록 안의 정보 제목은 section title 단계 이하를 사용한다.
+22. page hero 제목은 `--hero-title-size`, 문서·인증·가이드·카드 대표 제목은 `.ui-content-title`과 `--ui-content-title-size`를 사용한다. 개별 화면에서 큰 제목 크기를 다시 지정하지 않으며, 목록 안의 정보 제목은 section title 단계 이하를 사용한다. 비회원 랜딩 hero만 전용 guest landing clamp가 제목 위계를 소유하며 앱 hero 크기 토큰으로 덮지 않는다.
 23. 승패 통계처럼 서로 다른 값을 빠르게 비교해야 하는 data cell은 공용 `--ui-data-cell-*`의 옅은 면과 간격을 사용한다. 장식 이미지·티어 spotlight처럼 정체성을 만드는 면은 `.ui-design-decorative-surface`로 명시하고 일반 카드 평탄화 대상에서 제외한다.
-24. filter는 가능한 한 `ui-filter-row` 한 줄에 배치하고 별도 wrapper 면·외곽선을 만들지 않는다. 기록의 1차·2차 탭과 filter 행은 컨테이너 전체 너비를 채우고 아래 `--ui-divider-subtle` 구획선으로 데이터 영역과 분리한다. 좁은 화면은 항목을 줄바꿈하지 않고 가로 이동으로 보존한다.
+24. filter는 가능한 한 `ui-filter-row` 한 줄에 배치하고 별도 wrapper 면·외곽선을 만들지 않는다. 기록의 1차·2차 탭과 filter 행은 컨테이너 전체 너비를 채우고 아래 `--ui-divider-subtle` 구획선으로 데이터 영역과 분리한다. 좁은 화면은 항목을 줄바꿈하지 않고 가로 이동으로 보존한다. `720px` 이하의 folder tab, 탐색형 segmented control, filter button은 `--ui-mobile-filter-control-height`의 `40px` 높이를 사용한다.
 25. 알림 action은 행 오른쪽에 내용 너비로 배치하고 공용 작은 control 높이를 사용한다. badge나 action 때문에 알림 행의 최소 높이를 키우지 않는다.
 26. 랜딩의 비로그인 둘러보기는 두 개의 핵심 CTA 묶음 밖에 독립 보조 경로로 둔다.
 27. 일정 달력은 데스크톱에서 `560px`을 상한으로 사용하고 일정 filter와 간격을 둔 오른쪽 열에 배치한다. `721~899px`에서도 같은 상한을 사용하며 가용 너비가 작으면 자연스럽게 줄인다. toolbar의 연월·경기 수는 세로 중앙에 맞추고 날짜 셀은 면색·외곽선·내부 구획선을 사용하지 않는다. 달력 위에 월 표기를 중복하지 않는다.
 28. 공용 `.ui-button-secondary`는 방 만들기의 중립 회색을 기준으로 영수증과 일반 화면에서 동일하게 표시한다. 화면 CSS는 색을 다시 정의하지 않으며 위험·성공 같은 semantic variant만 예외로 둔다.
-29. 영수증 편집부의 입력 section과 저장 action은 일반 정보 표면 규칙을 따라 면색·외곽선 없이 구획선으로 나눈다. 영수증 미리보기·Story·Feed·다운로드·인쇄 출력물은 이 규칙에서 제외하고 기존 전용 시각 규칙을 유지한다.
+29. 영수증 편집부의 입력 section과 저장 action은 일반 정보 표면 규칙을 따라 면색·외곽선 없이 구획선으로 나눈다. 영수증 미리보기·Story·Feed·다운로드·인쇄 출력물은 이 규칙에서 제외하고 기존 전용 시각 규칙을 유지한다. 영수증 상단 언어 전환은 `--ui-button-height-sm`의 정사각 control을 사용한다.
 
 ## 2026-08-17 데스크톱 action 폭과 목록 밀도
 
@@ -2952,7 +2952,7 @@ UI 수정 전:
 15. 설정 알림 checkbox 행은 첫 행과 같은 왼쪽 기준선에 맞춘다. 연결된 로그인은 데스크톱 한 rail 너비로 가운데 배치하고 provider action은 설정의 공용 action 폭을 사용한다.
 16. 프로필 링크 복사 control은 공용 control 배경을 사용한다. 프로필 보조 section은 데스크톱에서 양 rail을 균형 있게 쓰되 각 rail 내부 section은 한 열로 배치한다. 프로필 아이콘 카드의 action 묶음은 자기 카드의 가용 폭 안에서 줄바꿈하며 인접 rail을 침범하지 않는다.
 17. 커뮤니티 모바일 목록의 추천 수·날짜는 제목보다 두 단계 작은 메타 크기를 사용하고 제목과 메타 사이 간격은 기존 값의 70%로 줄인다.
-18. 영수증 편집 section은 공용 page 간격과 구획선을 사용한다. 쿼터 점수 입력은 `A`, `B` placeholder와 다른 입력과 같은 명시적 테두리를 사용한다. 영수증 fieldset의 선·radius·legend 색은 `--ui-fieldset-*` 토큰을 canonical owner로 삼고 일정의 관계·유형 filter, 설정, 방 만들기·기록하기, 경기방 편집 구획에 재사용한다. 일정에서는 화면 제목을 실제 legend로 배치해 상단선을 끊는다. 설정 화면의 모든 section card는 설정 전용 `settings-fieldset-card` semantic variant와 실제 `<fieldset>/<legend>`로 이 legend형 라운드 외곽선을 재사용하고, 공용 surface·info surface·category surface 초기화 대상에서는 제외한다. 설정과 workflow legend는 `제목 → 보조글` 순서의 한 줄만 사용한다. 제목은 `--ui-fieldset-legend-title-color`의 주황색, 보조글은 `--ui-fieldset-legend-support-color`의 테마 전경색을 사용하고, 좁은 화면에서도 줄바꿈하지 않으며 가용 폭을 넘는 문구만 말줄임한다. 카드 단위 아이콘·건수·연결 상태 badge는 legend 바로 다음의 공용 `settings-fieldset-status-row`에 두고 fieldset 안쪽 우측 상단에 정렬한다. 내부 panel에만 해당하는 상태는 해당 panel 안에 유지한다. 저장 상태·action은 별도 행으로 분리하고, 데스크톱에서는 상태와 action 열을 고정해 `불러오는 중` 같은 문구가 버튼을 밀지 않으며 모바일에서는 세로 배치한다. legend는 음수 margin·transform·absolute positioning 없이 native fieldset 흐름이 높이를 예약하게 해 앞 section과 다음 입력·체크 컴포넌트를 덮지 않는다. 모바일 checkbox는 모든 행의 시작선과 행 간격을 동일하게 유지한다. 세부 설정 이동 action은 별도 링크 외형을 만들지 않고 공용 `Button` 높이·폰트를 사용한다. 연결 로그인과 계정 action은 `content-grid`의 한 rail card 안에 두고 provider·로그아웃·탈퇴 action은 각 묶음에서 같은 너비를 사용한다. 방 만들기·기록하기와 경기방의 결과 입력·구장 리뷰처럼 여러 입력을 한 주제로 묶는 편집 구획은 공용 `workflow-fieldset` semantic variant와 실제 `<fieldset>/<legend>`를 사용한다. 상태 badge는 `workflow-fieldset-status-row`로 본문 우측 상단에 분리한다. 읽기 전용 최종 확인·점수 요약·목록·단일 action 카드는 일반 Card를 유지한다.
+18. 영수증 편집 section은 공용 page 간격과 구획선을 사용한다. 쿼터 점수 입력은 `A`, `B` placeholder와 다른 입력과 같은 명시적 테두리를 사용한다. 영수증 fieldset의 선·radius·legend 색은 `--ui-fieldset-*` 토큰을 canonical owner로 삼고 일정의 관계·유형 filter, 설정, 방 만들기·기록하기, 경기방 편집 구획에 재사용한다. 일정에서는 화면 제목을 실제 legend로 배치해 상단선을 끊는다. 설정 화면의 모든 section card는 설정 전용 `settings-fieldset-card` semantic variant와 실제 `<fieldset>/<legend>`로 이 legend형 라운드 외곽선을 재사용하고, 공용 surface·info surface·category surface 초기화 대상에서는 제외한다. 설정과 workflow legend는 `제목 → 보조글` 순서의 한 줄만 사용한다. 제목은 `--ui-fieldset-legend-title-color`의 주황색, 보조글은 `--ui-fieldset-legend-support-color`의 테마 전경색을 사용한다. 제목은 축소·잘림 없이 온전히 보존한다. 보조글만 남은 폭을 사용하고 좁은 화면에서도 줄바꿈하거나 말줄임표를 붙이지 않으며 넘는 부분은 hard clip한다. 카드 단위 아이콘·건수·연결 상태 badge는 legend 바로 다음의 공용 `settings-fieldset-status-row`에 두고 fieldset 안쪽 우측 상단에 정렬한다. 내부 panel에만 해당하는 상태는 해당 panel 안에 유지한다. 저장 상태·action은 별도 행으로 분리하고, 데스크톱에서는 상태와 action 열을 고정해 `불러오는 중` 같은 문구가 버튼을 밀지 않으며 모바일에서는 세로 배치한다. legend는 음수 margin·transform·absolute positioning 없이 native fieldset 흐름이 높이를 예약하게 해 앞 section과 다음 입력·체크 컴포넌트를 덮지 않는다. 모바일 checkbox는 모든 행의 시작선과 행 간격을 동일하게 유지한다. 세부 설정 이동 action은 별도 링크 외형을 만들지 않고 공용 `Button` 높이·폰트를 사용한다. 연결 로그인과 계정 action은 `content-grid`의 한 rail card 안에 두고 provider·로그아웃·탈퇴 action은 각 묶음에서 같은 너비를 사용한다. 방 만들기·기록하기와 경기방의 결과 입력·구장 리뷰처럼 여러 입력을 한 주제로 묶는 편집 구획은 공용 `workflow-fieldset` semantic variant와 실제 `<fieldset>/<legend>`를 사용한다. 상태 badge는 `workflow-fieldset-status-row`로 본문 우측 상단에 분리한다. 읽기 전용 최종 확인·점수 요약·목록·단일 action 카드는 일반 Card를 유지한다.
 19. 매칭의 경기 유형은 고정 선택지 3개인 `전체 / 정규전 / 친선전` 공용 segmented button으로 표시한다. 경기 방식은 선택지가 4개를 넘으므로 지역·날짜 filter와 같은 한 행의 select로 표시한다. 경기 방식 filter는 `1v1`, `2v2`, 일반 `3v3`, `3x3`, `5v5`를 제공하며 `3x3`은 `3v3` 인원과 FIBA 3x3 규칙을 함께 가진 경기만 실제로 분리한다. 같은 경기 방식 filter를 제공하는 기록 화면도 이 공용 목록과 판별 helper를 사용한다.
 
 ## 2026-08-18 외부 알림·연락 UI

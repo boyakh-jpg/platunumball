@@ -60,7 +60,7 @@ html[data-theme] [data-design] .ui-design-app .home-guide-card {
 
 .home-guide-card__copy small {
   color: var(--rb-orange);
-  font-size: 0.68rem;
+  font-size: var(--font-size-caption);
   font-weight: 950;
   letter-spacing: 0.08em;
 }
@@ -77,7 +77,7 @@ html[data-theme] [data-design] .ui-design-app .home-guide-card {
   align-items: center;
   color: var(--rb-soft);
   font-family: var(--font-body);
-  font-size: 0.68rem;
+  font-size: var(--font-size-caption);
   font-weight: 950;
   letter-spacing: 0.06em;
   white-space: nowrap;
@@ -122,7 +122,7 @@ html[data-theme] [data-design] .ui-design-app .home-guide-card {
 
 .getting-started-topbar > span {
   color: var(--rb-muted);
-  font-size: 0.7rem;
+  font-size: var(--font-size-caption);
   font-weight: 900;
   letter-spacing: 0.08em;
   white-space: nowrap;
@@ -182,7 +182,7 @@ html[data-theme] [data-design] .ui-design-app .home-guide-card {
   width: 22px;
   aspect-ratio: 1;
   place-items: center;
-  font-size: 0.66rem;
+  font-size: var(--font-size-caption);
   border: var(--ui-stroke-width) solid currentcolor;
   border-radius: 50%;
   opacity: 0.82;
@@ -211,7 +211,7 @@ html[data-theme] [data-design] .ui-design-app .home-guide-card {
 .getting-started-callout .eyebrow {
   margin: 0;
   color: var(--rb-orange);
-  font-size: 0.68rem;
+  font-size: var(--font-size-caption);
   font-weight: 950;
   letter-spacing: 0.08em;
 }
@@ -264,7 +264,7 @@ html[data-theme] [data-design] .ui-design-app .home-guide-card {
 .getting-started-shot figcaption {
   padding: var(--space-5) var(--space-6);
   color: var(--rb-muted);
-  font-size: 0.72rem;
+  font-size: var(--font-size-caption);
   font-weight: 750;
   line-height: 1.45;
   background: var(--rb-bg-2);
@@ -299,7 +299,7 @@ html[data-theme] [data-design] .ui-design-app .home-guide-card {
 
 .getting-started-practice-preview strong {
   color: var(--rb-orange);
-  font-size: 0.7rem;
+  font-size: var(--font-size-caption);
   letter-spacing: 0.06em;
 }
 
@@ -359,7 +359,7 @@ html[data-theme] [data-design] .ui-design-app .home-guide-card {
   gap: var(--space-4);
   align-items: center;
   color: var(--rb-muted);
-  font-size: 0.74rem;
+  font-size: var(--font-size-caption);
   font-weight: 800;
 }
 
@@ -430,13 +430,13 @@ html[data-theme] [data-design] .ui-design-app .home-guide-card {
 
 .practice-room-guide small {
   color: var(--rb-muted);
-  font-size: 0.7rem;
+  font-size: var(--font-size-caption);
   font-weight: 750;
 }
 
 .practice-room-guide em {
   color: var(--rb-orange);
-  font-size: 0.7rem;
+  font-size: var(--font-size-caption);
   font-style: normal;
   font-weight: 850;
 }
@@ -450,7 +450,7 @@ html[data-theme] [data-design] .ui-design-app .home-guide-card {
 
 .practice-role-switch > span {
   color: var(--rb-muted);
-  font-size: 0.68rem;
+  font-size: var(--font-size-caption);
   font-weight: 850;
 }
 

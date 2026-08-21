@@ -48,7 +48,7 @@
   --font-weight-control: 700;
   --font-weight-title: 850;
   --font-weight-sports: 700;
-  --font-size-caption: 0.72rem;
+  --font-size-caption: 0.75rem;
   --font-size-badge: 0.75rem;
   --font-size-control: 0.78rem;
   --font-size-meta: 0.82rem;
@@ -191,6 +191,7 @@
   --ui-fieldset-legend-support-color: var(--rb-text);
   --ui-button-height: var(--control-height);
   --ui-button-height-sm: var(--control-height-sm);
+  --ui-mobile-filter-control-height: 40px;
   --ui-button-radius: var(--control-radius);
   --ui-button-padding-x: var(--control-padding-x);
   --ui-button-padding-x-sm: 10px;
