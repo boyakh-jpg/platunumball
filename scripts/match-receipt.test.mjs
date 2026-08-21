@@ -464,6 +464,9 @@ test("receipt view model uses compact game labels, venue fallback, and a safe ha
   assert.equal(getMatchReceiptFormatLabel("5v5"), "5v5");
   assert.equal(getMatchReceiptFormatLabel("other"), "3v3");
   assert.equal(model.locationLabel, "마포구");
+  assert.equal(model.locale, "ko");
+  assert.equal(createMatchReceiptViewModel(draft, { locale: "en" }).locale, "en");
+  assert.equal(createMatchReceiptViewModel(draft, { locale: "fr" }).locale, "ko");
   assert.equal(createMatchReceiptViewModel({ ...draft, address: "" }).locationLabel, draft.venue);
   assert.notEqual(createMatchReceiptViewModel({ ...draft, address: "" }).locationLabel, draft.originalAddress);
   assert.match(model.serial, /^#BT-[A-Z0-9]{6}$/);
@@ -667,6 +670,7 @@ test("receipt photo tools stay outside the export card and reference dividers re
     readFile(new URL("../src/lib/matchReceiptEmblem.js", import.meta.url), "utf8"),
   ]);
   const receiptSources = `${page}\n${preview}`;
+  const localizedReceiptSources = `${receiptSources}\n${renderer}`;
 
   assert.doesNotMatch(page, /match-receipt-photo-editor|match-receipt-photo-crop/);
   assert.match(page, /photoGestureHandlers/);
@@ -698,11 +702,12 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(landing, /별도 가입 없이 로그인/);
   assert.match(page, /className="page-stack match-receipt-page"/);
   assert.match(page, /className="page-header match-receipt-page-head ui-page-hero ui-design-app-hero"/);
-  assert.match(page, /> 뒤로가기/);
-  assert.match(page, /> 홈으로/);
+  assert.match(page, /back: "뒤로가기"/);
+  assert.match(page, /home: "홈으로"/);
   assert.match(styles, /\.match-receipt-page\s*\{[^}]*width:\s*min\(100%, var\(--page-content-max\)\);[^}]*max-width:\s*var\(--page-content-max\);[^}]*margin-inline:\s*auto;[^}]*padding-block-end:\s*72px;/);
   assert.match(styles, /\.match-receipt-workspace\s*\{[^}]*width:\s*min\(1180px, 100%\);[^}]*margin:\s*0 auto;/);
   assert.doesNotMatch(styles, /match-receipt-page-head\.ui-design-app-hero\s*\{[^}]*margin-block-start:\s*0;/);
+  assert.match(preview, /model\.locale === "en" \? \(model\.hasPersonalStats \? "MVP \/ Player Stats" : "Players"\)/);
   assert.match(preview, /model\.hasPersonalStats \? "MY GAME" : "GAME INFO"/);
   assert.match(preview, /match-receipt-personal-stats/);
   assert.match(preview, /neutralTeamMarkUrls\.home/);
@@ -727,6 +732,32 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(preview, /MY TIER · \{model\.personalTier\.label\}/);
   assert.match(preview, /model\.showPersonalTierIdentity \? <span className="match-receipt-poster-profile">/);
   assert.match(page, /CourtMapPicker/);
+  assert.match(page, /const \[receiptLocale, setReceiptLocale\] = useState\("ko"\)/);
+  assert.match(page, /className="match-receipt-locale-switch"/);
+  assert.match(page, /setReceiptLocale\("en"\);/);
+  assert.match(page, /setCourtMapOpen\(false\);/);
+  assert.match(page, /locale=\{receiptLocale\}/);
+  assert.match(page, /\{!isEnglish \? <CourtMapPicker/);
+  assert.match(preview, /lang=\{model\.locale\}/);
+  assert.match(renderer, /model\.locale === "en" \? "★  GAME RECEIPT  ★"/);
+  for (const label of [
+    "GAME RECEIPT",
+    "Final Score",
+    "Team A",
+    "Team B",
+    "Date / Time / Venue",
+    "Players",
+    "Period Scores",
+    "MVP / Player Stats",
+    "Download Story",
+    "Download Post",
+    "Share Receipt",
+    "Create Your Own",
+  ]) {
+    assert.equal(localizedReceiptSources.includes(label), true, `missing English receipt label: ${label}`);
+  }
+  assert.match(detailStyles, /\.match-receipt-locale-switch\s*\{/);
+  assert.match(detailStyles, /\.match-receipt-card:lang\(en\) \.match-receipt-ticket-game > strong/);
   assert.match(page, /EmblemCropEditor/);
   assert.match(page, /prepareTeamEmblemUpload/);
   assert.doesNotMatch(page, /uploadGuestReceiptEmblem/);
@@ -751,7 +782,7 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(page, /readOnly placeholder=\{errors\.venue \? "경기 장소 또는 짧은 장소가 필요합니다" : "지도에서 선택 · 자유 입력은 짧은 장소에 작성"\}/);
   assert.doesNotMatch(page, /updateField\("venue", event\.target\.value\)/);
   assert.doesNotMatch(page, /name === "venue"/);
-  assert.match(page, />짧은 장소 <input[^>]+placeholder="경기 장소 대신 주소나 장소를 입력 가능"/);
+  assert.match(page, /<label className="is-wide">\{receiptCopy\.venue\} <input[^>]+placeholder=\{receiptCopy\.venuePlaceholder\}/);
   assert.match(page, /draft\.originalAddress \|\| profileCourtRegion/);
   assert.match(page, /RECEIPT_TEXT_FIELDS\.has\(name\)/);
   assert.match(page, /normalizeMatchReceiptDraft\(\{ \.\.\.current, venue, address, originalAddress \}\)/);
@@ -786,8 +817,8 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.doesNotMatch(receiptSources, /index \? "AWAY" : "HOME"/);
   assert.match(preview, /index \? "TEAM B" : "TEAM A"/);
   assert.doesNotMatch(preview, /HOME TEAM|AWAY TEAM/);
-  assert.match(page, /<legend>TEAM A<\/legend>/);
-  assert.match(page, /<legend>TEAM B<\/legend>/);
+  assert.match(page, /<legend>\{receiptCopy\.teamA\}<\/legend>/);
+  assert.match(page, /<legend>\{receiptCopy\.teamB\}<\/legend>/);
   assert.doesNotMatch(page, /홈팀|원정팀/);
   assert.doesNotMatch(page, /홈 점수|원정 점수|placeholder="홈"|placeholder="원정"/);
   assert.doesNotMatch(renderer, /HOME TEAM|AWAY TEAM|홈팀 이름|원정팀 이름/);
@@ -1002,7 +1033,7 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.doesNotMatch(renderer, /ctx\.fillText\(model\.outcome\.label, width \/ 2/);
   assert.doesNotMatch(detailStyles, /\.match-receipt-outcome/);
   assert.match(detailStyles, /\.match-receipt-wordmark small/);
-  assert.match(page, /<div><span>미리보기<\/span><\/div>/);
+  assert.match(page, /<div><span>\{receiptCopy\.preview\}<\/span><\/div>/);
   assert.doesNotMatch(page, /<strong>\{outcome\.label\}<\/strong>/);
   assert.match(renderer, /MY TIER · \$\{model\.personalTier\.label\}/);
   assert.doesNotMatch(renderer, /const badgeSize = actualSize \* 0\.14/);

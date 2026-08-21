@@ -67,6 +67,7 @@ export default function MatchReceiptPreview({
   photoUrl = "",
   matchUrl = "",
   publicId = "",
+  locale = "ko",
   showPersonalTierIdentity = true,
   photoGestureHandlers = {},
   teamLineArtUrls = EMPTY_TEAM_LINE_ART_URLS,
@@ -93,7 +94,7 @@ export default function MatchReceiptPreview({
     };
   }, [photoUrl]);
 
-  const model = createMatchReceiptViewModel(draft, { matchUrl, publicId, showPersonalTierIdentity });
+  const model = createMatchReceiptViewModel(draft, { matchUrl, publicId, showPersonalTierIdentity, locale });
   const hasSingleGameInfoMeta = !model.hasPersonalStats
     && Boolean(model.comment) !== Boolean(model.personalTier);
   useEffect(() => {
@@ -116,6 +117,7 @@ export default function MatchReceiptPreview({
   return (
     <article
       className="match-receipt-card"
+      lang={model.locale}
       style={{
         "--receipt-home": model.homeColor,
         "--receipt-away": model.awayColor,
@@ -125,7 +127,7 @@ export default function MatchReceiptPreview({
         "--receipt-scoreboard-digits": `url("${model.scoreboardDigitsUrl}")`,
         ...getMatchReceiptPhotoStyle(model, undefined, { defaultPhoto: !photoUrl }),
       }}
-      aria-label="경기 영수증 미리보기"
+      aria-label={model.locale === "en" ? "Game receipt preview" : "경기 영수증 미리보기"}
     >
       <div
         ref={photoElementRef}
@@ -160,7 +162,7 @@ export default function MatchReceiptPreview({
           {model.showPersonalTierIdentity ? <span className="match-receipt-poster-profile">{model.profileHashtag}</span> : null}
         </span>
       </header>
-      <div className="match-receipt-verified">★ <i /> {model.verified ? "BOXTIER VERIFIED" : "MATCH RECEIPT"} <i /> ★</div>
+      <div className="match-receipt-verified">★ <i /> {model.verified ? "BOXTIER VERIFIED" : model.locale === "en" ? "GAME RECEIPT" : "MATCH RECEIPT"} <i /> ★</div>
       <div className="match-receipt-team-watermarks" aria-hidden="true">
         {posterTeams.map((team, index) => (
           <span key={index}>
@@ -210,7 +212,7 @@ export default function MatchReceiptPreview({
         <img className="match-receipt-ticket-paper" src={model.paperUrl} alt="" aria-hidden="true" />
         <div className="match-receipt-ticket-place">
           <MapPin aria-hidden="true" />
-          <strong>{model.locationLabel || "경기 장소"}</strong>
+          <strong>{model.locationLabel || (model.locale === "en" ? "Venue" : "경기 장소")}</strong>
           <span className="match-receipt-ticket-date">{model.playedOn.replaceAll("-", ".")}</span>
         </div>
         <div className={`match-receipt-ticket-game${model.hasPersonalStats ? "" : " match-receipt-ticket-game--info"}${hasSingleGameInfoMeta ? " match-receipt-ticket-game--single-meta" : ""}`}>
@@ -219,7 +221,7 @@ export default function MatchReceiptPreview({
               <img className="match-receipt-personal-tier is-watermark" src={model.personalTier.outlineSrc} alt="" />
             </div>
           ) : null}
-          <strong>{model.hasPersonalStats ? "MY GAME" : "GAME INFO"}</strong>
+          <strong>{model.locale === "en" ? (model.hasPersonalStats ? "MVP / Player Stats" : "Players") : (model.hasPersonalStats ? "MY GAME" : "GAME INFO")}</strong>
           {model.hasPersonalStats ? (
             <span className="match-receipt-personal-stats">
               <b><ReceiptScoreDigits value={model.personalPoints ?? 0} className="match-receipt-stat-digits" tone="paper-ink" /><small>PTS</small></b>
@@ -235,7 +237,7 @@ export default function MatchReceiptPreview({
           {model.personalTier ? <small className="match-receipt-personal-tier-label">MY TIER · {model.personalTier.label}</small> : null}
         </div>
         <div className="match-receipt-ticket-qr">
-          <strong>{matchUrl ? "경기 기록 보기" : "boxtier.kr"}</strong>
+          <strong>{matchUrl ? (model.locale === "en" ? "Share Receipt" : "경기 기록 보기") : "boxtier.kr"}</strong>
           {matchUrl ? (
             <a href={matchUrl} aria-label="경기 기록 열기">
               <QrCode value={matchUrl} label="경기 열기 QR 코드" className="match-receipt-qr" branded />

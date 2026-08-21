@@ -83,6 +83,23 @@ const RECEIPT_PERIOD_FIELDS = [
 
 const EMPTY_EMBLEM_EDITOR = { side: "", file: null, preview: "", error: "" };
 
+const RECEIPT_PAGE_COPY = Object.freeze({
+  ko: {
+    eyebrow: "MATCH RECEIPT", title: "경기 영수증", description: "오늘 경기 결과를 입력하고 바로 자랑할 이미지로 저장하세요.",
+    navLabel: "영수증 페이지 이동", back: "뒤로가기", home: "홈으로", finalScore: "경기 결과",
+    teamA: "TEAM A", teamB: "TEAM B", teamName: "팀 이름", score: "점수", info: "경기 정보", date: "경기 날짜",
+    venue: "짧은 장소", venuePlaceholder: "경기 장소 대신 주소나 장소를 입력 가능", periodScores: "쿼터별 점수",
+    preview: "미리보기", complete: "영수증 완성하기", share: "이미지 공유", story: "Story 저장", post: "Feed 저장", create: "만들기 링크 복사",
+  },
+  en: {
+    eyebrow: "GAME RECEIPT", title: "Game Receipt", description: "Turn your game result into a shareable receipt.",
+    navLabel: "Receipt page navigation", back: "Back", home: "Home", finalScore: "Final Score",
+    teamA: "Team A", teamB: "Team B", teamName: "Team Name", score: "Score", info: "Date / Time / Venue", date: "Date",
+    venue: "Venue", venuePlaceholder: "Short venue name", periodScores: "Period Scores",
+    preview: "Preview", complete: "Create Receipt", share: "Share Receipt", story: "Download Story", post: "Download Post", create: "Create Your Own",
+  },
+});
+
 function isIosBrowser() {
   if (typeof navigator === "undefined") return false;
   return /iP(?:hone|ad|od)/u.test(navigator.userAgent)
@@ -153,6 +170,7 @@ export default function MatchReceipt({ auth, app }) {
     : null);
   const [draft, setDraft] = useState(() => sourceDraftRef.current
     ?? (matchId || requestedPublicDraftId || requestedPublicCode ? createDefaultMatchReceiptDraft() : loadDraft()));
+  const [receiptLocale, setReceiptLocale] = useState("ko");
   const [errors, setErrors] = useState({});
   const [generated, setGenerated] = useState(false);
   const [busy, setBusy] = useState("");
@@ -185,6 +203,8 @@ export default function MatchReceipt({ auth, app }) {
   const publicDraftSavedRevisionRef = useRef(-1);
   const draftRef = useRef(draft);
   const publicDraftIdRef = useRef("");
+  const isEnglish = receiptLocale === "en";
+  const receiptCopy = RECEIPT_PAGE_COPY[receiptLocale];
   draftRef.current = draft;
   publicDraftIdRef.current = publicDraftId;
   photoTransformRef.current = {
@@ -910,6 +930,7 @@ export default function MatchReceipt({ auth, app }) {
       photoBlob,
       teamLineArtUrls: selectedTeamLineArtUrls,
       showPersonalTierIdentity: canShowCurrentUserIdentity,
+      locale: receiptLocale,
     });
     return blob;
   }
@@ -1018,18 +1039,24 @@ export default function MatchReceipt({ auth, app }) {
     <section className="page-stack match-receipt-page">
       <header className="page-header match-receipt-page-head ui-page-hero ui-design-app-hero">
         <div className="ui-page-hero__copy">
-          <p className="eyebrow">MATCH RECEIPT</p>
-          <h1>경기 영수증</h1>
-          <p>오늘 경기 결과를 입력하고 바로 자랑할 이미지로 저장하세요.</p>
+          <p className="eyebrow">{receiptCopy.eyebrow}</p>
+          <h1>{receiptCopy.title}</h1>
+          <p>{receiptCopy.description}</p>
         </div>
-        <nav className="match-receipt-page-head-nav" aria-label="영수증 페이지 이동">
-          <Button variant="secondary" onClick={returnFromReceipt}>
-            <ArrowLeft aria-hidden="true" size={17} /> 뒤로가기
-          </Button>
-          <Button as={Link} to="/app" variant="secondary">
-            <House aria-hidden="true" size={17} /> 홈으로
-          </Button>
-        </nav>
+        <div className="match-receipt-page-head-actions">
+          <div className="match-receipt-locale-switch" role="group" aria-label="Receipt language">
+            <Button type="button" variant={!isEnglish ? "primary" : "ghost"} size="sm" lang="ko" aria-label="한국어" aria-pressed={!isEnglish} onClick={() => setReceiptLocale("ko")}>🇰🇷</Button>
+            <Button type="button" variant={isEnglish ? "primary" : "ghost"} size="sm" lang="en" aria-label="English" aria-pressed={isEnglish} onClick={() => { setReceiptLocale("en"); setCourtMapOpen(false); }}>🇺🇸</Button>
+          </div>
+          <nav className="match-receipt-page-head-nav" aria-label={receiptCopy.navLabel}>
+            <Button variant="secondary" onClick={returnFromReceipt}>
+              <ArrowLeft aria-hidden="true" size={17} /> {receiptCopy.back}
+            </Button>
+            <Button as={Link} to="/app" variant="secondary">
+              <House aria-hidden="true" size={17} /> {receiptCopy.home}
+            </Button>
+          </nav>
+        </div>
       </header>
 
       {requestedPublicCode ? (
@@ -1057,30 +1084,30 @@ export default function MatchReceipt({ auth, app }) {
         <div className="match-receipt-workspace">
         <form className="match-receipt-editor" onSubmit={completeReceipt}>
           <section className="ui-panel">
-            <h2>경기 결과</h2>
+            <h2>{receiptCopy.finalScore}</h2>
             {receiptIsReadOnly ? <p className="match-receipt-locked-note">공유 영수증은 읽기 전용입니다.</p> : null}
             {canonicalMatchId ? <p className="match-receipt-locked-note">확정 기록의 팀·점수·날짜·장소는 원본을 사용합니다. 짧은 장소와 코멘트는 편집할 수 있습니다.</p> : null}
             <div className="match-receipt-team-fields">
               <fieldset>
-                <legend>TEAM A</legend>
+                <legend>{receiptCopy.teamA}</legend>
                 <label>
-                  팀 이름
-                  <input value={draft.homeTeam} maxLength={MATCH_RECEIPT_LIMITS.teamName} disabled={isFieldReadOnly("homeTeam")} placeholder={errors.homeTeam ? "필수 · TEAM A 이름을 입력하세요" : "TEAM A 이름"} onChange={(event) => updateField("homeTeam", event.target.value)} aria-invalid={Boolean(errors.homeTeam)} />
+                  {receiptCopy.teamName}
+                  <input value={draft.homeTeam} maxLength={MATCH_RECEIPT_LIMITS.teamName} disabled={isFieldReadOnly("homeTeam")} placeholder={errors.homeTeam && !isEnglish ? "필수 · TEAM A 이름을 입력하세요" : receiptCopy.teamA} onChange={(event) => updateField("homeTeam", event.target.value)} aria-invalid={Boolean(errors.homeTeam)} />
                 </label>
                 <label className="match-receipt-score-input">
-                  점수
+                  {receiptCopy.score}
                   <input type="number" inputMode="numeric" min="0" max={MATCH_RECEIPT_LIMITS.score} value={draft.homeScore} disabled={isFieldReadOnly("homeScore")} onFocus={(event) => event.currentTarget.select()} onClick={(event) => event.currentTarget.value === "0" && event.currentTarget.select()} onChange={(event) => updateField("homeScore", event.target.value)} />
                 </label>
               </fieldset>
 
               <fieldset>
-                <legend>TEAM B</legend>
+                <legend>{receiptCopy.teamB}</legend>
                 <label>
-                  팀 이름
-                  <input value={draft.awayTeam} maxLength={MATCH_RECEIPT_LIMITS.teamName} disabled={isFieldReadOnly("awayTeam")} placeholder={errors.awayTeam ? "필수 · TEAM B 이름을 입력하세요" : "TEAM B 이름"} onChange={(event) => updateField("awayTeam", event.target.value)} aria-invalid={Boolean(errors.awayTeam)} />
+                  {receiptCopy.teamName}
+                  <input value={draft.awayTeam} maxLength={MATCH_RECEIPT_LIMITS.teamName} disabled={isFieldReadOnly("awayTeam")} placeholder={errors.awayTeam && !isEnglish ? "필수 · TEAM B 이름을 입력하세요" : receiptCopy.teamB} onChange={(event) => updateField("awayTeam", event.target.value)} aria-invalid={Boolean(errors.awayTeam)} />
                 </label>
                 <label className="match-receipt-score-input">
-                  점수
+                  {receiptCopy.score}
                   <input type="number" inputMode="numeric" min="0" max={MATCH_RECEIPT_LIMITS.score} value={draft.awayScore} disabled={isFieldReadOnly("awayScore")} onFocus={(event) => event.currentTarget.select()} onClick={(event) => event.currentTarget.value === "0" && event.currentTarget.select()} onChange={(event) => updateField("awayScore", event.target.value)} />
                 </label>
               </fieldset>
@@ -1088,12 +1115,12 @@ export default function MatchReceipt({ auth, app }) {
           </section>
 
           <section className="ui-panel">
-            <h2>경기 정보</h2>
+            <h2>{receiptCopy.info}</h2>
             <div className="match-receipt-info-fields">
-              <label>경기 날짜<input type="date" value={draft.playedOn} disabled={isFieldReadOnly("playedOn")} onChange={(event) => updateField("playedOn", event.target.value)} /></label>
+              <label>{receiptCopy.date}<input type="date" value={draft.playedOn} disabled={isFieldReadOnly("playedOn")} onChange={(event) => updateField("playedOn", event.target.value)} /></label>
               <label>경기 방식<select value={draft.format} disabled={isFieldReadOnly("format")} onChange={(event) => updateField("format", event.target.value)}>{MATCH_RECEIPT_FORMATS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
               <label>경기 성격<select value={draft.matchNature} disabled={isFieldReadOnly("matchNature")} onChange={(event) => updateField("matchNature", event.target.value)}>{MATCH_RECEIPT_NATURES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
-              <label className="is-wide">
+              {!isEnglish ? <label className="is-wide">
                 경기 장소
                 <span className="match-receipt-venue-control">
                   <input value={draft.venue} maxLength={MATCH_RECEIPT_LIMITS.venue} disabled={isFieldReadOnly("venue")} readOnly placeholder={errors.venue ? "경기 장소 또는 짧은 장소가 필요합니다" : "지도에서 선택 · 자유 입력은 짧은 장소에 작성"} aria-invalid={Boolean(errors.venue)} />
@@ -1103,8 +1130,8 @@ export default function MatchReceipt({ auth, app }) {
                     </button>
                   ) : null}
                 </span>
-              </label>
-              <label className="is-wide">짧은 장소 <input value={draft.address} maxLength={MATCH_RECEIPT_LIMITS.address} disabled={isFieldReadOnly("address")} placeholder="경기 장소 대신 주소나 장소를 입력 가능" onChange={(event) => updateField("address", event.target.value)} /></label>
+              </label> : null}
+              <label className="is-wide">{receiptCopy.venue} <input value={draft.address} maxLength={MATCH_RECEIPT_LIMITS.address} disabled={isFieldReadOnly("address")} placeholder={receiptCopy.venuePlaceholder} onChange={(event) => updateField("address", event.target.value)} /></label>
               <label className="is-wide">대회·리그 이름 <input value={draft.tournamentName} maxLength={MATCH_RECEIPT_LIMITS.tournamentName} disabled={isFieldReadOnly("tournamentName")} placeholder="선택 · 20자 이내" onChange={(event) => updateField("tournamentName", event.target.value)} /></label>
               <fieldset className="match-receipt-line-art-fields is-wide">
                 <legend>팀 엠블럼 <small>선택</small></legend>
@@ -1188,7 +1215,7 @@ export default function MatchReceipt({ auth, app }) {
                 ) : null}
               </fieldset>
               <fieldset className="match-receipt-period-fields is-wide">
-                <legend>쿼터별 점수 <small>선택</small></legend>
+                <legend>{receiptCopy.periodScores} <small>{isEnglish ? "Optional" : "선택"}</small></legend>
                 {RECEIPT_PERIOD_FIELDS.map(([label, homeField, awayField]) => (
                   <label key={label}>
                     <span>{label}</span>
@@ -1206,16 +1233,16 @@ export default function MatchReceipt({ auth, app }) {
                 <input value={draft.comment} maxLength={MATCH_RECEIPT_LIMITS.comment} disabled={isFieldReadOnly("comment")} placeholder="선택 · 11자 이내" onChange={(event) => updateField("comment", event.target.value)} />
               </label>
             </div>
-            <p className="match-receipt-map-note"><MapPin aria-hidden="true" /> 이미지에는 경기 장소 또는 짧은 장소만 들어갑니다. 지도 화면은 포함하지 않습니다.</p>
+            {!isEnglish ? <p className="match-receipt-map-note"><MapPin aria-hidden="true" /> 이미지에는 경기 장소 또는 짧은 장소만 들어갑니다. 지도 화면은 포함하지 않습니다.</p> : null}
           </section>
 
-          <button type="submit" className="button ui-button button-primary ui-button-primary button-md ui-button-md match-receipt-complete" disabled={receiptIsReadOnly || Boolean(busy)}>영수증 완성하기</button>
+          <button type="submit" className="button ui-button button-primary ui-button-primary button-md ui-button-md match-receipt-complete" disabled={receiptIsReadOnly || Boolean(busy)}>{receiptCopy.complete}</button>
           {status ? <p className="match-receipt-status" role="status">{status}</p> : null}
         </form>
 
         <aside className="match-receipt-preview-panel" ref={previewRef}>
           <div className="match-receipt-preview-head">
-            <div><span>미리보기</span></div>
+            <div><span>{receiptCopy.preview}</span></div>
             <span>9:16 STORY</span>
           </div>
           <div className="match-receipt-preview-stage">
@@ -1225,6 +1252,7 @@ export default function MatchReceipt({ auth, app }) {
               matchUrl={matchUrl}
               publicId={receiptPublicId}
               showPersonalTierIdentity={canShowCurrentUserIdentity}
+              locale={receiptLocale}
               teamLineArtUrls={selectedTeamLineArtUrls}
               photoGestureHandlers={receiptIsReadOnly ? undefined : {
                 onPointerDown: beginPhotoGesture,
@@ -1279,10 +1307,10 @@ export default function MatchReceipt({ auth, app }) {
 
           {generated ? (
             <div className="match-receipt-actions">
-              <button type="button" className="button ui-button button-primary ui-button-primary button-md ui-button-md" disabled={Boolean(busy)} onClick={handleShare}><Share2 aria-hidden="true" /> 이미지 공유</button>
-              <button type="button" className="button ui-button button-secondary ui-button-secondary button-md ui-button-md" disabled={Boolean(busy)} onClick={() => handleDownload("story")}><Download aria-hidden="true" /> Story 저장</button>
-              <button type="button" className="button ui-button button-secondary ui-button-secondary button-md ui-button-md" disabled={Boolean(busy)} onClick={() => handleDownload("feed")}><Download aria-hidden="true" /> Feed 저장</button>
-              <button type="button" className="button ui-button button-secondary ui-button-secondary button-md ui-button-md" disabled={Boolean(busy)} onClick={copyCreatorLink}><Copy aria-hidden="true" /> 만들기 링크 복사</button>
+              <button type="button" className="button ui-button button-primary ui-button-primary button-md ui-button-md" disabled={Boolean(busy)} onClick={handleShare}><Share2 aria-hidden="true" /> {receiptCopy.share}</button>
+              <button type="button" className="button ui-button button-secondary ui-button-secondary button-md ui-button-md" disabled={Boolean(busy)} onClick={() => handleDownload("story")}><Download aria-hidden="true" /> {receiptCopy.story}</button>
+              <button type="button" className="button ui-button button-secondary ui-button-secondary button-md ui-button-md" disabled={Boolean(busy)} onClick={() => handleDownload("feed")}><Download aria-hidden="true" /> {receiptCopy.post}</button>
+              <button type="button" className="button ui-button button-secondary ui-button-secondary button-md ui-button-md" disabled={Boolean(busy)} onClick={copyCreatorLink}><Copy aria-hidden="true" /> {receiptCopy.create}</button>
             </div>
           ) : null}
 
@@ -1312,7 +1340,7 @@ export default function MatchReceipt({ auth, app }) {
       )}
       {!requestedPublicCode ? (
         <>
-          <CourtMapPicker
+          {!isEnglish ? <CourtMapPicker
             open={courtMapOpen}
             courts={registeredCourts}
             selectedCourt={selectedCourt}
@@ -1321,7 +1349,7 @@ export default function MatchReceipt({ auth, app }) {
             loadError={courtMapDirectoryStatus.error}
             onSelect={selectCourt}
             onClose={() => setCourtMapOpen(false)}
-          />
+          /> : null}
           <EmblemCropEditor
             file={emblemEditor.file}
             circular

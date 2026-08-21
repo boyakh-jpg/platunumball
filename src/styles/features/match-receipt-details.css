@@ -1,3 +1,16 @@
+.match-receipt-page-head-actions { display: grid; justify-items: end; gap: var(--space-3); }
+.match-receipt-locale-switch {
+  display: inline-grid;
+  grid-template-columns: repeat(2, var(--ui-button-height-sm));
+  gap: var(--ui-control-group-gap);
+  padding: var(--ui-control-group-padding);
+  border: var(--ui-control-group-border-width) solid var(--ui-control-group-border);
+  border-radius: var(--ui-control-group-radius);
+  background: var(--ui-control-group-bg);
+}
+.match-receipt-locale-switch .ui-button { width: var(--ui-button-height-sm); min-width: 0; padding: 0; font-size: 18px; line-height: 1; }
+.match-receipt-card:lang(en) .match-receipt-ticket-game > strong { font-size: clamp(6px, 2cqw, 10px); letter-spacing: 0; }
+
 .match-receipt-editor input[aria-invalid="true"] { border-color: var(--danger); }
 .match-receipt-editor input[aria-invalid="true"]::placeholder { color: var(--danger); opacity: 1; }
 
@@ -174,9 +187,14 @@
 .match-receipt-game-detail em { font-style: normal; font-variant-numeric: tabular-nums; text-align: left; }
 
 @media (max-width: 760px) {
+  .match-receipt-page-head-actions { justify-items: start; }
   .match-receipt-period-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .match-receipt-emblem-upload-grid { grid-template-columns: 1fr; }
   .match-receipt-ai-prompt { align-items: stretch; flex-direction: column; }
+}
+
+@media (max-width: 560px) {
+  .match-receipt-page-head-actions { width: 100%; }
 }
 .match-receipt-ticket-game--info > strong {
   position: absolute;

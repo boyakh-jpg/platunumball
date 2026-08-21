@@ -611,6 +611,7 @@ function getTierVisual(mmr) {
 
 export function createMatchReceiptViewModel(value, options = {}) {
   const draft = normalizeMatchReceiptDraft(value);
+  const locale = options.locale === "en" ? "en" : "ko";
   const hasPersonalStats = draft.personalStatsEligible
     && (draft.personalPoints !== null || draft.personalRebounds !== null);
   const personalTier = getTierVisual(draft.personalMmr);
@@ -618,6 +619,7 @@ export function createMatchReceiptViewModel(value, options = {}) {
     && Boolean(personalTier && draft.profileHashtag);
   return {
     ...draft,
+    locale,
     outcome: getMatchReceiptOutcome(draft),
     serial: receiptHashtag(draft),
     locationLabel: draft.address || draft.venue,
@@ -1207,7 +1209,7 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
   ctx.textAlign = "center";
   ctx.font = '900 30px "Bebas Neue", sans-serif';
   ctx.letterSpacing = "1px";
-  ctx.fillText(model.verified ? "★  BOXTIER VERIFIED  ★" : "★  MATCH RECEIPT  ★", width / 2, verifiedY + 11);
+  ctx.fillText(model.verified ? "★  BOXTIER VERIFIED  ★" : model.locale === "en" ? "★  GAME RECEIPT  ★" : "★  MATCH RECEIPT  ★", width / 2, verifiedY + 11);
   ctx.letterSpacing = "0px";
 
   const columns = [270, 810];
@@ -1348,7 +1350,12 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
   ctx.fillStyle = "#151515";
   ctx.textAlign = "center";
   ctx.font = `900 ${compact ? 22 : 25}px "KBO Dia Gothic", sans-serif`;
-  const locationLines = wrapCanvasText(ctx, model.locationLabel || "경기 장소", compact ? 292 : 310, 3);
+  const locationLines = wrapCanvasText(
+    ctx,
+    model.locationLabel || (model.locale === "en" ? "Venue" : "경기 장소"),
+    compact ? 292 : 310,
+    3,
+  );
   const locationLineHeight = compact ? 23 : 32;
   const locationStartY = footerY + (compact ? 58 : 112) - (locationLines.length - 1) * locationLineHeight / 2;
   locationLines.forEach((line, index) => ctx.fillText(line, footerLeftX, locationStartY + index * locationLineHeight, 320));
@@ -1365,9 +1372,12 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
   }
 
   ctx.fillStyle = "#d4582b";
-  ctx.font = '900 25px "KBO Dia Gothic", sans-serif';
   const gameTitleOffset = compact ? 10 : 30;
-  ctx.fillText(model.hasPersonalStats ? "MY GAME" : "GAME INFO", footerMiddleX, footerY + gameTitleOffset);
+  const gameInfoTitle = model.locale === "en"
+    ? (model.hasPersonalStats ? "MVP / Player Stats" : "Players")
+    : (model.hasPersonalStats ? "MY GAME" : "GAME INFO");
+  ctx.font = `900 ${model.locale === "en" ? 18 : 25}px "KBO Dia Gothic", sans-serif`;
+  ctx.fillText(gameInfoTitle, footerMiddleX, footerY + gameTitleOffset, 260);
 
   if (model.hasPersonalStats) {
     ctx.fillStyle = "#151515";
@@ -1411,7 +1421,7 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
     const qrSize = compact ? 216 : 270;
     ctx.fillStyle = "#d4582b";
     ctx.font = '900 22px "KBO Dia Gothic", sans-serif';
-    ctx.fillText("경기 기록 보기", footerRightX, footerY + gameTitleOffset);
+    ctx.fillText(model.locale === "en" ? "Share Receipt" : "경기 기록 보기", footerRightX, footerY + gameTitleOffset, 260);
     drawQrCode(ctx, model.matchUrl, footerRightX - qrSize / 2, footerY + (compact ? 6 : 28), qrSize);
   } else {
     ctx.fillStyle = "#d4582b";
