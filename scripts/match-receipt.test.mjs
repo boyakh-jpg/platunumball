@@ -18,6 +18,33 @@ import {
   renewMatchReceiptDraft,
   resolveMatchReceiptTeamEmblems,
 } from "../src/lib/matchReceipt.js";
+import {
+  applyReceiptLocaleToUrl,
+  getReceiptLocale,
+  getReceiptSearchWithLocale,
+  RECEIPT_SHELL_COPY,
+} from "../src/lib/receiptLocale.js";
+
+test("receipt English locale stays in the URL and localizes the receipt shell", async () => {
+  assert.equal(getReceiptLocale({ pathname: "/app/receipt", search: "?lang=en" }), "en");
+  assert.equal(getReceiptLocale({ pathname: "/app/receipt", search: "?code=BT-12345678" }), "ko");
+  assert.equal(getReceiptLocale({ pathname: "/app/settings", search: "?lang=en" }), "ko");
+  assert.equal(getReceiptSearchWithLocale("?code=BT-12345678", "en"), "?code=BT-12345678&lang=en");
+  assert.equal(getReceiptSearchWithLocale("?code=BT-12345678&lang=en", "ko"), "?code=BT-12345678");
+  assert.equal(applyReceiptLocaleToUrl(new URL("https://boxtier.kr/app/receipt?code=BT-12345678"), "en").searchParams.get("lang"), "en");
+  assert.equal(RECEIPT_SHELL_COPY.en.home, "Home");
+  assert.equal(RECEIPT_SHELL_COPY.en.moreMenu, "More menu");
+  assert.equal(RECEIPT_SHELL_COPY.en.privacyPolicy, "Privacy Policy");
+
+  const [sidebar, bottomNav, footer] = await Promise.all([
+    readFile(new URL("../src/components/layout/Sidebar.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/layout/BottomNav.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/layout/DataAttribution.jsx", import.meta.url), "utf8"),
+  ]);
+  assert.match(sidebar, /RECEIPT_SHELL_COPY\[getReceiptLocale\(location\)\]/);
+  assert.match(bottomNav, /RECEIPT_SHELL_COPY\[getReceiptLocale\(location\)\]/);
+  assert.match(footer, /RECEIPT_SHELL_COPY\[getReceiptLocale\(location\)\]/);
+});
 import { getMatchHashtag } from "../shared/lib/handles.js";
 import {
   formatMatchPublicCode,
@@ -683,7 +710,8 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(page, /<Button as="label" variant="secondary">/);
   assert.match(page, /<Button variant="danger" disabled=\{!photoUrl \|\| Boolean\(busy\)\} onClick=\{removePhoto\}>/);
   assert.match(page, /\{draft\.comment\.length\}\/\{MATCH_RECEIPT_LIMITS\.comment\}/);
-  assert.match(page, /placeholder="선택 · 11자 이내"/);
+  assert.match(page, /commentPlaceholder: "선택 · 11자 이내"/);
+  assert.match(page, /commentPlaceholder: "Optional · Up to 11 characters"/);
   assert.match(page, /onClick=\{resetReceipt\}/);
   assert.match(page, /await publicDraftRequestRef\.current/);
   assert.match(page, /clearMatchReceiptDraft\(\)/);
@@ -732,9 +760,11 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(preview, /MY TIER · \{model\.personalTier\.label\}/);
   assert.match(preview, /model\.showPersonalTierIdentity \? <span className="match-receipt-poster-profile">/);
   assert.match(page, /CourtMapPicker/);
-  assert.match(page, /const \[receiptLocale, setReceiptLocale\] = useState\("ko"\)/);
+  assert.match(page, /const receiptLocale = getReceiptLocale\(location\)/);
   assert.match(page, /className="match-receipt-locale-switch"/);
-  assert.match(page, /setReceiptLocale\("en"\);/);
+  assert.match(page, /selectReceiptLocale\("en"\)/);
+  assert.match(page, /getReceiptSearchWithLocale\(location\.search, locale\)/);
+  assert.match(page, /applyReceiptLocaleToUrl\(new URL\("\/app\/receipt", window\.location\.origin\), receiptLocale\)/);
   assert.match(page, /setCourtMapOpen\(false\);/);
   assert.match(page, /locale=\{receiptLocale\}/);
   assert.match(page, /\{!isEnglish \? <CourtMapPicker/);
@@ -761,12 +791,12 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(page, /EmblemCropEditor/);
   assert.match(page, /prepareTeamEmblemUpload/);
   assert.doesNotMatch(page, /uploadGuestReceiptEmblem/);
-  assert.match(page, /reserveImageSaveWindow\(\)/);
+  assert.match(page, /reserveImageSaveWindow\(receiptCopy\)/);
   assert.match(page, /saveWindow\.location\.replace\(url\)/);
   assert.match(page, /공유 메뉴에서 이미지 저장을 선택하세요/);
   assert.doesNotMatch(page, /emblemShareFailed|match_receipt_emblem_sync_failed|EMBLEM_SHARE_FAILURE_MESSAGE/);
   assert.match(page, /URL\.revokeObjectURL\(url\)/u);
-  assert.match(page, /const publicMatchUrl = publicId\s*\? new URL/);
+  assert.match(page, /const publicMatchUrl = publicId\s*\? applyReceiptLocaleToUrl\(new URL/);
   assert.match(page, /사진을 골라 선화 엠블럼으로 바로 사용할 수 있습니다\./u);
   assert.match(page, /로그인 후 팀을 만들면 팀 상세에 저장해 다음 영수증에서도 재사용할 수 있습니다\./u);
   assert.match(page, /로그인 · 팀 만들고 엠블럼 저장/u);
@@ -968,7 +998,7 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(renderer, /getTierDivisionNumber/);
   assert.match(renderer, /`\$\{tier\.name\}\$\{division \? ` \$\{division\}` : ""\}`\.toUpperCase\(\)/);
   assert.match(renderer, /rankball-record-create-night-v10\.webp/);
-  assert.match(preview, /!photoUrl \? <ReceiptPhotoScoreboard homeScore=\{model\.homeScore\} awayScore=\{model\.awayScore\} \/> : null/);
+  assert.match(preview, /!photoUrl \? <ReceiptPhotoScoreboard homeScore=\{model\.homeScore\} awayScore=\{model\.awayScore\} locale=\{model\.locale\} \/> : null/);
   assert.match(preview, /--receipt-scoreboard-digits/);
   assert.doesNotMatch(preview, /MATCH_RECEIPT_SEVEN_SEGMENT_PATHS|<svg/);
   assert.match(renderer, /if \(!options\.photoBlob\) \{\s*drawCanvasPhotoScoreboard/);

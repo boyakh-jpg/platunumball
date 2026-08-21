@@ -14,6 +14,7 @@ import { postServerAction } from "../lib/serverActions.js";
 import { getUserHashtag } from "../lib/handles.js";
 import { MATCH_RECEIPT_LINE_ART_AI_PROMPT, createMatchReceiptLineArt } from "../lib/matchReceiptEmblem.js";
 import { getTeamEmblemErrorMessage, prepareTeamEmblemUpload } from "../lib/teamEmblem.js";
+import { applyReceiptLocaleToUrl, getReceiptLocale, getReceiptSearchWithLocale } from "../lib/receiptLocale.js";
 import {
   MATCH_RECEIPT_CANVAS_SIZES,
   MATCH_RECEIPT_CREATE_RETURN_TO,
@@ -90,6 +91,23 @@ const RECEIPT_PAGE_COPY = Object.freeze({
     teamA: "TEAM A", teamB: "TEAM B", teamName: "팀 이름", score: "점수", info: "경기 정보", date: "경기 날짜",
     venue: "짧은 장소", venuePlaceholder: "경기 장소 대신 주소나 장소를 입력 가능", periodScores: "쿼터별 점수",
     preview: "미리보기", complete: "영수증 완성하기", share: "이미지 공유", story: "Story 저장", post: "Feed 저장", create: "만들기 링크 복사",
+    loadingTitle: "경기 찾는 중", notFoundTitle: "경기를 찾을 수 없습니다", loadFailedTitle: "경기를 불러오지 못했습니다",
+    loadingDescription: "일련번호로 경기 기록을 확인하고 있습니다.", notFoundDescription: "일련번호를 확인하거나 새 영수증을 만들어 주세요.", retryDescription: "잠시 후 다시 시도해 주세요.", newReceipt: "새 영수증 만들기", retry: "다시 시도",
+    readOnlyNote: "공유 영수증은 읽기 전용입니다.", canonicalNote: "확정 기록의 팀·점수·날짜·장소는 원본을 사용합니다. 짧은 장소와 코멘트는 편집할 수 있습니다.",
+    requiredTeam: (team) => `필수 · ${team} 이름을 입력하세요`, format: "경기 방식", nature: "경기 성격", tournament: "대회·리그 이름", tournamentPlaceholder: "선택 · 20자 이내", optional: "선택",
+    teamEmblems: "팀 엠블럼", emblemGuide: "사진을 골라 선화 엠블럼으로 바로 사용할 수 있습니다. 로그인 후 팀을 만들면 팀 상세에 저장해 다음 영수증에서도 재사용할 수 있습니다.",
+    selectLineArt: "선화 엠블럼 선택", useSavedEmblem: "저장 엠블럼 사용", noSavedEmblem: "저장된 팀 엠블럼 없음", emblemCandidates: (team) => `${team} 엠블럼 후보`, lineArtCandidate: (team) => `${team} 선화 후보`, disableLineArt: "선화 사용 해제", reuseLineArt: "선화 다시 사용",
+    localEmblemOnly: "직접 선택한 이미지는 이번 영수증에서만 유지됩니다.", aiPromptHelp: "외부 AI에서 선화 PNG를 만들 때 사용할 지시문입니다.", copyAiPrompt: "AI 선화 프롬프트 복사", createTeamSave: "팀 만들고 엠블럼 저장", loginCreateTeamSave: "로그인 · 팀 만들고 엠블럼 저장",
+    periodScoreAria: (period, team) => `${period} ${team} 점수`, comment: "한 줄 코멘트", commentPlaceholder: "선택 · 11자 이내",
+    rotatePhotoAria: "사진 자유 회전", rotatePhotoTitle: "드래그해 자유 회전 · 방향키로 미세 조정", photoActionsAria: "미리보기 사진 편집", selectPhoto: "사진 선택", rotate90: "90° 회전", remove: "제거", reset: "초기화", resetTitle: "입력값·사진 초기화 후 새 일련번호 시작",
+    photoEditHelp: "사진 안쪽 드래그 이동 · 휠 확대·축소 · 테두리 손잡이 회전 · 더블클릭 초기화 · 모바일 두 손가락 편집", photoSelectHelp: "사진을 선택하면 미리보기 안에서 바로 편집", localPhotoOnly: "사진은 서버에 업로드하지 않음",
+    savedTitle: "내 기록에 저장됨", importTitle: "이 경기를 내 기록으로 가져가기", savedDescription: "실제 경기 ID가 연결됐습니다. QR 코드는 누구나 볼 수 있는 공개 영수증을 엽니다.", viewRecords: "내 기록 보기", continueDescription: "상세 기록을 이어서 작성하면 기존 개인 기록 저장 흐름으로 보관됩니다.", guestContinueDescription: "로그인 방법을 선택해도 작성 내용이 유지됩니다. 로그인 뒤 상세 기록을 작성해 저장할 수 있습니다.", continueRecord: "상세 기록 이어서 작성",
+    imageWindowTitle: "BOXTIER 이미지 준비 중", imageWindowBody: "이미지 만드는 중...", recordLoadFailed: "저장된 경기 기록을 불러오지 못했습니다.", claimedReceipt: "내 기록으로 전환된 경기 영수증입니다.", sharedReceipt: "공유된 경기 영수증입니다.", sharedExpired: "공유된 영수증이 만료됐거나 존재하지 않습니다.",
+    photoApplied: "사진을 적용했습니다. 서버에는 업로드하지 않습니다.", photoTooLarge: (size) => `사진은 ${size}MB 이하만 사용할 수 있습니다.`, photoInvalid: "사진을 읽지 못했습니다. JPG, PNG, WebP 파일을 확인해 주세요.", savedEmblemApplied: (team) => `${team} 저장 엠블럼을 영수증에 적용했습니다.`, lineArtFailed: "선화를 만들지 못했습니다. 대비가 분명한 엠블럼 이미지를 선택해 주세요.", lineArtApplied: (team) => `${team} 선화를 이번 영수증에 적용했습니다. 서버에는 저장하지 않습니다.`,
+    promptCopied: "AI 선화 프롬프트를 복사했습니다.", promptCopyFailed: "프롬프트를 복사하지 못했습니다. 브라우저의 클립보드 권한을 확인해 주세요.", photoRemoved: "사진을 제거했습니다.", resetConfirm: "입력값과 선택 사진을 지우고 새 일련번호로 시작할까요?", resetDone: "새 일련번호로 영수증을 시작했습니다.", publicLinkFailed: "공개 영수증 링크를 만들지 못했습니다.", requiredInfo: "필수 정보를 확인해 주세요.", completeSuccess: "경기 영수증이 완성됐습니다.", rateLimited: "공유 영수증 생성 한도를 초과했습니다. 잠시 후 다시 시도해 주세요.", qrFailed: "이미지는 완성됐지만 공유 QR을 만들지 못했습니다.", completeFirst: "영수증을 먼저 완성해 주세요.",
+    imageOpened: "이미지를 열었습니다. 공유 메뉴에서 이미지 저장을 선택하세요.", imageSaved: (label) => `${label} 이미지를 저장했습니다.`, imageFailed: "이미지를 만들지 못했습니다. 다시 시도해 주세요.", shareTitle: "BOXTIER 경기 영수증", shareOpened: "공유 화면을 열었습니다.", shareFallback: "이 브라우저는 이미지 공유를 지원하지 않아 Story 이미지를 저장했습니다.", shareFailed: "공유하지 못했습니다. 이미지 저장을 이용해 주세요.", creatorCopied: "영수증 만들기 링크를 복사했습니다.", creatorCopyFailed: "링크를 복사하지 못했습니다.", loginDraftFailed: "로그인용 영수증 초안을 만들지 못했습니다.", recordDraftRateLimited: "공유 영수증 생성 시도를 초과했습니다. 잠시 후 다시 시도해 주세요.", recordDraftFailed: "기록으로 이어갈 영수증 초안을 만들지 못했습니다.",
+    emblemWarning: "조정한 이미지는 이번 영수증에서만 사용되며 서버에 저장되지 않습니다.",
+    emblemEditor: { dialog: "엠블럼 이미지 편집", title: "엠블럼 조정", description: "원형 영역 안에 엠블럼을 맞춰 주세요.", convertedPreview: "변환된 선화 미리보기", loadFailed: "이미지를 읽지 못했습니다.", cropPreview: "엠블럼 크롭 미리보기", zoom: "확대·축소", horizontal: "가로 위치", vertical: "세로 위치", cancel: "취소", convert: "선화 만들기", converting: "변환 중", confirm: "적용" },
   },
   en: {
     eyebrow: "GAME RECEIPT", title: "Game Receipt", description: "Turn your game result into a shareable receipt.",
@@ -97,6 +115,23 @@ const RECEIPT_PAGE_COPY = Object.freeze({
     teamA: "Team A", teamB: "Team B", teamName: "Team Name", score: "Score", info: "Date / Time / Venue", date: "Date",
     venue: "Venue", venuePlaceholder: "Short venue name", periodScores: "Period Scores",
     preview: "Preview", complete: "Create Receipt", share: "Share Receipt", story: "Download Story", post: "Download Post", create: "Create Your Own",
+    loadingTitle: "Finding game", notFoundTitle: "Game not found", loadFailedTitle: "Could not load game",
+    loadingDescription: "Checking the game record by receipt number.", notFoundDescription: "Check the receipt number or create a new receipt.", retryDescription: "Try again in a moment.", newReceipt: "Create New Receipt", retry: "Try Again",
+    readOnlyNote: "Shared receipts are read-only.", canonicalNote: "Confirmed teams, scores, date, and venue use the official record. You can edit the short venue and comment.",
+    requiredTeam: (team) => `Required · Enter ${team}`, format: "Game Format", nature: "Game Type", tournament: "Tournament / League", tournamentPlaceholder: "Optional · Up to 20 characters", optional: "Optional",
+    teamEmblems: "Team Emblems", emblemGuide: "Choose an image to create a line-art emblem for this receipt. Sign in and create a team to save it for future receipts.",
+    selectLineArt: "Choose Line-Art Emblem", useSavedEmblem: "Use Saved Emblem", noSavedEmblem: "No saved team emblem", emblemCandidates: (team) => `${team} emblem options`, lineArtCandidate: (team) => `${team} line-art option`, disableLineArt: "Disable Line Art", reuseLineArt: "Use Line Art Again",
+    localEmblemOnly: "Images selected here stay on this receipt only.", aiPromptHelp: "Use this prompt to create a line-art PNG with an external AI tool.", copyAiPrompt: "Copy AI Line-Art Prompt", createTeamSave: "Create Team & Save Emblem", loginCreateTeamSave: "Sign In · Create Team & Save Emblem",
+    periodScoreAria: (period, team) => `${period} ${team} score`, comment: "One-Line Comment", commentPlaceholder: "Optional · Up to 11 characters",
+    rotatePhotoAria: "Free-rotate photo", rotatePhotoTitle: "Drag to rotate · Use arrow keys for fine adjustment", photoActionsAria: "Edit preview photo", selectPhoto: "Choose Photo", rotate90: "Rotate 90°", remove: "Remove", reset: "Reset", resetTitle: "Clear inputs and photo, then start with a new receipt number",
+    photoEditHelp: "Drag to move · Wheel or pinch to zoom · Drag the edge handle to rotate · Double-click to reset", photoSelectHelp: "Choose a photo to edit it in the preview", localPhotoOnly: "Photo stays on this device and is not uploaded",
+    savedTitle: "Saved to My Records", importTitle: "Add This Game to My Records", savedDescription: "This receipt is linked to an official game. Its QR code opens the public receipt.", viewRecords: "View My Records", continueDescription: "Continue with detailed stats to save this game through the regular record flow.", guestContinueDescription: "Your work stays here while you sign in. After signing in, continue the detailed record to save it.", continueRecord: "Continue Detailed Record",
+    imageWindowTitle: "Preparing BOXTIER Image", imageWindowBody: "Creating image...", recordLoadFailed: "Could not load the saved game record.", claimedReceipt: "This game receipt is now linked to your records.", sharedReceipt: "This is a shared game receipt.", sharedExpired: "This shared receipt has expired or does not exist.",
+    photoApplied: "Photo applied. It will not be uploaded to the server.", photoTooLarge: (size) => `Use a photo smaller than ${size}MB.`, photoInvalid: "Could not read the photo. Check the JPG, PNG, or WebP file.", savedEmblemApplied: (team) => `${team} saved emblem applied to the receipt.`, lineArtFailed: "Could not create line art. Choose an emblem with clear contrast.", lineArtApplied: (team) => `${team} line art applied to this receipt. It will not be saved to the server.`,
+    promptCopied: "AI line-art prompt copied.", promptCopyFailed: "Could not copy the prompt. Check your browser clipboard permission.", photoRemoved: "Photo removed.", resetConfirm: "Clear all inputs and the selected photo, then start with a new receipt number?", resetDone: "Started a new receipt number.", publicLinkFailed: "Could not create the public receipt link.", requiredInfo: "Check the required information.", completeSuccess: "Game receipt created.", rateLimited: "You have reached the shared receipt limit. Try again later.", qrFailed: "The image is ready, but the shared QR code could not be created.", completeFirst: "Create the receipt first.",
+    imageOpened: "Image opened. Choose Save Image from the share menu.", imageSaved: (label) => `${label} image saved.`, imageFailed: "Could not create the image. Try again.", shareTitle: "BOXTIER Game Receipt", shareOpened: "Share sheet opened.", shareFallback: "Image sharing is unavailable in this browser, so the Story image was downloaded.", shareFailed: "Could not share the image. Use an image download instead.", creatorCopied: "Create Your Own link copied.", creatorCopyFailed: "Could not copy the link.", loginDraftFailed: "Could not prepare the receipt for sign-in.", recordDraftRateLimited: "Too many shared receipt attempts. Try again later.", recordDraftFailed: "Could not prepare the receipt for the detailed record.",
+    emblemWarning: "The adjusted image is used only on this receipt and is not saved to the server.",
+    emblemEditor: { dialog: "Edit emblem image", title: "Adjust Emblem", description: "Fit the emblem inside the circular area.", convertedPreview: "Converted line-art preview", loadFailed: "Could not load the image.", cropPreview: "Emblem crop preview", zoom: "Zoom", horizontal: "Horizontal position", vertical: "Vertical position", cancel: "Cancel", convert: "Create Line Art", converting: "Converting", confirm: "Apply" },
   },
 });
 
@@ -106,12 +141,12 @@ function isIosBrowser() {
     || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 }
 
-function reserveImageSaveWindow() {
+function reserveImageSaveWindow(copy) {
   if (typeof window === "undefined" || !isIosBrowser()) return null;
   const saveWindow = window.open("", "_blank");
   if (saveWindow) {
-    saveWindow.document.title = "BOXTIER 이미지 준비 중";
-    saveWindow.document.body.textContent = "이미지 만드는 중...";
+    saveWindow.document.title = copy.imageWindowTitle;
+    saveWindow.document.body.textContent = copy.imageWindowBody;
   }
   return saveWindow;
 }
@@ -170,7 +205,7 @@ export default function MatchReceipt({ auth, app }) {
     : null);
   const [draft, setDraft] = useState(() => sourceDraftRef.current
     ?? (matchId || requestedPublicDraftId || requestedPublicCode ? createDefaultMatchReceiptDraft() : loadDraft()));
-  const [receiptLocale, setReceiptLocale] = useState("ko");
+  const receiptLocale = getReceiptLocale(location);
   const [errors, setErrors] = useState({});
   const [generated, setGenerated] = useState(false);
   const [busy, setBusy] = useState("");
@@ -270,8 +305,9 @@ export default function MatchReceipt({ auth, app }) {
     const url = new URL("/app/receipt", window.location.origin);
     if (draft.publicCode) url.searchParams.set("code", draft.publicCode);
     else if (activePublicDraftId) url.searchParams.set("draft", activePublicDraftId);
+    applyReceiptLocaleToUrl(url, receiptLocale);
     return url.toString();
-  }, [activePublicDraftId, draft.publicCode, requestedPublicCode]);
+  }, [activePublicDraftId, draft.publicCode, receiptLocale, requestedPublicCode]);
   const receiptPublicId = activePublicDraftId;
   const canonicalTeamReceiptEmblemUrls = useMemo(() => ({
     home: canonicalHomeTeam?.receiptEmblemKey || draft.homeEmblemKey ? assetUrl(canonicalHomeTeam?.receiptEmblemKey || draft.homeEmblemKey) : "",
@@ -316,7 +352,9 @@ export default function MatchReceipt({ auth, app }) {
           return;
         }
         if (result.publicId) {
-          navigate(`/app/receipt?draft=${encodeURIComponent(result.publicId)}`, { replace: true });
+          const nextSearch = new URLSearchParams({ draft: result.publicId });
+          if (isEnglish) nextSearch.set("lang", "en");
+          navigate(`/app/receipt?${nextSearch.toString()}`, { replace: true });
           return;
         }
         const lookupError = new Error("match_public_code_not_found");
@@ -332,7 +370,7 @@ export default function MatchReceipt({ auth, app }) {
         );
       });
     return () => { active = false; };
-  }, [navigate, publicCodeLookupAttempt, requestedPublicCode]);
+  }, [isEnglish, navigate, publicCodeLookupAttempt, requestedPublicCode]);
 
   useEffect(() => {
     if (!matchId) return;
@@ -355,7 +393,7 @@ export default function MatchReceipt({ auth, app }) {
     if (requestedMatchIdRef.current === matchId) return;
     requestedMatchIdRef.current = matchId;
     Promise.resolve(app?.actions?.loadMatchDetail?.(matchId)).then((loaded) => {
-      if (!loaded) setStatus("저장된 경기 기록을 불러오지 못했습니다.");
+      if (!loaded) setStatus(receiptCopy.recordLoadFailed);
     });
   }, [
     app?.actions,
@@ -369,6 +407,7 @@ export default function MatchReceipt({ auth, app }) {
     matchId,
     personalMmr,
     profileHashtag,
+    receiptCopy.recordLoadFailed,
   ]);
 
   useEffect(() => {
@@ -402,15 +441,15 @@ export default function MatchReceipt({ auth, app }) {
         setDraft(normalizedDraft);
         setGenerated(true);
         setRequestedDraftCanClaim(Boolean(result.canClaim));
-        setStatus(result.claimed ? "내 기록으로 전환된 경기 영수증입니다." : "공유된 경기 영수증입니다.");
+        setStatus(result.claimed ? receiptCopy.claimedReceipt : receiptCopy.sharedReceipt);
       })
       .catch(() => {
-        if (active) setStatus("공유된 영수증이 만료됐거나 존재하지 않습니다.");
+        if (active) setStatus(receiptCopy.sharedExpired);
       });
     return () => {
       active = false;
     };
-  }, [canonicalMatchId, requestedPublicDraftId]);
+  }, [canonicalMatchId, receiptCopy.claimedReceipt, receiptCopy.sharedExpired, receiptCopy.sharedReceipt, requestedPublicDraftId]);
 
   useEffect(() => {
     if (requestedPublicDraftId || requestedPublicCode) return undefined;
@@ -497,6 +536,13 @@ export default function MatchReceipt({ auth, app }) {
     setStatus("");
   }
 
+  function selectReceiptLocale(locale) {
+    if (locale === receiptLocale) return;
+    setStatus("");
+    if (locale === "en") setCourtMapOpen(false);
+    navigate(`${location.pathname}${getReceiptSearchWithLocale(location.search, locale)}${location.hash}`, { replace: true });
+  }
+
   function selectCourt(court) {
     if (!court || isFieldReadOnly("venue")) return;
     const courtAddress = getCourtAddress(court);
@@ -535,11 +581,11 @@ export default function MatchReceipt({ auth, app }) {
       await saveMatchReceiptPhoto(normalized);
       setPhotoBlob(normalized);
       setGenerated(Boolean(canonicalMatchId));
-      setStatus("사진을 적용했습니다. 서버에는 업로드하지 않습니다.");
+      setStatus(receiptCopy.photoApplied);
     } catch (error) {
       setStatus(error.message === "match_receipt_photo_size"
-        ? `사진은 ${Math.round(MATCH_RECEIPT_PHOTO_MAX_BYTES / 1024 / 1024)}MB 이하만 사용할 수 있습니다.`
-        : "사진을 읽지 못했습니다. JPG, PNG, WebP 파일을 확인해 주세요.");
+        ? receiptCopy.photoTooLarge(Math.round(MATCH_RECEIPT_PHOTO_MAX_BYTES / 1024 / 1024))
+        : receiptCopy.photoInvalid);
     } finally {
       setBusy("");
     }
@@ -551,7 +597,7 @@ export default function MatchReceipt({ auth, app }) {
     if (!savedUrl) return;
     setLocalTeamLineArtUrls((current) => ({ ...current, [side]: "" }));
     updateField(`${side}UseLineArt`, true);
-    setStatus(`${side === "home" ? "TEAM A" : "TEAM B"} 저장 엠블럼을 영수증에 적용했습니다.`);
+    setStatus(receiptCopy.savedEmblemApplied(side === "home" ? receiptCopy.teamA : receiptCopy.teamB));
   }
 
   function handleLocalTeamEmblemChange(side, event) {
@@ -577,8 +623,8 @@ export default function MatchReceipt({ auth, app }) {
       setEmblemEditor((current) => ({ ...current, preview, error: "" }));
     } catch (error) {
       const message = error.message === "match_receipt_line_art_failed"
-        ? "선화를 만들지 못했습니다. 대비가 분명한 엠블럼 이미지를 선택해 주세요."
-        : getTeamEmblemErrorMessage(error.code || error.message);
+        ? receiptCopy.lineArtFailed
+        : isEnglish ? receiptCopy.lineArtFailed : getTeamEmblemErrorMessage(error.code || error.message);
       setEmblemEditor((current) => ({ ...current, preview: "", error: message }));
     } finally {
       setEmblemPending(false);
@@ -591,15 +637,15 @@ export default function MatchReceipt({ auth, app }) {
     setLocalTeamLineArtUrls((current) => ({ ...current, [side]: emblemEditor.preview }));
     updateField(`${side}UseLineArt`, true);
     setEmblemEditor(EMPTY_EMBLEM_EDITOR);
-    setStatus(`${side === "home" ? "TEAM A" : "TEAM B"} 선화를 이번 영수증에 적용했습니다. 서버에는 저장하지 않습니다.`);
+    setStatus(receiptCopy.lineArtApplied(side === "home" ? receiptCopy.teamA : receiptCopy.teamB));
   }
 
   async function copyLineArtPrompt() {
     try {
       await navigator.clipboard.writeText(MATCH_RECEIPT_LINE_ART_AI_PROMPT);
-      setStatus("AI 선화 프롬프트를 복사했습니다.");
+      setStatus(receiptCopy.promptCopied);
     } catch {
-      setStatus("프롬프트를 복사하지 못했습니다. 브라우저의 클립보드 권한을 확인해 주세요.");
+      setStatus(receiptCopy.promptCopyFailed);
     }
   }
 
@@ -615,7 +661,7 @@ export default function MatchReceipt({ auth, app }) {
       photoRotation: 0,
     }));
     setGenerated(Boolean(canonicalMatchId));
-    setStatus("사진을 제거했습니다.");
+    setStatus(receiptCopy.photoRemoved);
   }
 
   function resetPhotoTransform() {
@@ -633,7 +679,7 @@ export default function MatchReceipt({ auth, app }) {
 
   async function resetReceipt() {
     if (receiptIsReadOnly) return;
-    if (!window.confirm("입력값과 선택 사진을 지우고 새 일련번호로 시작할까요?")) return;
+    if (!window.confirm(receiptCopy.resetConfirm)) return;
 
     setBusy("reset");
     try {
@@ -673,8 +719,8 @@ export default function MatchReceipt({ auth, app }) {
       canonicalSnapshotCreatedRef.current = "";
       setSelectedCourtId("");
       setErrors({});
-      setStatus("새 일련번호로 영수증을 시작했습니다.");
-      navigate("/app/receipt", { replace: true, state: { receiptDraft: next } });
+      setStatus(receiptCopy.resetDone);
+      navigate(`/app/receipt${getReceiptSearchWithLocale("", receiptLocale)}`, { replace: true, state: { receiptDraft: next } });
     } finally {
       setBusy("");
     }
@@ -868,9 +914,9 @@ export default function MatchReceipt({ auth, app }) {
     canonicalSnapshotCreatedRef.current = canonicalMatchId;
     void ensurePublicDraft(draft).catch(() => {
       canonicalSnapshotCreatedRef.current = "";
-      setStatus("공개 영수증 링크를 만들지 못했습니다.");
+      setStatus(receiptCopy.publicLinkFailed);
     });
-  }, [canonicalMatchId, draft, generated, publicDraftId]);
+  }, [canonicalMatchId, draft, generated, publicDraftId, receiptCopy.publicLinkFailed]);
 
   async function completeReceipt(event) {
     event.preventDefault();
@@ -878,18 +924,18 @@ export default function MatchReceipt({ auth, app }) {
     setDraft(result.draft);
     setErrors(result.errors);
     if (!result.valid) {
-      setStatus("필수 정보를 확인해 주세요.");
+      setStatus(receiptCopy.requiredInfo);
       return;
     }
     setGenerated(true);
     setBusy("generate");
     try {
       await ensurePublicDraft(result.draft);
-      setStatus("경기 영수증이 완성됐습니다.");
+      setStatus(receiptCopy.completeSuccess);
     } catch (error) {
       setStatus(error.message === "receipt_draft_rate_limited"
-          ? "공유 영수증 생성 한도를 초과했습니다. 잠시 후 다시 시도해 주세요."
-          : "이미지는 완성됐지만 공유 QR을 만들지 못했습니다.");
+          ? receiptCopy.rateLimited
+          : receiptCopy.qrFailed);
     } finally {
       setBusy("");
     }
@@ -905,7 +951,7 @@ export default function MatchReceipt({ auth, app }) {
     const result = validateMatchReceiptDraft(draft);
     if (!result.valid) {
       setErrors(result.errors);
-      setStatus("영수증을 먼저 완성해 주세요.");
+      setStatus(receiptCopy.completeFirst);
       throw new Error("match_receipt_invalid");
     }
     let publicId = "";
@@ -915,9 +961,9 @@ export default function MatchReceipt({ auth, app }) {
       // A public QR is optional for local image export.
     }
     const publicMatchUrl = publicId
-      ? new URL(draftRef.current.publicCode
+      ? applyReceiptLocaleToUrl(new URL(draftRef.current.publicCode
         ? `/app/receipt?code=${encodeURIComponent(draftRef.current.publicCode)}`
-        : `/app/receipt?draft=${encodeURIComponent(publicId)}`, window.location.origin).toString()
+        : `/app/receipt?draft=${encodeURIComponent(publicId)}`, window.location.origin), receiptLocale).toString()
       : "";
     const renderDraft = normalizeMatchReceiptDraft({
       ...result.draft,
@@ -936,21 +982,21 @@ export default function MatchReceipt({ auth, app }) {
   }
 
   async function handleDownload(preset) {
-    const saveWindow = reserveImageSaveWindow();
+    const saveWindow = reserveImageSaveWindow(receiptCopy);
     setBusy(`download-${preset}`);
     setStatus("");
     try {
       const blob = await createPng(preset);
       const method = downloadBlob(blob, getMatchReceiptFileName(draft, preset), saveWindow);
       setStatus(method === "open"
-          ? "이미지를 열었습니다. 공유 메뉴에서 이미지 저장을 선택하세요."
-          : `${MATCH_RECEIPT_CANVAS_SIZES[preset].label} 이미지를 저장했습니다.`);
+          ? receiptCopy.imageOpened
+          : receiptCopy.imageSaved(MATCH_RECEIPT_CANVAS_SIZES[preset].label));
       trackMatchReceiptEvent("receipt_downloaded", { loggedIn: Boolean(auth?.session), imagePreset: preset });
     } catch (error) {
       if (saveWindow && !saveWindow.closed) saveWindow.close();
       if (error.message !== "match_receipt_invalid") {
         console.error("[match-receipt] image export failed", preset, error?.message, error?.stack);
-        setStatus("이미지를 만들지 못했습니다. 다시 시도해 주세요.");
+        setStatus(receiptCopy.imageFailed);
       }
     } finally {
       setBusy("");
@@ -965,18 +1011,18 @@ export default function MatchReceipt({ auth, app }) {
       const blob = await createPng(preset);
       const file = new File([blob], getMatchReceiptFileName(draft, preset), { type: "image/png" });
       if (navigator.share && navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ title: "BOXTIER 경기 영수증", files: [file] });
-        setStatus("공유 화면을 열었습니다.");
+        await navigator.share({ title: receiptCopy.shareTitle, files: [file] });
+        setStatus(receiptCopy.shareOpened);
         trackMatchReceiptEvent("receipt_shared", { loggedIn: Boolean(auth?.session), imagePreset: preset, method: "web_share" });
       } else {
         downloadBlob(blob, file.name);
-        setStatus("이 브라우저는 이미지 공유를 지원하지 않아 Story 이미지를 저장했습니다.");
+        setStatus(receiptCopy.shareFallback);
         trackMatchReceiptEvent("receipt_downloaded", { loggedIn: Boolean(auth?.session), imagePreset: preset, method: "share_fallback" });
       }
     } catch (error) {
       if (error.name !== "AbortError" && error.message !== "match_receipt_invalid") {
         console.error("[match-receipt] image share failed", error);
-        setStatus("공유하지 못했습니다. 이미지 저장을 이용해 주세요.");
+        setStatus(receiptCopy.shareFailed);
       }
     } finally {
       setBusy("");
@@ -985,10 +1031,11 @@ export default function MatchReceipt({ auth, app }) {
 
   async function copyCreatorLink() {
     try {
-      await navigator.clipboard.writeText(new URL("/app/receipt", window.location.origin).toString());
-      setStatus("영수증 만들기 링크를 복사했습니다.");
+      const creatorUrl = applyReceiptLocaleToUrl(new URL("/app/receipt", window.location.origin), receiptLocale);
+      await navigator.clipboard.writeText(creatorUrl.toString());
+      setStatus(receiptCopy.creatorCopied);
     } catch {
-      setStatus("링크를 복사하지 못했습니다.");
+      setStatus(receiptCopy.creatorCopyFailed);
     }
   }
 
@@ -1002,8 +1049,8 @@ export default function MatchReceipt({ auth, app }) {
       navigate(getLoginPath(returnTo, backTo));
     } catch (error) {
       setStatus(error.message === "receipt_draft_rate_limited"
-          ? "공유 영수증 생성 한도를 초과했습니다. 잠시 후 다시 시도해 주세요."
-          : "로그인용 영수증 초안을 만들지 못했습니다.");
+          ? receiptCopy.rateLimited
+          : receiptCopy.loginDraftFailed);
     } finally {
       setBusy("");
     }
@@ -1020,8 +1067,8 @@ export default function MatchReceipt({ auth, app }) {
       navigate(`${MATCH_RECEIPT_CREATE_RETURN_TO}&receiptDraft=${encodeURIComponent(publicId)}`);
     } catch (error) {
       setStatus(error.message === "receipt_draft_rate_limited"
-          ? "공유 영수증 생성 시도를 초과했습니다. 잠시 후 다시 시도해 주세요."
-          : "기록으로 이어갈 영수증 초안을 만들지 못했습니다.");
+          ? receiptCopy.recordDraftRateLimited
+          : receiptCopy.recordDraftFailed);
     } finally {
       setBusy("");
     }
@@ -1045,8 +1092,8 @@ export default function MatchReceipt({ auth, app }) {
         </div>
         <div className="match-receipt-page-head-actions">
           <div className="match-receipt-locale-switch" role="group" aria-label="Receipt language">
-            <Button type="button" variant={!isEnglish ? "primary" : "ghost"} size="sm" lang="ko" aria-label="한국어" aria-pressed={!isEnglish} onClick={() => setReceiptLocale("ko")}>🇰🇷</Button>
-            <Button type="button" variant={isEnglish ? "primary" : "ghost"} size="sm" lang="en" aria-label="English" aria-pressed={isEnglish} onClick={() => { setReceiptLocale("en"); setCourtMapOpen(false); }}>🇺🇸</Button>
+            <Button type="button" variant={!isEnglish ? "primary" : "ghost"} size="sm" lang="ko" aria-label={isEnglish ? "Korean" : "한국어"} aria-pressed={!isEnglish} onClick={() => selectReceiptLocale("ko")}>🇰🇷</Button>
+            <Button type="button" variant={isEnglish ? "primary" : "ghost"} size="sm" lang="en" aria-label="English" aria-pressed={isEnglish} onClick={() => selectReceiptLocale("en")}>🇺🇸</Button>
           </div>
           <nav className="match-receipt-page-head-nav" aria-label={receiptCopy.navLabel}>
             <Button variant="secondary" onClick={returnFromReceipt}>
@@ -1064,19 +1111,19 @@ export default function MatchReceipt({ auth, app }) {
           <EmptyState
             tone={publicCodeLookup === "loading" || publicCodeLookup === "idle" ? "loading" : "error"}
             title={publicCodeLookup === "loading" || publicCodeLookup === "idle"
-              ? "경기 찾는 중"
+              ? receiptCopy.loadingTitle
               : publicCodeLookup === "not-found"
-                ? "경기를 찾을 수 없습니다"
-                : "경기를 불러오지 못했습니다"}
+                ? receiptCopy.notFoundTitle
+                : receiptCopy.loadFailedTitle}
             description={publicCodeLookup === "loading" || publicCodeLookup === "idle"
-              ? "일련번호로 경기 기록을 확인하고 있습니다."
+              ? receiptCopy.loadingDescription
               : publicCodeLookup === "not-found"
-                ? "일련번호를 확인하거나 새 영수증을 만들어 주세요."
-                : "잠시 후 다시 시도해 주세요."}
+                ? receiptCopy.notFoundDescription
+                : receiptCopy.retryDescription}
             action={publicCodeLookup === "not-found" ? (
-              <Button as={Link} to="/app/receipt" variant="secondary">새 영수증 만들기</Button>
+              <Button as={Link} to={`/app/receipt${getReceiptSearchWithLocale("", receiptLocale)}`} variant="secondary">{receiptCopy.newReceipt}</Button>
             ) : publicCodeLookup === "error" ? (
-              <Button type="button" variant="secondary" onClick={() => setPublicCodeLookupAttempt((current) => current + 1)}>다시 시도</Button>
+              <Button type="button" variant="secondary" onClick={() => setPublicCodeLookupAttempt((current) => current + 1)}>{receiptCopy.retry}</Button>
             ) : null}
           />
         </section>
@@ -1085,14 +1132,14 @@ export default function MatchReceipt({ auth, app }) {
         <form className="match-receipt-editor" onSubmit={completeReceipt}>
           <section className="ui-panel">
             <h2>{receiptCopy.finalScore}</h2>
-            {receiptIsReadOnly ? <p className="match-receipt-locked-note">공유 영수증은 읽기 전용입니다.</p> : null}
-            {canonicalMatchId ? <p className="match-receipt-locked-note">확정 기록의 팀·점수·날짜·장소는 원본을 사용합니다. 짧은 장소와 코멘트는 편집할 수 있습니다.</p> : null}
+            {receiptIsReadOnly ? <p className="match-receipt-locked-note">{receiptCopy.readOnlyNote}</p> : null}
+            {canonicalMatchId ? <p className="match-receipt-locked-note">{receiptCopy.canonicalNote}</p> : null}
             <div className="match-receipt-team-fields">
               <fieldset>
                 <legend>{receiptCopy.teamA}</legend>
                 <label>
                   {receiptCopy.teamName}
-                  <input value={draft.homeTeam} maxLength={MATCH_RECEIPT_LIMITS.teamName} disabled={isFieldReadOnly("homeTeam")} placeholder={errors.homeTeam && !isEnglish ? "필수 · TEAM A 이름을 입력하세요" : receiptCopy.teamA} onChange={(event) => updateField("homeTeam", event.target.value)} aria-invalid={Boolean(errors.homeTeam)} />
+                  <input value={draft.homeTeam} maxLength={MATCH_RECEIPT_LIMITS.teamName} disabled={isFieldReadOnly("homeTeam")} placeholder={errors.homeTeam ? receiptCopy.requiredTeam(receiptCopy.teamA) : receiptCopy.teamA} onChange={(event) => updateField("homeTeam", event.target.value)} aria-invalid={Boolean(errors.homeTeam)} />
                 </label>
                 <label className="match-receipt-score-input">
                   {receiptCopy.score}
@@ -1104,7 +1151,7 @@ export default function MatchReceipt({ auth, app }) {
                 <legend>{receiptCopy.teamB}</legend>
                 <label>
                   {receiptCopy.teamName}
-                  <input value={draft.awayTeam} maxLength={MATCH_RECEIPT_LIMITS.teamName} disabled={isFieldReadOnly("awayTeam")} placeholder={errors.awayTeam && !isEnglish ? "필수 · TEAM B 이름을 입력하세요" : receiptCopy.teamB} onChange={(event) => updateField("awayTeam", event.target.value)} aria-invalid={Boolean(errors.awayTeam)} />
+                  <input value={draft.awayTeam} maxLength={MATCH_RECEIPT_LIMITS.teamName} disabled={isFieldReadOnly("awayTeam")} placeholder={errors.awayTeam ? receiptCopy.requiredTeam(receiptCopy.teamB) : receiptCopy.teamB} onChange={(event) => updateField("awayTeam", event.target.value)} aria-invalid={Boolean(errors.awayTeam)} />
                 </label>
                 <label className="match-receipt-score-input">
                   {receiptCopy.score}
@@ -1118,8 +1165,8 @@ export default function MatchReceipt({ auth, app }) {
             <h2>{receiptCopy.info}</h2>
             <div className="match-receipt-info-fields">
               <label>{receiptCopy.date}<input type="date" value={draft.playedOn} disabled={isFieldReadOnly("playedOn")} onChange={(event) => updateField("playedOn", event.target.value)} /></label>
-              <label>경기 방식<select value={draft.format} disabled={isFieldReadOnly("format")} onChange={(event) => updateField("format", event.target.value)}>{MATCH_RECEIPT_FORMATS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
-              <label>경기 성격<select value={draft.matchNature} disabled={isFieldReadOnly("matchNature")} onChange={(event) => updateField("matchNature", event.target.value)}>{MATCH_RECEIPT_NATURES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
+              <label>{receiptCopy.format}<select value={draft.format} disabled={isFieldReadOnly("format")} onChange={(event) => updateField("format", event.target.value)}>{MATCH_RECEIPT_FORMATS.map((item) => <option key={item.value} value={item.value}>{isEnglish ? item.value.toUpperCase() : item.label}</option>)}</select></label>
+              <label>{receiptCopy.nature}<select value={draft.matchNature} disabled={isFieldReadOnly("matchNature")} onChange={(event) => updateField("matchNature", event.target.value)}>{MATCH_RECEIPT_NATURES.map((item) => <option key={item.value} value={item.value}>{isEnglish ? item.value.toUpperCase() : item.label}</option>)}</select></label>
               {!isEnglish ? <label className="is-wide">
                 경기 장소
                 <span className="match-receipt-venue-control">
@@ -1132,11 +1179,11 @@ export default function MatchReceipt({ auth, app }) {
                 </span>
               </label> : null}
               <label className="is-wide">{receiptCopy.venue} <input value={draft.address} maxLength={MATCH_RECEIPT_LIMITS.address} disabled={isFieldReadOnly("address")} placeholder={receiptCopy.venuePlaceholder} onChange={(event) => updateField("address", event.target.value)} /></label>
-              <label className="is-wide">대회·리그 이름 <input value={draft.tournamentName} maxLength={MATCH_RECEIPT_LIMITS.tournamentName} disabled={isFieldReadOnly("tournamentName")} placeholder="선택 · 20자 이내" onChange={(event) => updateField("tournamentName", event.target.value)} /></label>
+              <label className="is-wide">{receiptCopy.tournament} <input value={draft.tournamentName} maxLength={MATCH_RECEIPT_LIMITS.tournamentName} disabled={isFieldReadOnly("tournamentName")} placeholder={receiptCopy.tournamentPlaceholder} onChange={(event) => updateField("tournamentName", event.target.value)} /></label>
               <fieldset className="match-receipt-line-art-fields is-wide">
-                <legend>팀 엠블럼 <small>선택</small></legend>
+                <legend>{receiptCopy.teamEmblems} <small>{receiptCopy.optional}</small></legend>
                 <p className="match-receipt-emblem-guide">
-                  사진을 골라 선화 엠블럼으로 바로 사용할 수 있습니다. 로그인 후 팀을 만들면 팀 상세에 저장해 다음 영수증에서도 재사용할 수 있습니다.
+                  {receiptCopy.emblemGuide}
                 </p>
                 <div className="match-receipt-emblem-upload-grid">
                   {[["home", "TEAM A"], ["away", "TEAM B"]].map(([side, label]) => {
@@ -1152,7 +1199,7 @@ export default function MatchReceipt({ auth, app }) {
                             size="sm"
                             disabled={Boolean(busy) || emblemPending}
                           >
-                            <ImagePlus aria-hidden="true" /> 선화 엠블럼 선택
+                            <ImagePlus aria-hidden="true" /> {receiptCopy.selectLineArt}
                             <input
                               type="file"
                               accept="image/jpeg,image/png,image/webp,image/avif,image/heic,image/heif"
@@ -1169,14 +1216,14 @@ export default function MatchReceipt({ auth, app }) {
                             disabled={receiptIsReadOnly || Boolean(busy)}
                             onClick={() => loadSavedTeamReceiptEmblem(side)}
                           >
-                            <Download aria-hidden="true" /> 저장 엠블럼 사용
+                            <Download aria-hidden="true" /> {receiptCopy.useSavedEmblem}
                           </Button>
                         ) : (
-                          <small>저장된 팀 엠블럼 없음</small>
+                          <small>{receiptCopy.noSavedEmblem}</small>
                         )}
                         {activeLineArtUrl ? (
-                          <div className="match-receipt-emblem-candidates" aria-label={`${label} 엠블럼 후보`}>
-                            {activeLineArtUrl ? <img src={activeLineArtUrl} alt={`${label} 선화 후보`} /> : null}
+                          <div className="match-receipt-emblem-candidates" aria-label={receiptCopy.emblemCandidates(label)}>
+                            {activeLineArtUrl ? <img src={activeLineArtUrl} alt={receiptCopy.lineArtCandidate(label)} /> : null}
                           </div>
                         ) : null}
                         {activeLineArtUrl ? (
@@ -1187,18 +1234,18 @@ export default function MatchReceipt({ auth, app }) {
                             disabled={receiptIsReadOnly}
                             onClick={() => updateField(`${side}UseLineArt`, !draft[`${side}UseLineArt`])}
                           >
-                            {draft[`${side}UseLineArt`] ? "선화 사용 해제" : "선화 다시 사용"}
+                            {draft[`${side}UseLineArt`] ? receiptCopy.disableLineArt : receiptCopy.reuseLineArt}
                           </Button>
                         ) : null}
                       </div>
                     );
                   })}
                 </div>
-                <small>직접 선택한 이미지는 이번 영수증에서만 유지됩니다.</small>
+                <small>{receiptCopy.localEmblemOnly}</small>
                 <div className="match-receipt-ai-prompt">
-                  <span>외부 AI에서 선화 PNG를 만들 때 사용할 지시문입니다.</span>
+                  <span>{receiptCopy.aiPromptHelp}</span>
                   <Button type="button" variant="ghost" size="sm" onClick={copyLineArtPrompt}>
-                    <Copy aria-hidden="true" /> AI 선화 프롬프트 복사
+                    <Copy aria-hidden="true" /> {receiptCopy.copyAiPrompt}
                   </Button>
                 </div>
                 {!receiptIsReadOnly ? (
@@ -1210,27 +1257,27 @@ export default function MatchReceipt({ auth, app }) {
                     variant="secondary"
                     size="sm"
                   >
-                    {auth?.session ? "팀 만들고 엠블럼 저장" : "로그인 · 팀 만들고 엠블럼 저장"}
+                    {auth?.session ? receiptCopy.createTeamSave : receiptCopy.loginCreateTeamSave}
                   </Button>
                 ) : null}
               </fieldset>
               <fieldset className="match-receipt-period-fields is-wide">
-                <legend>{receiptCopy.periodScores} <small>{isEnglish ? "Optional" : "선택"}</small></legend>
+                <legend>{receiptCopy.periodScores} <small>{receiptCopy.optional}</small></legend>
                 {RECEIPT_PERIOD_FIELDS.map(([label, homeField, awayField]) => (
                   <label key={label}>
                     <span>{label}</span>
-                    <input type="number" min="0" max={MATCH_RECEIPT_LIMITS.score} inputMode="numeric" value={draft[homeField] ?? ""} disabled={isFieldReadOnly(homeField)} aria-label={`${label} TEAM A 점수`} placeholder="A" onChange={(event) => updateField(homeField, event.target.value)} />
+                    <input type="number" min="0" max={MATCH_RECEIPT_LIMITS.score} inputMode="numeric" value={draft[homeField] ?? ""} disabled={isFieldReadOnly(homeField)} aria-label={receiptCopy.periodScoreAria(label, receiptCopy.teamA)} placeholder="A" onChange={(event) => updateField(homeField, event.target.value)} />
                     <i>:</i>
-                    <input type="number" min="0" max={MATCH_RECEIPT_LIMITS.score} inputMode="numeric" value={draft[awayField] ?? ""} disabled={isFieldReadOnly(awayField)} aria-label={`${label} TEAM B 점수`} placeholder="B" onChange={(event) => updateField(awayField, event.target.value)} />
+                    <input type="number" min="0" max={MATCH_RECEIPT_LIMITS.score} inputMode="numeric" value={draft[awayField] ?? ""} disabled={isFieldReadOnly(awayField)} aria-label={receiptCopy.periodScoreAria(label, receiptCopy.teamB)} placeholder="B" onChange={(event) => updateField(awayField, event.target.value)} />
                   </label>
                 ))}
               </fieldset>
               <label className="is-wide">
                 <span className="match-receipt-field-heading">
-                  <span>한 줄 코멘트</span>
+                  <span>{receiptCopy.comment}</span>
                   <span className="match-receipt-field-count">{draft.comment.length}/{MATCH_RECEIPT_LIMITS.comment}</span>
                 </span>
-                <input value={draft.comment} maxLength={MATCH_RECEIPT_LIMITS.comment} disabled={isFieldReadOnly("comment")} placeholder="선택 · 11자 이내" onChange={(event) => updateField("comment", event.target.value)} />
+                <input value={draft.comment} maxLength={MATCH_RECEIPT_LIMITS.comment} disabled={isFieldReadOnly("comment")} placeholder={receiptCopy.commentPlaceholder} onChange={(event) => updateField("comment", event.target.value)} />
               </label>
             </div>
             {!isEnglish ? <p className="match-receipt-map-note"><MapPin aria-hidden="true" /> 이미지에는 경기 장소 또는 짧은 장소만 들어갑니다. 지도 화면은 포함하지 않습니다.</p> : null}
@@ -1268,8 +1315,8 @@ export default function MatchReceipt({ auth, app }) {
               <Button
                 variant="secondary"
                 className="match-receipt-photo-rotate-handle"
-                aria-label="사진 자유 회전"
-                title="드래그해 자유 회전 · 방향키로 미세 조정"
+                aria-label={receiptCopy.rotatePhotoAria}
+                title={receiptCopy.rotatePhotoTitle}
                 onPointerDown={beginPhotoRotation}
                 onPointerMove={movePhotoRotation}
                 onPointerUp={endPhotoRotation}
@@ -1282,26 +1329,26 @@ export default function MatchReceipt({ auth, app }) {
             ) : null}
           </div>
           {!receiptIsReadOnly ? <div className="match-receipt-photo-tools">
-            <div className="match-receipt-photo-actions" aria-label="미리보기 사진 편집">
+            <div className="match-receipt-photo-actions" aria-label={receiptCopy.photoActionsAria}>
               <Button as="label" variant="secondary">
-                <ImagePlus aria-hidden="true" /> 사진 선택
+                <ImagePlus aria-hidden="true" /> {receiptCopy.selectPhoto}
                 <input type="file" accept="image/jpeg,image/png,image/webp" disabled={busy === "photo"} onChange={handlePhotoChange} />
               </Button>
-              <Button variant="secondary" disabled={!photoUrl || Boolean(busy)} onClick={() => updateField("photoRotation", draft.photoRotation + 90)}><RotateCcw aria-hidden="true" /> 90° 회전</Button>
-              <Button variant="danger" disabled={!photoUrl || Boolean(busy)} onClick={removePhoto}><Trash2 aria-hidden="true" /> 제거</Button>
+              <Button variant="secondary" disabled={!photoUrl || Boolean(busy)} onClick={() => updateField("photoRotation", draft.photoRotation + 90)}><RotateCcw aria-hidden="true" /> {receiptCopy.rotate90}</Button>
+              <Button variant="danger" disabled={!photoUrl || Boolean(busy)} onClick={removePhoto}><Trash2 aria-hidden="true" /> {receiptCopy.remove}</Button>
               <Button
                 variant="secondary"
                 disabled={Boolean(busy)}
-                title="입력값·사진 초기화 후 새 일련번호 시작"
+                title={receiptCopy.resetTitle}
                 onClick={resetReceipt}
               >
-                <RotateCcw aria-hidden="true" /> 초기화
+                <RotateCcw aria-hidden="true" /> {receiptCopy.reset}
               </Button>
             </div>
             <p className="match-receipt-photo-note">
               {photoUrl
-                ? "사진 안쪽 드래그 이동 · 휠 확대·축소 · 테두리 손잡이 회전 · 더블클릭 초기화 · 모바일 두 손가락 편집"
-                : "사진을 선택하면 미리보기 안에서 바로 편집"} · 사진은 서버에 업로드하지 않음
+                ? receiptCopy.photoEditHelp
+                : receiptCopy.photoSelectHelp} · {receiptCopy.localPhotoOnly}
             </p>
           </div> : null}
 
@@ -1316,21 +1363,21 @@ export default function MatchReceipt({ auth, app }) {
 
           {generated ? (
             <section className="ui-panel match-receipt-save-card">
-              <h2>{canonicalMatchId ? "내 기록에 저장됨" : "이 경기를 내 기록으로 가져가기"}</h2>
+              <h2>{canonicalMatchId ? receiptCopy.savedTitle : receiptCopy.importTitle}</h2>
               {canonicalMatchId ? (
                 <>
-                  <p>실제 경기 ID가 연결됐습니다. QR 코드는 누구나 볼 수 있는 공개 영수증을 엽니다.</p>
-                  <button type="button" className="button ui-button button-secondary ui-button-secondary button-md ui-button-md" onClick={() => navigate("/app/profile/records")}>내 기록 보기</button>
+                  <p>{receiptCopy.savedDescription}</p>
+                  <button type="button" className="button ui-button button-secondary ui-button-secondary button-md ui-button-md" onClick={() => navigate("/app/profile/records")}>{receiptCopy.viewRecords}</button>
                 </>
               ) : auth?.session ? (
                 <>
-                  <p>상세 기록을 이어서 작성하면 기존 개인 기록 저장 흐름으로 보관됩니다.</p>
-                  <button type="button" className="button ui-button button-secondary ui-button-secondary button-md ui-button-md" onClick={continueToRecord}>상세 기록 이어서 작성</button>
+                  <p>{receiptCopy.continueDescription}</p>
+                  <button type="button" className="button ui-button button-secondary ui-button-secondary button-md ui-button-md" onClick={continueToRecord}>{receiptCopy.continueRecord}</button>
                 </>
               ) : (
                 <>
-                  <p>로그인 방법을 선택해도 작성 내용이 유지됩니다. 로그인 뒤 상세 기록을 작성해 저장할 수 있습니다.</p>
-                  <button type="button" className="button ui-button button-secondary ui-button-secondary button-md ui-button-md" disabled={Boolean(busy)} onClick={continueToRecord}>상세 기록 이어서 작성</button>
+                  <p>{receiptCopy.guestContinueDescription}</p>
+                  <button type="button" className="button ui-button button-secondary ui-button-secondary button-md ui-button-md" disabled={Boolean(busy)} onClick={continueToRecord}>{receiptCopy.continueRecord}</button>
                 </>
               )}
             </section>
@@ -1355,7 +1402,8 @@ export default function MatchReceipt({ auth, app }) {
             circular
             pending={emblemPending}
             convertedPreview={emblemEditor.preview}
-            warning="조정한 이미지는 이번 영수증에서만 사용되며 서버에 저장되지 않습니다."
+            warning={receiptCopy.emblemWarning}
+            labels={receiptCopy.emblemEditor}
             error={emblemEditor.error}
             onCropChange={resetLocalTeamEmblemConversion}
             onCancel={() => setEmblemEditor(EMPTY_EMBLEM_EDITOR)}

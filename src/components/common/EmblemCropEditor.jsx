@@ -5,6 +5,21 @@ import Button from "./Button.jsx";
 import ModalShell from "./ModalShell.jsx";
 
 const DEFAULT_CROP = { zoom: 1, x: 50, y: 50 };
+const DEFAULT_LABELS = Object.freeze({
+  dialog: "엠블럼 이미지 편집",
+  title: "엠블럼 영역 선택",
+  description: "미리보기를 보면서 위치와 크기를 조정해 주세요.",
+  convertedPreview: "변환된 선화 미리보기",
+  loadFailed: "이미지를 읽지 못했습니다.",
+  cropPreview: "엠블럼 크롭 미리보기",
+  zoom: "확대·축소",
+  horizontal: "가로 위치",
+  vertical: "세로 위치",
+  cancel: "취소",
+  converting: "변환 중",
+  convert: "선화로 변경",
+  confirm: "확인",
+});
 
 function getRangeProgress(value, min, max) {
   return `${Math.max(0, Math.min(100, ((Number(value) - min) / (max - min)) * 100))}%`;
@@ -21,7 +36,9 @@ export default function EmblemCropEditor({
   onConfirm,
   onCropChange,
   circular = false,
+  labels,
 }) {
+  const copy = { ...DEFAULT_LABELS, ...labels };
   const canvasRef = useRef(null);
   const [image, setImage] = useState(null);
   const [crop, setCrop] = useState(DEFAULT_CROP);
@@ -55,44 +72,44 @@ export default function EmblemCropEditor({
 
   return (
     <div className="app-confirm-backdrop emblem-crop-backdrop" role="presentation" onMouseDown={() => !pending && onCancel?.()}>
-      <ModalShell className="app-confirm-dialog emblem-crop-dialog" role="dialog" aria-modal="true" aria-label="엠블럼 이미지 편집" onMouseDown={(event) => event.stopPropagation()}>
+      <ModalShell className="app-confirm-dialog emblem-crop-dialog" role="dialog" aria-modal="true" aria-label={copy.dialog} onMouseDown={(event) => event.stopPropagation()}>
         <header>
-          <strong>엠블럼 영역 선택</strong>
-          <p>미리보기를 보면서 위치와 크기를 조정해 주세요.</p>
+          <strong>{copy.title}</strong>
+          <p>{copy.description}</p>
         </header>
         <div className="emblem-crop-preview">
           {convertedPreview ? (
-            <img src={convertedPreview} alt="변환된 선화 미리보기" />
+            <img src={convertedPreview} alt={copy.convertedPreview} />
           ) : loadFailed ? (
-            <span>이미지를 읽지 못했습니다.</span>
+            <span>{copy.loadFailed}</span>
           ) : (
-            <canvas ref={canvasRef} aria-label="엠블럼 크롭 미리보기" />
+            <canvas ref={canvasRef} aria-label={copy.cropPreview} />
           )}
         </div>
         <div className="emblem-crop-controls">
           <label>
-            확대·축소
+            {copy.zoom}
             <input type="range" min="0.5" max="3" step="0.05" value={crop.zoom} style={{ "--emblem-range-progress": getRangeProgress(crop.zoom, 0.5, 3) }} onChange={(event) => updateCrop("zoom", event.target.value)} />
           </label>
           <label>
-            가로 위치
+            {copy.horizontal}
             <input type="range" min="0" max="100" step="1" value={crop.x} style={{ "--emblem-range-progress": getRangeProgress(crop.x, 0, 100) }} onChange={(event) => updateCrop("x", event.target.value)} />
           </label>
           <label>
-            세로 위치
+            {copy.vertical}
             <input type="range" min="0" max="100" step="1" value={crop.y} style={{ "--emblem-range-progress": getRangeProgress(crop.y, 0, 100) }} onChange={(event) => updateCrop("y", event.target.value)} />
           </label>
         </div>
         {warning ? <p className="form-warning">{warning}</p> : null}
         {error ? <p className="emblem-crop-feedback" role="alert">{error}</p> : null}
         <div className="ui-action-row app-confirm-actions">
-          <Button type="button" variant="secondary" disabled={pending} onClick={onCancel}>취소</Button>
+          <Button type="button" variant="secondary" disabled={pending} onClick={onCancel}>{copy.cancel}</Button>
           {onConvert ? (
             <Button type="button" variant="secondary" disabled={pending || !image || loadFailed} onClick={() => onConvert(crop)}>
-              {pending ? "변환 중" : "선화로 변경"}
+              {pending ? copy.converting : copy.convert}
             </Button>
           ) : null}
-          <Button type="button" disabled={pending || (Boolean(onConvert) && !convertedPreview)} onClick={() => onConfirm?.(crop)}>확인</Button>
+          <Button type="button" disabled={pending || (Boolean(onConvert) && !convertedPreview)} onClick={() => onConfirm?.(crop)}>{copy.confirm}</Button>
         </div>
       </ModalShell>
     </div>

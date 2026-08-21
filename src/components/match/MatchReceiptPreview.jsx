@@ -41,12 +41,12 @@ function ReceiptScoreboardValue({ value, row }) {
   );
 }
 
-function ReceiptPhotoScoreboard({ homeScore, awayScore }) {
+function ReceiptPhotoScoreboard({ homeScore, awayScore, locale }) {
   return (
     <div
       className="match-receipt-photo-scoreboard"
       role="img"
-      aria-label={`경기 종료 ${homeScore} 대 ${awayScore}`}
+      aria-label={locale === "en" ? `Final score ${homeScore} to ${awayScore}` : `경기 종료 ${homeScore} 대 ${awayScore}`}
     >
       <span className="match-receipt-photo-scoreboard-clock" aria-hidden="true">
         <ReceiptScoreboardValue value="00" row={1} />
@@ -132,11 +132,11 @@ export default function MatchReceiptPreview({
       <div
         ref={photoElementRef}
         className={`match-receipt-photo${photoUrl ? " is-editable" : " is-default"}`}
-        aria-label={photoUrl ? "영수증 배경 사진 편집" : undefined}
+        aria-label={photoUrl ? (model.locale === "en" ? "Edit receipt background photo" : "영수증 배경 사진 편집") : undefined}
         {...photoGestureHandlers}
       >
         <img className="match-receipt-photo-image" src={backgroundUrl} alt="" />
-        {!photoUrl ? <ReceiptPhotoScoreboard homeScore={model.homeScore} awayScore={model.awayScore} /> : null}
+        {!photoUrl ? <ReceiptPhotoScoreboard homeScore={model.homeScore} awayScore={model.awayScore} locale={model.locale} /> : null}
       </div>
       <header className="match-receipt-poster-head">
         <span className="match-receipt-wordmark">
@@ -176,7 +176,7 @@ export default function MatchReceiptPreview({
       </div>
       <section className="match-receipt-poster-score">
         <span>{model.matchNatureLabel}</span>
-        <div aria-label={`${model.homeScore} 대 ${model.awayScore}`}>
+        <div aria-label={model.locale === "en" ? `${model.homeScore} to ${model.awayScore}` : `${model.homeScore} 대 ${model.awayScore}`}>
           <ReceiptScoreDigits value={model.homeScore} />
           <i
             className="match-receipt-score-digit match-receipt-score-colon"
@@ -239,8 +239,8 @@ export default function MatchReceiptPreview({
         <div className="match-receipt-ticket-qr">
           <strong>{matchUrl ? (model.locale === "en" ? "Share Receipt" : "경기 기록 보기") : "boxtier.kr"}</strong>
           {matchUrl ? (
-            <a href={matchUrl} aria-label="경기 기록 열기">
-              <QrCode value={matchUrl} label="경기 열기 QR 코드" className="match-receipt-qr" branded />
+            <a href={matchUrl} aria-label={model.locale === "en" ? "Open game receipt" : "경기 기록 열기"}>
+              <QrCode value={matchUrl} label={model.locale === "en" ? "Open game receipt QR code" : "경기 열기 QR 코드"} className="match-receipt-qr" branded />
             </a>
           ) : null}
         </div>
