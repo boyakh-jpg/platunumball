@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 796 16" width="796" height="16">
+  <defs>
+    <pattern id="tooth" width="16" height="16" patternUnits="userSpaceOnUse">
+      <path fill="#fff" d="M0 16V8L8 0l8 8v8Z"/>
+    </pattern>
+  </defs>
+  <rect width="796" height="16" fill="url(#tooth)"/>
+</svg>

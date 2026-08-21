@@ -6,6 +6,7 @@ import EmptyState from "../components/common/EmptyState.jsx";
 import EmblemCropEditor from "../components/common/EmblemCropEditor.jsx";
 import CourtMapPicker from "../components/court/CourtMapPicker.jsx";
 import MatchReceiptPreview from "../components/match/MatchReceiptPreview.jsx";
+import ThermalReceiptPreview from "../components/match/ThermalReceiptPreview.jsx";
 import { assetUrl } from "../lib/assets.js";
 import { getCourtAddress, getRegisteredCourts, mergeCourtSearchCourts } from "../lib/courts.js";
 import { getLoginPath, inferRegionSelection } from "../lib/profileSetup.js";
@@ -40,6 +41,14 @@ import {
   trackMatchReceiptEvent,
   validateMatchReceiptDraft,
 } from "../lib/matchReceipt.js";
+import {
+  MATCH_RECEIPT_LOCALES,
+  MATCH_RECEIPT_STYLES,
+  THERMAL_RECEIPT_COMMENT_MAX_WEIGHT,
+  getThermalReceiptTextWeight,
+  sanitizeThermalReceiptComment,
+  suggestReceiptShortName,
+} from "../../shared/lib/thermalReceipt.js";
 
 function loadDraft() {
   return loadMatchReceiptDraft() ?? createDefaultMatchReceiptDraft();
@@ -60,10 +69,12 @@ const CANONICAL_RECEIPT_FIELDS = new Set([
   "homeScore",
   "awayScore",
   "playedOn",
+  "playedTime",
   "format",
   "matchNature",
   "venue",
   "originalAddress",
+  "playerCount",
 ]);
 
 const RECEIPT_TEXT_FIELDS = new Set([
@@ -71,6 +82,9 @@ const RECEIPT_TEXT_FIELDS = new Set([
   "awayTeam",
   "address",
   "comment",
+  "receiptComment",
+  "homeReceiptShortName",
+  "awayReceiptShortName",
   "tournamentName",
 ]);
 
@@ -89,6 +103,9 @@ const RECEIPT_PAGE_COPY = Object.freeze({
     eyebrow: "MATCH RECEIPT", title: "경기 영수증", description: "오늘 경기 결과를 입력하고 바로 자랑할 이미지로 저장하세요.",
     navLabel: "영수증 페이지 이동", back: "뒤로가기", home: "홈으로", finalScore: "경기 결과",
     teamA: "TEAM A", teamB: "TEAM B", teamName: "팀 이름", score: "점수", info: "경기 정보", date: "경기 날짜",
+    style: "출력 스타일", map: "지도", shortName: "짧은 팀명", includePhoto: "감열 영수증에 경기 사진 포함",
+    time: "경기 시간", players: "참가 인원", receiptComment: "한줄평", receiptCommentPlaceholder: "선택 · 한글 28자 또는 영문 52자",
+    thermalPhotoCrop: "감열 사진 자르기 조정", zoom: "확대", horizontal: "가로 위치", vertical: "세로 위치",
     venue: "짧은 장소", venuePlaceholder: "경기 장소 대신 주소나 장소를 입력 가능", periodScores: "쿼터별 점수",
     preview: "미리보기", complete: "영수증 완성하기", share: "이미지 공유", story: "Story 저장", post: "Feed 저장", create: "만들기 링크 복사",
     loadingTitle: "경기 찾는 중", notFoundTitle: "경기를 찾을 수 없습니다", loadFailedTitle: "경기를 불러오지 못했습니다",
@@ -113,6 +130,9 @@ const RECEIPT_PAGE_COPY = Object.freeze({
     eyebrow: "GAME RECEIPT", title: "Game Receipt", description: "Turn your game result into a shareable receipt.",
     navLabel: "Receipt page navigation", back: "Back", home: "Home", finalScore: "Final Score",
     teamA: "Team A", teamB: "Team B", teamName: "Team Name", score: "Score", info: "Date / Time / Venue", date: "Date",
+    style: "Receipt Style", map: "Map", shortName: "Short Team Name", includePhoto: "Include game photo on thermal receipt",
+    time: "Time", players: "Players", receiptComment: "One-Line Comment", receiptCommentPlaceholder: "Optional · up to 52 characters",
+    thermalPhotoCrop: "Thermal photo crop", zoom: "Zoom", horizontal: "Horizontal", vertical: "Vertical",
     venue: "Venue", venuePlaceholder: "Short venue name", periodScores: "Period Scores",
     preview: "Preview", complete: "Create Receipt", share: "Share Receipt", story: "Download Story", post: "Download Post", create: "Create Your Own",
     loadingTitle: "Finding game", notFoundTitle: "Game not found", loadFailedTitle: "Could not load game",
@@ -188,6 +208,11 @@ function getPhotoGestureSnapshot(pointers) {
 export default function MatchReceipt({ auth, app }) {
   const location = useLocation();
   const navigate = useNavigate();
+  const requestedReceiptLocale = useMemo(() => (
+    new URLSearchParams(location.search).get("lang") === MATCH_RECEIPT_LOCALES.en
+      ? MATCH_RECEIPT_LOCALES.en
+      : ""
+  ), [location.search]);
   const matchId = useMemo(
     () => new URLSearchParams(location.search).get("match")?.trim() ?? "",
     [location.search],
@@ -325,6 +350,8 @@ export default function MatchReceipt({ auth, app }) {
     localTeamLineArtUrls.away,
     localTeamLineArtUrls.home,
   ]);
+  const isThermal = draft.receiptStyle === MATCH_RECEIPT_STYLES.thermal;
+  const receiptCommentWeight = getThermalReceiptTextWeight(draft.receiptComment);
 
   useEffect(() => {
     if (!requestedPublicCode) {
@@ -429,7 +456,10 @@ export default function MatchReceipt({ auth, app }) {
       })
       .then((result) => {
         if (!active) return;
-        const normalizedDraft = normalizeMatchReceiptDraft(result.draft);
+        const normalizedDraft = normalizeMatchReceiptDraft({
+          ...result.draft,
+          ...(requestedReceiptLocale ? { receiptLocale: requestedReceiptLocale } : {}),
+        });
         publicDraftSerialSeedRef.current = result.draft?.serialSeed ?? "";
         publicDraftLoadedRevisionRef.current = draftRevisionRef.current;
         publicDraftSavedRevisionRef.current = draftRevisionRef.current;
@@ -519,12 +549,19 @@ export default function MatchReceipt({ auth, app }) {
       trackMatchReceiptEvent("receipt_started", { loggedIn: Boolean(auth?.session) });
     }
     setDraft((current) => {
-      const next = RECEIPT_TEXT_FIELDS.has(name)
+      const normalizedValue = name === "receiptComment" ? sanitizeThermalReceiptComment(value) : value;
+      let next = RECEIPT_TEXT_FIELDS.has(name)
         ? {
           ...current,
-          [name]: String(value ?? ""),
+          [name]: String(normalizedValue ?? ""),
         }
-        : normalizeMatchReceiptDraft({ ...current, [name]: value });
+        : normalizeMatchReceiptDraft({ ...current, [name]: normalizedValue });
+      if (name === "homeTeam" && !current.homeReceiptShortName) {
+        next = { ...next, homeReceiptShortName: suggestReceiptShortName(normalizedValue) };
+      }
+      if (name === "awayTeam" && !current.awayReceiptShortName) {
+        next = { ...next, awayReceiptShortName: suggestReceiptShortName(normalizedValue) };
+      }
       draftRef.current = next;
       return next;
     });
@@ -696,6 +733,8 @@ export default function MatchReceipt({ auth, app }) {
         ...createDefaultMatchReceiptDraft(),
         personalMmr,
         profileHashtag,
+        receiptStyle: draft.receiptStyle,
+        receiptLocale,
       });
       photoTransformRef.current = {
         photoX: next.photoX,
@@ -870,7 +909,7 @@ export default function MatchReceipt({ auth, app }) {
         const requestRevision = draftRevisionRef.current;
         const ownedPublicId = publicDraftIdRef.current;
         const result = await postServerAction("/api/match-receipts/draft", {
-          draft: nextDraft,
+          draft: { ...nextDraft, receiptLocale },
           ...(ownedPublicId ? { publicId: ownedPublicId } : {}),
           ...(!ownedPublicId && canonicalMatchId ? { sourceMatchId: canonicalMatchId } : {}),
           ...(!ownedPublicId && requestedPublicDraftId && !hasLocalEdits()
@@ -967,6 +1006,7 @@ export default function MatchReceipt({ auth, app }) {
       : "";
     const renderDraft = normalizeMatchReceiptDraft({
       ...result.draft,
+      receiptLocale,
       ...(publicDraftSerialSeedRef.current ? { serialSeed: publicDraftSerialSeedRef.current } : {}),
       ...(draftRef.current.publicCode ? { publicCode: draftRef.current.publicCode } : {}),
     });
@@ -1091,6 +1131,10 @@ export default function MatchReceipt({ auth, app }) {
           <p>{receiptCopy.description}</p>
         </div>
         <div className="match-receipt-page-head-actions">
+          <div className="match-receipt-compact-toggle" role="group" aria-label={receiptCopy.style}>
+            <button type="button" aria-pressed={!isThermal} onClick={() => updateField("receiptStyle", MATCH_RECEIPT_STYLES.score)}>BOXTIER</button>
+            <button type="button" aria-pressed={isThermal} onClick={() => updateField("receiptStyle", MATCH_RECEIPT_STYLES.thermal)}>THERMAL</button>
+          </div>
           <div className="match-receipt-locale-switch" role="group" aria-label="Receipt language">
             <Button type="button" variant={!isEnglish ? "primary" : "ghost"} size="sm" lang="ko" aria-label={isEnglish ? "Korean" : "한국어"} aria-pressed={!isEnglish} onClick={() => selectReceiptLocale("ko")}>🇰🇷</Button>
             <Button type="button" variant={isEnglish ? "primary" : "ghost"} size="sm" lang="en" aria-label="English" aria-pressed={isEnglish} onClick={() => selectReceiptLocale("en")}>🇺🇸</Button>
@@ -1145,6 +1189,7 @@ export default function MatchReceipt({ auth, app }) {
                   {receiptCopy.score}
                   <input type="number" inputMode="numeric" min="0" max={MATCH_RECEIPT_LIMITS.score} value={draft.homeScore} disabled={isFieldReadOnly("homeScore")} onFocus={(event) => event.currentTarget.select()} onClick={(event) => event.currentTarget.value === "0" && event.currentTarget.select()} onChange={(event) => updateField("homeScore", event.target.value)} />
                 </label>
+                {isThermal ? <label>{receiptCopy.shortName}<input value={draft.homeReceiptShortName} maxLength={MATCH_RECEIPT_LIMITS.receiptShortName} disabled={isFieldReadOnly("homeReceiptShortName")} placeholder="A" onChange={(event) => updateField("homeReceiptShortName", event.target.value)} /></label> : null}
               </fieldset>
 
               <fieldset>
@@ -1157,6 +1202,7 @@ export default function MatchReceipt({ auth, app }) {
                   {receiptCopy.score}
                   <input type="number" inputMode="numeric" min="0" max={MATCH_RECEIPT_LIMITS.score} value={draft.awayScore} disabled={isFieldReadOnly("awayScore")} onFocus={(event) => event.currentTarget.select()} onClick={(event) => event.currentTarget.value === "0" && event.currentTarget.select()} onChange={(event) => updateField("awayScore", event.target.value)} />
                 </label>
+                {isThermal ? <label>{receiptCopy.shortName}<input value={draft.awayReceiptShortName} maxLength={MATCH_RECEIPT_LIMITS.receiptShortName} disabled={isFieldReadOnly("awayReceiptShortName")} placeholder="B" onChange={(event) => updateField("awayReceiptShortName", event.target.value)} /></label> : null}
               </fieldset>
             </div>
           </section>
@@ -1165,6 +1211,8 @@ export default function MatchReceipt({ auth, app }) {
             <h2>{receiptCopy.info}</h2>
             <div className="match-receipt-info-fields">
               <label>{receiptCopy.date}<input type="date" value={draft.playedOn} disabled={isFieldReadOnly("playedOn")} onChange={(event) => updateField("playedOn", event.target.value)} /></label>
+              {isThermal ? <label>{receiptCopy.time}<input type="time" value={draft.playedTime} disabled={isFieldReadOnly("playedTime")} onChange={(event) => updateField("playedTime", event.target.value)} /></label> : null}
+              {isThermal ? <label>{receiptCopy.players}<input type="number" inputMode="numeric" min="0" max={MATCH_RECEIPT_LIMITS.playerCount} value={draft.playerCount ?? ""} disabled={isFieldReadOnly("playerCount")} onChange={(event) => updateField("playerCount", event.target.value)} /></label> : null}
               <label>{receiptCopy.format}<select value={draft.format} disabled={isFieldReadOnly("format")} onChange={(event) => updateField("format", event.target.value)}>{MATCH_RECEIPT_FORMATS.map((item) => <option key={item.value} value={item.value}>{isEnglish ? item.value.toUpperCase() : item.label}</option>)}</select></label>
               <label>{receiptCopy.nature}<select value={draft.matchNature} disabled={isFieldReadOnly("matchNature")} onChange={(event) => updateField("matchNature", event.target.value)}>{MATCH_RECEIPT_NATURES.map((item) => <option key={item.value} value={item.value}>{isEnglish ? item.value.toUpperCase() : item.label}</option>)}</select></label>
               {!isEnglish ? <label className="is-wide">
@@ -1173,7 +1221,7 @@ export default function MatchReceipt({ auth, app }) {
                   <input value={draft.venue} maxLength={MATCH_RECEIPT_LIMITS.venue} disabled={isFieldReadOnly("venue")} readOnly placeholder={errors.venue ? "경기 장소 또는 짧은 장소가 필요합니다" : "지도에서 선택 · 자유 입력은 짧은 장소에 작성"} aria-invalid={Boolean(errors.venue)} />
                   {!isFieldReadOnly("venue") ? (
                     <button type="button" className="button ui-button button-secondary ui-button-secondary button-md ui-button-md match-receipt-map-button" onClick={() => setCourtMapOpen(true)}>
-                      <MapPin aria-hidden="true" /> 지도에서 선택
+                      <MapPin aria-hidden="true" /> {receiptCopy.map}
                     </button>
                   ) : null}
                 </span>
@@ -1274,11 +1322,21 @@ export default function MatchReceipt({ auth, app }) {
               </fieldset>
               <label className="is-wide">
                 <span className="match-receipt-field-heading">
-                  <span>{receiptCopy.comment}</span>
-                  <span className="match-receipt-field-count">{draft.comment.length}/{MATCH_RECEIPT_LIMITS.comment}</span>
+                  <span>{isThermal ? receiptCopy.receiptComment : receiptCopy.comment}</span>
+                  <span className="match-receipt-field-count">{isThermal ? `${receiptCommentWeight}/${THERMAL_RECEIPT_COMMENT_MAX_WEIGHT}` : `${draft.comment.length}/${MATCH_RECEIPT_LIMITS.comment}`}</span>
                 </span>
-                <input value={draft.comment} maxLength={MATCH_RECEIPT_LIMITS.comment} disabled={isFieldReadOnly("comment")} placeholder={receiptCopy.commentPlaceholder} onChange={(event) => updateField("comment", event.target.value)} />
+                {isThermal ? (
+                  <input value={draft.receiptComment} disabled={isFieldReadOnly("receiptComment")} placeholder={receiptCopy.receiptCommentPlaceholder} onChange={(event) => updateField("receiptComment", event.target.value)} />
+                ) : (
+                  <input value={draft.comment} maxLength={MATCH_RECEIPT_LIMITS.comment} disabled={isFieldReadOnly("comment")} placeholder={receiptCopy.commentPlaceholder} onChange={(event) => updateField("comment", event.target.value)} />
+                )}
               </label>
+              {isThermal ? (
+                <label className="match-receipt-check-field is-wide">
+                  <input type="checkbox" checked={draft.includePhoto} disabled={receiptIsReadOnly} onChange={(event) => updateField("includePhoto", event.target.checked)} />
+                  <span>{receiptCopy.includePhoto}</span>
+                </label>
+              ) : null}
             </div>
             {!isEnglish ? <p className="match-receipt-map-note"><MapPin aria-hidden="true" /> 이미지에는 경기 장소 또는 짧은 장소만 들어갑니다. 지도 화면은 포함하지 않습니다.</p> : null}
           </section>
@@ -1292,26 +1350,36 @@ export default function MatchReceipt({ auth, app }) {
             <div><span>{receiptCopy.preview}</span></div>
             <span>9:16 STORY</span>
           </div>
-          <div className="match-receipt-preview-stage">
-            <MatchReceiptPreview
-              draft={draft}
-              photoUrl={photoUrl}
-              matchUrl={matchUrl}
-              publicId={receiptPublicId}
-              showPersonalTierIdentity={canShowCurrentUserIdentity}
-              locale={receiptLocale}
-              teamLineArtUrls={selectedTeamLineArtUrls}
-              photoGestureHandlers={receiptIsReadOnly ? undefined : {
-                onPointerDown: beginPhotoGesture,
-                onPointerMove: movePhotoGesture,
-                onPointerUp: endPhotoGesture,
-                onPointerCancel: endPhotoGesture,
-                onLostPointerCapture: endPhotoGesture,
-                onWheel: zoomPhotoWithWheel,
-                onDoubleClick: resetPhotoTransform,
-              }}
-            />
-            {photoUrl && !receiptIsReadOnly ? (
+          <div className={`match-receipt-preview-stage${isThermal ? " is-thermal" : ""}`}>
+            {isThermal ? (
+              <ThermalReceiptPreview
+                draft={{ ...draft, receiptLocale }}
+                photoBlob={photoBlob}
+                matchUrl={matchUrl}
+                publicId={receiptPublicId}
+                teamLineArtUrls={selectedTeamLineArtUrls}
+              />
+            ) : (
+              <MatchReceiptPreview
+                draft={draft}
+                photoUrl={photoUrl}
+                matchUrl={matchUrl}
+                publicId={receiptPublicId}
+                showPersonalTierIdentity={canShowCurrentUserIdentity}
+                locale={receiptLocale}
+                teamLineArtUrls={selectedTeamLineArtUrls}
+                photoGestureHandlers={receiptIsReadOnly ? undefined : {
+                  onPointerDown: beginPhotoGesture,
+                  onPointerMove: movePhotoGesture,
+                  onPointerUp: endPhotoGesture,
+                  onPointerCancel: endPhotoGesture,
+                  onLostPointerCapture: endPhotoGesture,
+                  onWheel: zoomPhotoWithWheel,
+                  onDoubleClick: resetPhotoTransform,
+                }}
+              />
+            )}
+            {photoUrl && !receiptIsReadOnly && !isThermal ? (
               <Button
                 variant="secondary"
                 className="match-receipt-photo-rotate-handle"
@@ -1334,7 +1402,7 @@ export default function MatchReceipt({ auth, app }) {
                 <ImagePlus aria-hidden="true" /> {receiptCopy.selectPhoto}
                 <input type="file" accept="image/jpeg,image/png,image/webp" disabled={busy === "photo"} onChange={handlePhotoChange} />
               </Button>
-              <Button variant="secondary" disabled={!photoUrl || Boolean(busy)} onClick={() => updateField("photoRotation", draft.photoRotation + 90)}><RotateCcw aria-hidden="true" /> {receiptCopy.rotate90}</Button>
+              {!isThermal ? <Button variant="secondary" disabled={!photoUrl || Boolean(busy)} onClick={() => updateField("photoRotation", draft.photoRotation + 90)}><RotateCcw aria-hidden="true" /> {receiptCopy.rotate90}</Button> : null}
               <Button variant="danger" disabled={!photoUrl || Boolean(busy)} onClick={removePhoto}><Trash2 aria-hidden="true" /> {receiptCopy.remove}</Button>
               <Button
                 variant="secondary"
@@ -1345,6 +1413,13 @@ export default function MatchReceipt({ auth, app }) {
                 <RotateCcw aria-hidden="true" /> {receiptCopy.reset}
               </Button>
             </div>
+            {isThermal && photoUrl ? (
+              <div className="match-receipt-thermal-photo-settings" aria-label={receiptCopy.thermalPhotoCrop}>
+                <label>{receiptCopy.zoom}<input type="range" min="1" max="3" step="0.01" value={draft.photoZoom} onChange={(event) => updateField("photoZoom", event.target.value)} /></label>
+                <label>{receiptCopy.horizontal}<input type="range" min="-100" max="100" step="1" value={draft.photoX} onChange={(event) => updateField("photoX", event.target.value)} /></label>
+                <label>{receiptCopy.vertical}<input type="range" min="-100" max="100" step="1" value={draft.photoY} onChange={(event) => updateField("photoY", event.target.value)} /></label>
+              </div>
+            ) : null}
             <p className="match-receipt-photo-note">
               {photoUrl
                 ? receiptCopy.photoEditHelp
@@ -1399,6 +1474,7 @@ export default function MatchReceipt({ auth, app }) {
           /> : null}
           <EmblemCropEditor
             file={emblemEditor.file}
+            locale={receiptLocale}
             circular
             pending={emblemPending}
             convertedPreview={emblemEditor.preview}

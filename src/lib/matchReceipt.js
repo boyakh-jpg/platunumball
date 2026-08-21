@@ -7,11 +7,18 @@ import { getMatchFormatLabel } from "./matchRules.js";
 import { getTier, getTierDivisionNumber } from "./tier.js";
 import { createMatchReceiptLineArt } from "./matchReceiptEmblem.js";
 import { formatMatchPublicCode, normalizeMatchPublicCode } from "../../shared/lib/matchPublicCode.js";
+import {
+  MATCH_RECEIPT_LOCALES,
+  MATCH_RECEIPT_STYLES,
+  sanitizeThermalReceiptComment,
+  suggestReceiptShortName,
+} from "../../shared/lib/thermalReceipt.js";
+import { renderThermalReceiptCanvas } from "./thermalReceipt.js";
 
 export const MATCH_RECEIPT_DRAFT_STORAGE_KEY = "boxtier.match-receipt.draft.v1";
 export const MATCH_RECEIPT_CREATE_RETURN_TO = "/app/create?intent=record&source=receipt";
 export const MATCH_RECEIPT_PHOTO_MAX_BYTES = 15 * 1024 * 1024;
-const MATCH_RECEIPT_DRAFT_VERSION = 3;
+const MATCH_RECEIPT_DRAFT_VERSION = 4;
 export const MATCH_RECEIPT_DRAFT_TTL_MS = 24 * 60 * 60 * 1000;
 const PHOTO_DB_NAME = "boxtier-match-receipt";
 const PHOTO_STORE_NAME = "photos";
@@ -26,9 +33,12 @@ export const MATCH_RECEIPT_LIMITS = Object.freeze({
   address: 48,
   originalAddress: 96,
   comment: 11,
+  receiptComment: 56,
+  receiptShortName: 12,
   tournamentName: 20,
   profileHashtag: 32,
   score: 999,
+  playerCount: 1000,
 });
 
 export const MATCH_RECEIPT_FORMATS = Object.freeze([
@@ -216,6 +226,13 @@ export function createDefaultMatchReceiptDraft() {
     homeColor: DEFAULT_COLORS.home,
     awayColor: DEFAULT_COLORS.away,
     comment: "",
+    receiptStyle: MATCH_RECEIPT_STYLES.score,
+    receiptLocale: MATCH_RECEIPT_LOCALES.ko,
+    includePhoto: true,
+    receiptComment: "",
+    homeReceiptShortName: "",
+    awayReceiptShortName: "",
+    playedTime: "20:30",
     tournamentName: "",
     periodScores: [],
     q1Home: null,
@@ -245,6 +262,9 @@ export function createDefaultMatchReceiptDraft() {
     personalStatsEligible: false,
     hasCanonicalTeamMatch: false,
     verified: false,
+    officialMatchId: "",
+    playerCount: null,
+    refereeAssigned: false,
   };
 }
 
@@ -269,6 +289,17 @@ export function normalizeMatchReceiptDraft(value = {}) {
     homeColor: cleanColor(value.homeColor, DEFAULT_COLORS.home),
     awayColor: cleanColor(value.awayColor, DEFAULT_COLORS.away),
     comment: cleanText(value.comment, MATCH_RECEIPT_LIMITS.comment),
+    receiptStyle: Object.values(MATCH_RECEIPT_STYLES).includes(value.receiptStyle)
+      ? value.receiptStyle
+      : MATCH_RECEIPT_STYLES.score,
+    receiptLocale: Object.values(MATCH_RECEIPT_LOCALES).includes(value.receiptLocale)
+      ? value.receiptLocale
+      : MATCH_RECEIPT_LOCALES.ko,
+    includePhoto: value.includePhoto !== false,
+    receiptComment: sanitizeThermalReceiptComment(value.receiptComment),
+    homeReceiptShortName: cleanText(value.homeReceiptShortName, MATCH_RECEIPT_LIMITS.receiptShortName),
+    awayReceiptShortName: cleanText(value.awayReceiptShortName, MATCH_RECEIPT_LIMITS.receiptShortName),
+    playedTime: /^([01]\d|2[0-3]):[0-5]\d$/.test(String(value.playedTime ?? "")) ? String(value.playedTime) : "20:30",
     tournamentName: cleanText(value.tournamentName, MATCH_RECEIPT_LIMITS.tournamentName),
     periodScores: cleanReceiptPeriodScores(value.periodScores),
     q1Home: cleanOptionalScore(value.q1Home),
@@ -298,6 +329,11 @@ export function normalizeMatchReceiptDraft(value = {}) {
     personalStatsEligible: Boolean(value.personalStatsEligible),
     hasCanonicalTeamMatch: Boolean(value.hasCanonicalTeamMatch),
     verified: Boolean(value.verified),
+    officialMatchId: cleanText(value.officialMatchId, 96),
+    playerCount: value.playerCount === "" || value.playerCount === null || value.playerCount === undefined
+      ? null
+      : Math.round(clampNumber(value.playerCount, 0, MATCH_RECEIPT_LIMITS.playerCount)),
+    refereeAssigned: Boolean(value.refereeAssigned),
   };
 }
 
@@ -344,7 +380,7 @@ export function loadMatchReceiptDraft(storage) {
   try {
     const value = JSON.parse(target.getItem(MATCH_RECEIPT_DRAFT_STORAGE_KEY) || "null");
     const savedAt = Number(value?.savedAt);
-    if (![1, 2, MATCH_RECEIPT_DRAFT_VERSION].includes(value?.version) || !Number.isFinite(savedAt) || Date.now() - savedAt > MATCH_RECEIPT_DRAFT_TTL_MS) {
+    if (![1, 2, 3, MATCH_RECEIPT_DRAFT_VERSION].includes(value?.version) || !Number.isFinite(savedAt) || Date.now() - savedAt > MATCH_RECEIPT_DRAFT_TTL_MS) {
       if (value) target.removeItem(MATCH_RECEIPT_DRAFT_STORAGE_KEY);
       return null;
     }
@@ -523,6 +559,13 @@ export function getMatchReceiptDraftFromMatch(match = {}, style = {}, court = nu
     address: style.address ?? "",
     originalAddress: court?.address ?? style.originalAddress ?? "",
     comment: style.comment ?? "",
+    receiptStyle: style.receiptStyle,
+    receiptLocale: style.receiptLocale,
+    includePhoto: style.includePhoto,
+    receiptComment: style.receiptComment,
+    homeReceiptShortName: style.homeReceiptShortName || suggestReceiptShortName(match.teamA?.name || summary.teamAName),
+    awayReceiptShortName: style.awayReceiptShortName || suggestReceiptShortName(match.teamB?.name || summary.teamBName),
+    playedTime: style.playedTime || String(match.scheduledTime ?? match.startTime ?? "20:30").slice(0, 5),
     tournamentName: style.tournamentName || style.tournament?.name || style.tournament?.title || "",
     periodScores: Array.isArray(match.result?.periodScores) ? match.result.periodScores : [],
     q1Home: style.q1Home,
@@ -557,6 +600,9 @@ export function getMatchReceiptDraftFromMatch(match = {}, style = {}, court = nu
       && getMatchReceiptSideTeamId(match, "teamB")
     ),
     verified,
+    officialMatchId: verified ? String(match.id ?? "") : "",
+    playerCount: verified ? Number(match.result?.playerCount ?? match.players?.length ?? 0) : null,
+    refereeAssigned: verified ? Boolean(match.refereeId ?? match.referee?.id) : false,
   });
 }
 
@@ -1085,6 +1131,7 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
     return canvas;
   }
   const model = createMatchReceiptViewModel(value, options);
+  const isEnglish = model.receiptLocale === MATCH_RECEIPT_LOCALES.en;
   const { width, height } = getMatchReceiptCanvasSize(preset);
   const compact = preset === "feed";
   const canvas = document.createElement("canvas");
@@ -1433,7 +1480,13 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
 }
 
 export async function renderMatchReceiptPng(value, preset = "story", options = {}) {
-  const canvas = await renderMatchReceiptCanvas(value, preset, options);
+  const draft = normalizeMatchReceiptDraft(value);
+  const canvas = draft.receiptStyle === MATCH_RECEIPT_STYLES.thermal
+    ? await renderThermalReceiptCanvas(draft, preset, {
+        ...options,
+        viewModel: createMatchReceiptViewModel(draft, options),
+      })
+    : await renderMatchReceiptCanvas(draft, preset, options);
   return canvasToBlob(canvas, "image/png");
 }
 

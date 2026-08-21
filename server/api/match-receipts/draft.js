@@ -67,6 +67,9 @@ const CANONICAL_RECEIPT_FIELDS = [
   "homeEmblemKey",
   "awayEmblemKey",
   "verified",
+  "officialMatchId",
+  "playerCount",
+  "refereeAssigned",
 ];
 
 function isValidPublicId(value) {

@@ -1,5 +1,10 @@
 import { createHash, createHmac, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import { normalizeMatchPublicCode } from "../../../shared/lib/matchPublicCode.js";
+import {
+  MATCH_RECEIPT_LOCALES,
+  MATCH_RECEIPT_STYLES,
+  sanitizeThermalReceiptComment,
+} from "../../../shared/lib/thermalReceipt.js";
 
 export const RECEIPT_CAPABILITY_COOKIE = "boxtier_receipt_capability";
 export const RECEIPT_DRAFT_TTL_SECONDS = 30 * 24 * 60 * 60;
@@ -15,6 +20,8 @@ const TEXT_LIMITS = Object.freeze({
   format: 5,
   matchNature: 11,
   comment: 11,
+  receiptShortName: 12,
+  officialMatchId: 96,
   tournamentName: 32,
   profileHashtag: 32,
   assetKey: 256,
@@ -95,6 +102,21 @@ export function sanitizeReceiptDraftPayload(value = {}, options = {}) {
     homeColor: cleanColor(value.homeColor, "#f05a46"),
     awayColor: cleanColor(value.awayColor, "#27354d"),
     comment: cleanText(value.comment, TEXT_LIMITS.comment),
+    receiptStyle: Object.values(MATCH_RECEIPT_STYLES).includes(value.receiptStyle)
+      ? value.receiptStyle
+      : MATCH_RECEIPT_STYLES.score,
+    receiptLocale: Object.values(MATCH_RECEIPT_LOCALES).includes(value.receiptLocale)
+      ? value.receiptLocale
+      : MATCH_RECEIPT_LOCALES.ko,
+    includePhoto: value.includePhoto !== false,
+    receiptComment: sanitizeThermalReceiptComment(value.receiptComment),
+    homeReceiptShortName: cleanText(value.homeReceiptShortName, TEXT_LIMITS.receiptShortName),
+    awayReceiptShortName: cleanText(value.awayReceiptShortName, TEXT_LIMITS.receiptShortName),
+    playedTime: /^([01]\d|2[0-3]):[0-5]\d$/.test(String(value.playedTime ?? "")) ? String(value.playedTime) : "20:30",
+    photoZoom: cleanNumber(value.photoZoom, 1, 3, 1),
+    photoX: cleanNumber(value.photoX, -100, 100, 0),
+    photoY: cleanNumber(value.photoY, -100, 100, 0),
+    photoRotation: Math.round(cleanNumber(value.photoRotation, -270, 270, 0) / 90) * 90,
     tournamentName: cleanText(value.tournamentName, TEXT_LIMITS.tournamentName),
     periodScores: cleanPeriodScores(value.periodScores),
     q1Home: cleanOptionalScore(value.q1Home),
@@ -122,6 +144,9 @@ export function sanitizeReceiptDraftPayload(value = {}, options = {}) {
       hasCanonicalTeamMatch: Boolean(value.hasCanonicalTeamMatch),
       homeEmblemKey: cleanTeamEmblemKey(value.homeEmblemKey),
       awayEmblemKey: cleanTeamEmblemKey(value.awayEmblemKey),
+      officialMatchId: cleanText(value.officialMatchId, TEXT_LIMITS.officialMatchId),
+      playerCount: Math.round(cleanNumber(value.playerCount, 0, 1000, 0)),
+      refereeAssigned: Boolean(value.refereeAssigned),
     } : {}),
     verified: trustedCanonical && value.verified === true,
   };
@@ -129,6 +154,8 @@ export function sanitizeReceiptDraftPayload(value = {}, options = {}) {
 
 export function getLegacyCanonicalReceiptMatchId(value = {}) {
   if (value?._canonicalReceipt !== true) return "";
+  const officialMatchId = cleanText(value.officialMatchId, TEXT_LIMITS.officialMatchId);
+  if (/^[A-Za-z0-9:_-]{1,96}$/.test(officialMatchId)) return officialMatchId;
   const serialSeed = cleanText(value.serialSeed, TEXT_LIMITS.serialSeed);
   if (!serialSeed.startsWith("match:")) return "";
   const matchId = serialSeed.slice("match:".length);
@@ -137,7 +164,7 @@ export function getLegacyCanonicalReceiptMatchId(value = {}) {
 
 export function projectPublicReceiptDraft(value = {}, options = {}) {
   const legacyMatchId = getLegacyCanonicalReceiptMatchId(value);
-  const { originalAddress, personalMmr, profileHashtag, ...publicDraft } = sanitizeReceiptDraftPayload(value, {
+  const { originalAddress, personalMmr, profileHashtag, officialMatchId, ...publicDraft } = sanitizeReceiptDraftPayload(value, {
     trustedCanonical: value?._canonicalReceipt === true,
   });
   const projected = legacyMatchId

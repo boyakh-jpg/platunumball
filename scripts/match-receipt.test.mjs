@@ -251,7 +251,7 @@ test("public receipt draft keeps only bounded safe fields", () => {
   assert.equal(payload.verified, false);
   assert.equal(payload.personalStatsEligible, false);
   assert.equal("photo" in payload, false);
-  assert.equal("photoZoom" in payload, false);
+  assert.equal(payload.photoZoom, 2);
   assert.equal("personalMmr" in payload, false);
   assert.equal("profileHashtag" in payload, false);
   assert.equal("hasCanonicalTeamMatch" in payload, false);
@@ -668,11 +668,12 @@ test("public match codes resolve consistently across receipt and search APIs", a
 });
 
 test("receipt photo tools stay outside the export card and reference dividers remain", async () => {
-  const [page, preview, qrComponent, styles, tokens, renderer, roomDialog, digitGenerator, displayAssetGenerator, syncScript, draftApi, emblemApi, landing, appSource, homeNeutralMark, awayNeutralMark, paperGrain, scoreDigitSource, scoreDigits, scoreboardDigits, wordmark, bebasNeue, bebasLicense, blackHanSans, detailStyles, lineArt] = await Promise.all([
+  const [page, preview, qrComponent, baseStyles, previewControlStyles, tokens, renderer, roomDialog, digitGenerator, displayAssetGenerator, syncScript, draftApi, emblemApi, landing, appSource, homeNeutralMark, awayNeutralMark, paperGrain, scoreDigitSource, scoreDigits, scoreboardDigits, wordmark, bebasNeue, bebasLicense, blackHanSans, detailStyles, lineArt] = await Promise.all([
     readFile(new URL("../src/pages/MatchReceipt.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/components/match/MatchReceiptPreview.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/components/common/QrCode.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/styles/features/match-receipt.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/styles/features/match-receipt-preview-controls.css", import.meta.url), "utf8"),
     readFile(new URL("../src/styles/tokens.css", import.meta.url), "utf8"),
     readFile(new URL("../src/lib/matchReceipt.js", import.meta.url), "utf8"),
     readFile(new URL("../src/components/recruiting/RecruitingRoomDialogSection.jsx", import.meta.url), "utf8"),
@@ -696,6 +697,7 @@ test("receipt photo tools stay outside the export card and reference dividers re
     readFile(new URL("../src/styles/features/match-receipt-details.css", import.meta.url), "utf8"),
     readFile(new URL("../src/lib/matchReceiptEmblem.js", import.meta.url), "utf8"),
   ]);
+  const styles = `${baseStyles}\n${previewControlStyles}`;
   const receiptSources = `${page}\n${preview}`;
   const localizedReceiptSources = `${receiptSources}\n${renderer}`;
 
@@ -709,7 +711,8 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.doesNotMatch(page, /<RotateCcw aria-hidden="true" \/> 자유 회전/);
   assert.match(page, /<Button as="label" variant="secondary">/);
   assert.match(page, /<Button variant="danger" disabled=\{!photoUrl \|\| Boolean\(busy\)\} onClick=\{removePhoto\}>/);
-  assert.match(page, /\{draft\.comment\.length\}\/\{MATCH_RECEIPT_LIMITS\.comment\}/);
+  assert.match(page, /`\$\{draft\.comment\.length\}\/\$\{MATCH_RECEIPT_LIMITS\.comment\}`/);
+  assert.match(page, /`\$\{receiptCommentWeight\}\/\$\{THERMAL_RECEIPT_COMMENT_MAX_WEIGHT\}`/);
   assert.match(page, /commentPlaceholder: "선택 · 11자 이내"/);
   assert.match(page, /commentPlaceholder: "Optional · Up to 11 characters"/);
   assert.match(page, /onClick=\{resetReceipt\}/);
@@ -768,6 +771,7 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(page, /setCourtMapOpen\(false\);/);
   assert.match(page, /locale=\{receiptLocale\}/);
   assert.match(page, /\{!isEnglish \? <CourtMapPicker/);
+  assert.match(page, /value=\{draft\.playerCount \?\? ""\}/);
   assert.match(preview, /lang=\{model\.locale\}/);
   assert.match(renderer, /model\.locale === "en" \? "★  GAME RECEIPT  ★"/);
   for (const label of [
@@ -1058,6 +1062,12 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(syncScript, /match-receipt-scoreboard-digits-v1\.png/);
   assert.match(syncScript, /match-receipt-scoreboard-digits-v2\.png/);
   assert.match(syncScript, /match-receipt-wordmark-v1\.png/);
+  assert.match(syncScript, /thermal-receipt\/thermal-paper-texture-2048\.png/);
+  assert.match(syncScript, /thermal-receipt\/thermal-ink-mask-body-2048\.png/);
+  assert.match(syncScript, /thermal-receipt\/thermal-ink-mask-team-2048\.png/);
+  assert.match(syncScript, /thermal-receipt\/thermal-ink-mask-heavy-2048\.png/);
+  assert.match(syncScript, /thermal-receipt\/thermal-ink-mask-photo-2048\.png/);
+  assert.match(syncScript, /thermal-receipt\/serration-edge-796x16\.svg/);
   assert.match(syncScript, /R2_UPLOAD_MAX_ATTEMPTS = 3/);
   assert.match(syncScript, /response\.status === 429 \|\| response\.status >= 500/);
   assert.match(draftApi, /allowRequestMethod\(request, response, \["GET", "POST"\]\)/);
