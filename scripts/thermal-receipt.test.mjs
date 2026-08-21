@@ -17,23 +17,43 @@ test("thermal receipt keeps the canonical Story paper geometry", () => {
   assert.deepEqual(plain.paper, { x: 142, y: 168, width: 796, height: 1584 });
   assert.deepEqual(photo.content, { x: 198, width: 684 });
   assert.equal(photo.photo.height, 288);
-  assert.equal(photo.teams.y - plain.teams.y, 288);
-  assert.equal(photo.score.y - plain.score.y, 288);
-  assert.equal(photo.footer.y - plain.footer.y, 288);
+  assert.equal(photo.brand.y - photo.paper.y, plain.brand.y - plain.paper.y);
+  assert.equal(plain.teams.y, 392);
+  assert.equal(plain.score.y, 634);
+  assert.equal(plain.info.y, 840);
+  assert.equal(plain.periods.y, 1004);
+  assert.equal(plain.result.y, 1192);
+  assert.equal(plain.footer.y, 1460);
+  for (const region of ["teams", "score", "info", "periods", "footer"]) {
+    assert.equal(
+      photo[region].y - photo.paper.y - (plain[region].y - plain.paper.y),
+      288,
+      `${region} removes only the photo slot`,
+    );
+  }
+  assert.equal(photo.paper.y + photo.paper.height - (photo.footer.y + photo.footer.height), 74);
+  assert.equal(plain.paper.y + plain.paper.height - (plain.footer.y + plain.footer.height), 74);
 });
 
-test("optional thermal rows reduce positions and paper height instead of leaving gaps", () => {
+test("optional thermal rows collapse without leaving internal gaps", () => {
   const full = getThermalReceiptLayout({ hasPhoto: false, hasPeriods: true, hasComment: true });
   const noPeriods = getThermalReceiptLayout({ hasPhoto: false, hasPeriods: false, hasComment: true });
   const noComment = getThermalReceiptLayout({ hasPhoto: false, hasPeriods: true, hasComment: false });
+  const compact = getThermalReceiptLayout({ hasPhoto: false, hasPeriods: false, hasComment: false });
 
   assert.equal(noPeriods.periods, null);
-  assert.equal(full.result.y - noPeriods.result.y, 186);
-  assert.equal(full.footer.y - noPeriods.footer.y, 186);
-  assert.equal(full.paper.height - noPeriods.paper.height, 186);
-  assert.equal(full.result.height - noComment.result.height, 32);
-  assert.equal(full.footer.y - noComment.footer.y, 32);
-  assert.equal(full.paper.height - noComment.paper.height, 32);
+  assert.equal(full.result.y - noPeriods.result.y, 188);
+  assert.equal(full.footer.y - noPeriods.footer.y, 188);
+  assert.equal(full.paper.height - noPeriods.paper.height, 188);
+  assert.equal(full.result.height - noComment.result.height, 40);
+  assert.equal(full.footer.y - noComment.footer.y, 40);
+  assert.equal(full.paper.height - noComment.paper.height, 40);
+  assert.ok(full.info.y + full.info.height < full.periods.y);
+  assert.ok(full.periods.y + full.periods.height < full.result.y);
+  assert.ok(full.result.y + full.result.height < full.footer.y);
+  for (const layout of [full, noPeriods, noComment, compact]) {
+    assert.equal(layout.paper.y + layout.paper.height - (layout.footer.y + layout.footer.height), 74);
+  }
 });
 
 test("thermal comment removes markup and controls then enforces weighted length", () => {

@@ -104,6 +104,32 @@ function fitText(ctx, text, maxWidth, start, minimum, font = DATA_FONT) {
   return minimum;
 }
 
+function splitThermalText(text, maxWidth, size, font = DATA_FONT, weight = 800) {
+  const value = String(text || "").trim();
+  if (!value) return [];
+  const measuringContext = createCanvas(1, 1).getContext("2d");
+  measuringContext.font = `${weight} ${size}px ${font}`;
+  if (measuringContext.measureText(value).width <= maxWidth) return [value];
+
+  let best = [value];
+  let bestDifference = Infinity;
+  for (let index = 1; index < value.length; index += 1) {
+    const left = value.slice(0, index).trimEnd();
+    const right = value.slice(index).trimStart();
+    if (!left || !right) continue;
+    const leftWidth = measuringContext.measureText(left).width;
+    const rightWidth = measuringContext.measureText(right).width;
+    if (leftWidth > maxWidth || rightWidth > maxWidth) continue;
+    const wordBoundary = /\s/u.test(value[index - 1]) || /\s/u.test(value[index]);
+    const difference = Math.abs(leftWidth - rightWidth) - (wordBoundary ? maxWidth : 0);
+    if (difference < bestDifference) {
+      best = [left, right];
+      bestDifference = difference;
+    }
+  }
+  return best;
+}
+
 function drawThermalText(ctx, text, x, y, options = {}) {
   const value = String(text ?? "");
   if (!value) return;
@@ -282,11 +308,10 @@ function drawPhoto(ctx, image, layout, draft) {
 
 function drawBrand(ctx, model, layout) {
   const center = layout.content.x + layout.content.width / 2;
-  const compact = !layout.hasPhoto;
   const serial = String(model.serial || "BT-000");
-  drawThermalText(ctx, "BOXTIER", center, layout.brand.y + (compact ? 21 : 54), { size: compact ? 62 : 76, font: LATIN_FONT, align: "center", maxWidth: 500, dotScale: 2 });
-  drawThermalText(ctx, "BASKETBALL  GAME RECEIPT", center, layout.brand.y + (compact ? 63 : 112), { size: 25, align: "center", maxWidth: 520 });
-  drawThermalText(ctx, `MATCH NO. ${serial.replace(/^#?BT-?/i, "").slice(-3).padStart(3, "0")}`, center, layout.brand.y + (compact ? 91 : 154), { size: 23, align: "center", maxWidth: 400 });
+  drawThermalText(ctx, "BOXTIER", center, layout.brand.y + 70, { size: 76, font: LATIN_FONT, align: "center", maxWidth: 500, dotScale: 2 });
+  drawThermalText(ctx, "BASKETBALL  GAME RECEIPT", center, layout.brand.y + 122, { size: 25, align: "center", maxWidth: 520 });
+  drawThermalText(ctx, `MATCH NO. ${serial.replace(/^#?BT-?/i, "").slice(-3).padStart(3, "0")}`, center, layout.brand.y + 156, { size: 23, align: "center", maxWidth: 400 });
   drawRule(ctx, layout.content.x, layout.brand.y + layout.brand.height - 4, layout.content.width);
 }
 
@@ -336,8 +361,8 @@ function drawTeams(ctx, model, layout, emblems) {
   });
 }
 
-function drawAtlasScore(ctx, atlas, score, slotX, centerY, slotWidth, tone = PAPER) {
-  const metrics = getThermalScoreSlotLayout(score, { slotWidth });
+function drawAtlasScore(ctx, atlas, score, slotX, centerY, slotWidth, tone = PAPER, digitHeight = 158) {
+  const metrics = getThermalScoreSlotLayout(score, { slotWidth, digitHeight });
   const mask = createCanvas(Math.ceil(metrics.totalWidth), Math.ceil(metrics.height));
   const maskCtx = mask.getContext("2d");
   maskCtx.imageSmoothingEnabled = false;
@@ -409,8 +434,23 @@ function drawInfo(ctx, model, layout) {
   const periodCount = Array.isArray(model.periodScores) && model.periodScores.length ? model.periodScores.length : 4;
   drawThermalText(ctx, "FINAL", center, layout.info.y + 23, { size: 34, font: LATIN_FONT, align: "center", maxWidth: 200, dotScale: 2 });
   drawThermalText(ctx, `${playedOn} · ${model.playedTime || ""}`, center, layout.info.y + 58, { size: 24, align: "center", maxWidth: 520 });
-  drawThermalText(ctx, model.venue || model.address || "VENUE", center, layout.info.y + 88, { size: 26, align: "center", maxWidth: 620 });
-  drawThermalText(ctx, `${String(model.format || "5v5").toUpperCase()} · ${periodCount} QUARTERS${model.refereeAssigned ? " · REFEREE" : ""}`, center, layout.info.y + 118, { size: 22, align: "center", maxWidth: 620 });
+  const venue = model.venue || model.address || "VENUE";
+  let venueSize = 26;
+  const measuringContext = createCanvas(1, 1).getContext("2d");
+  measuringContext.font = `800 ${venueSize}px ${DATA_FONT}`;
+  const shouldWrapVenue = measuringContext.measureText(venue).width > 620;
+  let venueLines = shouldWrapVenue ? splitThermalText(venue, 620, venueSize) : [venue];
+  while (shouldWrapVenue && venueLines.length < 2 && venueSize > 20) {
+    venueSize -= 2;
+    venueLines = splitThermalText(venue, 620, venueSize);
+  }
+  const venueStartY = venueLines.length > 1 ? layout.info.y + 84 : layout.info.y + 91;
+  venueLines.slice(0, 2).forEach((line, index) => drawThermalText(ctx, line, center, venueStartY + index * 27, {
+    size: venueSize,
+    align: "center",
+    maxWidth: 620,
+  }));
+  drawThermalText(ctx, `${String(model.format || "5v5").toUpperCase()} · ${periodCount} QUARTERS${model.refereeAssigned ? " · REFEREE" : ""}`, center, layout.info.y + 145, { size: 22, align: "center", maxWidth: 620 });
 }
 
 function drawPeriods(ctx, model, layout) {
@@ -448,21 +488,21 @@ function drawResult(ctx, model, layout, atlas) {
   drawThermalText(ctx, shortHome, box.x + 22, box.y + 28, { size: 25, maxWidth: 220, color: PAPER });
   drawThermalText(ctx, shortAway, box.x + box.width - 22, box.y + 28, { size: 25, align: "right", maxWidth: 220, color: PAPER });
   ctx.fillStyle = PAPER;
-  ctx.fillRect(box.x + 20, box.y + 49, box.width - 40, 1);
-  const scoreY = box.y + 105;
-  drawAtlasScore(ctx, atlas, model.homeScore, box.x + 20, scoreY, 180);
-  drawAtlasColon(ctx, atlas, box.x + 202, scoreY, 34, 76);
-  drawAtlasScore(ctx, atlas, model.awayScore, box.x + 238, scoreY, 180);
+  ctx.fillRect(box.x + 20, box.y + 47, box.width - 40, 1);
+  const scoreY = box.y + 101;
+  drawAtlasScore(ctx, atlas, model.homeScore, box.x + 20, scoreY, 180, PAPER, 92);
+  drawAtlasColon(ctx, atlas, box.x + 202, scoreY, 34, 68);
+  drawAtlasScore(ctx, atlas, model.awayScore, box.x + 238, scoreY, 180, PAPER, 92);
   const isTie = Number(model.homeScore) === Number(model.awayScore);
   const winner = Number(model.homeScore) > Number(model.awayScore) ? model.homeTeam : model.awayTeam;
   const outcome = isTie
     ? (model.receiptLocale === "en" ? "DRAW" : "무승부")
     : `${model.receiptLocale === "en" ? "WIN" : "승리"}  ${winner}`;
-  drawThermalText(ctx, outcome, box.x + 22, box.y + 175, { size: 25, maxWidth: box.width - 44, color: PAPER });
+  drawThermalText(ctx, outcome, box.x + 22, box.y + 169, { size: 24, maxWidth: box.width - 44, color: PAPER });
   if (layout.hasComment) {
     ctx.fillStyle = PAPER;
-    ctx.fillRect(box.x + 22, box.y + 198, box.width - 44, 1);
-    drawThermalText(ctx, `${model.receiptLocale === "en" ? "NOTE" : "한줄평"}  ${model.receiptComment}`, box.x + 22, box.y + 229, { size: 22, maxWidth: box.width - 44, color: PAPER });
+    ctx.fillRect(box.x + 22, box.y + 191, box.width - 44, 1);
+    drawThermalText(ctx, `${model.receiptLocale === "en" ? "NOTE" : "한줄평"}  ${model.receiptComment}`, box.x + 22, box.y + 216, { size: 21, maxWidth: box.width - 44, color: PAPER });
   }
 }
 

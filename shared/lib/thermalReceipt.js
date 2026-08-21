@@ -81,23 +81,40 @@ export function getThermalReceiptLayout(options = {}) {
   const hasPhoto = Boolean(options.hasPhoto);
   const hasPeriods = options.hasPeriods !== false;
   const hasComment = options.hasComment !== false;
-  const photoOffset = hasPhoto ? 288 : 0;
-  const periodReduction = hasPeriods ? 0 : 186;
-  const commentReduction = hasComment ? 0 : 32;
-  const y = (photoY) => photoY - (hasPhoto ? 0 : 288) - periodReduction;
-  const resultHeight = hasComment ? 260 : 228;
+  const periodReduction = hasPeriods ? 0 : 188;
+  const commentReduction = hasComment ? 0 : 40;
+  const resultHeight = hasComment ? 248 : 208;
+  const sectionOffset = hasPhoto ? 144 : 0;
+  const basePaperHeight = hasPhoto ? 1872 : 1584;
 
   return Object.freeze({
-    paper: Object.freeze({ x: 142, y: hasPhoto ? 24 : 168, width: 796, height: 1584 + photoOffset - periodReduction - commentReduction }),
+    paper: Object.freeze({
+      x: 142,
+      y: hasPhoto ? 24 : 168,
+      width: 796,
+      height: basePaperHeight - periodReduction - commentReduction,
+    }),
     content: Object.freeze({ x: 198, width: 684 }),
-    brand: Object.freeze({ x: 198, y: hasPhoto ? 40 : 184, width: 684, height: hasPhoto ? 184 : 80 }),
+    brand: Object.freeze({ x: 198, y: hasPhoto ? 40 : 184, width: 684, height: 184 }),
     photo: hasPhoto ? Object.freeze({ x: 198, y: 248, width: 684, height: 288 }) : null,
-    teams: Object.freeze({ x: 198, y: hasPhoto ? 568 : 280, width: 684, height: 220 }),
-    score: Object.freeze({ x: 198, y: hasPhoto ? 812 : 524, width: 684, height: 224 }),
-    info: Object.freeze({ x: 198, y: hasPhoto ? 1052 : 764, width: 684, height: 126 }),
-    periods: hasPeriods ? Object.freeze({ x: 198, y: hasPhoto ? 1194 : 906, width: 684, height: 170 }) : null,
-    result: Object.freeze({ x: 198, y: y(1380), width: 684, height: resultHeight }),
-    footer: Object.freeze({ x: 198, y: y(1632) - commentReduction, width: 684, height: 200 }),
+    teams: Object.freeze({ x: 198, y: 392 + sectionOffset, width: 684, height: 220 }),
+    score: Object.freeze({ x: 198, y: 634 + sectionOffset, width: 684, height: 224 }),
+    info: Object.freeze({ x: 198, y: 840 + sectionOffset, width: 684, height: 148 }),
+    periods: hasPeriods
+      ? Object.freeze({ x: 198, y: 1004 + sectionOffset, width: 684, height: 170 })
+      : null,
+    result: Object.freeze({
+      x: 198,
+      y: 1192 + sectionOffset - periodReduction,
+      width: 684,
+      height: resultHeight,
+    }),
+    footer: Object.freeze({
+      x: 198,
+      y: 1460 + sectionOffset - periodReduction - commentReduction,
+      width: 684,
+      height: 218,
+    }),
     hasPhoto,
     hasPeriods,
     hasComment,
