@@ -95,8 +95,7 @@ export default function MatchReceiptPreview({
   }, [photoUrl]);
 
   const model = createMatchReceiptViewModel(draft, { matchUrl, publicId, showPersonalTierIdentity, locale });
-  const hasSingleGameInfoMeta = !model.hasPersonalStats
-    && Boolean(model.comment) !== Boolean(model.personalTier);
+  const commentLineCount = model.commentLines.length;
   useEffect(() => {
     let active = true;
     Promise.all([
@@ -215,7 +214,7 @@ export default function MatchReceiptPreview({
           <strong>{model.locationLabel || (model.locale === "en" ? "Venue" : "경기 장소")}</strong>
           <span className="match-receipt-ticket-date">{model.playedOn.replaceAll("-", ".")}</span>
         </div>
-        <div className={`match-receipt-ticket-game${model.hasPersonalStats ? "" : " match-receipt-ticket-game--info"}${hasSingleGameInfoMeta ? " match-receipt-ticket-game--single-meta" : ""}`}>
+        <div className={`match-receipt-ticket-game${model.hasPersonalStats ? "" : " match-receipt-ticket-game--info"} match-receipt-ticket-game--comment-lines-${commentLineCount}`}>
           {model.personalTier ? (
             <div className="match-receipt-personal-tier-mark" aria-hidden="true">
               <img className="match-receipt-personal-tier is-watermark" src={model.personalTier.outlineSrc} alt="" />
@@ -233,7 +232,7 @@ export default function MatchReceiptPreview({
               <small>{model.matchNatureLabel}</small>
             </span>
           )}
-          <span className="match-receipt-ticket-caption">{model.comment || "\u00a0"}</span>
+          <span className="match-receipt-ticket-caption">{model.commentLines.join("\n") || "\u00a0"}</span>
           {model.personalTier ? <small className="match-receipt-personal-tier-label">MY TIER · {model.personalTier.label}</small> : null}
         </div>
         <div className="match-receipt-ticket-qr">

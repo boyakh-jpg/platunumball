@@ -4,7 +4,9 @@ export const MATCH_RECEIPT_STYLES = Object.freeze({
 });
 
 export const MATCH_RECEIPT_LOCALES = Object.freeze({ ko: "ko", en: "en" });
-export const THERMAL_RECEIPT_COMMENT_MAX_WEIGHT = 56;
+export const MATCH_RECEIPT_COMMENT_MAX_LENGTH = 22;
+export const MATCH_RECEIPT_COMMENT_LINE_LENGTH = 11;
+export const THERMAL_RECEIPT_COMMENT_MAX_WEIGHT = MATCH_RECEIPT_COMMENT_MAX_LENGTH;
 export const THERMAL_PRINT_ROLES = Object.freeze({
   body: Object.freeze({ mask: "body", opacity: 0.84 }),
   team: Object.freeze({ mask: "team", opacity: 0.9 }),
@@ -13,28 +15,28 @@ export const THERMAL_PRINT_ROLES = Object.freeze({
   qr: Object.freeze({ mask: null, opacity: 1 }),
 });
 
-const CJK_CHARACTER = /[\u1100-\u11ff\u2e80-\u9fff\uac00-\ud7af\uf900-\ufaff]/u;
-
-export function getThermalReceiptTextWeight(value = "") {
-  return Array.from(String(value)).reduce((total, character) => total + (CJK_CHARACTER.test(character) ? 2 : 1), 0);
-}
-
-export function sanitizeThermalReceiptComment(value = "") {
+export function sanitizeMatchReceiptComment(value = "") {
   const source = String(value)
     .replace(/<[^>]*>/g, "")
     .replace(/[<>\u0000-\u001f\u007f]/g, "")
     .replace(/\s+/g, " ")
     .trim();
-  let result = "";
-  let weight = 0;
-  for (const character of Array.from(source)) {
-    const nextWeight = CJK_CHARACTER.test(character) ? 2 : 1;
-    if (weight + nextWeight > THERMAL_RECEIPT_COMMENT_MAX_WEIGHT) break;
-    result += character;
-    weight += nextWeight;
-  }
-  return result.trimEnd();
+  return Array.from(source).slice(0, MATCH_RECEIPT_COMMENT_MAX_LENGTH).join("").trimEnd();
 }
+
+export function splitMatchReceiptComment(value = "") {
+  const characters = Array.from(sanitizeMatchReceiptComment(value));
+  return [
+    characters.slice(0, MATCH_RECEIPT_COMMENT_LINE_LENGTH).join(""),
+    characters.slice(MATCH_RECEIPT_COMMENT_LINE_LENGTH, MATCH_RECEIPT_COMMENT_MAX_LENGTH).join(""),
+  ].filter(Boolean);
+}
+
+export function getThermalReceiptTextWeight(value = "") {
+  return Array.from(sanitizeMatchReceiptComment(value)).length;
+}
+
+export const sanitizeThermalReceiptComment = sanitizeMatchReceiptComment;
 
 export function suggestReceiptShortName(value = "") {
   const cleaned = String(value).replace(/[<>\u0000-\u001f\u007f]/g, "").replace(/\s+/g, " ").trim();

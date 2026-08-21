@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { renderMatchReceiptPng } from "../../lib/matchReceipt.js";
 
-export default function ThermalReceiptPreview({ draft, photoBlob, matchUrl, publicId, teamLineArtUrls }) {
+export default function ThermalReceiptPreview({ draft, photoBlob, matchUrl, publicId, teamLineArtUrls, photoGestureHandlers = null }) {
   const [previewUrl, setPreviewUrl] = useState("");
   const [failed, setFailed] = useState(false);
   const isEnglish = draft.receiptLocale === "en";
@@ -35,5 +35,17 @@ export default function ThermalReceiptPreview({ draft, photoBlob, matchUrl, publ
 
   if (failed) return <p className="match-receipt-thermal-preview-status">{isEnglish ? "Could not render the preview." : "미리보기를 만들지 못했습니다."}</p>;
   if (!previewUrl) return <p className="match-receipt-thermal-preview-status">THERMAL PREVIEW</p>;
-  return <img className="match-receipt-thermal-preview" src={previewUrl} alt={isEnglish ? "CLASSIC THERMAL receipt preview" : "CLASSIC THERMAL 영수증 미리보기"} />;
+  return (
+    <div className="match-receipt-thermal-preview-frame">
+      <img className="match-receipt-thermal-preview" src={previewUrl} alt={isEnglish ? "CLASSIC THERMAL receipt preview" : "CLASSIC THERMAL 영수증 미리보기"} />
+      {draft.includePhoto && photoBlob && photoGestureHandlers ? (
+        <div
+          className="match-receipt-thermal-photo-hitarea"
+          role="img"
+          aria-label={isEnglish ? "Adjust game or team photo" : "경기·팀 사진 위치 조정"}
+          {...photoGestureHandlers}
+        />
+      ) : null}
+    </div>
+  );
 }

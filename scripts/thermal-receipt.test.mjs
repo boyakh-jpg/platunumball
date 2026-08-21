@@ -82,14 +82,14 @@ test("optional thermal rows collapse without leaving internal gaps", () => {
   }
 });
 
-test("thermal comment removes markup and controls then enforces weighted length", () => {
+test("thermal comment removes markup and controls then enforces the shared 22-character limit", () => {
   const sanitized = sanitizeThermalReceiptComment("  <b>4쿼터</b>\n 12점\u0000 차를 뒤집은 역전승  ");
   assert.equal(sanitized, "4쿼터 12점 차를 뒤집은 역전승");
-  assert.equal(getThermalReceiptTextWeight(sanitized), 29);
+  assert.equal(getThermalReceiptTextWeight(sanitized), 18);
 
   const limited = sanitizeThermalReceiptComment("가".repeat(40));
-  assert.equal(limited, "가".repeat(28));
-  assert.equal(getThermalReceiptTextWeight(limited), 56);
+  assert.equal(limited, "가".repeat(22));
+  assert.equal(getThermalReceiptTextWeight(limited), 22);
 });
 
 test("thermal score slots center every supported score inside 284 pixels", () => {

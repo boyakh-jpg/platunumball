@@ -4,7 +4,7 @@ import {
   createThermalRandom,
   getThermalReceiptLayout,
   getThermalScoreSlotLayout,
-  sanitizeThermalReceiptComment,
+  sanitizeMatchReceiptComment,
   suggestReceiptShortName,
   THERMAL_PRINT_ROLES,
 } from "../../shared/lib/thermalReceipt.js";
@@ -581,9 +581,11 @@ function drawFooter(ctx, model, layout) {
 function normalizeThermalData(value, options) {
   const model = options.viewModel || value;
   const periodScores = Array.isArray(model.periodScores) ? model.periodScores : [];
+  const sharedComment = sanitizeMatchReceiptComment(model.comment || model.receiptComment);
   return {
     ...model,
-    receiptComment: sanitizeThermalReceiptComment(model.receiptComment),
+    comment: sharedComment,
+    receiptComment: sharedComment,
     homeReceiptShortName: model.homeReceiptShortName || suggestReceiptShortName(model.homeTeam),
     awayReceiptShortName: model.awayReceiptShortName || suggestReceiptShortName(model.awayTeam),
     matchUrl: String(options.matchUrl || model.matchUrl || ""),

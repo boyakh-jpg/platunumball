@@ -3,7 +3,7 @@ import { normalizeMatchPublicCode } from "../../../shared/lib/matchPublicCode.js
 import {
   MATCH_RECEIPT_LOCALES,
   MATCH_RECEIPT_STYLES,
-  sanitizeThermalReceiptComment,
+  sanitizeMatchReceiptComment,
 } from "../../../shared/lib/thermalReceipt.js";
 
 export const RECEIPT_CAPABILITY_COOKIE = "boxtier_receipt_capability";
@@ -19,7 +19,6 @@ const TEXT_LIMITS = Object.freeze({
   originalAddress: 96,
   format: 5,
   matchNature: 11,
-  comment: 11,
   receiptShortName: 12,
   officialMatchId: 96,
   tournamentName: 32,
@@ -87,6 +86,7 @@ export function sanitizeReceiptDraftPayload(value = {}, options = {}) {
   const matchNature = ["friendly", "competitive", "revenge", "semifinal", "final"].includes(value.matchNature)
     ? value.matchNature
     : "competitive";
+  const comment = sanitizeMatchReceiptComment(value.comment || value.receiptComment);
   return {
     serialSeed: cleanSerialSeed(value.serialSeed),
     homeTeam: cleanText(value.homeTeam, TEXT_LIMITS.homeTeam),
@@ -101,7 +101,7 @@ export function sanitizeReceiptDraftPayload(value = {}, options = {}) {
     matchNature: cleanText(matchNature, TEXT_LIMITS.matchNature),
     homeColor: cleanColor(value.homeColor, "#f05a46"),
     awayColor: cleanColor(value.awayColor, "#27354d"),
-    comment: cleanText(value.comment, TEXT_LIMITS.comment),
+    comment,
     receiptStyle: Object.values(MATCH_RECEIPT_STYLES).includes(value.receiptStyle)
       ? value.receiptStyle
       : MATCH_RECEIPT_STYLES.score,
@@ -109,7 +109,7 @@ export function sanitizeReceiptDraftPayload(value = {}, options = {}) {
       ? value.receiptLocale
       : MATCH_RECEIPT_LOCALES.ko,
     includePhoto: value.includePhoto !== false,
-    receiptComment: sanitizeThermalReceiptComment(value.receiptComment),
+    receiptComment: comment,
     homeReceiptShortName: cleanText(value.homeReceiptShortName, TEXT_LIMITS.receiptShortName),
     awayReceiptShortName: cleanText(value.awayReceiptShortName, TEXT_LIMITS.receiptShortName),
     playedTime: /^([01]\d|2[0-3]):[0-5]\d$/.test(String(value.playedTime ?? "")) ? String(value.playedTime) : "20:30",

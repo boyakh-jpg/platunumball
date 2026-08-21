@@ -242,6 +242,11 @@
   cursor: grabbing;
 }
 
+.match-receipt-preview-stage.is-thermal button.ui-button.match-receipt-photo-rotate-handle {
+  top: 12.9167%;
+  right: 18.3333%;
+}
+
 @media (hover: hover) and (pointer: fine) {
   .match-receipt-photo.is-editable {
     box-shadow: inset 0 0 0 2px rgba(237, 90, 44, 0.72);
@@ -670,11 +675,12 @@
   font-size: clamp(8px, 2.5cqw, 12px);
   font-weight: 900;
   line-height: var(--receipt-ticket-meta-line-height);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  text-overflow: clip;
+  white-space: pre-line;
 }
 
-.match-receipt-ticket-game--single-meta > :is(.match-receipt-ticket-caption, .match-receipt-personal-tier-label) { top: var(--receipt-ticket-meta-y); line-height: var(--receipt-ticket-meta-line-height); }
+.match-receipt-ticket-game--comment-lines-0 .match-receipt-personal-tier-label { top: var(--receipt-ticket-meta-y); }
+.match-receipt-ticket-game--comment-lines-2 .match-receipt-personal-tier-label { top: calc(var(--receipt-ticket-tier-y) + var(--receipt-ticket-meta-line-height)); }
 
 .match-receipt-ticket-game > strong,
 .match-receipt-ticket-qr > strong {

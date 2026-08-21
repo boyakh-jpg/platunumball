@@ -7,10 +7,13 @@ import { getMatchFormatLabel } from "./matchRules.js";
 import { getTier, getTierDivisionNumber } from "./tier.js";
 import { createMatchReceiptLineArt } from "./matchReceiptEmblem.js";
 import { formatMatchPublicCode, normalizeMatchPublicCode } from "../../shared/lib/matchPublicCode.js";
+import { getActualMatchPlayerIds } from "../../shared/lib/matchParticipation.js";
 import {
+  MATCH_RECEIPT_COMMENT_MAX_LENGTH,
   MATCH_RECEIPT_LOCALES,
   MATCH_RECEIPT_STYLES,
-  sanitizeThermalReceiptComment,
+  sanitizeMatchReceiptComment,
+  splitMatchReceiptComment,
   suggestReceiptShortName,
 } from "../../shared/lib/thermalReceipt.js";
 import { renderThermalReceiptCanvas } from "./thermalReceipt.js";
@@ -32,8 +35,8 @@ export const MATCH_RECEIPT_LIMITS = Object.freeze({
   venue: 36,
   address: 48,
   originalAddress: 96,
-  comment: 11,
-  receiptComment: 56,
+  comment: MATCH_RECEIPT_COMMENT_MAX_LENGTH,
+  receiptComment: MATCH_RECEIPT_COMMENT_MAX_LENGTH,
   receiptShortName: 12,
   tournamentName: 20,
   profileHashtag: 32,
@@ -273,6 +276,7 @@ export function normalizeMatchReceiptDraft(value = {}) {
   const matchNature = MATCH_RECEIPT_NATURES.some((item) => item.value === value.matchNature)
     ? value.matchNature
     : "competitive";
+  const sharedComment = sanitizeMatchReceiptComment(String(value.comment ?? "").trim() || value.receiptComment || "");
   return {
     serialSeed: cleanSerialSeed(value.serialSeed),
     publicCode: normalizeMatchPublicCode(value.publicCode),
@@ -288,7 +292,7 @@ export function normalizeMatchReceiptDraft(value = {}) {
     matchNature,
     homeColor: cleanColor(value.homeColor, DEFAULT_COLORS.home),
     awayColor: cleanColor(value.awayColor, DEFAULT_COLORS.away),
-    comment: cleanText(value.comment, MATCH_RECEIPT_LIMITS.comment),
+    comment: sharedComment,
     receiptStyle: Object.values(MATCH_RECEIPT_STYLES).includes(value.receiptStyle)
       ? value.receiptStyle
       : MATCH_RECEIPT_STYLES.score,
@@ -296,7 +300,7 @@ export function normalizeMatchReceiptDraft(value = {}) {
       ? value.receiptLocale
       : MATCH_RECEIPT_LOCALES.ko,
     includePhoto: value.includePhoto !== false,
-    receiptComment: sanitizeThermalReceiptComment(value.receiptComment),
+    receiptComment: sharedComment,
     homeReceiptShortName: cleanText(value.homeReceiptShortName, MATCH_RECEIPT_LIMITS.receiptShortName),
     awayReceiptShortName: cleanText(value.awayReceiptShortName, MATCH_RECEIPT_LIMITS.receiptShortName),
     playedTime: /^([01]\d|2[0-3]):[0-5]\d$/.test(String(value.playedTime ?? "")) ? String(value.playedTime) : "20:30",
@@ -545,6 +549,8 @@ export function getMatchReceiptDraftFromMatch(match = {}, style = {}, court = nu
     hasVerifiedPlayerStats(match, currentUserId)
     || (isPersonalRecordMatch(match) && match.createdBy === currentUserId)
   );
+  const sharedComment = style.comment ?? style.receiptComment ?? "";
+  const actualPlayerCount = getActualMatchPlayerIds(match).length;
   return normalizeMatchReceiptDraft({
     serialSeed: style.serialSeed,
     publicCode: style.publicCode ?? match.publicCode ?? match.public_code,
@@ -558,11 +564,11 @@ export function getMatchReceiptDraftFromMatch(match = {}, style = {}, court = nu
     venue: court?.name ?? (match.court && match.court !== "미정" ? match.court : ""),
     address: style.address ?? "",
     originalAddress: court?.address ?? style.originalAddress ?? "",
-    comment: style.comment ?? "",
+    comment: sharedComment,
     receiptStyle: style.receiptStyle,
     receiptLocale: style.receiptLocale,
     includePhoto: style.includePhoto,
-    receiptComment: style.receiptComment,
+    receiptComment: sharedComment,
     homeReceiptShortName: style.homeReceiptShortName || suggestReceiptShortName(match.teamA?.name || summary.teamAName),
     awayReceiptShortName: style.awayReceiptShortName || suggestReceiptShortName(match.teamB?.name || summary.teamBName),
     playedTime: style.playedTime || String(match.scheduledTime ?? match.startTime ?? "20:30").slice(0, 5),
@@ -601,7 +607,7 @@ export function getMatchReceiptDraftFromMatch(match = {}, style = {}, court = nu
     ),
     verified,
     officialMatchId: verified ? String(match.id ?? "") : "",
-    playerCount: verified ? Number(match.result?.playerCount ?? match.players?.length ?? 0) : null,
+    playerCount: verified ? Number(actualPlayerCount || match.result?.playerCount || 0) : null,
     refereeAssigned: verified ? Boolean(match.refereeId ?? match.referee?.id) : false,
   });
 }
@@ -665,6 +671,7 @@ export function createMatchReceiptViewModel(value, options = {}) {
     && Boolean(personalTier && draft.profileHashtag);
   return {
     ...draft,
+    commentLines: splitMatchReceiptComment(draft.comment),
     locale,
     outcome: getMatchReceiptOutcome(draft),
     serial: receiptHashtag(draft),
@@ -1149,8 +1156,9 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
 
   const photoHeight = compact ? 610 : 885;
   const receiptTop = compact ? 1010 : 1504;
-  const photoPromise = loadCanvasImage(options.photoBlob || model.defaultPhotoUrl)
-    .catch((error) => (options.photoBlob ? loadCanvasImage(model.defaultPhotoUrl) : Promise.reject(error)));
+  const selectedPhotoBlob = model.includePhoto ? options.photoBlob : null;
+  const photoPromise = loadCanvasImage(selectedPhotoBlob || model.defaultPhotoUrl)
+    .catch((error) => (selectedPhotoBlob ? loadCanvasImage(model.defaultPhotoUrl) : Promise.reject(error)));
   const [photo, wordmark, homeTier, awayTier, homeNeutralTeamMark, awayNeutralTeamMark, personalTier, paper, paperGrain, scoreDigits, scoreboardDigits, homeLineArtUrl, awayLineArtUrl] = await Promise.all([
     photoPromise,
     loadCanvasImage(model.wordmarkUrl).catch(() => null),
@@ -1174,8 +1182,8 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
 
   ctx.fillStyle = "#111111";
   ctx.fillRect(0, 0, width, height);
-  drawCoverPhoto(ctx, photo, { x: 0, y: 0, width, height: photoHeight }, model, { defaultPhoto: !options.photoBlob });
-  if (!options.photoBlob) {
+  drawCoverPhoto(ctx, photo, { x: 0, y: 0, width, height: photoHeight }, model, { defaultPhoto: !selectedPhotoBlob });
+  if (!selectedPhotoBlob) {
     drawCanvasPhotoScoreboard(ctx, photo, scoreboardDigits, { x: 0, y: 0, width, height: photoHeight }, model);
   }
 
@@ -1368,14 +1376,13 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
   const footerMiddleDividerOffset = compact ? 126 : 177;
   const footerDateOffset = compact ? 174 : 244;
   const footerCommentOffset = footerDateOffset;
-  const footerTierLabelOffset = footerDateOffset + 42;
+  const footerMetaLineHeight = compact ? 25 : 31;
+  const commentLines = model.commentLines ?? [];
   const personalStatsShiftY = compact ? 12 : 16;
   const personalStatsValueOffset = (compact ? 78 : 132) - personalStatsShiftY;
   const personalStatsLabelOffset = (compact ? 110 : 166) - personalStatsShiftY;
   const personalStatsDividerTopOffset = (compact ? 30 : 70) - personalStatsShiftY;
   const personalStatsDividerBottomOffset = (compact ? 116 : 180) - personalStatsShiftY;
-  const hasSingleGameInfoMeta = !model.hasPersonalStats
-    && Boolean(model.comment) !== Boolean(personalTier);
 
   ctx.strokeStyle = "rgba(195,74,37,.7)";
   ctx.lineWidth = 2;
@@ -1452,16 +1459,21 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
     ctx.fillText(model.matchNatureLabel, footerMiddleX, footerY + (compact ? 101 : 132), 260);
   }
 
-  if (model.comment) {
+  if (commentLines.length) {
     ctx.fillStyle = "#151515";
     ctx.font = '900 22px "KBO Dia Gothic", sans-serif';
-    ctx.fillText(model.comment, footerMiddleX, footerY + footerCommentOffset, 260);
+    commentLines.forEach((line, index) => {
+      ctx.fillText(line, footerMiddleX, footerY + footerCommentOffset + index * footerMetaLineHeight, 260);
+    });
   }
 
   if (personalTier) {
     ctx.fillStyle = "#71451f";
     ctx.font = `900 ${compact ? 17 : 20}px "KBO Dia Gothic", sans-serif`;
-    ctx.fillText(`MY TIER · ${model.personalTier.label}`, footerMiddleX, footerY + (hasSingleGameInfoMeta ? footerDateOffset : footerTierLabelOffset), 250);
+    const footerTierOffset = commentLines.length
+      ? footerCommentOffset + commentLines.length * footerMetaLineHeight
+      : footerDateOffset;
+    ctx.fillText(`MY TIER · ${model.personalTier.label}`, footerMiddleX, footerY + footerTierOffset, 250);
   }
 
   if (model.matchUrl) {

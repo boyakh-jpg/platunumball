@@ -42,11 +42,10 @@ import {
   validateMatchReceiptDraft,
 } from "../lib/matchReceipt.js";
 import {
+  MATCH_RECEIPT_COMMENT_MAX_LENGTH,
   MATCH_RECEIPT_LOCALES,
   MATCH_RECEIPT_STYLES,
-  THERMAL_RECEIPT_COMMENT_MAX_WEIGHT,
-  getThermalReceiptTextWeight,
-  sanitizeThermalReceiptComment,
+  sanitizeMatchReceiptComment,
   suggestReceiptShortName,
 } from "../../shared/lib/thermalReceipt.js";
 
@@ -103,9 +102,9 @@ const RECEIPT_PAGE_COPY = Object.freeze({
     eyebrow: "MATCH RECEIPT", title: "경기 영수증", description: "오늘 경기 결과를 입력하고 바로 자랑할 이미지로 저장하세요.",
     navLabel: "영수증 페이지 이동", back: "뒤로가기", home: "홈으로", finalScore: "경기 결과",
     teamA: "TEAM A", teamB: "TEAM B", teamName: "팀 이름", score: "점수", info: "경기 정보", date: "경기 날짜",
-    style: "출력 스타일", map: "지도", shortName: "짧은 팀명", includePhoto: "감열 영수증에 경기 사진 포함",
-    time: "경기 시간", players: "참가 인원", receiptComment: "한줄평", receiptCommentPlaceholder: "선택 · 한글 28자 또는 영문 52자",
-    thermalPhotoCrop: "감열 사진 자르기 조정", zoom: "확대", horizontal: "가로 위치", vertical: "세로 위치",
+    style: "출력 스타일", map: "지도", shortName: "짧은 팀명", includePhoto: "출력물에 경기·팀 사진 포함",
+    time: "경기 시간", players: "참가 인원", receiptComment: "한줄평", receiptCommentPlaceholder: "선택 · 22자 이내",
+    thermalPhotoCrop: "사진 자르기 조정", zoom: "확대", horizontal: "가로 위치", vertical: "세로 위치",
     venue: "짧은 장소", venuePlaceholder: "경기 장소 대신 주소나 장소를 입력 가능", periodScores: "쿼터별 점수",
     preview: "미리보기", complete: "영수증 완성하기", share: "이미지 공유", story: "Story 저장", post: "Feed 저장", create: "만들기 링크 복사",
     loadingTitle: "경기 찾는 중", notFoundTitle: "경기를 찾을 수 없습니다", loadFailedTitle: "경기를 불러오지 못했습니다",
@@ -115,8 +114,8 @@ const RECEIPT_PAGE_COPY = Object.freeze({
     teamEmblems: "팀 엠블럼", emblemGuide: "사진을 골라 선화 엠블럼으로 바로 사용할 수 있습니다. 로그인 후 팀을 만들면 팀 상세에 저장해 다음 영수증에서도 재사용할 수 있습니다.",
     selectLineArt: "선화 엠블럼 선택", useSavedEmblem: "저장 엠블럼 사용", noSavedEmblem: "저장된 팀 엠블럼 없음", emblemCandidates: (team) => `${team} 엠블럼 후보`, lineArtCandidate: (team) => `${team} 선화 후보`, disableLineArt: "선화 사용 해제", reuseLineArt: "선화 다시 사용",
     localEmblemOnly: "직접 선택한 이미지는 이번 영수증에서만 유지됩니다.", aiPromptHelp: "외부 AI에서 선화 PNG를 만들 때 사용할 지시문입니다.", copyAiPrompt: "AI 선화 프롬프트 복사", createTeamSave: "팀 만들고 엠블럼 저장", loginCreateTeamSave: "로그인 · 팀 만들고 엠블럼 저장",
-    periodScoreAria: (period, team) => `${period} ${team} 점수`, comment: "한 줄 코멘트", commentPlaceholder: "선택 · 11자 이내",
-    rotatePhotoAria: "사진 자유 회전", rotatePhotoTitle: "드래그해 자유 회전 · 방향키로 미세 조정", photoActionsAria: "미리보기 사진 편집", selectPhoto: "사진 선택", rotate90: "90° 회전", remove: "제거", reset: "초기화", resetTitle: "입력값·사진 초기화 후 새 일련번호 시작",
+    periodScoreAria: (period, team) => `${period} ${team} 점수`, comment: "한 줄 코멘트", commentPlaceholder: "선택 · 22자 이내",
+    rotatePhotoAria: "사진 자유 회전", rotatePhotoTitle: "드래그해 자유 회전 · 방향키로 미세 조정", photoActionsAria: "미리보기 사진 편집", selectPhoto: "경기·팀 사진 선택", rotate90: "90° 회전", remove: "제거", reset: "초기화", resetTitle: "입력값·사진 초기화 후 새 일련번호 시작",
     photoEditHelp: "사진 안쪽 드래그 이동 · 휠 확대·축소 · 테두리 손잡이 회전 · 더블클릭 초기화 · 모바일 두 손가락 편집", photoSelectHelp: "사진을 선택하면 미리보기 안에서 바로 편집", localPhotoOnly: "사진은 서버에 업로드하지 않음",
     savedTitle: "내 기록에 저장됨", importTitle: "이 경기를 내 기록으로 가져가기", savedDescription: "실제 경기 ID가 연결됐습니다. QR 코드는 누구나 볼 수 있는 공개 영수증을 엽니다.", viewRecords: "내 기록 보기", continueDescription: "상세 기록을 이어서 작성하면 기존 개인 기록 저장 흐름으로 보관됩니다.", guestContinueDescription: "로그인 방법을 선택해도 작성 내용이 유지됩니다. 로그인 뒤 상세 기록을 작성해 저장할 수 있습니다.", continueRecord: "상세 기록 이어서 작성",
     imageWindowTitle: "BOXTIER 이미지 준비 중", imageWindowBody: "이미지 만드는 중...", recordLoadFailed: "저장된 경기 기록을 불러오지 못했습니다.", claimedReceipt: "내 기록으로 전환된 경기 영수증입니다.", sharedReceipt: "공유된 경기 영수증입니다.", sharedExpired: "공유된 영수증이 만료됐거나 존재하지 않습니다.",
@@ -130,9 +129,9 @@ const RECEIPT_PAGE_COPY = Object.freeze({
     eyebrow: "GAME RECEIPT", title: "Game Receipt", description: "Turn your game result into a shareable receipt.",
     navLabel: "Receipt page navigation", back: "Back", home: "Home", finalScore: "Final Score",
     teamA: "Team A", teamB: "Team B", teamName: "Team Name", score: "Score", info: "Date / Time / Venue", date: "Date",
-    style: "Receipt Style", map: "Map", shortName: "Short Team Name", includePhoto: "Include game photo on thermal receipt",
-    time: "Time", players: "Players", receiptComment: "One-Line Comment", receiptCommentPlaceholder: "Optional · up to 52 characters",
-    thermalPhotoCrop: "Thermal photo crop", zoom: "Zoom", horizontal: "Horizontal", vertical: "Vertical",
+    style: "Receipt Style", map: "Map", shortName: "Short Team Name", includePhoto: "Include game / team photo",
+    time: "Time", players: "Players", receiptComment: "One-Line Comment", receiptCommentPlaceholder: "Optional · Up to 22 characters",
+    thermalPhotoCrop: "Photo crop", zoom: "Zoom", horizontal: "Horizontal", vertical: "Vertical",
     venue: "Venue", venuePlaceholder: "Short venue name", periodScores: "Period Scores",
     preview: "Preview", complete: "Create Receipt", share: "Share Receipt", story: "Download Story", post: "Download Post", create: "Create Your Own",
     loadingTitle: "Finding game", notFoundTitle: "Game not found", loadFailedTitle: "Could not load game",
@@ -142,8 +141,8 @@ const RECEIPT_PAGE_COPY = Object.freeze({
     teamEmblems: "Team Emblems", emblemGuide: "Choose an image to create a line-art emblem for this receipt. Sign in and create a team to save it for future receipts.",
     selectLineArt: "Choose Line-Art Emblem", useSavedEmblem: "Use Saved Emblem", noSavedEmblem: "No saved team emblem", emblemCandidates: (team) => `${team} emblem options`, lineArtCandidate: (team) => `${team} line-art option`, disableLineArt: "Disable Line Art", reuseLineArt: "Use Line Art Again",
     localEmblemOnly: "Images selected here stay on this receipt only.", aiPromptHelp: "Use this prompt to create a line-art PNG with an external AI tool.", copyAiPrompt: "Copy AI Line-Art Prompt", createTeamSave: "Create Team & Save Emblem", loginCreateTeamSave: "Sign In · Create Team & Save Emblem",
-    periodScoreAria: (period, team) => `${period} ${team} score`, comment: "One-Line Comment", commentPlaceholder: "Optional · Up to 11 characters",
-    rotatePhotoAria: "Free-rotate photo", rotatePhotoTitle: "Drag to rotate · Use arrow keys for fine adjustment", photoActionsAria: "Edit preview photo", selectPhoto: "Choose Photo", rotate90: "Rotate 90°", remove: "Remove", reset: "Reset", resetTitle: "Clear inputs and photo, then start with a new receipt number",
+    periodScoreAria: (period, team) => `${period} ${team} score`, comment: "One-Line Comment", commentPlaceholder: "Optional · Up to 22 characters",
+    rotatePhotoAria: "Free-rotate photo", rotatePhotoTitle: "Drag to rotate · Use arrow keys for fine adjustment", photoActionsAria: "Edit preview photo", selectPhoto: "Choose game / team photo", rotate90: "Rotate 90°", remove: "Remove", reset: "Reset", resetTitle: "Clear inputs and photo, then start with a new receipt number",
     photoEditHelp: "Drag to move · Wheel or pinch to zoom · Drag the edge handle to rotate · Double-click to reset", photoSelectHelp: "Choose a photo to edit it in the preview", localPhotoOnly: "Photo stays on this device and is not uploaded",
     savedTitle: "Saved to My Records", importTitle: "Add This Game to My Records", savedDescription: "This receipt is linked to an official game. Its QR code opens the public receipt.", viewRecords: "View My Records", continueDescription: "Continue with detailed stats to save this game through the regular record flow.", guestContinueDescription: "Your work stays here while you sign in. After signing in, continue the detailed record to save it.", continueRecord: "Continue Detailed Record",
     imageWindowTitle: "Preparing BOXTIER Image", imageWindowBody: "Creating image...", recordLoadFailed: "Could not load the saved game record.", claimedReceipt: "This game receipt is now linked to your records.", sharedReceipt: "This is a shared game receipt.", sharedExpired: "This shared receipt has expired or does not exist.",
@@ -355,7 +354,7 @@ export default function MatchReceipt({ auth, app }) {
     localTeamLineArtUrls.home,
   ]);
   const isThermal = draft.receiptStyle === MATCH_RECEIPT_STYLES.thermal;
-  const receiptCommentWeight = getThermalReceiptTextWeight(draft.receiptComment);
+  const commentLength = Array.from(draft.comment).length;
 
   useEffect(() => {
     if (!requestedPublicCode) {
@@ -553,13 +552,17 @@ export default function MatchReceipt({ auth, app }) {
       trackMatchReceiptEvent("receipt_started", { loggedIn: Boolean(auth?.session) });
     }
     setDraft((current) => {
-      const normalizedValue = name === "receiptComment" ? sanitizeThermalReceiptComment(value) : value;
+      const isCommentField = name === "comment" || name === "receiptComment";
+      const normalizedValue = isCommentField ? sanitizeMatchReceiptComment(value) : value;
       let next = RECEIPT_TEXT_FIELDS.has(name)
         ? {
           ...current,
           [name]: String(normalizedValue ?? ""),
         }
         : normalizeMatchReceiptDraft({ ...current, [name]: normalizedValue });
+      if (isCommentField) {
+        next = { ...next, comment: normalizedValue, receiptComment: normalizedValue };
+      }
       if (name === "homeTeam" && !current.homeReceiptShortName) {
         next = { ...next, homeReceiptShortName: suggestReceiptShortName(normalizedValue) };
       }
@@ -854,7 +857,7 @@ export default function MatchReceipt({ auth, app }) {
     if (!photoUrl) return;
     event.preventDefault();
     event.stopPropagation();
-    const bounds = previewRef.current?.querySelector(".match-receipt-photo")?.getBoundingClientRect();
+    const bounds = previewRef.current?.querySelector(".match-receipt-photo, .match-receipt-thermal-photo-hitarea")?.getBoundingClientRect();
     if (!bounds) return;
     const centerX = bounds.left + bounds.width / 2;
     const centerY = bounds.top + bounds.height / 2;
@@ -1126,6 +1129,16 @@ export default function MatchReceipt({ auth, app }) {
     navigate(-1);
   }
 
+  const photoGestureHandlers = receiptIsReadOnly ? undefined : {
+    onPointerDown: beginPhotoGesture,
+    onPointerMove: movePhotoGesture,
+    onPointerUp: endPhotoGesture,
+    onPointerCancel: endPhotoGesture,
+    onLostPointerCapture: endPhotoGesture,
+    onWheel: zoomPhotoWithWheel,
+    onDoubleClick: resetPhotoTransform,
+  };
+
   return (
     <section className="page-stack match-receipt-page">
       <header className="page-header match-receipt-page-head ui-page-hero ui-design-app-hero">
@@ -1193,7 +1206,7 @@ export default function MatchReceipt({ auth, app }) {
                   {receiptCopy.score}
                   <input type="number" inputMode="numeric" min="0" max={MATCH_RECEIPT_LIMITS.score} value={draft.homeScore} disabled={isFieldReadOnly("homeScore")} onFocus={(event) => event.currentTarget.select()} onClick={(event) => event.currentTarget.value === "0" && event.currentTarget.select()} onChange={(event) => updateField("homeScore", event.target.value)} />
                 </label>
-                {isThermal ? <label>{receiptCopy.shortName}<input value={draft.homeReceiptShortName} maxLength={MATCH_RECEIPT_LIMITS.receiptShortName} disabled={isFieldReadOnly("homeReceiptShortName")} placeholder="A" onChange={(event) => updateField("homeReceiptShortName", event.target.value)} /></label> : null}
+                <label>{receiptCopy.shortName}<input value={draft.homeReceiptShortName} maxLength={MATCH_RECEIPT_LIMITS.receiptShortName} disabled={isFieldReadOnly("homeReceiptShortName")} placeholder="A" onChange={(event) => updateField("homeReceiptShortName", event.target.value)} /></label>
               </fieldset>
 
               <fieldset>
@@ -1206,7 +1219,7 @@ export default function MatchReceipt({ auth, app }) {
                   {receiptCopy.score}
                   <input type="number" inputMode="numeric" min="0" max={MATCH_RECEIPT_LIMITS.score} value={draft.awayScore} disabled={isFieldReadOnly("awayScore")} onFocus={(event) => event.currentTarget.select()} onClick={(event) => event.currentTarget.value === "0" && event.currentTarget.select()} onChange={(event) => updateField("awayScore", event.target.value)} />
                 </label>
-                {isThermal ? <label>{receiptCopy.shortName}<input value={draft.awayReceiptShortName} maxLength={MATCH_RECEIPT_LIMITS.receiptShortName} disabled={isFieldReadOnly("awayReceiptShortName")} placeholder="B" onChange={(event) => updateField("awayReceiptShortName", event.target.value)} /></label> : null}
+                <label>{receiptCopy.shortName}<input value={draft.awayReceiptShortName} maxLength={MATCH_RECEIPT_LIMITS.receiptShortName} disabled={isFieldReadOnly("awayReceiptShortName")} placeholder="B" onChange={(event) => updateField("awayReceiptShortName", event.target.value)} /></label>
               </fieldset>
             </div>
           </section>
@@ -1215,8 +1228,8 @@ export default function MatchReceipt({ auth, app }) {
             <h2>{receiptCopy.info}</h2>
             <div className="match-receipt-info-fields">
               <label>{receiptCopy.date}<input type="date" value={draft.playedOn} disabled={isFieldReadOnly("playedOn")} onChange={(event) => updateField("playedOn", event.target.value)} /></label>
-              {isThermal ? <label>{receiptCopy.time}<input type="time" value={draft.playedTime} disabled={isFieldReadOnly("playedTime")} onChange={(event) => updateField("playedTime", event.target.value)} /></label> : null}
-              {isThermal ? <label>{receiptCopy.players}<input type="number" inputMode="numeric" min="0" max={MATCH_RECEIPT_LIMITS.playerCount} value={draft.playerCount ?? ""} disabled={isFieldReadOnly("playerCount")} onChange={(event) => updateField("playerCount", event.target.value)} /></label> : null}
+              <label>{receiptCopy.time}<input type="time" value={draft.playedTime} disabled={isFieldReadOnly("playedTime")} onChange={(event) => updateField("playedTime", event.target.value)} /></label>
+              <label>{receiptCopy.players}<input type="number" inputMode="numeric" min="0" max={MATCH_RECEIPT_LIMITS.playerCount} value={draft.playerCount ?? ""} disabled={isFieldReadOnly("playerCount")} onChange={(event) => updateField("playerCount", event.target.value)} /></label>
               <label>{receiptCopy.format}<select value={draft.format} disabled={isFieldReadOnly("format")} onChange={(event) => updateField("format", event.target.value)}>{MATCH_RECEIPT_FORMATS.map((item) => <option key={item.value} value={item.value}>{isEnglish ? item.value.toUpperCase() : item.label}</option>)}</select></label>
               <label>{receiptCopy.nature}<select value={draft.matchNature} disabled={isFieldReadOnly("matchNature")} onChange={(event) => updateField("matchNature", event.target.value)}>{MATCH_RECEIPT_NATURES.map((item) => <option key={item.value} value={item.value}>{isEnglish ? item.value.toUpperCase() : item.label}</option>)}</select></label>
               {!isEnglish ? <label className="is-wide">
@@ -1326,21 +1339,15 @@ export default function MatchReceipt({ auth, app }) {
               </fieldset>
               <label className="is-wide">
                 <span className="match-receipt-field-heading">
-                  <span>{isThermal ? receiptCopy.receiptComment : receiptCopy.comment}</span>
-                  <span className="match-receipt-field-count">{isThermal ? `${receiptCommentWeight}/${THERMAL_RECEIPT_COMMENT_MAX_WEIGHT}` : `${draft.comment.length}/${MATCH_RECEIPT_LIMITS.comment}`}</span>
+                  <span>{receiptCopy.comment}</span>
+                  <span className="match-receipt-field-count">{`${commentLength}/${MATCH_RECEIPT_COMMENT_MAX_LENGTH}`}</span>
                 </span>
-                {isThermal ? (
-                  <input value={draft.receiptComment} disabled={isFieldReadOnly("receiptComment")} placeholder={receiptCopy.receiptCommentPlaceholder} onChange={(event) => updateField("receiptComment", event.target.value)} />
-                ) : (
-                  <input value={draft.comment} maxLength={MATCH_RECEIPT_LIMITS.comment} disabled={isFieldReadOnly("comment")} placeholder={receiptCopy.commentPlaceholder} onChange={(event) => updateField("comment", event.target.value)} />
-                )}
+                <input value={draft.comment} maxLength={MATCH_RECEIPT_COMMENT_MAX_LENGTH} disabled={isFieldReadOnly("comment")} placeholder={receiptCopy.commentPlaceholder} onChange={(event) => updateField("comment", event.target.value)} />
               </label>
-              {isThermal ? (
-                <label className="match-receipt-check-field is-wide">
-                  <input type="checkbox" checked={draft.includePhoto} disabled={receiptIsReadOnly} onChange={(event) => updateField("includePhoto", event.target.checked)} />
-                  <span>{receiptCopy.includePhoto}</span>
-                </label>
-              ) : null}
+              <label className="match-receipt-check-field is-wide">
+                <input type="checkbox" checked={draft.includePhoto} disabled={receiptIsReadOnly} onChange={(event) => updateField("includePhoto", event.target.checked)} />
+                <span>{receiptCopy.includePhoto}</span>
+              </label>
             </div>
             {!isEnglish ? <p className="match-receipt-map-note"><MapPin aria-hidden="true" /> 이미지에는 경기 장소 또는 짧은 장소만 들어갑니다. 지도 화면은 포함하지 않습니다.</p> : null}
           </section>
@@ -1362,28 +1369,21 @@ export default function MatchReceipt({ auth, app }) {
                 matchUrl={matchUrl}
                 publicId={receiptPublicId}
                 teamLineArtUrls={selectedTeamLineArtUrls}
+                photoGestureHandlers={photoGestureHandlers}
               />
             ) : (
               <MatchReceiptPreview
                 draft={receiptPreviewDraft}
-                photoUrl={photoUrl}
+                photoUrl={draft.includePhoto ? photoUrl : ""}
                 matchUrl={matchUrl}
                 publicId={receiptPublicId}
                 showPersonalTierIdentity={canShowCurrentUserIdentity}
                 locale={receiptLocale}
                 teamLineArtUrls={selectedTeamLineArtUrls}
-                photoGestureHandlers={receiptIsReadOnly ? undefined : {
-                  onPointerDown: beginPhotoGesture,
-                  onPointerMove: movePhotoGesture,
-                  onPointerUp: endPhotoGesture,
-                  onPointerCancel: endPhotoGesture,
-                  onLostPointerCapture: endPhotoGesture,
-                  onWheel: zoomPhotoWithWheel,
-                  onDoubleClick: resetPhotoTransform,
-                }}
+                photoGestureHandlers={photoGestureHandlers}
               />
             )}
-            {photoUrl && !receiptIsReadOnly && !isThermal ? (
+            {photoUrl && draft.includePhoto && !receiptIsReadOnly ? (
               <Button
                 variant="secondary"
                 className="match-receipt-photo-rotate-handle"
@@ -1406,7 +1406,7 @@ export default function MatchReceipt({ auth, app }) {
                 <ImagePlus aria-hidden="true" /> {receiptCopy.selectPhoto}
                 <input type="file" accept="image/jpeg,image/png,image/webp" disabled={busy === "photo"} onChange={handlePhotoChange} />
               </Button>
-              {!isThermal ? <Button variant="secondary" disabled={!photoUrl || Boolean(busy)} onClick={() => updateField("photoRotation", draft.photoRotation + 90)}><RotateCcw aria-hidden="true" /> {receiptCopy.rotate90}</Button> : null}
+              <Button variant="secondary" disabled={!photoUrl || Boolean(busy)} onClick={() => updateField("photoRotation", draft.photoRotation + 90)}><RotateCcw aria-hidden="true" /> {receiptCopy.rotate90}</Button>
               <Button variant="danger" disabled={!photoUrl || Boolean(busy)} onClick={removePhoto}><Trash2 aria-hidden="true" /> {receiptCopy.remove}</Button>
               <Button
                 variant="secondary"
@@ -1417,8 +1417,8 @@ export default function MatchReceipt({ auth, app }) {
                 <RotateCcw aria-hidden="true" /> {receiptCopy.reset}
               </Button>
             </div>
-            {isThermal && photoUrl ? (
-              <div className="match-receipt-thermal-photo-settings" aria-label={receiptCopy.thermalPhotoCrop}>
+            {photoUrl && draft.includePhoto ? (
+              <div className="match-receipt-photo-settings" aria-label={receiptCopy.thermalPhotoCrop}>
                 <label>{receiptCopy.zoom}<input type="range" min="1" max="3" step="0.01" value={draft.photoZoom} onChange={(event) => updateField("photoZoom", event.target.value)} /></label>
                 <label>{receiptCopy.horizontal}<input type="range" min="-100" max="100" step="1" value={draft.photoX} onChange={(event) => updateField("photoX", event.target.value)} /></label>
                 <label>{receiptCopy.vertical}<input type="range" min="-100" max="100" step="1" value={draft.photoY} onChange={(event) => updateField("photoY", event.target.value)} /></label>
