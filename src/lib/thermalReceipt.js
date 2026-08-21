@@ -104,6 +104,30 @@ function fitText(ctx, text, maxWidth, start, minimum, font = DATA_FONT) {
   return minimum;
 }
 
+export function resolveThermalReceiptEmblemSources(model = {}, options = {}) {
+  const uniqueSources = (sources) => [...new Set(sources.filter(Boolean))];
+  return {
+    home: uniqueSources([
+      options.teamLineArtUrls?.home,
+      model.teamEmblemUrls?.home,
+      model.neutralTeamMarkUrls?.home,
+    ]),
+    away: uniqueSources([
+      options.teamLineArtUrls?.away,
+      model.teamEmblemUrls?.away,
+      model.neutralTeamMarkUrls?.away,
+    ]),
+  };
+}
+
+async function loadFirstImage(sources) {
+  for (const source of sources) {
+    const image = await loadImage(source);
+    if (image) return image;
+  }
+  return null;
+}
+
 function splitThermalText(text, maxWidth, size, font = DATA_FONT, weight = 800) {
   const value = String(text || "").trim();
   if (!value) return [];
@@ -329,15 +353,30 @@ function drawEmblem(ctx, image, x, y, name) {
     const scale = Math.min(148 / image.naturalWidth, 148 / image.naturalHeight);
     const width = image.naturalWidth * scale;
     const height = image.naturalHeight * scale;
-    bitmapCtx.drawImage(image, (168 - width) / 2, (168 - height) / 2, width, height);
+    const drawX = (168 - width) / 2;
+    const drawY = (168 - height) / 2;
+    bitmapCtx.drawImage(image, drawX, drawY, width, height);
     const pixels = bitmapCtx.getImageData(0, 0, 168, 168);
+    const minX = Math.max(0, Math.floor(drawX));
+    const maxX = Math.min(168, Math.ceil(drawX + width));
+    const minY = Math.max(0, Math.floor(drawY));
+    const maxY = Math.min(168, Math.ceil(drawY + height));
+    let artworkPixels = 0;
+    let transparentArtworkPixels = 0;
+    for (let pixelY = minY; pixelY < maxY; pixelY += 1) {
+      for (let pixelX = minX; pixelX < maxX; pixelX += 1) {
+        artworkPixels += 1;
+        if (pixels.data[(pixelY * 168 + pixelX) * 4 + 3] < 32) transparentArtworkPixels += 1;
+      }
+    }
+    const hasTransparentArtwork = artworkPixels > 0 && transparentArtworkPixels / artworkPixels >= 0.05;
     for (let index = 0; index < pixels.data.length; index += 4) {
       const alpha = pixels.data[index + 3];
       const luminance = pixels.data[index] * 0.2126 + pixels.data[index + 1] * 0.7152 + pixels.data[index + 2] * 0.0722;
       pixels.data[index] = 21;
       pixels.data[index + 1] = 21;
       pixels.data[index + 2] = 21;
-      pixels.data[index + 3] = alpha >= 64 && luminance < 184 ? 255 : 0;
+      pixels.data[index + 3] = alpha >= 64 && (hasTransparentArtwork || luminance < 184) ? 255 : 0;
     }
     bitmapCtx.putImageData(pixels, 0, 0);
     ctx.imageSmoothingEnabled = false;
@@ -432,25 +471,26 @@ function drawInfo(ctx, model, layout) {
   const center = layout.info.x + layout.info.width / 2;
   const playedOn = String(model.playedOn || "").replaceAll("-", ".");
   const periodCount = Array.isArray(model.periodScores) && model.periodScores.length ? model.periodScores.length : 4;
-  drawThermalText(ctx, "FINAL", center, layout.info.y + 23, { size: 34, font: LATIN_FONT, align: "center", maxWidth: 200, dotScale: 2 });
-  drawThermalText(ctx, `${playedOn} · ${model.playedTime || ""}`, center, layout.info.y + 58, { size: 24, align: "center", maxWidth: 520 });
+  drawThermalText(ctx, "FINAL", center, layout.info.finalBaseline, { size: 38, font: LATIN_FONT, align: "center", maxWidth: 220, dotScale: 1, printRole: "team" });
+  drawThermalText(ctx, `${playedOn} · ${model.playedTime || ""}`, center, layout.info.dateBaseline, { size: 24, align: "center", maxWidth: 520 });
   const venue = model.venue || model.address || "VENUE";
   let venueSize = 26;
   const measuringContext = createCanvas(1, 1).getContext("2d");
   measuringContext.font = `800 ${venueSize}px ${DATA_FONT}`;
   const shouldWrapVenue = measuringContext.measureText(venue).width > 620;
+  if (shouldWrapVenue) venueSize = 20;
   let venueLines = shouldWrapVenue ? splitThermalText(venue, 620, venueSize) : [venue];
   while (shouldWrapVenue && venueLines.length < 2 && venueSize > 20) {
     venueSize -= 2;
     venueLines = splitThermalText(venue, 620, venueSize);
   }
-  const venueStartY = venueLines.length > 1 ? layout.info.y + 84 : layout.info.y + 91;
-  venueLines.slice(0, 2).forEach((line, index) => drawThermalText(ctx, line, center, venueStartY + index * 27, {
+  const venueStartY = venueLines.length > 1 ? layout.info.wrappedVenueBaseline : layout.info.venueBaseline;
+  venueLines.slice(0, 2).forEach((line, index) => drawThermalText(ctx, line, center, venueStartY + index * layout.info.venueLineGap, {
     size: venueSize,
     align: "center",
     maxWidth: 620,
   }));
-  drawThermalText(ctx, `${String(model.format || "5v5").toUpperCase()} · ${periodCount} QUARTERS${model.refereeAssigned ? " · REFEREE" : ""}`, center, layout.info.y + 145, { size: 22, align: "center", maxWidth: 620 });
+  drawThermalText(ctx, `${String(model.format || "5v5").toUpperCase()} · ${periodCount} QUARTERS${model.refereeAssigned ? " · REFEREE" : ""}`, center, layout.info.summaryBaseline, { size: 22, align: "center", maxWidth: 620 });
 }
 
 function drawPeriods(ctx, model, layout) {
@@ -559,11 +599,12 @@ export async function renderThermalReceiptCanvas(value, preset = "story", option
   ]);
   const model = normalizeThermalData(value, options);
   const renderSeed = model.serialSeed || model.serial || "thermal";
+  const emblemSources = resolveThermalReceiptEmblemSources(model, options);
   const [photo, atlas, homeEmblem, awayEmblem, background, paper, bodyMask, teamMask, heavyMask, photoMask, edge] = await Promise.all([
     model.includePhoto ? loadImage(options.photoBlob || options.photoUrl) : null,
     loadAssetImage(DIGIT_ATLAS_PATH),
-    loadImage(options.teamLineArtUrls?.home || model.teamEmblemUrls?.home),
-    loadImage(options.teamLineArtUrls?.away || model.teamEmblemUrls?.away),
+    loadFirstImage(emblemSources.home),
+    loadFirstImage(emblemSources.away),
     loadAssetImage(THERMAL_ASSET_PATHS.background),
     loadAssetImage(THERMAL_ASSET_PATHS.paper),
     loadAssetImage(THERMAL_ASSET_PATHS.body),

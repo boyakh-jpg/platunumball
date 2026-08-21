@@ -231,6 +231,10 @@ export default function MatchReceipt({ auth, app }) {
   const [draft, setDraft] = useState(() => sourceDraftRef.current
     ?? (matchId || requestedPublicDraftId || requestedPublicCode ? createDefaultMatchReceiptDraft() : loadDraft()));
   const receiptLocale = getReceiptLocale(location);
+  const receiptPreviewDraft = useMemo(
+    () => ({ ...draft, receiptLocale }),
+    [draft, receiptLocale],
+  );
   const [errors, setErrors] = useState({});
   const [generated, setGenerated] = useState(false);
   const [busy, setBusy] = useState("");
@@ -1353,7 +1357,7 @@ export default function MatchReceipt({ auth, app }) {
           <div className={`match-receipt-preview-stage${isThermal ? " is-thermal" : ""}`}>
             {isThermal ? (
               <ThermalReceiptPreview
-                draft={{ ...draft, receiptLocale }}
+                draft={receiptPreviewDraft}
                 photoBlob={photoBlob}
                 matchUrl={matchUrl}
                 publicId={receiptPublicId}
@@ -1361,7 +1365,7 @@ export default function MatchReceipt({ auth, app }) {
               />
             ) : (
               <MatchReceiptPreview
-                draft={draft}
+                draft={receiptPreviewDraft}
                 photoUrl={photoUrl}
                 matchUrl={matchUrl}
                 publicId={receiptPublicId}

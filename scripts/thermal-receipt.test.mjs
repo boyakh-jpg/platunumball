@@ -8,6 +8,7 @@ import {
   sanitizeThermalReceiptComment,
   THERMAL_PRINT_ROLES,
 } from "../shared/lib/thermalReceipt.js";
+import { resolveThermalReceiptEmblemSources } from "../src/lib/thermalReceipt.js";
 
 test("thermal receipt keeps the canonical Story paper geometry", () => {
   const photo = getThermalReceiptLayout({ hasPhoto: true, hasPeriods: true, hasComment: true });
@@ -20,10 +21,19 @@ test("thermal receipt keeps the canonical Story paper geometry", () => {
   assert.equal(photo.brand.y - photo.paper.y, plain.brand.y - plain.paper.y);
   assert.equal(plain.teams.y, 392);
   assert.equal(plain.score.y, 634);
-  assert.equal(plain.info.y, 840);
-  assert.equal(plain.periods.y, 1004);
-  assert.equal(plain.result.y, 1192);
-  assert.equal(plain.footer.y, 1460);
+  assert.equal(plain.info.y, 874);
+  assert.equal(plain.info.finalBaseline, 902);
+  assert.ok(
+    plain.info.finalBaseline - 38 * 1.45 / 2 >= plain.score.y + plain.score.height + 16,
+    "FINAL keeps a visible gap below the score panel",
+  );
+  assert.ok(
+    plain.info.summaryBaseline + 22 * 1.45 / 2 < plain.periods.y,
+    "match summary stays clear of the period table",
+  );
+  assert.equal(plain.periods.y, 1036);
+  assert.equal(plain.result.y, 1224);
+  assert.equal(plain.footer.y, 1492);
   for (const region of ["teams", "score", "info", "periods", "footer"]) {
     assert.equal(
       photo[region].y - photo.paper.y - (plain[region].y - plain.paper.y),
@@ -31,8 +41,24 @@ test("thermal receipt keeps the canonical Story paper geometry", () => {
       `${region} removes only the photo slot`,
     );
   }
-  assert.equal(photo.paper.y + photo.paper.height - (photo.footer.y + photo.footer.height), 74);
-  assert.equal(plain.paper.y + plain.paper.height - (plain.footer.y + plain.footer.height), 74);
+  assert.equal(photo.paper.y + photo.paper.height - (photo.footer.y + photo.footer.height), 42);
+  assert.equal(plain.paper.y + plain.paper.height - (plain.footer.y + plain.footer.height), 42);
+});
+
+test("thermal receipt reuses the shared emblem chain before monogram fallback", () => {
+  const sources = resolveThermalReceiptEmblemSources({
+    teamEmblemUrls: { home: "canonical-home", away: "canonical-away" },
+    neutralTeamMarkUrls: { home: "neutral-home", away: "neutral-away" },
+  }, {
+    teamLineArtUrls: { home: "selected-home", away: "canonical-away" },
+  });
+
+  assert.deepEqual(sources.home, ["selected-home", "canonical-home", "neutral-home"]);
+  assert.deepEqual(sources.away, ["canonical-away", "neutral-away"]);
+  assert.deepEqual(
+    resolveThermalReceiptEmblemSources({ neutralTeamMarkUrls: { home: "neutral-home" } }).home,
+    ["neutral-home"],
+  );
 });
 
 test("optional thermal rows collapse without leaving internal gaps", () => {
@@ -52,7 +78,7 @@ test("optional thermal rows collapse without leaving internal gaps", () => {
   assert.ok(full.periods.y + full.periods.height < full.result.y);
   assert.ok(full.result.y + full.result.height < full.footer.y);
   for (const layout of [full, noPeriods, noComment, compact]) {
-    assert.equal(layout.paper.y + layout.paper.height - (layout.footer.y + layout.footer.height), 74);
+    assert.equal(layout.paper.y + layout.paper.height - (layout.footer.y + layout.footer.height), 42);
   }
 });
 

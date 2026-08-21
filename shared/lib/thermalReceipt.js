@@ -86,6 +86,7 @@ export function getThermalReceiptLayout(options = {}) {
   const resultHeight = hasComment ? 248 : 208;
   const sectionOffset = hasPhoto ? 144 : 0;
   const basePaperHeight = hasPhoto ? 1872 : 1584;
+  const infoY = 874 + sectionOffset;
 
   return Object.freeze({
     paper: Object.freeze({
@@ -99,19 +100,30 @@ export function getThermalReceiptLayout(options = {}) {
     photo: hasPhoto ? Object.freeze({ x: 198, y: 248, width: 684, height: 288 }) : null,
     teams: Object.freeze({ x: 198, y: 392 + sectionOffset, width: 684, height: 220 }),
     score: Object.freeze({ x: 198, y: 634 + sectionOffset, width: 684, height: 224 }),
-    info: Object.freeze({ x: 198, y: 840 + sectionOffset, width: 684, height: 148 }),
+    info: Object.freeze({
+      x: 198,
+      y: infoY,
+      width: 684,
+      height: 148,
+      finalBaseline: infoY + 28,
+      dateBaseline: infoY + 70,
+      venueBaseline: infoY + 102,
+      wrappedVenueBaseline: infoY + 88,
+      venueLineGap: 22,
+      summaryBaseline: infoY + 140,
+    }),
     periods: hasPeriods
-      ? Object.freeze({ x: 198, y: 1004 + sectionOffset, width: 684, height: 170 })
+      ? Object.freeze({ x: 198, y: 1036 + sectionOffset, width: 684, height: 170 })
       : null,
     result: Object.freeze({
       x: 198,
-      y: 1192 + sectionOffset - periodReduction,
+      y: 1224 + sectionOffset - periodReduction,
       width: 684,
       height: resultHeight,
     }),
     footer: Object.freeze({
       x: 198,
-      y: 1460 + sectionOffset - periodReduction - commentReduction,
+      y: 1492 + sectionOffset - periodReduction - commentReduction,
       width: 684,
       height: 218,
     }),
