@@ -18,8 +18,8 @@ export function CreateMatchIntentSection({ context }) {
         <Card as="fieldset" className="section-card full-span create-visibility-card workflow-fieldset">
           <legend className="section-title-row">
             <div>
-              <p className="eyebrow">Room visibility</p>
               <h2 className="create-choice-heading">{isRecordCreateIntent ? "기록 방식" : "공개 범위"}</h2>
+              <p className="eyebrow">Room visibility</p>
             </div>
           </legend>
           <div className="workflow-fieldset-status-row">

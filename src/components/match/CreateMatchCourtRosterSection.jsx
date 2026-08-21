@@ -26,8 +26,8 @@ export function CreateMatchCourtRosterSection({ context }) {
         <Card as="fieldset" className="section-card full-span selector-panel workflow-fieldset">
           <legend className="section-title-row">
             <div>
-              <p className="eyebrow">Court Finder</p>
               <h2>코트 검색</h2>
+              <p className="eyebrow">Court Finder</p>
             </div>
           </legend>
           <div className="workflow-fieldset-status-row">
@@ -188,8 +188,8 @@ export function CreateMatchCourtRosterSection({ context }) {
         <Card as="fieldset" className="section-card full-span selector-panel workflow-fieldset">
           <legend className="section-title-row">
             <div>
-              <p className="eyebrow">{isSoloRecord ? "Solo Record" : isMatchRecordRoom ? "Record Setup" : isTournamentRoom || isTeamRoom ? "Team Finder" : "Match Criteria"}</p>
               <h2>{isSoloRecord ? "개인 스탯" : isMatchRecordRoom ? "방에서 참가자 구성" : isTournamentRoom ? "초대 팀 선택" : isTeamRoom ? "방 생성 후 팀 선택" : "개인전 매칭 기준"}</h2>
+              <p className="eyebrow">{isSoloRecord ? "Solo Record" : isMatchRecordRoom ? "Record Setup" : isTournamentRoom || isTeamRoom ? "Team Finder" : "Match Criteria"}</p>
             </div>
           </legend>
           {isSoloRecord ? (

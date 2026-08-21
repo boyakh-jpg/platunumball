@@ -185,6 +185,10 @@
   --ui-hero-status-width: 428px;
   --ui-hero-metric-min-height: 72px;
   --ui-panel-radius: var(--panel-radius);
+  --ui-fieldset-border: var(--rb-line);
+  --ui-fieldset-radius: var(--radius-md);
+  --ui-fieldset-legend-title-color: var(--rb-orange);
+  --ui-fieldset-legend-support-color: var(--rb-text);
   --ui-button-height: var(--control-height);
   --ui-button-height-sm: var(--control-height-sm);
   --ui-button-radius: var(--control-radius);

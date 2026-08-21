@@ -375,8 +375,8 @@ html[data-theme="light"] .rank-mode-pill {
   padding: var(--space-4) var(--settings-card-padding) var(--settings-card-padding);
   border-width: var(--ui-stroke-width);
   border-style: solid;
-  border-color: var(--ui-control-border);
-  border-radius: var(--radius);
+  border-color: var(--ui-fieldset-border);
+  border-radius: var(--ui-fieldset-radius);
   background: transparent;
   box-shadow: none;
 }
@@ -388,10 +388,6 @@ html[data-theme="light"] .rank-mode-pill {
   min-width: 0;
   margin: 0;
   padding-inline: var(--space-2);
-}
-
-.settings-page fieldset.settings-fieldset-card > legend.section-title-row:first-child > :first-child {
-  min-width: 0;
 }
 
 .settings-page .settings-fieldset-status-row {
@@ -565,10 +561,6 @@ html[data-theme="light"] .settings-page fieldset.settings-fieldset-card {
 @media (max-width: 720px) {
   .settings-page fieldset.settings-fieldset-card {
     gap: var(--space-5);
-  }
-
-  .settings-page fieldset.settings-fieldset-card > legend.section-title-row:first-child > :first-child {
-    overflow-wrap: anywhere;
   }
 }
 

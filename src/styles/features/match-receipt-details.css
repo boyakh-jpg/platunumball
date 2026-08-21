@@ -111,21 +111,21 @@
   min-width: 0;
   margin: 0;
   padding: var(--space-7);
-  border: var(--ui-stroke-width) solid var(--line);
-  border-radius: var(--radius-md);
+  border: var(--ui-stroke-width) solid var(--ui-fieldset-border);
+  border-radius: var(--ui-fieldset-radius);
 }
 
 .match-receipt-line-art-fields {
   display: grid;
   gap: var(--space-4) var(--space-9);
   padding: var(--space-5) var(--space-6);
-  border: var(--ui-stroke-width) solid var(--line);
-  border-radius: var(--radius-md);
+  border: var(--ui-stroke-width) solid var(--ui-fieldset-border);
+  border-radius: var(--ui-fieldset-radius);
 }
 
 .match-receipt-line-art-fields legend,
-.match-receipt-period-fields legend { padding: 0 var(--space-3); color: var(--rb-orange); font-weight: 900; }
-.match-receipt-line-art-fields legend small,
+.match-receipt-period-fields legend { padding: 0 var(--space-3); color: var(--ui-fieldset-legend-title-color); font-weight: 900; white-space: nowrap; }
+.match-receipt-line-art-fields legend small { color: var(--ui-fieldset-legend-support-color); }
 .match-receipt-line-art-fields > small { color: var(--rb-muted); }
 .match-receipt-line-art-fields label { display: flex; align-items: center; gap: 7px; font-weight: 900; }
 .match-receipt-line-art-fields input { width: auto; }
@@ -140,7 +140,7 @@
 .match-receipt-ai-prompt { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); color: var(--rb-muted); font-size: var(--font-size-meta); line-height: 1.5; }
 .match-receipt-ai-prompt .ui-button { flex: 0 0 auto; }
 .match-receipt-page .emblem-crop-preview img { width: 100%; height: 100%; padding: 12%; object-fit: contain; }
-.match-receipt-period-fields legend small { color: var(--rb-muted); font-size: 0.72em; }
+.match-receipt-period-fields legend small { color: var(--ui-fieldset-legend-support-color); font-size: 0.72em; }
 .match-receipt-period-fields label { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 5px; }
 .match-receipt-period-fields label > span { grid-column: 1 / -1; color: var(--rb-muted); font-size: 12px; font-weight: 900; text-align: center; }
 .match-receipt-period-fields input[type="number"] {

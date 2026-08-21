@@ -82,8 +82,8 @@ export default function SettingsSideColumn({ controller, onOpenList }) {
           <Card as="fieldset" className="section-card settings-fieldset-card settings-block-card">
             <legend className="section-title-row">
               <div>
-                <p className="eyebrow">차단</p>
                 <h2>플레이어 숨김</h2>
+                <p className="eyebrow">차단</p>
               </div>
             </legend>
             <form className="form-stack" onSubmit={submitBlock}>
@@ -114,8 +114,8 @@ export default function SettingsSideColumn({ controller, onOpenList }) {
           <Card as="fieldset" className="section-card settings-fieldset-card settings-court-card">
             <legend className="section-title-row">
               <div>
-                <p className="eyebrow">Court</p>
                 <h2>구장 등록요청</h2>
+                <p className="eyebrow">Court</p>
               </div>
             </legend>
             <div className="settings-fieldset-status-row">

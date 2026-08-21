@@ -43,8 +43,8 @@ html[data-theme] .ui-design-app fieldset.workflow-fieldset {
   gap: var(--space-6);
   margin: 0;
   padding: var(--space-4) var(--workflow-fieldset-padding) var(--workflow-fieldset-padding);
-  border: var(--ui-stroke-width) solid var(--ui-control-border);
-  border-radius: var(--radius);
+  border: var(--ui-stroke-width) solid var(--ui-fieldset-border);
+  border-radius: var(--ui-fieldset-radius);
   background: transparent;
   box-shadow: none;
   -webkit-backdrop-filter: none;
@@ -60,8 +60,39 @@ html[data-theme] .ui-design-app fieldset.workflow-fieldset > legend.section-titl
   padding-inline: var(--space-2);
 }
 
-html[data-theme] .ui-design-app fieldset.workflow-fieldset > legend.section-title-row:first-child > :first-child {
+html[data-theme] .ui-design-app :is(
+  fieldset.settings-fieldset-card,
+  fieldset.workflow-fieldset
+) > legend.section-title-row:first-child > :first-child {
+  display: flex;
   min-inline-size: 0;
+  align-items: baseline;
+  gap: var(--space-2);
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+html[data-theme] .ui-design-app :is(
+  fieldset.settings-fieldset-card,
+  fieldset.workflow-fieldset
+) > legend.section-title-row:first-child h2 {
+  min-inline-size: 0;
+  overflow: hidden;
+  color: var(--ui-fieldset-legend-title-color);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+html[data-theme] .ui-design-app :is(
+  fieldset.settings-fieldset-card,
+  fieldset.workflow-fieldset
+) > legend.section-title-row:first-child .eyebrow {
+  min-inline-size: 0;
+  overflow: hidden;
+  color: var(--ui-fieldset-legend-support-color);
+  text-overflow: ellipsis;
+  text-shadow: none;
+  white-space: nowrap;
 }
 
 html[data-theme] .ui-design-app .workflow-fieldset-status-row {
@@ -73,10 +104,6 @@ html[data-theme] .ui-design-app .workflow-fieldset-status-row {
 @media (max-width: 720px) {
   html[data-theme] .ui-design-app fieldset.workflow-fieldset {
     gap: var(--space-5);
-  }
-
-  html[data-theme] .ui-design-app fieldset.workflow-fieldset > legend.section-title-row:first-child > :first-child {
-    overflow-wrap: anywhere;
   }
 }
 

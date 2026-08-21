@@ -98,8 +98,8 @@ export function SettingsReportCard({ controller, onOpenList }) {
           <Card as="fieldset" className="section-card settings-fieldset-card settings-report-card">
             <legend className="section-title-row">
               <div>
-                <p className="eyebrow">신고</p>
                 <h2>신고 접수</h2>
+                <p className="eyebrow">신고</p>
               </div>
             </legend>
             <form className="form-stack" onSubmit={submitReport}>

@@ -913,6 +913,11 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(styles, /\.match-receipt-personal-tier-label[\s\S]*top:\s*var\(--receipt-ticket-tier-y\)/);
   assert.match(styles, /\.match-receipt-ticket-game--single-meta > :is\(\.match-receipt-ticket-caption, \.match-receipt-personal-tier-label\) \{ top: var\(--receipt-ticket-meta-y\); line-height: var\(--receipt-ticket-meta-line-height\); \}/);
   assert.match(styles, /\.match-receipt-team-fields fieldset\s*\{[^}]*border:\s*var\(--ui-stroke-width\) solid var\(--rb-line\);[^}]*border-radius:\s*var\(--radius-md\);[^}]*background:\s*transparent;/);
+  assert.match(detailStyles, /\.match-receipt-period-fields\s*\{[^}]*border:\s*var\(--ui-stroke-width\) solid var\(--ui-fieldset-border\);[^}]*border-radius:\s*var\(--ui-fieldset-radius\);/);
+  assert.match(detailStyles, /\.match-receipt-line-art-fields\s*\{[^}]*border:\s*var\(--ui-stroke-width\) solid var\(--ui-fieldset-border\);[^}]*border-radius:\s*var\(--ui-fieldset-radius\);/);
+  assert.match(detailStyles, /\.match-receipt-line-art-fields legend,[\s\S]*?\.match-receipt-period-fields legend\s*\{[^}]*color:\s*var\(--ui-fieldset-legend-title-color\);[^}]*white-space:\s*nowrap;/);
+  assert.match(detailStyles, /\.match-receipt-line-art-fields legend small\s*\{[^}]*color:\s*var\(--ui-fieldset-legend-support-color\);/);
+  assert.match(detailStyles, /\.match-receipt-period-fields legend small\s*\{[^}]*color:\s*var\(--ui-fieldset-legend-support-color\);/);
   assert.match(styles, /\.match-receipt-photo-tools[\s\S]*grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/);
   assert.match(detailStyles, /input\[type="date"\][\s\S]*min-inline-size: 0[\s\S]*max-inline-size: 100%/);
   assert.match(detailStyles, /\.match-receipt-period-fields input\[type="number"\][\s\S]*appearance: textfield/);

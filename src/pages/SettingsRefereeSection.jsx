@@ -36,8 +36,8 @@ export default function SettingsRefereeSection({ controller }) {
 <Card as="fieldset" className="section-card settings-fieldset-card settings-referee-card">
             <legend className="section-title-row">
               <div>
-                <p className="eyebrow">Referee</p>
                 <h2>심판 등록요청</h2>
+                <p className="eyebrow">Referee</p>
               </div>
             </legend>
             <div className="referee-rulebook-panel compact ui-design-info-surface">

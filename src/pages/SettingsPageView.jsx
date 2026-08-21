@@ -139,8 +139,8 @@ export default function SettingsPageView({ controller, auth }) {
           <Card as="fieldset" className="section-card settings-fieldset-card settings-account-card">
             <legend className="section-title-row">
               <div>
-                <p className="eyebrow">ACCOUNT</p>
                 <h2>계정 관리</h2>
+                <p className="eyebrow">ACCOUNT</p>
               </div>
             </legend>
             {canSwitchTestAccount ? (

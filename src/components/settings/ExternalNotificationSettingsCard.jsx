@@ -118,7 +118,7 @@ export default function ExternalNotificationSettingsCard({ app, discordLinked })
   ];
   return (
     <Card as="fieldset" className="section-card settings-fieldset-card settings-preference-card external-notification-card">
-      <legend className="section-title-row"><div><p className="eyebrow">External notifications</p><h2>외부 알림·연락</h2></div></legend>
+      <legend className="section-title-row"><div><h2>외부 알림·연락</h2><p className="eyebrow">External notifications</p></div></legend>
       <div className="settings-fieldset-status-row">
         <Badge tone={devicePushEnabled ? "green" : "neutral"}>{devicePushEnabled ? `PUSH ON · ${draft.pushSubscriptionCount}대` : "PUSH OFF"}</Badge>
       </div>

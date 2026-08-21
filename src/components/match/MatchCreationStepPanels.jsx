@@ -12,8 +12,8 @@ export function MatchCreationRulePanel({
     <Card as="fieldset" className="section-card full-span workflow-fieldset">
       <legend className="section-title-row">
         <div>
-          <p className="eyebrow">규칙</p>
           <h2>룰 설정</h2>
+          <p className="eyebrow">규칙</p>
         </div>
       </legend>
       <RuleSelector draft={draft} onChange={onChange} />

@@ -64,8 +64,8 @@ export default function SettingsPrimaryColumn({ controller }) {
           <Card as="fieldset" className="section-card settings-fieldset-card settings-nav-card">
             <legend className="section-title-row">
               <div>
-                <p className="eyebrow">Setting pages</p>
                 <h2>세부 설정</h2>
+                <p className="eyebrow">Setting pages</p>
               </div>
             </legend>
             <div className="settings-nav-grid">
@@ -78,8 +78,8 @@ export default function SettingsPrimaryColumn({ controller }) {
           <Card as="fieldset" className="section-card settings-fieldset-card theme-choice-card">
             <legend className="section-title-row">
               <div>
-                <p className="eyebrow">화면 테마</p>
                 <h2>밝기</h2>
+                <p className="eyebrow">화면 테마</p>
               </div>
             </legend>
             <div
@@ -114,8 +114,8 @@ export default function SettingsPrimaryColumn({ controller }) {
           <Card as="fieldset" className="section-card settings-fieldset-card favorite-management-card">
             <legend className="section-title-row">
               <div>
-                <p className="eyebrow">Favorites</p>
                 <h2>즐겨찾기 설정</h2>
+                <p className="eyebrow">Favorites</p>
               </div>
             </legend>
             <SearchPicker
@@ -197,8 +197,8 @@ export default function SettingsPrimaryColumn({ controller }) {
           <Card as="fieldset" className="section-card settings-fieldset-card discord-link-card">
             <legend className="section-title-row">
               <div>
-                <p className="eyebrow">Discord</p>
                 <h2>디스코드 알림</h2>
+                <p className="eyebrow">Discord</p>
               </div>
             </legend>
             <div className="settings-fieldset-status-row">
@@ -288,8 +288,8 @@ export default function SettingsPrimaryColumn({ controller }) {
           <Card as="fieldset" className="section-card settings-fieldset-card settings-privacy-card settings-preference-card">
             <legend className="section-title-row">
               <div>
-                <p className="eyebrow">Display</p>
                 <h2>표시 설정</h2>
+                <p className="eyebrow">Display</p>
               </div>
             </legend>
 
@@ -378,8 +378,8 @@ export default function SettingsPrimaryColumn({ controller }) {
             <Card as="fieldset" className="section-card settings-fieldset-card admin-menu-card">
               <legend className="section-title-row">
                 <div>
-                  <p className="eyebrow">Operations</p>
                   <h2>관리자 메뉴</h2>
+                  <p className="eyebrow">Operations</p>
                 </div>
               </legend>
               <div className="contract-grid single ui-support-grid">

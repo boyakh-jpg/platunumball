@@ -208,8 +208,8 @@ export default function MatchRoomView({ controller }) {
             <Card as="fieldset" id="result-entry" className="section-card result-card workflow-fieldset">
             <legend className="section-title-row">
               <div>
-                <p className="eyebrow">Result entry</p>
                 <h2>경기 결과 입력</h2>
+                <p className="eyebrow">Result entry</p>
               </div>
             </legend>
             <div className="workflow-fieldset-status-row">
@@ -427,8 +427,8 @@ export default function MatchRoomView({ controller }) {
             <Card as="fieldset" className="section-card court-review-card workflow-fieldset">
               <legend className="section-title-row">
                 <div>
-                  <p className="eyebrow">Court review</p>
                   <h2>구장 리뷰</h2>
+                  <p className="eyebrow">Court review</p>
                 </div>
               </legend>
               <div className="workflow-fieldset-status-row">

@@ -914,7 +914,7 @@ test("설정 메인은 운영·테스트 카드를 숨기고 표시 설정을 �
   );
   assert.match(
     globalSurfaceStyles,
-    /\.settings-page fieldset\.settings-fieldset-card\s*\{[^}]*margin:\s*0;[^}]*border-width:\s*var\(--ui-stroke-width\);[^}]*border-radius:\s*var\(--radius\);[^}]*background:\s*transparent;/,
+    /\.settings-page fieldset\.settings-fieldset-card\s*\{[^}]*margin:\s*0;[^}]*border-width:\s*var\(--ui-stroke-width\);[^}]*border-color:\s*var\(--ui-fieldset-border\);[^}]*border-radius:\s*var\(--ui-fieldset-radius\);[^}]*background:\s*transparent;/,
   );
   assert.doesNotMatch(
     globalSurfaceStyles,
@@ -954,7 +954,7 @@ test("설정 메인은 운영·테스트 카드를 숨기고 표시 설정을 �
   );
   assert.equal(settingsLegends.length, 12);
   settingsLegends.forEach((legend) => {
-    assert.match(legend, /^\s*<div>[\s\S]*<\/div>\s*$/);
+    assert.match(legend, /^\s*<div>\s*<h2(?:\s[^>]*)?>[\s\S]*?<\/h2>\s*<p className="eyebrow">[\s\S]*?<\/p>\s*<\/div>\s*$/);
     assert.doesNotMatch(legend, /<Badge|<button|<a\s|<(?:BellRing|ShieldCheck|Star|ArrowRightLeft|MessageCircle)\b/);
   });
   assert.match(
@@ -977,7 +977,7 @@ test("방 생성과 경기 입력 workflow는 실제 fieldset 흐름을 사용�
   assert.equal(countClassToken(workflowSources, "workflow-fieldset"), 8);
   assert.match(
     primitiveStyles,
-    /fieldset\.workflow-fieldset\s*\{[^}]*display:\s*grid;[^}]*margin:\s*0;[^}]*border:\s*var\(--ui-stroke-width\) solid var\(--ui-control-border\);[^}]*background:\s*transparent;/,
+    /fieldset\.workflow-fieldset\s*\{[^}]*display:\s*grid;[^}]*margin:\s*0;[^}]*border:\s*var\(--ui-stroke-width\) solid var\(--ui-fieldset-border\);[^}]*border-radius:\s*var\(--ui-fieldset-radius\);[^}]*background:\s*transparent;/,
   );
   assert.doesNotMatch(
     primitiveStyles,
@@ -993,9 +993,25 @@ test("방 생성과 경기 입력 workflow는 실제 fieldset 흐름을 사용�
 
   assert.equal(workflowLegends.length, 8);
   workflowLegends.forEach((legend) => {
-    assert.match(legend, /^\s*<div>[\s\S]*<\/div>\s*$/);
+    assert.match(legend, /^\s*<div>\s*<h2(?:\s[^>]*)?>[\s\S]*?<\/h2>\s*<p className="eyebrow">[\s\S]*?<\/p>\s*<\/div>\s*$/);
     assert.doesNotMatch(legend, /<Badge|<button|<a\s/);
   });
+  assert.match(
+    tokenStyles,
+    /--ui-fieldset-border:\s*var\(--rb-line\);[\s\S]*?--ui-fieldset-radius:\s*var\(--radius-md\);[\s\S]*?--ui-fieldset-legend-title-color:\s*var\(--rb-orange\);[\s\S]*?--ui-fieldset-legend-support-color:\s*var\(--rb-text\);/,
+  );
+  assert.match(
+    primitiveStyles,
+    /:is\(\s*fieldset\.settings-fieldset-card,\s*fieldset\.workflow-fieldset\s*\) > legend\.section-title-row:first-child > :first-child\s*\{[^}]*display:\s*flex;[^}]*align-items:\s*baseline;[^}]*overflow:\s*hidden;[^}]*white-space:\s*nowrap;/,
+  );
+  assert.match(
+    primitiveStyles,
+    /:is\(\s*fieldset\.settings-fieldset-card,\s*fieldset\.workflow-fieldset\s*\) > legend\.section-title-row:first-child h2\s*\{[^}]*color:\s*var\(--ui-fieldset-legend-title-color\);[^}]*text-overflow:\s*ellipsis;[^}]*white-space:\s*nowrap;/,
+  );
+  assert.match(
+    primitiveStyles,
+    /:is\(\s*fieldset\.settings-fieldset-card,\s*fieldset\.workflow-fieldset\s*\) > legend\.section-title-row:first-child \.eyebrow\s*\{[^}]*color:\s*var\(--ui-fieldset-legend-support-color\);[^}]*text-overflow:\s*ellipsis;[^}]*white-space:\s*nowrap;/,
+  );
 });
 
 test("고정 설명은 제목·상태·조작 문구를 반복하지 않는다", () => {
