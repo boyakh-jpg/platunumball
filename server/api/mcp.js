@@ -49,8 +49,8 @@ const receiptInputSchema = z.object({
     homeScore: z.number().int().min(0).max(999),
     awayScore: z.number().int().min(0).max(999),
   })).max(5).optional().describe("쿼터·하프·연장별 점수. 합계는 최종 점수와 같아야 함."),
-  debugBase64: z.boolean().optional()
-    .describe("개발 확인용. true일 때만 PNG raw Base64를 메타데이터에도 포함한다."),
+  debugBase64: z.boolean().default(false)
+    .describe("개발 확인용. true이면 생성된 PNG의 base64 문자열을 structured/text 결과에도 포함한다."),
 }).strict();
 
 // Keep required fields visible in tools/list, but let the handler return a

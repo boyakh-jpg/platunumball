@@ -114,7 +114,12 @@ test("MCP가 자동 선택용 영수증 도구를 공개한다", async () => {
   assert.equal(tool._meta["openai/outputTemplate"], MCP_RECEIPT_WIDGET_URI);
   assert.ok(tool.inputSchema.properties.homeEmblem);
   assert.ok(tool.inputSchema.properties.awayEmblem);
-  assert.equal(tool.inputSchema.properties.debugBase64.type, "boolean");
+  assert.deepEqual(tool.inputSchema.properties.debugBase64, {
+    type: "boolean",
+    default: false,
+    description: "개발 확인용. true이면 생성된 PNG의 base64 문자열을 structured/text 결과에도 포함한다.",
+  });
+  assert.equal(tool.inputSchema.required.includes("debugBase64"), false);
   assert.equal(tool.inputSchema.properties.homeEmblem.additionalProperties, false);
   assert.deepEqual(tool.inputSchema.required.sort(), [
     "awayScore", "awayTeam", "format", "homeScore", "homeTeam", "playedOn", "venue",
