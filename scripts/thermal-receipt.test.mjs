@@ -197,6 +197,24 @@ test("thermal score slots center every supported score inside 284 pixels", () =>
   assert.equal(getThermalScoreSlotLayout(1000).score, "999");
 });
 
+test("thermal scores use the angular atlas while Korean text is slightly condensed", async () => {
+  const renderer = await readFile(new URL("../src/lib/thermalReceipt.js", import.meta.url), "utf8");
+
+  assert.match(renderer, /const DIGIT_ATLAS_PATH = "\/assets\/match-receipt-score-digits-v3\.png"/u);
+  assert.match(renderer, /drawAngularScore\(ctx, atlas,/u);
+  assert.doesNotMatch(renderer, /SCORE_FONT_WEIGHT/u);
+  assert.match(renderer, /const KOREAN_WIDTH_SCALE = 0\.94/u);
+  assert.match(renderer, /const targetWidth = width \* scale \* widthScale/u);
+});
+
+test("thermal main scoreboard uses a light gray paper panel", async () => {
+  const renderer = await readFile(new URL("../src/lib/thermalReceipt.js", import.meta.url), "utf8");
+
+  assert.match(renderer, /const SCORE_PANEL = "#d7d5cf"/u);
+  assert.match(renderer, /fillMaskedPanel\(ctx, box, "body", SCORE_PANEL\)/u);
+  assert.match(renderer, /drawAngularScore\(ctx, atlas, model\.homeScore, box\.x, centerY, 284, INK\)/u);
+});
+
 test("thermal print noise is deterministic for the receipt seed", () => {
   const first = createThermalRandom("BX-260821-051");
   const second = createThermalRandom("BX-260821-051");
