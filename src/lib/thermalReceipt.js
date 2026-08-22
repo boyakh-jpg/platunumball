@@ -21,7 +21,11 @@ const TEAM_DISPLAY_FONT = '"Bebas Neue"';
 const TEAM_DISPLAY_FONT_WEIGHT = 900;
 const KOREAN_FONT = '"NeoDunggeunmo", "Pretendard Variable", monospace';
 const KOREAN_WIDTH_SCALE = 0.94;
-const SCORE_PANEL = "#727272";
+const SCORE_PANEL = "#505050";
+const SCORE_PANEL_INSET_X = 14;
+const SCORE_PANEL_INSET_Y = 12;
+const SCORE_DIGIT_HEIGHT = 146;
+const SCORE_COLON_HEIGHT = 176;
 const PANEL_RADIUS = 14;
 const QR_QUIET_MODULES = 1;
 const DIGIT_ATLAS_PATH = "/assets/match-receipt-score-digits-v3.png";
@@ -535,16 +539,21 @@ function drawAngularColon(ctx, atlas, slotX, centerY, slotWidth, height, tone = 
 }
 
 function drawScore(ctx, model, layout, atlas) {
-  const box = layout.score;
+  const box = {
+    x: layout.score.x + SCORE_PANEL_INSET_X,
+    y: layout.score.y + SCORE_PANEL_INSET_Y,
+    width: layout.score.width - SCORE_PANEL_INSET_X * 2,
+    height: layout.score.height - SCORE_PANEL_INSET_Y * 2,
+  };
   fillMaskedPanel(ctx, box, "body", SCORE_PANEL);
-  ctx.strokeStyle = INK;
+  ctx.strokeStyle = PAPER;
   ctx.lineWidth = 3;
   roundedRectPath(ctx, box.x + 9, box.y + 9, box.width - 18, box.height - 18, 10);
   ctx.stroke();
   const centerY = box.y + box.height / 2;
-  drawAngularScore(ctx, atlas, model.homeScore, box.x, centerY, 284, INK);
-  drawAngularColon(ctx, atlas, box.x + 316, centerY, 52, 158, INK);
-  drawAngularScore(ctx, atlas, model.awayScore, box.x + 400, centerY, 284, INK);
+  drawAngularScore(ctx, atlas, model.homeScore, box.x + 8, centerY, 270, PAPER, SCORE_DIGIT_HEIGHT);
+  drawAngularColon(ctx, atlas, box.x + 296, centerY, 64, SCORE_COLON_HEIGHT, PAPER);
+  drawAngularScore(ctx, atlas, model.awayScore, box.x + box.width - 278, centerY, 270, PAPER, SCORE_DIGIT_HEIGHT);
 }
 
 export function getThermalReceiptFormatLine(model = {}) {

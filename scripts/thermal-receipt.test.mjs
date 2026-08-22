@@ -210,12 +210,17 @@ test("thermal scores use the angular atlas while Korean text is slightly condens
   assert.match(renderer, /const targetWidth = width \* scale \* widthScale/u);
 });
 
-test("thermal main scoreboard uses a mid-gray masked panel", async () => {
+test("thermal main scoreboard uses a compact dark masked panel with angular light scores", async () => {
   const renderer = await readFile(new URL("../src/lib/thermalReceipt.js", import.meta.url), "utf8");
 
-  assert.match(renderer, /const SCORE_PANEL = "#727272"/u);
+  assert.match(renderer, /const SCORE_PANEL = "#505050"/u);
+  assert.match(renderer, /const SCORE_PANEL_INSET_X = 14/u);
+  assert.match(renderer, /const SCORE_PANEL_INSET_Y = 12/u);
+  assert.match(renderer, /const SCORE_DIGIT_HEIGHT = 146/u);
+  assert.match(renderer, /const SCORE_COLON_HEIGHT = 176/u);
   assert.match(renderer, /fillMaskedPanel\(ctx, box, "body", SCORE_PANEL\)/u);
-  assert.match(renderer, /drawAngularScore\(ctx, atlas, model\.homeScore, box\.x, centerY, 284, INK\)/u);
+  assert.match(renderer, /drawAngularScore\(ctx, atlas, model\.homeScore, box\.x \+ 8, centerY, 270, PAPER, SCORE_DIGIT_HEIGHT\)/u);
+  assert.match(renderer, /drawAngularColon\(ctx, atlas, box\.x \+ 296, centerY, 64, SCORE_COLON_HEIGHT, PAPER\)/u);
 });
 
 test("thermal game detail puts an optional tournament after quarters", () => {
