@@ -241,6 +241,8 @@ import {
   getSafeMatchReceiptEmblems,
 } from "../server/api/match-receipts/_emblemStorage.js";
 import { handlePublicReceipt } from "../server/api/match-receipts/public.js";
+import { handleCreateReceipt } from "../server/api/match-receipts/create.js";
+import { parseExternalReceiptInput } from "../server/api/match-receipts/_createInput.js";
 import { RECORD_TYPES } from "../src/lib/constants.js";
 import { getTierDivision, getTierLabel } from "../shared/lib/tier.js";
 
@@ -280,6 +282,145 @@ function createPublicReceiptSupabase({ allowed = true, row = null } = {}) {
     },
   };
 }
+
+function createReceiptSupabase({ allowed = true } = {}) {
+  let inserted = null;
+  return {
+    get inserted() { return inserted; },
+    async rpc(name) {
+      assert.equal(name, "consume_match_receipt_draft_quota");
+      return { data: allowed, error: null };
+    },
+    from(table) {
+      assert.equal(table, "match_receipt_drafts");
+      return {
+        insert(value) { inserted = value; return this; },
+        select() { return this; },
+        async single() {
+          return {
+            data: {
+              public_id: inserted.public_id,
+              public_code: "BT-00000456",
+              expires_at: "2026-09-21T00:00:00.000Z",
+            },
+            error: null,
+          };
+        },
+      };
+    },
+  };
+}
+
+test("external receipt input requires style and validates period totals", () => {
+  const missingStyle = parseExternalReceiptInput({
+    homeTeam: "HOME",
+    awayTeam: "AWAY",
+    homeScore: 30,
+    awayScore: 28,
+    playedOn: "2026-08-22",
+    venue: "BOXTIER COURT",
+    format: "5v5",
+  });
+  assert.deepEqual(missingStyle.issues[0], { field: "style", code: "required_style" });
+
+  const badPeriods = parseExternalReceiptInput({
+    style: "classic-thermal",
+    homeTeam: "HOME",
+    awayTeam: "AWAY",
+    homeScore: 30,
+    awayScore: 28,
+    playedOn: "2026-08-22",
+    venue: "BOXTIER COURT",
+    format: "5v5",
+    periodScores: [
+      { label: "1Q", homeScore: 15, awayScore: 14 },
+      { label: "2Q", homeScore: 14, awayScore: 14 },
+    ],
+  });
+  assert.ok(badPeriods.issues.some((item) => item.code === "totals_must_match_final_score"));
+});
+
+test("external receipt API creates a no-photo thermal draft", async () => {
+  const response = createApiResponse();
+  const supabase = createReceiptSupabase();
+  await handleCreateReceipt({
+    method: "POST",
+    headers: { "x-forwarded-for": "203.0.113.11" },
+    body: {
+      style: "classic-thermal",
+      locale: "ko",
+      homeTeam: "HOME",
+      awayTeam: "AWAY",
+      homeScore: 30,
+      awayScore: 28,
+      playedOn: "2026-08-22",
+      playedTime: "19:30",
+      venue: "BOXTIER COURT",
+      format: "5v5",
+      tournamentName: "SUMMER CUP",
+      comment: "좋은 경기",
+      periodScores: [
+        { label: "1Q", homeScore: 15, awayScore: 14 },
+        { label: "2Q", homeScore: 15, awayScore: 14 },
+      ],
+    },
+  }, response, { supabase });
+
+  assert.equal(response.statusCode, 201);
+  assert.equal(response.body.publicCode, "BT-00000456");
+  assert.equal(response.body.receipt.receiptStyle, "classic-thermal");
+  assert.equal(response.body.receipt.includePhoto, false);
+  assert.equal(response.body.receipt.receiptComment, "좋은 경기");
+  assert.equal(response.body.receiptPath, "/app/receipt?code=BT-00000456");
+  assert.equal("capability" in response.body, false);
+  assert.equal(supabase.inserted.payload.verified, false);
+});
+
+test("external receipt API rejects remote photos before consuming quota", async () => {
+  const response = createApiResponse();
+  await handleCreateReceipt({
+    method: "POST",
+    headers: {},
+    body: {
+      style: "boxtier-score",
+      homeTeam: "HOME",
+      awayTeam: "AWAY",
+      homeScore: 10,
+      awayScore: 8,
+      playedOn: "2026-08-22",
+      venue: "COURT",
+      format: "3x3",
+      includePhoto: true,
+      photoUrl: "https://example.com/game.jpg",
+    },
+  }, response, { supabase: null });
+  assert.equal(response.statusCode, 422);
+  assert.ok(response.body.fields.some((item) => item.code === "external_photo_not_supported"));
+});
+
+test("external receipt API enforces the shared hourly creation quota", async () => {
+  const response = createApiResponse();
+  const supabase = createReceiptSupabase({ allowed: false });
+  await handleCreateReceipt({
+    method: "POST",
+    headers: { "x-forwarded-for": "203.0.113.12" },
+    body: {
+      style: "boxtier-score",
+      homeTeam: "HOME",
+      awayTeam: "AWAY",
+      homeScore: 10,
+      awayScore: 8,
+      playedOn: "2026-08-22",
+      venue: "COURT",
+      format: "3x3",
+    },
+  }, response, { supabase });
+
+  assert.equal(response.statusCode, 429);
+  assert.equal(response.headers["Retry-After"], "3600");
+  assert.equal(response.body.error, "receipt_draft_rate_limited");
+  assert.equal(supabase.inserted, null);
+});
 
 test("public receipt API returns safe JSON by public code", async () => {
   const response = createApiResponse();

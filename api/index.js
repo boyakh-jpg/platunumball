@@ -30,6 +30,7 @@ import favoriteSync from "../server/api/favorites/sync.js";
 import homeLoad from "../server/api/home/load.js";
 import landingStats from "../server/api/landing/stats.js";
 import matchReceiptClaim from "../server/api/match-receipts/claim.js";
+import matchReceiptCreate from "../server/api/match-receipts/create.js";
 import matchReceiptDraft from "../server/api/match-receipts/draft.js";
 import matchReceiptPublic from "../server/api/match-receipts/public.js";
 import matchReceiptResolve from "../server/api/match-receipts/resolve.js";
@@ -111,6 +112,7 @@ export const API_ROUTES = new Map([
   ["/home/load", route(homeLoad, ["POST"], "user")],
   ["/landing/stats", route(landingStats, ["GET"], "publicRead")],
   ["/match-receipts/claim", route(matchReceiptClaim, ["POST"], "user")],
+  ["/match-receipts/create", route(matchReceiptCreate, ["POST"], "publicRead")],
   ["/match-receipts/draft", route(matchReceiptDraft, ["GET", "POST"], "publicRead")],
   ["/match-receipts/public", route(matchReceiptPublic, ["GET"], "publicRead")],
   ["/match-receipts/resolve", route(matchReceiptResolve, ["GET"], "publicRead")],
