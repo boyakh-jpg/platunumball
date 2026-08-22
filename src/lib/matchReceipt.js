@@ -633,10 +633,14 @@ export function getMatchReceiptDraftFromMatch(match = {}, style = {}, court = nu
 export function getMatchReceiptOutcome(value) {
   const draft = normalizeMatchReceiptDraft(value);
   if (draft.homeScore === draft.awayScore) return { key: "draw", label: "DRAW" };
-  const winner = draft.homeScore > draft.awayScore
+  const homeWon = draft.homeScore > draft.awayScore;
+  const winner = homeWon
     ? { key: "home", name: draft.homeTeam || "TEAM A" }
     : { key: "away", name: draft.awayTeam || "TEAM B" };
-  return { key: winner.key, label: `${winner.name} WIN` };
+  const loser = homeWon
+    ? draft.awayTeam || "TEAM B"
+    : draft.homeTeam || "TEAM A";
+  return { key: winner.key, label: `WIN ${winner.name} · LOSS ${loser}` };
 }
 
 export function getMatchReceiptCanvasSize(preset = "story") {

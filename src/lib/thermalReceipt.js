@@ -530,12 +530,7 @@ function drawResult(ctx, model, layout, atlas) {
   drawAtlasScore(ctx, atlas, model.homeScore, box.x + 20, scoreY, 180, PAPER, 92);
   drawAtlasColon(ctx, atlas, box.x + 202, scoreY, 34, 68);
   drawAtlasScore(ctx, atlas, model.awayScore, box.x + 238, scoreY, 180, PAPER, 92);
-  const isTie = Number(model.homeScore) === Number(model.awayScore);
-  const winner = Number(model.homeScore) > Number(model.awayScore) ? model.homeTeam : model.awayTeam;
-  const outcome = isTie
-    ? "DRAW"
-    : `${model.receiptLocale === "en" ? "WIN" : "승리"}  ${winner}`;
-  drawThermalText(ctx, outcome, box.x + 22, box.y + 169, { size: 24, maxWidth: box.width - 44, color: PAPER });
+  drawThermalText(ctx, model.outcome.label, box.x + 22, box.y + 169, { size: 24, maxWidth: box.width - 44, color: PAPER });
   if (layout.hasComment) {
     ctx.fillStyle = PAPER;
     ctx.fillRect(box.x + 22, box.y + 198, box.width - 44, 1);

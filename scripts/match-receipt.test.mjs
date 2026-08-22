@@ -701,7 +701,7 @@ test("public match codes resolve consistently across receipt and search APIs", a
 });
 
 test("receipt photo tools stay outside the export card and reference dividers remain", async () => {
-  const [page, preview, qrComponent, baseStyles, previewControlStyles, tokens, renderer, roomDialog, digitGenerator, displayAssetGenerator, syncScript, draftApi, emblemApi, landing, appSource, homeNeutralMark, awayNeutralMark, paperGrain, scoreDigitSource, scoreDigits, scoreboardDigits, wordmark, bebasNeue, bebasLicense, blackHanSans, detailStyles, lineArt] = await Promise.all([
+  const [page, preview, qrComponent, baseStyles, previewControlStyles, tokens, renderer, thermalRenderer, roomDialog, digitGenerator, displayAssetGenerator, syncScript, draftApi, emblemApi, landing, appSource, homeNeutralMark, awayNeutralMark, paperGrain, scoreDigitSource, scoreDigits, scoreboardDigits, wordmark, bebasNeue, bebasLicense, blackHanSans, detailStyles, lineArt] = await Promise.all([
     readFile(new URL("../src/pages/MatchReceipt.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/components/match/MatchReceiptPreview.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/components/common/QrCode.jsx", import.meta.url), "utf8"),
@@ -709,6 +709,7 @@ test("receipt photo tools stay outside the export card and reference dividers re
     readFile(new URL("../src/styles/features/match-receipt-preview-controls.css", import.meta.url), "utf8"),
     readFile(new URL("../src/styles/tokens.css", import.meta.url), "utf8"),
     readFile(new URL("../src/lib/matchReceipt.js", import.meta.url), "utf8"),
+    readFile(new URL("../src/lib/thermalReceipt.js", import.meta.url), "utf8"),
     readFile(new URL("../src/components/recruiting/RecruitingRoomDialogSection.jsx", import.meta.url), "utf8"),
     readFile(new URL("../scripts/generate-receipt-score-digits.mjs", import.meta.url), "utf8"),
     readFile(new URL("../scripts/generate-match-receipt-display-assets.mjs", import.meta.url), "utf8"),
@@ -1110,7 +1111,9 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(draftApi, /clonePublicId/);
   assert.match(draftApi, /canClaim/);
   assert.match(draftApi, /trustedCanonical/);
-  assert.match(renderer, /label: `\$\{winner\.name\} WIN`/);
+  assert.match(renderer, /label: `WIN \$\{winner\.name\} · LOSS \$\{loser\}`/);
+  assert.match(thermalRenderer, /drawThermalText\(ctx, model\.outcome\.label,/);
+  assert.doesNotMatch(thermalRenderer, /`WIN\s+\$\{winner\}/);
   assert.match(preview, /<small>\{model\.outcome\.label\}<\/small>/);
   assert.doesNotMatch(preview, /className="match-receipt-outcome"/);
   assert.match(renderer, /ctx\.fillText\(model\.outcome\.label, 44, 105\)/);
