@@ -16,7 +16,7 @@ const PAPER = "#eeeae1";
 const INK = "#151515";
 const BRAND_FONT = '"Anton"';
 const DATA_FONT = '"IBM Plex Mono"';
-const KOREAN_FONT = '"Dotum", "돋움", sans-serif';
+const KOREAN_FONT = '"Dotum", "돋움", "Pretendard Variable", sans-serif';
 const DIGIT_ATLAS_PATH = "/assets/match-receipt-score-digits-v3.png";
 const THERMAL_ASSET_ROOT = "/assets/thermal-receipt";
 const THERMAL_ASSET_PATHS = Object.freeze({
@@ -28,6 +28,11 @@ const THERMAL_ASSET_PATHS = Object.freeze({
   photo: `${THERMAL_ASSET_ROOT}/thermal-ink-mask-photo-2048.png`,
   edge: `${THERMAL_ASSET_ROOT}/serration-edge-796x16.svg`,
 });
+const FIXED_NEUTRAL_EMBLEM_PATHS = Object.freeze({
+  home: "/assets/tier-emblems/tier-neutral-home-outline-v5.png",
+  away: "/assets/tier-emblems/tier-neutral-away-outline-v5.png",
+});
+const assetImagePromiseCache = new Map();
 
 function createCanvas(width, height) {
   const canvas = document.createElement("canvas");
@@ -58,9 +63,16 @@ async function loadImage(source) {
 }
 
 async function loadAssetImage(path) {
-  const remote = assetUrl(path);
-  const image = await loadImage(remote);
-  return image || (remote !== path ? loadImage(path) : null);
+  if (!assetImagePromiseCache.has(path)) {
+    assetImagePromiseCache.set(path, (async () => {
+      const remote = assetUrl(path);
+      const image = await loadImage(remote);
+      return image || (remote !== path ? loadImage(path) : null);
+    })());
+  }
+  const image = await assetImagePromiseCache.get(path);
+  if (!image) assetImagePromiseCache.delete(path);
+  return image;
 }
 
 function drawImageCover(ctx, image, x, y, width, height) {
@@ -121,11 +133,13 @@ export function resolveThermalReceiptEmblemSources(model = {}, options = {}) {
       options.teamLineArtUrls?.home,
       model.teamEmblemUrls?.home,
       model.neutralTeamMarkUrls?.home,
+      FIXED_NEUTRAL_EMBLEM_PATHS.home,
     ]),
     away: uniqueSources([
       options.teamLineArtUrls?.away,
       model.teamEmblemUrls?.away,
       model.neutralTeamMarkUrls?.away,
+      FIXED_NEUTRAL_EMBLEM_PATHS.away,
     ]),
   };
 }
@@ -339,7 +353,7 @@ function drawBrand(ctx, model, layout) {
   drawRule(ctx, layout.content.x, layout.brand.y + layout.brand.height - 4, layout.content.width);
 }
 
-function drawEmblem(ctx, image, x, y, name) {
+function drawEmblem(ctx, image, x, y) {
   ctx.save();
   ctx.beginPath();
   ctx.arc(x, y, 82, 0, Math.PI * 2);
@@ -381,8 +395,6 @@ function drawEmblem(ctx, image, x, y, name) {
     bitmapCtx.putImageData(pixels, 0, 0);
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(bitmap, x - 84, y - 84, 168, 168);
-  } else {
-    drawThermalText(ctx, String(name || "?").trim().slice(0, 1), x, y, { size: 86, align: "center", maxWidth: 120, dotScale: 2 });
   }
   ctx.restore();
 }
@@ -391,8 +403,8 @@ function drawTeams(ctx, model, layout, emblems) {
   const y = layout.teams.y + 82;
   const left = layout.teams.x + 126;
   const right = layout.teams.x + layout.teams.width - 126;
-  drawEmblem(ctx, emblems.home, left, y, model.homeTeam);
-  drawEmblem(ctx, emblems.away, right, y, model.awayTeam);
+  drawEmblem(ctx, emblems.home, left, y);
+  drawEmblem(ctx, emblems.away, right, y);
   drawThermalText(ctx, "VS", layout.teams.x + layout.teams.width / 2, y, { size: 48, align: "center", maxWidth: 88, dotScale: 2 });
   [[model.homeTeam || "Team A", left], [model.awayTeam || "Team B", right]].forEach(([name, x]) => {
     const size = fitText(ctx, name, 286, 44, 26);
@@ -529,8 +541,7 @@ function drawResult(ctx, model, layout, atlas) {
     ctx.fillRect(box.x + 22, box.y + 198, box.width - 44, 1);
     const lines = getMatchReceiptCommentLines(model.comment);
     lines.forEach((line, index) => {
-      const label = index === 0 ? `${model.receiptLocale === "en" ? "NOTE" : "한줄평"}  ` : "";
-      drawThermalText(ctx, `${label}${line}`, box.x + 22, box.y + 226 + index * 30, { size: 21, maxWidth: box.width - 44, color: PAPER });
+      drawThermalText(ctx, line, box.x + 22, box.y + 226 + index * 30, { size: 21, maxWidth: box.width - 44, color: PAPER });
     });
   }
 }
@@ -540,13 +551,19 @@ function drawQr(ctx, value, x, y, size) {
   const matrix = createQrMatrix(value);
   const quiet = 4;
   const cells = matrix.length + quiet * 2;
-  const moduleSize = Math.floor(size / cells);
+  const inset = 8;
+  const moduleSize = Math.floor((size - inset * 2) / cells);
   const actual = moduleSize * cells;
   ctx.fillStyle = PAPER;
-  ctx.fillRect(x, y, actual, actual);
+  ctx.fillRect(x, y, size, size);
+  ctx.strokeStyle = INK;
+  ctx.lineWidth = 3;
+  ctx.strokeRect(x + 1.5, y + 1.5, size - 3, size - 3);
+  const qrX = x + (size - actual) / 2;
+  const qrY = y + (size - actual) / 2;
   ctx.fillStyle = INK;
   matrix.forEach((row, rowIndex) => row.forEach((dark, columnIndex) => {
-    if (dark) ctx.fillRect(x + (columnIndex + quiet) * moduleSize, y + (rowIndex + quiet) * moduleSize, moduleSize, moduleSize);
+    if (dark) ctx.fillRect(qrX + (columnIndex + quiet) * moduleSize, qrY + (rowIndex + quiet) * moduleSize, moduleSize, moduleSize);
   }));
 }
 
@@ -556,17 +573,17 @@ function drawFooter(ctx, model, layout) {
   const url = model.matchUrl || "https://boxtier.kr";
   const matchId = model.officialMatchId || String(model.serial || "BT-000").replace(/^#/, "");
   drawThermalText(ctx, "PLAYERS", x, y + 26, { size: 22, maxWidth: 190 });
-  drawThermalText(ctx, Number(model.playerCount) || 0, x + 390, y + 26, { size: 22, align: "right", maxWidth: 120 });
-  drawRule(ctx, x, y + 44, 390, true);
+  drawThermalText(ctx, Number(model.playerCount) || 0, x + 300, y + 26, { size: 22, align: "right", maxWidth: 90 });
+  drawRule(ctx, x, y + 44, 300, true);
   drawThermalText(ctx, `GAME ID   ${matchId}`, x, y + 72, { size: 21, maxWidth: 390 });
   drawRule(ctx, x, y + 90, 390, true);
   drawThermalText(ctx, `${model.verified ? "VERIFIED   YES" : "SELF-REPORTED"}`, x, y + 118, { size: 21, maxWidth: 390 });
   drawRule(ctx, x, y + 136, 390, true);
   drawThermalText(ctx, "boxtier.kr", x, y + 174, { size: 23, maxWidth: 240 });
   drawThermalText(ctx, "KEEP YOUR GAME.", x, y + 196, { size: 17, maxWidth: 240 });
-  drawThermalText(ctx, "BOXTIER", x + 342, y + 232, { size: 34, font: BRAND_FONT, align: "center", maxWidth: 240, dotScale: 2 });
-  drawThermalText(ctx, "SCAN MATCH", x + layout.footer.width - 104, y + 18, { size: 20, align: "center", maxWidth: 208 });
-  drawQr(ctx, url, x + layout.footer.width - 208, y + 30, 208);
+  drawThermalText(ctx, "BOXTIER", x + 342, y + 214, { size: 42, font: BRAND_FONT, align: "center", maxWidth: 250, dotScale: 2 });
+  drawThermalText(ctx, "SCAN MATCH", x + layout.footer.width - 108, y + 16, { size: 20, align: "center", maxWidth: 216 });
+  drawQr(ctx, url, x + layout.footer.width - 216, y + 26, 216);
 }
 
 function normalizeThermalData(value, options) {

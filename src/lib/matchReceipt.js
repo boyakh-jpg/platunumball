@@ -1477,14 +1477,18 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
   return canvas;
 }
 
-export async function renderMatchReceiptPng(value, preset = "story", options = {}) {
+export async function renderMatchReceiptPreviewCanvas(value, preset = "story", options = {}) {
   const draft = normalizeMatchReceiptDraft(value);
-  const canvas = draft.receiptStyle === MATCH_RECEIPT_STYLES.thermal
+  return draft.receiptStyle === MATCH_RECEIPT_STYLES.thermal
     ? await renderThermalReceiptCanvas(draft, preset, {
         ...options,
         viewModel: createMatchReceiptViewModel(draft, options),
       })
     : await renderMatchReceiptCanvas(draft, preset, options);
+}
+
+export async function renderMatchReceiptPng(value, preset = "story", options = {}) {
+  const canvas = await renderMatchReceiptPreviewCanvas(value, preset, options);
   return canvasToBlob(canvas, "image/png");
 }
 

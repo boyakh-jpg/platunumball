@@ -10,6 +10,7 @@
   display: block;
   width: 100%;
   height: auto;
+  aspect-ratio: 9 / 16;
   border: var(--ui-stroke-width) solid var(--rb-line);
   background: var(--rb-surface-strong);
 }
@@ -17,10 +18,12 @@
 .match-receipt-thermal-preview-frame {
   position: relative;
   width: 100%;
+  aspect-ratio: 9 / 16;
 }
 
 .match-receipt-thermal-photo-hitarea {
   position: absolute;
+  z-index: 3;
   top: 12.9167%;
   left: 18.3333%;
   width: 63.3333%;
@@ -32,8 +35,11 @@
 .match-receipt-thermal-photo-hitarea:active { cursor: grabbing; }
 
 .match-receipt-thermal-preview-status {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
   display: grid;
-  min-height: 420px;
+  min-height: 0;
   margin: 0;
   place-items: center;
   border: var(--ui-stroke-width) solid var(--rb-line);

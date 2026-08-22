@@ -21,28 +21,28 @@ test("thermal receipt keeps the canonical Story paper geometry", () => {
   const plain = getThermalReceiptLayout({ hasPhoto: false, hasPeriods: true, hasComment: true });
 
   assert.deepEqual(photo.paper, { x: 142, y: 24, width: 796, height: 1872 });
-  assert.deepEqual(plain.paper, { x: 142, y: 168, width: 796, height: 1568 });
+  assert.deepEqual(plain.paper, { x: 142, y: 24, width: 796, height: 1618 });
   assert.deepEqual(photo.content, { x: 198, width: 684 });
   assert.equal(photo.photo.height, 288);
-  assert.equal(photo.brand.y - photo.paper.y, plain.brand.y - plain.paper.y);
-  assert.equal(plain.teams.y, 380);
-  assert.equal(plain.score.y, 618);
-  assert.equal(plain.info.y, 856);
-  assert.equal(plain.periods.y, 998);
-  assert.equal(plain.result.y, 1184);
-  assert.equal(plain.footer.y, 1468);
+  assert.equal(photo.brand.y, plain.brand.y);
+  assert.equal(plain.teams.y, 246);
+  assert.equal(plain.score.y, 484);
+  assert.equal(plain.info.y, 722);
+  assert.equal(plain.periods.y, 864);
+  assert.equal(plain.result.y, 1050);
+  assert.equal(plain.footer.y, 1334);
   for (const region of ["teams", "score", "info", "periods", "footer"]) {
     assert.equal(
-      photo[region].y - photo.paper.y - (plain[region].y - plain.paper.y),
-      304,
+      photo[region].y - plain[region].y,
+      294,
       `${region} accounts for the compact no-photo header`,
     );
   }
   assert.equal(photo.paper.y + photo.paper.height - (photo.footer.y + photo.footer.height), 24);
-  assert.equal(plain.paper.y + plain.paper.height - (plain.footer.y + plain.footer.height), 24);
+  assert.equal(plain.paper.y + plain.paper.height - (plain.footer.y + plain.footer.height), 64);
 });
 
-test("thermal receipt reuses the shared emblem chain before monogram fallback", () => {
+test("thermal receipt always ends the shared emblem chain with a fixed neutral mark", () => {
   const sources = resolveThermalReceiptEmblemSources({
     teamEmblemUrls: { home: "canonical-home", away: "canonical-away" },
     neutralTeamMarkUrls: { home: "neutral-home", away: "neutral-away" },
@@ -50,11 +50,11 @@ test("thermal receipt reuses the shared emblem chain before monogram fallback", 
     teamLineArtUrls: { home: "selected-home", away: "canonical-away" },
   });
 
-  assert.deepEqual(sources.home, ["selected-home", "canonical-home", "neutral-home"]);
-  assert.deepEqual(sources.away, ["canonical-away", "neutral-away"]);
+  assert.deepEqual(sources.home, ["selected-home", "canonical-home", "neutral-home", "/assets/tier-emblems/tier-neutral-home-outline-v5.png"]);
+  assert.deepEqual(sources.away, ["canonical-away", "neutral-away", "/assets/tier-emblems/tier-neutral-away-outline-v5.png"]);
   assert.deepEqual(
     resolveThermalReceiptEmblemSources({ neutralTeamMarkUrls: { home: "neutral-home" } }).home,
-    ["neutral-home"],
+    ["neutral-home", "/assets/tier-emblems/tier-neutral-home-outline-v5.png"],
   );
 });
 
@@ -75,6 +75,20 @@ test("optional thermal rows collapse without leaving internal gaps", () => {
   assert.ok(full.periods.y + full.periods.height < full.result.y);
   assert.ok(full.result.y + full.result.height < full.footer.y);
   for (const layout of [full, noPeriods, noComment, compact]) {
+    assert.equal(layout.paper.y + layout.paper.height - (layout.footer.y + layout.footer.height), 64);
+  }
+});
+
+test("photo layouts preserve the paper bottom while optional rows collapse", () => {
+  for (const options of [
+    { hasPhoto: true, hasPeriods: true, hasComment: true },
+    { hasPhoto: true, hasPeriods: false, hasComment: true },
+    { hasPhoto: true, hasPeriods: true, hasComment: false },
+    { hasPhoto: true, hasPeriods: false, hasComment: false },
+  ]) {
+    const layout = getThermalReceiptLayout(options);
+    assert.equal(layout.brand.y, 72);
+    assert.equal(layout.footer.y, 1628);
     assert.equal(layout.paper.y + layout.paper.height - (layout.footer.y + layout.footer.height), 24);
   }
 });

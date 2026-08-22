@@ -95,21 +95,33 @@ export function getThermalReceiptLayout(options = {}) {
   const hasPhoto = Boolean(options.hasPhoto);
   const hasPeriods = options.hasPeriods !== false;
   const hasComment = options.hasComment !== false;
-  const teamsY = hasPhoto ? 540 : 380;
-  const scoreY = teamsY + 238;
-  const infoY = scoreY + 238;
-  const periodsY = infoY + 142;
-  const resultY = hasPeriods ? periodsY + 186 : infoY + 142;
+  const baseTeamsY = hasPhoto ? 540 : 246;
+  const baseScoreY = baseTeamsY + 238;
+  const baseInfoY = baseScoreY + 238;
+  const basePeriodsY = baseInfoY + 142;
+  const baseResultY = hasPeriods ? basePeriodsY + 186 : baseInfoY + 142;
   const resultHeight = hasComment ? 270 : 230;
-  const footerY = resultY + resultHeight + 14;
+  const baseFooterY = baseResultY + resultHeight + 14;
   const footerHeight = 244;
-  const paperY = hasPhoto ? 24 : 168;
-  const paperBottom = hasPhoto ? 1896 : Math.min(1896, footerY + footerHeight + 24);
+  const paperY = 24;
+  const paperBottomLimit = 1896;
+  const photoFlowOffset = hasPhoto
+    ? Math.max(0, paperBottomLimit - 24 - (baseFooterY + footerHeight))
+    : 0;
+  const teamsY = baseTeamsY + photoFlowOffset;
+  const scoreY = baseScoreY + photoFlowOffset;
+  const infoY = baseInfoY + photoFlowOffset;
+  const periodsY = basePeriodsY + photoFlowOffset;
+  const resultY = baseResultY + photoFlowOffset;
+  const footerY = baseFooterY + photoFlowOffset;
+  const paperBottom = hasPhoto
+    ? paperBottomLimit
+    : Math.min(paperBottomLimit, footerY + footerHeight + 64);
 
   return Object.freeze({
     paper: Object.freeze({ x: 142, y: paperY, width: 796, height: paperBottom - paperY }),
     content: Object.freeze({ x: 198, width: 684 }),
-    brand: Object.freeze({ x: 198, y: hasPhoto ? 52 : 196, width: 684, height: 150 }),
+    brand: Object.freeze({ x: 198, y: 72, width: 684, height: 150 }),
     photo: hasPhoto ? Object.freeze({ x: 198, y: 226, width: 684, height: 288 }) : null,
     teams: Object.freeze({ x: 198, y: teamsY, width: 684, height: 220 }),
     score: Object.freeze({ x: 198, y: scoreY, width: 684, height: 224 }),

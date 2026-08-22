@@ -1,52 +1,58 @@
 import { useEffect, useRef, useState } from "react";
-import { renderMatchReceiptPng } from "../../lib/matchReceipt.js";
+import { renderMatchReceiptPreviewCanvas } from "../../lib/matchReceipt.js";
 
 export default function ThermalReceiptPreview({ draft, photoBlob, matchUrl, publicId, teamLineArtUrls, photoGestureHandlers = null, suspendRender = false }) {
-  const [previewUrl, setPreviewUrl] = useState("");
+  const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
-  const previewUrlRef = useRef("");
+  const canvasRef = useRef(null);
+  const generationRef = useRef(0);
   const isEnglish = draft.receiptLocale === "en";
-
-  useEffect(() => () => {
-    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
-  }, []);
 
   useEffect(() => {
     if (suspendRender) return undefined;
-    let active = true;
-    const timer = window.setTimeout(() => {
+    const generation = generationRef.current + 1;
+    generationRef.current = generation;
+    const frame = window.requestAnimationFrame(() => {
       setFailed(false);
-      renderMatchReceiptPng(draft, "story", {
+      renderMatchReceiptPreviewCanvas(draft, "story", {
         photoBlob,
         matchUrl,
         publicId,
         teamLineArtUrls,
         showPersonalTierIdentity: false,
-      }).then((blob) => {
-        const objectUrl = URL.createObjectURL(blob);
-        if (!active) {
-          URL.revokeObjectURL(objectUrl);
-          return;
-        }
-        if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
-        previewUrlRef.current = objectUrl;
-        setPreviewUrl(objectUrl);
+      }).then((renderedCanvas) => {
+        if (generationRef.current !== generation || !canvasRef.current) return;
+        const target = canvasRef.current;
+        target.width = renderedCanvas.width;
+        target.height = renderedCanvas.height;
+        target.getContext("2d").drawImage(renderedCanvas, 0, 0);
+        setReady(true);
       }).catch(() => {
-        if (active) setFailed(true);
+        if (generationRef.current === generation) setFailed(true);
       });
-    }, 120);
+    });
 
     return () => {
-      active = false;
-      window.clearTimeout(timer);
+      generationRef.current += 1;
+      window.cancelAnimationFrame(frame);
     };
   }, [draft, matchUrl, photoBlob, publicId, teamLineArtUrls, suspendRender]);
 
-  if (failed) return <p className="match-receipt-thermal-preview-status">{isEnglish ? "Could not render the preview." : "미리보기를 만들지 못했습니다."}</p>;
-  if (!previewUrl) return <p className="match-receipt-thermal-preview-status">THERMAL PREVIEW</p>;
   return (
-    <div className="match-receipt-thermal-preview-frame">
-      <img className="match-receipt-thermal-preview" src={previewUrl} alt={isEnglish ? "CLASSIC THERMAL receipt preview" : "CLASSIC THERMAL 영수증 미리보기"} />
+    <div className="match-receipt-thermal-preview-frame" aria-busy={!ready && !failed}>
+      <canvas
+        ref={canvasRef}
+        className="match-receipt-thermal-preview"
+        width="1080"
+        height="1920"
+        role="img"
+        aria-label={isEnglish ? "CLASSIC THERMAL receipt preview" : "CLASSIC THERMAL 영수증 미리보기"}
+      />
+      {!ready || failed ? (
+        <p className="match-receipt-thermal-preview-status">
+          {failed ? (isEnglish ? "Could not render the preview." : "미리보기를 만들지 못했습니다.") : "THERMAL PREVIEW"}
+        </p>
+      ) : null}
       {draft.includePhoto && photoBlob && photoGestureHandlers ? (
         <div
           className="match-receipt-thermal-photo-hitarea"
