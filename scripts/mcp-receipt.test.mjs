@@ -114,6 +114,7 @@ test("MCP가 자동 선택용 영수증 도구를 공개한다", async () => {
   assert.equal(tool._meta["openai/outputTemplate"], MCP_RECEIPT_WIDGET_URI);
   assert.ok(tool.inputSchema.properties.homeEmblem);
   assert.ok(tool.inputSchema.properties.awayEmblem);
+  assert.equal(tool.inputSchema.properties.debugBase64.type, "boolean");
   assert.equal(tool.inputSchema.properties.homeEmblem.additionalProperties, false);
   assert.deepEqual(tool.inputSchema.required.sort(), [
     "awayScore", "awayTeam", "format", "homeScore", "homeTeam", "playedOn", "venue",
@@ -163,10 +164,11 @@ test("MCP 호출은 유효 입력의 일일 한도를 소비하고 PNG를 직접
   }, 3);
 
   assert.equal(called.result.isError, undefined, JSON.stringify(called.result));
-  assert.equal(called.result.content.length, 1);
+  assert.equal(called.result.content.length, 2);
   assert.equal(called.result.content[0].type, "image");
   assert.equal(called.result.content[0].mimeType, "image/png");
   assert.equal(called.result.content[0].data, TEST_PNG.toString("base64"));
+  assert.doesNotMatch(called.result.content[0].data, /^data:/u);
   assert.deepEqual(called.result._meta["boxtier/image"], {
     data: TEST_PNG.toString("base64"),
     mimeType: "image/png",
@@ -176,10 +178,51 @@ test("MCP 호출은 유효 입력의 일일 한도를 소비하고 PNG를 직접
     mimeType: "image/png",
     preset: "story",
     style: "thermal",
+    byteLength: TEST_PNG.length,
   });
+  assert.deepEqual(JSON.parse(called.result.content[1].text), called.result.structuredContent);
+  assert.equal("base64" in called.result.structuredContent, false);
   assert.equal(renderCall.preset, "story");
   assert.equal(renderCall.draft.receiptStyle, "classic-thermal");
   assert.equal(quotaRequest instanceof Request, true);
+  await handler.close();
+});
+
+test("MCP 디버그 모드는 실제 PNG raw Base64와 복원 가능한 바이트를 반환한다", async () => {
+  const handler = createBoxtierMcpHandler({
+    consumeGenerationQuota: async () => true,
+  });
+  const called = await rpc(handler, "tools/call", {
+    name: "create_basketball_receipt",
+    arguments: {
+      homeTeam: "A팀",
+      awayTeam: "B팀",
+      homeScore: 82,
+      awayScore: 76,
+      playedOn: "2026-08-22",
+      playedTime: "20:30",
+      venue: "광명시민체육관",
+      format: "5v5",
+      style: "thermal",
+      preset: "story",
+      locale: "ko",
+      debugBase64: true,
+    },
+  }, 4);
+
+  assert.equal(called.result.isError, undefined, JSON.stringify(called.result));
+  const image = called.result.content[0];
+  const metadata = JSON.parse(called.result.content[1].text);
+  assert.equal(image.type, "image");
+  assert.equal(image.mimeType, "image/png");
+  assert.ok(metadata.byteLength > 0);
+  assert.equal(metadata.base64, image.data);
+  assert.equal(called.result.structuredContent.base64, image.data);
+  assert.match(image.data, /^iVBORw0KG/u);
+  assert.doesNotMatch(image.data, /^data:/u);
+  const restored = Buffer.from(image.data, "base64");
+  assert.equal(restored.length, metadata.byteLength);
+  assert.equal(restored.subarray(0, 8).toString("hex"), "89504e470d0a1a0a");
   await handler.close();
 });
 
