@@ -12,7 +12,10 @@ import {
   sanitizeThermalReceiptComment,
   THERMAL_PRINT_ROLES,
 } from "../shared/lib/thermalReceipt.js";
-import { resolveThermalReceiptEmblemSources } from "../src/lib/thermalReceipt.js";
+import {
+  getThermalPeriodTableLayout,
+  resolveThermalReceiptEmblemSources,
+} from "../src/lib/thermalReceipt.js";
 import {
   getReceiptPhotoStyle,
   getReceiptPhotoTransform,
@@ -85,6 +88,23 @@ test("thermal receipt always ends the shared emblem chain with a fixed neutral m
     resolveThermalReceiptEmblemSources({ neutralTeamMarkUrls: { home: "neutral-home" } }).home,
     ["neutral-home", "/assets/tier-emblems/tier-neutral-home-outline-v5.png"],
   );
+});
+
+test("thermal period table gives unused score-column space to team names", () => {
+  const singlePeriod = getThermalPeriodTableLayout(1);
+  const fivePeriods = getThermalPeriodTableLayout(5);
+
+  assert.deepEqual(singlePeriod.periodXs, [556]);
+  assert.deepEqual(fivePeriods.periodXs, [252, 328, 404, 480, 556]);
+  assert.equal(singlePeriod.teamNameMaxWidth, 506);
+  assert.equal(fivePeriods.teamNameMaxWidth, 202);
+});
+
+test("thermal rules and emblem labels keep print-aware rendering and spacing", async () => {
+  const renderer = await readFile(new URL("../src/lib/thermalReceipt.js", import.meta.url), "utf8");
+
+  assert.match(renderer, /applyPrintMask\(rule, ctx\.__thermalMasks\?\.body,[\s\S]*?"body"\)/u);
+  assert.match(renderer, /drawThermalText\(ctx, name, x, layout\.teams\.y \+ 196/u);
 });
 
 test("optional thermal rows collapse without leaving internal gaps", () => {

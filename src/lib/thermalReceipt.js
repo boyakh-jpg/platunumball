@@ -245,10 +245,24 @@ function drawThermalText(ctx, text, x, y, options = {}) {
 }
 
 function drawRule(ctx, x, y, width, dashed = false, color = INK) {
+  if (dashed) {
+    const height = 6;
+    const rule = createCanvas(Math.ceil(width), height);
+    const ruleCtx = rule.getContext("2d");
+    ruleCtx.strokeStyle = color;
+    ruleCtx.lineWidth = 2;
+    ruleCtx.setLineDash([10, 7]);
+    ruleCtx.beginPath();
+    ruleCtx.moveTo(0, height / 2);
+    ruleCtx.lineTo(rule.width, height / 2);
+    ruleCtx.stroke();
+    applyPrintMask(rule, ctx.__thermalMasks?.body, `${ctx.__thermalSeed || "thermal"}|rule|${Math.round(x)}|${Math.round(y)}|${Math.round(width)}`, "body");
+    ctx.drawImage(rule, Math.round(x), Math.round(y - height / 2));
+    return;
+  }
   ctx.save();
   ctx.strokeStyle = color;
   ctx.lineWidth = 2;
-  ctx.setLineDash(dashed ? [10, 7] : []);
   ctx.beginPath();
   ctx.moveTo(x, y);
   ctx.lineTo(x + width, y);
@@ -448,7 +462,7 @@ function drawTeams(ctx, model, layout, emblems) {
     const font = /[ㄱ-ㅎㅏ-ㅣ가-힣]/u.test(String(name)) ? KOREAN_FONT : TEAM_DISPLAY_FONT;
     const weight = getThermalFontWeight(font);
     const size = fitText(ctx, name, 286, 44, 26, font, weight);
-    drawThermalText(ctx, name, x, layout.teams.y + 188, { size, font, weight, align: "center", maxWidth: 286, dotScale: 2, printRole: "team" });
+    drawThermalText(ctx, name, x, layout.teams.y + 196, { size, font, weight, align: "center", maxWidth: 286, dotScale: 2, printRole: "team" });
   });
 }
 
@@ -506,6 +520,22 @@ function drawInfo(ctx, model, layout) {
   drawThermalText(ctx, `${String(model.format || "5v5").toUpperCase()} · ${periodCount} QUARTERS${model.refereeAssigned ? " · REFEREE" : ""}`, center, layout.info.y + 118, { size: 22, align: "center", maxWidth: 620 });
 }
 
+export function getThermalPeriodTableLayout(periodCount, width = 684) {
+  const count = Math.min(5, Math.max(1, Math.floor(Number(periodCount) || 1)));
+  const periodColumnWidth = 76;
+  const totalColumnWidth = 90;
+  const scoreAreaRight = width - totalColumnWidth;
+  const periodXs = Array.from(
+    { length: count },
+    (_, index) => scoreAreaRight - (count - index - 0.5) * periodColumnWidth,
+  );
+
+  return {
+    periodXs,
+    teamNameMaxWidth: Math.max(150, periodXs[0] - periodColumnWidth / 2 - 12),
+  };
+}
+
 function drawPeriods(ctx, model, layout) {
   if (!layout.periods) return;
   const rows = model.periodScores.slice(0, 5).map((row, index) => Array.isArray(row)
@@ -517,18 +547,18 @@ function drawPeriods(ctx, model, layout) {
     ]);
   const labels = rows.map(([label]) => label);
   const x = layout.periods.x;
-  const colWidth = 76;
+  const { periodXs, teamNameMaxWidth } = getThermalPeriodTableLayout(labels.length, layout.periods.width);
   drawRule(ctx, x, layout.periods.y, layout.periods.width, true);
   drawThermalText(ctx, "TEAM", x, layout.periods.y + 30, { size: 21, maxWidth: 130 });
-  labels.forEach((label, index) => drawThermalText(ctx, label, x + 214 + index * colWidth, layout.periods.y + 30, { size: 21, align: "center", maxWidth: 70 }));
+  labels.forEach((label, index) => drawThermalText(ctx, label, x + periodXs[index], layout.periods.y + 30, { size: 21, align: "center", maxWidth: 70 }));
   drawThermalText(ctx, "TOTAL", x + layout.periods.width, layout.periods.y + 30, { size: 21, align: "right", maxWidth: 90 });
   drawRule(ctx, x, layout.periods.y + 50, layout.periods.width, true);
   const teamNames = [model.homeTeam || "Team A", model.awayTeam || "Team B"];
   [0, 1].forEach((side) => {
     const rowY = layout.periods.y + 82 + side * 38;
-    const size = fitText(ctx, teamNames[side], 150, 24, 16);
-    drawThermalText(ctx, teamNames[side], x, rowY, { size, maxWidth: 150 });
-    rows.forEach((row, index) => drawThermalText(ctx, row[side + 1] ?? "-", x + 214 + index * colWidth, rowY, { size: 22, align: "center", maxWidth: 70 }));
+    const size = fitText(ctx, teamNames[side], teamNameMaxWidth, 24, 16);
+    drawThermalText(ctx, teamNames[side], x, rowY, { size, maxWidth: teamNameMaxWidth });
+    rows.forEach((row, index) => drawThermalText(ctx, row[side + 1] ?? "-", x + periodXs[index], rowY, { size: 22, align: "center", maxWidth: 70 }));
     drawThermalText(ctx, side ? model.awayScore : model.homeScore, x + layout.periods.width, rowY, { size: 23, align: "right", maxWidth: 90 });
   });
   drawRule(ctx, x, layout.periods.y + 146, layout.periods.width, true);
