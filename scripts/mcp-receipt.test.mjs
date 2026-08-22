@@ -174,6 +174,10 @@ test("MCP 호출은 유효 입력의 일일 한도를 소비하고 PNG를 직접
   assert.equal(called.result.content[0].mimeType, "image/png");
   assert.equal(called.result.content[0].data, TEST_PNG.toString("base64"));
   assert.doesNotMatch(called.result.content[0].data, /^data:/u);
+  assert.deepEqual(called.result._meta["boxtier/image"], {
+    data: TEST_PNG.toString("base64"),
+    mimeType: "image/png",
+  });
   assert.deepEqual(called.result.structuredContent, {
     status: "rendered",
     mimeType: "image/png",

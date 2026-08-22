@@ -175,6 +175,7 @@ export function createBoxtierMcpHandler({
           return {
             content: [{ type: "image", data: imageData, mimeType: "image/png" }],
             structuredContent: metadata,
+            _meta: { "boxtier/image": { data: imageData, mimeType: "image/png" } },
           };
         } catch (error) {
           console.error("[mcp] receipt rendering failed", error);

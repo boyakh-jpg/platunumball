@@ -1,4 +1,4 @@
-export const MCP_RECEIPT_WIDGET_URI = "ui://boxtier/basketball-receipt.html";
+export const MCP_RECEIPT_WIDGET_URI = "ui://boxtier/basketball-receipt-v2.html";
 export const MCP_RECEIPT_WIDGET_MIME_TYPE = "text/html;profile=mcp-app";
 
 export const MCP_RECEIPT_WIDGET_HTML = String.raw`<!doctype html>
