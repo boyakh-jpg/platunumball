@@ -17,6 +17,8 @@ ChatGPT 또는 Claude에 BoxTier MCP가 설치·연결된 경우에만 모델이
 
 도구는 사용자가 박스티어 농구 영수증·감열지 영수증·basketball game receipt를 요청하고 실제 팀명, 최종 점수, 경기 날짜, 장소, 경기 방식을 제공했을 때 사용한다. 값이 빠지면 생성 전에 질문한다. 농구 외 경기, 허위 기록, 상거래 영수증에는 사용하지 않는다.
 
+선택 엠블럼은 `homeEmblem`·`awayEmblem`의 `{ imageBase64 }`로 전달한다. 모델은 첨부 원본의 비율과 글자를 보존해 투명 정사각형 WebP, 최대 `320×320px`·`96KB`로 먼저 처리하고 `data:` 접두사 없는 raw Base64만 보낸다. 서버는 180×180 영역에 contain·중앙 정렬하고 저장하지 않는다. `thermal`은 엠블럼을 포함한 최종 PNG를 4단계 회색조로 변환한다.
+
 ## ChatGPT 등록
 
 1. OpenAI Platform Dashboard에서 BoxTier 앱을 만들고 MCP 서버 URL에 `https://boxtier.kr/mcp`를 등록한다.
@@ -37,12 +39,14 @@ Positive tests:
 3. `story`는 1080×1920 PNG를 반환한다.
 4. `feed`는 1080×1350 PNG를 반환한다.
 5. 구간 점수 합계가 최종 점수와 같으면 PNG를 반환한다.
+6. 처리 완료 엠블럼을 넣으면 양 팀 영역에 비율 유지·중앙 정렬한 PNG를 반환한다.
 
 Negative tests:
 
 1. 장소가 없으면 도구 호출 전에 사용자에게 묻는다.
 2. 구간 합계가 최종 점수와 다르면 오류를 반환한다.
 3. 축구 경기 또는 상거래 영수증 요청에는 도구를 선택하지 않는다.
+4. 엠블럼 URL, `data:` URL, object key, 규격을 넘긴 WebP는 거부한다.
 
 ## Claude 연결
 

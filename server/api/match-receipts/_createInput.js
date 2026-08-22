@@ -8,7 +8,7 @@ import {
 const FORMATS = new Set(["1v1", "2v2", "3v3", "3x3", "5v5"]);
 const MATCH_NATURES = new Set(["friendly", "competitive", "revenge", "semifinal", "final"]);
 const PERIOD_LABELS = new Set(["1Q", "2Q", "3Q", "4Q", "1H", "2H", "REG", "OT"]);
-const PREPARED_EMBLEM_MAX_BASE64_LENGTH = 132_000;
+export const PREPARED_EMBLEM_MAX_BASE64_LENGTH = 132_000;
 const BASE64_PATTERN = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/u;
 const EXTERNAL_EMBLEM_FIELDS = [
   "homeEmblem",

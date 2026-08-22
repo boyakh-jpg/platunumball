@@ -1,12 +1,20 @@
 import { createMcpHandler, McpServer } from "@modelcontextprotocol/server";
 import * as z from "zod/v4";
-import { parseExternalReceiptInput } from "./match-receipts/_createInput.js";
+import {
+  parseExternalReceiptInput,
+  PREPARED_EMBLEM_MAX_BASE64_LENGTH,
+} from "./match-receipts/_createInput.js";
 import {
   MATCH_RECEIPT_RENDER_PRESETS,
   renderMatchReceiptPng,
 } from "./match-receipts/_pngRenderer.js";
 import { MATCH_RECEIPT_STYLES } from "../../shared/lib/thermalReceipt.js";
 import { consumeMcpReceiptGenerationQuota } from "./mcpQuota.js";
+
+const preparedEmblemSchema = z.object({
+  imageBase64: z.string().min(1).max(PREPARED_EMBLEM_MAX_BASE64_LENGTH)
+    .describe("AI가 투명 정사각형 WebP로 전처리한 엠블럼의 raw Base64. data: 접두사 없이 최대 320x320px, 96KB."),
+}).strict().describe("저장하지 않고 이번 PNG 합성에만 사용하는 처리 완료 엠블럼.");
 
 const receiptInputSchema = z.object({
   style: z.enum(["thermal", "score"]).default("thermal")
@@ -15,6 +23,10 @@ const receiptInputSchema = z.object({
     .describe("PNG 비율. story는 1080x1920, feed는 1080x1350."),
   homeTeam: z.string().min(1).max(24).describe("홈팀 이름."),
   awayTeam: z.string().min(1).max(24).describe("원정팀 이름."),
+  homeEmblem: preparedEmblemSchema.optional()
+    .describe("선택 홈 엠블럼. 원본 비율과 글자를 보존해 전처리한 WebP를 중앙 정렬하며, thermal은 최종 4단계 회색조로 변환한다."),
+  awayEmblem: preparedEmblemSchema.optional()
+    .describe("선택 원정 엠블럼. 원본 비율과 글자를 보존해 전처리한 WebP를 중앙 정렬하며, thermal은 최종 4단계 회색조로 변환한다."),
   homeScore: z.number().int().min(0).max(999).describe("홈팀 최종 점수."),
   awayScore: z.number().int().min(0).max(999).describe("원정팀 최종 점수."),
   playedOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/u).describe("경기 날짜, YYYY-MM-DD."),
@@ -32,7 +44,7 @@ const receiptInputSchema = z.object({
     homeScore: z.number().int().min(0).max(999),
     awayScore: z.number().int().min(0).max(999),
   })).max(5).optional().describe("쿼터·하프·연장별 점수. 합계는 최종 점수와 같아야 함."),
-});
+}).strict();
 
 function toolError(message, issues = []) {
   return {
@@ -55,7 +67,7 @@ export function createBoxtierMcpHandler({
       "create_basketball_receipt",
       {
         title: "BoxTier 농구 영수증 PNG 만들기",
-        description: "박스티어(BoxTier) 스타일의 농구 경기 영수증 PNG를 만든다. 사용자가 ‘박스티어로 영수증 만들어줘’, 농구 감열지 영수증, basketball game receipt, score receipt를 요청했고 팀명·최종 점수·경기 날짜·장소·경기 형식을 모두 실제 값으로 제공했을 때만 사용한다. 누락값을 추측하지 말고 먼저 사용자에게 물어본다. 농구 외 경기, 허위 경기 기록, 상거래 영수증에는 사용하지 않는다.",
+        description: "박스티어(BoxTier) 스타일의 농구 경기 영수증 PNG를 만든다. 사용자가 ‘박스티어로 영수증 만들어줘’, 농구 감열지 영수증, basketball game receipt, score receipt를 요청했고 팀명·최종 점수·경기 날짜·장소·경기 형식을 모두 실제 값으로 제공했을 때만 사용한다. 첨부 엠블럼을 사용할 때는 원본 비율과 글자를 보존한 투명 정사각형 WebP로 전처리해 선택 입력으로 전달한다. 누락값을 추측하지 말고 먼저 사용자에게 물어본다. 농구 외 경기, 허위 경기 기록, 상거래 영수증에는 사용하지 않는다.",
         inputSchema: receiptInputSchema,
         annotations: {
           readOnlyHint: true,
@@ -68,7 +80,7 @@ export function createBoxtierMcpHandler({
         const parsed = parseExternalReceiptInput({
           ...input,
           style: MATCH_RECEIPT_STYLES[style],
-        });
+        }, { allowPreparedEmblems: true });
         if (parsed.issues.length > 0) {
           return toolError("영수증 입력값이 올바르지 않다.", parsed.issues);
         }

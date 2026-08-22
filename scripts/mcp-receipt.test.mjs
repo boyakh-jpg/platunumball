@@ -108,6 +108,9 @@ test("MCP가 자동 선택용 영수증 도구를 공개한다", async () => {
   assert.ok(tool);
   assert.match(tool.description, /박스티어/);
   assert.equal(tool.annotations.readOnlyHint, true);
+  assert.ok(tool.inputSchema.properties.homeEmblem);
+  assert.ok(tool.inputSchema.properties.awayEmblem);
+  assert.equal(tool.inputSchema.properties.homeEmblem.additionalProperties, false);
   assert.deepEqual(tool.inputSchema.required.sort(), [
     "awayScore", "awayTeam", "format", "homeScore", "homeTeam", "playedOn", "venue",
   ].sort());
@@ -153,6 +156,80 @@ test("MCP 호출은 유효 입력의 일일 한도를 소비하고 PNG를 직접
   assert.equal(renderCall.preset, "story");
   assert.equal(renderCall.draft.receiptStyle, "classic-thermal");
   assert.equal(quotaRequest instanceof Request, true);
+  await handler.close();
+});
+
+test("MCP 호출은 처리된 엠블럼만 렌더러에 전달한다", async () => {
+  let renderCall = null;
+  const emblemBase64 = Buffer.from("prepared-webp-fixture").toString("base64");
+  const handler = createBoxtierMcpHandler({
+    consumeGenerationQuota: async () => true,
+    renderPng: async (input) => {
+      renderCall = input;
+      return TEST_PNG;
+    },
+  });
+  const called = await rpc(handler, "tools/call", {
+    name: "create_basketball_receipt",
+    arguments: {
+      homeTeam: "SEOUL HOOPERS",
+      awayTeam: "BUSAN WAVES",
+      homeEmblem: { imageBase64: emblemBase64 },
+      awayEmblem: { imageBase64: emblemBase64 },
+      homeScore: 81,
+      awayScore: 77,
+      playedOn: "2026-08-21",
+      venue: "RIVER COURT",
+      format: "5v5",
+    },
+  }, 31);
+
+  assert.equal(called.result.isError, undefined, JSON.stringify(called.result));
+  assert.deepEqual(renderCall.emblems, {
+    home: { imageBase64: emblemBase64 },
+    away: { imageBase64: emblemBase64 },
+  });
+  await handler.close();
+});
+
+test("MCP 호출은 엠블럼 URL과 data URL을 렌더링 전에 거부한다", async () => {
+  let renders = 0;
+  let quotaCalls = 0;
+  const handler = createBoxtierMcpHandler({
+    consumeGenerationQuota: async () => {
+      quotaCalls += 1;
+      return true;
+    },
+    renderPng: async () => {
+      renders += 1;
+      return TEST_PNG;
+    },
+  });
+  const baseArguments = {
+    homeTeam: "A",
+    awayTeam: "B",
+    homeScore: 10,
+    awayScore: 9,
+    playedOn: "2026-08-21",
+    venue: "COURT",
+    format: "3x3",
+  };
+  const withUrl = await rpc(handler, "tools/call", {
+    name: "create_basketball_receipt",
+    arguments: { ...baseArguments, homeEmblemUrl: "https://example.com/emblem.webp" },
+  }, 32);
+  const withDataUrl = await rpc(handler, "tools/call", {
+    name: "create_basketball_receipt",
+    arguments: {
+      ...baseArguments,
+      homeEmblem: { imageBase64: "data:image/webp;base64,AAAA" },
+    },
+  }, 33);
+
+  assert.equal(withUrl.result.isError, true);
+  assert.equal(withDataUrl.result.isError, true);
+  assert.equal(renders, 0);
+  assert.equal(quotaCalls, 0);
   await handler.close();
 });
 
@@ -237,6 +314,13 @@ test("MCP quota helper는 원본 IP 대신 해시로 전역 RPC를 호출한다"
 });
 
 test("MCP 실제 renderer가 Feed PNG를 반환한다", async () => {
+  const { default: sharp } = await import("sharp");
+  const emblem = await sharp(Buffer.from(`
+    <svg xmlns="http://www.w3.org/2000/svg" width="320" height="320">
+      <circle cx="160" cy="160" r="140" fill="#111"/>
+      <path d="M70 160h180M160 70v180" stroke="#fff" stroke-width="18"/>
+    </svg>
+  `)).webp().toBuffer();
   const handler = createBoxtierMcpHandler({ consumeGenerationQuota: async () => true });
   const called = await rpc(handler, "tools/call", {
     name: "create_basketball_receipt",
@@ -251,13 +335,14 @@ test("MCP 실제 renderer가 Feed PNG를 반환한다", async () => {
       playedTime: "19:30",
       venue: "리버 코트",
       format: "5v5",
+      homeEmblem: { imageBase64: emblem.toString("base64") },
+      awayEmblem: { imageBase64: emblem.toString("base64") },
     },
   }, 6);
 
   assert.equal(called.result.isError, undefined, JSON.stringify(called.result));
   const png = Buffer.from(called.result.content[1].data, "base64");
   assert.deepEqual(png.subarray(0, 8), Buffer.from("89504e470d0a1a0a", "hex"));
-  const { default: sharp } = await import("sharp");
   const metadata = await sharp(png).metadata();
   assert.equal(metadata.width, 1080);
   assert.equal(metadata.height, 1350);
