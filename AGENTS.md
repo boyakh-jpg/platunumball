@@ -40,6 +40,10 @@ Caveman mode.
 
 - Verify changed files and directly affected paths. Run repository-wide checks only when required or no narrower check exists. Report exact build/test failures.
 - Build success alone is insufficient for affected flows. Test only affected roles/branches (host, party leader, regular/reserve player, referee/no-referee) and screens/breakpoints/themes (desktop/mobile, dark/light).
+- Before non-trivial work, define a finite checklist. Each requested scope gets one inspection pass, one implementation pass, one diff review, and one scoped verification pass.
+- Never restart a completed pass merely to search for more issues. Reopen it only for a new user request, a failed verification, or concrete new evidence tied to the current diff.
+- Never recursively delegate or repeatedly re-audit the same scope. End delegated work after its bounded finding is incorporated; additional unrequested findings belong to a separate task.
+- A broad audit ends after one bounded repository traversal, a finite finding set, confirmed fixes, and scoped verification. Do not turn completion into another global audit.
 - Complete only after implementation, required doc updates, intended-diff review, and scoped verification pass or an exact blocker. Then report and stop.
 - After context compaction, trust the retained summary and current diff unless new evidence invalidates them.
 

@@ -166,12 +166,13 @@ test("서버만 canonical 경기 상태에서 explicit marker를 만들고 RPC �
 });
 
 test("자동 확정과 Play 조회는 marker·phase·relation을 pagination 전에 강제한다", async () => {
-  const [automaticSource, listSource, projectionSource, loaderSource, migrationSource] = await Promise.all([
+  const [automaticSource, listSource, projectionSource, loaderSource, migrationSource, recorderPageSource] = await Promise.all([
     readSource("src/data/repository/lifecycle/automatic.js"),
     readSource("server/api/matches/_listQueries.js"),
     readSource("server/api/matches/_listProjection.js"),
     readSource("server/api/matches/_listLoader.js"),
     readSource("supabase/migrations/20260821210000_expire_unsubmitted_postgame_play_rows.sql"),
+    readSource("src/pages/Recorder.jsx"),
   ]);
   const recorderStart = migrationSource.indexOf("create or replace function public.rankball_recorder_match_page");
   const recorderEnd = migrationSource.indexOf("$function$;", recorderStart);
@@ -225,7 +226,11 @@ test("자동 확정과 Play 조회는 marker·phase·relation을 pagination 전�
   assert.ok(cursorIndex >= 0 && cursorIndex < limitIndex);
   assert.match(recorderSource, /order by coalesce\(match_row\.created_at,[^\n]+desc, match_row\.id desc[\s\S]*limit safe_limit \+ 1/u);
   assert.doesNotMatch(recorderSource, /offset safe_offset/u);
-  assert.match(loaderSource, /matches = playOnly[\s\S]*sortByFeedOrder\(rowMatches, playPageIds\)/u);
+  assert.match(loaderSource, /const hydrationRows = playOnly \? readableRows : readableRows\.filter/u);
+  assert.match(loaderSource, /\.filter\(\(match\) => playOnly \|\| filterMatchItems\(\[match\]\)\.length > 0\)/u);
+  assert.match(loaderSource, /matches = playOnly[\s\S]*sortByFeedOrder\(countedMatches, playPageIds\)/u);
+  assert.match(recorderPageSource, /const isReferee = isMatchReferee\(match, user\.id\);/u);
+  assert.doesNotMatch(recorderPageSource, /const isReferee =[^;]*canOperateAssignedMatchReferee/u);
 });
 
 test("legacy feed의 former referee 후보는 현재 canonical 관계가 없으면 Play에서 제외한다", () => {

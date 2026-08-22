@@ -308,8 +308,7 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
     memberTeamMatchIds.has(row.id) ||
     canReadMatchRow(row, playersByMatch.get(row.id) ?? [], context.profileId ?? "", adminLevel >= 30)
   ));
-  const hydrationRows = readableRows.filter((row) => {
-    if (playOnly && row.status === "agreed") return true;
+  const hydrationRows = playOnly ? readableRows : readableRows.filter((row) => {
     const preview = toClientMatch(row, playersByMatch, {}, {}, {}, new Map());
     return filterMatchItems([preview]).length > 0;
   });
@@ -374,16 +373,19 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
       ];
       return relations.length ? { ...match, __feedRelations: unique(relations) } : match;
     })
-    .filter((match) => filterMatchItems([match]).length > 0);
-  const countedMatches = matches.length
-    ? await attachMatchPlayerCountsToCards(context.supabase, matches, debugTiming)
-    : matches;
+    .filter((match) => playOnly || filterMatchItems([match]).length > 0);
+  const countedMatches = rowMatches.length
+    ? await attachMatchPlayerCountsToCards(context.supabase, rowMatches, debugTiming)
+    : rowMatches;
   matches = playOnly
-    ? sortByFeedOrder(rowMatches, playPageIds)
+    ? sortByFeedOrder(countedMatches, playPageIds)
     : feedPage?.ids?.length
       ? sortByFeedOrder(mergeMatchCardsWithRows(countedMatches, rowMatches), feedPage.ids)
-      : rowMatches.sort((a, b) => String(b.updatedAt ?? b.createdAt ?? "").localeCompare(String(a.updatedAt ?? a.createdAt ?? "")));
+      : countedMatches.sort((a, b) => String(b.updatedAt ?? b.createdAt ?? "").localeCompare(String(a.updatedAt ?? a.createdAt ?? "")));
   matches = await attachOpenDisputeQueues(context.supabase, matches, debugTiming);
+  if (playOnly) {
+    matches = matches.filter((match) => filterMatchItems([match]).length > 0);
+  }
   const state = normalizeState({
     currentUserId: currentUser.id,
     users,

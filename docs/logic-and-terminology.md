@@ -632,7 +632,7 @@
 1. `/app/matches`의 화면 메뉴명은 `일정`, `/app/recorder`의 화면 메뉴명은 `플레이`다.
 2. 일정 메뉴는 공개/비공개 모집방과 `locked`, `checkin` 단계의 시작 전 경기만 표시한다.
 3. 경기 시작으로 `startedAt`이 생기면 해당 경기는 일정 메뉴에서 즉시 빠지고 플레이 메뉴로 이동한다.
-4. 플레이 메뉴는 `live`, `postgame`, `dispute` 단계만 표시한다. 방장, 현재 배정 심판, 현재 `match_players`, `played_player_ids`, `reserve_players` 관계만 인정한다. 이전 심판, 과거 기록자, 결과 제출자 관계만으로는 표시하지 않는다.
+4. 플레이 메뉴는 `live`, `postgame`, `dispute` 단계만 표시한다. 방장, 현재 배정 심판, 현재 `match_players`, `played_player_ids`, `reserve_players` 관계만 인정한다. 현재 배정 심판은 자격 정지·임명 해제 상태여도 관계·열람·플레이 노출을 유지한다. 이전 심판, 과거 기록자, 결과 제출자 관계만으로는 표시하지 않는다.
 5. 최종 제출 표식이 없는 종료 경기는 기록 입력창(`statEntryMinutes`, 기본 60분)까지만 플레이 메뉴에 남긴다. 열린 이의가 있으면 계속 표시한다. 만료 뒤에도 경기방 직접 진입과 권한자의 명시 최종 제출 복구는 유지한다. 이의신청 시간이 끝나 phase가 `record`가 되거나 status가 `confirmed`가 되면 플레이 메뉴에서 즉시 빠지고 나/팀 기록에서만 조회한다.
 6. 취소·무효·만료 경기는 일정 메뉴 상태 카드로 유지하지 않는다. 알림과 직접 URL에서는 종료 상태를 확인할 수 있어야 한다.
 
@@ -3444,9 +3444,9 @@ flowchart TD
 
 1. 웹 알림의 예약 시각은 `notifications.due_at`이 원본이다. 홈과 알림 목록은 `due_at <= now()`를 DB 조회 제한 전에 적용하며, 전체 읽음도 아직 도래하지 않은 알림을 변경하지 않는다.
 2. 일반 경기 feed는 `rules.recordType='match'`인 경기만 페이지 제한 전에 포함한다. `match_record`와 `personal_record`는 일반 경기 페이지 수를 소비하지 않는다.
-3. 플레이 메뉴 전용 조회는 보안 함수 `rankball_recorder_match_page`가 `agreed`, `approval`, `disputed` 상태, `live`/`postgame`/`dispute` phase와 현재 사용자 관계를 DB에서 먼저 판정한 뒤 페이지를 자른다. 관계는 방장, 현재 배정 심판, 현재 `match_players`, `played_player_ids`, `reserve_players`만 허용한다. 이전 심판, 과거 기록자, 결과 제출자라는 이유만으로는 포함하지 않는다. `personal_record`와 `solo`는 프로필 기록 전용이라 제외하고, `match_record`는 관계·phase가 맞으면 포함한다. 최종 제출 표식 없는 종료 경기는 열린 이의가 없으면 `statEntryMinutes` 안에서만 포함한다. 이의신청 시간이 끝난 `record` phase와 `confirmed` 상태는 제외하고 immutable `created_at`+`id` keyset cursor를 사용한다. 클라이언트는 RPC가 반환한 ID 순서를 그대로 hydration하며 RPC 장애 fallback은 같은 관계·phase를 적용해 반복 overfetch한다.
+3. 플레이 메뉴 전용 조회는 보안 함수 `rankball_recorder_match_page`가 `agreed`, `approval`, `disputed` 상태, `live`/`postgame`/`dispute` phase와 현재 사용자 관계를 DB에서 먼저 판정한 뒤 페이지를 자른다. 관계는 방장, 현재 배정 심판, 현재 `match_players`, `played_player_ids`, `reserve_players`만 허용한다. 현재 배정 심판은 자격 정지·임명 해제 상태여도 관계·열람·플레이 노출을 유지한다. 이전 심판, 과거 기록자, 결과 제출자라는 이유만으로는 포함하지 않는다. `personal_record`와 `solo`는 프로필 기록 전용이라 제외하고, `match_record`는 관계·phase가 맞으면 포함한다. 최종 제출 표식 없는 종료 경기는 열린 이의가 없으면 `statEntryMinutes` 안에서만 포함한다. 이의신청 시간이 끝난 `record` phase와 `confirmed` 상태는 제외하고 immutable `created_at`+`id` keyset cursor를 사용한다. 클라이언트는 RPC가 반환한 ID 순서를 그대로 hydration하고, 결과·열린 이의 수화 전에는 phase를 다시 판정하지 않는다. RPC 장애 fallback은 같은 관계·phase를 적용해 반복 overfetch한다.
 3-1. 플레이 메뉴의 feed 조회는 상태와 사용자 관계를 먼저 제한하고 그 결과를 페이지 단위로 자른다. 오래된 참가 경기 수가 목록 제한을 넘더라도 방금 생성한 경기 기록을 후보 절단 전에 누락하지 않는다.
-4. 심판 자격 ID는 `candidate`, `silver`, `gold`, `platinum`, `official`만 사용한다. 현재 배정 심판의 기록, 이의 접수, 판정 전 draft 보정은 활성 임명, 임기, 등급, 최소 신뢰도를 모두 다시 확인한다. 항목별 가결·부결은 방장만 한다.
+4. 심판 자격 ID는 `candidate`, `silver`, `gold`, `platinum`, `official`만 사용한다. 현재 배정 심판의 관계·열람·플레이 노출은 배정 ID만 사용하고, 경기 조작과 처리 필요 액션은 `canOperateAssignedMatchReferee`로 활성 임명, 임기, 등급, 최소 신뢰도를 모두 다시 확인한다. 항목별 가결·부결은 방장만 한다.
 5. 선수 기록과 이의 득점의 단일 필드 상한은 `999`다. 이의 득점이 상한을 넘으면 저장 전에 거부한다.
 6. 활성 경기, 공개 모집, 대회 초대·참가가 참조하는 팀은 삭제할 수 없다. 활성 참조를 먼저 종료한 뒤 주장만 팀을 삭제할 수 있고, 남은 대기 팀 초대는 만료 처리한다.
 7. 리그·토너먼트 후속 계산은 경기 row의 형식 snapshot이 아니라 `tournaments.format`을 원본으로 사용한다. 기존 불일치 snapshot은 현재 대회 형식으로 정규화한다.

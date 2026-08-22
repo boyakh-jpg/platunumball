@@ -15,7 +15,6 @@ import {
 } from "../lib/matchListProjection.js";
 import {
   cleanRoomTitle,
-  canOperateAssignedMatchReferee,
   getMatchHostPlayerId,
   getMatchListScope,
   getMatchPlayerIds,
@@ -54,11 +53,7 @@ function canAccessActiveMatch(match, user, state) {
     ? state.recruitingPosts?.find((post) => post.id === match.recruitingPostId)
     : null;
   const isHost = getMatchHostPlayerId(match, sourcePost) === user.id;
-  const isReferee = isMatchReferee(match, user.id) && canOperateAssignedMatchReferee(
-    user,
-    match,
-    state.settings?.refereeAppointments,
-  );
+  const isReferee = isMatchReferee(match, user.id);
   const isPlayer = getMatchPlayerIds(match).includes(user.id);
   const isReserve = MATCH_SIDES.some((sideName) => getMatchReservePlayerIds(match, sideName).includes(user.id));
   return isHost || isReferee || isPlayer || isReserve;
