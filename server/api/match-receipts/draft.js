@@ -18,7 +18,6 @@ import {
   createReceiptClonePayload,
   createCanonicalReceiptSerialSeed,
   createReceiptCapability,
-  getLegacyCanonicalReceiptMatchId,
   getReceiptCapabilityCookie,
   getReceiptRequestHash,
   hashReceiptCapability,
@@ -27,6 +26,10 @@ import {
   sanitizeReceiptDraftPayload,
   setReceiptCapabilityCookie,
 } from "./_draftSecurity.js";
+import {
+  canExposeStoredReceiptDraft,
+  consumePublicReceiptReadQuota,
+} from "./_publicDraft.js";
 
 function getPublicId(request) {
   return String(request.query?.publicId ?? "").trim();
@@ -145,18 +148,6 @@ async function clonePublicPayload(supabase, publicId) {
   return { payload: createReceiptClonePayload(data.payload) };
 }
 
-async function canExposeStoredReceiptDraft(supabase, payload) {
-  const sourceMatchId = getLegacyCanonicalReceiptMatchId(payload);
-  if (!sourceMatchId) return true;
-  const { data, error } = await supabase
-    .from("matches")
-    .select("id,status,visibility,rules")
-    .eq("id", sourceMatchId)
-    .maybeSingle();
-  if (error) throw error;
-  return canCreatePublicMatchReceiptSnapshot(data);
-}
-
 export default async function handler(request, response) {
   if (!allowRequestMethod(request, response, ["GET", "POST"])) return;
 
@@ -166,11 +157,10 @@ export default async function handler(request, response) {
     const publicId = getPublicId(request);
     if (!publicId) return sendJson(response, 400, { error: "receipt_public_id_required" });
     if (!isValidPublicId(publicId)) return sendJson(response, 400, { error: "receipt_public_id_invalid" });
-    const { data: allowed, error: rateError } = await supabase.rpc("consume_match_receipt_draft_read_quota", {
-      p_request_hash: getReceiptRequestHash(request),
-    });
-    if (rateError) throw rateError;
-    if (!allowed) return sendJson(response, 429, { error: "receipt_draft_rate_limited" });
+    if (!await consumePublicReceiptReadQuota(supabase, request)) {
+      response.setHeader("Retry-After", "3600");
+      return sendJson(response, 429, { error: "receipt_draft_rate_limited" });
+    }
     const { data, error } = await supabase
       .from("match_receipt_drafts")
       .select("public_id,public_code,capability_hash,payload,expires_at,claimed_at")

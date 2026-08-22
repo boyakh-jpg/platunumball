@@ -240,8 +240,109 @@ import {
   getSafeDraftReceiptEmblems,
   getSafeMatchReceiptEmblems,
 } from "../server/api/match-receipts/_emblemStorage.js";
+import { handlePublicReceipt } from "../server/api/match-receipts/public.js";
 import { RECORD_TYPES } from "../src/lib/constants.js";
 import { getTierDivision, getTierLabel } from "../shared/lib/tier.js";
+
+function createApiResponse() {
+  return {
+    body: null,
+    headers: {},
+    statusCode: 0,
+    setHeader(name, value) { this.headers[name] = value; },
+    status(statusCode) {
+      this.statusCode = statusCode;
+      return this;
+    },
+    json(body) {
+      this.body = body;
+      return this;
+    },
+  };
+}
+
+function createPublicReceiptSupabase({ allowed = true, row = null } = {}) {
+  return {
+    async rpc(name) {
+      assert.equal(name, "consume_match_receipt_draft_read_quota");
+      return { data: allowed, error: null };
+    },
+    from(table) {
+      assert.equal(table, "match_receipt_drafts");
+      return {
+        select() { return this; },
+        eq() { return this; },
+        gt() { return this; },
+        order() { return this; },
+        limit() { return this; },
+        async maybeSingle() { return { data: row, error: null }; },
+      };
+    },
+  };
+}
+
+test("public receipt API returns safe JSON by public code", async () => {
+  const response = createApiResponse();
+  const expiresAt = "2026-08-23T00:00:00.000Z";
+  const supabase = createPublicReceiptSupabase({
+    row: {
+      public_id: "receipt-public-id",
+      public_code: "BT-00000123",
+      expires_at: expiresAt,
+      payload: {
+        homeTeam: "HOME",
+        awayTeam: "AWAY",
+        homeScore: 72,
+        awayScore: 68,
+        originalAddress: "private address",
+        personalMmr: 1400,
+        profileHashtag: "#1234567",
+        officialMatchId: "private-match-id",
+      },
+    },
+  });
+
+  await handlePublicReceipt({
+    method: "GET",
+    query: { code: "#bt-00000123" },
+    headers: { "x-forwarded-for": "203.0.113.10" },
+  }, response, { supabase });
+
+  assert.equal(response.statusCode, 200);
+  assert.equal(response.body.object, "match_receipt");
+  assert.equal(response.body.publicCode, "BT-00000123");
+  assert.equal(response.body.expiresAt, expiresAt);
+  assert.equal(response.body.receipt.homeScore, 72);
+  assert.equal("originalAddress" in response.body.receipt, false);
+  assert.equal("personalMmr" in response.body.receipt, false);
+  assert.equal("profileHashtag" in response.body.receipt, false);
+  assert.equal("officialMatchId" in response.body.receipt, false);
+  assert.equal("canClaim" in response.body, false);
+  assert.equal("capability" in response.body, false);
+  assert.equal(
+    response.headers["Cache-Control"],
+    "public, max-age=30, s-maxage=30, stale-while-revalidate=60",
+  );
+});
+
+test("public receipt API rejects invalid codes and enforces shared read quota", async () => {
+  const invalidResponse = createApiResponse();
+  await handlePublicReceipt({ method: "GET", query: { code: "123" }, headers: {} }, invalidResponse, {
+    supabase: createPublicReceiptSupabase(),
+  });
+  assert.equal(invalidResponse.statusCode, 400);
+  assert.equal(invalidResponse.body.error, "receipt_public_code_invalid");
+
+  const limitedResponse = createApiResponse();
+  await handlePublicReceipt({
+    method: "GET",
+    query: { code: "BT-00000123" },
+    headers: { "x-forwarded-for": "203.0.113.10" },
+  }, limitedResponse, { supabase: createPublicReceiptSupabase({ allowed: false }) });
+  assert.equal(limitedResponse.statusCode, 429);
+  assert.equal(limitedResponse.body.error, "receipt_draft_rate_limited");
+  assert.equal(limitedResponse.headers["Retry-After"], "3600");
+});
 
 test("public receipt draft keeps only bounded safe fields", () => {
   const payload = sanitizeReceiptDraftPayload({
