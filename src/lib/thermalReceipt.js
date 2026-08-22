@@ -416,7 +416,7 @@ function drawEmblem(ctx, emblem, x, y, neutralSources) {
         const alpha = pixels.data[index + 3] / 255;
         const luminance = pixels.data[index] * 0.2126 + pixels.data[index + 1] * 0.7152 + pixels.data[index + 2] * 0.0722;
         const grayscale = Math.max(0, Math.min(255, luminance * alpha + 255 * (1 - alpha) + errors[pixelIndex]));
-        const output = grayscale < 160 ? 0 : 255;
+        const output = Math.round(grayscale / 85) * 85;
         const error = grayscale - output;
         if (pixelX + 1 < 168) errors[pixelIndex + 1] += error * 7 / 16;
         if (pixelY + 1 < 168) {
@@ -427,7 +427,7 @@ function drawEmblem(ctx, emblem, x, y, neutralSources) {
         pixels.data[index] = 21;
         pixels.data[index + 1] = 21;
         pixels.data[index + 2] = 21;
-        pixels.data[index + 3] = output === 0 ? 255 : 0;
+        pixels.data[index + 3] = 255 - output;
       }
     }
     bitmapCtx.putImageData(pixels, 0, 0);

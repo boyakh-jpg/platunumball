@@ -70,18 +70,12 @@ export function getSafeMatchReceiptEmblems(payload, matchId) {
 }
 
 async function normalizeReceiptEmblem(bytes, errorPrefix = "receipt_emblem_invalid") {
-  const normalized = await normalizeWebpUpload(bytes, {
+  return normalizeWebpUpload(bytes, {
     maxBytes: MATCH_RECEIPT_EMBLEM_MAX_BYTES,
     maxDimension: MATCH_RECEIPT_EMBLEM_MAX_DIMENSION,
     errorPrefix,
     canonicalizeWebp: false,
   });
-  if (normalized.dimensions.width !== normalized.dimensions.height) {
-    const error = new Error(`${errorPrefix}_square_required`);
-    error.statusCode = 400;
-    throw error;
-  }
-  return normalized;
 }
 
 function getDigest(bytes) {
@@ -92,7 +86,11 @@ export async function uploadDraftReceiptEmblem({ publicId, side, imageBase64, pr
   const prefix = getDraftPrefix(publicId);
   const cleanEmblemSide = cleanSide(side);
   if (!prefix || !cleanEmblemSide) throw new Error("receipt_emblem_target_invalid");
-  const normalized = await validatePreparedReceiptEmblem(imageBase64);
+  const decoded = decodeBase64Image(imageBase64, {
+    maxBytes: MATCH_RECEIPT_EMBLEM_MAX_BYTES,
+    errorPrefix: "receipt_emblem_invalid",
+  });
+  const normalized = await normalizeReceiptEmblem(decoded);
   const key = `${prefix}${cleanEmblemSide}-${getDigest(normalized.bytes)}.webp`;
   const oldKey = cleanDraftReceiptEmblemKey(previousKey, publicId, cleanEmblemSide);
   if (key !== oldKey) {
@@ -100,14 +98,6 @@ export async function uploadDraftReceiptEmblem({ publicId, side, imageBase64, pr
     await uploadR2Webp(config, key, normalized.bytes, "match receipt emblem");
   }
   return key;
-}
-
-export async function validatePreparedReceiptEmblem(imageBase64) {
-  const decoded = decodeBase64Image(imageBase64, {
-    maxBytes: MATCH_RECEIPT_EMBLEM_MAX_BYTES,
-    errorPrefix: "receipt_emblem_invalid",
-  });
-  return normalizeReceiptEmblem(decoded);
 }
 
 export async function deleteDraftReceiptEmblem({ publicId, side, key }) {

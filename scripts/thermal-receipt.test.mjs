@@ -65,11 +65,13 @@ test("thermal paper uses the authored edge alpha as its only torn silhouette", a
   assert.doesNotMatch(edge, /<pattern|id="tooth"/u);
 });
 
-test("thermal emblems preserve grayscale detail and QR ink gets its own dense mask", async () => {
+test("thermal emblems use four grayscale levels and QR ink gets its own dense mask", async () => {
   const renderer = await readFile(new URL("../src/lib/thermalReceipt.js", import.meta.url), "utf8");
 
   assert.match(renderer, /const errors = new Float32Array\(168 \* 168\)/u);
   assert.match(renderer, /luminance \* alpha \+ 255 \* \(1 - alpha\) \+ errors\[pixelIndex\]/u);
+  assert.match(renderer, /const output = Math\.round\(grayscale \/ 85\) \* 85/u);
+  assert.match(renderer, /pixels\.data\[index \+ 3\] = 255 - output/u);
   assert.match(renderer, /error \* 7 \/ 16/u);
   assert.match(renderer, /applyPrintMask\(inkLayer, ctx\.__thermalMasks\?\.heavy,[\s\S]*"qr"\)/u);
 });
