@@ -758,6 +758,7 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.doesNotMatch(page, /<RotateCcw aria-hidden="true" \/> 자유 회전/);
   assert.match(page, /<Button as="label" variant="secondary">/);
   assert.match(page, /<Button variant="danger" disabled=\{!photoUrl \|\| Boolean\(busy\)\} onClick=\{removePhoto\}>/);
+  assert.ok(page.indexOf('className="match-receipt-photo-tools"') < page.indexOf('className="button ui-button button-primary ui-button-primary button-md ui-button-md match-receipt-complete"'));
   assert.match(page, /`\$\{commentLength\}\/\$\{MATCH_RECEIPT_COMMENT_MAX_LENGTH\}`/);
   assert.match(page, /commentPlaceholder: "선택 · 22자 이내"/);
   assert.match(page, /commentPlaceholder: "Optional · Up to 22 characters"/);
@@ -977,7 +978,7 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(detailStyles, /::-webkit-inner-spin-button,[\s\S]*::-webkit-outer-spin-button[\s\S]*-webkit-appearance: none/);
   assert.match(detailStyles, /\.match-receipt-game-detail[\s\S]*top: 76%/);
   assert.match(renderer, /const centerTop = compact \? 900 : 1350/);
-  assert.match(styles, /@media \(max-width: 900px\)[\s\S]*?\.match-receipt-editor \{[\s\S]*?display: contents;[\s\S]*?\.match-receipt-preview-panel \{[\s\S]*?order: 2;[\s\S]*?\.match-receipt-complete \{[\s\S]*?order: 3;/);
+  assert.match(styles, /@media \(max-width: 900px\)[\s\S]*?\.match-receipt-editor \{[\s\S]*?display: contents;[\s\S]*?\.match-receipt-preview-panel \{[\s\S]*?order: 2;[\s\S]*?\.match-receipt-photo-tools \{[\s\S]*?order: 3;[\s\S]*?\.match-receipt-complete \{[\s\S]*?order: 4;/);
   assert.match(styles, /\.match-receipt-ticket-date[\s\S]*border-top/);
   assert.match(styles, /\.match-receipt-ticket\s*\{[^}]*inset:\s*auto 0 1\.8%;/);
   assert.match(styles, /--receipt-ticket-personal-stats-shift:\s*-28%/);
@@ -990,7 +991,11 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(renderer, /ctx\.fillStyle = "#d4582b";\s*ctx\.font = '900 27px "KBO Dia Gothic", sans-serif';\s*ctx\.fillText\(model\.playedOn/);
   assert.match(renderer, /ctx\.drawImage\(paper, 0, receiptTop, width, height - receiptTop - \(compact \? 26 : 34\)\)/);
   assert.equal(MATCH_RECEIPT_PHOTO_ASPECT, 1080 / 885);
-  assert.match(renderer, /match-receipt-score-digits-v3\.png/);
+  assert.match(thermalRenderer, /const SCORE_FONT_WEIGHT = 700;/);
+  assert.match(thermalRenderer, /function drawAngularScore/);
+  assert.match(thermalRenderer, /function drawAngularColon/);
+  assert.doesNotMatch(thermalRenderer, /match-receipt-score-digits-v3\.png/);
+  assert.match(thermalRenderer, /"NeoDunggeunmo"/);
   assert.match(renderer, /drawCanvasScoreColon\(ctx, scoreDigits/);
   assert.doesNotMatch(renderer, /ctx\.fillText\(":",/);
   assert.match(renderer, /createCanvasPaperPattern\(ctx, paperGrain\)/);
@@ -1120,7 +1125,7 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(draftApi, /clonePublicId/);
   assert.match(draftApi, /canClaim/);
   assert.match(draftApi, /trustedCanonical/);
-  assert.match(renderer, /label: `WIN \$\{winner\.name\} · LOSS \$\{loser\}`/);
+  assert.match(renderer, /label: `\$\{winner\.name\} WIN`/);
   assert.match(thermalRenderer, /drawThermalText\(ctx, model\.outcome\.label,/);
   assert.doesNotMatch(thermalRenderer, /`WIN\s+\$\{winner\}/);
   assert.match(preview, /<small>\{model\.outcome\.label\}<\/small>/);

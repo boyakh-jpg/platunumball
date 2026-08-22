@@ -4,6 +4,7 @@ import { renderMatchReceiptPreviewCanvas } from "../../lib/matchReceipt.js";
 export default function ThermalReceiptPreview({ draft, photoBlob, matchUrl, publicId, teamLineArtUrls, photoGestureHandlers = null, suspendRender = false }) {
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [aspectRatio, setAspectRatio] = useState("9 / 16");
   const canvasRef = useRef(null);
   const generationRef = useRef(0);
   const isEnglish = draft.receiptLocale === "en";
@@ -26,6 +27,7 @@ export default function ThermalReceiptPreview({ draft, photoBlob, matchUrl, publ
         target.width = renderedCanvas.width;
         target.height = renderedCanvas.height;
         target.getContext("2d").drawImage(renderedCanvas, 0, 0);
+        setAspectRatio(`${renderedCanvas.width} / ${renderedCanvas.height}`);
         setReady(true);
       }).catch(() => {
         if (generationRef.current === generation) setFailed(true);
@@ -39,7 +41,7 @@ export default function ThermalReceiptPreview({ draft, photoBlob, matchUrl, publ
   }, [draft, matchUrl, photoBlob, publicId, teamLineArtUrls, suspendRender]);
 
   return (
-    <div className="match-receipt-thermal-preview-frame" aria-busy={!ready && !failed}>
+    <div className="match-receipt-thermal-preview-frame" style={{ "--thermal-receipt-preview-aspect": aspectRatio }} aria-busy={!ready && !failed}>
       <canvas
         ref={canvasRef}
         className="match-receipt-thermal-preview"

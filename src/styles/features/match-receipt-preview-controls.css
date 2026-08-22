@@ -10,7 +10,6 @@
   display: block;
   width: 100%;
   height: auto;
-  aspect-ratio: 9 / 16;
   border: var(--ui-stroke-width) solid var(--rb-line);
   background: var(--rb-surface-strong);
 }
@@ -18,7 +17,7 @@
 .match-receipt-thermal-preview-frame {
   position: relative;
   width: 100%;
-  aspect-ratio: 9 / 16;
+  aspect-ratio: var(--thermal-receipt-preview-aspect, 9 / 16);
 }
 
 .match-receipt-thermal-photo-hitarea {
@@ -152,7 +151,7 @@ button.match-receipt-photo-editor-rotate {
 
 .match-receipt-photo-actions svg { width: 16px; height: 16px; }
 
-.match-receipt-photo-actions input[type="file"] {
+.match-receipt-photo-actions input.match-receipt-photo-input[type="file"] {
   position: absolute;
   width: 1px;
   height: 1px;

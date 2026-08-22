@@ -1365,37 +1365,6 @@ export default function MatchReceipt({ auth, app }) {
             {!isEnglish ? <p className="match-receipt-map-note"><MapPin aria-hidden="true" /> 이미지에는 경기 장소 또는 짧은 장소만 들어갑니다. 지도 화면은 포함하지 않습니다.</p> : null}
           </section>
 
-          <button type="submit" className="button ui-button button-primary ui-button-primary button-md ui-button-md match-receipt-complete" disabled={receiptIsReadOnly || Boolean(busy)}>{receiptCopy.complete}</button>
-          {status ? <p className="match-receipt-status" role="status">{status}</p> : null}
-        </form>
-
-        <aside className="match-receipt-preview-panel" ref={previewRef}>
-          <div className="match-receipt-preview-head">
-            <div><span>{receiptCopy.preview}</span></div>
-            <span>9:16 STORY</span>
-          </div>
-          <div className={`match-receipt-preview-stage${isThermal ? " is-thermal" : ""}`}>
-            {isThermal ? (
-              <ThermalReceiptPreview
-                draft={receiptPreviewDraft}
-                photoBlob={photoBlob}
-                matchUrl={matchUrl}
-                publicId={receiptPublicId}
-                teamLineArtUrls={selectedTeamReceiptEmblemUrls}
-                suspendRender={photoGestureActive}
-              />
-            ) : (
-              <MatchReceiptPreview
-                draft={receiptPreviewDraft}
-                photoUrl={draft.includePhoto ? photoUrl : ""}
-                matchUrl={matchUrl}
-                publicId={receiptPublicId}
-                showPersonalTierIdentity={canShowCurrentUserIdentity}
-                locale={receiptLocale}
-                teamLineArtUrls={selectedTeamReceiptEmblemUrls}
-              />
-            )}
-          </div>
           {!receiptIsReadOnly ? <div className="match-receipt-photo-tools">
             {photoUrl ? (
               <div className="match-receipt-photo-editor-shell" style={{ aspectRatio: photoEditorAspect }}>
@@ -1434,7 +1403,7 @@ export default function MatchReceipt({ auth, app }) {
             <div className="match-receipt-photo-actions" aria-label={receiptCopy.photoActionsAria}>
               <Button as="label" variant="secondary">
                 <ImagePlus aria-hidden="true" /> {receiptCopy.selectPhoto}
-                <input type="file" accept="image/jpeg,image/png,image/webp" disabled={busy === "photo"} onChange={handlePhotoChange} />
+                <input className="match-receipt-photo-input" type="file" accept="image/jpeg,image/png,image/webp" disabled={busy === "photo"} onChange={handlePhotoChange} />
               </Button>
               <Button variant="secondary" disabled={!photoUrl || Boolean(busy)} onClick={() => updateField("photoRotation", draft.photoRotation + 90)}><RotateCcw aria-hidden="true" /> {receiptCopy.rotate90}</Button>
               <Button variant="danger" disabled={!photoUrl || Boolean(busy)} onClick={removePhoto}><Trash2 aria-hidden="true" /> {receiptCopy.remove}</Button>
@@ -1454,6 +1423,37 @@ export default function MatchReceipt({ auth, app }) {
             </p>
           </div> : null}
 
+          <button type="submit" className="button ui-button button-primary ui-button-primary button-md ui-button-md match-receipt-complete" disabled={receiptIsReadOnly || Boolean(busy)}>{receiptCopy.complete}</button>
+          {status ? <p className="match-receipt-status" role="status">{status}</p> : null}
+        </form>
+
+        <aside className="match-receipt-preview-panel" ref={previewRef}>
+          <div className="match-receipt-preview-head">
+            <div><span>{receiptCopy.preview}</span></div>
+            <span>{isThermal ? "THERMAL RECEIPT" : "9:16 STORY"}</span>
+          </div>
+          <div className={`match-receipt-preview-stage${isThermal ? " is-thermal" : ""}`}>
+            {isThermal ? (
+              <ThermalReceiptPreview
+                draft={receiptPreviewDraft}
+                photoBlob={photoBlob}
+                matchUrl={matchUrl}
+                publicId={receiptPublicId}
+                teamLineArtUrls={selectedTeamReceiptEmblemUrls}
+                suspendRender={photoGestureActive}
+              />
+            ) : (
+              <MatchReceiptPreview
+                draft={receiptPreviewDraft}
+                photoUrl={draft.includePhoto ? photoUrl : ""}
+                matchUrl={matchUrl}
+                publicId={receiptPublicId}
+                showPersonalTierIdentity={canShowCurrentUserIdentity}
+                locale={receiptLocale}
+                teamLineArtUrls={selectedTeamReceiptEmblemUrls}
+              />
+            )}
+          </div>
           {generated ? (
             <div className="match-receipt-actions">
               <button type="button" className="button ui-button button-primary ui-button-primary button-md ui-button-md" disabled={Boolean(busy)} onClick={handleShare}><Share2 aria-hidden="true" /> {receiptCopy.share}</button>

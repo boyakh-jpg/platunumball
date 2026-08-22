@@ -17,6 +17,20 @@
 @font-face {
   font-family: "IBM Plex Mono";
   font-style: normal;
+  font-display: swap;
+  src: url("/assets/fonts/IBMPlexMono-Regular.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "NeoDunggeunmo";
+  font-style: normal;
+  font-display: swap;
+  src: url("/assets/fonts/NeoDunggeunmo.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
   font-weight: 700;
   font-display: swap;
   src: url("/assets/fonts/IBMPlexMono-Bold.woff2") format("woff2");

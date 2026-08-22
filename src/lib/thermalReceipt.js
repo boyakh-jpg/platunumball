@@ -17,11 +17,13 @@ const INK = "#151515";
 const BRAND_FONT = '"Anton"';
 const DATA_FONT_FAMILY = '"IBM Plex Mono"';
 const DATA_FONT = DATA_FONT_FAMILY;
-const DATA_FONT_WEIGHT = 700;
-const KOREAN_FONT = '"Dotum", "돋움", "Pretendard Variable", sans-serif';
+const DATA_FONT_WEIGHT = 400;
+const SCORE_FONT_WEIGHT = 700;
+const TEAM_DISPLAY_FONT = '"Bebas Neue"';
+const TEAM_DISPLAY_FONT_WEIGHT = 900;
+const KOREAN_FONT = '"NeoDunggeunmo", "Pretendard Variable", monospace';
 const PANEL_RADIUS = 14;
 const QR_QUIET_MODULES = 1;
-const DIGIT_ATLAS_PATH = "/assets/match-receipt-score-digits-v3.png";
 const THERMAL_ASSET_ROOT = "/assets/thermal-receipt";
 const THERMAL_ASSET_PATHS = Object.freeze({
   background: `${THERMAL_ASSET_ROOT}/charcoal-background-2048.png`,
@@ -128,15 +130,17 @@ function getThermalFont(text, font) {
 
 function getThermalFontWeight(font, requestedWeight) {
   if (requestedWeight) return requestedWeight;
-  return font === DATA_FONT ? DATA_FONT_WEIGHT : 800;
+  if (font === DATA_FONT || font === KOREAN_FONT) return DATA_FONT_WEIGHT;
+  if (font === TEAM_DISPLAY_FONT) return TEAM_DISPLAY_FONT_WEIGHT;
+  return 800;
 }
 
-function fitText(ctx, text, maxWidth, start, minimum, font) {
+function fitText(ctx, text, maxWidth, start, minimum, font, weight) {
   const resolvedFont = getThermalFont(text, font);
-  const weight = getThermalFontWeight(resolvedFont);
+  const resolvedWeight = getThermalFontWeight(resolvedFont, weight);
   let size = start;
   do {
-    ctx.font = `${weight} ${size}px ${resolvedFont}`;
+    ctx.font = `${resolvedWeight} ${size}px ${resolvedFont}`;
     if (ctx.measureText(text).width <= maxWidth) return size;
     size -= 2;
   } while (size >= minimum);
@@ -164,12 +168,12 @@ export function resolveThermalReceiptEmblemSources(model = {}, options = {}) {
 async function loadFirstImage(sources) {
   for (const source of sources) {
     const image = await loadImage(source);
-    if (image) return image;
+    if (image) return { image, source };
   }
   return null;
 }
 
-function splitThermalText(text, maxWidth, size, font = DATA_FONT, weight = 800) {
+function splitThermalText(text, maxWidth, size, font = DATA_FONT, weight = DATA_FONT_WEIGHT) {
   const value = String(text || "").trim();
   if (!value) return [];
   const measuringContext = createCanvas(1, 1).getContext("2d");
@@ -269,11 +273,14 @@ function paperPath(ctx, paper) {
   ctx.closePath();
 }
 
-function drawPaper(ctx, layout, seed, textures) {
-  const random = createThermalRandom(seed);
+function drawBackdrop(ctx, background) {
   ctx.fillStyle = "#292927";
   ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-  drawImageCover(ctx, textures.background, 0, 0, ctx.canvas.width, ctx.canvas.height);
+  drawImageCover(ctx, background, 0, 0, ctx.canvas.width, ctx.canvas.height);
+}
+
+function drawPaper(ctx, layout, seed, textures) {
+  const random = createThermalRandom(seed);
   ctx.save();
   ctx.shadowColor = "rgba(0,0,0,.48)";
   ctx.shadowBlur = 22;
@@ -370,12 +377,18 @@ function drawBrand(ctx, model, layout) {
   drawRule(ctx, layout.content.x, layout.brand.y + layout.brand.height - 4, layout.content.width);
 }
 
-function drawEmblem(ctx, image, x, y) {
+function drawEmblem(ctx, emblem, x, y, neutralSources) {
+  const layer = createCanvas(184, 184);
+  const layerCtx = layer.getContext("2d");
+  const image = emblem?.image;
+  const isNeutral = neutralSources.has(emblem?.source);
+  if (isNeutral) {
+    layerCtx.fillStyle = INK;
+    layerCtx.beginPath();
+    layerCtx.arc(92, 92, 69, 0, Math.PI * 2);
+    layerCtx.fill();
+  }
   if (image) {
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(x, y, 69, 0, Math.PI * 2);
-    ctx.clip();
     const bitmap = createCanvas(168, 168);
     const bitmapCtx = bitmap.getContext("2d", { willReadFrequently: true });
     const scale = Math.min(148 / image.naturalWidth, 148 / image.naturalHeight);
@@ -407,92 +420,80 @@ function drawEmblem(ctx, image, x, y) {
       pixels.data[index + 3] = alpha >= 64 && (hasTransparentArtwork || luminance < 184) ? 255 : 0;
     }
     bitmapCtx.putImageData(pixels, 0, 0);
-    ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(bitmap, x - 84, y - 84, 168, 168);
-    ctx.restore();
+    layerCtx.save();
+    layerCtx.beginPath();
+    layerCtx.arc(92, 92, 69, 0, Math.PI * 2);
+    layerCtx.clip();
+    layerCtx.imageSmoothingEnabled = false;
+    if (isNeutral) layerCtx.globalCompositeOperation = "destination-out";
+    layerCtx.drawImage(bitmap, 8, 8, 168, 168);
+    layerCtx.restore();
   }
-  ctx.save();
-  ctx.strokeStyle = INK;
-  ctx.beginPath();
-  ctx.arc(x, y, 82, 0, Math.PI * 2);
-  ctx.lineWidth = 6;
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.arc(x, y, 73, 0, Math.PI * 2);
-  ctx.lineWidth = 2;
-  ctx.stroke();
-  ctx.restore();
+  layerCtx.strokeStyle = INK;
+  layerCtx.beginPath();
+  layerCtx.arc(92, 92, 82, 0, Math.PI * 2);
+  layerCtx.lineWidth = 6;
+  layerCtx.stroke();
+  layerCtx.beginPath();
+  layerCtx.arc(92, 92, 73, 0, Math.PI * 2);
+  layerCtx.lineWidth = 2;
+  layerCtx.stroke();
+  applyPrintMask(layer, ctx.__thermalMasks?.team, `${ctx.__thermalSeed}|emblem|${x}|${y}`, "team");
+  ctx.drawImage(layer, x - 92, y - 92);
 }
 
 function drawTeams(ctx, model, layout, emblems) {
   const y = layout.teams.y + 82;
   const left = layout.teams.x + 126;
   const right = layout.teams.x + layout.teams.width - 126;
-  drawEmblem(ctx, emblems.home, left, y);
-  drawEmblem(ctx, emblems.away, right, y);
+  const neutralSources = new Set([
+    model.neutralTeamMarkUrls?.home,
+    model.neutralTeamMarkUrls?.away,
+    FIXED_NEUTRAL_EMBLEM_PATHS.home,
+    FIXED_NEUTRAL_EMBLEM_PATHS.away,
+  ].filter(Boolean));
+  drawEmblem(ctx, emblems.home, left, y, neutralSources);
+  drawEmblem(ctx, emblems.away, right, y, neutralSources);
   drawThermalText(ctx, "VS", layout.teams.x + layout.teams.width / 2, y, { size: 48, align: "center", maxWidth: 88, dotScale: 2 });
   [[model.homeTeam || "Team A", left], [model.awayTeam || "Team B", right]].forEach(([name, x]) => {
-    const size = fitText(ctx, name, 286, 44, 26);
-    drawThermalText(ctx, name, x, layout.teams.y + 188, { size, align: "center", maxWidth: 286, dotScale: 2, printRole: "team" });
+    const font = getThermalFont(name) === KOREAN_FONT ? KOREAN_FONT : TEAM_DISPLAY_FONT;
+    const weight = getThermalFontWeight(font);
+    const size = fitText(ctx, name, 286, 44, 26, font, weight);
+    drawThermalText(ctx, name, x, layout.teams.y + 188, { size, font, weight, align: "center", maxWidth: 286, dotScale: 2, printRole: "team" });
   });
 }
 
-function drawAtlasScore(ctx, atlas, score, slotX, centerY, slotWidth, tone = PAPER, digitHeight = 158) {
+function drawAngularScore(ctx, score, slotX, centerY, slotWidth, tone = PAPER, digitHeight = 158) {
   const metrics = getThermalScoreSlotLayout(score, { slotWidth, digitHeight });
-  const mask = createCanvas(Math.ceil(metrics.totalWidth), Math.ceil(metrics.height));
-  const maskCtx = mask.getContext("2d");
-  maskCtx.imageSmoothingEnabled = false;
-  const cellWidth = atlas ? atlas.naturalWidth / 11 : 0;
   Array.from(metrics.score).forEach((digit, index) => {
-    const x = index * (metrics.glyphWidth + metrics.gap);
-    if (atlas) maskCtx.drawImage(atlas, Number(digit) * cellWidth, 0, cellWidth, atlas.naturalHeight, x, 0, metrics.glyphWidth, metrics.height);
-    else drawThermalText(maskCtx, digit, x, metrics.height / 2, { size: metrics.height, font: DATA_FONT, maxWidth: metrics.glyphWidth });
-  });
-  maskCtx.globalCompositeOperation = "source-in";
-  maskCtx.fillStyle = tone;
-  maskCtx.fillRect(0, 0, mask.width, mask.height);
-  ctx.drawImage(mask, slotX + metrics.x, centerY - metrics.height / 2);
-}
-
-function drawAtlasColon(ctx, atlas, slotX, centerY, slotWidth, height, tone = PAPER) {
-  if (!atlas) {
-    drawThermalText(ctx, ":", slotX + slotWidth / 2, centerY, {
-      size: height,
+    const x = slotX + metrics.x + metrics.glyphWidth / 2 + index * (metrics.glyphWidth + metrics.gap);
+    drawThermalText(ctx, digit, x, centerY + 2, {
+      size: metrics.height * 1.08,
       font: DATA_FONT,
+      weight: SCORE_FONT_WEIGHT,
       align: "center",
-      maxWidth: slotWidth,
+      maxWidth: metrics.glyphWidth,
       dotScale: 2,
       color: tone,
+      printRole: "heavy",
     });
-    return;
-  }
-  const cellWidth = atlas.naturalWidth / 11;
-  const sourceIndex = 10;
-  const targetWidth = Math.min(slotWidth, height * cellWidth / atlas.naturalHeight);
-  const mask = createCanvas(Math.ceil(targetWidth), Math.ceil(height));
-  const maskCtx = mask.getContext("2d");
-  maskCtx.imageSmoothingEnabled = false;
-  maskCtx.drawImage(
-    atlas,
-    sourceIndex * cellWidth,
-    0,
-    cellWidth,
-    atlas.naturalHeight,
-    0,
-    0,
-    targetWidth,
-    height,
-  );
-  maskCtx.globalCompositeOperation = "source-in";
-  maskCtx.fillStyle = tone;
-  maskCtx.fillRect(0, 0, mask.width, mask.height);
-  ctx.save();
-  ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(mask, slotX + (slotWidth - targetWidth) / 2, centerY - height / 2);
-  ctx.restore();
+  });
 }
 
-function drawScore(ctx, model, layout, atlas) {
+function drawAngularColon(ctx, slotX, centerY, slotWidth, height, tone = PAPER) {
+  drawThermalText(ctx, ":", slotX + slotWidth / 2, centerY + 2, {
+    size: height * 1.08,
+    font: DATA_FONT,
+    weight: SCORE_FONT_WEIGHT,
+    align: "center",
+    maxWidth: slotWidth,
+    dotScale: 2,
+    color: tone,
+    printRole: "heavy",
+  });
+}
+
+function drawScore(ctx, model, layout) {
   const box = layout.score;
   fillMaskedPanel(ctx, box);
   ctx.strokeStyle = PAPER;
@@ -500,16 +501,17 @@ function drawScore(ctx, model, layout, atlas) {
   roundedRectPath(ctx, box.x + 9, box.y + 9, box.width - 18, box.height - 18, 10);
   ctx.stroke();
   const centerY = box.y + box.height / 2;
-  drawAtlasScore(ctx, atlas, model.homeScore, box.x, centerY, 284);
-  drawAtlasColon(ctx, atlas, box.x + 316, centerY, 52, 132);
-  drawAtlasScore(ctx, atlas, model.awayScore, box.x + 400, centerY, 284);
+  drawAngularScore(ctx, model.homeScore, box.x, centerY, 284);
+  drawAngularColon(ctx, box.x + 316, centerY, 52, 158);
+  drawAngularScore(ctx, model.awayScore, box.x + 400, centerY, 284);
 }
 
 function drawInfo(ctx, model, layout) {
   const center = layout.info.x + layout.info.width / 2;
   const playedOn = String(model.playedOn || "").replaceAll("-", ".");
   const periodCount = Array.isArray(model.periodScores) && model.periodScores.length ? model.periodScores.length : 4;
-  drawThermalText(ctx, "FINAL", center, layout.info.y + 23, { size: 34, font: DATA_FONT, align: "center", maxWidth: 200, dotScale: 2 });
+  const nature = model.matchNatureLabel || "COMPETITIVE";
+  drawThermalText(ctx, nature, center, layout.info.y + 23, { size: fitText(ctx, nature, 360, 34, 22), align: "center", maxWidth: 360, dotScale: 2 });
   drawThermalText(ctx, `${playedOn} · ${model.playedTime || ""}`, center, layout.info.y + 58, { size: 24, align: "center", maxWidth: 520 });
   drawThermalText(ctx, model.venue || model.address || "VENUE", center, layout.info.y + 88, { size: 26, align: "center", maxWidth: 620 });
   drawThermalText(ctx, `${String(model.format || "5v5").toUpperCase()} · ${periodCount} QUARTERS${model.refereeAssigned ? " · REFEREE" : ""}`, center, layout.info.y + 118, { size: 22, align: "center", maxWidth: 620 });
@@ -543,7 +545,7 @@ function drawPeriods(ctx, model, layout) {
   drawRule(ctx, x, layout.periods.y + 146, layout.periods.width, true);
 }
 
-function drawResult(ctx, model, layout, atlas) {
+function drawResult(ctx, model, layout) {
   const box = layout.result;
   fillMaskedPanel(ctx, box);
   const homeName = model.homeTeam || "Team A";
@@ -553,9 +555,9 @@ function drawResult(ctx, model, layout, atlas) {
   ctx.fillStyle = PAPER;
   ctx.fillRect(box.x + 20, box.y + 47, box.width - 40, 1);
   const scoreY = box.y + 101;
-  drawAtlasScore(ctx, atlas, model.homeScore, box.x + 20, scoreY, 180, PAPER, 92);
-  drawAtlasColon(ctx, atlas, box.x + 202, scoreY, 34, 68);
-  drawAtlasScore(ctx, atlas, model.awayScore, box.x + 238, scoreY, 180, PAPER, 92);
+  drawAngularScore(ctx, model.homeScore, box.x + 20, scoreY, 180, PAPER, 92);
+  drawAngularColon(ctx, box.x + 202, scoreY, 34, 92, PAPER);
+  drawAngularScore(ctx, model.awayScore, box.x + 238, scoreY, 180, PAPER, 92);
   drawThermalText(ctx, model.outcome.label, box.x + 22, box.y + 169, { size: 24, maxWidth: box.width - 44, color: PAPER });
   if (layout.hasComment) {
     ctx.fillStyle = PAPER;
@@ -624,15 +626,16 @@ export async function renderThermalReceiptCanvas(value, preset = "story", option
   await Promise.all([
     document.fonts?.load?.(`800 48px ${BRAND_FONT}`),
     document.fonts?.load?.(`${DATA_FONT_WEIGHT} 24px ${DATA_FONT_FAMILY}`),
-    document.fonts?.load?.(`800 24px ${KOREAN_FONT}`),
+    document.fonts?.load?.(`${SCORE_FONT_WEIGHT} 158px ${DATA_FONT_FAMILY}`),
+    document.fonts?.load?.(`${TEAM_DISPLAY_FONT_WEIGHT} 44px ${TEAM_DISPLAY_FONT}`),
+    document.fonts?.load?.(`${DATA_FONT_WEIGHT} 24px ${KOREAN_FONT}`),
   ]);
   await document.fonts?.ready;
   const model = normalizeThermalData(value, options);
   const renderSeed = model.serialSeed || model.serial || "thermal";
   const emblemSources = resolveThermalReceiptEmblemSources(model, options);
-  const [photo, atlas, homeEmblem, awayEmblem, background, paper, bodyMask, teamMask, heavyMask, photoMask, edge] = await Promise.all([
+  const [photo, homeEmblem, awayEmblem, background, paper, bodyMask, teamMask, heavyMask, photoMask, edge] = await Promise.all([
     model.includePhoto ? loadImage(options.photoBlob || options.photoUrl) : null,
-    loadAssetImage(DIGIT_ATLAS_PATH),
     loadFirstImage(emblemSources.home),
     loadFirstImage(emblemSources.away),
     loadAssetImage(THERMAL_ASSET_PATHS.background),
@@ -651,14 +654,14 @@ export async function renderThermalReceiptCanvas(value, preset = "story", option
   const ctx = base.getContext("2d");
   ctx.__thermalSeed = renderSeed;
   ctx.__thermalMasks = { body: bodyMask, team: teamMask, heavy: heavyMask, photo: photoMask };
-  drawPaper(ctx, layout, renderSeed, { background, paper, edge });
+  drawPaper(ctx, layout, renderSeed, { paper, edge });
   drawBrand(ctx, model, layout);
   drawPhoto(ctx, photo, layout, model);
   drawTeams(ctx, model, layout, { home: homeEmblem, away: awayEmblem });
-  drawScore(ctx, model, layout, atlas);
+  drawScore(ctx, model, layout);
   drawInfo(ctx, model, layout);
   drawPeriods(ctx, model, layout);
-  drawResult(ctx, model, layout, atlas);
+  drawResult(ctx, model, layout);
   drawFooter(ctx, model, layout);
   if (preset === "story") {
     const output = createCanvas(layout.paper.width, layout.paper.height);
@@ -678,8 +681,7 @@ export async function renderThermalReceiptCanvas(value, preset = "story", option
   const size = preset === "feed" ? { width: 1080, height: 1350 } : { width: 1080, height: 1920 };
   const output = createCanvas(size.width, size.height);
   const outputCtx = output.getContext("2d");
-  outputCtx.fillStyle = "#292927";
-  outputCtx.fillRect(0, 0, size.width, size.height);
+  drawBackdrop(outputCtx, background);
   const sourceY = layout.paper.y - 28;
   const sourceHeight = layout.paper.height + 56;
   const scale = Math.min(size.width / 1080, size.height / sourceHeight);

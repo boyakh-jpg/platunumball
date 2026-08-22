@@ -709,10 +709,12 @@
     position: static; order: 2;
   }
 
-  .match-receipt-complete { order: 3; }
+  .match-receipt-photo-tools { order: 3; }
+
+  .match-receipt-complete { order: 4; }
 
   .match-receipt-status {
-    order: 4; margin-top: 0;
+    order: 5; margin-top: 0;
   }
 }
 

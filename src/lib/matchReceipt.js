@@ -637,10 +637,7 @@ export function getMatchReceiptOutcome(value) {
   const winner = homeWon
     ? { key: "home", name: draft.homeTeam || "TEAM A" }
     : { key: "away", name: draft.awayTeam || "TEAM B" };
-  const loser = homeWon
-    ? draft.awayTeam || "TEAM B"
-    : draft.homeTeam || "TEAM A";
-  return { key: winner.key, label: `WIN ${winner.name} · LOSS ${loser}` };
+  return { key: winner.key, label: `${winner.name} WIN` };
 }
 
 export function getMatchReceiptCanvasSize(preset = "story") {
