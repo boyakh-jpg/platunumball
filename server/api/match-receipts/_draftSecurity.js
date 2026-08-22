@@ -6,6 +6,7 @@ import {
   getMatchReceiptFormatPlayerCount,
   sanitizeMatchReceiptComment,
 } from "../../../shared/lib/thermalReceipt.js";
+import { getSafeDraftReceiptEmblems } from "./_emblemStorage.js";
 
 export const RECEIPT_CAPABILITY_COOKIE = "boxtier_receipt_capability";
 export const RECEIPT_DRAFT_TTL_SECONDS = 30 * 24 * 60 * 60;
@@ -176,8 +177,14 @@ export function projectPublicReceiptDraft(value = {}, options = {}) {
   const projected = legacyMatchId
     ? { ...publicDraft, serialSeed: createCanonicalReceiptSerialSeed(legacyMatchId, options.serialSecret) }
     : publicDraft;
+  const guestEmblems = getSafeDraftReceiptEmblems(value, options.publicId);
+  const projectedWithEmblems = {
+    ...projected,
+    ...(guestEmblems.home ? { homeEmblemKey: guestEmblems.home, homeUseLineArt: true } : {}),
+    ...(guestEmblems.away ? { awayEmblemKey: guestEmblems.away, awayUseLineArt: true } : {}),
+  };
   const publicCode = normalizeMatchPublicCode(options.publicCode);
-  return publicCode ? { ...projected, publicCode } : projected;
+  return publicCode ? { ...projectedWithEmblems, publicCode } : projectedWithEmblems;
 }
 
 export function createReceiptClonePayload(value = {}) {

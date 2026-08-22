@@ -12,12 +12,23 @@ import {
   sanitizeReceiptDraftPayload,
 } from "./_draftSecurity.js";
 import { parseExternalReceiptInput } from "./_createInput.js";
+import { deleteReceiptEmblemKeys, uploadDraftReceiptEmblem } from "./_emblemStorage.js";
+
+const EXTERNAL_RECEIPT_BODY_MAX_BYTES = 320 * 1024;
+const EXTERNAL_RECEIPT_STRING_MAX_LENGTH = 140_000;
 
 export async function handleCreateReceipt(request, response, options = {}) {
   if (!allowRequestMethod(request, response, ["POST"])) return;
 
+  const uploadEmblem = options.uploadEmblem ?? uploadDraftReceiptEmblem;
+  const deleteEmblemKeys = options.deleteEmblemKeys ?? deleteReceiptEmblemKeys;
+  const uploadedEmblemKeys = [];
+  let draftStored = false;
   try {
-    const body = await readJsonBody(request, { maxBytes: 16_384, maxStringLength: 1_000 });
+    const body = await readJsonBody(request, {
+      maxBytes: EXTERNAL_RECEIPT_BODY_MAX_BYTES,
+      maxStringLength: EXTERNAL_RECEIPT_STRING_MAX_LENGTH,
+    });
     const parsed = parseExternalReceiptInput(body);
     if (parsed.issues.length > 0) {
       return sendJson(response, 422, { error: "receipt_input_invalid", fields: parsed.issues });
@@ -34,7 +45,22 @@ export async function handleCreateReceipt(request, response, options = {}) {
     }
 
     const capability = createReceiptCapability();
-    const payload = sanitizeReceiptDraftPayload(parsed.draft);
+    const emblemKeys = {};
+    for (const side of ["home", "away"]) {
+      const emblem = parsed.emblems[side];
+      if (!emblem) continue;
+      emblemKeys[side] = await uploadEmblem({
+        publicId: capability.publicId,
+        side,
+        imageBase64: emblem.imageBase64,
+      });
+      uploadedEmblemKeys.push(emblemKeys[side]);
+    }
+    const payload = {
+      ...sanitizeReceiptDraftPayload(parsed.draft),
+      ...(emblemKeys.home ? { homeGuestEmblemKey: emblemKeys.home, homeUseLineArt: true } : {}),
+      ...(emblemKeys.away ? { awayGuestEmblemKey: emblemKeys.away, awayUseLineArt: true } : {}),
+    };
     const { data, error } = await supabase
       .from("match_receipt_drafts")
       .insert({
@@ -45,6 +71,7 @@ export async function handleCreateReceipt(request, response, options = {}) {
       .select("public_id,public_code,expires_at")
       .single();
     if (error) throw error;
+    draftStored = true;
 
     const publicCode = data.public_code;
     response.setHeader("Cache-Control", "no-store");
@@ -58,7 +85,10 @@ export async function handleCreateReceipt(request, response, options = {}) {
       receipt: projectPublicReceiptDraft(payload, { publicId: data.public_id, publicCode }),
     });
   } catch (error) {
-    if (error?.statusCode) return sendJson(response, error.statusCode, { error: error.code });
+    if (!draftStored && uploadedEmblemKeys.length > 0) {
+      await deleteEmblemKeys(uploadedEmblemKeys).catch(() => {});
+    }
+    if (error?.statusCode) return sendJson(response, error.statusCode, { error: error.code ?? error.message });
     console.warn("External receipt creation failed.", error.message);
     return sendJson(response, 500, { error: "receipt_create_failed" });
   }

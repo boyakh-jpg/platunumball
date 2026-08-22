@@ -8,6 +8,8 @@ import {
 const FORMATS = new Set(["1v1", "2v2", "3v3", "3x3", "5v5"]);
 const MATCH_NATURES = new Set(["friendly", "competitive", "revenge", "semifinal", "final"]);
 const PERIOD_LABELS = new Set(["1Q", "2Q", "3Q", "4Q", "1H", "2H", "REG", "OT"]);
+const PREPARED_EMBLEM_MAX_BASE64_LENGTH = 131_072;
+const CANONICAL_BASE64_PATTERN = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/u;
 
 function text(value) {
   return String(value ?? "").replace(/[<>\u0000-\u001f\u007f]/gu, "").replace(/\s+/gu, " ").trim();
@@ -27,8 +29,27 @@ function issue(field, code) {
   return { field, code };
 }
 
+function parsePreparedEmblem(value, field, issues) {
+  if (value === undefined || value === null) return null;
+  if (!value || typeof value !== "object" || Array.isArray(value)
+    || Object.keys(value).length !== 1 || !Object.hasOwn(value, "imageBase64")) {
+    issues.push(issue(field, "prepared_webp_base64_required"));
+    return null;
+  }
+  const imageBase64 = value.imageBase64;
+  if (typeof imageBase64 !== "string" || !imageBase64
+    || imageBase64.length > PREPARED_EMBLEM_MAX_BASE64_LENGTH
+    || !CANONICAL_BASE64_PATTERN.test(imageBase64)) {
+    issues.push(issue(field, "prepared_webp_base64_required"));
+    return null;
+  }
+  return { imageBase64 };
+}
+
 export function parseExternalReceiptInput(value = {}) {
   const issues = [];
+  const homeEmblem = parsePreparedEmblem(value.homeEmblem, "homeEmblem", issues);
+  const awayEmblem = parsePreparedEmblem(value.awayEmblem, "awayEmblem", issues);
   const style = text(value.style);
   const homeTeam = text(value.homeTeam);
   const awayTeam = text(value.awayTeam);
@@ -67,6 +88,9 @@ export function parseExternalReceiptInput(value = {}) {
     || value.homeEmblemKey || value.awayEmblemKey) {
     issues.push(issue("emblem", "external_emblem_url_not_supported"));
   }
+  if (value.homeEmblemBase64 !== undefined || value.awayEmblemBase64 !== undefined) {
+    issues.push(issue("emblem", "prepared_emblem_object_required"));
+  }
   if (value.verified === true || value.homeMmr !== undefined || value.awayMmr !== undefined) {
     issues.push(issue("verified", "canonical_fields_not_allowed"));
   }
@@ -99,9 +123,10 @@ export function parseExternalReceiptInput(value = {}) {
     }
   }
 
-  if (issues.length > 0) return { issues, draft: null };
+  if (issues.length > 0) return { issues, draft: null, emblems: null };
   return {
     issues: [],
+    emblems: { home: homeEmblem, away: awayEmblem },
     draft: {
       homeTeam,
       awayTeam,
