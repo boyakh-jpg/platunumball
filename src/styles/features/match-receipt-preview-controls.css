@@ -44,7 +44,7 @@
   border: var(--ui-stroke-width) solid var(--rb-line);
   background: var(--rb-surface);
   color: var(--rb-muted);
-  font-family: var(--sports-display-font), sans-serif;
+  font-family: var(--receipt-sports-display-font), sans-serif;
   font-size: 13px;
   letter-spacing: 0.08em;
 }

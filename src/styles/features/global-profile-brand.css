@@ -22,7 +22,7 @@
   align-self: end;
   min-height: var(--ui-button-height);
 }
-/* 2026-07-04 KBO Dia Gothic display: scoped to scoreboards, team names, versus lines, and hero titles. */
+/* Shared sports display token: scoped to scoreboards, team names, versus lines, and hero titles. */
 :where(
   .rank-hero-top h1,
   .rank-home .rank-summary-grid .home-rank-board-head h1,

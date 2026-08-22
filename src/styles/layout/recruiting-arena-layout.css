@@ -367,7 +367,7 @@ html[data-theme="light"] .arena-lobby-arena {
   }
 
 }
-/* 2026-07-04 KBO Dia Gothic display, scoped to sports emphasis only. */
+/* Shared sports display token, scoped to sports emphasis only. */
 :where(
   .arena-hero-copy h1,
   .arena-lobby-title h2,

@@ -186,7 +186,7 @@
   border-radius: 0;
   background: #101110;
   color: #f4eee2;
-  font-family: var(--sports-display-font), sans-serif;
+  font-family: var(--receipt-sports-display-font), sans-serif;
 }
 
 .match-receipt-card::before {

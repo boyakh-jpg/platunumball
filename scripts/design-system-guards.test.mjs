@@ -731,13 +731,15 @@ test("모든 페이지는 공용 의미 굵기 위계를 사용하고 명시형 
   assert.deepEqual(forbiddenWeights, []);
 });
 
-test("KBO는 스포츠 표시, Pretendard는 읽기와 조작 UI에 사용한다", () => {
+test("KBL과 Anton은 스포츠 표시, Pretendard는 읽기와 조작 UI에 사용한다", () => {
   assert.match(tokenStyles, /--font-weight-min:\s*500;/);
   assert.match(tokenStyles, /--font-weight-support:\s*550;/);
   assert.match(tokenStyles, /--font-weight-body:\s*650;/);
   assert.match(tokenStyles, /--font-weight-control:\s*700;/);
   assert.match(tokenStyles, /--font-weight-title:\s*850;/);
-  assert.match(tokenStyles, /--font-weight-sports:\s*700;/);
+  assert.match(tokenStyles, /--font-weight-sports:\s*900;/);
+  assert.match(tokenStyles, /--sports-display-font:\s*"BoxTier Sports Display", "KBL Jump Condensed", "Anton", sans-serif;/);
+  assert.match(tokenStyles, /--receipt-sports-display-font:\s*"KBO Dia Gothic", "Arial Narrow", "Roboto Condensed", sans-serif;/);
   assert.match(tokenStyles, /--font-size-caption:\s*0\.75rem;/);
   assert.match(tokenStyles, /--font-size-control:\s*0\.78rem;/);
   assert.match(tokenStyles, /--font-size-meta:\s*0\.82rem;/);

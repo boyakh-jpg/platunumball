@@ -600,13 +600,14 @@
 6. 모바일 손잡이는 드래그 외에 탭과 키보드 활성화로도 방 모달을 닫는다.
 
 ## 2026-07-29 전역 글꼴 역할과 크기
-1. `KBO Dia Gothic`은 경기 표시용이다. 페이지 hero 제목, 경기 카드 대진명, 방 모달 팀명·VS·점수, 경기시계·샷클락, 티어·디비전·순위처럼 짧은 스포츠 결과에만 `--sports-display-font`를 사용한다.
+1. 영수증을 제외한 경기 표시 글꼴은 `--sports-display-font` 하나를 사용한다. 페이지 hero 제목, 경기 카드 대진명, 방 모달 팀명·VS·점수, 경기시계·샷클락, 티어·디비전·순위처럼 짧은 스포츠 결과에서 한글은 `KBL Jump Condensed`, 영문·숫자는 `Anton`으로 분리 렌더링한다.
 2. `Pretendard Variable`은 읽기·조작용이다. 본문, 설명, 버튼, badge, tab, input, select, 표, 알림, 채팅, 규칙·방장·초대 같은 기능 패널 제목과 로그인 문구에는 `--font-body`를 사용한다.
-3. 선수·팀 이름도 경기 대진·점수판처럼 표시되는 경우만 KBO를 쓰고, 프로필·검색·목록·입력에서는 Pretendard를 쓴다. 문장 전체나 두 줄 이상 설명에는 KBO를 쓰지 않는다.
+3. 선수·팀 이름도 경기 대진·점수판처럼 표시되는 경우만 `--sports-display-font`를 쓰고, 프로필·검색·목록·입력에서는 Pretendard를 쓴다. 문장 전체나 두 줄 이상 설명에는 스포츠 표시 글꼴을 쓰지 않는다.
 4. Pretendard 크기는 `caption 0.72rem`, `badge 0.75rem`, `control 0.78rem`, `meta 0.82rem`, `body-sm 0.875rem`, `body 1rem`, `title-sm 1.05rem`, `title-md 1.25rem`, `section-title 1.5rem` 토큰을 사용한다. 페이지별 임의의 근접값을 새로 만들지 않는다.
 5. 굵기는 `support 700`, `body 800`, `control 900`, `title 900`을 기본으로 한다. `600`은 장문 보조 설명의 최저선일 뿐 기본값으로 사용하지 않으며, 모든 사용자 표시 텍스트는 `600` 미만을 금지한다.
-6. KBO 웹폰트는 Bold 단일 굵기이므로 `--font-weight-sports: 700`을 사용한다. 굵기 차이 대신 크기와 색상으로 위계를 만든다.
-7. 음수 `letter-spacing`은 쓰지 않는다. 좁은 스포츠 느낌은 `--sports-display-condense`의 `scaleX(0.92)`로 처리한다.
+6. KBL Jump EB Condensed와 Anton은 `--font-weight-sports: 900`으로 맞춘다. 굵기 차이 대신 크기와 색상으로 위계를 만든다.
+7. 음수 `letter-spacing`과 인위적인 가로 축소는 쓰지 않는다. KBL Jump EB Condensed와 Anton 원본의 좁은 폭을 유지하며 `--sports-display-condense`는 `none`을 사용한다.
+8. 영수증 미리보기·Story·Feed 출력물은 `--receipt-sports-display-font`의 기존 `KBO Dia Gothic` 규칙을 유지한다.
 
 ## 2026-07-04 전역 로더 표시
 1. `BasketballLoader`는 인라인 변형 없이 전역 오버레이로만 렌더하며, 초기 원격 hydrate, auth 확인, lazy page load, 명시적 blocking 호출에서만 보인다.
@@ -1646,7 +1647,7 @@ UI 수정 전:
 5. Hero title typography uses the shared `--hero-title-*` tokens. Home, Matches, Recruiting, room, profile, team, season, rulebook, and tournament heroes keep page layout differences but share title color, shadow, condensed font stack, line-height, and letter spacing.
 6. Page-specific cards and panels should be added to the shared primitive selector layer first. Only layout-specific size/gap/placement belongs in page CSS.
 7. Condensed hero title fonts use non-negative tracking through `--hero-title-letter-spacing`. English-heavy words like `RANKBALL` must not use tight negative spacing.
-7-1. Sports display emphasis uses `KBO Dia Gothic` Bold through `--sports-display-font` only for hero titles, tier spotlight text, team/versus labels, and scoreboard/record numbers. Do not apply it to body copy, buttons, inputs, or dense helper text. Width tuning uses `scaleX(0.92)` via `--sports-display-condense`; do not simulate it with negative letter spacing.
+7-1. Sports display emphasis uses the shared `--sports-display-font`: `KBL Jump Condensed` for Korean and weight-900 `Anton` for Latin letters and numbers. Use it only for hero titles, tier spotlight text, team/versus labels, and scoreboard/record numbers. Do not apply it to body copy, buttons, inputs, or dense helper text. Both faces keep their native condensed width through `--sports-display-condense: none`; do not simulate width with transforms or negative letter spacing. Receipt preview, Story, and Feed output keep the legacy KBO receipt token.
 7-2. Home upcoming match cards may enlarge team labels with the sports display font and orange emphasis. Scores stay neutral gray, no text shadow. The room-open CTA is orange, and tier spotlight text must fit without ellipsis.
 7-3. Match/recruiting summary center labels such as `VS` and fill counts stay about half the side label size.
 7-4. Default text uses `--font-body`. Functional panel titles and descriptions use the shared `.ui-panel-title` and `.ui-panel-copy` typography instead of browser-default `strong`/`span` weights. Sports display typography remains an explicit override only.
@@ -2508,7 +2509,7 @@ UI 수정 전:
 20. `.ui-design-info-surface`는 단일 정보 표면, `.ui-design-borderless-list`는 바로 아래 정보 행 전체에 공통 무테두리와 카드 배경을 적용한다. 경고는 배경·문자색으로 구분하고 승·패·무는 공용 파스텔 면색과 왼쪽 의미색 상태선을 함께 유지한다.
 21. 일정 상태 필터는 `.ui-design-filter-tile`을 사용한다. `899px` 이하 `editorial`에서는 최소 높이 `60px`과 세로 패딩 `7px`을 사용해 기본 카드 높이의 약 70%로 줄인다.
 21-1. `900px` 이상 레일 항목은 공용 소형 제어 높이를 쓰는 3×2 그룹으로 압축한다. 그룹과 개별 카드의 외곽선·상태선·그림자·아이콘은 제거하고, 비활성 항목은 옅은 공용 control 면색, 활성 항목은 옅은 주황 면색과 공용 주황 글자색으로 구분한다.
-22. 티어·디비전·`배정 전` 제목은 `.ui-tier-label`을 사용해 `--sports-display-font`인 KBO Dia Gothic Bold를 적용한다. MMR·설명·버튼은 본문 글꼴을 유지한다.
+22. 티어·디비전·`배정 전` 제목은 `.ui-tier-label`을 사용해 한글 KBL Jump Condensed·영문/숫자 Anton 조합인 `--sports-display-font`를 적용한다. MMR·설명·버튼은 본문 글꼴을 유지한다.
 23. 공개 메인 페이지(`/`)는 데모의 히어로·가까운 경기·대표팀·시즌·최근 경기 구성을 실제 공개 데이터에 연결한다. 데모의 화면 설정 섹션은 공개 메인에 포함하지 않는다.
 23-1. 공개 메인의 시즌 스포트라이트는 일반 페이지 표면 위에 있으므로 경기·팀·선수 수치를 `--text`, 항목명을 `--muted`로 표시한다. 이미지 위 전용 흰색 토큰을 사용하지 않는다.
 24. 모바일·태블릿의 첫 히어로는 앱 본문 패딩을 상쇄해 상단과 좌우를 채우며 라운드를 사용하지 않는다.
