@@ -177,5 +177,6 @@ button.match-receipt-photo-editor-rotate {
 .match-receipt-actions svg { width: 17px; height: 17px; }
 
 @media (max-width: 560px) {
-  .match-receipt-photo-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .match-receipt-photo-actions { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .match-receipt-photo-actions .button:first-child { grid-column: 1 / -1; white-space: nowrap; }
 }

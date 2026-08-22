@@ -12,7 +12,7 @@ export const THERMAL_PRINT_ROLES = Object.freeze({
   team: Object.freeze({ mask: "team", opacity: 0.9 }),
   heavy: Object.freeze({ mask: "heavy", opacity: 0.92 }),
   photo: Object.freeze({ mask: "photo", opacity: 0.88 }),
-  qr: Object.freeze({ mask: null, opacity: 1 }),
+  qr: Object.freeze({ mask: "heavy", opacity: 0.97 }),
 });
 
 const MATCH_RECEIPT_FORMAT_PLAYER_COUNT = Object.freeze({

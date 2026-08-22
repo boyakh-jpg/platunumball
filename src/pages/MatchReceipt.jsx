@@ -112,7 +112,7 @@ const RECEIPT_PAGE_COPY = Object.freeze({
     readOnlyNote: "공유 영수증은 읽기 전용입니다.", canonicalNote: "확정 기록의 팀·점수·날짜·장소는 원본을 사용합니다. 짧은 장소와 코멘트는 편집할 수 있습니다.",
     requiredTeam: (team) => `필수 · ${team} 이름을 입력하세요`, format: "경기 방식", nature: "경기 성격", tournament: "대회·리그 이름", tournamentPlaceholder: "선택 · 20자 이내", optional: "선택",
     teamEmblems: "팀 엠블럼", emblemGuide: "사진을 골라 선화 엠블럼으로 바로 사용할 수 있습니다. 로그인 후 팀을 만들면 팀 상세에 저장해 다음 영수증에서도 재사용할 수 있습니다.",
-    selectLineArt: "선화 엠블럼 선택", useSavedEmblem: "저장 엠블럼 사용", noSavedEmblem: "저장된 팀 엠블럼 없음", emblemCandidates: (team) => `${team} 엠블럼 후보`, lineArtCandidate: (team) => `${team} 선화 후보`, disableLineArt: "선화 사용 해제", reuseLineArt: "선화 다시 사용",
+    selectLineArt: "선화 엠블럼 선택", savedEmblem: "저장 엠블럼", chooseSavedEmblem: "저장 엠블럼 선택", noSavedEmblem: "저장된 팀 엠블럼 없음", emblemCandidates: (team) => `${team} 엠블럼 후보`, lineArtCandidate: (team) => `${team} 선화 후보`, disableLineArt: "선화 사용 해제", reuseLineArt: "선화 다시 사용",
     localEmblemOnly: "직접 선택한 이미지는 이번 영수증에서만 유지됩니다.", aiPromptHelp: "외부 AI에서 선화 PNG를 만들 때 사용할 지시문입니다.", copyAiPrompt: "AI 선화 프롬프트 복사", createTeamSave: "팀 만들고 엠블럼 저장", loginCreateTeamSave: "로그인 · 팀 만들고 엠블럼 저장",
     periodScoreAria: (period, team) => `${period} ${team} 점수`, comment: "한 줄 코멘트", commentPlaceholder: "선택 · 22자 이내",
     rotatePhotoAria: "사진 자유 회전", rotatePhotoTitle: "드래그해 자유 회전 · 방향키로 미세 조정", photoActionsAria: "미리보기 사진 편집", selectPhoto: "경기·팀 사진 선택", rotate90: "90° 회전", remove: "제거", reset: "초기화", resetTitle: "입력값·사진 초기화 후 새 일련번호 시작",
@@ -139,7 +139,7 @@ const RECEIPT_PAGE_COPY = Object.freeze({
     readOnlyNote: "Shared receipts are read-only.", canonicalNote: "Confirmed teams, scores, date, and venue use the official record. You can edit the short venue and comment.",
     requiredTeam: (team) => `Required · Enter ${team}`, format: "Game Format", nature: "Game Type", tournament: "Tournament / League", tournamentPlaceholder: "Optional · Up to 20 characters", optional: "Optional",
     teamEmblems: "Team Emblems", emblemGuide: "Choose an image to create a line-art emblem for this receipt. Sign in and create a team to save it for future receipts.",
-    selectLineArt: "Choose Line-Art Emblem", useSavedEmblem: "Use Saved Emblem", noSavedEmblem: "No saved team emblem", emblemCandidates: (team) => `${team} emblem options`, lineArtCandidate: (team) => `${team} line-art option`, disableLineArt: "Disable Line Art", reuseLineArt: "Use Line Art Again",
+    selectLineArt: "Choose Line-Art Emblem", savedEmblem: "Saved Emblem", chooseSavedEmblem: "Choose saved emblem", noSavedEmblem: "No saved team emblem", emblemCandidates: (team) => `${team} emblem options`, lineArtCandidate: (team) => `${team} line-art option`, disableLineArt: "Disable Line Art", reuseLineArt: "Use Line Art Again",
     localEmblemOnly: "Images selected here stay on this receipt only.", aiPromptHelp: "Use this prompt to create a line-art PNG with an external AI tool.", copyAiPrompt: "Copy AI Line-Art Prompt", createTeamSave: "Create Team & Save Emblem", loginCreateTeamSave: "Sign In · Create Team & Save Emblem",
     periodScoreAria: (period, team) => `${period} ${team} score`, comment: "One-Line Comment", commentPlaceholder: "Optional · Up to 22 characters",
     rotatePhotoAria: "Free-rotate photo", rotatePhotoTitle: "Drag to rotate · Use arrow keys for fine adjustment", photoActionsAria: "Edit preview photo", selectPhoto: "Choose game / team photo", rotate90: "Rotate 90°", remove: "Remove", reset: "Reset", resetTitle: "Clear inputs and photo, then start with a new receipt number",
@@ -163,6 +163,15 @@ function downloadBlob(blob, fileName) {
   anchor.click();
   anchor.remove();
   window.setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}
+
+function isIosDevice(navigatorValue) {
+  return /iPad|iPhone|iPod/u.test(navigatorValue?.userAgent || "")
+    || (navigatorValue?.platform === "MacIntel" && navigatorValue.maxTouchPoints > 1);
+}
+
+function canShareImageFile(navigatorValue, file) {
+  return typeof navigatorValue?.share === "function" && Boolean(navigatorValue.canShare?.({ files: [file] }));
 }
 
 function getPhotoGestureSnapshot(pointers) {
@@ -275,6 +284,10 @@ export default function MatchReceipt({ auth, app }) {
   const canonicalAwayTeam = useMemo(
     () => getCanonicalTeam(app?.state?.teams, getMatchReceiptSideTeamId(canonicalMatch, "teamB")),
     [app?.state?.teams, canonicalMatch],
+  );
+  const savedReceiptEmblemTeams = useMemo(
+    () => (app?.state?.teams ?? []).filter((team) => team.receiptEmblemKey),
+    [app?.state?.teams],
   );
   const canonicalHomeTeamMmr = getCanonicalTeamMmr(canonicalHomeTeam);
   const canonicalAwayTeamMmr = getCanonicalTeamMmr(canonicalAwayTeam);
@@ -630,14 +643,22 @@ export default function MatchReceipt({ auth, app }) {
     }
   }
 
-  function loadSavedTeamReceiptEmblem(side) {
+  function selectSavedTeamReceiptEmblem(side, emblemKey) {
     if (receiptIsReadOnly) return;
-    const savedUrl = canonicalTeamReceiptEmblemUrls[side];
-    if (!savedUrl) return;
     setLocalTeamLineArtUrls((current) => ({ ...current, [side]: "" }));
     setLocalTeamEmblemUrls((current) => ({ ...current, [side]: "" }));
-    updateField(`${side}UseLineArt`, true);
-    setStatus(receiptCopy.savedEmblemApplied(side === "home" ? receiptCopy.teamA : receiptCopy.teamB));
+    setDraft((current) => {
+      const next = normalizeMatchReceiptDraft({
+        ...current,
+        [`${side}EmblemKey`]: emblemKey,
+        [`${side}UseLineArt`]: Boolean(emblemKey),
+      });
+      draftRef.current = next;
+      return next;
+    });
+    draftRevisionRef.current += 1;
+    setGenerated(Boolean(canonicalMatchId));
+    setStatus(emblemKey ? receiptCopy.savedEmblemApplied(side === "home" ? receiptCopy.teamA : receiptCopy.teamB) : "");
   }
 
   function handleLocalTeamEmblemChange(side, event) {
@@ -1065,10 +1086,19 @@ export default function MatchReceipt({ auth, app }) {
     setStatus("");
     try {
       const blob = await createPng(preset);
-      downloadBlob(blob, getMatchReceiptFileName(draft, preset));
-      setStatus(receiptCopy.imageSaved(MATCH_RECEIPT_CANVAS_SIZES[preset].label));
-      trackMatchReceiptEvent("receipt_downloaded", { loggedIn: Boolean(auth?.session), imagePreset: preset });
+      const fileName = getMatchReceiptFileName(draft, preset);
+      const file = new File([blob], fileName, { type: "image/png" });
+      if (isIosDevice(navigator) && canShareImageFile(navigator, file)) {
+        await navigator.share({ title: receiptCopy.shareTitle, files: [file] });
+        setStatus(receiptCopy.imageOpened);
+        trackMatchReceiptEvent("receipt_downloaded", { loggedIn: Boolean(auth?.session), imagePreset: preset, method: "ios_share" });
+      } else {
+        downloadBlob(blob, fileName);
+        setStatus(receiptCopy.imageSaved(MATCH_RECEIPT_CANVAS_SIZES[preset].label));
+        trackMatchReceiptEvent("receipt_downloaded", { loggedIn: Boolean(auth?.session), imagePreset: preset, method: "download" });
+      }
     } catch (error) {
+      if (error?.name === "AbortError") return;
       if (error.message !== "match_receipt_invalid") {
         console.error("[match-receipt] image export failed", preset, error?.message, error?.stack);
         setStatus(receiptCopy.imageFailed);
@@ -1165,7 +1195,16 @@ export default function MatchReceipt({ auth, app }) {
           <h1>{receiptCopy.title}</h1>
           <p>{receiptCopy.description}</p>
         </div>
-        <div className="match-receipt-page-head-actions">
+        <nav className="match-receipt-page-head-nav" aria-label={receiptCopy.navLabel}>
+          <Button variant="secondary" onClick={returnFromReceipt}>
+            <ArrowLeft aria-hidden="true" size={17} /> {receiptCopy.back}
+          </Button>
+          <Button as={Link} to="/app" variant="secondary">
+            <House aria-hidden="true" size={17} /> {receiptCopy.home}
+          </Button>
+        </nav>
+      </header>
+      <div className="match-receipt-page-controls" aria-label={receiptCopy.style}>
           <div className="match-receipt-compact-toggle" role="group" aria-label={receiptCopy.style}>
             <button type="button" aria-pressed={!isThermal} onClick={() => updateField("receiptStyle", MATCH_RECEIPT_STYLES.score)}>BOXTIER</button>
             <button type="button" aria-pressed={isThermal} onClick={() => updateField("receiptStyle", MATCH_RECEIPT_STYLES.thermal)}>THERMAL</button>
@@ -1174,16 +1213,7 @@ export default function MatchReceipt({ auth, app }) {
             <Button type="button" variant={!isEnglish ? "primary" : "ghost"} size="sm" lang="ko" aria-label={isEnglish ? "Korean" : "한국어"} aria-pressed={!isEnglish} onClick={() => selectReceiptLocale("ko")}>🇰🇷</Button>
             <Button type="button" variant={isEnglish ? "primary" : "ghost"} size="sm" lang="en" aria-label="English" aria-pressed={isEnglish} onClick={() => selectReceiptLocale("en")}>🇺🇸</Button>
           </div>
-          <nav className="match-receipt-page-head-nav" aria-label={receiptCopy.navLabel}>
-            <Button variant="secondary" onClick={returnFromReceipt}>
-              <ArrowLeft aria-hidden="true" size={17} /> {receiptCopy.back}
-            </Button>
-            <Button as={Link} to="/app" variant="secondary">
-              <House aria-hidden="true" size={17} /> {receiptCopy.home}
-            </Button>
-          </nav>
-        </div>
-      </header>
+      </div>
 
       {requestedPublicCode ? (
         <section className="ui-panel">
@@ -1269,7 +1299,6 @@ export default function MatchReceipt({ auth, app }) {
                 </p>
                 <div className="match-receipt-emblem-upload-grid">
                   {[["home", "TEAM A"], ["away", "TEAM B"]].map(([side, label]) => {
-                    const savedUrl = canonicalTeamReceiptEmblemUrls[side];
                     const activeEmblemUrl = selectedTeamReceiptEmblemUrls[side];
                     return (
                       <div className="match-receipt-emblem-upload" key={side}>
@@ -1290,19 +1319,22 @@ export default function MatchReceipt({ auth, app }) {
                             />
                           </Button>
                         ) : null}
-                        {savedUrl ? (
-                          <Button
-                            type="button"
-                            variant="primary"
-                            size="sm"
-                            disabled={receiptIsReadOnly || Boolean(busy)}
-                            onClick={() => loadSavedTeamReceiptEmblem(side)}
-                          >
-                            <Download aria-hidden="true" /> {receiptCopy.useSavedEmblem}
-                          </Button>
-                        ) : (
+                        {!receiptIsReadOnly && !canonicalMatchId && savedReceiptEmblemTeams.length ? (
+                          <label className="match-receipt-saved-emblem">
+                            <span>{receiptCopy.savedEmblem}</span>
+                            <select
+                              value={draft[`${side}EmblemKey`] || ""}
+                              onChange={(event) => selectSavedTeamReceiptEmblem(side, event.target.value)}
+                            >
+                              <option value="">{receiptCopy.chooseSavedEmblem}</option>
+                              {savedReceiptEmblemTeams.map((team) => (
+                                <option key={team.id} value={team.receiptEmblemKey}>{team.name}</option>
+                              ))}
+                            </select>
+                          </label>
+                        ) : !activeEmblemUrl ? (
                           <small>{receiptCopy.noSavedEmblem}</small>
-                        )}
+                        ) : null}
                         {activeEmblemUrl ? (
                           <div className="match-receipt-emblem-candidates" aria-label={isEnglish ? `${label} emblem preview` : `${label} 엠블럼 후보`}>
                             <img src={activeEmblemUrl} alt={isThermal ? (isEnglish ? `${label} emblem preview` : `${label} 엠블럼 미리보기`) : (isEnglish ? `${label} line-art preview` : `${label} 선화 후보`)} />

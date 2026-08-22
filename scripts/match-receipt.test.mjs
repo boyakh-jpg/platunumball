@@ -154,7 +154,7 @@ test("receipt emblems allow style-specific local adjustment while canonical team
   assert.match(receiptPage, /onConvert=\{isThermal \? undefined : convertLocalTeamEmblem\}/u);
   assert.match(
     thermalRenderer,
-    /alpha >= 64 && \(hasTransparentArtwork \|\| luminance < 184\) \? 255 : 0/u,
+    /const grayscale = Math\.max\(0, Math\.min\(255, luminance \* alpha \+ 255 \* \(1 - alpha\) \+ errors\[pixelIndex\]\)\)/u,
   );
   assert.match(receiptPage, /저장된 팀 엠블럼 없음/u);
   assert.match(receiptPage, /로그인 · 팀 만들고 엠블럼 저장/u);
@@ -845,7 +845,17 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(page, /prepareTeamEmblemUpload/);
   assert.doesNotMatch(page, /uploadGuestReceiptEmblem/);
   assert.doesNotMatch(page, /reserveImageSaveWindow|saveWindow\.location\.replace/);
-  assert.match(page, /downloadBlob\(blob, getMatchReceiptFileName\(draft, preset\)\)/);
+  assert.match(page, /function isIosDevice\(navigatorValue\)/);
+  assert.match(page, /isIosDevice\(navigator\) && canShareImageFile\(navigator, file\)/);
+  assert.match(page, /await navigator\.share\(\{ title: receiptCopy\.shareTitle, files: \[file\] \}\)/);
+  assert.match(page, /downloadBlob\(blob, fileName\)/);
+  assert.match(page, /const savedReceiptEmblemTeams = useMemo/);
+  assert.match(page, /selectSavedTeamReceiptEmblem\(side, event\.target\.value\)/);
+  assert.match(page, /team\.receiptEmblemKey/);
+  assert.ok(page.indexOf('className="match-receipt-page-head ui-page-hero ui-design-app-hero"') < page.indexOf('className="match-receipt-page-controls"'));
+  assert.ok(page.indexOf('className="match-receipt-page-controls"') < page.indexOf('className="match-receipt-workspace"'));
+  assert.match(previewControlStyles, /@media \(max-width: 560px\)[\s\S]*\.match-receipt-photo-actions \{ grid-template-columns: repeat\(3, minmax\(0, 1fr\)\); \}[\s\S]*\.match-receipt-photo-actions \.button:first-child \{ grid-column: 1 \/ -1; white-space: nowrap; \}/);
+  assert.match(detailStyles, /\.match-receipt-line-art-fields \.match-receipt-saved-emblem\s*\{[^}]*display:\s*grid;/);
   assert.doesNotMatch(page, /emblemShareFailed|match_receipt_emblem_sync_failed|EMBLEM_SHARE_FAILURE_MESSAGE/);
   assert.match(page, /URL\.revokeObjectURL\(url\)/u);
   assert.match(page, /const publicMatchUrl = publicId\s*\? applyReceiptLocaleToUrl\(new URL/);

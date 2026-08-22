@@ -23,7 +23,7 @@ test("thermal Story exports paper only while Feed keeps its backdrop", async () 
   assert.match(renderer, /if \(preset === "story"\)[\s\S]*createCanvas\(layout\.paper\.width, layout\.paper\.height\)/u);
   assert.match(renderer, /layout\.paper\.x,[\s\S]*layout\.paper\.y,[\s\S]*layout\.paper\.width,[\s\S]*layout\.paper\.height/u);
   assert.match(renderer, /preset === "feed" \? \{ width: 1080, height: 1350 \}/u);
-  assert.match(renderer, /outputCtx\.fillStyle = "#292927"/u);
+  assert.match(renderer, /drawBackdrop\(outputCtx, background\)/u);
 });
 
 test("thermal receipt keeps the canonical Story paper geometry", () => {
@@ -50,6 +50,24 @@ test("thermal receipt keeps the canonical Story paper geometry", () => {
   }
   assert.equal(photo.paper.y + photo.paper.height - (photo.footer.y + photo.footer.height), 24);
   assert.equal(plain.paper.y + plain.paper.height - (plain.footer.y + plain.footer.height), 64);
+});
+
+test("thermal paper uses the authored edge alpha as its only torn silhouette", async () => {
+  const renderer = await readFile(new URL("../src/lib/thermalReceipt.js", import.meta.url), "utf8");
+  const edge = await readFile(new URL("../public/assets/thermal-receipt/serration-edge-796x16.svg", import.meta.url), "utf8");
+
+  assert.match(renderer, /globalCompositeOperation = "destination-in"/u);
+  assert.doesNotMatch(renderer, /function paperPath|const tooth =/u);
+  assert.doesNotMatch(edge, /<pattern|id="tooth"/u);
+});
+
+test("thermal emblems preserve grayscale detail and QR ink gets its own dense mask", async () => {
+  const renderer = await readFile(new URL("../src/lib/thermalReceipt.js", import.meta.url), "utf8");
+
+  assert.match(renderer, /const errors = new Float32Array\(168 \* 168\)/u);
+  assert.match(renderer, /luminance \* alpha \+ 255 \* \(1 - alpha\) \+ errors\[pixelIndex\]/u);
+  assert.match(renderer, /error \* 7 \/ 16/u);
+  assert.match(renderer, /applyPrintMask\(inkLayer, ctx\.__thermalMasks\?\.heavy,[\s\S]*"qr"\)/u);
 });
 
 test("thermal receipt always ends the shared emblem chain with a fixed neutral mark", () => {
@@ -158,12 +176,12 @@ test("thermal print noise is deterministic for the receipt seed", () => {
   assert.notDeepEqual(firstSequence, Array.from({ length: 8 }, () => other()));
 });
 
-test("thermal print roles keep supplied masks separate and QR untouched", () => {
+test("thermal print roles keep supplied masks separate and preserve dense QR ink", () => {
   assert.deepEqual(THERMAL_PRINT_ROLES, {
     body: { mask: "body", opacity: 0.84 },
     team: { mask: "team", opacity: 0.9 },
     heavy: { mask: "heavy", opacity: 0.92 },
     photo: { mask: "photo", opacity: 0.88 },
-    qr: { mask: null, opacity: 1 },
+    qr: { mask: "heavy", opacity: 0.97 },
   });
 });

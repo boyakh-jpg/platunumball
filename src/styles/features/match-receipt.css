@@ -2,9 +2,7 @@
 .match-receipt-page-head {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-areas:
-    "copy controls"
-    "copy nav";
+  grid-template-areas: "copy nav";
   align-items: end;
   gap: var(--space-4) var(--space-8);
 }
@@ -12,11 +10,11 @@
 .match-receipt-page-head h1 { margin: 0; }
 .match-receipt-page-head .ui-page-hero__copy > p:last-child { margin: 0; }
 .match-receipt-page-controls {
-  grid-area: controls;
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: var(--space-3);
+  width: 100%;
 }
 .match-receipt-compact-toggle {
   display: inline-grid;
@@ -692,7 +690,7 @@
 @media (max-width: 900px) {
   .match-receipt-page-head {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-areas: "copy" "controls" "nav";
+    grid-template-areas: "copy" "nav";
   }
 
   .match-receipt-page-controls,
@@ -737,14 +735,18 @@
   .match-receipt-save-card { --ui-panel-padding: 0; --ui-panel-radius: 0; }
 
   .match-receipt-team-fields fieldset + fieldset {
-    margin: 0 0 0 var(--space-3); padding: 0 0 0 var(--space-3);
-    border-top: 0; border-left: var(--ui-stroke-width) solid var(--rb-line);
+    margin: 0;
+    padding: var(--space-4);
+    border: var(--ui-stroke-width) solid var(--rb-line);
   }
 
   .match-receipt-team-fields fieldset {
-    grid-template-columns: minmax(0, 1fr) 58px;
-    gap: var(--space-2);
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-3);
+    padding: var(--space-4);
   }
+
+  .match-receipt-team-fields label { gap: var(--space-2); }
 
   .match-receipt-card {
     border-radius: 0;

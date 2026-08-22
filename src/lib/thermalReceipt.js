@@ -257,22 +257,6 @@ function drawRule(ctx, x, y, width, dashed = false, color = INK) {
   ctx.restore();
 }
 
-function paperPath(ctx, paper) {
-  const tooth = 12;
-  ctx.beginPath();
-  ctx.moveTo(paper.x, paper.y + tooth);
-  for (let x = paper.x; x <= paper.x + paper.width; x += tooth) {
-    ctx.lineTo(x + tooth / 2, paper.y);
-    ctx.lineTo(x + tooth, paper.y + tooth);
-  }
-  ctx.lineTo(paper.x + paper.width, paper.y + paper.height - tooth);
-  for (let x = paper.x + paper.width; x >= paper.x; x -= tooth) {
-    ctx.lineTo(x - tooth / 2, paper.y + paper.height);
-    ctx.lineTo(x - tooth, paper.y + paper.height - tooth);
-  }
-  ctx.closePath();
-}
-
 function drawBackdrop(ctx, background) {
   ctx.fillStyle = "#292927";
   ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
@@ -281,33 +265,38 @@ function drawBackdrop(ctx, background) {
 
 function drawPaper(ctx, layout, seed, textures) {
   const random = createThermalRandom(seed);
+  const { x, y, width, height } = layout.paper;
+  const edgeHeight = 16;
+  const paper = createCanvas(width, height);
+  const paperCtx = paper.getContext("2d");
+  paperCtx.fillStyle = PAPER;
+  paperCtx.fillRect(0, 0, width, height);
+  drawImageCover(paperCtx, textures.paper, 0, 0, width, height);
+  for (let index = 0; index < 4200; index += 1) {
+    const alpha = 0.015 + random() * 0.025;
+    paperCtx.fillStyle = `rgba(20,18,15,${alpha})`;
+    paperCtx.fillRect(random() * width, random() * height, 0.5 + random() * 1.5, 0.5 + random() * 1.5);
+  }
+  if (textures.edge) {
+    const silhouette = createCanvas(width, height);
+    const silhouetteCtx = silhouette.getContext("2d");
+    silhouetteCtx.fillStyle = PAPER;
+    silhouetteCtx.fillRect(0, edgeHeight, width, height - edgeHeight * 2);
+    silhouetteCtx.drawImage(textures.edge, 0, 0, width, edgeHeight);
+    silhouetteCtx.save();
+    silhouetteCtx.translate(0, height);
+    silhouetteCtx.scale(1, -1);
+    silhouetteCtx.drawImage(textures.edge, 0, 0, width, edgeHeight);
+    silhouetteCtx.restore();
+    paperCtx.globalCompositeOperation = "destination-in";
+    paperCtx.drawImage(silhouette, 0, 0);
+  }
+
   ctx.save();
   ctx.shadowColor = "rgba(0,0,0,.48)";
   ctx.shadowBlur = 22;
   ctx.shadowOffsetY = 12;
-  paperPath(ctx, layout.paper);
-  ctx.fillStyle = PAPER;
-  ctx.fill();
-  ctx.clip();
-  drawImageCover(ctx, textures.paper, layout.paper.x, layout.paper.y, layout.paper.width, layout.paper.height);
-  if (textures.edge) {
-    ctx.drawImage(textures.edge, layout.paper.x, layout.paper.y, layout.paper.width, 16);
-    ctx.save();
-    ctx.translate(layout.paper.x + layout.paper.width, layout.paper.y + layout.paper.height);
-    ctx.rotate(Math.PI);
-    ctx.drawImage(textures.edge, 0, 0, layout.paper.width, 16);
-    ctx.restore();
-  }
-  for (let index = 0; index < 4200; index += 1) {
-    const alpha = 0.015 + random() * 0.025;
-    ctx.fillStyle = `rgba(20,18,15,${alpha})`;
-    ctx.fillRect(
-      layout.paper.x + random() * layout.paper.width,
-      layout.paper.y + random() * layout.paper.height,
-      0.5 + random() * 1.5,
-      0.5 + random() * 1.5,
-    );
-  }
+  ctx.drawImage(paper, x, y);
   ctx.restore();
 }
 
@@ -398,26 +387,27 @@ function drawEmblem(ctx, emblem, x, y, neutralSources) {
     const drawY = (168 - height) / 2;
     bitmapCtx.drawImage(image, drawX, drawY, width, height);
     const pixels = bitmapCtx.getImageData(0, 0, 168, 168);
-    const minX = Math.max(0, Math.floor(drawX));
-    const maxX = Math.min(168, Math.ceil(drawX + width));
-    const minY = Math.max(0, Math.floor(drawY));
-    const maxY = Math.min(168, Math.ceil(drawY + height));
-    let artworkPixels = 0;
-    let transparentArtworkPixels = 0;
-    for (let pixelY = minY; pixelY < maxY; pixelY += 1) {
-      for (let pixelX = minX; pixelX < maxX; pixelX += 1) {
-        artworkPixels += 1;
-        if (pixels.data[(pixelY * 168 + pixelX) * 4 + 3] < 32) transparentArtworkPixels += 1;
+    const errors = new Float32Array(168 * 168);
+    for (let pixelY = 0; pixelY < 168; pixelY += 1) {
+      for (let pixelX = 0; pixelX < 168; pixelX += 1) {
+        const pixelIndex = pixelY * 168 + pixelX;
+        const index = pixelIndex * 4;
+        const alpha = pixels.data[index + 3] / 255;
+        const luminance = pixels.data[index] * 0.2126 + pixels.data[index + 1] * 0.7152 + pixels.data[index + 2] * 0.0722;
+        const grayscale = Math.max(0, Math.min(255, luminance * alpha + 255 * (1 - alpha) + errors[pixelIndex]));
+        const output = grayscale < 160 ? 0 : 255;
+        const error = grayscale - output;
+        if (pixelX + 1 < 168) errors[pixelIndex + 1] += error * 7 / 16;
+        if (pixelY + 1 < 168) {
+          if (pixelX > 0) errors[pixelIndex + 167] += error * 3 / 16;
+          errors[pixelIndex + 168] += error * 5 / 16;
+          if (pixelX + 1 < 168) errors[pixelIndex + 169] += error / 16;
+        }
+        pixels.data[index] = 21;
+        pixels.data[index + 1] = 21;
+        pixels.data[index + 2] = 21;
+        pixels.data[index + 3] = output === 0 ? 255 : 0;
       }
-    }
-    const hasTransparentArtwork = artworkPixels > 0 && transparentArtworkPixels / artworkPixels >= 0.05;
-    for (let index = 0; index < pixels.data.length; index += 4) {
-      const alpha = pixels.data[index + 3];
-      const luminance = pixels.data[index] * 0.2126 + pixels.data[index + 1] * 0.7152 + pixels.data[index + 2] * 0.0722;
-      pixels.data[index] = 21;
-      pixels.data[index + 1] = 21;
-      pixels.data[index + 2] = 21;
-      pixels.data[index + 3] = alpha >= 64 && (hasTransparentArtwork || luminance < 184) ? 255 : 0;
     }
     bitmapCtx.putImageData(pixels, 0, 0);
     layerCtx.save();
@@ -581,13 +571,17 @@ function drawQr(ctx, value, x, y, size) {
   const qrY = y + (size - actual) / 2;
   ctx.fillStyle = PAPER;
   ctx.fillRect(qrX, qrY, actual, actual);
-  ctx.strokeStyle = INK;
-  ctx.lineWidth = 2;
-  ctx.strokeRect(qrX + 1, qrY + 1, actual - 2, actual - 2);
-  ctx.fillStyle = INK;
+  const inkLayer = createCanvas(actual, actual);
+  const inkCtx = inkLayer.getContext("2d");
+  inkCtx.strokeStyle = INK;
+  inkCtx.lineWidth = 2;
+  inkCtx.strokeRect(1, 1, actual - 2, actual - 2);
+  inkCtx.fillStyle = INK;
   matrix.forEach((row, rowIndex) => row.forEach((dark, columnIndex) => {
-    if (dark) ctx.fillRect(qrX + (columnIndex + quiet) * moduleSize, qrY + (rowIndex + quiet) * moduleSize, moduleSize, moduleSize);
+    if (dark) inkCtx.fillRect((columnIndex + quiet) * moduleSize, (rowIndex + quiet) * moduleSize, moduleSize, moduleSize);
   }));
+  applyPrintMask(inkLayer, ctx.__thermalMasks?.heavy, `${ctx.__thermalSeed}|qr|${x}|${y}`, "qr");
+  ctx.drawImage(inkLayer, qrX, qrY);
 }
 
 function drawFooter(ctx, model, layout) {
