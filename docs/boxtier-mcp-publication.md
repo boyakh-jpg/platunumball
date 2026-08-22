@@ -19,12 +19,15 @@ ChatGPT 또는 Claude에 BoxTier MCP가 설치·연결된 경우에만 모델이
 
 선택 엠블럼은 `homeEmblem`·`awayEmblem`의 `{ imageBase64 }`로 전달한다. 모델은 첨부 원본의 비율과 글자를 보존해 투명 정사각형 WebP, 최대 `320×320px`·`96KB`로 먼저 처리하고 `data:` 접두사 없는 raw Base64만 보낸다. 서버는 180×180 영역에 contain·중앙 정렬하고 저장하지 않는다. `thermal`은 엠블럼을 포함한 최종 PNG를 4단계 회색조로 변환한다.
 
-## ChatGPT 등록
+## ChatGPT·Codex 공개 등록
 
-1. OpenAI Platform Dashboard에서 BoxTier 앱을 만들고 MCP 서버 URL에 `https://boxtier.kr/mcp`를 등록한다.
-2. 앱 설명, 로고, 개인정보처리방침, 이용약관, 지원 이메일, 아래 starter prompt와 평가 사례를 입력한다.
-3. 개발자 모드에서 실제 PNG 반환을 검증한다.
-4. Apps Management Write 권한과 검증된 게시자 identity로 심사를 제출한다.
+1. OpenAI Platform의 plugin submission portal에서 `With MCP` 유형으로 BoxTier plugin을 만든다.
+2. Universal MCP URL에 `https://boxtier.kr/mcp`를 등록하고 도메인 challenge를 완료한다.
+3. `chatgpt-app-submission.json`을 가져와 앱 설명, 도구 annotation 근거, 평가 사례를 채운다.
+4. 로고, `https://boxtier.kr`, `https://boxtier.kr/privacy#privacy-contact`, 개인정보처리방침, 이용약관, 아래 starter prompt를 입력한다.
+5. `Scan Tools`에서 실제 PNG 반환과 도구 metadata를 검증한다.
+6. Apps Management Write 권한과 검증된 publisher identity로 심사를 제출한다.
+7. 승인 후 portal에서 공개하면 ChatGPT와 Codex가 공유하는 Plugins Directory에 게시된다.
 
 Starter prompts:
 
@@ -48,7 +51,15 @@ Negative tests:
 3. 축구 경기 또는 상거래 영수증 요청에는 도구를 선택하지 않는다.
 4. 엠블럼 URL, `data:` URL, object key, 규격을 넘긴 WebP는 거부한다.
 
-## Claude 연결
+## MCP Registry·Claude 공개 등록
+
+1. 저장소 루트의 `server.json`을 공식 MCP Registry validator로 검사한다.
+2. GitHub namespace `io.github.boyakh-jpg/boxtier`로 로그인하고 `mcp-publisher publish`를 실행한다.
+3. Registry API에서 공개 metadata와 `https://boxtier.kr/mcp` remote endpoint를 확인한다.
+
+공식 MCP Registry는 Anthropic이 참여하는 공개 MCP metadata 원본이다. Claude의 directory 반영은 Anthropic의 downstream 선별 대상이며 Registry 게시만으로 Claude directory 노출을 보장하지 않는다. Claude에는 아래 방식으로 즉시 직접 연결할 수 있다.
+
+### 직접 연결
 
 Claude Code:
 

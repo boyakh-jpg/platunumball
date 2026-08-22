@@ -1,0 +1,92 @@
+{
+  "$schema": "https://developers.openai.com/plugins/schemas/chatgpt-app-submission.v1.json",
+  "schema_version": 1,
+  "app_info": {
+    "display_name": "BoxTier Basketball Receipt",
+    "subtitle": "농구 경기 영수증 PNG 만들기",
+    "description": "BoxTier Basketball Receipt는 사용자가 제공한 실제 농구 경기 결과를 감열지 영수증 또는 스코어 포스터 스타일의 PNG로 만듭니다. 팀명, 최종 점수, 경기 날짜, 장소, 경기 형식을 받아 Story 또는 Feed 비율로 렌더링하며, 선택적으로 경기 시각, 대회명, 문구, 쿼터·하프·연장 점수를 포함할 수 있습니다. 결과 이미지는 요청 시 메모리에서 생성되고 저장되지 않습니다.",
+    "category": "LIFESTYLE"
+  },
+  "tools": {
+    "create_basketball_receipt": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "입력값으로 PNG를 메모리에서 생성할 뿐 사용자 데이터나 외부 상태를 수정하거나 저장하지 않습니다.",
+        "open_world_justification": "공개 인터넷이나 제3자 시스템에 데이터를 보내거나 쓰지 않습니다.",
+        "destructive_justification": "데이터를 삭제, 덮어쓰기, 권한 변경하거나 되돌릴 수 없는 작업을 수행하지 않습니다."
+      }
+    }
+  },
+  "test_cases": [
+    {
+      "description": "필수 경기 정보로 감열지 스타일 Story 영수증을 생성한다.",
+      "user_prompt": "박스티어 감열지 농구 영수증 만들어줘. 홈팀 서울 후퍼스, 원정팀 부산 웨이브, 최종 점수 81대77, 날짜 2026-08-21, 장소 리버 코트, 5대5 경기야.",
+      "file_attachment_urls": null,
+      "tools_triggered": "create_basketball_receipt",
+      "expected_output": "thermal 스타일과 기본 story 비율을 사용해 1080x1920 image/png 영수증을 반환합니다.",
+      "expected_output_url": null
+    },
+    {
+      "description": "필수 경기 정보로 스코어 포스터 스타일 영수증을 생성한다.",
+      "user_prompt": "BoxTier 스코어 포스터로 만들어줘. SEOUL HOOPERS 92, INCHEON FLAMES 88, 2026-08-22 19:30, JAMSIL COURT, 5v5 경기야.",
+      "file_attachment_urls": null,
+      "tools_triggered": "create_basketball_receipt",
+      "expected_output": "score 스타일의 image/png 결과를 반환합니다.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Feed 비율의 농구 영수증을 생성한다.",
+      "user_prompt": "피드 비율 박스티어 농구 영수증 만들어줘. A팀 21, B팀 18, 2026-08-23, 한강 코트, 3x3, 친선 경기야.",
+      "file_attachment_urls": null,
+      "tools_triggered": "create_basketball_receipt",
+      "expected_output": "feed 프리셋을 사용해 1080x1350 image/png 결과를 반환합니다.",
+      "expected_output_url": null
+    },
+    {
+      "description": "합계가 일치하는 쿼터 점수를 포함해 영수증을 생성한다.",
+      "user_prompt": "박스티어 영수증에 쿼터 점수도 넣어줘. RED 80, BLUE 76, 2026-08-20, CENTRAL GYM, 5v5. 1Q 20:18, 2Q 18:20, 3Q 22:17, 4Q 20:21.",
+      "file_attachment_urls": null,
+      "tools_triggered": "create_basketball_receipt",
+      "expected_output": "구간 점수 합계가 최종 점수와 일치하므로 쿼터별 점수가 포함된 image/png를 반환합니다.",
+      "expected_output_url": null
+    },
+    {
+      "description": "영문 로케일과 대회명을 포함한 결승전 영수증을 생성한다.",
+      "user_prompt": "Create a BoxTier basketball receipt in English. Falcons 67, Tigers 64, 2026-08-19 at City Arena, 3v3 final, tournament name Summer Cup, story format.",
+      "file_attachment_urls": null,
+      "tools_triggered": "create_basketball_receipt",
+      "expected_output": "영문 문구와 Summer Cup 대회명이 포함된 story 비율 image/png를 반환합니다.",
+      "expected_output_url": null
+    }
+  ],
+  "negative_test_cases": [
+    {
+      "description": "필수 장소가 빠진 요청에는 도구를 호출하지 않고 확인 질문을 한다.",
+      "user_prompt": "박스티어 농구 영수증 만들어줘. A팀 70, B팀 65, 2026-08-23, 5v5야.",
+      "file_attachment_urls": null,
+      "tools_triggered": null,
+      "expected_output": "경기 장소를 사용자에게 물어보고 값을 받기 전에는 도구를 호출하지 않습니다.",
+      "expected_output_url": null
+    },
+    {
+      "description": "쿼터 합계가 최종 점수와 다르면 이미지 생성을 거부한다.",
+      "user_prompt": "박스티어 영수증 만들어줘. A팀 80, B팀 75, 2026-08-23, 중앙 체육관, 5v5. 1Q 20:20, 2Q 20:20, 3Q 20:20, 4Q 10:10.",
+      "file_attachment_urls": null,
+      "tools_triggered": "create_basketball_receipt",
+      "expected_output": "구간 점수 합계가 최종 점수와 일치하지 않는다는 오류를 반환하고 PNG를 만들지 않습니다.",
+      "expected_output_url": null
+    },
+    {
+      "description": "농구가 아닌 상거래 영수증 요청에는 도구를 호출하지 않는다.",
+      "user_prompt": "카페에서 커피 두 잔 산 영수증을 박스티어 스타일 PNG로 만들어줘.",
+      "file_attachment_urls": null,
+      "tools_triggered": null,
+      "expected_output": "지원 범위가 실제 농구 경기 결과 영수증임을 설명하고 도구를 호출하지 않습니다.",
+      "expected_output_url": null
+    }
+  ]
+}
