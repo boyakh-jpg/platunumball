@@ -33,7 +33,6 @@ import matchReceiptClaim from "../server/api/match-receipts/claim.js";
 import matchReceiptCreate from "../server/api/match-receipts/create.js";
 import matchReceiptDraft from "../server/api/match-receipts/draft.js";
 import matchReceiptPublic from "../server/api/match-receipts/public.js";
-import matchReceiptRender from "../server/api/match-receipts/render.js";
 import matchReceiptResolve from "../server/api/match-receipts/resolve.js";
 import matchAttendanceQr from "../server/api/matches/attendance-qr.js";
 import matchDetail from "../server/api/matches/detail.js";
@@ -116,7 +115,6 @@ export const API_ROUTES = new Map([
   ["/match-receipts/create", route(matchReceiptCreate, ["POST"], "publicRead")],
   ["/match-receipts/draft", route(matchReceiptDraft, ["GET", "POST"], "publicRead")],
   ["/match-receipts/public", route(matchReceiptPublic, ["GET"], "publicRead")],
-  ["/match-receipts/render", route(matchReceiptRender, ["POST"], "internal")],
   ["/match-receipts/resolve", route(matchReceiptResolve, ["GET"], "publicRead")],
   ["/matches/attendance-qr", route(matchAttendanceQr, ["POST"], "user")],
   ["/matches/detail", route(matchDetail, ["POST"], "user")],
