@@ -15,8 +15,12 @@ export const THERMAL_RECEIPT_PHOTO_ASPECT = 684 / 288;
 const PAPER = "#eeeae1";
 const INK = "#151515";
 const BRAND_FONT = '"Anton"';
-const DATA_FONT = '"IBM Plex Mono"';
+const DATA_FONT_FAMILY = '"IBM Plex Mono"';
+const DATA_FONT = DATA_FONT_FAMILY;
+const DATA_FONT_WEIGHT = 700;
 const KOREAN_FONT = '"Dotum", "돋움", "Pretendard Variable", sans-serif';
+const PANEL_RADIUS = 14;
+const QR_QUIET_MODULES = 1;
 const DIGIT_ATLAS_PATH = "/assets/match-receipt-score-digits-v3.png";
 const THERMAL_ASSET_ROOT = "/assets/thermal-receipt";
 const THERMAL_ASSET_PATHS = Object.freeze({
@@ -101,11 +105,18 @@ function applyPrintMask(canvas, image, seed, role = "body") {
   ctx.restore();
 }
 
+function roundedRectPath(ctx, x, y, width, height, radius) {
+  const safeRadius = Math.min(Math.max(0, radius), width / 2, height / 2);
+  ctx.beginPath();
+  ctx.roundRect(x, y, width, height, safeRadius);
+}
+
 function fillMaskedPanel(ctx, box, role = "heavy") {
   const layer = createCanvas(Math.ceil(box.width), Math.ceil(box.height));
   const layerCtx = layer.getContext("2d");
   layerCtx.fillStyle = INK;
-  layerCtx.fillRect(0, 0, layer.width, layer.height);
+  roundedRectPath(layerCtx, 0, 0, layer.width, layer.height, PANEL_RADIUS);
+  layerCtx.fill();
   applyPrintMask(layer, ctx.__thermalMasks?.[role], `${ctx.__thermalSeed}|${box.x}|${box.y}`, role);
   ctx.drawImage(layer, box.x, box.y);
 }
@@ -115,11 +126,17 @@ function getThermalFont(text, font) {
   return /[ㄱ-ㅎㅏ-ㅣ가-힣]/u.test(String(text)) ? KOREAN_FONT : DATA_FONT;
 }
 
+function getThermalFontWeight(font, requestedWeight) {
+  if (requestedWeight) return requestedWeight;
+  return font === DATA_FONT ? DATA_FONT_WEIGHT : 800;
+}
+
 function fitText(ctx, text, maxWidth, start, minimum, font) {
   const resolvedFont = getThermalFont(text, font);
+  const weight = getThermalFontWeight(resolvedFont);
   let size = start;
   do {
-    ctx.font = `800 ${size}px ${resolvedFont}`;
+    ctx.font = `${weight} ${size}px ${resolvedFont}`;
     if (ctx.measureText(text).width <= maxWidth) return size;
     size -= 2;
   } while (size >= minimum);
@@ -184,7 +201,7 @@ function drawThermalText(ctx, text, x, y, options = {}) {
   const size = Math.max(10, Number(options.size) || 24);
   const scale = options.dotScale || (size >= 34 ? 2 : 1);
   const font = getThermalFont(value, options.font);
-  const weight = options.weight || 800;
+  const weight = getThermalFontWeight(font, options.weight);
   const measuringContext = createCanvas(1, 1).getContext("2d");
   measuringContext.font = `${weight} ${size}px ${font}`;
   const measuredWidth = measuringContext.measureText(value).width;
@@ -354,13 +371,10 @@ function drawBrand(ctx, model, layout) {
 }
 
 function drawEmblem(ctx, image, x, y) {
-  ctx.save();
-  ctx.beginPath();
-  ctx.arc(x, y, 82, 0, Math.PI * 2);
-  ctx.strokeStyle = INK;
-  ctx.lineWidth = 4;
-  ctx.stroke();
   if (image) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(x, y, 69, 0, Math.PI * 2);
     ctx.clip();
     const bitmap = createCanvas(168, 168);
     const bitmapCtx = bitmap.getContext("2d", { willReadFrequently: true });
@@ -395,7 +409,18 @@ function drawEmblem(ctx, image, x, y) {
     bitmapCtx.putImageData(pixels, 0, 0);
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(bitmap, x - 84, y - 84, 168, 168);
+    ctx.restore();
   }
+  ctx.save();
+  ctx.strokeStyle = INK;
+  ctx.beginPath();
+  ctx.arc(x, y, 82, 0, Math.PI * 2);
+  ctx.lineWidth = 6;
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(x, y, 73, 0, Math.PI * 2);
+  ctx.lineWidth = 2;
+  ctx.stroke();
   ctx.restore();
 }
 
@@ -472,7 +497,8 @@ function drawScore(ctx, model, layout, atlas) {
   fillMaskedPanel(ctx, box);
   ctx.strokeStyle = PAPER;
   ctx.lineWidth = 3;
-  ctx.strokeRect(box.x + 9, box.y + 9, box.width - 18, box.height - 18);
+  roundedRectPath(ctx, box.x + 9, box.y + 9, box.width - 18, box.height - 18, 10);
+  ctx.stroke();
   const centerY = box.y + box.height / 2;
   drawAtlasScore(ctx, atlas, model.homeScore, box.x, centerY, 284);
   drawAtlasColon(ctx, atlas, box.x + 316, centerY, 52, 132);
@@ -544,18 +570,18 @@ function drawResult(ctx, model, layout, atlas) {
 function drawQr(ctx, value, x, y, size) {
   if (!value) return;
   const matrix = createQrMatrix(value);
-  const quiet = 4;
+  const quiet = QR_QUIET_MODULES;
   const cells = matrix.length + quiet * 2;
   const inset = 8;
   const moduleSize = Math.floor((size - inset * 2) / cells);
   const actual = moduleSize * cells;
-  ctx.fillStyle = PAPER;
-  ctx.fillRect(x, y, size, size);
-  ctx.strokeStyle = INK;
-  ctx.lineWidth = 3;
-  ctx.strokeRect(x + 1.5, y + 1.5, size - 3, size - 3);
   const qrX = x + (size - actual) / 2;
   const qrY = y + (size - actual) / 2;
+  ctx.fillStyle = PAPER;
+  ctx.fillRect(qrX, qrY, actual, actual);
+  ctx.strokeStyle = INK;
+  ctx.lineWidth = 2;
+  ctx.strokeRect(qrX + 1, qrY + 1, actual - 2, actual - 2);
   ctx.fillStyle = INK;
   matrix.forEach((row, rowIndex) => row.forEach((dark, columnIndex) => {
     if (dark) ctx.fillRect(qrX + (columnIndex + quiet) * moduleSize, qrY + (rowIndex + quiet) * moduleSize, moduleSize, moduleSize);
@@ -568,8 +594,8 @@ function drawFooter(ctx, model, layout) {
   const url = model.matchUrl || "https://boxtier.kr";
   const matchId = model.officialMatchId || String(model.serial || "BT-000").replace(/^#/, "");
   drawThermalText(ctx, "PLAYERS", x, y + 26, { size: 22, maxWidth: 190 });
-  drawThermalText(ctx, Number(model.playerCount) || 0, x + 300, y + 26, { size: 22, align: "right", maxWidth: 90 });
-  drawRule(ctx, x, y + 44, 300, true);
+  drawThermalText(ctx, Number(model.playerCount) || 0, x + 200, y + 26, { size: 22, align: "right", maxWidth: 70 });
+  drawRule(ctx, x, y + 44, 390, true);
   drawThermalText(ctx, `GAME ID   ${matchId}`, x, y + 72, { size: 21, maxWidth: 390 });
   drawRule(ctx, x, y + 90, 390, true);
   drawThermalText(ctx, `${model.verified ? "VERIFIED   YES" : "SELF-REPORTED"}`, x, y + 118, { size: 21, maxWidth: 390 });
@@ -595,12 +621,12 @@ function normalizeThermalData(value, options) {
 }
 
 export async function renderThermalReceiptCanvas(value, preset = "story", options = {}) {
-  await document.fonts?.ready;
   await Promise.all([
-    document.fonts?.load?.(`48px ${BRAND_FONT}`),
-    document.fonts?.load?.(`24px ${DATA_FONT}`),
-    document.fonts?.load?.(`24px ${KOREAN_FONT}`),
+    document.fonts?.load?.(`800 48px ${BRAND_FONT}`),
+    document.fonts?.load?.(`${DATA_FONT_WEIGHT} 24px ${DATA_FONT_FAMILY}`),
+    document.fonts?.load?.(`800 24px ${KOREAN_FONT}`),
   ]);
+  await document.fonts?.ready;
   const model = normalizeThermalData(value, options);
   const renderSeed = model.serialSeed || model.serial || "thermal";
   const emblemSources = resolveThermalReceiptEmblemSources(model, options);
