@@ -117,7 +117,7 @@ test("MCP가 자동 선택용 영수증 도구를 공개한다", async () => {
   assert.deepEqual(tool.inputSchema.properties.debugBase64, {
     type: "boolean",
     default: false,
-    description: "개발 확인용. true이면 생성된 PNG의 base64 문자열을 structured/text 결과에도 포함한다.",
+    description: "개발 확인용. true이면 생성된 PNG의 base64 문자열을 structuredContent에도 포함한다.",
   });
   assert.equal(tool.inputSchema.required.includes("debugBase64"), false);
   assert.equal(tool.inputSchema.properties.homeEmblem.additionalProperties, false);
@@ -169,15 +169,11 @@ test("MCP 호출은 유효 입력의 일일 한도를 소비하고 PNG를 직접
   }, 3);
 
   assert.equal(called.result.isError, undefined, JSON.stringify(called.result));
-  assert.equal(called.result.content.length, 2);
+  assert.equal(called.result.content.length, 1);
   assert.equal(called.result.content[0].type, "image");
   assert.equal(called.result.content[0].mimeType, "image/png");
   assert.equal(called.result.content[0].data, TEST_PNG.toString("base64"));
   assert.doesNotMatch(called.result.content[0].data, /^data:/u);
-  assert.deepEqual(called.result._meta["boxtier/image"], {
-    data: TEST_PNG.toString("base64"),
-    mimeType: "image/png",
-  });
   assert.deepEqual(called.result.structuredContent, {
     status: "rendered",
     mimeType: "image/png",
@@ -185,7 +181,6 @@ test("MCP 호출은 유효 입력의 일일 한도를 소비하고 PNG를 직접
     style: "thermal",
     byteLength: TEST_PNG.length,
   });
-  assert.deepEqual(JSON.parse(called.result.content[1].text), called.result.structuredContent);
   assert.equal("base64" in called.result.structuredContent, false);
   assert.equal(renderCall.preset, "story");
   assert.equal(renderCall.draft.receiptStyle, "classic-thermal");
@@ -217,7 +212,7 @@ test("MCP 디버그 모드는 실제 PNG raw Base64와 복원 가능한 바이�
 
   assert.equal(called.result.isError, undefined, JSON.stringify(called.result));
   const image = called.result.content[0];
-  const metadata = JSON.parse(called.result.content[1].text);
+  const metadata = called.result.structuredContent;
   assert.equal(image.type, "image");
   assert.equal(image.mimeType, "image/png");
   assert.ok(metadata.byteLength > 0);

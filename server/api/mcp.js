@@ -50,7 +50,7 @@ const receiptInputSchema = z.object({
     awayScore: z.number().int().min(0).max(999),
   })).max(5).optional().describe("쿼터·하프·연장별 점수. 합계는 최종 점수와 같아야 함."),
   debugBase64: z.boolean().default(false)
-    .describe("개발 확인용. true이면 생성된 PNG의 base64 문자열을 structured/text 결과에도 포함한다."),
+    .describe("개발 확인용. true이면 생성된 PNG의 base64 문자열을 structuredContent에도 포함한다."),
 }).strict();
 
 // Keep required fields visible in tools/list, but let the handler return a
@@ -173,12 +173,8 @@ export function createBoxtierMcpHandler({
             ...(debugBase64 ? { base64: imageData } : {}),
           };
           return {
+            content: [{ type: "image", data: imageData, mimeType: "image/png" }],
             structuredContent: metadata,
-            content: [
-              { type: "image", data: imageData, mimeType: "image/png" },
-              { type: "text", text: JSON.stringify(metadata) },
-            ],
-            _meta: { "boxtier/image": { data: imageData, mimeType: "image/png" } },
           };
         } catch (error) {
           console.error("[mcp] receipt rendering failed", error);
