@@ -5,6 +5,7 @@ import nodeMcpHandler from "../api/mcp.js";
 import { createBoxtierMcpHandler } from "../server/api/mcp.js";
 import { consumeMcpReceiptGenerationQuota } from "../server/api/mcpQuota.js";
 import { MCP_RECEIPT_WIDGET_URI } from "../server/api/mcpReceiptWidget.js";
+import { getThermalReceiptLayout } from "../shared/lib/thermalReceipt.js";
 
 const TEST_PNG = Buffer.from("89504e470d0a1a0a", "hex");
 
@@ -96,7 +97,10 @@ test("Node adapter가 IP별 MCP POST를 1분 5회로 제한한다", async (conte
 });
 
 test("MCP가 자동 선택용 영수증 도구를 공개한다", async () => {
-  const handler = createBoxtierMcpHandler({ renderPng: async () => TEST_PNG });
+  const handler = createBoxtierMcpHandler({
+    renderPng: async () => TEST_PNG,
+    widgetDomain: "https://boxtier.kr",
+  });
   const initialized = await rpc(handler, "initialize", {
     protocolVersion: "2025-06-18",
     capabilities: {},
@@ -127,7 +131,11 @@ test("MCP가 자동 선택용 영수증 도구를 공개한다", async () => {
 
   const resource = await rpc(handler, "resources/read", { uri: MCP_RECEIPT_WIDGET_URI }, 21);
   assert.equal(resource.result.contents[0].mimeType, "text/html;profile=mcp-app");
+  assert.equal(MCP_RECEIPT_WIDGET_URI, "ui://boxtier/basketball-receipt-v2.html");
+  assert.equal(resource.result.contents[0]._meta["openai/widgetDomain"], "https://boxtier.kr");
   assert.match(resource.result.contents[0].text, /ui\/notifications\/tool-result/);
+  assert.match(resource.result.contents[0].text, /toolResponseMetadata/);
+  assert.match(resource.result.contents[0].text, /metadata\?\.\["boxtier\/image"\]/);
   assert.match(resource.result.contents[0].text, />PNG 다운로드<\/a>/);
   assert.match(resource.result.contents[0].text, /download="boxtier-basketball-receipt\.png"/);
   assert.match(resource.result.contents[0].text, /new Blob\(\[bytes\], \{ type: "image\/png" \}\)/);
@@ -177,6 +185,7 @@ test("MCP 호출은 유효 입력의 일일 한도를 소비하고 PNG를 직접
   assert.deepEqual(called.result._meta["boxtier/image"], {
     data: TEST_PNG.toString("base64"),
     mimeType: "image/png",
+    filename: "boxtier-basketball-receipt.png",
   });
   assert.deepEqual(called.result.structuredContent, {
     status: "rendered",
@@ -414,46 +423,62 @@ test("MCP quota helper는 원본 IP 대신 해시로 전역 RPC를 호출한다"
   assert.doesNotMatch(rpcCall.params.p_request_hash, /203\.0\.113\.21/);
 });
 
-test("MCP 실제 renderer가 Feed PNG를 반환한다", async () => {
+test("MCP 실제 renderer가 중립 엠블럼과 선택 영역 팔레트를 적용한 Story PNG를 반환한다", async () => {
   const { default: sharp } = await import("sharp");
-  const emblem = await sharp(Buffer.from(`
-    <svg xmlns="http://www.w3.org/2000/svg" width="320" height="320">
-      <circle cx="160" cy="160" r="140" fill="#111"/>
-      <path d="M70 160h180M160 70v180" stroke="#fff" stroke-width="18"/>
-    </svg>
-  `)).webp().toBuffer();
   const handler = createBoxtierMcpHandler({ consumeGenerationQuota: async () => true });
   const called = await rpc(handler, "tools/call", {
     name: "create_basketball_receipt",
     arguments: {
       style: "thermal",
-      preset: "feed",
-      homeTeam: "서울 후퍼스",
-      awayTeam: "부산 웨이브",
-      homeScore: 81,
-      awayScore: 77,
-      playedOn: "2026-08-21",
-      playedTime: "19:30",
-      venue: "리버 코트",
+      preset: "story",
+      homeTeam: "A팀",
+      awayTeam: "B팀",
+      homeScore: 82,
+      awayScore: 76,
+      playedOn: "2026-08-22",
+      playedTime: "20:30",
+      venue: "광명시민체육관",
       format: "5v5",
-      homeEmblem: { imageBase64: emblem.toString("base64") },
-      awayEmblem: { imageBase64: emblem.toString("base64") },
+      locale: "ko",
     },
   }, 6);
 
   assert.equal(called.result.isError, undefined, JSON.stringify(called.result));
   const png = Buffer.from(called.result.content[0].data, "base64");
   assert.deepEqual(png.subarray(0, 8), Buffer.from("89504e470d0a1a0a", "hex"));
+  const layout = getThermalReceiptLayout({ hasPhoto: false, hasPeriods: false, hasComment: false });
   const metadata = await sharp(png).metadata();
-  assert.equal(metadata.width, 1080);
-  assert.equal(metadata.height, 1350);
+  assert.equal(metadata.width, layout.paper.width);
+  assert.equal(metadata.height, layout.paper.height);
   const { data: pixels, info } = await sharp(png).removeAlpha().raw().toBuffer({ resolveWithObject: true });
   assert.equal(info.channels, 3);
   const thermalLevels = new Set([0, 85, 170, 255]);
+  const emblemY = layout.teams.y + 82 - layout.paper.y;
+  const emblemCenters = [
+    layout.teams.x + 126 - layout.paper.x,
+    layout.teams.x + layout.teams.width - 126 - layout.paper.x,
+  ];
+  const emblemCounts = emblemCenters.map(() => ({ ink: 0, white: 0 }));
   for (let index = 0; index < pixels.length; index += 3) {
+    const pixelIndex = index / 3;
+    const x = pixelIndex % info.width;
+    const y = Math.floor(pixelIndex / info.width);
+    const emblemIndex = emblemCenters.findIndex((centerX) => (
+      (x - centerX) ** 2 + (y - emblemY) ** 2 <= 69 ** 2
+    ));
     assert.equal(pixels[index], pixels[index + 1]);
     assert.equal(pixels[index], pixels[index + 2]);
-    assert.equal(thermalLevels.has(pixels[index]), true);
+    if (emblemIndex >= 0) {
+      assert.equal(thermalLevels.has(pixels[index]), true);
+      if (pixels[index] < 255) emblemCounts[emblemIndex].ink += 1;
+      if (pixels[index] === 255) emblemCounts[emblemIndex].white += 1;
+    } else {
+      assert.equal([0, 255].includes(pixels[index]), true);
+    }
+  }
+  for (const counts of emblemCounts) {
+    assert.ok(counts.ink > 0, "중립 엠블럼 선화가 보여야 한다");
+    assert.ok(counts.white > 0, "중립 엠블럼이 검은 원으로 뭉개지면 안 된다");
   }
   await handler.close();
 });

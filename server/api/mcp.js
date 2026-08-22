@@ -10,6 +10,7 @@ import {
 } from "./match-receipts/_pngRenderer.js";
 import { MATCH_RECEIPT_STYLES } from "../../shared/lib/thermalReceipt.js";
 import { consumeMcpReceiptGenerationQuota } from "./mcpQuota.js";
+import { getConfiguredPublicAppUrl } from "./_publicAppUrl.js";
 import {
   MCP_RECEIPT_WIDGET_HTML,
   MCP_RECEIPT_WIDGET_MIME_TYPE,
@@ -29,9 +30,9 @@ const receiptInputSchema = z.object({
   homeTeam: z.string().min(1).max(24).describe("홈팀 이름."),
   awayTeam: z.string().min(1).max(24).describe("원정팀 이름."),
   homeEmblem: preparedEmblemSchema.optional()
-    .describe("선택 홈 엠블럼. 원본 비율과 글자를 보존해 전처리한 WebP를 중앙 정렬하며, thermal은 최종 4단계 회색조로 변환한다."),
+    .describe("선택 홈 엠블럼. 원본 비율과 글자를 보존해 전처리한 WebP를 중앙 정렬하며, thermal은 엠블럼 내부만 4단계 회색조로 변환한다. 생략하면 중립 엠블럼을 사용한다."),
   awayEmblem: preparedEmblemSchema.optional()
-    .describe("선택 원정 엠블럼. 원본 비율과 글자를 보존해 전처리한 WebP를 중앙 정렬하며, thermal은 최종 4단계 회색조로 변환한다."),
+    .describe("선택 원정 엠블럼. 원본 비율과 글자를 보존해 전처리한 WebP를 중앙 정렬하며, thermal은 엠블럼 내부만 4단계 회색조로 변환한다. 생략하면 중립 엠블럼을 사용한다."),
   homeScore: z.number().int().min(0).max(999).describe("홈팀 최종 점수."),
   awayScore: z.number().int().min(0).max(999).describe("원정팀 최종 점수."),
   playedOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/u).describe("경기 날짜, YYYY-MM-DD."),
@@ -84,6 +85,7 @@ function toolError(message, issues = []) {
 export function createBoxtierMcpHandler({
   renderPng = renderMatchReceiptPng,
   consumeGenerationQuota = consumeMcpReceiptGenerationQuota,
+  widgetDomain = getConfiguredPublicAppUrl(),
 } = {}) {
   return createMcpHandler((context) => {
     const server = new McpServer({ name: "boxtier-receipt", version: "1.0.0" });
@@ -105,6 +107,7 @@ export function createBoxtierMcpHandler({
             ui: { prefersBorder: true, csp: { connectDomains: [], resourceDomains: [] } },
             "openai/widgetPrefersBorder": true,
             "openai/widgetCSP": { connect_domains: [], resource_domains: [] },
+            ...(widgetDomain ? { "openai/widgetDomain": widgetDomain } : {}),
           },
         }],
       }),
@@ -175,7 +178,13 @@ export function createBoxtierMcpHandler({
           return {
             content: [{ type: "image", data: imageData, mimeType: "image/png" }],
             structuredContent: metadata,
-            _meta: { "boxtier/image": { data: imageData, mimeType: "image/png" } },
+            _meta: {
+              "boxtier/image": {
+                data: imageData,
+                mimeType: "image/png",
+                filename: "boxtier-basketball-receipt.png",
+              },
+            },
           };
         } catch (error) {
           console.error("[mcp] receipt rendering failed", error);

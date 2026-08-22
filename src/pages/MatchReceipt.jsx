@@ -1294,7 +1294,7 @@ export default function MatchReceipt({ auth, app }) {
                 <legend>{receiptCopy.teamEmblems} <small>{receiptCopy.optional}</small></legend>
                 <p className="match-receipt-emblem-guide">
                   {isThermal
-                    ? (isEnglish ? "Choose an emblem. It is converted to four-level thermal grayscale in the output." : "엠블럼을 고르면 출력물에서 감열 4단계 회색조로 변환합니다.")
+                    ? (isEnglish ? "Choose an emblem. Only its interior is converted to four-level thermal grayscale." : "엠블럼을 고르면 내부만 감열 4단계 회색조로 변환합니다.")
                     : (isEnglish ? "Choose an image to create a line-art emblem for this receipt. Save it to a team after signing in to reuse it." : "사진을 골라 선화 엠블럼으로 바로 사용할 수 있습니다. 로그인 후 팀을 만들면 팀 상세에 저장해 다음 영수증에서도 재사용할 수 있습니다.")}
                 </p>
                 <div className="match-receipt-emblem-upload-grid">

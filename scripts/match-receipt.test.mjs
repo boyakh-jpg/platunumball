@@ -27,9 +27,8 @@ import {
   RECEIPT_SHELL_COPY,
 } from "../src/lib/receiptLocale.js";
 
-async function assertFourLevelGrayscalePng(png) {
+async function assertGrayscalePng(png) {
   const { data, info } = await sharp(png).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
-  const levels = new Set([0, 85, 170, 255]);
   let opaquePixels = 0;
   assert.equal(info.channels, 4);
   for (let index = 0; index < data.length; index += 4) {
@@ -37,7 +36,6 @@ async function assertFourLevelGrayscalePng(png) {
     opaquePixels += 1;
     assert.equal(data[index], data[index + 1]);
     assert.equal(data[index], data[index + 2]);
-    assert.equal(levels.has(data[index]), true);
   }
   assert.ok(opaquePixels > 0);
 }
@@ -163,7 +161,7 @@ test("receipt emblems allow style-specific local adjustment while canonical team
 
   assert.match(receiptPage, /사진을 골라 선화 엠블럼으로 바로 사용할 수 있습니다\./u);
   assert.match(receiptPage, /로그인 후 팀을 만들면 팀 상세에 저장해 다음 영수증에서도 재사용할 수 있습니다\./u);
-  assert.match(receiptPage, /엠블럼을 고르면 출력물에서 감열 4단계 회색조로 변환합니다\./u);
+  assert.match(receiptPage, /엠블럼을 고르면 내부만 감열 4단계 회색조로 변환합니다\./u);
   assert.match(receiptPage, /직접 선택한 이미지는 이번 영수증에서만 유지됩니다\./u);
   assert.match(emblemEditor, /AI 프롬프트 복사/u);
   assert.match(receiptPage, /conversionMode=\{isThermal \? "monochrome" : "line-art"\}/u);
@@ -523,7 +521,7 @@ test("external receipt API rejects emblems before consuming quota", async () => 
     && item.code === "external_emblem_not_supported"));
 });
 
-test("external receipt PNG API renders a stateless four-level thermal story", async () => {
+test("external receipt PNG API renders a stateless selective-palette thermal story", async () => {
   const response = createApiResponse();
   const emblem = await sharp({
     create: { width: 64, height: 64, channels: 4, background: { r: 214, g: 165, b: 34, alpha: 1 } },
@@ -554,10 +552,10 @@ test("external receipt PNG API renders a stateless four-level thermal story", as
   assert.equal(metadata.format, "png");
   assert.equal(metadata.width, 796);
   assert.equal(metadata.height, 1392);
-  await assertFourLevelGrayscalePng(response.body);
+  await assertGrayscalePng(response.body);
 });
 
-test("external receipt PNG API fits the complete thermal story into a four-level feed", async () => {
+test("external receipt PNG API fits the complete thermal story into a grayscale feed", async () => {
   const response = createApiResponse();
   await handleRenderReceipt({
     method: "POST",
@@ -579,7 +577,7 @@ test("external receipt PNG API fits the complete thermal story into a four-level
   const metadata = await sharp(response.body).metadata();
   assert.equal(metadata.width, 1080);
   assert.equal(metadata.height, 1350);
-  await assertFourLevelGrayscalePng(response.body);
+  await assertGrayscalePng(response.body);
 });
 
 test("external receipt PNG API requires its dedicated bearer key", async () => {

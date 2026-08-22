@@ -381,17 +381,10 @@ function drawBrand(ctx, model, layout) {
   drawRule(ctx, layout.content.x, layout.brand.y + layout.brand.height - 4, layout.content.width);
 }
 
-function drawEmblem(ctx, emblem, x, y, neutralSources) {
+function drawEmblem(ctx, emblem, x, y) {
   const layer = createCanvas(184, 184);
   const layerCtx = layer.getContext("2d");
   const image = emblem?.image;
-  const isNeutral = neutralSources.has(emblem?.source);
-  if (isNeutral) {
-    layerCtx.fillStyle = INK;
-    layerCtx.beginPath();
-    layerCtx.arc(92, 92, 69, 0, Math.PI * 2);
-    layerCtx.fill();
-  }
   if (image) {
     const bitmap = createCanvas(168, 168);
     const bitmapCtx = bitmap.getContext("2d", { willReadFrequently: true });
@@ -430,7 +423,6 @@ function drawEmblem(ctx, emblem, x, y, neutralSources) {
     layerCtx.arc(92, 92, 69, 0, Math.PI * 2);
     layerCtx.clip();
     layerCtx.imageSmoothingEnabled = false;
-    if (isNeutral) layerCtx.globalCompositeOperation = "destination-out";
     layerCtx.drawImage(bitmap, 8, 8, 168, 168);
     layerCtx.restore();
   }
@@ -451,14 +443,8 @@ function drawTeams(ctx, model, layout, emblems) {
   const y = layout.teams.y + 82;
   const left = layout.teams.x + 126;
   const right = layout.teams.x + layout.teams.width - 126;
-  const neutralSources = new Set([
-    model.neutralTeamMarkUrls?.home,
-    model.neutralTeamMarkUrls?.away,
-    FIXED_NEUTRAL_EMBLEM_PATHS.home,
-    FIXED_NEUTRAL_EMBLEM_PATHS.away,
-  ].filter(Boolean));
-  drawEmblem(ctx, emblems.home, left, y, neutralSources);
-  drawEmblem(ctx, emblems.away, right, y, neutralSources);
+  drawEmblem(ctx, emblems.home, left, y);
+  drawEmblem(ctx, emblems.away, right, y);
   drawThermalText(ctx, "VS", layout.teams.x + layout.teams.width / 2, y, { size: 48, align: "center", maxWidth: 88, dotScale: 2 });
   [[model.homeTeam || "Team A", left], [model.awayTeam || "Team B", right]].forEach(([name, x]) => {
     const font = /[ㄱ-ㅎㅏ-ㅣ가-힣]/u.test(String(name)) ? KOREAN_FONT : TEAM_DISPLAY_FONT;
@@ -691,14 +677,28 @@ function normalizeThermalData(value, options) {
   };
 }
 
-function quantizeThermalCanvas(canvas) {
+function quantizeThermalCanvas(canvas, layout) {
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
   const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const emblemY = layout.teams.y + 82;
+  const leftEmblemX = layout.teams.x + 126;
+  const rightEmblemX = layout.teams.x + layout.teams.width - 126;
+  const emblemRadiusSquared = 69 ** 2;
   for (let index = 0; index < pixels.data.length; index += 4) {
+    const pixelIndex = index / 4;
+    const x = pixelIndex % canvas.width;
+    const y = Math.floor(pixelIndex / canvas.width);
     const luminance = pixels.data[index] * 0.2126
       + pixels.data[index + 1] * 0.7152
       + pixels.data[index + 2] * 0.0722;
-    const level = Math.round(luminance / 85) * 85;
+    const emblemDistanceY = (y - emblemY) ** 2;
+    const isEmblem = emblemDistanceY <= emblemRadiusSquared && (
+      (x - leftEmblemX) ** 2 + emblemDistanceY <= emblemRadiusSquared
+      || (x - rightEmblemX) ** 2 + emblemDistanceY <= emblemRadiusSquared
+    );
+    const level = isEmblem
+      ? Math.round(luminance / 85) * 85
+      : luminance < 128 ? 0 : 255;
     pixels.data[index] = level;
     pixels.data[index + 1] = level;
     pixels.data[index + 2] = level;
@@ -747,6 +747,7 @@ export async function renderThermalReceiptCanvas(value, preset = "story", option
   drawPeriods(ctx, model, layout);
   drawResult(ctx, model, layout, atlas);
   drawFooter(ctx, model, layout);
+  quantizeThermalCanvas(base, layout);
   if (preset === "story") {
     const output = createCanvas(layout.paper.width, layout.paper.height);
     output.getContext("2d").drawImage(
@@ -760,7 +761,7 @@ export async function renderThermalReceiptCanvas(value, preset = "story", option
       layout.paper.width,
       layout.paper.height,
     );
-    return quantizeThermalCanvas(output);
+    return output;
   }
   const size = preset === "feed" ? { width: 1080, height: 1350 } : { width: 1080, height: 1920 };
   const output = createCanvas(size.width, size.height);
@@ -771,6 +772,7 @@ export async function renderThermalReceiptCanvas(value, preset = "story", option
   const scale = Math.min(size.width / 1080, size.height / sourceHeight);
   const drawWidth = 1080 * scale;
   const drawHeight = sourceHeight * scale;
+  outputCtx.imageSmoothingEnabled = false;
   outputCtx.drawImage(base, 0, sourceY, 1080, sourceHeight, (size.width - drawWidth) / 2, (size.height - drawHeight) / 2, drawWidth, drawHeight);
-  return quantizeThermalCanvas(output);
+  return output;
 }
