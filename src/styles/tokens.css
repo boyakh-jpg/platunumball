@@ -28,6 +28,9 @@
   font-weight: 900;
   font-display: swap;
   src: url("/assets/fonts/KBLJump-EB-Condensed.woff2") format("woff2");
+  ascent-override: 80%;
+  descent-override: 20%;
+  line-gap-override: 0%;
   unicode-range: U+1100-11FF, U+3130-318F, U+A960-A97F, U+AC00-D7A3, U+D7B0-D7FF;
 }
 
@@ -36,7 +39,10 @@
   font-style: normal;
   font-weight: 900;
   font-display: swap;
-  src: url("/assets/fonts/Anton-Regular.ttf") format("truetype");
+  src: url("/assets/fonts/BoxTier-Sports-Latin.ttf") format("truetype");
+  ascent-override: 80%;
+  descent-override: 20%;
+  line-gap-override: 0%;
   unicode-range: U+0000-024F, U+1E00-1EFF;
 }
 

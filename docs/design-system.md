@@ -605,8 +605,8 @@
 3. 선수·팀 이름도 경기 대진·점수판처럼 표시되는 경우만 `--sports-display-font`를 쓰고, 프로필·검색·목록·입력에서는 Pretendard를 쓴다. 문장 전체나 두 줄 이상 설명에는 스포츠 표시 글꼴을 쓰지 않는다.
 4. Pretendard 크기는 `caption 0.72rem`, `badge 0.75rem`, `control 0.78rem`, `meta 0.82rem`, `body-sm 0.875rem`, `body 1rem`, `title-sm 1.05rem`, `title-md 1.25rem`, `section-title 1.5rem` 토큰을 사용한다. 페이지별 임의의 근접값을 새로 만들지 않는다.
 5. 굵기는 `support 700`, `body 800`, `control 900`, `title 900`을 기본으로 한다. `600`은 장문 보조 설명의 최저선일 뿐 기본값으로 사용하지 않으며, 모든 사용자 표시 텍스트는 `600` 미만을 금지한다.
-6. KBL Jump EB Condensed와 Anton은 `--font-weight-sports: 900`으로 맞춘다. 굵기 차이 대신 크기와 색상으로 위계를 만든다.
-7. 음수 `letter-spacing`과 인위적인 가로 축소는 쓰지 않는다. KBL Jump EB Condensed와 Anton 원본의 좁은 폭을 유지하며 `--sports-display-condense`는 `none`을 사용한다.
+6. KBL Jump EB Condensed와 Anton은 `--font-weight-sports: 900`으로 맞춘다. 공용 `BoxTier Sports Display` face는 한글·영문·숫자의 행 메트릭을 `ascent 80% / descent 20% / line-gap 0%`로 통일하고, Anton 글리프만 KBL 한글의 실제 글리프 상·하단에 맞춘 전용 파생 파일을 사용한다. 영수증의 Anton 원본은 보정하지 않는다.
+7. 음수 `letter-spacing`과 런타임 `transform` 가로 축소는 쓰지 않는다. KBL Jump EB Condensed는 원본 폭을 유지하고, 공용 스포츠 표시용 Anton 파생 face만 원본 대비 가로 `2.5%`, 세로 `8%` 확대하고 `0.145em` 아래로 내려 한글과 시각 높이·굵기·기준선을 맞춘다. `--sports-display-condense`는 `none`을 사용한다.
 8. 영수증 미리보기·Story·Feed 출력물은 `--receipt-sports-display-font`의 기존 `KBO Dia Gothic` 규칙을 유지한다.
 
 ## 2026-07-04 전역 로더 표시
@@ -1647,7 +1647,7 @@ UI 수정 전:
 5. Hero title typography uses the shared `--hero-title-*` tokens. Home, Matches, Recruiting, room, profile, team, season, rulebook, and tournament heroes keep page layout differences but share title color, shadow, condensed font stack, line-height, and letter spacing.
 6. Page-specific cards and panels should be added to the shared primitive selector layer first. Only layout-specific size/gap/placement belongs in page CSS.
 7. Condensed hero title fonts use non-negative tracking through `--hero-title-letter-spacing`. English-heavy words like `RANKBALL` must not use tight negative spacing.
-7-1. Sports display emphasis uses the shared `--sports-display-font`: `KBL Jump Condensed` for Korean and weight-900 `Anton` for Latin letters and numbers. Use it only for hero titles, tier spotlight text, team/versus labels, and scoreboard/record numbers. Do not apply it to body copy, buttons, inputs, or dense helper text. Both faces keep their native condensed width through `--sports-display-condense: none`; do not simulate width with transforms or negative letter spacing. Receipt preview, Story, and Feed output keep the legacy KBO receipt token.
+7-1. Sports display emphasis uses the shared `--sports-display-font`: `KBL Jump Condensed` for Korean and the weight-900 BoxTier derivative of `Anton` for Latin letters and numbers. Use it only for hero titles, tier spotlight text, team/versus labels, and scoreboard/record numbers. Do not apply it to body copy, buttons, inputs, or dense helper text. The shared face aligns both scripts to `80%/20%/0%` line metrics; its Anton derivative is widened `2.5%`, scaled to `108%` height, and shifted down `0.145em` to match the Korean glyph box and weight. Keep `--sports-display-condense: none`; do not add runtime transforms or negative letter spacing. Receipt preview, Story, and Feed output keep the unmodified legacy KBO and Anton faces.
 7-2. Home upcoming match cards may enlarge team labels with the sports display font and orange emphasis. Scores stay neutral gray, no text shadow. The room-open CTA is orange, and tier spotlight text must fit without ellipsis.
 7-3. Match/recruiting summary center labels such as `VS` and fill counts stay about half the side label size.
 7-4. Default text uses `--font-body`. Functional panel titles and descriptions use the shared `.ui-panel-title` and `.ui-panel-copy` typography instead of browser-default `strong`/`span` weights. Sports display typography remains an explicit override only.

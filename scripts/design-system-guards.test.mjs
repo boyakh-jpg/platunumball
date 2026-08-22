@@ -739,6 +739,11 @@ test("KBL과 Anton은 스포츠 표시, Pretendard는 읽기와 조작 UI에 사
   assert.match(tokenStyles, /--font-weight-title:\s*850;/);
   assert.match(tokenStyles, /--font-weight-sports:\s*900;/);
   assert.match(tokenStyles, /--sports-display-font:\s*"BoxTier Sports Display", "KBL Jump Condensed", "Anton", sans-serif;/);
+  assert.match(tokenStyles, /src:\s*url\("\/assets\/fonts\/BoxTier-Sports-Latin\.ttf"\) format\("truetype"\);/);
+  assert.equal((tokenStyles.match(/ascent-override:\s*80%;/g) || []).length, 2);
+  assert.equal((tokenStyles.match(/descent-override:\s*20%;/g) || []).length, 2);
+  assert.equal((tokenStyles.match(/line-gap-override:\s*0%;/g) || []).length, 2);
+  assert.match(tokenStyles, /font-family:\s*"Anton";[^}]*src:\s*url\("\/assets\/fonts\/Anton-Regular\.ttf"\)/s);
   assert.match(tokenStyles, /--receipt-sports-display-font:\s*"KBO Dia Gothic", "Arial Narrow", "Roboto Condensed", sans-serif;/);
   assert.match(tokenStyles, /--font-size-caption:\s*0\.75rem;/);
   assert.match(tokenStyles, /--font-size-control:\s*0\.78rem;/);
