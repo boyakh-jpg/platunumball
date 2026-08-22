@@ -14,6 +14,7 @@ import {
 } from "../shared/lib/thermalReceipt.js";
 import {
   getThermalPeriodTableLayout,
+  getThermalReceiptFormatLine,
   resolveThermalReceiptEmblemSources,
 } from "../src/lib/thermalReceipt.js";
 import {
@@ -209,12 +210,28 @@ test("thermal scores use the angular atlas while Korean text is slightly condens
   assert.match(renderer, /const targetWidth = width \* scale \* widthScale/u);
 });
 
-test("thermal main scoreboard uses a light gray paper panel", async () => {
+test("thermal main scoreboard uses a mid-gray masked panel", async () => {
   const renderer = await readFile(new URL("../src/lib/thermalReceipt.js", import.meta.url), "utf8");
 
-  assert.match(renderer, /const SCORE_PANEL = "#d7d5cf"/u);
+  assert.match(renderer, /const SCORE_PANEL = "#727272"/u);
   assert.match(renderer, /fillMaskedPanel\(ctx, box, "body", SCORE_PANEL\)/u);
   assert.match(renderer, /drawAngularScore\(ctx, atlas, model\.homeScore, box\.x, centerY, 284, INK\)/u);
+});
+
+test("thermal game detail puts an optional tournament after quarters", () => {
+  assert.equal(
+    getThermalReceiptFormatLine({ format: "3v3", periodScores: [] }),
+    "3V3 · 4 QUARTERS",
+  );
+  assert.equal(
+    getThermalReceiptFormatLine({
+      format: "5v5",
+      periodScores: [["Q1", 12, 10], ["Q2", 8, 11]],
+      tournamentName: "서울 챔피언십",
+      refereeAssigned: true,
+    }),
+    "5V5 · 2 QUARTERS · 서울 챔피언십 · REFEREE",
+  );
 });
 
 test("thermal print noise is deterministic for the receipt seed", () => {

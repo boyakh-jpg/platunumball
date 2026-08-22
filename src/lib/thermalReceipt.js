@@ -21,7 +21,7 @@ const TEAM_DISPLAY_FONT = '"Bebas Neue"';
 const TEAM_DISPLAY_FONT_WEIGHT = 900;
 const KOREAN_FONT = '"NeoDunggeunmo", "Pretendard Variable", monospace';
 const KOREAN_WIDTH_SCALE = 0.94;
-const SCORE_PANEL = "#d7d5cf";
+const SCORE_PANEL = "#727272";
 const PANEL_RADIUS = 14;
 const QR_QUIET_MODULES = 1;
 const DIGIT_ATLAS_PATH = "/assets/match-receipt-score-digits-v3.png";
@@ -547,15 +547,27 @@ function drawScore(ctx, model, layout, atlas) {
   drawAngularScore(ctx, atlas, model.awayScore, box.x + 400, centerY, 284, INK);
 }
 
+export function getThermalReceiptFormatLine(model = {}) {
+  const periodCount = Array.isArray(model.periodScores) && model.periodScores.length
+    ? model.periodScores.length
+    : 4;
+  return [
+    String(model.format || "5v5").toUpperCase(),
+    `${periodCount} QUARTERS`,
+    String(model.tournamentName || "").trim(),
+    model.refereeAssigned ? "REFEREE" : "",
+  ].filter(Boolean).join(" · ");
+}
+
 function drawInfo(ctx, model, layout) {
   const center = layout.info.x + layout.info.width / 2;
   const playedOn = String(model.playedOn || "").replaceAll("-", ".");
-  const periodCount = Array.isArray(model.periodScores) && model.periodScores.length ? model.periodScores.length : 4;
   const nature = model.matchNatureLabel || "COMPETITIVE";
+  const formatLine = getThermalReceiptFormatLine(model);
   drawThermalText(ctx, nature, center, layout.info.y + 23, { size: fitText(ctx, nature, 360, 34, 22), align: "center", maxWidth: 360, dotScale: 2 });
   drawThermalText(ctx, `${playedOn} · ${model.playedTime || ""}`, center, layout.info.y + 58, { size: 24, align: "center", maxWidth: 520 });
   drawThermalText(ctx, model.venue || model.address || "VENUE", center, layout.info.y + 88, { size: 26, align: "center", maxWidth: 620 });
-  drawThermalText(ctx, `${String(model.format || "5v5").toUpperCase()} · ${periodCount} QUARTERS${model.refereeAssigned ? " · REFEREE" : ""}`, center, layout.info.y + 118, { size: 22, align: "center", maxWidth: 620 });
+  drawThermalText(ctx, formatLine, center, layout.info.y + 118, { size: fitText(ctx, formatLine, 620, 22, 16), align: "center", maxWidth: 620 });
 }
 
 export function getThermalPeriodTableLayout(periodCount, width = 684) {

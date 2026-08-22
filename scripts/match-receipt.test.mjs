@@ -1314,10 +1314,10 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(renderer, /ctx\.fillStyle = "#d4582b";\s*ctx\.font = '900 27px "KBO Dia Gothic", sans-serif';\s*ctx\.fillText\(model\.playedOn/);
   assert.match(renderer, /ctx\.drawImage\(paper, 0, receiptTop, width, height - receiptTop - \(compact \? 26 : 34\)\)/);
   assert.equal(MATCH_RECEIPT_PHOTO_ASPECT, 1080 / 885);
-  assert.match(thermalRenderer, /const SCORE_FONT_WEIGHT = 700;/);
+  assert.doesNotMatch(thermalRenderer, /const SCORE_FONT_WEIGHT/u);
   assert.match(thermalRenderer, /function drawAngularScore/);
   assert.match(thermalRenderer, /function drawAngularColon/);
-  assert.doesNotMatch(thermalRenderer, /match-receipt-score-digits-v3\.png/);
+  assert.match(thermalRenderer, /match-receipt-score-digits-v3\.png/);
   assert.match(thermalRenderer, /"NeoDunggeunmo"/);
   assert.match(renderer, /drawCanvasScoreColon\(ctx, scoreDigits/);
   assert.doesNotMatch(renderer, /ctx\.fillText\(":",/);
