@@ -739,6 +739,7 @@ test("KBL과 Anton은 스포츠 표시, Pretendard는 읽기와 조작 UI에 사
   assert.match(tokenStyles, /--font-weight-title:\s*850;/);
   assert.match(tokenStyles, /--font-weight-sports:\s*900;/);
   assert.match(tokenStyles, /--sports-display-font:\s*"BoxTier Sports Display", "KBL Jump Condensed", "Anton", sans-serif;/);
+  assert.match(tokenStyles, /--sports-display-team-line-height:\s*1\.08;/);
   assert.match(tokenStyles, /src:\s*url\("\/assets\/fonts\/BoxTier-Sports-Latin\.ttf"\) format\("truetype"\);/);
   assert.equal((tokenStyles.match(/ascent-override:\s*80%;/g) || []).length, 2);
   assert.equal((tokenStyles.match(/descent-override:\s*20%;/g) || []).length, 2);
@@ -1976,7 +1977,11 @@ test("방모달 뱃지와 메모 및 팀명은 공용 타이포그래피를 사�
   );
   assert.match(
     recruitingStyles,
-    /\.arena-lobby-team-head strong\s*\{[^}]*font-family:\s*var\(--sports-display-font\);/,
+    /\.arena-lobby-team-head strong\s*\{[^}]*font-family:\s*var\(--sports-display-font\);[^}]*line-height:\s*var\(--sports-display-team-line-height\);/,
+  );
+  assert.match(
+    matchRoomStyles,
+    /\.gm-team-head a\s*\{[^}]*line-height:\s*var\(--sports-display-team-line-height\);/,
   );
 });
 

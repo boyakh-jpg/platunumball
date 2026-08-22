@@ -116,6 +116,7 @@
   --font-size-title-xl: clamp(1.9rem, 3.4vw, 2.4rem);
   --sports-display-font: "BoxTier Sports Display", "KBL Jump Condensed", "Anton", sans-serif;
   --sports-display-condense: none;
+  --sports-display-team-line-height: 1.08;
   --receipt-sports-display-font: "KBO Dia Gothic", "Arial Narrow", "Roboto Condensed", sans-serif;
   --bg: #383b3d;
   --surface: #404345;

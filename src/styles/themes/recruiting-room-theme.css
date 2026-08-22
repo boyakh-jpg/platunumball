@@ -234,7 +234,7 @@ html[data-theme="light"] .arena-side-roster .arena-room-player-slot:not(.empty) 
   color: var(--rb-text);
   font-family: var(--sports-display-font);
   font-size: clamp(28px, 2.8vw, 38px);
-  line-height: 0.96;
+  line-height: var(--sports-display-team-line-height);
   letter-spacing: 0;
   text-transform: uppercase;
 }
