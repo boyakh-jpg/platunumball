@@ -10,8 +10,9 @@ const FEED_REPAIR_ROW_FACTOR = 8;
 const FEED_REPAIR_SOURCE_COLUMNS = "id,status,updated_at";
 const ROOM_FEED_RETENTION_DAYS = 7;
 const NOTIFICATION_RETENTION_DAYS = 7;
+const RECEIPT_EVENT_RETENTION_HOURS = 24;
 
-export async function cleanupExpiredMatchReceiptEmblems(client, now = new Date(), limit = DEFAULT_MATCH_LIMIT) {
+export async function cleanupExpiredMatchReceipts(client, now = new Date(), limit = DEFAULT_MATCH_LIMIT) {
   const { data: rows, error } = await client
     .from("match_receipt_drafts")
     .select("id, public_id, payload, expires_at")
@@ -20,29 +21,40 @@ export async function cleanupExpiredMatchReceiptEmblems(client, now = new Date()
     .limit(normalizeLimit(limit));
   if (error) return { ok: false, checked: 0, cleaned: 0, failed: 0, error: error.message };
 
-  let cleaned = 0;
+  let deletedDrafts = 0;
+  let deletedEmblems = 0;
   let failed = 0;
   for (const row of rows ?? []) {
     const safeKeys = getSafeDraftReceiptEmblems(row.payload, row.public_id);
     const keys = Object.values(safeKeys).filter(Boolean);
-    if (!keys.length) continue;
     try {
-      await deleteReceiptEmblemKeys(keys, { ignoreErrors: false });
-      const payload = { ...(row.payload ?? {}) };
-      delete payload.homeGuestEmblemKey;
-      delete payload.awayGuestEmblemKey;
-      const { error: updateError } = await client
+      if (keys.length) await deleteReceiptEmblemKeys(keys, { ignoreErrors: false });
+      const { error: deleteError } = await client
         .from("match_receipt_drafts")
-        .update({ payload })
+        .delete()
         .eq("id", row.id);
-      if (updateError) throw updateError;
-      cleaned += keys.length;
+      if (deleteError) throw deleteError;
+      deletedDrafts += 1;
+      deletedEmblems += keys.length;
     } catch {
-      failed += keys.length;
+      failed += 1;
     }
   }
 
-  return { ok: failed === 0, checked: rows?.length ?? 0, cleaned, failed };
+  return { ok: failed === 0, checked: rows?.length ?? 0, deletedDrafts, deletedEmblems, failed };
+}
+
+export const cleanupExpiredMatchReceiptEmblems = cleanupExpiredMatchReceipts;
+
+export async function cleanupMatchReceiptEvents(client, now = new Date()) {
+  const cutoff = new Date(now.getTime() - RECEIPT_EVENT_RETENTION_HOURS * 60 * MINUTE_MS).toISOString();
+  const { count, error } = await client
+    .from("match_receipt_draft_events")
+    .delete({ count: "exact" })
+    .lt("created_at", cutoff);
+  return error
+    ? { ok: false, deleted: 0, error: error.message }
+    : { ok: true, deleted: count ?? 0 };
 }
 
 function assertAccess(request) {
@@ -479,7 +491,8 @@ export async function runSystemMaintenance(client = getSupabaseAdminClient(), op
   const feedCleanup = await cleanupRoomFeed(client, now);
   const notificationCleanup = await cleanupReadNotifications(client, now);
   const recordArchiveCleanup = await archiveCompletedRecords(client, now, limit);
-  const receiptEmblemCleanup = await cleanupExpiredMatchReceiptEmblems(client, now, limit);
+  const receiptCleanup = await cleanupExpiredMatchReceipts(client, now, limit);
+  const receiptEventCleanup = await cleanupMatchReceiptEvents(client, now);
 
   return {
     ok: simulationQuarantine.ok === true
@@ -487,7 +500,8 @@ export async function runSystemMaintenance(client = getSupabaseAdminClient(), op
       && feedCleanup.ok === true
       && notificationCleanup.ok === true
       && recordArchiveCleanup.ok === true
-      && receiptEmblemCleanup.ok === true
+      && receiptCleanup.ok === true
+      && receiptEventCleanup.ok === true
       && results.every((result) => result.ok || result.skipped),
     candidateCount: candidateIds.length,
     confirmedCount: results.filter((result) => result.ok).length,
@@ -497,7 +511,8 @@ export async function runSystemMaintenance(client = getSupabaseAdminClient(), op
     feedCleanup,
     notificationCleanup,
     recordArchiveCleanup,
-    receiptEmblemCleanup,
+    receiptCleanup,
+    receiptEventCleanup,
     feedRepair: includeFeedRepair
       ? await repairStaleRoomFeed(client, limit)
       : { ok: true, skipped: true, reason: "disabled" },

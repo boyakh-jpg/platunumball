@@ -8,6 +8,8 @@ import {
 const FORMATS = new Set(["1v1", "2v2", "3v3", "3x3", "5v5"]);
 const MATCH_NATURES = new Set(["friendly", "competitive", "revenge", "semifinal", "final"]);
 const PERIOD_LABELS = new Set(["1Q", "2Q", "3Q", "4Q", "1H", "2H", "REG", "OT"]);
+const PREPARED_EMBLEM_MAX_BASE64_LENGTH = 132_000;
+const BASE64_PATTERN = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/u;
 const EXTERNAL_EMBLEM_FIELDS = [
   "homeEmblem",
   "awayEmblem",
@@ -38,7 +40,19 @@ function issue(field, code) {
   return { field, code };
 }
 
-export function parseExternalReceiptInput(value = {}) {
+function parsePreparedEmblem(value, field, issues) {
+  if (value === undefined) return null;
+  if (!value || typeof value !== "object" || Array.isArray(value)
+    || Object.keys(value).length !== 1 || typeof value.imageBase64 !== "string"
+    || value.imageBase64.length === 0 || value.imageBase64.length > PREPARED_EMBLEM_MAX_BASE64_LENGTH
+    || !BASE64_PATTERN.test(value.imageBase64)) {
+    issues.push(issue(field, "prepared_webp_base64_required"));
+    return null;
+  }
+  return { imageBase64: value.imageBase64 };
+}
+
+export function parseExternalReceiptInput(value = {}, { allowPreparedEmblems = false } = {}) {
   const issues = [];
   const style = text(value.style);
   const homeTeam = text(value.homeTeam);
@@ -74,9 +88,16 @@ export function parseExternalReceiptInput(value = {}) {
   if (value.includePhoto === true || value.photo || value.photoUrl || value.photoAssetId || value.imageUrl) {
     issues.push(issue("includePhoto", "external_photo_not_supported"));
   }
-  if (EXTERNAL_EMBLEM_FIELDS.some((field) => Object.hasOwn(value, field))) {
+  const hasUnsupportedEmblemField = EXTERNAL_EMBLEM_FIELDS
+    .filter((field) => field !== "homeEmblem" && field !== "awayEmblem")
+    .some((field) => Object.hasOwn(value, field));
+  if (!allowPreparedEmblems && EXTERNAL_EMBLEM_FIELDS.some((field) => Object.hasOwn(value, field))) {
+    issues.push(issue("emblem", "external_emblem_not_supported"));
+  } else if (allowPreparedEmblems && hasUnsupportedEmblemField) {
     issues.push(issue("emblem", "external_emblem_not_supported"));
   }
+  const homeEmblem = allowPreparedEmblems ? parsePreparedEmblem(value.homeEmblem, "homeEmblem", issues) : null;
+  const awayEmblem = allowPreparedEmblems ? parsePreparedEmblem(value.awayEmblem, "awayEmblem", issues) : null;
   if (value.verified === true || value.homeMmr !== undefined || value.awayMmr !== undefined) {
     issues.push(issue("verified", "canonical_fields_not_allowed"));
   }
@@ -109,9 +130,10 @@ export function parseExternalReceiptInput(value = {}) {
     }
   }
 
-  if (issues.length > 0) return { issues, draft: null };
+  if (issues.length > 0) return { issues, draft: null, emblems: null };
   return {
     issues: [],
+    emblems: { home: homeEmblem, away: awayEmblem },
     draft: {
       homeTeam,
       awayTeam,

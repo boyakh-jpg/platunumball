@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import sharp from "sharp";
 import {
   canCreatePublicMatchReceiptSnapshot,
   createDefaultMatchReceiptDraft,
@@ -241,9 +242,15 @@ import {
   cleanMatchReceiptEmblemKey,
   getSafeDraftReceiptEmblems,
   getSafeMatchReceiptEmblems,
+  validatePreparedReceiptEmblem,
 } from "../server/api/match-receipts/_emblemStorage.js";
 import { handlePublicReceipt } from "../server/api/match-receipts/public.js";
 import { handleCreateReceipt } from "../server/api/match-receipts/create.js";
+import { handleRenderReceipt } from "../server/api/match-receipts/render.js";
+import {
+  cleanupExpiredMatchReceipts,
+  cleanupMatchReceiptEvents,
+} from "../server/api/system/maintenance.js";
 import { parseExternalReceiptInput } from "../server/api/match-receipts/_createInput.js";
 import { RECORD_TYPES } from "../src/lib/constants.js";
 import { getTierDivision, getTierLabel } from "../shared/lib/tier.js";
@@ -259,6 +266,10 @@ function createApiResponse() {
       return this;
     },
     json(body) {
+      this.body = body;
+      return this;
+    },
+    end(body) {
       this.body = body;
       return this;
     },
@@ -372,6 +383,71 @@ test("external receipt input rejects every emblem field", () => {
     && item.code === "external_emblem_not_supported"));
 });
 
+test("external receipt PNG input accepts only prepared emblem objects", () => {
+  const imageBase64 = Buffer.from("prepared-emblem").toString("base64");
+  const parsed = parseExternalReceiptInput({
+    style: "boxtier-score",
+    homeTeam: "HOME",
+    awayTeam: "AWAY",
+    homeScore: 10,
+    awayScore: 8,
+    playedOn: "2026-08-22",
+    venue: "COURT",
+    format: "3x3",
+    homeEmblem: { imageBase64 },
+  }, { allowPreparedEmblems: true });
+  assert.deepEqual(parsed.emblems, {
+    home: { imageBase64 },
+    away: null,
+  });
+
+  const remote = parseExternalReceiptInput({
+    style: "boxtier-score",
+    homeTeam: "HOME",
+    awayTeam: "AWAY",
+    homeScore: 10,
+    awayScore: 8,
+    playedOn: "2026-08-22",
+    venue: "COURT",
+    format: "3x3",
+    homeEmblem: { imageBase64: "data:image/webp;base64,UklGRg==" },
+  }, { allowPreparedEmblems: true });
+  assert.ok(remote.issues.some((item) => item.field === "homeEmblem"
+    && item.code === "prepared_webp_base64_required"));
+
+  const objectKey = parseExternalReceiptInput({
+    style: "boxtier-score",
+    homeTeam: "HOME",
+    awayTeam: "AWAY",
+    homeScore: 10,
+    awayScore: 8,
+    playedOn: "2026-08-22",
+    venue: "COURT",
+    format: "3x3",
+    homeEmblemKey: "team-emblems/home.webp",
+  }, { allowPreparedEmblems: true });
+  assert.ok(objectKey.issues.some((item) => item.field === "emblem"
+    && item.code === "external_emblem_not_supported"));
+});
+
+test("prepared receipt emblem validation preserves safe square WebP bytes", async () => {
+  const square = await sharp({
+    create: { width: 64, height: 64, channels: 4, background: { r: 214, g: 165, b: 34, alpha: 1 } },
+  }).webp().toBuffer();
+  const normalized = await validatePreparedReceiptEmblem(square.toString("base64"));
+  assert.equal(normalized.dimensions.width, 64);
+  assert.equal(normalized.dimensions.height, 64);
+  assert.equal(Buffer.from(normalized.bytes).equals(square), true);
+
+  const rectangle = await sharp({
+    create: { width: 64, height: 32, channels: 4, background: { r: 214, g: 165, b: 34, alpha: 1 } },
+  }).webp().toBuffer();
+  await assert.rejects(
+    validatePreparedReceiptEmblem(rectangle.toString("base64")),
+    (error) => error.statusCode === 400 && error.message === "receipt_emblem_invalid_square_required",
+  );
+});
+
 test("external receipt API creates a no-photo thermal draft", async () => {
   const response = createApiResponse();
   const supabase = createReceiptSupabase();
@@ -429,6 +505,123 @@ test("external receipt API rejects emblems before consuming quota", async () => 
   assert.equal(response.statusCode, 422);
   assert.ok(response.body.fields.some((item) => item.field === "emblem"
     && item.code === "external_emblem_not_supported"));
+});
+
+test("external receipt PNG API renders a stateless four-level thermal story", async () => {
+  const response = createApiResponse();
+  const emblem = await sharp({
+    create: { width: 64, height: 64, channels: 4, background: { r: 214, g: 165, b: 34, alpha: 1 } },
+  }).webp().toBuffer();
+  await handleRenderReceipt({
+    method: "POST",
+    headers: { authorization: "Bearer render-secret-0123456789" },
+    body: {
+      preset: "story",
+      style: "classic-thermal",
+      homeTeam: "서울 농구단",
+      awayTeam: "부산 농구단",
+      homeScore: 30,
+      awayScore: 28,
+      playedOn: "2026-08-22",
+      playedTime: "19:30",
+      venue: "BOXTIER COURT",
+      format: "5v5",
+      homeEmblem: { imageBase64: emblem.toString("base64") },
+    },
+  }, response, { secret: "render-secret-0123456789" });
+
+  assert.equal(response.statusCode, 200);
+  assert.equal(response.headers["Content-Type"], "image/png");
+  assert.equal(response.headers["Cache-Control"], "private, no-store, max-age=0");
+  assert.equal(Buffer.isBuffer(response.body), true);
+  const metadata = await sharp(response.body).metadata();
+  assert.equal(metadata.format, "png");
+  assert.equal(metadata.width, 1080);
+  assert.equal(metadata.height, 1920);
+  assert.equal(metadata.isPalette, true);
+});
+
+test("external receipt PNG API fits the complete thermal story into a four-level feed", async () => {
+  const response = createApiResponse();
+  await handleRenderReceipt({
+    method: "POST",
+    headers: { authorization: "Bearer render-secret-0123456789" },
+    body: {
+      preset: "feed",
+      style: "classic-thermal",
+      homeTeam: "HOME",
+      awayTeam: "AWAY",
+      homeScore: 30,
+      awayScore: 28,
+      playedOn: "2026-08-22",
+      venue: "COURT",
+      format: "5v5",
+    },
+  }, response, { secret: "render-secret-0123456789" });
+
+  assert.equal(response.statusCode, 200);
+  const metadata = await sharp(response.body).metadata();
+  assert.equal(metadata.width, 1080);
+  assert.equal(metadata.height, 1350);
+  assert.equal(metadata.isPalette, true);
+});
+
+test("external receipt PNG API requires its dedicated bearer key", async () => {
+  const response = createApiResponse();
+  await handleRenderReceipt({ method: "POST", headers: {}, body: {} }, response, {
+    secret: "render-secret-0123456789",
+    render: async () => Buffer.from("unused"),
+  });
+  assert.equal(response.statusCode, 401);
+  assert.equal(response.body.error, "invalid_receipt_render_api_key");
+});
+
+test("receipt maintenance deletes expired drafts and 24-hour quota events", async () => {
+  const calls = [];
+  const client = {
+    from(table) {
+      calls.push(table);
+      if (table === "match_receipt_drafts") {
+        return {
+          select() { return this; },
+          lte() { return this; },
+          order() { return this; },
+          async limit() {
+            return {
+              data: [{ id: "draft-1", public_id: "public-1", payload: {}, expires_at: "2026-08-20T00:00:00.000Z" }],
+              error: null,
+            };
+          },
+          delete() { return this; },
+          async eq(field, value) {
+            assert.equal(field, "id");
+            assert.equal(value, "draft-1");
+            return { error: null };
+          },
+        };
+      }
+      assert.equal(table, "match_receipt_draft_events");
+      return {
+        delete(options) {
+          assert.deepEqual(options, { count: "exact" });
+          return this;
+        },
+        async lt(field, cutoff) {
+          assert.equal(field, "created_at");
+          assert.equal(cutoff, "2026-08-21T00:00:00.000Z");
+          return { count: 3, error: null };
+        },
+      };
+    },
+  };
+  const now = new Date("2026-08-22T00:00:00.000Z");
+
+  const drafts = await cleanupExpiredMatchReceipts(client, now);
+  const events = await cleanupMatchReceiptEvents(client, now);
+
+  assert.deepEqual(drafts, { ok: true, checked: 1, deletedDrafts: 1, deletedEmblems: 0, failed: 0 });
+  assert.deepEqual(events, { ok: true, deleted: 3 });
+  assert.deepEqual(calls, ["match_receipt_drafts", "match_receipt_drafts", "match_receipt_draft_events"]);
 });
 
 test("external receipt API rejects remote photos before consuming quota", async () => {
