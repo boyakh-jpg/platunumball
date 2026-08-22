@@ -634,7 +634,21 @@ export async function renderThermalReceiptCanvas(value, preset = "story", option
   drawPeriods(ctx, model, layout);
   drawResult(ctx, model, layout, atlas);
   drawFooter(ctx, model, layout);
-  if (preset === "story") return base;
+  if (preset === "story") {
+    const output = createCanvas(layout.paper.width, layout.paper.height);
+    output.getContext("2d").drawImage(
+      base,
+      layout.paper.x,
+      layout.paper.y,
+      layout.paper.width,
+      layout.paper.height,
+      0,
+      0,
+      layout.paper.width,
+      layout.paper.height,
+    );
+    return output;
+  }
   const size = preset === "feed" ? { width: 1080, height: 1350 } : { width: 1080, height: 1920 };
   const output = createCanvas(size.width, size.height);
   const outputCtx = output.getContext("2d");

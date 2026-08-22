@@ -132,9 +132,11 @@ test("public receipt lookup blocks editor and QR fallback while paper stats use 
   assert.doesNotMatch(qrComponent, /requestAnimationFrame/);
 });
 
-test("receipt emblems allow local fine adjustment while canonical teams remain reusable", async () => {
-  const [receiptPage, teamPage, teamView, teamActions, teamApi, teamColumns, migration] = await Promise.all([
+test("receipt emblems allow style-specific local adjustment while canonical teams remain reusable", async () => {
+  const [receiptPage, emblemEditor, thermalRenderer, teamPage, teamView, teamActions, teamApi, teamColumns, migration] = await Promise.all([
     readFile(new URL("../src/pages/MatchReceipt.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/common/EmblemCropEditor.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/lib/thermalReceipt.js", import.meta.url), "utf8"),
     readFile(new URL("../src/pages/TeamDetail.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/pages/TeamDetailView.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/hooks/appData/actions/profileTeamActions.js", import.meta.url), "utf8"),
@@ -145,8 +147,15 @@ test("receipt emblems allow local fine adjustment while canonical teams remain r
 
   assert.match(receiptPage, /사진을 골라 선화 엠블럼으로 바로 사용할 수 있습니다\./u);
   assert.match(receiptPage, /로그인 후 팀을 만들면 팀 상세에 저장해 다음 영수증에서도 재사용할 수 있습니다\./u);
+  assert.match(receiptPage, /엠블럼을 고르면 출력물에서 감열 흑백으로 변환합니다\./u);
   assert.match(receiptPage, /직접 선택한 이미지는 이번 영수증에서만 유지됩니다\./u);
-  assert.match(receiptPage, /AI 선화 프롬프트 복사/u);
+  assert.match(emblemEditor, /AI 프롬프트 복사/u);
+  assert.match(receiptPage, /conversionMode=\{isThermal \? "monochrome" : "line-art"\}/u);
+  assert.match(receiptPage, /onConvert=\{isThermal \? undefined : convertLocalTeamEmblem\}/u);
+  assert.match(
+    thermalRenderer,
+    /alpha >= 64 && \(hasTransparentArtwork \|\| luminance < 184\) \? 255 : 0/u,
+  );
   assert.match(receiptPage, /저장된 팀 엠블럼 없음/u);
   assert.match(receiptPage, /로그인 · 팀 만들고 엠블럼 저장/u);
   assert.match(receiptPage, /EmblemCropEditor/u);
@@ -167,9 +176,9 @@ test("receipt emblems allow local fine adjustment while canonical teams remain r
   assert.match(migration, /team_receipt_emblem_cooldown/u);
   assert.match(migration, /interval '30 days'/u);
   assert.match(receiptPage, /resolveMatchReceiptTeamEmblems\(/u);
-  assert.match(receiptPage, /local:\s*localTeamLineArtUrls/u);
   assert.match(receiptPage, /canonical:\s*canonicalTeamReceiptEmblemUrls/u);
-  assert.match(receiptPage, /const activeLineArtUrl = selectedTeamLineArtUrls\[side\]/u);
+  assert.match(receiptPage, /local:\s*localTeamEmblemUrls/u);
+  assert.match(receiptPage, /const activeEmblemUrl = selectedTeamReceiptEmblemUrls\[side\]/u);
   assert.match(teamView, /disabled=\{receiptEmblemPending \|\| receiptEmblemUploadLocked\}/u);
 });
 

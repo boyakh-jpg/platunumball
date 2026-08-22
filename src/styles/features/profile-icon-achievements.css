@@ -370,6 +370,31 @@
   height: 100%;
 }
 
+.emblem-crop-dialog.is-monochrome .emblem-crop-preview canvas {
+  filter: grayscale(1) contrast(1.6);
+}
+
+.emblem-crop-ai-prompt {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  color: var(--muted);
+  font-size: var(--font-size-meta);
+  line-height: 1.5;
+}
+
+.emblem-crop-ai-prompt .ui-button {
+  flex: 0 0 auto;
+}
+
+@media (max-width: 560px) {
+  .emblem-crop-ai-prompt {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
+
 .emblem-crop-preview span {
   color: var(--danger);
   font-weight: 850;

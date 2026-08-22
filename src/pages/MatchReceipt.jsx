@@ -227,6 +227,7 @@ export default function MatchReceipt({ auth, app }) {
   const [selectedCourtId, setSelectedCourtId] = useState("");
   const [discoveredCourts, setDiscoveredCourts] = useState([]);
   const [courtMapDirectoryStatus, setCourtMapDirectoryStatus] = useState({ loading: false, error: "" });
+  const [localTeamEmblemUrls, setLocalTeamEmblemUrls] = useState({ home: "", away: "" });
   const [emblemEditor, setEmblemEditor] = useState(EMPTY_EMBLEM_EDITOR);
   const [emblemPending, setEmblemPending] = useState(false);
   const [photoGestureActive, setPhotoGestureActive] = useState(false);
@@ -337,6 +338,19 @@ export default function MatchReceipt({ auth, app }) {
   const isThermal = draft.receiptStyle === MATCH_RECEIPT_STYLES.thermal;
   const photoEditorAspect = isThermal ? THERMAL_RECEIPT_PHOTO_ASPECT : MATCH_RECEIPT_PHOTO_ASPECT;
   const commentLength = Array.from(draft.comment).length;
+  const selectedTeamThermalEmblemUrls = useMemo(() => resolveMatchReceiptTeamEmblems({
+    canonical: canonicalTeamReceiptEmblemUrls,
+    local: localTeamEmblemUrls,
+    enabled: { home: draft.homeUseLineArt, away: draft.awayUseLineArt },
+  }), [
+    canonicalTeamReceiptEmblemUrls.away,
+    canonicalTeamReceiptEmblemUrls.home,
+    draft.awayUseLineArt,
+    draft.homeUseLineArt,
+    localTeamEmblemUrls.away,
+    localTeamEmblemUrls.home,
+  ]);
+  const selectedTeamReceiptEmblemUrls = isThermal ? selectedTeamThermalEmblemUrls : selectedTeamLineArtUrls;
 
   useEffect(() => () => {
     const frame = photoTransformFrameRef.current;
@@ -621,6 +635,7 @@ export default function MatchReceipt({ auth, app }) {
     const savedUrl = canonicalTeamReceiptEmblemUrls[side];
     if (!savedUrl) return;
     setLocalTeamLineArtUrls((current) => ({ ...current, [side]: "" }));
+    setLocalTeamEmblemUrls((current) => ({ ...current, [side]: "" }));
     updateField(`${side}UseLineArt`, true);
     setStatus(receiptCopy.savedEmblemApplied(side === "home" ? receiptCopy.teamA : receiptCopy.teamB));
   }
@@ -656,13 +671,29 @@ export default function MatchReceipt({ auth, app }) {
     }
   }
 
-  function confirmLocalTeamEmblem() {
-    if (!emblemEditor.side || !emblemEditor.preview) return;
+  async function confirmLocalTeamEmblem(crop) {
+    if (!emblemEditor.side || (!isThermal && !emblemEditor.preview)) return;
     const side = emblemEditor.side;
-    setLocalTeamLineArtUrls((current) => ({ ...current, [side]: emblemEditor.preview }));
-    updateField(`${side}UseLineArt`, true);
-    setEmblemEditor(EMPTY_EMBLEM_EDITOR);
-    setStatus(receiptCopy.lineArtApplied(side === "home" ? receiptCopy.teamA : receiptCopy.teamB));
+    setEmblemPending(true);
+    try {
+      if (isThermal) {
+        const prepared = await prepareTeamEmblemUpload(emblemEditor.file, crop, { circular: true });
+        setLocalTeamEmblemUrls((current) => ({ ...current, [side]: `data:image/webp;base64,${prepared.imageBase64}` }));
+      } else {
+        setLocalTeamLineArtUrls((current) => ({ ...current, [side]: emblemEditor.preview }));
+      }
+      updateField(`${side}UseLineArt`, true);
+      setEmblemEditor(EMPTY_EMBLEM_EDITOR);
+      setStatus(isThermal
+        ? (isEnglish
+          ? `${side === "home" ? "TEAM A" : "TEAM B"} emblem applied to this receipt only.`
+          : `${side === "home" ? "TEAM A" : "TEAM B"} 엠블럼을 이번 영수증에 적용했습니다. 서버에는 저장하지 않습니다.`)
+        : receiptCopy.lineArtApplied(side === "home" ? receiptCopy.teamA : receiptCopy.teamB));
+    } catch (error) {
+      setEmblemEditor((current) => ({ ...current, error: isEnglish ? "Could not prepare the emblem image." : getTeamEmblemErrorMessage(error.code || error.message) }));
+    } finally {
+      setEmblemPending(false);
+    }
   }
 
   async function copyLineArtPrompt() {
@@ -734,6 +765,7 @@ export default function MatchReceipt({ auth, app }) {
       setDraft(next);
       setPhotoBlob(null);
       setLocalTeamLineArtUrls({ home: "", away: "" });
+      setLocalTeamEmblemUrls({ home: "", away: "" });
       setEmblemEditor(EMPTY_EMBLEM_EDITOR);
       setGenerated(false);
       publicDraftIdRef.current = "";
@@ -1021,7 +1053,7 @@ export default function MatchReceipt({ auth, app }) {
       publicId,
       matchUrl: publicMatchUrl,
       photoBlob,
-      teamLineArtUrls: selectedTeamLineArtUrls,
+      teamLineArtUrls: selectedTeamReceiptEmblemUrls,
       showPersonalTierIdentity: canShowCurrentUserIdentity,
       locale: receiptLocale,
     });
@@ -1231,12 +1263,14 @@ export default function MatchReceipt({ auth, app }) {
               <fieldset className="match-receipt-line-art-fields is-wide">
                 <legend>{receiptCopy.teamEmblems} <small>{receiptCopy.optional}</small></legend>
                 <p className="match-receipt-emblem-guide">
-                  {receiptCopy.emblemGuide}
+                  {isThermal
+                    ? (isEnglish ? "Choose an emblem. It is converted to thermal black and white in the output." : "엠블럼을 고르면 출력물에서 감열 흑백으로 변환합니다.")
+                    : (isEnglish ? "Choose an image to create a line-art emblem for this receipt. Save it to a team after signing in to reuse it." : "사진을 골라 선화 엠블럼으로 바로 사용할 수 있습니다. 로그인 후 팀을 만들면 팀 상세에 저장해 다음 영수증에서도 재사용할 수 있습니다.")}
                 </p>
                 <div className="match-receipt-emblem-upload-grid">
                   {[["home", "TEAM A"], ["away", "TEAM B"]].map(([side, label]) => {
                     const savedUrl = canonicalTeamReceiptEmblemUrls[side];
-                    const activeLineArtUrl = selectedTeamLineArtUrls[side];
+                    const activeEmblemUrl = selectedTeamReceiptEmblemUrls[side];
                     return (
                       <div className="match-receipt-emblem-upload" key={side}>
                         <strong>{label}</strong>
@@ -1247,7 +1281,7 @@ export default function MatchReceipt({ auth, app }) {
                             size="sm"
                             disabled={Boolean(busy) || emblemPending}
                           >
-                            <ImagePlus aria-hidden="true" /> {receiptCopy.selectLineArt}
+                            <ImagePlus aria-hidden="true" /> {isThermal ? (isEnglish ? "Choose Emblem" : "엠블럼 선택") : receiptCopy.selectLineArt}
                             <input
                               type="file"
                               accept="image/jpeg,image/png,image/webp,image/avif,image/heic,image/heif"
@@ -1269,12 +1303,12 @@ export default function MatchReceipt({ auth, app }) {
                         ) : (
                           <small>{receiptCopy.noSavedEmblem}</small>
                         )}
-                        {activeLineArtUrl ? (
-                          <div className="match-receipt-emblem-candidates" aria-label={receiptCopy.emblemCandidates(label)}>
-                            {activeLineArtUrl ? <img src={activeLineArtUrl} alt={receiptCopy.lineArtCandidate(label)} /> : null}
+                        {activeEmblemUrl ? (
+                          <div className="match-receipt-emblem-candidates" aria-label={isEnglish ? `${label} emblem preview` : `${label} 엠블럼 후보`}>
+                            <img src={activeEmblemUrl} alt={isThermal ? (isEnglish ? `${label} emblem preview` : `${label} 엠블럼 미리보기`) : (isEnglish ? `${label} line-art preview` : `${label} 선화 후보`)} />
                           </div>
                         ) : null}
-                        {activeLineArtUrl ? (
+                        {activeEmblemUrl ? (
                           <Button
                             type="button"
                             variant="ghost"
@@ -1282,20 +1316,16 @@ export default function MatchReceipt({ auth, app }) {
                             disabled={receiptIsReadOnly}
                             onClick={() => updateField(`${side}UseLineArt`, !draft[`${side}UseLineArt`])}
                           >
-                            {draft[`${side}UseLineArt`] ? receiptCopy.disableLineArt : receiptCopy.reuseLineArt}
+                            {draft[`${side}UseLineArt`]
+                              ? (isThermal ? (isEnglish ? "Remove Emblem" : "엠블럼 사용 해제") : (isEnglish ? "Use Original" : "선화 사용 해제"))
+                              : (isThermal ? (isEnglish ? "Use Emblem" : "엠블럼 다시 사용") : (isEnglish ? "Use Line Art" : "선화 다시 사용"))}
                           </Button>
                         ) : null}
                       </div>
                     );
                   })}
                 </div>
-                <small>{receiptCopy.localEmblemOnly}</small>
-                <div className="match-receipt-ai-prompt">
-                  <span>{receiptCopy.aiPromptHelp}</span>
-                  <Button type="button" variant="ghost" size="sm" onClick={copyLineArtPrompt}>
-                    <Copy aria-hidden="true" /> {receiptCopy.copyAiPrompt}
-                  </Button>
-                </div>
+                <small>{isEnglish ? "Selected images stay on this device and apply only to this receipt." : "직접 선택한 이미지는 이번 영수증에서만 유지됩니다."}</small>
                 {!receiptIsReadOnly ? (
                   <Button
                     as={Link}
@@ -1351,7 +1381,7 @@ export default function MatchReceipt({ auth, app }) {
                 photoBlob={photoBlob}
                 matchUrl={matchUrl}
                 publicId={receiptPublicId}
-                teamLineArtUrls={selectedTeamLineArtUrls}
+                teamLineArtUrls={selectedTeamReceiptEmblemUrls}
                 suspendRender={photoGestureActive}
               />
             ) : (
@@ -1362,7 +1392,7 @@ export default function MatchReceipt({ auth, app }) {
                 publicId={receiptPublicId}
                 showPersonalTierIdentity={canShowCurrentUserIdentity}
                 locale={receiptLocale}
-                teamLineArtUrls={selectedTeamLineArtUrls}
+                teamLineArtUrls={selectedTeamReceiptEmblemUrls}
               />
             )}
           </div>
@@ -1477,10 +1507,13 @@ export default function MatchReceipt({ auth, app }) {
             convertedPreview={emblemEditor.preview}
             warning={receiptCopy.emblemWarning}
             labels={receiptCopy.emblemEditor}
+            conversionMode={isThermal ? "monochrome" : "line-art"}
+            aiPrompt={isThermal ? "" : MATCH_RECEIPT_LINE_ART_AI_PROMPT}
+            onCopyAiPrompt={isThermal ? undefined : copyLineArtPrompt}
             error={emblemEditor.error}
             onCropChange={resetLocalTeamEmblemConversion}
             onCancel={() => setEmblemEditor(EMPTY_EMBLEM_EDITOR)}
-            onConvert={convertLocalTeamEmblem}
+            onConvert={isThermal ? undefined : convertLocalTeamEmblem}
             onConfirm={confirmLocalTeamEmblem}
           />
         </>

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 import {
   createThermalRandom,
@@ -15,6 +16,15 @@ import {
   getReceiptPhotoStyle,
   getReceiptPhotoTransform,
 } from "../src/lib/receiptPhotoTransform.js";
+
+test("thermal Story exports paper only while Feed keeps its backdrop", async () => {
+  const renderer = await readFile(new URL("../src/lib/thermalReceipt.js", import.meta.url), "utf8");
+
+  assert.match(renderer, /if \(preset === "story"\)[\s\S]*createCanvas\(layout\.paper\.width, layout\.paper\.height\)/u);
+  assert.match(renderer, /layout\.paper\.x,[\s\S]*layout\.paper\.y,[\s\S]*layout\.paper\.width,[\s\S]*layout\.paper\.height/u);
+  assert.match(renderer, /preset === "feed" \? \{ width: 1080, height: 1350 \}/u);
+  assert.match(renderer, /outputCtx\.fillStyle = "#292927"/u);
+});
 
 test("thermal receipt keeps the canonical Story paper geometry", () => {
   const photo = getThermalReceiptLayout({ hasPhoto: true, hasPeriods: true, hasComment: true });
