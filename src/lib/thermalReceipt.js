@@ -8,6 +8,11 @@ import {
   THERMAL_PRINT_ROLES,
 } from "../../shared/lib/thermalReceipt.js";
 import { drawReceiptCoverPhoto } from "./receiptPhotoTransform.js";
+import {
+  createReceiptCanvas,
+  loadReceiptCanvasImage,
+  prepareReceiptCanvasFonts,
+} from "./receiptCanvasRuntime.js";
 
 export const THERMAL_RECEIPT_PHOTO_ASPECT = 684 / 288;
 
@@ -46,30 +51,15 @@ const FIXED_NEUTRAL_EMBLEM_PATHS = Object.freeze({
 const assetImagePromiseCache = new Map();
 
 function createCanvas(width, height) {
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
-  return canvas;
+  return createReceiptCanvas(width, height);
 }
 
 async function loadImage(source) {
   if (!source) return null;
-  const temporary = source instanceof Blob;
-  const url = temporary ? URL.createObjectURL(source) : String(source);
   try {
-    const image = new Image();
-    if (!url.startsWith("blob:") && !url.startsWith("data:")) image.crossOrigin = "anonymous";
-    image.src = url;
-    if (image.decode) await image.decode();
-    else await new Promise((resolve, reject) => {
-      image.onload = resolve;
-      image.onerror = reject;
-    });
-    return image;
+    return await loadReceiptCanvasImage(source);
   } catch {
     return null;
-  } finally {
-    if (temporary) URL.revokeObjectURL(url);
   }
 }
 
@@ -701,14 +691,29 @@ function normalizeThermalData(value, options) {
   };
 }
 
+function quantizeThermalCanvas(canvas) {
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  for (let index = 0; index < pixels.data.length; index += 4) {
+    const luminance = pixels.data[index] * 0.2126
+      + pixels.data[index + 1] * 0.7152
+      + pixels.data[index + 2] * 0.0722;
+    const level = Math.round(luminance / 85) * 85;
+    pixels.data[index] = level;
+    pixels.data[index + 1] = level;
+    pixels.data[index + 2] = level;
+  }
+  ctx.putImageData(pixels, 0, 0);
+  return canvas;
+}
+
 export async function renderThermalReceiptCanvas(value, preset = "story", options = {}) {
-  await Promise.all([
-    document.fonts?.load?.(`800 48px ${BRAND_FONT}`),
-    document.fonts?.load?.(`${DATA_FONT_WEIGHT} 24px ${DATA_FONT_FAMILY}`),
-    document.fonts?.load?.(`${TEAM_DISPLAY_FONT_WEIGHT} 44px ${TEAM_DISPLAY_FONT}`),
-    document.fonts?.load?.(`${DATA_FONT_WEIGHT} 24px ${KOREAN_FONT}`),
+  await prepareReceiptCanvasFonts([
+    `800 48px ${BRAND_FONT}`,
+    `${DATA_FONT_WEIGHT} 24px ${DATA_FONT_FAMILY}`,
+    `${TEAM_DISPLAY_FONT_WEIGHT} 44px ${TEAM_DISPLAY_FONT}`,
+    `${DATA_FONT_WEIGHT} 24px ${KOREAN_FONT}`,
   ]);
-  await document.fonts?.ready;
   const model = normalizeThermalData(value, options);
   const renderSeed = model.serialSeed || model.serial || "thermal";
   const emblemSources = resolveThermalReceiptEmblemSources(model, options);
@@ -755,7 +760,7 @@ export async function renderThermalReceiptCanvas(value, preset = "story", option
       layout.paper.width,
       layout.paper.height,
     );
-    return output;
+    return quantizeThermalCanvas(output);
   }
   const size = preset === "feed" ? { width: 1080, height: 1350 } : { width: 1080, height: 1920 };
   const output = createCanvas(size.width, size.height);
@@ -767,5 +772,5 @@ export async function renderThermalReceiptCanvas(value, preset = "story", option
   const drawWidth = 1080 * scale;
   const drawHeight = sourceHeight * scale;
   outputCtx.drawImage(base, 0, sourceY, 1080, sourceHeight, (size.width - drawWidth) / 2, (size.height - drawHeight) / 2, drawWidth, drawHeight);
-  return output;
+  return quantizeThermalCanvas(output);
 }

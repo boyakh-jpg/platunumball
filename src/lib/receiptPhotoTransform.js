@@ -1,3 +1,5 @@
+import { createReceiptCanvas } from "./receiptCanvasRuntime.js";
+
 export function getReceiptRotationCoverScale(rotation, aspect) {
   const radians = Math.abs(Number(rotation) || 0) * Math.PI / 180;
   const safeAspect = Math.max(0.01, Number(aspect) || 1);
@@ -43,9 +45,7 @@ export function drawReceiptCoverPhoto(ctx, image, rect, value, options = {}) {
   const cover = Math.max(rect.width / image.naturalWidth, rect.height / image.naturalHeight);
   const width = image.naturalWidth * cover;
   const height = image.naturalHeight * cover;
-  const frame = document.createElement("canvas");
-  frame.width = rect.width;
-  frame.height = rect.height;
+  const frame = createReceiptCanvas(rect.width, rect.height);
   const frameCtx = frame.getContext("2d");
   if (!frameCtx) throw new Error("receipt_photo_canvas_unavailable");
   frameCtx.filter = options.filter || "none";

@@ -28,6 +28,11 @@ import {
   getReceiptPhotoStyle,
   getReceiptRotationCoverScale,
 } from "./receiptPhotoTransform.js";
+import {
+  createReceiptCanvas,
+  loadReceiptCanvasImage,
+  prepareReceiptCanvasFonts,
+} from "./receiptCanvasRuntime.js";
 
 export const MATCH_RECEIPT_DRAFT_STORAGE_KEY = "boxtier.match-receipt.draft.v1";
 export const MATCH_RECEIPT_CREATE_RETURN_TO = "/app/create?intent=record&source=receipt";
@@ -728,48 +733,8 @@ export function createMatchReceiptViewModel(value, options = {}) {
   };
 }
 
-function getCanvasImageSources(source) {
-  if (source instanceof Blob) return [{ url: URL.createObjectURL(source), temporary: true }];
-  const primary = String(source ?? "");
-  const sources = [{ url: primary, temporary: false }];
-  const origin = globalThis.location?.origin ?? "";
-  if (!origin) return sources;
-  try {
-    const parsed = new URL(primary, origin);
-    if (parsed.origin !== origin && parsed.pathname.startsWith("/assets/")) {
-      sources.push({ url: `${origin}${parsed.pathname}${parsed.search}`, temporary: false });
-    }
-  } catch {
-    // Invalid image URLs fail through the regular image error path.
-  }
-  return sources;
-}
-
 function loadCanvasImage(source) {
-  const sources = getCanvasImageSources(source);
-  return new Promise((resolve, reject) => {
-    let index = 0;
-    function tryNext() {
-      const sourceItem = sources[index];
-      index += 1;
-      if (!sourceItem?.url) {
-        reject(new Error("match_receipt_image_failed"));
-        return;
-      }
-      const image = new Image();
-      if (!sourceItem.url.startsWith("blob:")) image.crossOrigin = "anonymous";
-      image.onload = () => {
-        if (sourceItem.temporary) URL.revokeObjectURL(sourceItem.url);
-        resolve(image);
-      };
-      image.onerror = () => {
-        if (sourceItem.temporary) URL.revokeObjectURL(sourceItem.url);
-        tryNext();
-      };
-      image.src = sourceItem.url;
-    }
-    tryNext();
-  });
+  return loadReceiptCanvasImage(source);
 }
 
 function drawCoverPhoto(ctx, image, rect, draft, options = {}) {
@@ -901,9 +866,7 @@ function drawCanvasContainedImage(ctx, image, rect) {
 }
 
 function createCanvasPaperPattern(ctx, paperGrain) {
-  const texture = document.createElement("canvas");
-  texture.width = 256;
-  texture.height = 256;
+  const texture = createReceiptCanvas(256, 256);
   const textureCtx = texture.getContext("2d");
   if (!textureCtx) return "#f1e8db";
   textureCtx.drawImage(
@@ -924,9 +887,7 @@ function drawCanvasPaperGrain(ctx, paperGrain, rect, options = {}) {
   if (!paperGrain) return;
   let source = paperGrain;
   if (options.fadeIn) {
-    const layer = document.createElement("canvas");
-    layer.width = Math.ceil(rect.width);
-    layer.height = Math.ceil(rect.height);
+    const layer = createReceiptCanvas(Math.ceil(rect.width), Math.ceil(rect.height));
     const layerContext = layer.getContext("2d");
     if (layerContext) {
       layerContext.drawImage(paperGrain, 0, 0, layer.width, layer.height);
@@ -1107,13 +1068,10 @@ function drawCanvasMapPin(ctx, centerX, topY, size) {
 }
 
 async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
-  if (typeof document === "undefined") throw new Error("match_receipt_canvas_unavailable");
   if (preset === "feed") {
     const story = await renderMatchReceiptCanvas(value, "story", options);
     const { width, height } = getMatchReceiptCanvasSize("feed");
-    const canvas = document.createElement("canvas");
-    canvas.width = width;
-    canvas.height = height;
+    const canvas = createReceiptCanvas(width, height);
     const ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("match_receipt_canvas_unavailable");
     ctx.fillStyle = "#111111";
@@ -1128,18 +1086,13 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
   const isEnglish = model.receiptLocale === MATCH_RECEIPT_LOCALES.en;
   const { width, height } = getMatchReceiptCanvasSize(preset);
   const compact = preset === "feed";
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
+  const canvas = createReceiptCanvas(width, height);
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("match_receipt_canvas_unavailable");
-  await document.fonts?.ready;
-  if (document.fonts?.load) {
-    await Promise.all([
-      document.fonts.load('900 270px "Bebas Neue"'),
-      document.fonts.load('900 58px "Black Han Sans"'),
-    ]);
-  }
+  await prepareReceiptCanvasFonts([
+    '900 270px "Bebas Neue"',
+    '900 58px "Black Han Sans"',
+  ]);
 
   const photoHeight = compact ? 610 : 885;
   const receiptTop = compact ? 1010 : 1504;
@@ -1174,9 +1127,7 @@ async function renderMatchReceiptCanvas(value, preset = "story", options = {}) {
     drawCanvasPhotoScoreboard(ctx, photo, scoreboardDigits, { x: 0, y: 0, width, height: photoHeight }, model);
   }
 
-  const blurredPhoto = document.createElement("canvas");
-  blurredPhoto.width = width;
-  blurredPhoto.height = photoHeight;
+  const blurredPhoto = createReceiptCanvas(width, photoHeight);
   const blurredPhotoContext = blurredPhoto.getContext("2d");
   if (blurredPhotoContext) {
     blurredPhotoContext.filter = "blur(18px)";

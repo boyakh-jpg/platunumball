@@ -27,6 +27,21 @@ import {
   RECEIPT_SHELL_COPY,
 } from "../src/lib/receiptLocale.js";
 
+async function assertFourLevelGrayscalePng(png) {
+  const { data, info } = await sharp(png).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  const levels = new Set([0, 85, 170, 255]);
+  let opaquePixels = 0;
+  assert.equal(info.channels, 4);
+  for (let index = 0; index < data.length; index += 4) {
+    if (data[index + 3] !== 255) continue;
+    opaquePixels += 1;
+    assert.equal(data[index], data[index + 1]);
+    assert.equal(data[index], data[index + 2]);
+    assert.equal(levels.has(data[index]), true);
+  }
+  assert.ok(opaquePixels > 0);
+}
+
 test("receipt English locale stays in the URL and localizes the receipt shell", async () => {
   assert.equal(getReceiptLocale({ pathname: "/app/receipt", search: "?lang=en" }), "en");
   assert.equal(getReceiptLocale({ pathname: "/app/receipt", search: "?code=BT-12345678" }), "ko");
@@ -537,9 +552,9 @@ test("external receipt PNG API renders a stateless four-level thermal story", as
   assert.equal(Buffer.isBuffer(response.body), true);
   const metadata = await sharp(response.body).metadata();
   assert.equal(metadata.format, "png");
-  assert.equal(metadata.width, 1080);
-  assert.equal(metadata.height, 1920);
-  assert.equal(metadata.isPalette, true);
+  assert.equal(metadata.width, 796);
+  assert.equal(metadata.height, 1392);
+  await assertFourLevelGrayscalePng(response.body);
 });
 
 test("external receipt PNG API fits the complete thermal story into a four-level feed", async () => {
@@ -564,7 +579,7 @@ test("external receipt PNG API fits the complete thermal story into a four-level
   const metadata = await sharp(response.body).metadata();
   assert.equal(metadata.width, 1080);
   assert.equal(metadata.height, 1350);
-  assert.equal(metadata.isPalette, true);
+  await assertFourLevelGrayscalePng(response.body);
 });
 
 test("external receipt PNG API requires its dedicated bearer key", async () => {
@@ -1576,8 +1591,7 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(renderer, /drawCanvasPaperGrain/);
   assert.match(renderer, /drawCanvasScoreDigits/);
   assert.match(renderer, /loadCanvasImage\(model\.scoreDigitsUrl\)/);
-  assert.match(renderer, /function getCanvasImageSources\(source\)/);
-  assert.match(renderer, /parsed\.pathname\.startsWith\("\/assets\/"\)/);
+  assert.match(renderer, /loadReceiptCanvasImage/);
   assert.match(renderer, /const selectedPhotoBlob = model\.includePhoto \? options\.photoBlob : null/);
   assert.match(renderer, /const photoPromise = loadCanvasImage\(selectedPhotoBlob \|\| model\.defaultPhotoUrl\)/);
   assert.match(renderer, /selectedPhotoBlob \? loadCanvasImage\(model\.defaultPhotoUrl\)/);
@@ -1604,8 +1618,9 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(detailStyles, /\.match-receipt-photo-scoreboard-scores > \.match-receipt-scoreboard-value:last-child\s*\{[^}]*justify-content:\s*flex-start;[^}]*transform:\s*translateX\(-3%\);/);
   assert.match(renderer, /board\.x \+ board\.width \* 0\.535/);
   assert.match(renderer, /formatMatchReceiptScoreboardScore\(model\.homeScore\)[\s\S]*\}, "end"\);[\s\S]*formatMatchReceiptScoreboardScore\(model\.awayScore\)[\s\S]*\}, "start"\);/);
-  assert.match(renderer, /document\.fonts\.load\('900 270px "Bebas Neue"'\)/);
-  assert.match(renderer, /document\.fonts\.load\('900 58px "Black Han Sans"'\)/);
+  assert.match(renderer, /prepareReceiptCanvasFonts\(\[/);
+  assert.match(renderer, /'900 270px "Bebas Neue"'/);
+  assert.match(renderer, /'900 58px "Black Han Sans"'/);
   assert.match(renderer, /TEAM TIER · \$\{team\.tier\.label\}/);
   assert.match(preview, /<ReceiptScoreboardGlyph value=":" row=\{0\} \/>/);
   assert.doesNotMatch(preview, /!team\.lineArtUrl && model\.showTeamTierEmblems/);

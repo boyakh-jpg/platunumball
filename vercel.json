@@ -2,6 +2,11 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "framework": "vite",
+  "functions": {
+    "api/mcp.js": {
+      "includeFiles": "public/assets/{fonts/**,thermal-receipt/**,match-receipt-*.png,rankball-record-create-night-v10.webp,tier-emblems/tier-neutral-*-outline-v5.png}"
+    }
+  },
   "crons": [
     {
       "path": "/api/system/maintenance",

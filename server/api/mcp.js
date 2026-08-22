@@ -10,6 +10,11 @@ import {
 } from "./match-receipts/_pngRenderer.js";
 import { MATCH_RECEIPT_STYLES } from "../../shared/lib/thermalReceipt.js";
 import { consumeMcpReceiptGenerationQuota } from "./mcpQuota.js";
+import {
+  MCP_RECEIPT_WIDGET_HTML,
+  MCP_RECEIPT_WIDGET_MIME_TYPE,
+  MCP_RECEIPT_WIDGET_URI,
+} from "./mcpReceiptWidget.js";
 
 const preparedEmblemSchema = z.object({
   imageBase64: z.string().min(1).max(PREPARED_EMBLEM_MAX_BASE64_LENGTH)
@@ -46,9 +51,27 @@ const receiptInputSchema = z.object({
   })).max(5).optional().describe("쿼터·하프·연장별 점수. 합계는 최종 점수와 같아야 함."),
 }).strict();
 
+// Keep required fields visible in tools/list, but let the handler return a
+// structured tool error instead of the SDK's plain input-validation string.
+const receiptToolInputSchema = {
+  "~standard": {
+    ...receiptInputSchema["~standard"],
+    validate: (value) => ({ value }),
+  },
+};
+
+function toInputIssues(error) {
+  return error.issues.map((issue) => ({
+    field: issue.path.join(".") || "input",
+    code: issue.code,
+    message: issue.message,
+  }));
+}
+
 function toolError(message, issues = []) {
   return {
     isError: true,
+    structuredContent: { status: "error", issues },
     content: [{
       type: "text",
       text: issues.length > 0 ? `${message} ${JSON.stringify(issues)}` : message,
@@ -63,20 +86,57 @@ export function createBoxtierMcpHandler({
   return createMcpHandler((context) => {
     const server = new McpServer({ name: "boxtier-receipt", version: "1.0.0" });
 
+    server.registerResource(
+      "boxtier-basketball-receipt",
+      MCP_RECEIPT_WIDGET_URI,
+      {
+        title: "BoxTier 농구 영수증",
+        description: "생성된 농구 영수증 PNG를 대화 안에 표시한다.",
+        mimeType: MCP_RECEIPT_WIDGET_MIME_TYPE,
+      },
+      async (uri) => ({
+        contents: [{
+          uri: uri.href,
+          mimeType: MCP_RECEIPT_WIDGET_MIME_TYPE,
+          text: MCP_RECEIPT_WIDGET_HTML,
+          _meta: {
+            ui: { prefersBorder: true, csp: { connectDomains: [], resourceDomains: [] } },
+            "openai/widgetPrefersBorder": true,
+            "openai/widgetCSP": { connect_domains: [], resource_domains: [] },
+          },
+        }],
+      }),
+    );
+
     server.registerTool(
       "create_basketball_receipt",
       {
         title: "BoxTier 농구 영수증 PNG 만들기",
         description: "박스티어(BoxTier) 스타일의 농구 경기 영수증 PNG를 만든다. 사용자가 ‘박스티어로 영수증 만들어줘’, 농구 감열지 영수증, basketball game receipt, score receipt를 요청했고 팀명·최종 점수·경기 날짜·장소·경기 형식을 모두 실제 값으로 제공했을 때만 사용한다. 첨부 엠블럼을 사용할 때는 원본 비율과 글자를 보존한 투명 정사각형 WebP로 전처리해 선택 입력으로 전달한다. 누락값을 추측하지 말고 먼저 사용자에게 물어본다. 농구 외 경기, 허위 경기 기록, 상거래 영수증에는 사용하지 않는다.",
-        inputSchema: receiptInputSchema,
+        inputSchema: receiptToolInputSchema,
         annotations: {
-          readOnlyHint: true,
+          readOnlyHint: false,
           destructiveHint: false,
-          idempotentHint: true,
+          idempotentHint: false,
           openWorldHint: false,
         },
+        _meta: {
+          ui: { resourceUri: MCP_RECEIPT_WIDGET_URI },
+          "openai/outputTemplate": MCP_RECEIPT_WIDGET_URI,
+          "openai/toolInvocation/invoking": "농구 영수증 PNG 렌더링 중",
+        },
       },
-      async ({ preset = MATCH_RECEIPT_RENDER_PRESETS.story, style = "thermal", ...input }) => {
+      async (rawInput) => {
+        const validated = receiptInputSchema.safeParse(rawInput);
+        if (!validated.success) {
+          return toolError("필수 입력값이 없거나 형식이 올바르지 않다.", toInputIssues(validated.error));
+        }
+
+        const {
+          preset = MATCH_RECEIPT_RENDER_PRESETS.story,
+          style = "thermal",
+          ...input
+        } = validated.data;
         const parsed = parseExternalReceiptInput({
           ...input,
           style: MATCH_RECEIPT_STYLES[style],
@@ -99,11 +159,11 @@ export function createBoxtierMcpHandler({
             emblems: parsed.emblems,
             preset,
           });
+          const imageData = png.toString("base64");
           return {
-            content: [
-              { type: "text", text: "박스티어 농구 영수증 PNG 생성 완료." },
-              { type: "image", data: png.toString("base64"), mimeType: "image/png" },
-            ],
+            structuredContent: { status: "rendered", mimeType: "image/png", preset, style },
+            content: [{ type: "image", data: imageData, mimeType: "image/png" }],
+            _meta: { "boxtier/image": { data: imageData, mimeType: "image/png" } },
           };
         } catch (error) {
           console.error("[mcp] receipt rendering failed", error);
