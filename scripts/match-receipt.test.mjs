@@ -854,7 +854,11 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(page, /team\.receiptEmblemKey/);
   assert.ok(page.indexOf('className="match-receipt-page-head ui-page-hero ui-design-app-hero"') < page.indexOf('className="match-receipt-page-controls"'));
   assert.ok(page.indexOf('className="match-receipt-page-controls"') < page.indexOf('className="match-receipt-workspace"'));
-  assert.match(previewControlStyles, /@media \(max-width: 560px\)[\s\S]*\.match-receipt-photo-actions \{ grid-template-columns: repeat\(3, minmax\(0, 1fr\)\); \}[\s\S]*\.match-receipt-photo-actions \.button:first-child \{ grid-column: 1 \/ -1; white-space: nowrap; \}/);
+  assert.match(page, /selectPhoto: "경기사진선택"/u);
+  assert.match(page, /selectPhoto: "Choose game photo"/u);
+  assert.match(page, /sanitizeMatchReceiptCommentInput\(value\)/u);
+  assert.match(previewControlStyles, /@media \(max-width: 560px\)[\s\S]*\.match-receipt-photo-actions \{ grid-template-columns: minmax\(0, 1\.35fr\) repeat\(3, minmax\(0, 1fr\)\); \}/);
+  assert.doesNotMatch(previewControlStyles, /\.match-receipt-photo-actions \.button:first-child \{ grid-column: 1 \/ -1/);
   assert.match(detailStyles, /\.match-receipt-line-art-fields \.match-receipt-saved-emblem\s*\{[^}]*display:\s*grid;/);
   assert.doesNotMatch(page, /emblemShareFailed|match_receipt_emblem_sync_failed|EMBLEM_SHARE_FAILURE_MESSAGE/);
   assert.match(page, /URL\.revokeObjectURL\(url\)/u);

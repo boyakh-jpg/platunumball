@@ -2,7 +2,6 @@ import { assetUrl } from "./assets.js";
 import { createQrMatrix } from "./qrCode.js";
 import {
   createThermalRandom,
-  getMatchReceiptCommentLines,
   getThermalReceiptLayout,
   getThermalScoreSlotLayout,
   sanitizeMatchReceiptComment,
@@ -552,10 +551,7 @@ function drawResult(ctx, model, layout) {
   if (layout.hasComment) {
     ctx.fillStyle = PAPER;
     ctx.fillRect(box.x + 22, box.y + 198, box.width - 44, 1);
-    const lines = getMatchReceiptCommentLines(model.comment);
-    lines.forEach((line, index) => {
-      drawThermalText(ctx, line, box.x + 22, box.y + 226 + index * 30, { size: 21, maxWidth: box.width - 44, color: PAPER });
-    });
+    drawThermalText(ctx, sanitizeMatchReceiptComment(model.comment), box.x + 22, box.y + 226, { size: 21, maxWidth: box.width - 44, color: PAPER });
   }
 }
 

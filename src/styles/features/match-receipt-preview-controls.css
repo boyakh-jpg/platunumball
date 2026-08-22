@@ -177,6 +177,7 @@ button.match-receipt-photo-editor-rotate {
 .match-receipt-actions svg { width: 17px; height: 17px; }
 
 @media (max-width: 560px) {
-  .match-receipt-photo-actions { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .match-receipt-photo-actions .button:first-child { grid-column: 1 / -1; white-space: nowrap; }
+  .match-receipt-photo-actions { grid-template-columns: minmax(0, 1.35fr) repeat(3, minmax(0, 1fr)); }
+  .match-receipt-photo-actions .button { gap: var(--space-2); padding-inline: 4px; white-space: nowrap; }
+  .match-receipt-photo-actions .button:first-child svg { display: none; }
 }

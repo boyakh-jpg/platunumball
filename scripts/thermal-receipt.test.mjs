@@ -8,6 +8,7 @@ import {
   getThermalReceiptLayout,
   getThermalReceiptTextWeight,
   getThermalScoreSlotLayout,
+  sanitizeMatchReceiptCommentInput,
   sanitizeThermalReceiptComment,
   THERMAL_PRINT_ROLES,
 } from "../shared/lib/thermalReceipt.js";
@@ -136,6 +137,9 @@ test("thermal editor and canvas share one photo transform model", () => {
 });
 
 test("thermal comment removes markup and controls then enforces the shared 22-character limit", () => {
+  assert.equal(sanitizeMatchReceiptCommentInput("역전승 "), "역전승 ");
+  assert.equal(sanitizeMatchReceiptCommentInput("역전승 명경기"), "역전승 명경기");
+
   const sanitized = sanitizeThermalReceiptComment("  <b>4쿼터</b>\n 12점\u0000 차를 뒤집은 역전승  ");
   assert.equal(sanitized, "4쿼터 12점 차를 뒤집은 역전승");
   assert.equal(getThermalReceiptTextWeight(sanitized), 18);
@@ -144,6 +148,13 @@ test("thermal comment removes markup and controls then enforces the shared 22-ch
   assert.equal(limited, "가".repeat(22));
   assert.equal(getThermalReceiptTextWeight(limited), 22);
   assert.deepEqual(getMatchReceiptCommentLines("가".repeat(22)), ["가".repeat(11), "가".repeat(11)]);
+});
+
+test("thermal result comment renders once without forced line splitting", async () => {
+  const renderer = await readFile(new URL("../src/lib/thermalReceipt.js", import.meta.url), "utf8");
+
+  assert.match(renderer, /drawThermalText\(ctx, sanitizeMatchReceiptComment\(model\.comment\), box\.x \+ 22, box\.y \+ 226/u);
+  assert.doesNotMatch(renderer, /getMatchReceiptCommentLines\(model\.comment\)|lines\.forEach/u);
 });
 
 test("manual receipt player count is derived from the canonical match format", () => {

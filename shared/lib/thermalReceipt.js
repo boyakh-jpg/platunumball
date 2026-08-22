@@ -27,13 +27,16 @@ export function getMatchReceiptFormatPlayerCount(format = "") {
   return MATCH_RECEIPT_FORMAT_PLAYER_COUNT[String(format).trim().toLowerCase()] ?? 0;
 }
 
-export function sanitizeMatchReceiptComment(value = "") {
+export function sanitizeMatchReceiptCommentInput(value = "") {
   const source = String(value)
     .replace(/<[^>]*>/g, "")
     .replace(/[<>\u0000-\u001f\u007f]/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-  return Array.from(source).slice(0, MATCH_RECEIPT_COMMENT_MAX_LENGTH).join("").trimEnd();
+    .replace(/\s/g, " ");
+  return Array.from(source).slice(0, MATCH_RECEIPT_COMMENT_MAX_LENGTH).join("");
+}
+
+export function sanitizeMatchReceiptComment(value = "") {
+  return sanitizeMatchReceiptCommentInput(value).replace(/\s+/g, " ").trim();
 }
 
 export function splitMatchReceiptComment(value = "") {

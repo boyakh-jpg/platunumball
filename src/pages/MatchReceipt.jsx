@@ -47,7 +47,7 @@ import {
   MATCH_RECEIPT_COMMENT_MAX_LENGTH,
   MATCH_RECEIPT_LOCALES,
   MATCH_RECEIPT_STYLES,
-  sanitizeMatchReceiptComment,
+  sanitizeMatchReceiptCommentInput,
 } from "../../shared/lib/thermalReceipt.js";
 import { THERMAL_RECEIPT_PHOTO_ASPECT } from "../lib/thermalReceipt.js";
 
@@ -115,7 +115,7 @@ const RECEIPT_PAGE_COPY = Object.freeze({
     selectLineArt: "선화 엠블럼 선택", savedEmblem: "저장 엠블럼", chooseSavedEmblem: "저장 엠블럼 선택", noSavedEmblem: "저장된 팀 엠블럼 없음", emblemCandidates: (team) => `${team} 엠블럼 후보`, lineArtCandidate: (team) => `${team} 선화 후보`, disableLineArt: "선화 사용 해제", reuseLineArt: "선화 다시 사용",
     localEmblemOnly: "직접 선택한 이미지는 이번 영수증에서만 유지됩니다.", aiPromptHelp: "외부 AI에서 선화 PNG를 만들 때 사용할 지시문입니다.", copyAiPrompt: "AI 선화 프롬프트 복사", createTeamSave: "팀 만들고 엠블럼 저장", loginCreateTeamSave: "로그인 · 팀 만들고 엠블럼 저장",
     periodScoreAria: (period, team) => `${period} ${team} 점수`, comment: "한 줄 코멘트", commentPlaceholder: "선택 · 22자 이내",
-    rotatePhotoAria: "사진 자유 회전", rotatePhotoTitle: "드래그해 자유 회전 · 방향키로 미세 조정", photoActionsAria: "미리보기 사진 편집", selectPhoto: "경기·팀 사진 선택", rotate90: "90° 회전", remove: "제거", reset: "초기화", resetTitle: "입력값·사진 초기화 후 새 일련번호 시작",
+    rotatePhotoAria: "사진 자유 회전", rotatePhotoTitle: "드래그해 자유 회전 · 방향키로 미세 조정", photoActionsAria: "미리보기 사진 편집", selectPhoto: "경기사진선택", rotate90: "90° 회전", remove: "제거", reset: "초기화", resetTitle: "입력값·사진 초기화 후 새 일련번호 시작",
     photoEditHelp: "사진 안쪽 드래그 이동 · 휠 확대·축소 · 테두리 손잡이 회전 · 더블클릭 초기화 · 모바일 두 손가락 편집", photoSelectHelp: "사진을 선택하면 미리보기 안에서 바로 편집", localPhotoOnly: "사진은 서버에 업로드하지 않음",
     savedTitle: "내 기록에 저장됨", importTitle: "이 경기를 내 기록으로 가져가기", savedDescription: "실제 경기 ID가 연결됐습니다. QR 코드는 누구나 볼 수 있는 공개 영수증을 엽니다.", viewRecords: "내 기록 보기", continueDescription: "상세 기록을 이어서 작성하면 기존 개인 기록 저장 흐름으로 보관됩니다.", guestContinueDescription: "로그인 방법을 선택해도 작성 내용이 유지됩니다. 로그인 뒤 상세 기록을 작성해 저장할 수 있습니다.", continueRecord: "상세 기록 이어서 작성",
     imageWindowTitle: "BOXTIER 이미지 준비 중", imageWindowBody: "이미지 만드는 중...", recordLoadFailed: "저장된 경기 기록을 불러오지 못했습니다.", claimedReceipt: "내 기록으로 전환된 경기 영수증입니다.", sharedReceipt: "공유된 경기 영수증입니다.", sharedExpired: "공유된 영수증이 만료됐거나 존재하지 않습니다.",
@@ -142,7 +142,7 @@ const RECEIPT_PAGE_COPY = Object.freeze({
     selectLineArt: "Choose Line-Art Emblem", savedEmblem: "Saved Emblem", chooseSavedEmblem: "Choose saved emblem", noSavedEmblem: "No saved team emblem", emblemCandidates: (team) => `${team} emblem options`, lineArtCandidate: (team) => `${team} line-art option`, disableLineArt: "Disable Line Art", reuseLineArt: "Use Line Art Again",
     localEmblemOnly: "Images selected here stay on this receipt only.", aiPromptHelp: "Use this prompt to create a line-art PNG with an external AI tool.", copyAiPrompt: "Copy AI Line-Art Prompt", createTeamSave: "Create Team & Save Emblem", loginCreateTeamSave: "Sign In · Create Team & Save Emblem",
     periodScoreAria: (period, team) => `${period} ${team} score`, comment: "One-Line Comment", commentPlaceholder: "Optional · Up to 22 characters",
-    rotatePhotoAria: "Free-rotate photo", rotatePhotoTitle: "Drag to rotate · Use arrow keys for fine adjustment", photoActionsAria: "Edit preview photo", selectPhoto: "Choose game / team photo", rotate90: "Rotate 90°", remove: "Remove", reset: "Reset", resetTitle: "Clear inputs and photo, then start with a new receipt number",
+    rotatePhotoAria: "Free-rotate photo", rotatePhotoTitle: "Drag to rotate · Use arrow keys for fine adjustment", photoActionsAria: "Edit preview photo", selectPhoto: "Choose game photo", rotate90: "Rotate 90°", remove: "Remove", reset: "Reset", resetTitle: "Clear inputs and photo, then start with a new receipt number",
     photoEditHelp: "Drag to move · Wheel or pinch to zoom · Drag the edge handle to rotate · Double-click to reset", photoSelectHelp: "Choose a photo to edit it in the preview", localPhotoOnly: "Photo stays on this device and is not uploaded",
     savedTitle: "Saved to My Records", importTitle: "Add This Game to My Records", savedDescription: "This receipt is linked to an official game. Its QR code opens the public receipt.", viewRecords: "View My Records", continueDescription: "Continue with detailed stats to save this game through the regular record flow.", guestContinueDescription: "Your work stays here while you sign in. After signing in, continue the detailed record to save it.", continueRecord: "Continue Detailed Record",
     imageWindowTitle: "Preparing BOXTIER Image", imageWindowBody: "Creating image...", recordLoadFailed: "Could not load the saved game record.", claimedReceipt: "This game receipt is now linked to your records.", sharedReceipt: "This is a shared game receipt.", sharedExpired: "This shared receipt has expired or does not exist.",
@@ -567,7 +567,7 @@ export default function MatchReceipt({ auth, app }) {
     }
     setDraft((current) => {
       const isCommentField = name === "comment" || name === "receiptComment";
-      const normalizedValue = isCommentField ? sanitizeMatchReceiptComment(value) : value;
+      const normalizedValue = isCommentField ? sanitizeMatchReceiptCommentInput(value) : value;
       let next = RECEIPT_TEXT_FIELDS.has(name)
         ? {
           ...current,
