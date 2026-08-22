@@ -1,0 +1,172 @@
+import assert from "node:assert/strict";
+import http from "node:http";
+import test from "node:test";
+import nodeMcpHandler from "../api/mcp.js";
+import { createBoxtierMcpHandler } from "../server/api/mcp.js";
+
+const TEST_PNG = Buffer.from("89504e470d0a1a0a", "hex");
+
+function rpcRequest(method, params, id) {
+  return new Request("https://boxtier.kr/mcp", {
+    method: "POST",
+    headers: {
+      "accept": "application/json, text/event-stream",
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ jsonrpc: "2.0", method, ...(params ? { params } : {}), id }),
+  });
+}
+
+async function rpc(handler, method, params, id) {
+  const response = await handler.fetch(rpcRequest(method, params, id));
+  assert.equal(response.status, 200);
+  const body = await response.text();
+  if (response.headers.get("content-type")?.includes("text/event-stream")) {
+    const data = body.split("\n").find((line) => line.startsWith("data: "))?.slice(6);
+    assert.ok(data);
+    return JSON.parse(data);
+  }
+  return JSON.parse(body);
+}
+
+test("Node adapter가 공개 MCP 요청을 처리한다", async (context) => {
+  const server = http.createServer(nodeMcpHandler);
+  await new Promise((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", resolve);
+  });
+  context.after(() => new Promise((resolve) => server.close(resolve)));
+
+  const address = server.address();
+  assert.notEqual(address, null);
+  assert.equal(typeof address, "object");
+  const response = await fetch(`http://127.0.0.1:${address.port}/mcp`, {
+    method: "POST",
+    headers: {
+      accept: "application/json, text/event-stream",
+      "content-type": "application/json",
+      "x-forwarded-for": "198.51.100.10",
+    },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      method: "tools/list",
+      params: {},
+      id: 10,
+    }),
+  });
+
+  assert.equal(response.status, 200);
+  assert.match(await response.text(), /create_basketball_receipt/);
+});
+
+test("MCP가 자동 선택용 영수증 도구를 공개한다", async () => {
+  const handler = createBoxtierMcpHandler({ renderPng: async () => TEST_PNG });
+  const initialized = await rpc(handler, "initialize", {
+    protocolVersion: "2025-06-18",
+    capabilities: {},
+    clientInfo: { name: "boxtier-test", version: "1.0.0" },
+  }, 1);
+  assert.equal(initialized.result.serverInfo.name, "boxtier-receipt");
+
+  const listed = await rpc(handler, "tools/list", {}, 2);
+  const tool = listed.result.tools.find((candidate) => candidate.name === "create_basketball_receipt");
+  assert.ok(tool);
+  assert.match(tool.description, /박스티어/);
+  assert.equal(tool.annotations.readOnlyHint, true);
+  assert.deepEqual(tool.inputSchema.required.sort(), [
+    "awayScore", "awayTeam", "format", "homeScore", "homeTeam", "playedOn", "venue",
+  ].sort());
+  await handler.close();
+});
+
+test("MCP 호출은 PNG를 직접 반환하고 아무것도 저장하지 않는다", async () => {
+  let renderCall = null;
+  const handler = createBoxtierMcpHandler({
+    renderPng: async (input) => {
+      renderCall = input;
+      return TEST_PNG;
+    },
+  });
+  const called = await rpc(handler, "tools/call", {
+    name: "create_basketball_receipt",
+    arguments: {
+      homeTeam: "SEOUL HOOPERS",
+      awayTeam: "BUSAN WAVES",
+      homeScore: 81,
+      awayScore: 77,
+      playedOn: "2026-08-21",
+      venue: "RIVER COURT",
+      format: "5v5",
+      periodScores: [
+        { label: "1Q", homeScore: 20, awayScore: 18 },
+        { label: "2Q", homeScore: 19, awayScore: 21 },
+        { label: "3Q", homeScore: 22, awayScore: 17 },
+        { label: "4Q", homeScore: 20, awayScore: 21 },
+      ],
+    },
+  }, 3);
+
+  assert.equal(called.result.isError, undefined, JSON.stringify(called.result));
+  assert.equal(called.result.content[1].type, "image");
+  assert.equal(called.result.content[1].mimeType, "image/png");
+  assert.equal(called.result.content[1].data, TEST_PNG.toString("base64"));
+  assert.equal(renderCall.preset, "story");
+  assert.equal(renderCall.draft.receiptStyle, "classic-thermal");
+  await handler.close();
+});
+
+test("쿼터 합계가 최종 점수와 다르면 렌더링을 거부한다", async () => {
+  let renders = 0;
+  const handler = createBoxtierMcpHandler({
+    renderPng: async () => {
+      renders += 1;
+      return TEST_PNG;
+    },
+  });
+  const called = await rpc(handler, "tools/call", {
+    name: "create_basketball_receipt",
+    arguments: {
+      homeTeam: "A",
+      awayTeam: "B",
+      homeScore: 10,
+      awayScore: 9,
+      playedOn: "2026-08-21",
+      venue: "COURT",
+      format: "3x3",
+      periodScores: [{ label: "REG", homeScore: 9, awayScore: 9 }],
+    },
+  }, 4);
+
+  assert.equal(called.result.isError, true);
+  assert.match(called.result.content[0].text, /totals_must_match_final_score/);
+  assert.equal(renders, 0);
+  await handler.close();
+});
+
+test("MCP 실제 renderer가 Feed PNG를 반환한다", async () => {
+  const handler = createBoxtierMcpHandler();
+  const called = await rpc(handler, "tools/call", {
+    name: "create_basketball_receipt",
+    arguments: {
+      style: "thermal",
+      preset: "feed",
+      homeTeam: "서울 후퍼스",
+      awayTeam: "부산 웨이브",
+      homeScore: 81,
+      awayScore: 77,
+      playedOn: "2026-08-21",
+      playedTime: "19:30",
+      venue: "리버 코트",
+      format: "5v5",
+    },
+  }, 5);
+
+  assert.equal(called.result.isError, undefined, JSON.stringify(called.result));
+  const png = Buffer.from(called.result.content[1].data, "base64");
+  assert.deepEqual(png.subarray(0, 8), Buffer.from("89504e470d0a1a0a", "hex"));
+  const { default: sharp } = await import("sharp");
+  const metadata = await sharp(png).metadata();
+  assert.equal(metadata.width, 1080);
+  assert.equal(metadata.height, 1350);
+  await handler.close();
+});

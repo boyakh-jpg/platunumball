@@ -68,6 +68,10 @@
   ],
   "rewrites": [
     {
+      "source": "/mcp",
+      "destination": "/api/mcp"
+    },
+    {
       "source": "/api/:path*",
       "destination": "/api?path=:path*"
     },
