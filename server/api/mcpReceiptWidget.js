@@ -1,4 +1,4 @@
-export const MCP_RECEIPT_WIDGET_URI = "ui://boxtier/basketball-receipt-v2.html";
+export const MCP_RECEIPT_WIDGET_URI = "ui://boxtier/basketball-receipt-v3.html";
 export const MCP_RECEIPT_WIDGET_MIME_TYPE = "text/html;profile=mcp-app";
 
 export const MCP_RECEIPT_WIDGET_HTML = String.raw`<!doctype html>
@@ -111,6 +111,11 @@ export const MCP_RECEIPT_WIDGET_HTML = String.raw`<!doctype html>
 
     showResult(window.openai?.toolResponseMetadata);
     showResult(window.openai?.toolOutput);
+    window.addEventListener("openai:set_globals", (event) => {
+      const globals = event.detail?.globals ?? event.detail;
+      showResult(globals?.toolResponseMetadata);
+      showResult(globals?.toolOutput);
+    });
     window.addEventListener("message", (event) => {
       if (event.source !== window.parent) return;
       const message = event.data;

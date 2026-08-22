@@ -131,10 +131,12 @@ test("MCP가 자동 선택용 영수증 도구를 공개한다", async () => {
 
   const resource = await rpc(handler, "resources/read", { uri: MCP_RECEIPT_WIDGET_URI }, 21);
   assert.equal(resource.result.contents[0].mimeType, "text/html;profile=mcp-app");
-  assert.equal(MCP_RECEIPT_WIDGET_URI, "ui://boxtier/basketball-receipt-v2.html");
+  assert.equal(MCP_RECEIPT_WIDGET_URI, "ui://boxtier/basketball-receipt-v3.html");
   assert.equal(resource.result.contents[0]._meta["openai/widgetDomain"], "https://boxtier.kr");
   assert.match(resource.result.contents[0].text, /ui\/notifications\/tool-result/);
   assert.match(resource.result.contents[0].text, /toolResponseMetadata/);
+  assert.match(resource.result.contents[0].text, /addEventListener\("openai:set_globals"/);
+  assert.match(resource.result.contents[0].text, /event\.detail\?\.globals \?\? event\.detail/);
   assert.match(resource.result.contents[0].text, /metadata\?\.\["boxtier\/image"\]/);
   assert.match(resource.result.contents[0].text, />PNG 다운로드<\/a>/);
   assert.match(resource.result.contents[0].text, /download="boxtier-basketball-receipt\.png"/);
