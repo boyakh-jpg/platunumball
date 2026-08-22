@@ -1,14 +1,19 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { renderMatchReceiptPng } from "../../lib/matchReceipt.js";
 
-export default function ThermalReceiptPreview({ draft, photoBlob, matchUrl, publicId, teamLineArtUrls, photoGestureHandlers = null }) {
+export default function ThermalReceiptPreview({ draft, photoBlob, matchUrl, publicId, teamLineArtUrls, photoGestureHandlers = null, suspendRender = false }) {
   const [previewUrl, setPreviewUrl] = useState("");
   const [failed, setFailed] = useState(false);
+  const previewUrlRef = useRef("");
   const isEnglish = draft.receiptLocale === "en";
 
+  useEffect(() => () => {
+    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+  }, []);
+
   useEffect(() => {
+    if (suspendRender) return undefined;
     let active = true;
-    let objectUrl = "";
     const timer = window.setTimeout(() => {
       setFailed(false);
       renderMatchReceiptPng(draft, "story", {
@@ -18,8 +23,13 @@ export default function ThermalReceiptPreview({ draft, photoBlob, matchUrl, publ
         teamLineArtUrls,
         showPersonalTierIdentity: false,
       }).then((blob) => {
-        if (!active) return;
-        objectUrl = URL.createObjectURL(blob);
+        const objectUrl = URL.createObjectURL(blob);
+        if (!active) {
+          URL.revokeObjectURL(objectUrl);
+          return;
+        }
+        if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+        previewUrlRef.current = objectUrl;
         setPreviewUrl(objectUrl);
       }).catch(() => {
         if (active) setFailed(true);
@@ -29,9 +39,8 @@ export default function ThermalReceiptPreview({ draft, photoBlob, matchUrl, publ
     return () => {
       active = false;
       window.clearTimeout(timer);
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [draft, matchUrl, photoBlob, publicId, teamLineArtUrls]);
+  }, [draft, matchUrl, photoBlob, publicId, teamLineArtUrls, suspendRender]);
 
   if (failed) return <p className="match-receipt-thermal-preview-status">{isEnglish ? "Could not render the preview." : "미리보기를 만들지 못했습니다."}</p>;
   if (!previewUrl) return <p className="match-receipt-thermal-preview-status">THERMAL PREVIEW</p>;

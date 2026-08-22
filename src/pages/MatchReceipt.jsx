@@ -22,6 +22,7 @@ import {
   MATCH_RECEIPT_FORMATS,
   MATCH_RECEIPT_NATURES,
   MATCH_RECEIPT_LIMITS,
+  MATCH_RECEIPT_PHOTO_ASPECT,
   MATCH_RECEIPT_PHOTO_MAX_BYTES,
   clearMatchReceiptDraft,
   clearMatchReceiptPhoto,
@@ -48,6 +49,7 @@ import {
   MATCH_RECEIPT_STYLES,
   sanitizeMatchReceiptComment,
 } from "../../shared/lib/thermalReceipt.js";
+import { THERMAL_RECEIPT_PHOTO_ASPECT } from "../lib/thermalReceipt.js";
 
 function loadDraft() {
   return loadMatchReceiptDraft() ?? createDefaultMatchReceiptDraft();
@@ -227,6 +229,7 @@ export default function MatchReceipt({ auth, app }) {
   const [courtMapDirectoryStatus, setCourtMapDirectoryStatus] = useState({ loading: false, error: "" });
   const [emblemEditor, setEmblemEditor] = useState(EMPTY_EMBLEM_EDITOR);
   const [emblemPending, setEmblemPending] = useState(false);
+  const [photoGestureActive, setPhotoGestureActive] = useState(false);
   const startedRef = useRef(false);
   const requestedMatchIdRef = useRef("");
   const courtMapRequestIdRef = useRef(0);
@@ -235,6 +238,7 @@ export default function MatchReceipt({ auth, app }) {
   const photoGestureRef = useRef({ pointers: new Map(), baseline: null });
   const photoRotationRef = useRef(null);
   const photoTransformRef = useRef(null);
+  const photoTransformFrameRef = useRef({ requestId: 0, values: null });
   const publicDraftRequestRef = useRef(null);
   const publicDraftSerialSeedRef = useRef("");
   const canonicalSnapshotCreatedRef = useRef("");
@@ -331,7 +335,13 @@ export default function MatchReceipt({ auth, app }) {
     localTeamLineArtUrls.home,
   ]);
   const isThermal = draft.receiptStyle === MATCH_RECEIPT_STYLES.thermal;
+  const photoEditorAspect = isThermal ? THERMAL_RECEIPT_PHOTO_ASPECT : MATCH_RECEIPT_PHOTO_ASPECT;
   const commentLength = Array.from(draft.comment).length;
+
+  useEffect(() => () => {
+    const frame = photoTransformFrameRef.current;
+    if (frame.requestId) window.cancelAnimationFrame(frame.requestId);
+  }, []);
 
   useEffect(() => {
     if (!requestedPublicCode) {
@@ -756,6 +766,27 @@ export default function MatchReceipt({ auth, app }) {
     });
   }
 
+  function schedulePhotoTransform(values) {
+    const frame = photoTransformFrameRef.current;
+    frame.values = { ...(frame.values || {}), ...values };
+    if (frame.requestId) return;
+    frame.requestId = window.requestAnimationFrame(() => {
+      const nextValues = frame.values;
+      frame.requestId = 0;
+      frame.values = null;
+      if (nextValues) updatePhotoTransform(nextValues);
+    });
+  }
+
+  function flushPhotoTransform() {
+    const frame = photoTransformFrameRef.current;
+    if (frame.requestId) window.cancelAnimationFrame(frame.requestId);
+    const nextValues = frame.values;
+    frame.requestId = 0;
+    frame.values = null;
+    if (nextValues) updatePhotoTransform(nextValues);
+  }
+
   function getPhotoGestureBaseline(target, pointers) {
     const snapshot = getPhotoGestureSnapshot(pointers);
     if (!snapshot) return null;
@@ -774,6 +805,7 @@ export default function MatchReceipt({ auth, app }) {
     gesture.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
     event.currentTarget.setPointerCapture(event.pointerId);
     gesture.baseline = getPhotoGestureBaseline(event.currentTarget, gesture.pointers);
+    setPhotoGestureActive(true);
   }
 
   function movePhotoGesture(event) {
@@ -793,21 +825,11 @@ export default function MatchReceipt({ auth, app }) {
       photoRotation += angleDelta;
     }
 
-    setDraft((current) => {
-      const next = normalizeMatchReceiptDraft({
-        ...current,
-        photoX: baseline.photoX + (snapshot.centerX - baseline.centerX) / baseline.width * 200,
-        photoY: baseline.photoY + (snapshot.centerY - baseline.centerY) / baseline.height * 200,
-        photoZoom,
-        photoRotation,
-      });
-      photoTransformRef.current = {
-        photoX: next.photoX,
-        photoY: next.photoY,
-        photoZoom: next.photoZoom,
-        photoRotation: next.photoRotation,
-      };
-      return next;
+    schedulePhotoTransform({
+      photoX: baseline.photoX + (snapshot.centerX - baseline.centerX) / baseline.width * 200,
+      photoY: baseline.photoY + (snapshot.centerY - baseline.centerY) / baseline.height * 200,
+      photoZoom,
+      photoRotation,
     });
   }
 
@@ -816,6 +838,10 @@ export default function MatchReceipt({ auth, app }) {
     if (!gesture.pointers.has(event.pointerId)) return;
     gesture.pointers.delete(event.pointerId);
     gesture.baseline = getPhotoGestureBaseline(event.currentTarget, gesture.pointers);
+    if (gesture.pointers.size === 0) {
+      flushPhotoTransform();
+      setPhotoGestureActive(false);
+    }
   }
 
   function zoomPhotoWithWheel(event) {
@@ -840,6 +866,7 @@ export default function MatchReceipt({ auth, app }) {
       photoRotation: photoTransformRef.current.photoRotation,
     };
     event.currentTarget.setPointerCapture(event.pointerId);
+    setPhotoGestureActive(true);
   }
 
   function movePhotoRotation(event) {
@@ -849,13 +876,15 @@ export default function MatchReceipt({ auth, app }) {
     event.stopPropagation();
     const angle = Math.atan2(event.clientY - rotation.centerY, event.clientX - rotation.centerX) * 180 / Math.PI;
     const angleDelta = ((angle - rotation.angle + 540) % 360) - 180;
-    updatePhotoTransform({ photoRotation: rotation.photoRotation + angleDelta });
+    schedulePhotoTransform({ photoRotation: rotation.photoRotation + angleDelta });
   }
 
   function endPhotoRotation(event) {
     if (photoRotationRef.current?.pointerId !== event.pointerId) return;
     event.stopPropagation();
     photoRotationRef.current = null;
+    flushPhotoTransform();
+    setPhotoGestureActive(false);
   }
 
   function nudgePhotoRotation(event) {
@@ -1323,6 +1352,7 @@ export default function MatchReceipt({ auth, app }) {
                 matchUrl={matchUrl}
                 publicId={receiptPublicId}
                 teamLineArtUrls={selectedTeamLineArtUrls}
+                suspendRender={photoGestureActive}
               />
             ) : (
               <MatchReceiptPreview
@@ -1338,11 +1368,11 @@ export default function MatchReceipt({ auth, app }) {
           </div>
           {!receiptIsReadOnly ? <div className="match-receipt-photo-tools">
             {photoUrl ? (
-              <div className="match-receipt-photo-editor-shell">
+              <div className="match-receipt-photo-editor-shell" style={{ aspectRatio: photoEditorAspect }}>
                 <div
                   ref={photoEditorRef}
                   className="match-receipt-photo-editor"
-                  style={getMatchReceiptPhotoStyle(draft)}
+                  style={getMatchReceiptPhotoStyle(draft, photoEditorAspect)}
                   aria-label={receiptCopy.photoActionsAria}
                   onPointerDown={beginPhotoGesture}
                   onPointerMove={movePhotoGesture}

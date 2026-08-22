@@ -78,6 +78,21 @@ test("receipt nature label keeps the same five pixel score clearance in preview 
   assert.match(renderer, /ctx\.fillText\(model\.matchNatureLabel, width \/ 2, scoreTop \+ \(compact \? 2 : 12\)\)/);
 });
 
+test("receipt photo editing keeps one aspect-aware transform and defers thermal rerenders during gestures", async () => {
+  const [page, thermalPreview, photoTransform] = await Promise.all([
+    readFile(new URL("../src/pages/MatchReceipt.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/match/ThermalReceiptPreview.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/lib/receiptPhotoTransform.js", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(page, /const photoEditorAspect = isThermal \? THERMAL_RECEIPT_PHOTO_ASPECT : MATCH_RECEIPT_PHOTO_ASPECT/);
+  assert.match(page, /style=\{\{ aspectRatio: photoEditorAspect \}\}/);
+  assert.match(page, /getMatchReceiptPhotoStyle\(draft, photoEditorAspect\)/);
+  assert.match(page, /suspendRender=\{photoGestureActive\}/);
+  assert.match(thermalPreview, /if \(suspendRender\) return undefined/);
+  assert.match(photoTransform, /export function drawReceiptCoverPhoto/);
+});
+
 test("official receipt player count includes played players and reserves without duplicates", () => {
   const match = {
     teamA: { players: ["a", "b", "c"] },
@@ -982,9 +997,8 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(renderer, /teamFontSize \* getMatchReceiptTeamNameScale\(team\.name\)/);
   assert.match(renderer, /ctx\.font = `900 \$\{compact \? 14 : 15\}px "KBO Dia Gothic", sans-serif`/);
   assert.match(renderer, /defaultPhoto: !selectedPhotoBlob/);
-  assert.match(renderer, /const shiftX = rect\.width \* panRange \* photoX \/ 100/);
+  assert.match(renderer, /drawReceiptCoverPhoto\(ctx, image, rect, draft/);
   assert.match(renderer, /MATCH_RECEIPT_DEFAULT_PHOTO_FOCUS = Object\.freeze\(\{ x: 0, y: 82 \}\)/);
-  assert.match(renderer, /const foregroundWidth = width/);
   assert.doesNotMatch(renderer, /const backdropScale|blur\(16px\).*brightness\(0\.62\)/);
   assert.doesNotMatch(styles, /\.match-receipt-photo\.is-default \.match-receipt-photo-image/);
   assert.match(renderer, /photoHeight \* 0\.42/);

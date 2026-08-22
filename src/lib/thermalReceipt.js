@@ -8,6 +8,9 @@ import {
   sanitizeMatchReceiptComment,
   THERMAL_PRINT_ROLES,
 } from "../../shared/lib/thermalReceipt.js";
+import { drawReceiptCoverPhoto } from "./receiptPhotoTransform.js";
+
+export const THERMAL_RECEIPT_PHOTO_ASPECT = 684 / 288;
 
 const PAPER = "#eeeae1";
 const INK = "#151515";
@@ -273,17 +276,7 @@ function drawPaper(ctx, layout, seed, textures) {
 function ditherPhoto(image, draft) {
   const source = createCanvas(342, 144);
   const ctx = source.getContext("2d", { willReadFrequently: true });
-  const zoom = Math.max(1, Number(draft.photoZoom) || 1);
-  const cover = Math.max(source.width / image.naturalWidth, source.height / image.naturalHeight) * zoom;
-  const width = image.naturalWidth * cover;
-  const height = image.naturalHeight * cover;
-  const panX = (Number(draft.photoX) || 0) / 100 * Math.max(0, width - source.width) / 2;
-  const panY = (Number(draft.photoY) || 0) / 100 * Math.max(0, height - source.height) / 2;
-  ctx.save();
-  ctx.translate(source.width / 2, source.height / 2);
-  ctx.rotate((Number(draft.photoRotation) || 0) * Math.PI / 180);
-  ctx.drawImage(image, -width / 2 - panX, -height / 2 - panY, width, height);
-  ctx.restore();
+  drawReceiptCoverPhoto(ctx, image, { x: 0, y: 0, width: source.width, height: source.height }, draft);
   const data = ctx.getImageData(0, 0, source.width, source.height);
   const levels = [];
   for (let index = 0; index < data.data.length; index += 4) {
@@ -339,11 +332,10 @@ function drawPhoto(ctx, image, layout, draft) {
 
 function drawBrand(ctx, model, layout) {
   const center = layout.content.x + layout.content.width / 2;
-  const compact = !layout.hasPhoto;
   const serial = String(model.serial || "BT-000");
-  drawThermalText(ctx, "BOXTIER", center, layout.brand.y + (compact ? 21 : 54), { size: compact ? 62 : 76, font: BRAND_FONT, align: "center", maxWidth: 500, dotScale: 2 });
-  drawThermalText(ctx, "BASKETBALL  GAME RECEIPT", center, layout.brand.y + (compact ? 63 : 112), { size: 25, align: "center", maxWidth: 520 });
-  drawThermalText(ctx, `MATCH NO. ${serial.replace(/^#?BT-?/i, "").slice(-3).padStart(3, "0")}`, center, layout.brand.y + (compact ? 91 : 154), { size: 23, align: "center", maxWidth: 400 });
+  drawThermalText(ctx, "BOXTIER", center, layout.brand.y + 48, { size: 76, font: BRAND_FONT, align: "center", maxWidth: 500, dotScale: 2 });
+  drawThermalText(ctx, "BASKETBALL  GAME RECEIPT", center, layout.brand.y + 98, { size: 25, align: "center", maxWidth: 520 });
+  drawThermalText(ctx, `MATCH NO. ${serial.replace(/^#?BT-?/i, "").slice(-3).padStart(3, "0")}`, center, layout.brand.y + 130, { size: 23, align: "center", maxWidth: 400 });
   drawRule(ctx, layout.content.x, layout.brand.y + layout.brand.height - 4, layout.content.width);
 }
 
@@ -529,7 +521,7 @@ function drawResult(ctx, model, layout, atlas) {
   const isTie = Number(model.homeScore) === Number(model.awayScore);
   const winner = Number(model.homeScore) > Number(model.awayScore) ? model.homeTeam : model.awayTeam;
   const outcome = isTie
-    ? (model.receiptLocale === "en" ? "DRAW" : "무승부")
+    ? "DRAW"
     : `${model.receiptLocale === "en" ? "WIN" : "승리"}  ${winner}`;
   drawThermalText(ctx, outcome, box.x + 22, box.y + 169, { size: 24, maxWidth: box.width - 44, color: PAPER });
   if (layout.hasComment) {
@@ -563,7 +555,8 @@ function drawFooter(ctx, model, layout) {
   const y = layout.footer.y;
   const url = model.matchUrl || "https://boxtier.kr";
   const matchId = model.officialMatchId || String(model.serial || "BT-000").replace(/^#/, "");
-  drawThermalText(ctx, `PLAYERS                ${Number(model.playerCount) || 0}`, x, y + 26, { size: 22, maxWidth: 390 });
+  drawThermalText(ctx, "PLAYERS", x, y + 26, { size: 22, maxWidth: 190 });
+  drawThermalText(ctx, Number(model.playerCount) || 0, x + 390, y + 26, { size: 22, align: "right", maxWidth: 120 });
   drawRule(ctx, x, y + 44, 390, true);
   drawThermalText(ctx, `GAME ID   ${matchId}`, x, y + 72, { size: 21, maxWidth: 390 });
   drawRule(ctx, x, y + 90, 390, true);
@@ -571,6 +564,7 @@ function drawFooter(ctx, model, layout) {
   drawRule(ctx, x, y + 136, 390, true);
   drawThermalText(ctx, "boxtier.kr", x, y + 174, { size: 23, maxWidth: 240 });
   drawThermalText(ctx, "KEEP YOUR GAME.", x, y + 196, { size: 17, maxWidth: 240 });
+  drawThermalText(ctx, "BOXTIER", x + 342, y + 232, { size: 34, font: BRAND_FONT, align: "center", maxWidth: 240, dotScale: 2 });
   drawThermalText(ctx, "SCAN MATCH", x + layout.footer.width - 104, y + 18, { size: 20, align: "center", maxWidth: 208 });
   drawQr(ctx, url, x + layout.footer.width - 208, y + 30, 208);
 }

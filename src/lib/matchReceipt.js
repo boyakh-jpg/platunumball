@@ -23,6 +23,11 @@ import {
   splitMatchReceiptComment,
 } from "../../shared/lib/thermalReceipt.js";
 import { renderThermalReceiptCanvas } from "./thermalReceipt.js";
+import {
+  drawReceiptCoverPhoto,
+  getReceiptPhotoStyle,
+  getReceiptRotationCoverScale,
+} from "./receiptPhotoTransform.js";
 
 export const MATCH_RECEIPT_DRAFT_STORAGE_KEY = "boxtier.match-receipt.draft.v1";
 export const MATCH_RECEIPT_CREATE_RETURN_TO = "/app/create?intent=record&source=receipt";
@@ -99,26 +104,15 @@ export function formatMatchReceiptScoreboardScore(value) {
 }
 
 export function getMatchReceiptRotationCoverScale(rotation, aspect = MATCH_RECEIPT_PHOTO_ASPECT) {
-  const radians = Math.abs(Number(rotation) || 0) * Math.PI / 180;
-  const safeAspect = Math.max(0.01, Number(aspect) || MATCH_RECEIPT_PHOTO_ASPECT);
-  const cosine = Math.abs(Math.cos(radians));
-  const sine = Math.abs(Math.sin(radians));
-  return Math.max(cosine + sine / safeAspect, cosine + sine * safeAspect);
+  return getReceiptRotationCoverScale(rotation, aspect);
 }
 
 export function getMatchReceiptPhotoStyle(value, aspect = MATCH_RECEIPT_PHOTO_ASPECT, options = {}) {
   const draft = normalizeMatchReceiptDraft(value);
-  const photoX = options.defaultPhoto ? MATCH_RECEIPT_DEFAULT_PHOTO_FOCUS.x : draft.photoX;
-  const photoY = options.defaultPhoto ? MATCH_RECEIPT_DEFAULT_PHOTO_FOCUS.y : draft.photoY;
-  const panRange = Math.max(0, draft.photoZoom - 1) * 50;
-  return {
-    "--receipt-photo-position-x": `${50 - photoX / 2}%`,
-    "--receipt-photo-position-y": `${50 - photoY / 2}%`,
-    "--receipt-photo-shift-x": `${photoX / 100 * panRange}%`,
-    "--receipt-photo-shift-y": `${photoY / 100 * panRange}%`,
-    "--receipt-photo-scale": getMatchReceiptRotationCoverScale(draft.photoRotation, aspect) * draft.photoZoom,
-    "--receipt-photo-rotation": `${draft.photoRotation}deg`,
-  };
+  return getReceiptPhotoStyle(draft, aspect, {
+    ...options,
+    defaultPhotoFocus: MATCH_RECEIPT_DEFAULT_PHOTO_FOCUS,
+  });
 }
 
 export function getMatchReceiptTeamNameScale(value) {
@@ -778,43 +772,11 @@ function loadCanvasImage(source) {
 }
 
 function drawCoverPhoto(ctx, image, rect, draft, options = {}) {
-  const rotation = draft.photoRotation * Math.PI / 180;
-  const cover = Math.max(rect.width / image.naturalWidth, rect.height / image.naturalHeight);
-  const width = image.naturalWidth * cover;
-  const height = image.naturalHeight * cover;
-  const photoX = options.defaultPhoto ? MATCH_RECEIPT_DEFAULT_PHOTO_FOCUS.x : draft.photoX;
-  const photoY = options.defaultPhoto ? MATCH_RECEIPT_DEFAULT_PHOTO_FOCUS.y : draft.photoY;
-  const positionX = (100 - photoX) / 200;
-  const positionY = (100 - photoY) / 200;
-  const foregroundWidth = width;
-  const foregroundHeight = height;
-  const frame = document.createElement("canvas");
-  frame.width = rect.width;
-  frame.height = rect.height;
-  const frameCtx = frame.getContext("2d");
-  if (!frameCtx) throw new Error("match_receipt_canvas_unavailable");
-  frameCtx.filter = "brightness(0.78) contrast(1.08) saturate(0.92)";
-  frameCtx.drawImage(
-    image,
-    -(foregroundWidth - rect.width) * positionX,
-    -(foregroundHeight - rect.height) * positionY,
-    foregroundWidth,
-    foregroundHeight,
-  );
-
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(rect.x, rect.y, rect.width, rect.height);
-  ctx.clip();
-  const panRange = Math.max(0, draft.photoZoom - 1) / 2;
-  const shiftX = rect.width * panRange * photoX / 100;
-  const shiftY = rect.height * panRange * photoY / 100;
-  ctx.translate(rect.x + rect.width / 2 + shiftX, rect.y + rect.height / 2 + shiftY);
-  ctx.rotate(rotation);
-  const scale = getMatchReceiptRotationCoverScale(draft.photoRotation, rect.width / rect.height) * draft.photoZoom;
-  ctx.scale(scale, scale);
-  ctx.drawImage(frame, -rect.width / 2, -rect.height / 2);
-  ctx.restore();
+  drawReceiptCoverPhoto(ctx, image, rect, draft, {
+    ...options,
+    defaultPhotoFocus: MATCH_RECEIPT_DEFAULT_PHOTO_FOCUS,
+    filter: "brightness(0.78) contrast(1.08) saturate(0.92)",
+  });
 }
 
 function getDefaultPhotoSourceRect(image, rect, sourceRect) {

@@ -54,7 +54,6 @@
 .match-receipt-photo-editor-shell {
   position: relative;
   width: 100%;
-  aspect-ratio: 16 / 9;
 }
 
 .match-receipt-photo-editor {
@@ -79,6 +78,7 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: var(--receipt-photo-position-x) var(--receipt-photo-position-y);
   pointer-events: none;
   transform: translate(calc(-50% + var(--receipt-photo-shift-x)), calc(-50% + var(--receipt-photo-shift-y))) rotate(var(--receipt-photo-rotation)) scale(var(--receipt-photo-scale));
   transform-origin: center;

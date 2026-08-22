@@ -11,30 +11,34 @@ import {
   THERMAL_PRINT_ROLES,
 } from "../shared/lib/thermalReceipt.js";
 import { resolveThermalReceiptEmblemSources } from "../src/lib/thermalReceipt.js";
+import {
+  getReceiptPhotoStyle,
+  getReceiptPhotoTransform,
+} from "../src/lib/receiptPhotoTransform.js";
 
 test("thermal receipt keeps the canonical Story paper geometry", () => {
   const photo = getThermalReceiptLayout({ hasPhoto: true, hasPeriods: true, hasComment: true });
   const plain = getThermalReceiptLayout({ hasPhoto: false, hasPeriods: true, hasComment: true });
 
   assert.deepEqual(photo.paper, { x: 142, y: 24, width: 796, height: 1872 });
-  assert.deepEqual(plain.paper, { x: 142, y: 168, width: 796, height: 1440 });
+  assert.deepEqual(plain.paper, { x: 142, y: 168, width: 796, height: 1568 });
   assert.deepEqual(photo.content, { x: 198, width: 684 });
   assert.equal(photo.photo.height, 288);
   assert.equal(photo.brand.y - photo.paper.y, plain.brand.y - plain.paper.y);
-  assert.equal(plain.teams.y, 280);
-  assert.equal(plain.score.y, 518);
-  assert.equal(plain.info.y, 756);
-  assert.equal(plain.periods.y, 898);
-  assert.equal(plain.result.y, 1084);
-  assert.equal(plain.footer.y, 1368);
+  assert.equal(plain.teams.y, 380);
+  assert.equal(plain.score.y, 618);
+  assert.equal(plain.info.y, 856);
+  assert.equal(plain.periods.y, 998);
+  assert.equal(plain.result.y, 1184);
+  assert.equal(plain.footer.y, 1468);
   for (const region of ["teams", "score", "info", "periods", "footer"]) {
     assert.equal(
       photo[region].y - photo.paper.y - (plain[region].y - plain.paper.y),
-      404,
+      304,
       `${region} accounts for the compact no-photo header`,
     );
   }
-  assert.equal(photo.paper.y + photo.paper.height - (photo.footer.y + photo.footer.height), 52);
+  assert.equal(photo.paper.y + photo.paper.height - (photo.footer.y + photo.footer.height), 24);
   assert.equal(plain.paper.y + plain.paper.height - (plain.footer.y + plain.footer.height), 24);
 });
 
@@ -73,6 +77,20 @@ test("optional thermal rows collapse without leaving internal gaps", () => {
   for (const layout of [full, noPeriods, noComment, compact]) {
     assert.equal(layout.paper.y + layout.paper.height - (layout.footer.y + layout.footer.height), 24);
   }
+});
+
+test("thermal editor and canvas share one photo transform model", () => {
+  const value = { photoX: 36, photoY: -18, photoZoom: 1.4, photoRotation: 12 };
+  const aspect = 684 / 288;
+  const transform = getReceiptPhotoTransform(value, aspect);
+  const style = getReceiptPhotoStyle(value, aspect);
+
+  assert.equal(style["--receipt-photo-position-x"], `${transform.positionX * 100}%`);
+  assert.equal(style["--receipt-photo-position-y"], `${transform.positionY * 100}%`);
+  assert.equal(style["--receipt-photo-shift-x"], `${transform.shiftXRatio * 100}%`);
+  assert.equal(style["--receipt-photo-shift-y"], `${transform.shiftYRatio * 100}%`);
+  assert.equal(style["--receipt-photo-scale"], transform.scale);
+  assert.equal(style["--receipt-photo-rotation"], "12deg");
 });
 
 test("thermal comment removes markup and controls then enforces the shared 22-character limit", () => {

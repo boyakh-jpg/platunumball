@@ -95,21 +95,21 @@ export function getThermalReceiptLayout(options = {}) {
   const hasPhoto = Boolean(options.hasPhoto);
   const hasPeriods = options.hasPeriods !== false;
   const hasComment = options.hasComment !== false;
-  const teamsY = hasPhoto ? 540 : 280;
+  const teamsY = hasPhoto ? 540 : 380;
   const scoreY = teamsY + 238;
   const infoY = scoreY + 238;
   const periodsY = infoY + 142;
   const resultY = hasPeriods ? periodsY + 186 : infoY + 142;
   const resultHeight = hasComment ? 270 : 230;
   const footerY = resultY + resultHeight + 14;
-  const footerHeight = 216;
+  const footerHeight = 244;
   const paperY = hasPhoto ? 24 : 168;
   const paperBottom = hasPhoto ? 1896 : Math.min(1896, footerY + footerHeight + 24);
 
   return Object.freeze({
     paper: Object.freeze({ x: 142, y: paperY, width: 796, height: paperBottom - paperY }),
     content: Object.freeze({ x: 198, width: 684 }),
-    brand: Object.freeze({ x: 198, y: hasPhoto ? 40 : 184, width: 684, height: hasPhoto ? 162 : 80 }),
+    brand: Object.freeze({ x: 198, y: hasPhoto ? 52 : 196, width: 684, height: 150 }),
     photo: hasPhoto ? Object.freeze({ x: 198, y: 226, width: 684, height: 288 }) : null,
     teams: Object.freeze({ x: 198, y: teamsY, width: 684, height: 220 }),
     score: Object.freeze({ x: 198, y: scoreY, width: 684, height: 224 }),
