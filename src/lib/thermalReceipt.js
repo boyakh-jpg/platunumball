@@ -16,7 +16,7 @@ const PAPER = "#eeeae1";
 const INK = "#151515";
 const BRAND_FONT = '"Anton"';
 const DATA_FONT_FAMILY = '"IBM Plex Mono"';
-const DATA_FONT = DATA_FONT_FAMILY;
+const DATA_FONT = `${DATA_FONT_FAMILY}, "NeoDunggeunmo", "Pretendard Variable", monospace`;
 const DATA_FONT_WEIGHT = 400;
 const SCORE_FONT_WEIGHT = 700;
 const TEAM_DISPLAY_FONT = '"Bebas Neue"';
@@ -125,7 +125,7 @@ function fillMaskedPanel(ctx, box, role = "heavy") {
 
 function getThermalFont(text, font) {
   if (font) return font;
-  return /[ㄱ-ㅎㅏ-ㅣ가-힣]/u.test(String(text)) ? KOREAN_FONT : DATA_FONT;
+  return DATA_FONT;
 }
 
 function getThermalFontWeight(font, requestedWeight) {
@@ -456,7 +456,7 @@ function drawTeams(ctx, model, layout, emblems) {
   drawEmblem(ctx, emblems.away, right, y, neutralSources);
   drawThermalText(ctx, "VS", layout.teams.x + layout.teams.width / 2, y, { size: 48, align: "center", maxWidth: 88, dotScale: 2 });
   [[model.homeTeam || "Team A", left], [model.awayTeam || "Team B", right]].forEach(([name, x]) => {
-    const font = getThermalFont(name) === KOREAN_FONT ? KOREAN_FONT : TEAM_DISPLAY_FONT;
+    const font = /[ㄱ-ㅎㅏ-ㅣ가-힣]/u.test(String(name)) ? KOREAN_FONT : TEAM_DISPLAY_FONT;
     const weight = getThermalFontWeight(font);
     const size = fitText(ctx, name, 286, 44, 26, font, weight);
     drawThermalText(ctx, name, x, layout.teams.y + 188, { size, font, weight, align: "center", maxWidth: 286, dotScale: 2, printRole: "team" });
