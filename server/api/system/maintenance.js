@@ -11,6 +11,7 @@ const FEED_REPAIR_SOURCE_COLUMNS = "id,status,updated_at";
 const ROOM_FEED_RETENTION_DAYS = 7;
 const NOTIFICATION_RETENTION_DAYS = 7;
 const RECEIPT_EVENT_RETENTION_HOURS = 24;
+const MCP_RECEIPT_EVENT_RETENTION_HOURS = 48;
 
 export async function cleanupExpiredMatchReceipts(client, now = new Date(), limit = DEFAULT_MATCH_LIMIT) {
   const { data: rows, error } = await client
@@ -50,6 +51,17 @@ export async function cleanupMatchReceiptEvents(client, now = new Date()) {
   const cutoff = new Date(now.getTime() - RECEIPT_EVENT_RETENTION_HOURS * 60 * MINUTE_MS).toISOString();
   const { count, error } = await client
     .from("match_receipt_draft_events")
+    .delete({ count: "exact" })
+    .lt("created_at", cutoff);
+  return error
+    ? { ok: false, deleted: 0, error: error.message }
+    : { ok: true, deleted: count ?? 0 };
+}
+
+export async function cleanupMcpReceiptGenerationEvents(client, now = new Date()) {
+  const cutoff = new Date(now.getTime() - MCP_RECEIPT_EVENT_RETENTION_HOURS * 60 * MINUTE_MS).toISOString();
+  const { count, error } = await client
+    .from("mcp_receipt_generation_events")
     .delete({ count: "exact" })
     .lt("created_at", cutoff);
   return error
@@ -493,6 +505,7 @@ export async function runSystemMaintenance(client = getSupabaseAdminClient(), op
   const recordArchiveCleanup = await archiveCompletedRecords(client, now, limit);
   const receiptCleanup = await cleanupExpiredMatchReceipts(client, now, limit);
   const receiptEventCleanup = await cleanupMatchReceiptEvents(client, now);
+  const mcpReceiptEventCleanup = await cleanupMcpReceiptGenerationEvents(client, now);
 
   return {
     ok: simulationQuarantine.ok === true
@@ -502,6 +515,7 @@ export async function runSystemMaintenance(client = getSupabaseAdminClient(), op
       && recordArchiveCleanup.ok === true
       && receiptCleanup.ok === true
       && receiptEventCleanup.ok === true
+      && mcpReceiptEventCleanup.ok === true
       && results.every((result) => result.ok || result.skipped),
     candidateCount: candidateIds.length,
     confirmedCount: results.filter((result) => result.ok).length,
@@ -513,6 +527,7 @@ export async function runSystemMaintenance(client = getSupabaseAdminClient(), op
     recordArchiveCleanup,
     receiptCleanup,
     receiptEventCleanup,
+    mcpReceiptEventCleanup,
     feedRepair: includeFeedRepair
       ? await repairStaleRoomFeed(client, limit)
       : { ok: true, skipped: true, reason: "disabled" },

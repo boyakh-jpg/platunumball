@@ -249,6 +249,7 @@ import { handleCreateReceipt } from "../server/api/match-receipts/create.js";
 import { handleRenderReceipt } from "../server/api/match-receipts/render.js";
 import {
   cleanupExpiredMatchReceipts,
+  cleanupMcpReceiptGenerationEvents,
   cleanupMatchReceiptEvents,
 } from "../server/api/system/maintenance.js";
 import { parseExternalReceiptInput } from "../server/api/match-receipts/_createInput.js";
@@ -576,7 +577,7 @@ test("external receipt PNG API requires its dedicated bearer key", async () => {
   assert.equal(response.body.error, "invalid_receipt_render_api_key");
 });
 
-test("receipt maintenance deletes expired drafts and 24-hour quota events", async () => {
+test("receipt maintenance deletes expired drafts and quota events", async () => {
   const calls = [];
   const client = {
     from(table) {
@@ -600,7 +601,7 @@ test("receipt maintenance deletes expired drafts and 24-hour quota events", asyn
           },
         };
       }
-      assert.equal(table, "match_receipt_draft_events");
+      assert.ok(["match_receipt_draft_events", "mcp_receipt_generation_events"].includes(table));
       return {
         delete(options) {
           assert.deepEqual(options, { count: "exact" });
@@ -608,8 +609,10 @@ test("receipt maintenance deletes expired drafts and 24-hour quota events", asyn
         },
         async lt(field, cutoff) {
           assert.equal(field, "created_at");
-          assert.equal(cutoff, "2026-08-21T00:00:00.000Z");
-          return { count: 3, error: null };
+          assert.equal(cutoff, table === "match_receipt_draft_events"
+            ? "2026-08-21T00:00:00.000Z"
+            : "2026-08-20T00:00:00.000Z");
+          return { count: table === "match_receipt_draft_events" ? 3 : 4, error: null };
         },
       };
     },
@@ -618,10 +621,17 @@ test("receipt maintenance deletes expired drafts and 24-hour quota events", asyn
 
   const drafts = await cleanupExpiredMatchReceipts(client, now);
   const events = await cleanupMatchReceiptEvents(client, now);
+  const mcpEvents = await cleanupMcpReceiptGenerationEvents(client, now);
 
   assert.deepEqual(drafts, { ok: true, checked: 1, deletedDrafts: 1, deletedEmblems: 0, failed: 0 });
   assert.deepEqual(events, { ok: true, deleted: 3 });
-  assert.deepEqual(calls, ["match_receipt_drafts", "match_receipt_drafts", "match_receipt_draft_events"]);
+  assert.deepEqual(mcpEvents, { ok: true, deleted: 4 });
+  assert.deepEqual(calls, [
+    "match_receipt_drafts",
+    "match_receipt_drafts",
+    "match_receipt_draft_events",
+    "mcp_receipt_generation_events",
+  ]);
 });
 
 test("external receipt API rejects remote photos before consuming quota", async () => {

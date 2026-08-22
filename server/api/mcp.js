@@ -6,6 +6,7 @@ import {
   renderMatchReceiptPng,
 } from "./match-receipts/_pngRenderer.js";
 import { MATCH_RECEIPT_STYLES } from "../../shared/lib/thermalReceipt.js";
+import { consumeMcpReceiptGenerationQuota } from "./mcpQuota.js";
 
 const receiptInputSchema = z.object({
   style: z.enum(["thermal", "score"]).default("thermal")
@@ -43,8 +44,11 @@ function toolError(message, issues = []) {
   };
 }
 
-export function createBoxtierMcpHandler({ renderPng = renderMatchReceiptPng } = {}) {
-  return createMcpHandler(() => {
+export function createBoxtierMcpHandler({
+  renderPng = renderMatchReceiptPng,
+  consumeGenerationQuota = consumeMcpReceiptGenerationQuota,
+} = {}) {
+  return createMcpHandler((context) => {
     const server = new McpServer({ name: "boxtier-receipt", version: "1.0.0" });
 
     server.registerTool(
@@ -67,6 +71,14 @@ export function createBoxtierMcpHandler({ renderPng = renderMatchReceiptPng } = 
         });
         if (parsed.issues.length > 0) {
           return toolError("영수증 입력값이 올바르지 않다.", parsed.issues);
+        }
+
+        try {
+          const allowed = await consumeGenerationQuota(context.requestInfo);
+          if (!allowed) return toolError("최근 24시간 PNG 생성 한도 10회를 초과했다.");
+        } catch (error) {
+          console.error("[mcp] receipt quota check failed", error);
+          return toolError("영수증 생성 한도를 확인할 수 없다.");
         }
 
         try {

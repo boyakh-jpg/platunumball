@@ -59,5 +59,8 @@ Claude.ai는 설정의 Connectors에서 같은 URL을 사용자 지정 connector
 - `/mcp`가 인증 없이 HTTPS로 연결된다.
 - `initialize`, `tools/list`, `tools/call`이 성공한다.
 - 도구 응답의 MIME type은 `image/png`다.
+- 모든 `POST /mcp` 요청은 인스턴스별 IP 기준 1분 5회로 제한한다.
+- 유효한 `create_basketball_receipt` PNG 생성 시도는 원본 IP를 저장하지 않고 salted SHA-256 해시별 최근 24시간 10회로 제한한다.
+- `initialize`, `tools/list`, 입력 검증 실패는 일일 생성 횟수에서 제외한다. 렌더링 실패는 유효한 생성 시도이므로 횟수에 포함한다.
 - 오류·지연·429 비율을 서버 로그와 WAF에서 확인한다.
 - 배포된 production metadata의 Git SHA가 `main`의 배포 대상 SHA와 같다.

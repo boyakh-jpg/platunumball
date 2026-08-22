@@ -237,7 +237,10 @@ export function setReceiptCapabilityCookie(response, capability) {
 }
 
 export function getReceiptRequestHash(request) {
-  const forwarded = String(request.headers?.["x-forwarded-for"] ?? "").split(",")[0].trim();
+  const forwardedHeader = typeof request?.headers?.get === "function"
+    ? request.headers.get("x-forwarded-for")
+    : request?.headers?.["x-forwarded-for"];
+  const forwarded = String(forwardedHeader ?? "").split(",")[0].trim();
   const address = forwarded || String(request.socket?.remoteAddress ?? "unknown");
   const salt = process.env.MATCH_RECEIPT_RATE_SALT || process.env.SUPABASE_SERVICE_ROLE_KEY || "boxtier";
   return createHash("sha256").update(`${salt}:${address}`).digest("hex");

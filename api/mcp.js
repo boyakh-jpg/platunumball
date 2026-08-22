@@ -2,7 +2,7 @@ import { toNodeHandler } from "@modelcontextprotocol/node";
 import { boxtierMcpHandler } from "../server/api/mcp.js";
 
 const DEFAULT_WINDOW_MS = 60_000;
-const DEFAULT_MAX_REQUESTS = 30;
+const DEFAULT_MAX_REQUESTS = 5;
 const DEFAULT_MAX_TRACKED_KEYS = 10_000;
 const requestWindows = new Map();
 
