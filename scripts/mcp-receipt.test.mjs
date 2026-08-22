@@ -122,6 +122,11 @@ test("MCP가 자동 선택용 영수증 도구를 공개한다", async () => {
   const resource = await rpc(handler, "resources/read", { uri: MCP_RECEIPT_WIDGET_URI }, 21);
   assert.equal(resource.result.contents[0].mimeType, "text/html;profile=mcp-app");
   assert.match(resource.result.contents[0].text, /ui\/notifications\/tool-result/);
+  assert.match(resource.result.contents[0].text, />PNG 다운로드<\/a>/);
+  assert.match(resource.result.contents[0].text, /download="boxtier-basketball-receipt\.png"/);
+  assert.match(resource.result.contents[0].text, /new Blob\(\[bytes\], \{ type: "image\/png" \}\)/);
+  assert.match(resource.result.contents[0].text, /URL\.createObjectURL\(receiptBlob\)/);
+  assert.match(resource.result.contents[0].text, /navigator\.share\(\{ files: \[receiptFile\]/);
   await handler.close();
 });
 
