@@ -108,7 +108,7 @@ test("thermal rules and emblem labels keep print-aware rendering and spacing", a
 
   assert.match(renderer, /applyPrintMask\(rule, ctx\.__thermalMasks\?\.body,[\s\S]*?"body"\)/u);
   assert.match(renderer, /drawThermalText\(ctx, name, x, layout\.teams\.y \+ 196/u);
-  assert.match(renderer, /const EMBLEM_GRAYSCALE_LEVELS = Object\.freeze\(\[24, 88, 152, 224\]\)/u);
+  assert.match(renderer, /const EMBLEM_GRAYSCALE_LEVELS = Object\.freeze\(\[16, 72, 128, 192\]\)/u);
   assert.match(renderer, /const level = isEmblem[\s\S]*?EMBLEM_GRAYSCALE_LEVELS\[Math\.round\(luminance \/ 255[\s\S]*?: Math\.round\(luminance\)/u);
   assert.doesNotMatch(renderer, /luminance < 128 \? 0 : 255/u);
   assert.doesNotMatch(renderer, /globalCompositeOperation\s*=\s*["']destination-out["']/u);
@@ -256,7 +256,7 @@ test("thermal print noise is deterministic for the receipt seed", () => {
 test("thermal print roles keep supplied masks separate and preserve dense QR ink", () => {
   assert.deepEqual(THERMAL_PRINT_ROLES, {
     body: { mask: "body", opacity: 0.84 },
-    team: { mask: "team", opacity: 0.9, recoveryOpacity: 0.55 },
+    team: { mask: "team", opacity: 0.96, recoveryOpacity: 0.85 },
     heavy: { mask: "heavy", opacity: 0.92 },
     photo: { mask: "photo", opacity: 0.88 },
     qr: { mask: "heavy", opacity: 0.97 },
@@ -268,5 +268,16 @@ test("thermal team names recover clean ink after the distressed mask", async () 
 
   assert.match(renderer, /const recoveryOpacity = Math\.max\(0, Math\.min\(1, Number\(config\.recoveryOpacity\) \|\| 0\)\)/u);
   assert.match(renderer, /cleanLayer\?\.getContext\("2d"\)\.drawImage\(canvas, 0, 0\)/u);
+  assert.match(renderer, /const font = isKorean \? KOREAN_FONT : DATA_FONT;/u);
+  assert.match(renderer, /isKorean \? 44 : 32, isKorean \? 26 : 22/u);
   assert.match(renderer, /drawThermalText\(ctx, name,[\s\S]*printRole: "team"/u);
+});
+
+test("thermal emblem stays dense and QR only targets the exact public receipt URL", async () => {
+  const renderer = await readFile(new URL("../src/lib/thermalReceipt.js", import.meta.url), "utf8");
+
+  assert.doesNotMatch(renderer, /applyPrintMask\(layer, ctx\.__thermalMasks\?\.team/u);
+  assert.match(renderer, /const url = model\.matchUrl;/u);
+  assert.match(renderer, /if \(url\) \{[\s\S]*?drawQr\(ctx, url,/u);
+  assert.doesNotMatch(renderer, /https:\/\/boxtier\.kr/u);
 });

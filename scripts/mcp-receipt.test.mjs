@@ -3,9 +3,8 @@ import { createHash } from "node:crypto";
 import http from "node:http";
 import test from "node:test";
 import nodeMcpHandler from "../api/mcp.js";
-import { createBoxtierMcpHandler } from "../server/api/mcp.js";
+import { createBoxtierMcpHandler as createRawBoxtierMcpHandler } from "../server/api/mcp.js";
 import { consumeMcpReceiptGenerationQuota } from "../server/api/mcpQuota.js";
-import { MCP_RECEIPT_WIDGET_URI } from "../server/api/mcpReceiptWidget.js";
 import { downloadReceiptEmblem } from "../server/api/match-receipts/_emblemProcessor.js";
 import { getMcpProtectedResourceMetadata } from "../server/api/oauthProtectedResource.js";
 import { getThermalReceiptLayout } from "../shared/lib/thermalReceipt.js";
@@ -27,6 +26,24 @@ const VALID_RECEIPT_ARGUMENTS = {
   preset: "story",
   locale: "ko",
 };
+const TEST_PUBLIC_CODE = "BT-00001234";
+const TEST_RECEIPT_PATH = `/app/receipt?code=${TEST_PUBLIC_CODE}`;
+
+function createBoxtierMcpHandler(options = {}) {
+  return createRawBoxtierMcpHandler({
+    publicAppUrl: "https://boxtier.kr",
+    createReceiptDraft: async (draft) => ({
+      object: "match_receipt",
+      publicId: "test-public-id",
+      publicCode: TEST_PUBLIC_CODE,
+      expiresAt: "2026-08-25T00:00:00.000Z",
+      receiptPath: TEST_RECEIPT_PATH,
+      apiPath: `/api/match-receipts/public?code=${TEST_PUBLIC_CODE}`,
+      receipt: draft,
+    }),
+    ...options,
+  });
+}
 
 function rpcRequest(method, params, id, headers = {}) {
   return new Request("https://boxtier.kr/mcp", {
@@ -119,7 +136,6 @@ test("Node adapter가 IP별 MCP POST를 1분 5회로 제한한다", async (conte
 test("MCP가 자동 선택용 영수증 도구를 공개한다", async () => {
   const handler = createBoxtierMcpHandler({
     renderPng: async () => TEST_PNG,
-    widgetDomain: "https://boxtier.kr",
   });
   const initialized = await rpc(handler, "initialize", {
     protocolVersion: "2025-06-18",
@@ -134,8 +150,8 @@ test("MCP가 자동 선택용 영수증 도구를 공개한다", async () => {
   assert.match(tool.description, /박스티어/);
   assert.equal(tool.annotations.readOnlyHint, false);
   assert.equal(tool.annotations.idempotentHint, false);
-  assert.equal(tool._meta.ui.resourceUri, MCP_RECEIPT_WIDGET_URI);
-  assert.equal(tool._meta["openai/outputTemplate"], MCP_RECEIPT_WIDGET_URI);
+  assert.equal("ui" in tool._meta, false);
+  assert.equal("openai/outputTemplate" in tool._meta, false);
   assert.deepEqual(tool._meta["openai/fileParams"], ["homeEmblemFile", "awayEmblemFile"]);
   assert.deepEqual(tool._meta.securitySchemes, [{ type: "noauth" }]);
   assert.ok(tool.inputSchema.properties.homeEmblem);
@@ -153,7 +169,7 @@ test("MCP가 자동 선택용 영수증 도구를 공개한다", async () => {
   assert.ok(tool.outputSchema);
   const renderedOutput = tool.outputSchema.oneOf.find((schema) => schema.properties?.status?.const === "rendered");
   assert.ok(renderedOutput);
-  for (const field of ["status", "mimeType", "preset", "style", "byteLength", "width", "height", "sha256", "imageAttached"]) {
+  for (const field of ["status", "mimeType", "preset", "style", "byteLength", "width", "height", "sha256", "imageAttached", "publicCode", "receiptPath"]) {
     assert.equal(renderedOutput.required.includes(field), true);
   }
   assert.equal(renderedOutput.properties.base64.type, "string");
@@ -174,20 +190,6 @@ test("MCP가 자동 선택용 영수증 도구를 공개한다", async () => {
     "create_basketball_receipt", "fetch", "search",
   ]);
 
-  const resource = await rpc(handler, "resources/read", { uri: MCP_RECEIPT_WIDGET_URI }, 21);
-  assert.equal(resource.result.contents[0].mimeType, "text/html;profile=mcp-app");
-  assert.equal(MCP_RECEIPT_WIDGET_URI, "ui://boxtier/basketball-receipt-v3.html");
-  assert.equal(resource.result.contents[0]._meta["openai/widgetDomain"], "https://boxtier.kr");
-  assert.match(resource.result.contents[0].text, /ui\/notifications\/tool-result/);
-  assert.match(resource.result.contents[0].text, /toolResponseMetadata/);
-  assert.match(resource.result.contents[0].text, /addEventListener\("openai:set_globals"/);
-  assert.match(resource.result.contents[0].text, /event\.detail\?\.globals \?\? event\.detail/);
-  assert.match(resource.result.contents[0].text, /metadata\?\.\["boxtier\/image"\]/);
-  assert.match(resource.result.contents[0].text, />PNG 다운로드<\/a>/);
-  assert.match(resource.result.contents[0].text, /download="boxtier-basketball-receipt\.png"/);
-  assert.match(resource.result.contents[0].text, /new Blob\(\[bytes\], \{ type: "image\/png" \}\)/);
-  assert.match(resource.result.contents[0].text, /URL\.createObjectURL\(receiptBlob\)/);
-  assert.match(resource.result.contents[0].text, /navigator\.share\(\{ files: \[receiptFile\]/);
   await handler.close();
 });
 
@@ -291,11 +293,7 @@ test("MCP 호출은 유효 입력의 일일 한도를 소비하고 PNG를 직접
   assert.equal(called.result.content[0].mimeType, "image/png");
   assert.equal(called.result.content[0].data, TEST_PNG.toString("base64"));
   assert.doesNotMatch(called.result.content[0].data, /^data:/u);
-  assert.deepEqual(called.result._meta["boxtier/image"], {
-    data: TEST_PNG.toString("base64"),
-    mimeType: "image/png",
-    filename: "boxtier-basketball-receipt.png",
-  });
+  assert.equal(called.result._meta, undefined);
   assert.deepEqual(called.result.structuredContent, {
     status: "rendered",
     mimeType: "image/png",
@@ -306,10 +304,14 @@ test("MCP 호출은 유효 입력의 일일 한도를 소비하고 PNG를 직접
     height: 1,
     sha256: createHash("sha256").update(TEST_PNG).digest("hex"),
     imageAttached: true,
+    publicCode: TEST_PUBLIC_CODE,
+    receiptPath: TEST_RECEIPT_PATH,
   });
   assert.equal("base64" in called.result.structuredContent, false);
   assert.equal(renderCall.preset, "story");
   assert.equal(renderCall.draft.receiptStyle, "classic-thermal");
+  assert.equal(renderCall.draft.publicCode, TEST_PUBLIC_CODE);
+  assert.equal(renderCall.matchUrl, `https://boxtier.kr${TEST_RECEIPT_PATH}`);
   assert.equal(quotaRequest instanceof Request, true);
   await handler.close();
 });
@@ -675,7 +677,7 @@ test("MCP 실제 renderer가 중립 엠블럼과 선택 영역 팔레트를 적�
   assert.equal(called.result.structuredContent.sha256, createHash("sha256").update(png).digest("hex"));
   const { data: pixels, info } = await sharp(png).removeAlpha().raw().toBuffer({ resolveWithObject: true });
   assert.equal(info.channels, 3);
-  const emblemLevels = new Set([24, 88, 152, 224]);
+  const emblemLevels = new Set([16, 72, 128, 192]);
   const bodyLevels = new Set();
   const emblemY = layout.teams.y + 82 - layout.paper.y;
   const emblemCenters = [
@@ -694,8 +696,8 @@ test("MCP 실제 renderer가 중립 엠블럼과 선택 영역 팔레트를 적�
     assert.equal(pixels[index], pixels[index + 2]);
     if (emblemIndex >= 0) {
       assert.equal(emblemLevels.has(pixels[index]), true);
-      if (pixels[index] < 224) emblemCounts[emblemIndex].dark += 1;
-      if (pixels[index] === 224) emblemCounts[emblemIndex].light += 1;
+      if (pixels[index] < 192) emblemCounts[emblemIndex].dark += 1;
+      if (pixels[index] === 192) emblemCounts[emblemIndex].light += 1;
     } else {
       bodyLevels.add(pixels[index]);
     }

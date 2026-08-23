@@ -11,16 +11,12 @@ import {
 } from "./match-receipts/_pngRenderer.js";
 import { MATCH_RECEIPT_STYLES } from "../../shared/lib/thermalReceipt.js";
 import { consumeMcpReceiptGenerationQuota } from "./mcpQuota.js";
-import { getConfiguredPublicAppUrl } from "./_publicAppUrl.js";
+import { getConfiguredPublicAppUrl, getPublicAppWebUrl } from "./_publicAppUrl.js";
 import { getAuthenticatedContext } from "./_supabaseAuth.js";
 import { getAdminLevel } from "./_supabaseAdmin.js";
 import { parseBearerAuthorization } from "./_requestSecurity.js";
-import {
-  MCP_RECEIPT_WIDGET_HTML,
-  MCP_RECEIPT_WIDGET_MIME_TYPE,
-  MCP_RECEIPT_WIDGET_URI,
-} from "./mcpReceiptWidget.js";
 import { inspectReceiptPng } from "./mcpReceiptImage.js";
+import { createPublicReceiptDraft } from "./match-receipts/_publicDraft.js";
 import { fetchPublicMatchingRoom, searchPublicMatchingRooms } from "../lib/publicMatchingRooms.js";
 
 const receiptEmblemSchema = z.object({
@@ -90,6 +86,8 @@ const receiptOutputSchema = z.discriminatedUnion("status", [
     height: z.number().int().positive(),
     sha256: z.string().regex(/^[0-9a-f]{64}$/u),
     imageAttached: z.literal(true),
+    publicCode: z.string().min(1),
+    receiptPath: z.string().min(1),
     base64: z.string().optional(),
   }).strict(),
   z.object({
@@ -183,7 +181,8 @@ export function createBoxtierMcpHandler({
   getActorAdminLevel = getAdminLevel,
   searchRooms = searchPublicMatchingRooms,
   fetchRoom = fetchPublicMatchingRoom,
-  widgetDomain = getConfiguredPublicAppUrl(),
+  createReceiptDraft = createPublicReceiptDraft,
+  publicAppUrl = getConfiguredPublicAppUrl(),
 } = {}) {
   return createMcpHandler((context) => {
     const server = new McpServer({ name: "boxtier", version: "1.1.0" });
@@ -241,29 +240,6 @@ export function createBoxtierMcpHandler({
       },
     );
 
-    server.registerResource(
-      "boxtier-basketball-receipt",
-      MCP_RECEIPT_WIDGET_URI,
-      {
-        title: "BoxTier 농구 영수증",
-        description: "생성된 농구 영수증 PNG를 대화 안에 표시한다.",
-        mimeType: MCP_RECEIPT_WIDGET_MIME_TYPE,
-      },
-      async (uri) => ({
-        contents: [{
-          uri: uri.href,
-          mimeType: MCP_RECEIPT_WIDGET_MIME_TYPE,
-          text: MCP_RECEIPT_WIDGET_HTML,
-          _meta: {
-            ui: { prefersBorder: true, csp: { connectDomains: [], resourceDomains: [] } },
-            "openai/widgetPrefersBorder": true,
-            "openai/widgetCSP": { connect_domains: [], resource_domains: [] },
-            ...(widgetDomain ? { "openai/widgetDomain": widgetDomain } : {}),
-          },
-        }],
-      }),
-    );
-
     server.registerTool(
       "create_basketball_receipt",
       {
@@ -279,8 +255,6 @@ export function createBoxtierMcpHandler({
         },
         _meta: {
           securitySchemes: PUBLIC_SECURITY_SCHEMES,
-          ui: { resourceUri: MCP_RECEIPT_WIDGET_URI },
-          "openai/outputTemplate": MCP_RECEIPT_WIDGET_URI,
           "openai/fileParams": ["homeEmblemFile", "awayEmblemFile"],
           "openai/toolInvocation/invoking": "농구 영수증 PNG 렌더링 중",
         },
@@ -312,7 +286,7 @@ export function createBoxtierMcpHandler({
           if (!allowed) return toolError("최근 24시간 PNG 생성 한도 10회를 초과했다.");
         } catch (error) {
           if (isAuthenticationError(error)) {
-            return authRequired(context.requestInfo, widgetDomain);
+            return authRequired(context.requestInfo, publicAppUrl);
           }
           console.error("[mcp] receipt quota check failed", error);
           return toolError("영수증 생성 한도를 확인할 수 없다.");
@@ -328,11 +302,25 @@ export function createBoxtierMcpHandler({
           }]);
         }
 
+        let receipt;
         try {
+          receipt = await createReceiptDraft(parsed.draft, { request: context.requestInfo });
+        } catch (error) {
+          console.error("[mcp] public receipt draft creation failed", error);
+          return toolError(error?.code === "receipt_draft_rate_limited"
+            ? "공개 영수증 발급 한도를 초과했다."
+            : "영수증 공개 코드를 발급할 수 없다.");
+        }
+
+        try {
+          const matchUrl = publicAppUrl
+            ? new URL(receipt.receiptPath, publicAppUrl).toString()
+            : getPublicAppWebUrl(receipt.receiptPath, context.requestInfo);
           const png = await renderPng({
-            draft: parsed.draft,
+            draft: { ...parsed.draft, publicCode: receipt.publicCode },
             emblems,
             preset,
+            matchUrl,
           });
           const pngBuffer = png;
           const inspected = inspectReceiptPng(pngBuffer);
@@ -344,18 +332,13 @@ export function createBoxtierMcpHandler({
             style,
             ...inspected,
             imageAttached: true,
+            publicCode: receipt.publicCode,
+            receiptPath: receipt.receiptPath,
             ...(debugBase64 ? { base64: imageData } : {}),
           };
           return {
             content: [{ type: "image", data: imageData, mimeType: "image/png" }],
             structuredContent: metadata,
-            _meta: {
-              "boxtier/image": {
-                data: imageData,
-                mimeType: "image/png",
-                filename: "boxtier-basketball-receipt.png",
-              },
-            },
           };
         } catch (error) {
           console.error("[mcp] receipt rendering failed", error);

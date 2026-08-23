@@ -15,12 +15,14 @@ export async function renderMatchReceiptPng({
   draft,
   emblems = {},
   preset = MATCH_RECEIPT_RENDER_PRESETS.story,
+  matchUrl = "",
 }) {
   const canvas = await renderMatchReceiptPreviewCanvas(draft, preset, {
     teamLineArtUrls: {
       home: emblemDataUrl(emblems.home),
       away: emblemDataUrl(emblems.away),
     },
+    matchUrl,
   });
   if (typeof canvas.toBuffer !== "function") throw new Error("match_receipt_png_encoder_unavailable");
   return canvas.toBuffer("image/png");

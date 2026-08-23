@@ -27,7 +27,7 @@ const TEAM_DISPLAY_FONT_WEIGHT = 900;
 const KOREAN_FONT = '"NeoDunggeunmo", "Pretendard Variable", monospace';
 const KOREAN_WIDTH_SCALE = 0.94;
 const SCORE_PANEL = "#505050";
-const EMBLEM_GRAYSCALE_LEVELS = Object.freeze([24, 88, 152, 224]);
+const EMBLEM_GRAYSCALE_LEVELS = Object.freeze([16, 72, 128, 192]);
 const SCORE_PANEL_INSET_X = 14;
 const SCORE_PANEL_INSET_Y = 12;
 const SCORE_DIGIT_HEIGHT = 146;
@@ -445,7 +445,6 @@ function drawEmblem(ctx, emblem, x, y) {
   layerCtx.arc(92, 92, 73, 0, Math.PI * 2);
   layerCtx.lineWidth = 2;
   layerCtx.stroke();
-  applyPrintMask(layer, ctx.__thermalMasks?.team, `${ctx.__thermalSeed}|emblem|${x}|${y}`, "team");
   ctx.drawImage(layer, x - 92, y - 92);
 }
 
@@ -457,9 +456,10 @@ function drawTeams(ctx, model, layout, emblems) {
   drawEmblem(ctx, emblems.away, right, y);
   drawThermalText(ctx, "VS", layout.teams.x + layout.teams.width / 2, y, { size: 48, align: "center", maxWidth: 88, dotScale: 2 });
   [[model.homeTeam || "Team A", left], [model.awayTeam || "Team B", right]].forEach(([name, x]) => {
-    const font = /[ㄱ-ㅎㅏ-ㅣ가-힣]/u.test(String(name)) ? KOREAN_FONT : TEAM_DISPLAY_FONT;
+    const isKorean = /[ㄱ-ㅎㅏ-ㅣ가-힣]/u.test(String(name));
+    const font = isKorean ? KOREAN_FONT : DATA_FONT;
     const weight = getThermalFontWeight(font);
-    const size = fitText(ctx, name, 286, 44, 26, font, weight);
+    const size = fitText(ctx, name, 286, isKorean ? 44 : 32, isKorean ? 26 : 22, font, weight);
     drawThermalText(ctx, name, x, layout.teams.y + 196, { size, font, weight, align: "center", maxWidth: 286, dotScale: 2, printRole: "team" });
   });
 }
@@ -658,7 +658,7 @@ function drawQr(ctx, value, x, y, size) {
 function drawFooter(ctx, model, layout) {
   const x = layout.footer.x;
   const y = layout.footer.y;
-  const url = model.matchUrl || "https://boxtier.kr";
+  const url = model.matchUrl;
   const matchId = model.officialMatchId || String(model.serial || "BT-000").replace(/^#/, "");
   drawThermalText(ctx, "PLAYERS", x, y + 26, { size: 22, maxWidth: 190 });
   drawThermalText(ctx, Number(model.playerCount) || 0, x + 200, y + 26, { size: 22, align: "right", maxWidth: 70 });
@@ -670,8 +670,10 @@ function drawFooter(ctx, model, layout) {
   drawThermalText(ctx, "boxtier.kr", x, y + 174, { size: 23, maxWidth: 240 });
   drawThermalText(ctx, "KEEP YOUR GAME.", x, y + 196, { size: 17, maxWidth: 240 });
   drawThermalText(ctx, "BOXTIER", x + 342, y + 214, { size: 42, font: BRAND_FONT, align: "center", maxWidth: 250, dotScale: 2 });
-  drawThermalText(ctx, "SCAN MATCH", x + layout.footer.width - 108, y + 16, { size: 20, align: "center", maxWidth: 216 });
-  drawQr(ctx, url, x + layout.footer.width - 216, y + 26, 216);
+  if (url) {
+    drawThermalText(ctx, "SCAN MATCH", x + layout.footer.width - 108, y + 16, { size: 20, align: "center", maxWidth: 216 });
+    drawQr(ctx, url, x + layout.footer.width - 216, y + 26, 216);
+  }
 }
 
 function normalizeThermalData(value, options) {
