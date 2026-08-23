@@ -3,6 +3,7 @@ import { Link, Navigate, useLocation } from "react-router-dom";
 import BrandLockup from "../components/common/BrandLockup.jsx";
 import Button from "../components/common/Button.jsx";
 import { BRAND_NAME } from "../lib/brand.js";
+import { getOAuthConsentDetails } from "../lib/oauthConsent.js";
 import { getLoginPath } from "../lib/profileSetup.js";
 import { isSupabaseConfigured, supabase } from "../lib/supabase.js";
 
@@ -65,8 +66,7 @@ export default function OAuthConsent({ auth }) {
     }
   };
 
-  const clientName = details?.client?.name || details?.client?.client_name || details?.client?.client_id || "ChatGPT";
-  const scopes = String(details?.scope ?? "profile").split(/\s+/u).filter(Boolean);
+  const consentDetails = getOAuthConsentDetails(details);
 
   return (
     <main className="auth-shell">
@@ -85,12 +85,24 @@ export default function OAuthConsent({ auth }) {
           {authorizationId && auth.session && !details && !error ? <p className="auth-message">연결 요청 확인 중...</p> : null}
           {details ? (
             <>
-              <p><strong>{clientName}</strong>에서 BoxTier 계정 연결을 요청했다.</p>
+              <p><strong>{consentDetails.clientName}</strong>에서 BoxTier 계정 연결을 요청했다.</p>
+              <p className="auth-message">앱 이름은 외부 앱이 입력한 값이다. BoxTier 인증 표시는 아니다.</p>
               <div className="auth-recovery-notice">
                 <strong>허용할 권한</strong>
-                <p>{scopes.includes("profile") ? "내 BoxTier 경기 기록 읽기" : scopes.join(", ")}</p>
+                <p>{consentDetails.scopes.includes("profile") ? "내 BoxTier 경기 기록 읽기" : "확인할 수 없음"}</p>
+                <strong>앱 ID</strong>
+                <p>{consentDetails.clientId || "확인할 수 없음"}</p>
+                <strong>연결 복귀</strong>
+                <p>{consentDetails.redirectLabel}</p>
               </div>
-              <Button type="button" disabled={Boolean(pendingAction)} onClick={() => void decide("approve")}>
+              {!consentDetails.canApprove ? (
+                <p className="auth-message" role="alert">
+                  {consentDetails.unsupportedScopes.length > 0
+                    ? `지원하지 않는 권한 요청: ${consentDetails.unsupportedScopes.join(", ")}`
+                    : "앱 ID, 권한 또는 안전한 복귀 주소를 확인할 수 없어 허용할 수 없다."}
+                </p>
+              ) : null}
+              <Button type="button" disabled={Boolean(pendingAction) || !consentDetails.canApprove} onClick={() => void decide("approve")}>
                 {pendingAction === "approve" ? "연결 중..." : "연결 허용"}
               </Button>
               <Button type="button" variant="secondary" disabled={Boolean(pendingAction)} onClick={() => void decide("deny")}>

@@ -216,7 +216,11 @@ test("내 경기 기록은 로그인 profile 범위만 조회한다", async () =
   const fakeClient = {};
   let loadCall = null;
   const handler = createBoxtierMcpHandler({
-    authenticate: async () => ({ supabase: fakeClient, profileId: "profile-1" }),
+    authenticate: async () => ({
+      supabase: fakeClient,
+      profileId: "profile-1",
+      accessTokenClaims: { scope: "profile" },
+    }),
     loadOwnRecords: async (client, profileId, options) => {
       loadCall = { client, profileId, options };
       return { records: [{ matchId: "match-1" }], limit: 5, offset: 0, nextOffset: null };
@@ -239,6 +243,32 @@ test("내 경기 기록은 로그인 profile 범위만 조회한다", async () =
     offset: 0,
     nextOffset: null,
   });
+  await handler.close();
+});
+
+test("내 경기 기록은 검증된 OAuth profile scope가 없으면 거부한다", async () => {
+  let loaded = false;
+  const handler = createBoxtierMcpHandler({
+    authenticate: async () => ({
+      supabase: {},
+      profileId: "profile-1",
+      accessTokenClaims: { scope: "openid" },
+    }),
+    loadOwnRecords: async () => {
+      loaded = true;
+      return { records: [], limit: 10, offset: 0, nextOffset: null };
+    },
+    widgetDomain: "https://boxtier.kr",
+  });
+  const called = await rpc(handler, "tools/call", {
+    name: "list_my_match_records",
+    arguments: {},
+  }, 241, { authorization: "Bearer wrong-scope-access-token-1234" });
+
+  assert.equal(called.result.isError, true);
+  assert.equal(loaded, false);
+  assert.match(called.result._meta["mcp/www_authenticate"][0], /error="insufficient_scope"/u);
+  assert.match(called.result._meta["mcp/www_authenticate"][0], /scope="profile"/u);
   await handler.close();
 });
 

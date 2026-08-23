@@ -119,6 +119,20 @@ function authRequired(request, configuredDomain = "") {
   return toolError("BoxTier 로그인이 필요하다.", [], { "mcp/www_authenticate": [challenge] });
 }
 
+function scopeRequired(request, configuredDomain = "") {
+  const resourceMetadataUrl = getResourceMetadataUrl(request, configuredDomain);
+  const challenge = `Bearer error="insufficient_scope", scope="${MCP_OAUTH_SCOPES.join(" ")}"${resourceMetadataUrl ? `, resource_metadata="${resourceMetadataUrl}"` : ""}`;
+  return toolError("내 경기 기록 읽기 권한이 필요하다.", [], { "mcp/www_authenticate": [challenge] });
+}
+
+function hasOAuthScopes(authContext, requiredScopes = MCP_OAUTH_SCOPES) {
+  const claim = authContext?.accessTokenClaims?.scope;
+  const scopes = Array.isArray(claim)
+    ? claim
+    : String(claim ?? "").split(/\s+/u).filter(Boolean);
+  return requiredScopes.every((scope) => scopes.includes(scope));
+}
+
 function isAuthenticationError(error) {
   return error?.statusCode === 401
     || ["missing_bearer_token", "invalid_bearer_token"].includes(error?.message);
@@ -344,6 +358,10 @@ export function createBoxtierMcpHandler({
           }
           console.error("[mcp] record authentication failed", error);
           return toolError("로그인 상태를 확인할 수 없다.");
+        }
+
+        if (!hasOAuthScopes(authContext)) {
+          return scopeRequired(context.requestInfo, widgetDomain);
         }
 
         try {

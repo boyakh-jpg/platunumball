@@ -35,16 +35,19 @@ export function getBearerToken(request) {
   return getStrictBearerToken(request);
 }
 
-export function getJwtExpiresAt(token = "") {
+export function getJwtPayload(token = "") {
   const parts = String(token).split(".");
-  if (parts.length < 2) return 0;
+  if (parts.length < 2) return null;
   try {
-    const payload = JSON.parse(Buffer.from(parts[1].replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8"));
-    const exp = Number(payload?.exp ?? 0);
-    return Number.isFinite(exp) ? exp * 1000 : 0;
+    return JSON.parse(Buffer.from(parts[1].replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8"));
   } catch {
-    return 0;
+    return null;
   }
+}
+
+export function getJwtExpiresAt(token = "") {
+  const exp = Number(getJwtPayload(token)?.exp ?? 0);
+  return Number.isFinite(exp) ? exp * 1000 : 0;
 }
 
 export function getTokenCacheKey(token = "") {
@@ -143,6 +146,7 @@ export async function getAuthenticatedContext(request, options = {}) {
   }
 
   const authUserId = authUser.id;
+  const accessTokenClaims = getJwtPayload(token) ?? {};
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select(profileSelect)
@@ -156,6 +160,7 @@ export async function getAuthenticatedContext(request, options = {}) {
         supabase,
         authUser,
         authUserId,
+        accessTokenClaims,
         profileId: null,
         isProfileMissing: true,
       };
@@ -171,6 +176,7 @@ export async function getAuthenticatedContext(request, options = {}) {
     supabase,
     authUser,
     authUserId,
+    accessTokenClaims,
     profileId: profile.id,
     profile,
   };
