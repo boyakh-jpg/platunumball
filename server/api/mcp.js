@@ -20,6 +20,7 @@ import {
   MCP_RECEIPT_WIDGET_MIME_TYPE,
   MCP_RECEIPT_WIDGET_URI,
 } from "./mcpReceiptWidget.js";
+import { inspectReceiptPng } from "./mcpReceiptImage.js";
 import { fetchPublicMatchingRoom, searchPublicMatchingRooms } from "../lib/publicMatchingRooms.js";
 
 const receiptEmblemSchema = z.object({
@@ -71,6 +72,31 @@ const receiptInputSchema = z.object({
   debugBase64: z.boolean().default(false)
     .describe("개발 확인용. true이면 생성된 PNG의 base64 문자열을 structuredContent에도 포함한다."),
 }).strict();
+
+const receiptIssueSchema = z.object({
+  field: z.string(),
+  code: z.string(),
+  message: z.string().optional(),
+}).passthrough();
+
+const receiptOutputSchema = z.discriminatedUnion("status", [
+  z.object({
+    status: z.literal("rendered"),
+    mimeType: z.literal("image/png"),
+    preset: z.enum(["story", "feed"]),
+    style: z.enum(["thermal", "score"]),
+    byteLength: z.number().int().positive(),
+    width: z.number().int().positive(),
+    height: z.number().int().positive(),
+    sha256: z.string().regex(/^[0-9a-f]{64}$/u),
+    imageAttached: z.literal(true),
+    base64: z.string().optional(),
+  }).strict(),
+  z.object({
+    status: z.literal("error"),
+    issues: z.array(receiptIssueSchema),
+  }).strict(),
+]);
 
 const MCP_OAUTH_SCOPES = ["profile"];
 const PUBLIC_SECURITY_SCHEMES = [{ type: "noauth" }];
@@ -242,8 +268,9 @@ export function createBoxtierMcpHandler({
       "create_basketball_receipt",
       {
         title: "BoxTier 농구 영수증 PNG 만들기",
-        description: "박스티어(BoxTier) 스타일의 농구 경기 영수증 PNG를 만든다. 사용자가 ‘박스티어로 영수증 만들어줘’, 농구 감열지 영수증, basketball game receipt, score receipt를 요청했고 팀명·최종 점수·경기 날짜·장소·경기 형식을 모두 실제 값으로 제공했을 때만 사용한다. 사용자가 엠블럼 이미지를 첨부하면 홈·원정에 맞춰 homeEmblemFile·awayEmblemFile로 전달한다. 서버가 임시 파일을 메모리에서만 읽어 비율 유지·중앙 정렬·스타일 변환하며 저장하지 않는다. 경기사진은 지원하지 않으므로 boxtier.kr 영수증 페이지 이용을 안내한다. 누락값을 추측하지 말고 먼저 사용자에게 물어본다. 농구 외 경기, 허위 경기 기록, 상거래 영수증에는 사용하지 않는다.",
+        description: "박스티어(BoxTier) 스타일의 농구 경기 영수증 PNG를 만든다. 성공 시 실제 PNG는 tool result의 content[0]에 type=image, mimeType=image/png, raw Base64 data로 첨부되므로 클라이언트는 이 image content를 표시하거나 파일로 받는다. structuredContent는 첨부 여부·바이트 길이·실제 크기·SHA-256 검증값을 제공하며 이미지 원문 위치가 아니다. 사용자가 ‘박스티어로 영수증 만들어줘’, 농구 감열지 영수증, basketball game receipt, score receipt를 요청했고 팀명·최종 점수·경기 날짜·장소·경기 형식을 모두 실제 값으로 제공했을 때만 사용한다. 사용자가 엠블럼 이미지를 첨부하면 홈·원정에 맞춰 homeEmblemFile·awayEmblemFile로 전달한다. 서버가 임시 파일을 메모리에서만 읽어 비율 유지·중앙 정렬·스타일 변환하며 저장하지 않는다. 경기사진은 지원하지 않으므로 boxtier.kr 영수증 페이지 이용을 안내한다. 누락값을 추측하지 말고 먼저 사용자에게 물어본다. 농구 외 경기, 허위 경기 기록, 상거래 영수증에는 사용하지 않는다.",
         inputSchema: receiptToolInputSchema,
+        outputSchema: receiptOutputSchema,
         annotations: {
           readOnlyHint: false,
           destructiveHint: false,
@@ -307,14 +334,16 @@ export function createBoxtierMcpHandler({
             emblems,
             preset,
           });
-          const pngBuffer = Buffer.isBuffer(png) ? png : Buffer.from(png);
+          const pngBuffer = png;
+          const inspected = inspectReceiptPng(pngBuffer);
           const imageData = pngBuffer.toString("base64");
           const metadata = {
             status: "rendered",
             mimeType: "image/png",
             preset,
             style,
-            byteLength: pngBuffer.length,
+            ...inspected,
+            imageAttached: true,
             ...(debugBase64 ? { base64: imageData } : {}),
           };
           return {

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import http from "node:http";
 import test from "node:test";
 import nodeMcpHandler from "../api/mcp.js";
@@ -9,7 +10,10 @@ import { downloadReceiptEmblem } from "../server/api/match-receipts/_emblemProce
 import { getMcpProtectedResourceMetadata } from "../server/api/oauthProtectedResource.js";
 import { getThermalReceiptLayout } from "../shared/lib/thermalReceipt.js";
 
-const TEST_PNG = Buffer.from("89504e470d0a1a0a", "hex");
+const TEST_PNG = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+  "base64",
+);
 const VALID_RECEIPT_ARGUMENTS = {
   homeTeam: "A팀",
   awayTeam: "B팀",
@@ -146,6 +150,14 @@ test("MCP가 자동 선택용 영수증 도구를 공개한다", async () => {
     description: "개발 확인용. true이면 생성된 PNG의 base64 문자열을 structuredContent에도 포함한다.",
   });
   assert.equal(tool.inputSchema.required.includes("debugBase64"), false);
+  assert.ok(tool.outputSchema);
+  const renderedOutput = tool.outputSchema.oneOf.find((schema) => schema.properties?.status?.const === "rendered");
+  assert.ok(renderedOutput);
+  for (const field of ["status", "mimeType", "preset", "style", "byteLength", "width", "height", "sha256", "imageAttached"]) {
+    assert.equal(renderedOutput.required.includes(field), true);
+  }
+  assert.equal(renderedOutput.properties.base64.type, "string");
+  assert.equal(renderedOutput.required.includes("base64"), false);
   assert.equal(tool.inputSchema.properties.homeEmblem.additionalProperties, false);
   for (const field of ["homeEmblemFile", "awayEmblemFile"]) {
     assert.ok(tool.inputSchema.properties[field]);
@@ -290,6 +302,10 @@ test("MCP 호출은 유효 입력의 일일 한도를 소비하고 PNG를 직접
     preset: "story",
     style: "thermal",
     byteLength: TEST_PNG.length,
+    width: 1,
+    height: 1,
+    sha256: createHash("sha256").update(TEST_PNG).digest("hex"),
+    imageAttached: true,
   });
   assert.equal("base64" in called.result.structuredContent, false);
   assert.equal(renderCall.preset, "story");
@@ -326,15 +342,42 @@ test("MCP 디버그 모드는 실제 PNG raw Base64와 복원 가능한 바이�
   assert.equal(image.type, "image");
   assert.equal(image.mimeType, "image/png");
   assert.ok(metadata.byteLength > 0);
+  assert.equal(metadata.width > 0, true);
+  assert.equal(metadata.height > 0, true);
+  assert.equal(metadata.imageAttached, true);
   assert.equal(metadata.base64, image.data);
   assert.equal(called.result.structuredContent.base64, image.data);
   assert.match(image.data, /^iVBORw0KG/u);
   assert.doesNotMatch(image.data, /^data:/u);
   const restored = Buffer.from(image.data, "base64");
   assert.equal(restored.length, metadata.byteLength);
+  assert.equal(createHash("sha256").update(restored).digest("hex"), metadata.sha256);
   assert.equal(restored.subarray(0, 8).toString("hex"), "89504e470d0a1a0a");
   await handler.close();
 });
+
+for (const [label, rendered] of [
+  ["빈 Buffer", Buffer.alloc(0)],
+  ["PNG가 아닌 Buffer", Buffer.from("not-a-png")],
+  ["잘린 PNG", TEST_PNG.subarray(0, TEST_PNG.length - 8)],
+  ["Buffer가 아닌 PNG 바이트", new Uint8Array(TEST_PNG)],
+]) {
+  test(`MCP는 ${label}를 성공으로 반환하지 않는다`, async () => {
+    const handler = createBoxtierMcpHandler({
+      consumeGenerationQuota: async () => true,
+      renderPng: async () => rendered,
+    });
+    const called = await rpc(handler, "tools/call", {
+      name: "create_basketball_receipt",
+      arguments: VALID_RECEIPT_ARGUMENTS,
+    }, 41);
+
+    assert.equal(called.result.isError, true);
+    assert.equal(called.result.structuredContent.status, "error");
+    assert.match(called.result.content[0].text, /PNG 생성에 실패/);
+    await handler.close();
+  });
+}
 
 test("MCP 호출은 누락 입력을 구조화해 반환하고 한도를 소비하지 않는다", async () => {
   let quotaCalls = 0;
@@ -626,9 +669,13 @@ test("MCP 실제 renderer가 중립 엠블럼과 선택 영역 팔레트를 적�
   const metadata = await sharp(png).metadata();
   assert.equal(metadata.width, layout.paper.width);
   assert.equal(metadata.height, layout.paper.height);
+  assert.equal(called.result.structuredContent.width, metadata.width);
+  assert.equal(called.result.structuredContent.height, metadata.height);
+  assert.equal(called.result.structuredContent.byteLength, png.length);
+  assert.equal(called.result.structuredContent.sha256, createHash("sha256").update(png).digest("hex"));
   const { data: pixels, info } = await sharp(png).removeAlpha().raw().toBuffer({ resolveWithObject: true });
   assert.equal(info.channels, 3);
-  const emblemLevels = new Set([64, 120, 176, 240]);
+  const emblemLevels = new Set([24, 88, 152, 224]);
   const bodyLevels = new Set();
   const emblemY = layout.teams.y + 82 - layout.paper.y;
   const emblemCenters = [
@@ -647,8 +694,8 @@ test("MCP 실제 renderer가 중립 엠블럼과 선택 영역 팔레트를 적�
     assert.equal(pixels[index], pixels[index + 2]);
     if (emblemIndex >= 0) {
       assert.equal(emblemLevels.has(pixels[index]), true);
-      if (pixels[index] < 240) emblemCounts[emblemIndex].dark += 1;
-      if (pixels[index] === 240) emblemCounts[emblemIndex].light += 1;
+      if (pixels[index] < 224) emblemCounts[emblemIndex].dark += 1;
+      if (pixels[index] === 224) emblemCounts[emblemIndex].light += 1;
     } else {
       bodyLevels.add(pixels[index]);
     }
@@ -658,5 +705,33 @@ test("MCP 실제 renderer가 중립 엠블럼과 선택 영역 팔레트를 적�
     assert.ok(counts.light > 0, "중립 엠블럼이 검은 원으로 뭉개지면 안 된다");
   }
   assert.ok(bodyLevels.size > 16, "종이와 본문의 연속 회색 농도가 보존되어야 한다");
+  await handler.close();
+});
+
+test("MCP 실제 renderer가 Feed PNG 원본과 검증 메타데이터를 함께 반환한다", async () => {
+  const { default: sharp } = await import("sharp");
+  const handler = createBoxtierMcpHandler({ consumeGenerationQuota: async () => true });
+  const called = await rpc(handler, "tools/call", {
+    name: "create_basketball_receipt",
+    arguments: {
+      ...VALID_RECEIPT_ARGUMENTS,
+      preset: "feed",
+    },
+  }, 7);
+
+  assert.equal(called.result.isError, undefined, JSON.stringify(called.result));
+  assert.equal(called.result.content.length, 1);
+  assert.equal(called.result.content[0].type, "image");
+  assert.equal(called.result.content[0].mimeType, "image/png");
+  const png = Buffer.from(called.result.content[0].data, "base64");
+  const metadata = await sharp(png).metadata();
+  assert.equal(metadata.width, 1080);
+  assert.equal(metadata.height, 1350);
+  assert.equal(called.result.structuredContent.preset, "feed");
+  assert.equal(called.result.structuredContent.width, metadata.width);
+  assert.equal(called.result.structuredContent.height, metadata.height);
+  assert.equal(called.result.structuredContent.byteLength, png.length);
+  assert.equal(called.result.structuredContent.sha256, createHash("sha256").update(png).digest("hex"));
+  assert.equal(called.result.structuredContent.imageAttached, true);
   await handler.close();
 });
