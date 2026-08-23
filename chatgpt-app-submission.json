@@ -1,13 +1,37 @@
 {
-  "$schema": "https://developers.openai.com/apps-sdk/schemas/chatgpt-app-submission.v1.json",
+  "$schema": "https://developers.openai.com/plugins/schemas/chatgpt-app-submission.v1.json",
   "schema_version": 1,
   "app_info": {
-    "display_name": "BoxTier Basketball Receipt",
-    "subtitle": "농구 경기 영수증 PNG 만들기",
-    "description": "BoxTier Basketball Receipt는 사용자가 제공한 실제 농구 경기 결과를 감열지 영수증 또는 스코어 포스터 스타일의 PNG로 만듭니다. 팀명, 최종 점수, 경기 날짜, 장소, 경기 형식을 받아 Story 또는 Feed 비율로 렌더링하며, 선택적으로 경기 시각, 대회명, 문구, 쿼터·하프·연장 점수를 포함할 수 있습니다. 결과 이미지는 요청 시 메모리에서 생성되고 저장되지 않습니다.",
+    "display_name": "BoxTier",
+    "subtitle": "농구 매칭방 검색과 경기 영수증",
+    "description": "BoxTier는 현재 공개 모집 중인 실제 농구 매칭방을 지역, 날짜, 시간, 경기 방식 등의 조건으로 검색하고 참가 링크를 안내합니다. 사용자가 제공한 실제 농구 경기 결과는 감열지 영수증 또는 스코어 포스터 스타일의 PNG로 만들 수 있습니다. 비공개·종료 방은 검색하지 않으며 결과 이미지는 요청 시 메모리에서 생성되고 저장되지 않습니다.",
     "category": "LIFESTYLE"
   },
   "tools": {
+    "search": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "BoxTier의 현재 공개 모집방을 읽어 검색 결과만 반환하며 사용자 데이터나 방 상태를 수정하지 않습니다.",
+        "open_world_justification": "BoxTier 운영 데이터베이스의 최신 공개 모집 상태를 조회합니다.",
+        "destructive_justification": "방 생성·참가·수정·삭제 또는 권한 변경을 수행하지 않습니다."
+      }
+    },
+    "fetch": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "검색 결과 방의 현재 공개 상세 조건만 반환하며 외부 상태를 수정하지 않습니다.",
+        "open_world_justification": "추천 전에 BoxTier 운영 데이터베이스에서 해당 방이 여전히 공개 모집 중인지 다시 확인합니다.",
+        "destructive_justification": "방 참가·수정·삭제 또는 권한 변경을 수행하지 않습니다."
+      }
+    },
     "create_basketball_receipt": {
       "annotations": {
         "readOnlyHint": true,
@@ -22,6 +46,22 @@
     }
   },
   "test_cases": [
+    {
+      "description": "지역·날짜·경기 방식에 맞는 실제 공개 매칭방을 검색한다.",
+      "user_prompt": "오늘 성수에서 참가할 수 있는 3대3 농구 매칭방 찾아줘.",
+      "file_attachment_urls": null,
+      "tools_triggered": "search, fetch",
+      "expected_output": "현재 공개 모집 중이며 오늘 성수 3v3 조건에 맞는 방만 확인해 제목, 핵심 조건, BoxTier 참가 링크를 안내합니다.",
+      "expected_output_url": null
+    },
+    {
+      "description": "팀 단위로 참가할 상대 팀 모집방을 검색한다.",
+      "user_prompt": "내일 잠실에서 5대5로 붙을 상대 팀 모집방을 박스티어에서 찾아줘.",
+      "file_attachment_urls": null,
+      "tools_triggered": "search, fetch",
+      "expected_output": "현재 공개 모집 중인 내일 잠실 5v5 팀 단위 방을 확인해 참가 링크와 함께 안내합니다.",
+      "expected_output_url": null
+    },
     {
       "description": "필수 경기 정보로 감열지 스타일 Story 영수증을 생성한다.",
       "user_prompt": "박스티어 감열지 농구 영수증 만들어줘. 홈팀 서울 후퍼스, 원정팀 부산 웨이브, 최종 점수 81대77, 날짜 2026-08-21, 장소 리버 코트, 5대5 경기야.",
@@ -64,6 +104,22 @@
     }
   ],
   "negative_test_cases": [
+    {
+      "description": "일반 농구 지식 질문에는 매칭방 검색을 호출하지 않는다.",
+      "user_prompt": "3대3 농구와 5대5 농구의 규칙 차이를 알려줘.",
+      "file_attachment_urls": null,
+      "tools_triggered": null,
+      "expected_output": "일반 지식으로 답하고 BoxTier 매칭방 검색 도구를 호출하지 않습니다.",
+      "expected_output_url": null
+    },
+    {
+      "description": "농구와 무관한 추천에는 매칭방 검색을 호출하지 않는다.",
+      "user_prompt": "서울에서 척추 질환 진료를 받을 병원을 추천해줘.",
+      "file_attachment_urls": null,
+      "tools_triggered": null,
+      "expected_output": "BoxTier 도구를 호출하거나 특정 인물·서비스를 홍보하지 않습니다.",
+      "expected_output_url": null
+    },
     {
       "description": "필수 장소가 빠진 요청에는 도구를 호출하지 않고 확인 질문을 한다.",
       "user_prompt": "박스티어 농구 영수증 만들어줘. A팀 70, B팀 65, 2026-08-23, 5v5야.",

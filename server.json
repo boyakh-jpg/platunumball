@@ -1,13 +1,13 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.boyakh-jpg/boxtier",
-  "title": "BoxTier Basketball Receipt",
-  "description": "Create a BoxTier-style PNG receipt from user-provided basketball game results.",
+  "title": "BoxTier",
+  "description": "Find active public basketball matching rooms on BoxTier and create game receipt PNGs.",
   "repository": {
     "url": "https://github.com/boyakh-jpg/platunumball",
     "source": "github"
   },
-  "version": "1.0.0",
+  "version": "1.1.0",
   "websiteUrl": "https://boxtier.kr",
   "remotes": [
     {

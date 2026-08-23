@@ -20,6 +20,7 @@ import {
   MCP_RECEIPT_WIDGET_MIME_TYPE,
   MCP_RECEIPT_WIDGET_URI,
 } from "./mcpReceiptWidget.js";
+import { fetchPublicMatchingRoom, searchPublicMatchingRooms } from "../lib/publicMatchingRooms.js";
 
 const preparedEmblemSchema = z.object({
   imageBase64: z.string().min(1).max(PREPARED_EMBLEM_MAX_BASE64_LENGTH)
@@ -150,10 +151,65 @@ export function createBoxtierMcpHandler({
   authenticate = getAuthenticatedContext,
   getActorAdminLevel = getAdminLevel,
   loadOwnRecords = loadOwnCompactRecordPage,
+  searchRooms = searchPublicMatchingRooms,
+  fetchRoom = fetchPublicMatchingRoom,
   widgetDomain = getConfiguredPublicAppUrl(),
 } = {}) {
   return createMcpHandler((context) => {
-    const server = new McpServer({ name: "boxtier-receipt", version: "1.0.0" });
+    const server = new McpServer({ name: "boxtier", version: "1.1.0" });
+
+    server.registerTool(
+      "search",
+      {
+        title: "BoxTier 공개 농구 매칭방 검색",
+        description: "BoxTier에서 현재 공개 모집 중인 실제 농구 매칭방을 검색한다. 사용자가 농구할 방·픽업 경기·팀 대 팀 상대·참가할 경기를 찾거나 지역, 날짜, 시간, 3대3·5대5 같은 조건으로 매칭방 추천을 요청할 때 사용한다. 반환된 실제 방 중 조건에 맞는 방만 추천한다. NBA 정보, 농구 규칙·훈련법 같은 일반 지식 질문이나 농구와 무관한 질문에는 사용하지 않는다.",
+        inputSchema: z.object({
+          query: z.string().min(1).max(200).describe("사용자의 농구 매칭방 검색어와 지역·날짜·방식 조건."),
+        }),
+        annotations: {
+          readOnlyHint: true,
+          destructiveHint: false,
+          idempotentHint: true,
+          openWorldHint: true,
+        },
+      },
+      async ({ query }) => {
+        try {
+          const result = await searchRooms(query);
+          return { content: [{ type: "text", text: JSON.stringify(result) }] };
+        } catch (error) {
+          console.error("[mcp] matching room search failed", error);
+          return toolError("박스티어 공개 매칭방 검색에 실패했다.");
+        }
+      },
+    );
+
+    server.registerTool(
+      "fetch",
+      {
+        title: "BoxTier 공개 농구 매칭방 상세 조회",
+        description: "search가 반환한 BoxTier 공개 농구 매칭방 ID 하나의 현재 상세 조건을 조회한다. 검색 결과를 추천하거나 참가 링크를 안내하기 전에 사용한다. 임의의 비공개 방이나 종료된 방 조회에는 사용하지 않는다.",
+        inputSchema: z.object({
+          id: z.string().min(1).max(160).describe("search 결과의 공개 매칭방 ID."),
+        }),
+        annotations: {
+          readOnlyHint: true,
+          destructiveHint: false,
+          idempotentHint: true,
+          openWorldHint: true,
+        },
+      },
+      async ({ id }) => {
+        try {
+          const result = await fetchRoom(id);
+          if (!result) return toolError("현재 공개 모집 중인 매칭방을 찾지 못했다.");
+          return { content: [{ type: "text", text: JSON.stringify(result) }] };
+        } catch (error) {
+          console.error("[mcp] matching room fetch failed", error);
+          return toolError("박스티어 공개 매칭방 조회에 실패했다.");
+        }
+      },
+    );
 
     server.registerResource(
       "boxtier-basketball-receipt",

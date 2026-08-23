@@ -121,7 +121,7 @@ test("MCP가 자동 선택용 영수증 도구를 공개한다", async () => {
     capabilities: {},
     clientInfo: { name: "boxtier-test", version: "1.0.0" },
   }, 1);
-  assert.equal(initialized.result.serverInfo.name, "boxtier-receipt");
+  assert.equal(initialized.result.serverInfo.name, "boxtier");
 
   const listed = await rpc(handler, "tools/list", {}, 2);
   const tool = listed.result.tools.find((candidate) => candidate.name === "create_basketball_receipt");
