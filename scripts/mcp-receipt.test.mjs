@@ -148,10 +148,9 @@ test("MCP가 자동 선택용 영수증 도구를 공개한다", async () => {
     "awayScore", "awayTeam", "format", "homeScore", "homeTeam", "playedOn", "venue",
   ].sort());
 
-  const recordTool = listed.result.tools.find((candidate) => candidate.name === "list_my_match_records");
-  assert.ok(recordTool);
-  assert.equal(recordTool.annotations.readOnlyHint, true);
-  assert.deepEqual(recordTool._meta.securitySchemes, [{ type: "oauth2", scopes: ["profile"] }]);
+  assert.deepEqual(listed.result.tools.map((candidate) => candidate.name).sort(), [
+    "create_basketball_receipt", "fetch", "search",
+  ]);
 
   const resource = await rpc(handler, "resources/read", { uri: MCP_RECEIPT_WIDGET_URI }, 21);
   assert.equal(resource.result.contents[0].mimeType, "text/html;profile=mcp-app");
@@ -209,86 +208,6 @@ test("일반 로그인 사용자는 기존 영수증 일일 한도를 사용한�
 
   assert.equal(called.result.isError, undefined, JSON.stringify(called.result));
   assert.equal(quotaCalls, 1);
-  await handler.close();
-});
-
-test("내 경기 기록은 로그인 profile 범위만 조회한다", async () => {
-  const fakeClient = {};
-  let loadCall = null;
-  const handler = createBoxtierMcpHandler({
-    authenticate: async () => ({
-      supabase: fakeClient,
-      profileId: "profile-1",
-      accessTokenClaims: { scope: "profile" },
-    }),
-    loadOwnRecords: async (client, profileId, options) => {
-      loadCall = { client, profileId, options };
-      return { records: [{ matchId: "match-1" }], limit: 5, offset: 0, nextOffset: null };
-    },
-  });
-  const called = await rpc(handler, "tools/call", {
-    name: "list_my_match_records",
-    arguments: { limit: 5, offset: 0 },
-  }, 24, { authorization: "Bearer regular-access-token-1234" });
-
-  assert.deepEqual(loadCall, {
-    client: fakeClient,
-    profileId: "profile-1",
-    options: { limit: 5, offset: 0 },
-  });
-  assert.deepEqual(called.result.structuredContent, {
-    status: "loaded",
-    records: [{ matchId: "match-1" }],
-    limit: 5,
-    offset: 0,
-    nextOffset: null,
-  });
-  await handler.close();
-});
-
-test("내 경기 기록은 검증된 OAuth profile scope가 없으면 거부한다", async () => {
-  let loaded = false;
-  const handler = createBoxtierMcpHandler({
-    authenticate: async () => ({
-      supabase: {},
-      profileId: "profile-1",
-      accessTokenClaims: { scope: "openid" },
-    }),
-    loadOwnRecords: async () => {
-      loaded = true;
-      return { records: [], limit: 10, offset: 0, nextOffset: null };
-    },
-    widgetDomain: "https://boxtier.kr",
-  });
-  const called = await rpc(handler, "tools/call", {
-    name: "list_my_match_records",
-    arguments: {},
-  }, 241, { authorization: "Bearer wrong-scope-access-token-1234" });
-
-  assert.equal(called.result.isError, true);
-  assert.equal(loaded, false);
-  assert.match(called.result._meta["mcp/www_authenticate"][0], /error="insufficient_scope"/u);
-  assert.match(called.result._meta["mcp/www_authenticate"][0], /scope="profile"/u);
-  await handler.close();
-});
-
-test("내 경기 기록 비로그인 호출은 OAuth challenge를 반환한다", async () => {
-  const handler = createBoxtierMcpHandler({
-    authenticate: async () => {
-      const error = new Error("missing_bearer_token");
-      error.statusCode = 401;
-      throw error;
-    },
-    widgetDomain: "https://boxtier.kr",
-  });
-  const called = await rpc(handler, "tools/call", {
-    name: "list_my_match_records",
-    arguments: {},
-  }, 25);
-
-  assert.equal(called.result.isError, true);
-  assert.match(called.result._meta["mcp/www_authenticate"][0], /scope="profile"/u);
-  assert.match(called.result._meta["mcp/www_authenticate"][0], /oauth-protected-resource/u);
   await handler.close();
 });
 
