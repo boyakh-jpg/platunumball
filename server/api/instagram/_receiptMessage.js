@@ -27,6 +27,7 @@ const NATURE_MAP = Object.freeze({
 const LOCALE_MAP = Object.freeze({ "한국어": MATCH_RECEIPT_LOCALES.ko, ko: MATCH_RECEIPT_LOCALES.ko, "영어": MATCH_RECEIPT_LOCALES.en, en: MATCH_RECEIPT_LOCALES.en });
 
 export const INSTAGRAM_RECEIPT_USAGE = [
+  "명령: 연결 / 기록", "",
   "영수증", "홈팀: A팀", "원정팀: B팀", "점수: 80-72", "날짜: 2026-08-23",
   "장소: BOXTIER COURT", "방식: 5v5", "스타일: 감열", "비율: 스토리",
 ].join("\n");

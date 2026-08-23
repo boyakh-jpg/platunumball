@@ -44,6 +44,7 @@ export function getInstagramBotConfig(env = process.env) {
     globalHourlyLimit: requiredInteger(env.INSTAGRAM_BOT_GLOBAL_HOURLY_LIMIT, "instagram_global_limit_not_configured", 1, 100000),
     contentDedupeSeconds: requiredInteger(env.INSTAGRAM_BOT_CONTENT_DEDUPE_SECONDS, "instagram_content_dedupe_not_configured", 1, 86400),
     renderTtlSeconds: requiredInteger(env.INSTAGRAM_BOT_RENDER_TTL_SECONDS, "instagram_render_ttl_not_configured", 60, 86400),
+    linkTtlSeconds: requiredInteger(env.INSTAGRAM_BOT_LINK_TTL_SECONDS, "instagram_link_ttl_not_configured", 60, 3600),
   };
 }
 
@@ -74,6 +75,40 @@ function keyedHash(value, secret) {
   return createHmac("sha256", secret).update(String(value)).digest("hex");
 }
 
+function getCommand(value = "") {
+  const normalized = normalizeInstagramMessage(value);
+  return normalized === "연결" || normalized === "기록" ? normalized : "";
+}
+
+export function createInstagramReceiptSummary(input, preset) {
+  return {
+    homeTeam: input.homeTeam,
+    awayTeam: input.awayTeam,
+    homeScore: input.homeScore,
+    awayScore: input.awayScore,
+    playedOn: input.playedOn,
+    venue: input.venue,
+    format: input.format,
+    style: input.style,
+    preset,
+  };
+}
+
+function formatHistoryMessage(rows = []) {
+  if (!rows.length) return "저장된 영수증 기록이 없습니다.";
+  return ["최근 영수증 기록", ...rows.map((row, index) => {
+    const summary = row.receipt_summary ?? {};
+    return `${index + 1}. ${summary.playedOn ?? "-"} ${summary.homeTeam ?? "-"} ${summary.homeScore ?? "-"}-${summary.awayScore ?? "-"} ${summary.awayTeam ?? "-"}`;
+  })].join("\n");
+}
+
+async function loadLinkedProfileId(supabase, senderHash) {
+  const { data, error } = await supabase.from("instagram_receipt_bot_accounts")
+    .select("profile_id").eq("sender_hash", senderHash).maybeSingle();
+  if (error) throw error;
+  return data?.profile_id ?? null;
+}
+
 function getEvents(payload = {}) {
   if (payload.object !== "instagram") return [];
   return (payload.entry ?? []).flatMap((entry) => entry.messaging ?? []).filter((event) => (
@@ -93,9 +128,14 @@ export async function sendInstagramMessage(recipientId, message, config, fetchIm
 async function processEvent(event, { config, supabase, sendMessage }) {
   const eventHash = keyedHash(event.message.mid, config.hashSecret);
   const senderHash = keyedHash(event.sender.id, config.hashSecret);
-  const contentHash = keyedHash(normalizeInstagramMessage(event.message.text), config.hashSecret);
-  const { data: decision, error: claimError } = await supabase.rpc("claim_instagram_receipt_bot_request", {
-    p_event_hash: eventHash, p_sender_hash: senderHash, p_content_hash: contentHash,
+  const normalizedMessage = normalizeInstagramMessage(event.message.text);
+  const contentHash = keyedHash(normalizedMessage, config.hashSecret);
+  const command = getCommand(event.message.text);
+  const profileId = await loadLinkedProfileId(supabase, senderHash);
+  const principalHash = profileId ? keyedHash(`profile:${profileId}`, config.hashSecret) : senderHash;
+  const { data: decision, error: claimError } = await supabase.rpc("claim_instagram_receipt_bot_request_v2", {
+    p_event_hash: eventHash, p_sender_hash: senderHash, p_principal_hash: principalHash,
+    p_profile_id: profileId, p_content_hash: contentHash, p_request_kind: command ? "command" : "receipt",
     p_cooldown_seconds: config.cooldownSeconds, p_hour_limit: config.hourlyLimit,
     p_day_limit: config.dailyLimit, p_global_hour_limit: config.globalHourlyLimit,
     p_content_dedupe_seconds: config.contentDedupeSeconds,
@@ -105,6 +145,33 @@ async function processEvent(event, { config, supabase, sendMessage }) {
 
   let outcome = "failed";
   try {
+    if (command === "연결") {
+      const code = randomBytes(32).toString("base64url");
+      const expiresAt = new Date(Date.now() + config.linkTtlSeconds * 1000).toISOString();
+      const { error: linkError } = await supabase.from("instagram_receipt_bot_link_codes").insert({
+        code_hash: keyedHash(code, config.hashSecret), sender_hash: senderHash, expires_at: expiresAt,
+      });
+      if (linkError) throw linkError;
+      const linkUrl = new URL("/instagram/connect", config.publicBaseUrl);
+      linkUrl.searchParams.set("code", code);
+      await sendMessage(event.sender.id, { text: `BoxTier에 로그인해 계정을 연결하세요.\n${linkUrl.toString()}\n링크는 잠시 후 만료됩니다.` });
+      outcome = "link_sent";
+      return;
+    }
+    if (command === "기록") {
+      if (!profileId) {
+        await sendMessage(event.sender.id, { text: "먼저 '연결'을 보내 BoxTier 계정을 연결하세요." });
+        outcome = "link_required";
+        return;
+      }
+      const { data: history, error: historyError } = await supabase.from("instagram_receipt_bot_history")
+        .select("receipt_summary, created_at").eq("profile_id", profileId)
+        .order("created_at", { ascending: false }).limit(5);
+      if (historyError) throw historyError;
+      await sendMessage(event.sender.id, { text: formatHistoryMessage(history) });
+      outcome = "history_sent";
+      return;
+    }
     const parsed = parseInstagramReceiptMessage(event.message.text);
     if (parsed.issues.length) {
       await sendMessage(event.sender.id, { text: `형식이 맞지 않습니다.\n\n${INSTAGRAM_RECEIPT_USAGE}` });
@@ -120,6 +187,13 @@ async function processEvent(event, { config, supabase, sendMessage }) {
     const imageUrl = new URL("/api/instagram/receipt-image", config.publicBaseUrl);
     imageUrl.searchParams.set("id", publicId);
     await sendMessage(event.sender.id, { attachment: { type: "image", payload: { url: imageUrl.toString(), is_reusable: false } } });
+    const { error: historyError } = await supabase.from("instagram_receipt_bot_history").insert({
+      event_hash: eventHash,
+      sender_hash: senderHash,
+      profile_id: profileId,
+      receipt_summary: createInstagramReceiptSummary(parsed.input, parsed.preset),
+    });
+    if (historyError) throw historyError;
     outcome = "image_sent";
   } finally {
     await supabase.from("instagram_receipt_bot_requests").update({ outcome, completed_at: new Date().toISOString() }).eq("event_hash", eventHash);

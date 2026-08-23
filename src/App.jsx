@@ -23,6 +23,7 @@ const CourtDetail = lazy(() => import("./pages/CourtDetail.jsx"));
 const DataSources = lazy(() => import("./pages/DataSources.jsx"));
 const GettingStarted = lazy(() => import("./pages/GettingStarted.jsx"));
 const Home = lazy(() => import("./pages/Home.jsx"));
+const InstagramConnect = lazy(() => import("./pages/InstagramConnect.jsx"));
 const Landing = lazy(() => import("./pages/Landing.jsx"));
 const Login = lazy(() => import("./pages/Login.jsx"));
 const Matches = lazy(() => import("./pages/Matches.jsx"));
@@ -239,6 +240,7 @@ export default function App() {
           <Route path="/" element={<Landing auth={auth} />} />
           <Route path="/start" element={<Landing auth={auth} />} />
           <Route path="/login" element={<Login auth={auth} app={app} />} />
+          <Route path="/instagram/connect" element={<InstagramConnect auth={auth} />} />
           <Route path="/oauth/consent" element={<OAuthConsent auth={auth} />} />
           <Route path="/data-sources" element={<DataSources />} />
           <Route path="/privacy" element={<Privacy />} />

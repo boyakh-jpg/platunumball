@@ -25,6 +25,7 @@ import directoryLoad from "../server/api/directory/load.js";
 import discordDmWorker from "../server/api/discord/dm-worker.js";
 import discordInteractions from "../server/api/discord/interactions.js";
 import instagramReceiptImage from "../server/api/instagram/receipt-image.js";
+import instagramAccount from "../server/api/instagram/account.js";
 import instagramWebhook from "../server/api/instagram/webhook.js";
 import discordRoomChat from "../server/api/discord/room-chat.js";
 import discordSyncDeliveries from "../server/api/discord/sync-deliveries.js";
@@ -109,6 +110,7 @@ export const API_ROUTES = new Map([
   ["/directory/load", route(directoryLoad, ["POST"], "publicRead")],
   ["/discord/dm-worker", route(discordDmWorker, ["GET", "POST"], "internal")],
   ["/discord/interactions", route(discordInteractions, ["POST"], "signedWebhook")],
+  ["/instagram/account", route(instagramAccount, ["POST"], "user")],
   ["/instagram/receipt-image", route(instagramReceiptImage, ["GET"], "publicRead")],
   ["/instagram/webhook", route(instagramWebhook, ["GET", "POST"], "signedWebhook", {
     allowedSensitiveQueryKeysByMethod: Object.freeze({ GET: Object.freeze(["hub.verify_token"]) }),

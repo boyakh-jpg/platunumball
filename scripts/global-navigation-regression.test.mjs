@@ -77,6 +77,19 @@ test("MCP OAuth 동의 복귀는 authorization_id 하나만 허용한다", () =>
   assert.equal(loginUrl.searchParams.get("backTo"), consentPath);
 });
 
+test("Instagram 연결 복귀는 256비트 capability code 하나만 허용한다", () => {
+  const code = "a".repeat(43);
+  const connectPath = `/instagram/connect?code=${code}`;
+  assert.equal(getSafeAppRedirect(connectPath), connectPath);
+  assert.equal(getSafeAppRedirect(`${connectPath}&extra=1`), "/app");
+  assert.equal(getSafeAppRedirect(`${connectPath}#fragment`), "/app");
+  assert.equal(getSafeAppRedirect("/instagram/connect?code=short"), "/app");
+
+  const loginUrl = new URL(getLoginPath(connectPath, connectPath), "https://boxtier.local");
+  assert.equal(loginUrl.searchParams.get("redirect"), connectPath);
+  assert.equal(loginUrl.searchParams.get("backTo"), connectPath);
+});
+
 test("전역 인증·알림·fallback 경로는 canonical 진입점만 노출한다", async () => {
   const [
     authSession,

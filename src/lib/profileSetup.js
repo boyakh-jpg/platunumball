@@ -91,6 +91,12 @@ export function getSafeAppRedirect(value, fallback = "/app") {
         return `/oauth/consent?authorization_id=${encodeURIComponent(authorizationId)}`;
       }
     }
+    if (url.pathname === "/instagram/connect" && !url.hash && url.searchParams.size === 1) {
+      const code = String(url.searchParams.get("code") ?? "").trim();
+      if (/^[A-Za-z0-9_-]{43}$/u.test(code)) {
+        return `/instagram/connect?code=${encodeURIComponent(code)}`;
+      }
+    }
     const redirectPath = `${url.pathname}${url.search}${url.hash}`;
     if (!redirectPath.startsWith("/app")) return safeFallback;
     if (redirectPath === "/app/signup" || redirectPath.startsWith("/app/signup?") || redirectPath.startsWith("/app/signup#")) {
