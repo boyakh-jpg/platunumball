@@ -59,10 +59,7 @@ const receiptInputSchema = z.object({
 }).strict();
 
 const MCP_OAUTH_SCOPES = ["profile"];
-const OPTIONAL_SECURITY_SCHEMES = [
-  { type: "noauth" },
-  { type: "oauth2", scopes: MCP_OAUTH_SCOPES },
-];
+const PUBLIC_SECURITY_SCHEMES = [{ type: "noauth" }];
 const OWNER_ADMIN_LEVEL = 100;
 
 // Keep required fields visible in tools/list, but let the handler return a
@@ -239,7 +236,7 @@ export function createBoxtierMcpHandler({
           openWorldHint: false,
         },
         _meta: {
-          securitySchemes: OPTIONAL_SECURITY_SCHEMES,
+          securitySchemes: PUBLIC_SECURITY_SCHEMES,
           ui: { resourceUri: MCP_RECEIPT_WIDGET_URI },
           "openai/outputTemplate": MCP_RECEIPT_WIDGET_URI,
           "openai/toolInvocation/invoking": "농구 영수증 PNG 렌더링 중",

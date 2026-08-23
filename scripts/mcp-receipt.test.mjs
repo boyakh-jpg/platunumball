@@ -131,10 +131,7 @@ test("MCP가 자동 선택용 영수증 도구를 공개한다", async () => {
   assert.equal(tool.annotations.idempotentHint, false);
   assert.equal(tool._meta.ui.resourceUri, MCP_RECEIPT_WIDGET_URI);
   assert.equal(tool._meta["openai/outputTemplate"], MCP_RECEIPT_WIDGET_URI);
-  assert.deepEqual(tool._meta.securitySchemes, [
-    { type: "noauth" },
-    { type: "oauth2", scopes: ["profile"] },
-  ]);
+  assert.deepEqual(tool._meta.securitySchemes, [{ type: "noauth" }]);
   assert.ok(tool.inputSchema.properties.homeEmblem);
   assert.ok(tool.inputSchema.properties.awayEmblem);
   assert.deepEqual(tool.inputSchema.properties.debugBase64, {
