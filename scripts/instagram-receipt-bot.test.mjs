@@ -98,8 +98,9 @@ test("수락 이벤트만 임시 렌더 job과 이미지 답장을 만든다", a
   assert.equal(supabase.state.inserted.length, 2);
   assert.equal(supabase.state.inserted[0].table, "instagram_receipt_bot_render_jobs");
   assert.equal(supabase.state.inserted[1].table, "instagram_receipt_bot_history");
-  assert.equal(sent.length, 1);
-  assert.match(sent[0].message.attachment.payload.url, /^https:\/\/example\.com\/api\/instagram\/receipt-image\?id=/u);
+  assert.equal(sent.length, 2);
+  assert.equal(sent[0].message.text, "영수증 만드는 중입니다.");
+  assert.match(sent[1].message.attachment.payload.url, /^https:\/\/example\.com\/api\/instagram\/receipt-image\?id=/u);
   assert.equal(supabase.state.updated[0].value.outcome, "image_sent");
   const claim = supabase.state.rpc.find(({ name }) => name === "claim_instagram_receipt_bot_request_v2");
   assert.equal(claim.args.p_day_limit, 10);

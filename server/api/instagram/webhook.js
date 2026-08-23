@@ -3,6 +3,7 @@ import { setApiSecurityHeaders } from "../_requestSecurity.js";
 
 const BODY_MAX_BYTES = 1024 * 1024;
 const GRAPH_VERSION_PATTERN = /^v\d+\.\d+$/u;
+const INSTAGRAM_RECEIPT_PROCESSING_MESSAGE = "영수증 만드는 중입니다.";
 
 function sendWebhookJson(response, statusCode, payload) {
   setApiSecurityHeaders(response);
@@ -182,6 +183,7 @@ async function processEvent(event, { config, supabase, sendMessage, receiptMessa
       outcome = "help";
       return;
     }
+    await sendMessage(event.sender.id, { text: INSTAGRAM_RECEIPT_PROCESSING_MESSAGE });
     const publicId = randomBytes(32).toString("base64url");
     const expiresAt = new Date(Date.now() + config.renderTtlSeconds * 1000).toISOString();
     const { error: insertError } = await supabase.from("instagram_receipt_bot_render_jobs").insert({
