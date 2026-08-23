@@ -208,7 +208,10 @@ export async function handleInstagramWebhook(request, response, options = {}) {
       const mode = String(request.query?.["hub.mode"] ?? "");
       const token = String(request.query?.["hub.verify_token"] ?? "");
       const challenge = String(request.query?.["hub.challenge"] ?? "");
-      if (mode !== "subscribe" || !challenge || !secretEqual(token, config.verifyToken)) return sendJson(response, 403, { error: "instagram_webhook_verification_failed" });
+      const tokenMatched = secretEqual(token, config.verifyToken);
+      const verified = mode === "subscribe" && Boolean(challenge) && tokenMatched;
+      console.info("Instagram webhook verification.", { verified, modeIsSubscribe: mode === "subscribe", hasChallenge: Boolean(challenge), tokenMatched });
+      if (!verified) return sendJson(response, 403, { error: "instagram_webhook_verification_failed" });
       response.statusCode = 200;
       response.setHeader("Content-Type", "text/plain; charset=utf-8");
       return response.end(challenge);
