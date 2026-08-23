@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, Navigate, useLocation } from "react-router-dom";
+import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import BrandLockup from "../components/common/BrandLockup.jsx";
 import Button from "../components/common/Button.jsx";
 import { BRAND_NAME } from "../lib/brand.js";
@@ -15,6 +15,7 @@ function formatHistoryItem(row = {}) {
 
 export default function InstagramConnect({ auth }) {
   const location = useLocation();
+  const navigate = useNavigate();
   const code = useMemo(
     () => new URLSearchParams(location.search).get("code")?.trim() ?? "",
     [location.search],
@@ -31,11 +32,15 @@ export default function InstagramConnect({ auth }) {
     void postServerAction("/api/instagram/account", { action: "link", code })
       .then((nextResult) => setResult(nextResult))
       .catch((linkError) => {
+        if (linkError?.code === "profile_not_found") {
+          navigate(`/app/signup?redirect=${encodeURIComponent(connectPath)}`, { replace: true });
+          return;
+        }
         setError(linkError?.code === "instagram_link_expired"
           ? "연결 링크가 만료되었거나 이미 사용됐다. Instagram DM으로 '연결'을 다시 보내라."
           : "Instagram 계정을 연결하지 못했다.");
       });
-  }, [auth.loading, auth.session, code, validCode]);
+  }, [auth.loading, auth.session, code, connectPath, navigate, validCode]);
 
   if (!auth.loading && !auth.session && validCode) {
     return <Navigate to={getLoginPath(connectPath, connectPath)} replace />;

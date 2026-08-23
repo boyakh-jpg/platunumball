@@ -1,9 +1,17 @@
 import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import { waitUntil } from "@vercel/functions";
 import { setApiSecurityHeaders } from "../_requestSecurity.js";
 
 const BODY_MAX_BYTES = 1024 * 1024;
 const GRAPH_VERSION_PATTERN = /^v\d+\.\d+$/u;
 const INSTAGRAM_RECEIPT_PROCESSING_MESSAGE = "영수증 만드는 중입니다.";
+const INSTAGRAM_LIMIT_MESSAGES = Object.freeze({
+  duplicate_content: "같은 내용의 영수증이 이미 처리됐습니다.",
+  cooldown: "요청이 너무 빠릅니다. 잠시 후 다시 보내세요.",
+  hourly_limit: "시간당 영수증 생성 한도에 도달했습니다. 잠시 후 다시 보내세요.",
+});
+const PROCESSING_RETRY_DELAYS_MS = [0, 250, 1000];
+const GRAPH_API_ORIGINS = new Set(["https://graph.instagram.com", "https://graph.facebook.com"]);
 
 function sendWebhookJson(response, statusCode, payload) {
   setApiSecurityHeaders(response);
@@ -30,19 +38,27 @@ function requiredInteger(value, code, min, max) {
   return result;
 }
 
+export function getInstagramWebhookVerificationConfig(env = process.env) {
+  return { verifyToken: requiredText(env.INSTAGRAM_WEBHOOK_VERIFY_TOKEN, "instagram_verify_token_not_configured") };
+}
+
 export function getInstagramBotConfig(env = process.env) {
   const graphVersion = requiredText(env.INSTAGRAM_GRAPH_API_VERSION, "instagram_graph_version_not_configured");
   if (!GRAPH_VERSION_PATTERN.test(graphVersion)) throw Object.assign(new Error("instagram_graph_version_invalid"), { statusCode: 503 });
   const publicBaseUrl = requiredText(env.INSTAGRAM_BOT_PUBLIC_BASE_URL, "instagram_public_base_url_not_configured");
   const publicUrl = new URL(publicBaseUrl);
   if (publicUrl.protocol !== "https:") throw Object.assign(new Error("instagram_public_base_url_invalid"), { statusCode: 503 });
+  const graphApiUrl = new URL(String(env.INSTAGRAM_GRAPH_API_BASE_URL ?? "https://graph.instagram.com"));
+  if (!GRAPH_API_ORIGINS.has(graphApiUrl.origin) || graphApiUrl.pathname !== "/") {
+    throw Object.assign(new Error("instagram_graph_api_base_url_invalid"), { statusCode: 503 });
+  }
   return {
     appSecret: requiredText(env.INSTAGRAM_APP_SECRET, "instagram_app_secret_not_configured"),
     verifyToken: requiredText(env.INSTAGRAM_WEBHOOK_VERIFY_TOKEN, "instagram_verify_token_not_configured"),
     accessToken: requiredText(env.INSTAGRAM_ACCESS_TOKEN, "instagram_access_token_not_configured"),
     accountId: requiredText(env.INSTAGRAM_ACCOUNT_ID, "instagram_account_id_not_configured"),
     hashSecret: requiredText(env.INSTAGRAM_BOT_HASH_SECRET, "instagram_hash_secret_not_configured"),
-    graphVersion, publicBaseUrl: publicUrl.origin,
+    graphVersion, graphApiBaseUrl: graphApiUrl.origin, publicBaseUrl: publicUrl.origin,
     cooldownSeconds: requiredInteger(env.INSTAGRAM_BOT_COOLDOWN_SECONDS, "instagram_cooldown_not_configured", 1, 86400),
     hourlyLimit: requiredInteger(env.INSTAGRAM_BOT_HOURLY_LIMIT, "instagram_hourly_limit_not_configured", 1, 1000),
     dailyLimit: requiredInteger(env.INSTAGRAM_BOT_DAILY_LIMIT, "instagram_daily_limit_not_configured", 1, 10000),
@@ -127,7 +143,7 @@ function getEvents(payload = {}) {
 }
 
 export async function sendInstagramMessage(recipientId, message, config, fetchImpl = fetch) {
-  const response = await fetchImpl(`https://graph.instagram.com/${config.graphVersion}/${encodeURIComponent(config.accountId)}/messages`, {
+  const response = await fetchImpl(`${config.graphApiBaseUrl ?? "https://graph.instagram.com"}/${config.graphVersion}/${encodeURIComponent(config.accountId)}/messages`, {
     method: "POST",
     headers: { Authorization: `Bearer ${config.accessToken}`, "Content-Type": "application/json" },
     body: JSON.stringify({ recipient: { id: recipientId }, message }),
@@ -143,15 +159,22 @@ async function processEvent(event, { config, supabase, sendMessage, receiptMessa
   const command = getCommand(event.message.text, receiptMessage.normalizeInstagramMessage);
   const profileId = await loadLinkedProfileId(supabase, senderHash);
   const principalHash = profileId ? keyedHash(`profile:${profileId}`, config.hashSecret) : senderHash;
-  const { data: decision, error: claimError } = await supabase.rpc("claim_instagram_receipt_bot_request_v2", {
+  const { data: decision, error: claimError } = await supabase.rpc("claim_instagram_receipt_bot_request_v3", {
     p_event_hash: eventHash, p_sender_hash: senderHash, p_principal_hash: principalHash,
     p_profile_id: profileId, p_content_hash: contentHash, p_request_kind: command ? "command" : "receipt",
     p_cooldown_seconds: config.cooldownSeconds, p_hour_limit: config.hourlyLimit,
     p_day_limit: config.dailyLimit, p_global_hour_limit: config.globalHourlyLimit,
     p_content_dedupe_seconds: config.contentDedupeSeconds,
+    p_lease_seconds: 45,
   });
   if (claimError) throw claimError;
-  if (decision !== "accepted") return;
+  if (!new Set(["accepted", "retry"]).has(decision)) {
+    const limitMessage = decision === "daily_limit"
+      ? `오늘 영수증 생성 한도 ${config.dailyLimit}회를 모두 사용했습니다.`
+      : INSTAGRAM_LIMIT_MESSAGES[decision];
+    if (limitMessage) await sendMessage(event.sender.id, { text: limitMessage });
+    return;
+  }
 
   let outcome = "failed";
   try {
@@ -206,9 +229,51 @@ async function processEvent(event, { config, supabase, sendMessage, receiptMessa
     });
     if (historyError) throw historyError;
     outcome = "image_sent";
+  } catch (error) {
+    await supabase.from("instagram_receipt_bot_requests").update({
+      processing_state: "failed", outcome: "failed", lease_expires_at: null, last_error: "processing_failed",
+    }).eq("event_hash", eventHash);
+    throw error;
   } finally {
-    await supabase.from("instagram_receipt_bot_requests").update({ outcome, completed_at: new Date().toISOString() }).eq("event_hash", eventHash);
+    if (outcome !== "failed") {
+      await supabase.from("instagram_receipt_bot_requests").update({
+        processing_state: "completed", outcome, completed_at: new Date().toISOString(), lease_expires_at: null, last_error: null,
+      }).eq("event_hash", eventHash);
+    }
   }
+}
+
+function delay(milliseconds) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+async function processEventWithRetry(event, context) {
+  let lastError;
+  for (const retryDelay of PROCESSING_RETRY_DELAYS_MS) {
+    if (retryDelay) await delay(retryDelay);
+    try {
+      await processEvent(event, context);
+      return;
+    } catch (error) {
+      lastError = error;
+      console.warn("Instagram event processing attempt failed.", { error: error.message });
+    }
+  }
+  throw lastError;
+}
+
+async function processWebhookEvents(payload, { config, requestId, ...options }) {
+  const [receiptMessage, supabaseModule] = await Promise.all([
+    import("./_receiptMessage.js"),
+    options.supabase ? null : import("../_supabaseAdmin.js"),
+  ]);
+  const supabase = options.supabase ?? supabaseModule.getSupabaseAdminClient();
+  const sendMessage = options.sendMessage ?? ((recipientId, message) => sendInstagramMessage(recipientId, message, config, options.fetchImpl));
+  const events = getEvents(payload);
+  const results = await Promise.allSettled(events.map((event) => processEventWithRetry(event, { config, supabase, sendMessage, receiptMessage })));
+  await supabase.rpc("cleanup_instagram_receipt_bot_data");
+  const failedCount = results.filter(({ status }) => status === "rejected").length;
+  console.info("Instagram webhook background processing completed.", { requestId, eventCount: events.length, failedCount });
 }
 
 export async function handleInstagramWebhook(request, response, options = {}) {
@@ -216,8 +281,8 @@ export async function handleInstagramWebhook(request, response, options = {}) {
   const requestId = randomBytes(6).toString("hex");
   console.info("Instagram webhook received.", { requestId, method: request.method });
   try {
-    const config = options.config ?? getInstagramBotConfig(options.env);
     if (request.method === "GET") {
+      const config = options.config ?? getInstagramWebhookVerificationConfig(options.env);
       const mode = String(request.query?.["hub.mode"] ?? request.query?.hub_mode ?? "");
       const token = String(request.query?.["hub.verify_token"] ?? request.query?.hub_verify_token ?? "");
       const challenge = String(request.query?.["hub.challenge"] ?? request.query?.hub_challenge ?? "");
@@ -229,6 +294,7 @@ export async function handleInstagramWebhook(request, response, options = {}) {
       response.setHeader("Content-Type", "text/plain; charset=utf-8");
       return response.end(challenge);
     }
+    const config = options.config ?? getInstagramBotConfig(options.env);
     const rawBody = await readRawBody(request);
     const verifySignature = options.verifySignature ?? verifyInstagramSignature;
     const signatureVerified = verifySignature(rawBody, request.headers?.["x-hub-signature-256"] ?? request.headers?.["X-Hub-Signature-256"], config.appSecret);
@@ -238,12 +304,6 @@ export async function handleInstagramWebhook(request, response, options = {}) {
     }
     let payload;
     try { payload = JSON.parse(rawBody.toString("utf8")); } catch { return sendWebhookJson(response, 400, { error: "invalid_json_body" }); }
-    const [receiptMessage, supabaseModule] = await Promise.all([
-      import("./_receiptMessage.js"),
-      options.supabase ? null : import("../_supabaseAdmin.js"),
-    ]);
-    const supabase = options.supabase ?? supabaseModule.getSupabaseAdminClient();
-    const sendMessage = options.sendMessage ?? ((recipientId, message) => sendInstagramMessage(recipientId, message, config, options.fetchImpl));
     const events = getEvents(payload);
     console.info("Instagram webhook events normalized.", {
       requestId,
@@ -251,10 +311,11 @@ export async function handleInstagramWebhook(request, response, options = {}) {
       entryCount: Array.isArray(payload.entry) ? payload.entry.length : 0,
       eventCount: events.length,
     });
-    for (const event of events) await processEvent(event, { config, supabase, sendMessage, receiptMessage });
-    await supabase.rpc("cleanup_instagram_receipt_bot_data");
-    console.info("Instagram webhook completed.", { requestId, eventCount: events.length });
-    return sendWebhookJson(response, 200, { received: true });
+    const backgroundTask = processWebhookEvents(payload, { ...options, config, requestId }).catch((error) => {
+      console.error("Instagram webhook background processing failed.", { requestId, error: error.message });
+    });
+    (options.waitUntil ?? waitUntil)(backgroundTask);
+    return sendWebhookJson(response, 200, { received: true, eventCount: events.length });
   } catch (error) {
     console.warn("Instagram receipt webhook failed.", { requestId, error: error.message });
     return sendWebhookJson(response, error.statusCode || 500, { error: error.statusCode ? error.message : "instagram_webhook_failed" });

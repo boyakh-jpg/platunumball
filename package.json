@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "vite --host 127.0.0.1",
-    "build": "node --test scripts/design-system-guards.test.mjs scripts/css-cascade-guards.test.mjs && vite build && node scripts/sync-receipt-assets-to-r2.mjs",
+    "build": "node --test scripts/design-system-guards.test.mjs scripts/css-cascade-guards.test.mjs scripts/instagram-receipt-bot.test.mjs scripts/instagram-webhook-verification.test.mjs && vite build && node scripts/sync-receipt-assets-to-r2.mjs",
     "seed:demo-flow": "node scripts/seed-demo-flow.mjs",
     "seed:demo-flow:check": "node scripts/seed-demo-flow.mjs --check",
     "seed:supabase": "node scripts/seed-supabase-state.mjs",
@@ -22,12 +22,13 @@
     "audit:production-data": "node scripts/audit-production-data.mjs",
     "test:community": "node --test scripts/community-board.test.mjs scripts/settings-activity-detail.test.mjs",
     "test:external-notifications": "node --test scripts/external-notifications.test.mjs",
+    "test:instagram-bot": "node --test scripts/instagram-receipt-bot.test.mjs scripts/instagram-webhook-verification.test.mjs",
     "test:policies": "node --test scripts/shared-domain-policies.test.mjs scripts/api-security.test.mjs scripts/admin-court-database.test.mjs scripts/admin-court-proximity.test.mjs scripts/court-request-ai-verification.test.mjs scripts/court-request-report-policy.test.mjs scripts/bench-capacity-policy.test.mjs scripts/bench-capacity-authoritative-guards.test.mjs scripts/data-layer-module-boundary.test.mjs scripts/data-mapper-boundary.test.mjs scripts/dead-code-exports.test.mjs scripts/management-page-boundary.test.mjs scripts/match-attendance-qr.test.mjs scripts/match-clock-module-boundary.test.mjs scripts/match-creation-policy.test.mjs scripts/match-dispute-queue.test.mjs scripts/match-list-projection.test.mjs scripts/match-mode-policy.test.mjs scripts/match-persistence-boundary.test.mjs scripts/match-player-id-projection.test.mjs scripts/match-read-projection.test.mjs scripts/match-record-creation-flow.test.mjs scripts/match-record-participants-operation.test.mjs scripts/mock-data-module-boundary.test.mjs scripts/operational-court-health.test.mjs scripts/personal-record-roster.test.mjs scripts/postgame-record-verification.test.mjs scripts/record-retention.test.mjs scripts/region-text.test.mjs scripts/retired-rpc-removal.test.mjs scripts/room-feed-card-projection.test.mjs scripts/room-flow.test.mjs scripts/room-update.test.mjs scripts/room-update-policy.test.mjs scripts/runtime-module-size-boundary.test.mjs scripts/schedule-parts.test.mjs scripts/season-canonical-ranking.test.mjs scripts/server-domain-boundary.test.mjs scripts/server-list-module-boundary.test.mjs scripts/server-repository-boundary.test.mjs scripts/server-shared-boundary.test.mjs scripts/server-small-domain-boundary.test.mjs scripts/shared-array-values.test.mjs scripts/shared-match-constants.test.mjs scripts/shared-match-module-boundary.test.mjs scripts/state-normalizer-boundary.test.mjs scripts/team-party-roster.test.mjs scripts/team-row-projection.test.mjs scripts/tournament-match-projection.test.mjs scripts/tournament-team-projection.test.mjs scripts/practice-match.test.mjs scripts/postgrest-egress-guards.test.mjs scripts/tournament-governance.test.mjs && node scripts/seed-demo-flow.mjs --check",
     "test:legal": "node --test scripts/legal-pages.test.mjs",
     "test:security": "node --test server/lib/discordHttp.test.mjs scripts/api-security.test.mjs scripts/api-cost-guard.test.mjs scripts/admin-authorization-security.test.mjs",
     "test:design": "node --test scripts/design-system-guards.test.mjs scripts/css-cascade-guards.test.mjs scripts/brand-lockup.test.mjs scripts/hover-card-interaction.test.mjs scripts/numeric-stepper-primitive.test.mjs",
     "lint:styles": "stylelint \"src/styles/ui-primitives.css\"",
-    "verify:release": "vite build && node scripts/simulate-backend-flow.mjs --full --quiet",
+    "verify:release": "node --test scripts/instagram-receipt-bot.test.mjs scripts/instagram-webhook-verification.test.mjs && vite build && node scripts/simulate-backend-flow.mjs --full --quiet",
     "preview": "vite preview --host 127.0.0.1"
   },
   "dependencies": {
@@ -36,6 +37,7 @@
     "@modelcontextprotocol/server": "2.0.0",
     "@napi-rs/canvas": "1.0.7",
     "@supabase/supabase-js": "2.112.0",
+    "@vercel/functions": "3.9.5",
     "exifr": "7.1.3",
     "lucide-react": "^0.468.0",
     "react": "^18.3.1",

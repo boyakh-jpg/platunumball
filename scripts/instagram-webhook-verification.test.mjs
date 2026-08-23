@@ -3,20 +3,7 @@ import test from "node:test";
 import instagramWebhook from "../api/instagram-webhook.js";
 
 const TEST_ENV = Object.freeze({
-  INSTAGRAM_APP_SECRET: "app-secret",
   INSTAGRAM_WEBHOOK_VERIFY_TOKEN: "verify-token",
-  INSTAGRAM_ACCESS_TOKEN: "access-token",
-  INSTAGRAM_ACCOUNT_ID: "account-id",
-  INSTAGRAM_BOT_HASH_SECRET: "hash-secret",
-  INSTAGRAM_GRAPH_API_VERSION: "v24.0",
-  INSTAGRAM_BOT_PUBLIC_BASE_URL: "https://example.com",
-  INSTAGRAM_BOT_COOLDOWN_SECONDS: "10",
-  INSTAGRAM_BOT_HOURLY_LIMIT: "5",
-  INSTAGRAM_BOT_DAILY_LIMIT: "10",
-  INSTAGRAM_BOT_GLOBAL_HOURLY_LIMIT: "100",
-  INSTAGRAM_BOT_CONTENT_DEDUPE_SECONDS: "60",
-  INSTAGRAM_BOT_RENDER_TTL_SECONDS: "300",
-  INSTAGRAM_BOT_LINK_TTL_SECONDS: "600",
 });
 
 function createResponse() {
@@ -29,7 +16,7 @@ function createResponse() {
   };
 }
 
-test("Meta의 점·밑줄 Webhook 검증 쿼리를 허용한다", async () => {
+test("Meta의 점·밑줄 Webhook 검증 쿼리는 verify token만으로 동작한다", async () => {
   const originalEnv = Object.fromEntries(Object.keys(TEST_ENV).map((key) => [key, process.env[key]]));
   Object.assign(process.env, TEST_ENV);
   try {

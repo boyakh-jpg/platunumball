@@ -36,9 +36,10 @@ export async function handleInstagramAccount(request, response, options = {}) {
         return;
       }
       const secret = getHashSecret(options.env);
-      const { data: linked, error } = await context.supabase.rpc("consume_instagram_receipt_bot_link", {
+      const { data: linked, error } = await context.supabase.rpc("consume_instagram_receipt_bot_link_v2", {
         p_code_hash: hashLinkCode(code, secret),
         p_profile_id: context.profileId,
+        p_profile_principal_hash: createHmac("sha256", secret).update(`profile:${context.profileId}`).digest("hex"),
       });
       if (error) throw error;
       if (!linked) {

@@ -2901,7 +2901,7 @@ UI 수정 전:
 3. 설정의 `연결된 로그인`은 현재 identity와 연결 가능한 provider를 구분한다. 일반 연결은 로그인된 세션의 명시적 버튼으로 시작한다. `이미 BOXTIER 아이디가 있어요`를 확인한 복구 경로는 기존 아이디 로그인 직후 해제한 provider의 소유권 확인을 한 번 자동 시작한다. 이메일·프로필 해시태그 자동 병합을 암시하지 않는다.
 4. identity 연결 해제 UI는 제공하지 않는다. 각 행과 연결 버튼은 공용 card·button·spacing 토큰을 사용하고 모바일에서는 provider 이름과 상태가 버튼과 겹치지 않게 세로 배치한다.
 5. `/oauth/consent`는 MCP 연결 전용 공개 화면이며 기존 인증 shell·card·button을 재사용한다. 외부 앱이 입력한 client 이름은 BoxTier 인증 표시가 아님을 명시하고, 서버가 반환한 client ID·요청 scope·복귀 origin을 함께 표시한다. 지원하지 않는 scope, client ID 누락, HTTPS가 아닌 외부 복귀 주소는 승인 action을 비활성화하며 로컬 MCP 클라이언트의 loopback HTTP만 예외로 허용한다. 거부 action은 항상 유지한다. 비로그인 사용자는 `authorization_id` 하나만 포함한 검증된 내부 경로를 로그인 복귀값으로 보존한다. 승인·거부 뒤에는 Supabase OAuth 서버가 반환한 redirect URL로만 이동한다.
-6. `/instagram/connect`는 기존 인증 shell·card·button과 테마·반응형 규칙을 재사용한다. 정확히 하나의 유효한 일회용 code만 로그인 복귀값으로 보존하고 추가 query·hash는 거부한다. 연결 성공 화면은 계정 연결 상태와 최근 영수증 요약만 간결하게 표시하며 별도 CSS·모달을 만들지 않는다.
+6. `/instagram/connect`는 기존 인증 shell·card·button과 테마·반응형 규칙을 재사용한다. 정확히 하나의 유효한 일회용 code만 로그인 복귀값으로 보존하고 추가 query·hash는 거부한다. Auth 사용자의 canonical 프로필이 아직 없으면 같은 일회용 연결 경로를 보존해 기존 가입 화면으로 이동하고 프로필 생성 뒤 연결을 재개한다. 연결 성공 화면은 계정 연결 상태와 최근 영수증 요약만 간결하게 표시하며 별도 CSS·모달을 만들지 않는다.
 
 ## 2026-08-16 영수증 엠블럼 저장·표시
 
