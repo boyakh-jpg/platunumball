@@ -4,7 +4,7 @@ import { enforceApiRouteSecurity } from "../server/api/_requestSecurity.js";
 const INSTAGRAM_WEBHOOK_ROUTE = Object.freeze({
   methods: Object.freeze(["GET", "POST"]),
   auth: "signedWebhook",
-  allowedSensitiveQueryKeysByMethod: Object.freeze({ GET: Object.freeze(["hub.verify_token"]) }),
+  allowedSensitiveQueryKeysByMethod: Object.freeze({ GET: Object.freeze(["hub.verify_token", "hub_verify_token"]) }),
 });
 
 export const config = Object.freeze({ api: Object.freeze({ bodyParser: false }) });

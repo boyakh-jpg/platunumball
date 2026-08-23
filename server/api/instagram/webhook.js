@@ -209,9 +209,9 @@ export async function handleInstagramWebhook(request, response, options = {}) {
   try {
     const config = options.config ?? getInstagramBotConfig(options.env);
     if (request.method === "GET") {
-      const mode = String(request.query?.["hub.mode"] ?? "");
-      const token = String(request.query?.["hub.verify_token"] ?? "");
-      const challenge = String(request.query?.["hub.challenge"] ?? "");
+      const mode = String(request.query?.["hub.mode"] ?? request.query?.hub_mode ?? "");
+      const token = String(request.query?.["hub.verify_token"] ?? request.query?.hub_verify_token ?? "");
+      const challenge = String(request.query?.["hub.challenge"] ?? request.query?.hub_challenge ?? "");
       const tokenMatched = secretEqual(token, config.verifyToken);
       const verified = mode === "subscribe" && Boolean(challenge) && tokenMatched;
       console.info("Instagram webhook verification.", { verified, modeIsSubscribe: mode === "subscribe", hasChallenge: Boolean(challenge), tokenMatched });

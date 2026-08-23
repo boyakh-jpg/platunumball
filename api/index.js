@@ -113,7 +113,7 @@ export const API_ROUTES = new Map([
   ["/instagram/account", route(instagramAccount, ["POST"], "user")],
   ["/instagram/receipt-image", route(instagramReceiptImage, ["GET"], "publicRead")],
   ["/instagram/webhook", route(instagramWebhook, ["GET", "POST"], "signedWebhook", {
-    allowedSensitiveQueryKeysByMethod: Object.freeze({ GET: Object.freeze(["hub.verify_token"]) }),
+    allowedSensitiveQueryKeysByMethod: Object.freeze({ GET: Object.freeze(["hub.verify_token", "hub_verify_token"]) }),
   })],
   ["/discord/room-chat", route(discordRoomChat, ["POST"], "internal")],
   ["/discord/sync-deliveries", route(discordSyncDeliveries, ["POST"], "user")],
