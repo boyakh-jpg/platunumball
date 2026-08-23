@@ -75,6 +75,7 @@ import teamSyncTeam from "../server/api/teams/sync-team.js";
 import tournamentSyncTournament from "../server/api/tournaments/sync-tournament.js";
 import { assertSafeInputPayload, UNSAFE_INPUT_ERROR_CODE } from "../src/lib/inputSecurity.js";
 import { enforceApiRouteSecurity, findSensitiveQueryKey, setApiSecurityHeaders } from "../server/api/_requestSecurity.js";
+import { enforcePublicApiCostGuard } from "../server/lib/publicApiCostGuard.js";
 
 function route(handler, methods, auth, options = {}) {
   return Object.freeze({ handler, methods: Object.freeze(methods), auth, ...options });
@@ -221,6 +222,7 @@ export default async function handler(request, response) {
   }
 
   if (!enforceApiRouteSecurity(request, response, route)) return;
+  if (route.auth === "publicRead" && !await enforcePublicApiCostGuard(request, response)) return;
 
   request.rankballRoutePath = routePath;
   return route.handler(request, response);

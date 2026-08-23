@@ -13,11 +13,11 @@ import {
 } from "../../../shared/lib/courtRequestImagePolicy.js";
 import {
   getCourtAiDailyQuota,
-  getCourtAiQuotaState,
   getCourtRequestLimitState,
   getCourtVerificationDecision,
   inspectCourtRequestPhotos,
-  recordCourtAiUsage,
+  reserveCourtAiBudget,
+  settleCourtAiBudget,
 } from "../../lib/courtRequestVerification.js";
 import {
   decodeBase64Image,
@@ -220,9 +220,9 @@ export default async function handler(request, response) {
       publicAccess: requestPayload.publicAccess,
       photoLocation,
     };
+    await reserveCourtAiBudget(context.supabase, requestId);
     const ai = await inspectCourtRequestPhotos(photos);
-    await recordCourtAiUsage(context.supabase, requestId, ai.usage);
-    const quotaAfter = getCourtAiQuotaState(quota.usedNeurons + ai.usage.neurons);
+    const quotaAfter = await settleCourtAiBudget(context.supabase, requestId, ai.usage);
     const policy = getCourtVerificationDecision({
       ...policyInput,
       assessments: ai.assessments,

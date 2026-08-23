@@ -197,11 +197,12 @@ test("Discord DM 링크는 공개 프로필에 숫자 ID를 싣지 않는다", a
   assert.match(source, /https:\/\/discord\.com\/users\//);
   assert.doesNotMatch(source, /sendJson\(response,\s*200/);
 
-  const response = await invokeApi({
-    path: "profile/discord-dm",
+  const response = createResponse();
+  await route.handler({
     method: "GET",
     query: { profileId: "../private" },
-  });
+    headers: {},
+  }, response);
   assert.equal(response.statusCode, 400);
   assert.deepEqual(response.payload, { error: "invalid_profile_id" });
 });

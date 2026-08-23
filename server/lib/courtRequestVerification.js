@@ -17,6 +17,7 @@ const COURT_REQUEST_AI_BLOCK_NEURONS = COURT_REQUEST_AI_DAILY_NEURONS * COURT_RE
 const COURT_REQUEST_AI_INPUT_NEURONS_PER_MILLION = 4_410;
 const COURT_REQUEST_AI_OUTPUT_NEURONS_PER_MILLION = 61_493;
 const COURT_REQUEST_AI_FALLBACK_NEURONS_PER_CALL = 12;
+export const COURT_REQUEST_AI_RESERVATION_NEURONS = COURT_REQUEST_PHOTO_MAX * 2 * COURT_REQUEST_AI_FALLBACK_NEURONS_PER_CALL;
 
 function parseJsonAnswer(value = "") {
   const text = String(value || "").trim();
@@ -74,15 +75,13 @@ export function getCourtAiQuotaState(usedNeurons = 0, now = new Date()) {
 }
 
 export async function getCourtAiDailyQuota(supabase, now = new Date()) {
-  const emptyQuota = getCourtAiQuotaState(0, now);
-  // ponytail: the 20% reserve absorbs in-flight requests; add atomic reservations only if court traffic grows materially.
-  const { data, error } = await supabase
-    .from("court_ai_usage_events")
-    .select("neurons")
-    .gte("created_at", emptyQuota.dayStartsAt);
+  const { data, error } = await supabase.rpc("rankball_get_court_ai_budget_state");
   if (error) throw error;
-  const usedNeurons = (data ?? []).reduce((total, row) => total + (Number(row.neurons) || 0), 0);
-  return getCourtAiQuotaState(usedNeurons, now);
+  return {
+    ...getCourtAiQuotaState(data?.usedNeurons, now),
+    committedNeurons: Math.max(0, Number(data?.committedNeurons) || 0),
+    reservedNeurons: Math.max(0, Number(data?.reservedNeurons) || 0),
+  };
 }
 
 export async function getCourtRequestLimitState(supabase, profileId) {
@@ -103,18 +102,37 @@ export async function getCourtRequestLimitState(supabase, profileId) {
   };
 }
 
-export async function recordCourtAiUsage(supabase, requestId, usage = {}) {
-  if (!(Number(usage.calls) > 0)) return;
-  const { error } = await supabase.from("court_ai_usage_events").insert({
-    request_id: requestId,
-    model: COURT_REQUEST_AI_MODEL,
-    calls: Math.max(1, Math.trunc(Number(usage.calls) || 1)),
-    input_tokens: Math.max(0, Math.trunc(Number(usage.inputTokens) || 0)),
-    output_tokens: Math.max(0, Math.trunc(Number(usage.outputTokens) || 0)),
-    neurons: Math.max(0, Number(usage.neurons) || 0),
-    estimated: usage.estimated === true,
+export async function reserveCourtAiBudget(supabase, requestId) {
+  const { data, error } = await supabase.rpc("rankball_reserve_court_ai_budget", {
+    p_request_id: requestId,
+    p_reserved_neurons: COURT_REQUEST_AI_RESERVATION_NEURONS,
+    p_limit_neurons: COURT_REQUEST_AI_BLOCK_NEURONS,
   });
   if (error) throw error;
+  if (!data?.allowed) {
+    const quotaError = new Error(data?.reason === "duplicate_request" ? "court_request_id_duplicate" : "court_ai_daily_quota_reached");
+    quotaError.statusCode = data?.reason === "duplicate_request" ? 409 : 429;
+    throw quotaError;
+  }
+  return data;
+}
+
+export async function settleCourtAiBudget(supabase, requestId, usage = {}, now = new Date()) {
+  const { data, error } = await supabase.rpc("rankball_settle_court_ai_budget", {
+    p_request_id: requestId,
+    p_model: COURT_REQUEST_AI_MODEL,
+    p_calls: Math.max(0, Math.trunc(Number(usage.calls) || 0)),
+    p_input_tokens: Math.max(0, Math.trunc(Number(usage.inputTokens) || 0)),
+    p_output_tokens: Math.max(0, Math.trunc(Number(usage.outputTokens) || 0)),
+    p_neurons: Math.max(0, Number(usage.neurons) || 0),
+    p_estimated: usage.estimated === true,
+  });
+  if (error) throw error;
+  return {
+    ...getCourtAiQuotaState(data?.usedNeurons, now),
+    committedNeurons: Math.max(0, Number(data?.committedNeurons) || 0),
+    reservedNeurons: Math.max(0, Number(data?.reservedNeurons) || 0),
+  };
 }
 
 export function getCourtVerificationDecision({

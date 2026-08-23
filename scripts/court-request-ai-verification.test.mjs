@@ -5,12 +5,16 @@ import sharp from "sharp";
 import { getCoordinateDistanceMeters, getCourtPhotoLocationEvidence, getCourtPhotoPixelQualityError } from "../shared/lib/courtRequestImagePolicy.js";
 import { normalizeWebpUpload, uploadPrivateR2Webp, validateSafeWebpContainer } from "../server/api/_r2ImageStorage.js";
 import {
+  COURT_REQUEST_AI_RESERVATION_NEURONS,
+  getCourtAiDailyQuota,
   getCourtAiQuotaState,
   getCourtAiUsage,
   getCourtRequestLimitState,
   getCourtVerificationDecision,
   inspectCourtRequestPhotos,
   normalizeCourtPhotoAiAnswer,
+  reserveCourtAiBudget,
+  settleCourtAiBudget,
 } from "../server/lib/courtRequestVerification.js";
 import courtAiWorker from "../cloudflare/court-ai/worker.js";
 import { encodeCourtPhotoCanvas, resolveCourtPhotoMetadata } from "../src/lib/courtRequestImages.js";
@@ -236,6 +240,53 @@ test("court AI token metrics map to neurons and block at 80 percent", () => {
   assert.equal(getCourtAiQuotaState(8_000).blocked, true);
 });
 
+test("court AI budget is atomically reserved and settled", async () => {
+  const calls = [];
+  const supabase = {
+    rpc: async (name, payload) => {
+      calls.push({ name, payload });
+      if (name === "rankball_get_court_ai_budget_state") {
+        return { data: { usedNeurons: 100, committedNeurons: 80, reservedNeurons: 20 }, error: null };
+      }
+      if (name === "rankball_reserve_court_ai_budget") {
+        return { data: { allowed: true }, error: null };
+      }
+      return { data: { usedNeurons: 107, committedNeurons: 107, reservedNeurons: 0 }, error: null };
+    },
+  };
+
+  assert.equal(COURT_REQUEST_AI_RESERVATION_NEURONS, 48);
+  assert.deepEqual(await getCourtAiDailyQuota(supabase), {
+    ...getCourtAiQuotaState(100),
+    committedNeurons: 80,
+    reservedNeurons: 20,
+  });
+  await reserveCourtAiBudget(supabase, "request-1");
+  const settled = await settleCourtAiBudget(supabase, "request-1", {
+    calls: 1,
+    inputTokens: 817,
+    outputTokens: 59,
+    neurons: 7,
+  });
+  assert.equal(settled.usedNeurons, 107);
+  assert.deepEqual(calls[1], {
+    name: "rankball_reserve_court_ai_budget",
+    payload: { p_request_id: "request-1", p_reserved_neurons: 48, p_limit_neurons: 8000 },
+  });
+  assert.deepEqual(calls[2], {
+    name: "rankball_settle_court_ai_budget",
+    payload: {
+      p_request_id: "request-1",
+      p_model: "@cf/meta/llama-3.2-11b-vision-instruct",
+      p_calls: 1,
+      p_input_tokens: 817,
+      p_output_tokens: 59,
+      p_neurons: 7,
+      p_estimated: false,
+    },
+  });
+});
+
 test("court request limit state is normalized for the server", async () => {
   const supabase = {
     rpc: async (name, payload) => {
@@ -272,7 +323,7 @@ test("court photo quality rejects unusable pixels before AI", () => {
 });
 
 test("court evidence and AI usage migrations keep data private", async () => {
-  const [sql, serviceRoleSql, usageSql, limitSql, locationSql, nearbyCaptureSql, photoPairSql] = await Promise.all([
+  const [sql, serviceRoleSql, usageSql, limitSql, locationSql, nearbyCaptureSql, photoPairSql, costGuardSql] = await Promise.all([
     readFile(new URL("../supabase/migrations/20260803222000_court_request_ai_verification.sql", import.meta.url), "utf8"),
     readFile(new URL("../supabase/migrations/20260804091749_court_request_evidence_service_role.sql", import.meta.url), "utf8"),
     readFile(new URL("../supabase/migrations/20260804120000_court_ai_daily_usage.sql", import.meta.url), "utf8"),
@@ -280,6 +331,7 @@ test("court evidence and AI usage migrations keep data private", async () => {
     readFile(new URL("../supabase/migrations/20260804160000_classify_court_request_location_evidence.sql", import.meta.url), "utf8"),
     readFile(new URL("../supabase/migrations/20260804191704_allow_nearby_court_capture.sql", import.meta.url), "utf8"),
     readFile(new URL("../supabase/migrations/20260804221405_court_ai_photo_pair_policy.sql", import.meta.url), "utf8"),
+    readFile(new URL("../supabase/migrations/20260823002037_api_cost_guards.sql", import.meta.url), "utf8"),
   ]);
   assert.match(sql, /enable row level security/i);
   assert.match(sql, /revoke all on table public\.court_request_evidence from public, anon, authenticated/i);
@@ -290,6 +342,11 @@ test("court evidence and AI usage migrations keep data private", async () => {
   assert.match(usageSql, /revoke all on table public\.court_ai_usage_events from public, anon, authenticated/i);
   assert.match(usageSql, /grant select, insert on table public\.court_ai_usage_events to service_role/i);
   assert.doesNotMatch(usageSql, /grant .* to (anon|authenticated)|drop table|truncate|delete from/i);
+  assert.match(costGuardSql, /court_ai_budget_reservations[\s\S]*enable row level security/i);
+  assert.match(costGuardSql, /rankball_reserve_court_ai_budget[\s\S]*pg_advisory_xact_lock/i);
+  assert.match(costGuardSql, /rankball_settle_court_ai_budget/i);
+  assert.match(costGuardSql, /revoke all on function public\.rankball_reserve_court_ai_budget/i);
+  assert.doesNotMatch(costGuardSql, /grant .* to (anon|authenticated)|drop table|truncate|delete from/i);
   assert.match(limitSql, /court_request_submission_events[\s\S]*enable row level security/i);
   assert.match(limitSql, /revoke all on table public\.court_request_submission_events from public, anon, authenticated/i);
   assert.match(limitSql, /pg_advisory_xact_lock/);

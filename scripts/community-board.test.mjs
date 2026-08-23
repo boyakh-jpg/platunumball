@@ -270,28 +270,25 @@ test("조회수는 방문자별 한국 날짜 하루 한 번만 저장하고 모
   assert.match(editor, /COMMUNITY_POST_CATEGORIES\.includes\(initialCategory\)/);
 });
 
-test("익명 조회 식별자는 서명 쿠키를 재사용하고 한국 날짜가 바뀌면 다시 집계한다", (t) => {
+test("익명 조회 식별자는 네트워크 구간을 재사용하고 한국 날짜가 바뀌면 다시 집계한다", (t) => {
   useCommunityViewSecret(t);
   assert.equal(getCommunityViewDate(new Date("2026-08-14T14:59:59.000Z")), "2026-08-14");
   assert.equal(getCommunityViewDate(new Date("2026-08-14T15:00:00.000Z")), "2026-08-15");
 
   const firstResponse = createCookieResponse();
   const first = getCommunityViewerIdentity(
-    { headers: {} },
+    { headers: { "x-forwarded-for": "203.0.113.7" } },
     firstResponse,
     "",
     new Date("2026-08-14T14:59:59.000Z"),
   );
-  const setCookie = firstResponse.cookies.at(-1);
   assert.equal(first.userId, null);
   assert.equal(first.viewDate, "2026-08-14");
-  assert.match(setCookie, /^boxtier_community_viewer=/);
-  assert.match(setCookie, /; Path=\/api\/community\/posts; HttpOnly; SameSite=Lax; Max-Age=/);
+  assert.equal(firstResponse.cookies.length, 0);
 
-  const cookie = setCookie.split(";", 1)[0];
   const secondResponse = createCookieResponse();
   const second = getCommunityViewerIdentity(
-    { headers: { cookie } },
+    { headers: { "x-forwarded-for": "203.0.113.99" } },
     secondResponse,
     "",
     new Date("2026-08-14T15:00:00.000Z"),
@@ -300,16 +297,15 @@ test("익명 조회 식별자는 서명 쿠키를 재사용하고 한국 날짜�
   assert.equal(second.viewDate, "2026-08-15");
   assert.equal(secondResponse.cookies.length, 0);
 
-  const tamperedCookie = `${cookie.slice(0, -1)}${cookie.endsWith("A") ? "B" : "A"}`;
-  const tamperedResponse = createCookieResponse();
-  const tampered = getCommunityViewerIdentity(
-    { headers: { cookie: tamperedCookie } },
-    tamperedResponse,
+  const otherNetworkResponse = createCookieResponse();
+  const otherNetwork = getCommunityViewerIdentity(
+    { headers: { "x-forwarded-for": "203.0.114.7" } },
+    otherNetworkResponse,
     "",
     new Date("2026-08-14T15:00:00.000Z"),
   );
-  assert.notEqual(tampered.viewerKeyHash, first.viewerKeyHash);
-  assert.equal(tamperedResponse.cookies.length, 1);
+  assert.notEqual(otherNetwork.viewerKeyHash, first.viewerKeyHash);
+  assert.equal(otherNetworkResponse.cookies.length, 0);
 });
 
 test("로그인 조회 식별자는 프로필을 HMAC하고 익명 쿠키를 만들지 않는다", (t) => {
