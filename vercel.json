@@ -76,6 +76,10 @@
   ],
   "rewrites": [
     {
+      "source": "/api/instagram/webhook",
+      "destination": "/api/instagram-webhook"
+    },
+    {
       "source": "/mcp",
       "destination": "/api/mcp"
     },

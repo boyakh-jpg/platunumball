@@ -152,7 +152,7 @@ test("API routes use deny-by-default method and credential policies", async () =
         /assert(?:WorkerAccess|BridgeAccess|Access|SystemSecretAccess)\(request(?:,|\))/,
       );
     }
-    if (route.auth === "signedWebhook") assert.match(handlerSource, /verifyDiscordSignature/);
+    if (route.auth === "signedWebhook") assert.match(handlerSource, /verify(?:Discord|Instagram)Signature/);
     if (route.auth === "alphaTest") assert.match(handlerSource, /assertAlphaTestLoginEnabled/);
   }
   assert.deepEqual(
@@ -377,6 +377,8 @@ test("credentials are rejected from every URL query", async () => {
     "password",
   ].forEach((key) => assert.equal(findSensitiveQueryKey({ [key]: "redacted" }), key));
   assert.equal(findSensitiveQueryKey({ code: "oauth-code", state: "oauth-state", q: "검색" }), "");
+  assert.equal(findSensitiveQueryKey({ "hub.verify_token": "redacted" }, ["hub.verify_token"]), "");
+  assert.equal(findSensitiveQueryKey({ token: "redacted" }, ["hub.verify_token"]), "token");
 
   const response = await invokeApi({ query: { access_token: "redacted" } });
   assert.equal(response.statusCode, 400);

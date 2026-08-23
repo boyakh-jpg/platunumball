@@ -4170,6 +4170,7 @@ flowchart TD
 20-1. MCP 표시 resource는 canonical 공개 앱 URL을 `openai/widgetDomain`으로 선언한다.
 
 20. PNG 생성 API의 전용 Bearer secret 환경변수 이름은 `MATCH_RECEIPT_RENDER_API_KEY`다. 값이 없으면 공개 렌더로 열지 않고 `503`으로 실패한다.
+21. Instagram 영수증 봇은 공식 Webhook의 서명 검증을 통과한 텍스트 DM만 처리한다. 입력은 `영수증` 명령과 명시적 필드 형식을 사용하고 19번의 외부 입력 parser·PNG renderer를 재사용한다. Meta 이벤트 ID, 발신자 ID, 정규화 본문은 서버 비밀키 HMAC 해시로만 저장하며 원문과 원 ID는 저장하지 않는다. 이벤트 해시 원자 예약, 동일 발신자·본문 중복 시간창, 발신자 쿨다운, 시간당·일일 한도, 전체 시간당 한도를 Supabase RPC 하나에서 판정한다. 중복·제한 요청에는 답장과 렌더를 실행하지 않는다. 한도값은 환경변수를 canonical 운영 설정으로 사용한다. Instagram이 가져갈 공개 이미지 URL에는 256비트 무작위 capability ID만 넣고, 렌더 입력 JSON과 Story·Feed preset만 설정된 TTL 동안 `instagram_receipt_bot_render_jobs`에 임시 보관한다. 이는 19번의 직접 PNG API 메모리 전용 규칙을 변경하지 않는 Instagram 전달용 예외다. PNG 바이트·사진·엠블럼은 DB·Supabase Storage·R2에 저장하지 않고 요청 시 메모리에서 렌더한 뒤 폐기한다. 만료 렌더 입력과 7일 지난 제한 메타데이터는 maintenance RPC가 삭제한다. Instagram 검증 GET의 `hub.verify_token` 쿼리만 해당 route·method에서 전역 URL credential 차단의 프로토콜 예외로 허용하며 POST와 다른 token 쿼리는 계속 거부한다.
 
 ## 2026-08-13 비로그인 랜딩과 인증 복귀
 

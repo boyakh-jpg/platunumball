@@ -24,6 +24,8 @@ import courtDetail from "../server/api/courts/detail.js";
 import directoryLoad from "../server/api/directory/load.js";
 import discordDmWorker from "../server/api/discord/dm-worker.js";
 import discordInteractions from "../server/api/discord/interactions.js";
+import instagramReceiptImage from "../server/api/instagram/receipt-image.js";
+import instagramWebhook from "../server/api/instagram/webhook.js";
 import discordRoomChat from "../server/api/discord/room-chat.js";
 import discordSyncDeliveries from "../server/api/discord/sync-deliveries.js";
 import favoriteSync from "../server/api/favorites/sync.js";
@@ -74,8 +76,8 @@ import tournamentSyncTournament from "../server/api/tournaments/sync-tournament.
 import { assertSafeInputPayload, UNSAFE_INPUT_ERROR_CODE } from "../src/lib/inputSecurity.js";
 import { enforceApiRouteSecurity, findSensitiveQueryKey, setApiSecurityHeaders } from "../server/api/_requestSecurity.js";
 
-function route(handler, methods, auth) {
-  return Object.freeze({ handler, methods: Object.freeze(methods), auth });
+function route(handler, methods, auth, options = {}) {
+  return Object.freeze({ handler, methods: Object.freeze(methods), auth, ...options });
 }
 
 export const API_ROUTES = new Map([
@@ -106,6 +108,10 @@ export const API_ROUTES = new Map([
   ["/directory/load", route(directoryLoad, ["POST"], "publicRead")],
   ["/discord/dm-worker", route(discordDmWorker, ["GET", "POST"], "internal")],
   ["/discord/interactions", route(discordInteractions, ["POST"], "signedWebhook")],
+  ["/instagram/receipt-image", route(instagramReceiptImage, ["GET"], "publicRead")],
+  ["/instagram/webhook", route(instagramWebhook, ["GET", "POST"], "signedWebhook", {
+    allowedSensitiveQueryKeysByMethod: Object.freeze({ GET: Object.freeze(["hub.verify_token"]) }),
+  })],
   ["/discord/room-chat", route(discordRoomChat, ["POST"], "internal")],
   ["/discord/sync-deliveries", route(discordSyncDeliveries, ["POST"], "user")],
   ["/favorites/sync", route(favoriteSync, ["POST"], "user")],
@@ -203,7 +209,8 @@ export default async function handler(request, response) {
     return;
   }
 
-  if (findSensitiveQueryKey(request.query ?? {})) {
+  const allowedSensitiveQueryKeys = route?.allowedSensitiveQueryKeysByMethod?.[String(request.method || "GET").toUpperCase()] ?? [];
+  if (findSensitiveQueryKey(request.query ?? {}, allowedSensitiveQueryKeys)) {
     response.status(400).json({ error: "credentials_not_allowed_in_url" });
     return;
   }

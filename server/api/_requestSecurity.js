@@ -50,8 +50,10 @@ export function getStrictBearerToken(request = {}) {
   return parseBearerAuthorization(request).token;
 }
 
-export function findSensitiveQueryKey(query = {}) {
+export function findSensitiveQueryKey(query = {}, allowedKeys = []) {
+  const allowed = new Set(allowedKeys.map((key) => String(key).toLowerCase()));
   return Object.keys(query).find((key) => {
+    if (allowed.has(String(key).toLowerCase())) return false;
     const normalizedKey = normalizeQueryKey(key);
     return SENSITIVE_QUERY_KEYS.has(normalizedKey)
       || /(?:token|secret|password|credential|signature|cookie|authorization|bearer|apikey)$/u.test(normalizedKey);
@@ -82,7 +84,8 @@ export function enforceApiRouteSecurity(request, response, route = {}) {
     return false;
   }
 
-  if (findSensitiveQueryKey(request.query ?? {})) {
+  const allowedSensitiveQueryKeys = route.allowedSensitiveQueryKeysByMethod?.[method] ?? [];
+  if (findSensitiveQueryKey(request.query ?? {}, allowedSensitiveQueryKeys)) {
     sendSecurityError(response, 400, "credentials_not_allowed_in_url");
     return false;
   }
