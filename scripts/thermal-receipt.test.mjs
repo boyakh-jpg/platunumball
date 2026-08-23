@@ -108,7 +108,7 @@ test("thermal rules and emblem labels keep print-aware rendering and spacing", a
 
   assert.match(renderer, /applyPrintMask\(rule, ctx\.__thermalMasks\?\.body,[\s\S]*?"body"\)/u);
   assert.match(renderer, /drawThermalText\(ctx, name, x, layout\.teams\.y \+ 196/u);
-  assert.match(renderer, /const EMBLEM_GRAYSCALE_LEVELS = Object\.freeze\(\[64, 120, 176, 240\]\)/u);
+  assert.match(renderer, /const EMBLEM_GRAYSCALE_LEVELS = Object\.freeze\(\[24, 88, 152, 224\]\)/u);
   assert.match(renderer, /const level = isEmblem[\s\S]*?EMBLEM_GRAYSCALE_LEVELS\[Math\.round\(luminance \/ 255[\s\S]*?: Math\.round\(luminance\)/u);
   assert.doesNotMatch(renderer, /luminance < 128 \? 0 : 255/u);
   assert.doesNotMatch(renderer, /globalCompositeOperation\s*=\s*["']destination-out["']/u);
