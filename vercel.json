@@ -98,6 +98,10 @@
       "destination": "/index.html"
     },
     {
+      "source": "/instagram/connect",
+      "destination": "/index.html"
+    },
+    {
       "source": "/data-sources",
       "destination": "/index.html"
     },

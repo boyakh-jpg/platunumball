@@ -90,6 +90,13 @@ test("Instagram 연결 복귀는 256비트 capability code 하나만 허용한�
   assert.equal(loginUrl.searchParams.get("backTo"), connectPath);
 });
 
+test("Instagram 연결 화면은 Vercel SPA 진입점으로 rewrite한다", async () => {
+  const config = JSON.parse(await readSource("vercel.json"));
+  assert.ok(config.rewrites.some((rewrite) => (
+    rewrite.source === "/instagram/connect" && rewrite.destination === "/index.html"
+  )));
+});
+
 test("전역 인증·알림·fallback 경로는 canonical 진입점만 노출한다", async () => {
   const [
     authSession,
