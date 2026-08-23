@@ -27,6 +27,7 @@ const TEAM_DISPLAY_FONT_WEIGHT = 900;
 const KOREAN_FONT = '"NeoDunggeunmo", "Pretendard Variable", monospace';
 const KOREAN_WIDTH_SCALE = 0.94;
 const SCORE_PANEL = "#505050";
+const EMBLEM_GRAYSCALE_LEVELS = Object.freeze([64, 120, 176, 240]);
 const SCORE_PANEL_INSET_X = 14;
 const SCORE_PANEL_INSET_Y = 12;
 const SCORE_DIGIT_HEIGHT = 146;
@@ -697,8 +698,8 @@ function quantizeThermalCanvas(canvas, layout) {
       || (x - rightEmblemX) ** 2 + emblemDistanceY <= emblemRadiusSquared
     );
     const level = isEmblem
-      ? Math.round(luminance / 85) * 85
-      : luminance < 128 ? 0 : 255;
+      ? EMBLEM_GRAYSCALE_LEVELS[Math.round(luminance / 255 * (EMBLEM_GRAYSCALE_LEVELS.length - 1))]
+      : Math.round(luminance);
     pixels.data[index] = level;
     pixels.data[index + 1] = level;
     pixels.data[index + 2] = level;

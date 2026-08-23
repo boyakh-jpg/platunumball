@@ -628,13 +628,14 @@ test("MCP 실제 renderer가 중립 엠블럼과 선택 영역 팔레트를 적�
   assert.equal(metadata.height, layout.paper.height);
   const { data: pixels, info } = await sharp(png).removeAlpha().raw().toBuffer({ resolveWithObject: true });
   assert.equal(info.channels, 3);
-  const thermalLevels = new Set([0, 85, 170, 255]);
+  const emblemLevels = new Set([64, 120, 176, 240]);
+  const bodyLevels = new Set();
   const emblemY = layout.teams.y + 82 - layout.paper.y;
   const emblemCenters = [
     layout.teams.x + 126 - layout.paper.x,
     layout.teams.x + layout.teams.width - 126 - layout.paper.x,
   ];
-  const emblemCounts = emblemCenters.map(() => ({ ink: 0, white: 0 }));
+  const emblemCounts = emblemCenters.map(() => ({ dark: 0, light: 0 }));
   for (let index = 0; index < pixels.length; index += 3) {
     const pixelIndex = index / 3;
     const x = pixelIndex % info.width;
@@ -645,16 +646,17 @@ test("MCP 실제 renderer가 중립 엠블럼과 선택 영역 팔레트를 적�
     assert.equal(pixels[index], pixels[index + 1]);
     assert.equal(pixels[index], pixels[index + 2]);
     if (emblemIndex >= 0) {
-      assert.equal(thermalLevels.has(pixels[index]), true);
-      if (pixels[index] < 255) emblemCounts[emblemIndex].ink += 1;
-      if (pixels[index] === 255) emblemCounts[emblemIndex].white += 1;
+      assert.equal(emblemLevels.has(pixels[index]), true);
+      if (pixels[index] < 240) emblemCounts[emblemIndex].dark += 1;
+      if (pixels[index] === 240) emblemCounts[emblemIndex].light += 1;
     } else {
-      assert.equal([0, 255].includes(pixels[index]), true);
+      bodyLevels.add(pixels[index]);
     }
   }
   for (const counts of emblemCounts) {
-    assert.ok(counts.ink > 0, "중립 엠블럼 선화가 보여야 한다");
-    assert.ok(counts.white > 0, "중립 엠블럼이 검은 원으로 뭉개지면 안 된다");
+    assert.ok(counts.dark > 0, "중립 엠블럼 선화가 보여야 한다");
+    assert.ok(counts.light > 0, "중립 엠블럼이 검은 원으로 뭉개지면 안 된다");
   }
+  assert.ok(bodyLevels.size > 16, "종이와 본문의 연속 회색 농도가 보존되어야 한다");
   await handler.close();
 });
