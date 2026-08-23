@@ -28,6 +28,7 @@ const Login = lazy(() => import("./pages/Login.jsx"));
 const Matches = lazy(() => import("./pages/Matches.jsx"));
 const Notifications = lazy(() => import("./pages/Notifications.jsx"));
 const NotFound = lazy(() => import("./pages/NotFound.jsx"));
+const OAuthConsent = lazy(() => import("./pages/OAuthConsent.jsx"));
 const PlayerDetail = lazy(() => import("./pages/PlayerDetail.jsx"));
 const RefereeDetail = lazy(() => import("./pages/RefereeDetail.jsx"));
 const Privacy = lazy(() => import("./pages/Privacy.jsx"));
@@ -238,6 +239,7 @@ export default function App() {
           <Route path="/" element={<Landing auth={auth} />} />
           <Route path="/start" element={<Landing auth={auth} />} />
           <Route path="/login" element={<Login auth={auth} app={app} />} />
+          <Route path="/oauth/consent" element={<OAuthConsent auth={auth} />} />
           <Route path="/data-sources" element={<DataSources />} />
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/terms" element={<Terms />} />

@@ -5,23 +5,38 @@ import nodeMcpHandler from "../api/mcp.js";
 import { createBoxtierMcpHandler } from "../server/api/mcp.js";
 import { consumeMcpReceiptGenerationQuota } from "../server/api/mcpQuota.js";
 import { MCP_RECEIPT_WIDGET_URI } from "../server/api/mcpReceiptWidget.js";
+import { getMcpProtectedResourceMetadata } from "../server/api/oauthProtectedResource.js";
 import { getThermalReceiptLayout } from "../shared/lib/thermalReceipt.js";
 
 const TEST_PNG = Buffer.from("89504e470d0a1a0a", "hex");
+const VALID_RECEIPT_ARGUMENTS = {
+  homeTeam: "A팀",
+  awayTeam: "B팀",
+  homeScore: 82,
+  awayScore: 76,
+  playedOn: "2026-08-22",
+  playedTime: "20:30",
+  venue: "광명시민체육관",
+  format: "5v5",
+  style: "thermal",
+  preset: "story",
+  locale: "ko",
+};
 
-function rpcRequest(method, params, id) {
+function rpcRequest(method, params, id, headers = {}) {
   return new Request("https://boxtier.kr/mcp", {
     method: "POST",
     headers: {
       "accept": "application/json, text/event-stream",
       "content-type": "application/json",
+      ...headers,
     },
     body: JSON.stringify({ jsonrpc: "2.0", method, ...(params ? { params } : {}), id }),
   });
 }
 
-async function rpc(handler, method, params, id) {
-  const response = await handler.fetch(rpcRequest(method, params, id));
+async function rpc(handler, method, params, id, headers = {}) {
+  const response = await handler.fetch(rpcRequest(method, params, id, headers));
   assert.equal(response.status, 200);
   const body = await response.text();
   if (response.headers.get("content-type")?.includes("text/event-stream")) {
@@ -116,6 +131,10 @@ test("MCP가 자동 선택용 영수증 도구를 공개한다", async () => {
   assert.equal(tool.annotations.idempotentHint, false);
   assert.equal(tool._meta.ui.resourceUri, MCP_RECEIPT_WIDGET_URI);
   assert.equal(tool._meta["openai/outputTemplate"], MCP_RECEIPT_WIDGET_URI);
+  assert.deepEqual(tool._meta.securitySchemes, [
+    { type: "noauth" },
+    { type: "oauth2", scopes: ["profile"] },
+  ]);
   assert.ok(tool.inputSchema.properties.homeEmblem);
   assert.ok(tool.inputSchema.properties.awayEmblem);
   assert.deepEqual(tool.inputSchema.properties.debugBase64, {
@@ -128,6 +147,11 @@ test("MCP가 자동 선택용 영수증 도구를 공개한다", async () => {
   assert.deepEqual(tool.inputSchema.required.sort(), [
     "awayScore", "awayTeam", "format", "homeScore", "homeTeam", "playedOn", "venue",
   ].sort());
+
+  const recordTool = listed.result.tools.find((candidate) => candidate.name === "list_my_match_records");
+  assert.ok(recordTool);
+  assert.equal(recordTool.annotations.readOnlyHint, true);
+  assert.deepEqual(recordTool._meta.securitySchemes, [{ type: "oauth2", scopes: ["profile"] }]);
 
   const resource = await rpc(handler, "resources/read", { uri: MCP_RECEIPT_WIDGET_URI }, 21);
   assert.equal(resource.result.contents[0].mimeType, "text/html;profile=mcp-app");
@@ -144,6 +168,118 @@ test("MCP가 자동 선택용 영수증 도구를 공개한다", async () => {
   assert.match(resource.result.contents[0].text, /URL\.createObjectURL\(receiptBlob\)/);
   assert.match(resource.result.contents[0].text, /navigator\.share\(\{ files: \[receiptFile\]/);
   await handler.close();
+});
+
+test("owner 계정만 영수증 일일 한도를 건너뛴다", async () => {
+  let quotaCalls = 0;
+  const handler = createBoxtierMcpHandler({
+    authenticate: async () => ({ profileId: "owner-profile" }),
+    getActorAdminLevel: async () => 100,
+    consumeGenerationQuota: async () => {
+      quotaCalls += 1;
+      return false;
+    },
+    renderPng: async () => TEST_PNG,
+  });
+  const called = await rpc(handler, "tools/call", {
+    name: "create_basketball_receipt",
+    arguments: VALID_RECEIPT_ARGUMENTS,
+  }, 22, { authorization: "Bearer owner-access-token-1234" });
+
+  assert.equal(called.result.isError, undefined, JSON.stringify(called.result));
+  assert.equal(quotaCalls, 0);
+  await handler.close();
+});
+
+test("일반 로그인 사용자는 기존 영수증 일일 한도를 사용한다", async () => {
+  let quotaCalls = 0;
+  const handler = createBoxtierMcpHandler({
+    authenticate: async () => ({ profileId: "regular-profile" }),
+    getActorAdminLevel: async () => 0,
+    consumeGenerationQuota: async () => {
+      quotaCalls += 1;
+      return true;
+    },
+    renderPng: async () => TEST_PNG,
+  });
+  const called = await rpc(handler, "tools/call", {
+    name: "create_basketball_receipt",
+    arguments: VALID_RECEIPT_ARGUMENTS,
+  }, 23, { authorization: "Bearer regular-access-token-1234" });
+
+  assert.equal(called.result.isError, undefined, JSON.stringify(called.result));
+  assert.equal(quotaCalls, 1);
+  await handler.close();
+});
+
+test("내 경기 기록은 로그인 profile 범위만 조회한다", async () => {
+  const fakeClient = {};
+  let loadCall = null;
+  const handler = createBoxtierMcpHandler({
+    authenticate: async () => ({ supabase: fakeClient, profileId: "profile-1" }),
+    loadOwnRecords: async (client, profileId, options) => {
+      loadCall = { client, profileId, options };
+      return { records: [{ matchId: "match-1" }], limit: 5, offset: 0, nextOffset: null };
+    },
+  });
+  const called = await rpc(handler, "tools/call", {
+    name: "list_my_match_records",
+    arguments: { limit: 5, offset: 0 },
+  }, 24, { authorization: "Bearer regular-access-token-1234" });
+
+  assert.deepEqual(loadCall, {
+    client: fakeClient,
+    profileId: "profile-1",
+    options: { limit: 5, offset: 0 },
+  });
+  assert.deepEqual(called.result.structuredContent, {
+    status: "loaded",
+    records: [{ matchId: "match-1" }],
+    limit: 5,
+    offset: 0,
+    nextOffset: null,
+  });
+  await handler.close();
+});
+
+test("내 경기 기록 비로그인 호출은 OAuth challenge를 반환한다", async () => {
+  const handler = createBoxtierMcpHandler({
+    authenticate: async () => {
+      const error = new Error("missing_bearer_token");
+      error.statusCode = 401;
+      throw error;
+    },
+    widgetDomain: "https://boxtier.kr",
+  });
+  const called = await rpc(handler, "tools/call", {
+    name: "list_my_match_records",
+    arguments: {},
+  }, 25);
+
+  assert.equal(called.result.isError, true);
+  assert.match(called.result._meta["mcp/www_authenticate"][0], /scope="profile"/u);
+  assert.match(called.result._meta["mcp/www_authenticate"][0], /oauth-protected-resource/u);
+  await handler.close();
+});
+
+test("MCP 보호 리소스 메타데이터가 Supabase OAuth 서버를 선언한다", () => {
+  const previousAppUrl = process.env.VITE_PUBLIC_APP_URL;
+  const previousSupabaseUrl = process.env.SUPABASE_URL;
+  process.env.VITE_PUBLIC_APP_URL = "https://boxtier.kr";
+  process.env.SUPABASE_URL = "https://example.supabase.co";
+  try {
+    assert.deepEqual(getMcpProtectedResourceMetadata(), {
+      resource: "https://boxtier.kr/mcp",
+      authorization_servers: ["https://example.supabase.co/auth/v1"],
+      scopes_supported: ["profile"],
+      bearer_methods_supported: ["header"],
+    });
+  } finally {
+    if (previousAppUrl === undefined) delete process.env.VITE_PUBLIC_APP_URL;
+    else process.env.VITE_PUBLIC_APP_URL = previousAppUrl;
+    if (previousSupabaseUrl === undefined) delete process.env.SUPABASE_URL;
+    else process.env.SUPABASE_URL = previousSupabaseUrl;
+  }
 });
 
 test("MCP 호출은 유효 입력의 일일 한도를 소비하고 PNG를 직접 반환한다", async () => {

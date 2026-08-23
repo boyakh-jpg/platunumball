@@ -4169,6 +4169,10 @@ flowchart TD
 
 20-1. MCP 표시 resource는 canonical 공개 앱 URL을 `openai/widgetDomain`으로 선언한다.
 
+20-2. 공개 MCP의 `create_basketball_receipt`는 비로그인과 로그인 사용자 모두 사용할 수 있고 최근 24시간 10회 원장을 공통 적용한다. 유효한 OAuth Bearer를 canonical 프로필로 확인하고 `rankball_admin_level_for_profile`이 `100`인 owner 계정에만 일일 원장 확인을 면제한다. 다른 관리자와 일반 사용자는 면제하지 않으며 IP별 1분 제한은 owner에게도 적용한다. Bearer가 없으면 익명으로 처리하지만 잘못되거나 만료된 Bearer가 있으면 로그인 challenge를 반환한다.
+
+20-3. `list_my_match_records`는 `profile` scope의 Supabase OAuth 인증이 필수인 읽기 전용 MCP 도구다. Bearer의 Auth 사용자와 canonical 프로필을 서버에서 연결하고 `match_record_participants.profile_id`가 그 프로필과 정확히 일치하는 보존 기간 내 compact 기록만 최신순으로 반환한다. 조회 대상 프로필 ID는 tool input으로 받지 않는다. 인증 실패는 보호 리소스 메타데이터를 포함한 `mcp/www_authenticate` challenge로 반환한다.
+
 20. PNG 생성 API의 전용 Bearer secret 환경변수 이름은 `MATCH_RECEIPT_RENDER_API_KEY`다. 값이 없으면 공개 렌더로 열지 않고 `503`으로 실패한다.
 21. Instagram 영수증 봇은 공식 Webhook의 서명 검증을 통과한 텍스트 DM만 처리한다. 입력은 `영수증` 명령과 명시적 필드 형식을 사용하고 19번의 외부 입력 parser·PNG renderer를 재사용한다. Meta 이벤트 ID, 발신자 ID, 정규화 본문은 서버 비밀키 HMAC 해시로만 저장하며 원문과 원 ID는 저장하지 않는다. 이벤트 해시 원자 예약, 동일 발신자·본문 중복 시간창, 발신자 쿨다운, 시간당·일일 한도, 전체 시간당 한도를 Supabase RPC 하나에서 판정한다. 중복·제한 요청에는 답장과 렌더를 실행하지 않는다. 한도값은 환경변수를 canonical 운영 설정으로 사용한다. Instagram이 가져갈 공개 이미지 URL에는 256비트 무작위 capability ID만 넣고, 렌더 입력 JSON과 Story·Feed preset만 설정된 TTL 동안 `instagram_receipt_bot_render_jobs`에 임시 보관한다. 이는 19번의 직접 PNG API 메모리 전용 규칙을 변경하지 않는 Instagram 전달용 예외다. PNG 바이트·사진·엠블럼은 DB·Supabase Storage·R2에 저장하지 않고 요청 시 메모리에서 렌더한 뒤 폐기한다. 만료 렌더 입력과 7일 지난 제한 메타데이터는 maintenance RPC가 삭제한다. Instagram 검증 GET의 `hub.verify_token` 쿼리만 해당 route·method에서 전역 URL credential 차단의 프로토콜 예외로 허용하며 POST와 다른 token 쿼리는 계속 거부한다.
 

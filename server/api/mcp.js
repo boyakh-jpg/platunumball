@@ -11,6 +11,10 @@ import {
 import { MATCH_RECEIPT_STYLES } from "../../shared/lib/thermalReceipt.js";
 import { consumeMcpReceiptGenerationQuota } from "./mcpQuota.js";
 import { getConfiguredPublicAppUrl } from "./_publicAppUrl.js";
+import { getAuthenticatedContext } from "./_supabaseAuth.js";
+import { getAdminLevel } from "./_supabaseAdmin.js";
+import { parseBearerAuthorization } from "./_requestSecurity.js";
+import { loadOwnCompactRecordPage } from "./records/list.js";
 import {
   MCP_RECEIPT_WIDGET_HTML,
   MCP_RECEIPT_WIDGET_MIME_TYPE,
@@ -54,6 +58,19 @@ const receiptInputSchema = z.object({
     .describe("개발 확인용. true이면 생성된 PNG의 base64 문자열을 structuredContent에도 포함한다."),
 }).strict();
 
+const recordListInputSchema = z.object({
+  limit: z.number().int().min(1).max(20).default(10).describe("한 번에 가져올 기록 수. 최대 20."),
+  offset: z.number().int().min(0).default(0).describe("다음 페이지 조회를 위한 시작 위치."),
+}).strict();
+
+const MCP_OAUTH_SCOPES = ["profile"];
+const OPTIONAL_SECURITY_SCHEMES = [
+  { type: "noauth" },
+  { type: "oauth2", scopes: MCP_OAUTH_SCOPES },
+];
+const REQUIRED_SECURITY_SCHEMES = [{ type: "oauth2", scopes: MCP_OAUTH_SCOPES }];
+const OWNER_ADMIN_LEVEL = 100;
+
 // Keep required fields visible in tools/list, but let the handler return a
 // structured tool error instead of the SDK's plain input-validation string.
 const receiptToolInputSchema = {
@@ -71,7 +88,7 @@ function toInputIssues(error) {
   }));
 }
 
-function toolError(message, issues = []) {
+function toolError(message, issues = [], meta = undefined) {
   return {
     isError: true,
     structuredContent: { status: "error", issues },
@@ -79,12 +96,60 @@ function toolError(message, issues = []) {
       type: "text",
       text: issues.length > 0 ? `${message} ${JSON.stringify(issues)}` : message,
     }],
+    ...(meta ? { _meta: meta } : {}),
   };
+}
+
+function getResourceMetadataUrl(request, configuredDomain = "") {
+  let origin = configuredDomain;
+  if (!origin) {
+    try {
+      origin = new URL(request?.url ?? "").origin;
+    } catch {
+      origin = "";
+    }
+  }
+  return origin ? `${origin}/.well-known/oauth-protected-resource` : "";
+}
+
+function authRequired(request, configuredDomain = "") {
+  const resourceMetadataUrl = getResourceMetadataUrl(request, configuredDomain);
+  const challenge = `Bearer scope="${MCP_OAUTH_SCOPES.join(" ")}"${resourceMetadataUrl ? `, resource_metadata="${resourceMetadataUrl}"` : ""}`;
+  return toolError("BoxTier 로그인이 필요하다.", [], { "mcp/www_authenticate": [challenge] });
+}
+
+function isAuthenticationError(error) {
+  return error?.statusCode === 401
+    || ["missing_bearer_token", "invalid_bearer_token"].includes(error?.message);
+}
+
+async function getOptionalAuthContext(request, authenticate) {
+  const bearer = parseBearerAuthorization(request);
+  if (bearer.error === "missing_bearer_token") return null;
+  if (bearer.error) {
+    const error = new Error(bearer.error);
+    error.statusCode = 401;
+    throw error;
+  }
+  return authenticate(request);
+}
+
+async function isOwnerAccount(authContext, getActorAdminLevel) {
+  if (!authContext) return false;
+  try {
+    return await getActorAdminLevel(authContext) >= OWNER_ADMIN_LEVEL;
+  } catch (error) {
+    console.error("[mcp] owner lookup failed", error);
+    return false;
+  }
 }
 
 export function createBoxtierMcpHandler({
   renderPng = renderMatchReceiptPng,
   consumeGenerationQuota = consumeMcpReceiptGenerationQuota,
+  authenticate = getAuthenticatedContext,
+  getActorAdminLevel = getAdminLevel,
+  loadOwnRecords = loadOwnCompactRecordPage,
   widgetDomain = getConfiguredPublicAppUrl(),
 } = {}) {
   return createMcpHandler((context) => {
@@ -126,6 +191,7 @@ export function createBoxtierMcpHandler({
           openWorldHint: false,
         },
         _meta: {
+          securitySchemes: OPTIONAL_SECURITY_SCHEMES,
           ui: { resourceUri: MCP_RECEIPT_WIDGET_URI },
           "openai/outputTemplate": MCP_RECEIPT_WIDGET_URI,
           "openai/toolInvocation/invoking": "농구 영수증 PNG 렌더링 중",
@@ -152,9 +218,14 @@ export function createBoxtierMcpHandler({
         }
 
         try {
-          const allowed = await consumeGenerationQuota(context.requestInfo);
+          const authContext = await getOptionalAuthContext(context.requestInfo, authenticate);
+          const owner = await isOwnerAccount(authContext, getActorAdminLevel);
+          const allowed = owner || await consumeGenerationQuota(context.requestInfo);
           if (!allowed) return toolError("최근 24시간 PNG 생성 한도 10회를 초과했다.");
         } catch (error) {
+          if (isAuthenticationError(error)) {
+            return authRequired(context.requestInfo, widgetDomain);
+          }
           console.error("[mcp] receipt quota check failed", error);
           return toolError("영수증 생성 한도를 확인할 수 없다.");
         }
@@ -189,6 +260,46 @@ export function createBoxtierMcpHandler({
         } catch (error) {
           console.error("[mcp] receipt rendering failed", error);
           return toolError("박스티어 영수증 PNG 생성에 실패했다.");
+        }
+      },
+    );
+
+    server.registerTool(
+      "list_my_match_records",
+      {
+        title: "내 BoxTier 경기 기록 불러오기",
+        description: "로그인한 사용자의 BoxTier 경기 기록만 최신순으로 가져온다. 다른 사용자의 기록 조회에는 사용하지 않는다.",
+        inputSchema: recordListInputSchema,
+        annotations: {
+          readOnlyHint: true,
+          destructiveHint: false,
+          idempotentHint: true,
+          openWorldHint: false,
+        },
+        _meta: { securitySchemes: REQUIRED_SECURITY_SCHEMES },
+      },
+      async ({ limit = 10, offset = 0 }) => {
+        let authContext;
+        try {
+          authContext = await authenticate(context.requestInfo);
+        } catch (error) {
+          if (isAuthenticationError(error)) {
+            return authRequired(context.requestInfo, widgetDomain);
+          }
+          console.error("[mcp] record authentication failed", error);
+          return toolError("로그인 상태를 확인할 수 없다.");
+        }
+
+        try {
+          const page = await loadOwnRecords(authContext.supabase, authContext.profileId, { limit, offset });
+          const result = { status: "loaded", ...page };
+          return {
+            structuredContent: result,
+            content: [{ type: "text", text: JSON.stringify(result) }],
+          };
+        } catch (error) {
+          console.error("[mcp] record list failed", error);
+          return toolError("내 경기 기록을 불러오지 못했다.");
         }
       },
     );

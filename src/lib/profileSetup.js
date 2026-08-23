@@ -85,6 +85,12 @@ export function getSafeAppRedirect(value, fallback = "/app") {
   try {
     const url = new URL(rawValue, "https://boxtier.local");
     if (url.origin !== "https://boxtier.local") return safeFallback;
+    if (url.pathname === "/oauth/consent" && !url.hash && url.searchParams.size === 1) {
+      const authorizationId = String(url.searchParams.get("authorization_id") ?? "").trim();
+      if (authorizationId && authorizationId.length <= 2048) {
+        return `/oauth/consent?authorization_id=${encodeURIComponent(authorizationId)}`;
+      }
+    }
     const redirectPath = `${url.pathname}${url.search}${url.hash}`;
     if (!redirectPath.startsWith("/app")) return safeFallback;
     if (redirectPath === "/app/signup" || redirectPath.startsWith("/app/signup?") || redirectPath.startsWith("/app/signup#")) {

@@ -65,6 +65,18 @@ test("공개 화면 OAuth 오류는 원래 안전한 backTo를 보존한 로그�
   assert.equal(loginUrl.searchParams.get("backTo"), "/privacy#details");
 });
 
+test("MCP OAuth 동의 복귀는 authorization_id 하나만 허용한다", () => {
+  const consentPath = "/oauth/consent?authorization_id=authorization-123";
+  assert.equal(getSafeAppRedirect(consentPath), consentPath);
+  assert.equal(getSafeAppRedirect(`${consentPath}&extra=1`), "/app");
+  assert.equal(getSafeAppRedirect(`${consentPath}#fragment`), "/app");
+  assert.equal(getSafeAppRedirect("https://example.com/oauth/consent?authorization_id=x"), "/app");
+
+  const loginUrl = new URL(getLoginPath(consentPath, consentPath), "https://boxtier.local");
+  assert.equal(loginUrl.searchParams.get("redirect"), consentPath);
+  assert.equal(loginUrl.searchParams.get("backTo"), consentPath);
+});
+
 test("전역 인증·알림·fallback 경로는 canonical 진입점만 노출한다", async () => {
   const [
     authSession,

@@ -26,7 +26,9 @@ function normalizeQueryKey(value = "") {
 }
 
 function getAuthorizationHeader(request = {}) {
-  const value = request.headers?.authorization ?? request.headers?.Authorization ?? "";
+  const value = typeof request.headers?.get === "function"
+    ? request.headers.get("authorization")
+    : request.headers?.authorization ?? request.headers?.Authorization ?? "";
   return Array.isArray(value) ? value : String(value || "");
 }
 

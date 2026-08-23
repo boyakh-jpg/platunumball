@@ -2900,6 +2900,7 @@ UI 수정 전:
 2. Google은 외부 앱 내장 브라우저에서 안내와 외부 브라우저 열기 action을 표시한다. Kakao는 브라우저 감지와 무관하게 동일 목록에 표시하되 Supabase provider 설정과 `VITE_KAKAO_AUTH_ENABLED=true`가 모두 준비되기 전에는 숨긴다.
 3. 설정의 `연결된 로그인`은 현재 identity와 연결 가능한 provider를 구분한다. 일반 연결은 로그인된 세션의 명시적 버튼으로 시작한다. `이미 BOXTIER 아이디가 있어요`를 확인한 복구 경로는 기존 아이디 로그인 직후 해제한 provider의 소유권 확인을 한 번 자동 시작한다. 이메일·프로필 해시태그 자동 병합을 암시하지 않는다.
 4. identity 연결 해제 UI는 제공하지 않는다. 각 행과 연결 버튼은 공용 card·button·spacing 토큰을 사용하고 모바일에서는 provider 이름과 상태가 버튼과 겹치지 않게 세로 배치한다.
+5. `/oauth/consent`는 MCP 연결 전용 공개 화면이며 기존 인증 shell·card·button을 재사용한다. 서버가 확인한 client 이름과 요청 scope를 표시하고 승인·거부 action을 제공한다. 비로그인 사용자는 `authorization_id` 하나만 포함한 검증된 내부 경로를 로그인 복귀값으로 보존한다. 승인·거부 뒤에는 Supabase OAuth 서버가 반환한 redirect URL로만 이동한다.
 
 ## 2026-08-16 영수증 엠블럼 저장·표시
 

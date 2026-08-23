@@ -75,6 +75,8 @@
     }
   ],
   "rewrites": [
+    { "source": "/.well-known/oauth-protected-resource", "destination": "/api/oauth-protected-resource" },
+    { "source": "/oauth/consent", "destination": "/index.html" },
     {
       "source": "/api/instagram/webhook",
       "destination": "/api/instagram-webhook"

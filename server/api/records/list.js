@@ -182,6 +182,33 @@ async function loadSubjectRows(client, options) {
   };
 }
 
+export async function loadOwnCompactRecordPage(client, profileId = "", options = {}) {
+  const subjectId = String(profileId || "").trim();
+  if (!subjectId) throw new Error("profile_required");
+
+  const limit = normalizeLimit(options.limit, 10, 20);
+  const offset = normalizeOffset(options.offset);
+  const { listSince } = getRecordWindowDates();
+  const { data, error } = await client
+    .from("match_record_participants")
+    .select(PROFILE_RECORD_INDEX_COLUMNS)
+    .eq("profile_id", subjectId)
+    .gte("record_date", listSince)
+    .order("record_date", { ascending: false })
+    .order("occurred_at", { ascending: false })
+    .order("match_id", { ascending: false })
+    .range(offset, offset + limit);
+  if (error) throw error;
+
+  const rows = data ?? [];
+  return {
+    records: rows.slice(0, limit).map(mapCompactRecord),
+    limit,
+    offset,
+    nextOffset: rows.length > limit ? offset + limit : null,
+  };
+}
+
 async function loadViewerTeamIds(client, profileId = "", enabled = false) {
   if (!enabled || !profileId) return new Set();
   const { data, error } = await client
