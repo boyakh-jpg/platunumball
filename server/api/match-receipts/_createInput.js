@@ -4,15 +4,19 @@ import {
   MATCH_RECEIPT_STYLES,
   THERMAL_RECEIPT_COMMENT_MAX_WEIGHT,
 } from "../../../shared/lib/thermalReceipt.js";
+import { MCP_RECEIPT_EMBLEM_MAX_BASE64_LENGTH } from "./_emblemProcessor.js";
+
+export { MCP_RECEIPT_EMBLEM_MAX_BASE64_LENGTH };
 
 const FORMATS = new Set(["1v1", "2v2", "3v3", "3x3", "5v5"]);
 const MATCH_NATURES = new Set(["friendly", "competitive", "revenge", "semifinal", "final"]);
 const PERIOD_LABELS = new Set(["1Q", "2Q", "3Q", "4Q", "1H", "2H", "REG", "OT"]);
-export const PREPARED_EMBLEM_MAX_BASE64_LENGTH = 132_000;
 const BASE64_PATTERN = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/u;
 const EXTERNAL_EMBLEM_FIELDS = [
   "homeEmblem",
   "awayEmblem",
+  "homeEmblemFile",
+  "awayEmblemFile",
   "homeEmblemUrl",
   "awayEmblemUrl",
   "emblemUrl",
@@ -40,16 +44,40 @@ function issue(field, code) {
   return { field, code };
 }
 
-function parsePreparedEmblem(value, field, issues) {
+function parseReceiptEmblem(value, field, issues) {
   if (value === undefined) return null;
   if (!value || typeof value !== "object" || Array.isArray(value)
-    || Object.keys(value).length !== 1 || typeof value.imageBase64 !== "string"
-    || value.imageBase64.length === 0 || value.imageBase64.length > PREPARED_EMBLEM_MAX_BASE64_LENGTH
+    || Object.keys(value).some((key) => !["imageBase64", "mimeType"].includes(key))
+    || typeof value.imageBase64 !== "string"
+    || value.imageBase64.length === 0 || value.imageBase64.length > MCP_RECEIPT_EMBLEM_MAX_BASE64_LENGTH
+    || (value.mimeType !== undefined && typeof value.mimeType !== "string")
     || !BASE64_PATTERN.test(value.imageBase64)) {
-    issues.push(issue(field, "prepared_webp_base64_required"));
+    issues.push(issue(field, "raw_image_base64_required"));
     return null;
   }
-  return { imageBase64: value.imageBase64 };
+  return {
+    imageBase64: value.imageBase64,
+    ...(value.mimeType ? { mimeType: text(value.mimeType) } : {}),
+  };
+}
+
+function parseReceiptEmblemFile(value, field, issues) {
+  if (value === undefined) return null;
+  if (!value || typeof value !== "object" || Array.isArray(value)
+    || Object.keys(value).some((key) => !["download_url", "file_id", "mime_type", "file_name"].includes(key))
+    || typeof value.download_url !== "string" || !value.download_url
+    || typeof value.file_id !== "string" || !value.file_id
+    || (value.mime_type !== undefined && typeof value.mime_type !== "string")
+    || (value.file_name !== undefined && typeof value.file_name !== "string")) {
+    issues.push(issue(field, "attached_image_file_required"));
+    return null;
+  }
+  return {
+    downloadUrl: value.download_url,
+    fileId: value.file_id,
+    ...(value.mime_type ? { mimeType: text(value.mime_type) } : {}),
+    ...(value.file_name ? { fileName: text(value.file_name) } : {}),
+  };
 }
 
 export function parseExternalReceiptInput(value = {}, { allowPreparedEmblems = false } = {}) {
@@ -88,16 +116,23 @@ export function parseExternalReceiptInput(value = {}, { allowPreparedEmblems = f
   if (value.includePhoto === true || value.photo || value.photoUrl || value.photoAssetId || value.imageUrl) {
     issues.push(issue("includePhoto", "external_photo_not_supported"));
   }
+  const allowedEmblemFields = new Set(["homeEmblem", "awayEmblem", "homeEmblemFile", "awayEmblemFile"]);
   const hasUnsupportedEmblemField = EXTERNAL_EMBLEM_FIELDS
-    .filter((field) => field !== "homeEmblem" && field !== "awayEmblem")
+    .filter((field) => !allowedEmblemFields.has(field))
     .some((field) => Object.hasOwn(value, field));
   if (!allowPreparedEmblems && EXTERNAL_EMBLEM_FIELDS.some((field) => Object.hasOwn(value, field))) {
     issues.push(issue("emblem", "external_emblem_not_supported"));
   } else if (allowPreparedEmblems && hasUnsupportedEmblemField) {
     issues.push(issue("emblem", "external_emblem_not_supported"));
   }
-  const homeEmblem = allowPreparedEmblems ? parsePreparedEmblem(value.homeEmblem, "homeEmblem", issues) : null;
-  const awayEmblem = allowPreparedEmblems ? parsePreparedEmblem(value.awayEmblem, "awayEmblem", issues) : null;
+  const homeEmblem = allowPreparedEmblems ? parseReceiptEmblem(value.homeEmblem, "homeEmblem", issues) : null;
+  const awayEmblem = allowPreparedEmblems ? parseReceiptEmblem(value.awayEmblem, "awayEmblem", issues) : null;
+  const homeEmblemFile = allowPreparedEmblems
+    ? parseReceiptEmblemFile(value.homeEmblemFile, "homeEmblemFile", issues) : null;
+  const awayEmblemFile = allowPreparedEmblems
+    ? parseReceiptEmblemFile(value.awayEmblemFile, "awayEmblemFile", issues) : null;
+  if (homeEmblem && homeEmblemFile) issues.push(issue("homeEmblem", "duplicate_emblem_source"));
+  if (awayEmblem && awayEmblemFile) issues.push(issue("awayEmblem", "duplicate_emblem_source"));
   if (value.verified === true || value.homeMmr !== undefined || value.awayMmr !== undefined) {
     issues.push(issue("verified", "canonical_fields_not_allowed"));
   }
@@ -133,7 +168,7 @@ export function parseExternalReceiptInput(value = {}, { allowPreparedEmblems = f
   if (issues.length > 0) return { issues, draft: null, emblems: null };
   return {
     issues: [],
-    emblems: { home: homeEmblem, away: awayEmblem },
+    emblems: { home: homeEmblemFile || homeEmblem, away: awayEmblemFile || awayEmblem },
     draft: {
       homeTeam,
       awayTeam,

@@ -5,6 +5,7 @@ import nodeMcpHandler from "../api/mcp.js";
 import { createBoxtierMcpHandler } from "../server/api/mcp.js";
 import { consumeMcpReceiptGenerationQuota } from "../server/api/mcpQuota.js";
 import { MCP_RECEIPT_WIDGET_URI } from "../server/api/mcpReceiptWidget.js";
+import { downloadReceiptEmblem } from "../server/api/match-receipts/_emblemProcessor.js";
 import { getMcpProtectedResourceMetadata } from "../server/api/oauthProtectedResource.js";
 import { getThermalReceiptLayout } from "../shared/lib/thermalReceipt.js";
 
@@ -131,9 +132,14 @@ test("MCP가 자동 선택용 영수증 도구를 공개한다", async () => {
   assert.equal(tool.annotations.idempotentHint, false);
   assert.equal(tool._meta.ui.resourceUri, MCP_RECEIPT_WIDGET_URI);
   assert.equal(tool._meta["openai/outputTemplate"], MCP_RECEIPT_WIDGET_URI);
+  assert.deepEqual(tool._meta["openai/fileParams"], ["homeEmblemFile", "awayEmblemFile"]);
   assert.deepEqual(tool._meta.securitySchemes, [{ type: "noauth" }]);
   assert.ok(tool.inputSchema.properties.homeEmblem);
   assert.ok(tool.inputSchema.properties.awayEmblem);
+  assert.ok(tool.inputSchema.properties.homeEmblem.properties.imageBase64);
+  assert.deepEqual(tool.inputSchema.properties.homeEmblem.properties.mimeType.enum, [
+    "image/jpeg", "image/png", "image/webp",
+  ]);
   assert.deepEqual(tool.inputSchema.properties.debugBase64, {
     type: "boolean",
     default: false,
@@ -141,6 +147,13 @@ test("MCP가 자동 선택용 영수증 도구를 공개한다", async () => {
   });
   assert.equal(tool.inputSchema.required.includes("debugBase64"), false);
   assert.equal(tool.inputSchema.properties.homeEmblem.additionalProperties, false);
+  for (const field of ["homeEmblemFile", "awayEmblemFile"]) {
+    assert.ok(tool.inputSchema.properties[field]);
+    assert.deepEqual(tool.inputSchema.properties[field].required.sort(), ["download_url", "file_id"]);
+    assert.deepEqual(Object.keys(tool.inputSchema.properties[field].properties).sort(), [
+      "download_url", "file_id", "file_name", "mime_type",
+    ]);
+  }
   assert.deepEqual(tool.inputSchema.required.sort(), [
     "awayScore", "awayTeam", "format", "homeScore", "homeTeam", "playedOn", "venue",
   ].sort());
@@ -353,9 +366,18 @@ test("MCP 호출은 누락 입력을 구조화해 반환하고 한도를 소비�
   await handler.close();
 });
 
-test("MCP 호출은 처리된 엠블럼만 렌더러에 전달한다", async () => {
+test("MCP 호출은 첨부 원본을 메모리에서 정규화해 렌더러에 전달한다", async () => {
   let renderCall = null;
-  const emblemBase64 = Buffer.from("prepared-webp-fixture").toString("base64");
+  const { default: sharp } = await import("sharp");
+  const sourcePng = await sharp({
+    create: {
+      width: 640,
+      height: 320,
+      channels: 4,
+      background: { r: 23, g: 94, b: 180, alpha: 1 },
+    },
+  }).png().toBuffer();
+  const emblemBase64 = sourcePng.toString("base64");
   const handler = createBoxtierMcpHandler({
     consumeGenerationQuota: async () => true,
     renderPng: async (input) => {
@@ -368,7 +390,7 @@ test("MCP 호출은 처리된 엠블럼만 렌더러에 전달한다", async () 
     arguments: {
       homeTeam: "SEOUL HOOPERS",
       awayTeam: "BUSAN WAVES",
-      homeEmblem: { imageBase64: emblemBase64 },
+      homeEmblem: { imageBase64: emblemBase64, mimeType: "image/png" },
       awayEmblem: { imageBase64: emblemBase64 },
       homeScore: 81,
       awayScore: 77,
@@ -379,10 +401,68 @@ test("MCP 호출은 처리된 엠블럼만 렌더러에 전달한다", async () 
   }, 31);
 
   assert.equal(called.result.isError, undefined, JSON.stringify(called.result));
-  assert.deepEqual(renderCall.emblems, {
-    home: { imageBase64: emblemBase64 },
-    away: { imageBase64: emblemBase64 },
+  for (const emblem of [renderCall.emblems.home, renderCall.emblems.away]) {
+    assert.equal(emblem.mimeType, "image/webp");
+    assert.notEqual(emblem.imageBase64, emblemBase64);
+    const normalized = Buffer.from(emblem.imageBase64, "base64");
+    const metadata = await sharp(normalized).metadata();
+    assert.equal(metadata.format, "webp");
+    assert.equal(metadata.width, 320);
+    assert.equal(metadata.height, 320);
+    assert.ok(normalized.length <= 96 * 1024);
+    const { data, info } = await sharp(normalized).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+    assert.equal(data[3], 0);
+    assert.ok(data[((160 * info.width + 160) * info.channels) + 3] > 0);
+  }
+  await handler.close();
+});
+
+test("엠블럼 임시 URL은 HTTPS와 공인 주소만 허용한다", async () => {
+  await assert.rejects(
+    () => downloadReceiptEmblem("http://example.com/emblem.png", "homeEmblem"),
+    (error) => error?.field === "homeEmblem" && error?.code === "emblem_download_url_invalid",
+  );
+  await assert.rejects(
+    () => downloadReceiptEmblem("https://127.0.0.1/emblem.png", "awayEmblem"),
+    (error) => error?.field === "awayEmblem" && error?.code === "emblem_download_failed",
+  );
+});
+
+test("ChatGPT 첨부 파일 파라미터를 메모리 엠블럼 처리기로 전달한다", async () => {
+  let preparedInput = null;
+  let renderCall = null;
+  const handler = createBoxtierMcpHandler({
+    consumeGenerationQuota: async () => true,
+    prepareEmblems: async (emblems) => {
+      preparedInput = emblems;
+      return { home: { imageBase64: "normalized", mimeType: "image/webp" }, away: null };
+    },
+    renderPng: async (input) => {
+      renderCall = input;
+      return TEST_PNG;
+    },
   });
+  const called = await rpc(handler, "tools/call", {
+    name: "create_basketball_receipt",
+    arguments: {
+      ...VALID_RECEIPT_ARGUMENTS,
+      homeEmblemFile: {
+        download_url: "https://files.example.test/emblem.png?token=temporary",
+        file_id: "file_home_emblem",
+        mime_type: "image/png",
+        file_name: "home.png",
+      },
+    },
+  }, 35);
+
+  assert.equal(called.result.isError, undefined, JSON.stringify(called.result));
+  assert.deepEqual(preparedInput.home, {
+    downloadUrl: "https://files.example.test/emblem.png?token=temporary",
+    fileId: "file_home_emblem",
+    mimeType: "image/png",
+    fileName: "home.png",
+  });
+  assert.deepEqual(renderCall.emblems.home, { imageBase64: "normalized", mimeType: "image/webp" });
   await handler.close();
 });
 
@@ -419,11 +499,23 @@ test("MCP 호출은 엠블럼 URL과 data URL을 렌더링 전에 거부한다",
       homeEmblem: { imageBase64: "data:image/webp;base64,AAAA" },
     },
   }, 33);
+  const withInvalidImage = await rpc(handler, "tools/call", {
+    name: "create_basketball_receipt",
+    arguments: {
+      ...baseArguments,
+      homeEmblem: { imageBase64: Buffer.from("not-an-image").toString("base64") },
+    },
+  }, 34);
 
   assert.equal(withUrl.result.isError, true);
   assert.equal(withDataUrl.result.isError, true);
+  assert.equal(withInvalidImage.result.isError, true);
+  assert.deepEqual(withInvalidImage.result.structuredContent.issues, [{
+    field: "homeEmblem",
+    code: "emblem_image_invalid",
+  }]);
   assert.equal(renders, 0);
-  assert.equal(quotaCalls, 0);
+  assert.equal(quotaCalls, 1);
   await handler.close();
 });
 
