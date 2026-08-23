@@ -116,7 +116,12 @@ async function loadLinkedProfileId(supabase, senderHash) {
 
 function getEvents(payload = {}) {
   if (payload.object !== "instagram") return [];
-  return (payload.entry ?? []).flatMap((entry) => entry.messaging ?? []).filter((event) => (
+  return (payload.entry ?? []).flatMap((entry) => [
+    ...(entry.messaging ?? []),
+    ...(entry.changes ?? [])
+      .filter((change) => change?.field === "messages")
+      .map((change) => change.value),
+  ]).filter((event) => (
     event?.message?.mid && typeof event?.message?.text === "string" && event?.sender?.id && !event?.message?.is_echo
   ));
 }
@@ -208,6 +213,8 @@ async function processEvent(event, { config, supabase, sendMessage, receiptMessa
 
 export async function handleInstagramWebhook(request, response, options = {}) {
   setApiSecurityHeaders(response);
+  const requestId = randomBytes(6).toString("hex");
+  console.info("Instagram webhook received.", { requestId, method: request.method });
   try {
     const config = options.config ?? getInstagramBotConfig(options.env);
     if (request.method === "GET") {
@@ -224,7 +231,9 @@ export async function handleInstagramWebhook(request, response, options = {}) {
     }
     const rawBody = await readRawBody(request);
     const verifySignature = options.verifySignature ?? verifyInstagramSignature;
-    if (!verifySignature(rawBody, request.headers?.["x-hub-signature-256"] ?? request.headers?.["X-Hub-Signature-256"], config.appSecret)) {
+    const signatureVerified = verifySignature(rawBody, request.headers?.["x-hub-signature-256"] ?? request.headers?.["X-Hub-Signature-256"], config.appSecret);
+    console.info("Instagram webhook signature checked.", { requestId, bodyBytes: rawBody.length, signatureVerified });
+    if (!signatureVerified) {
       return sendWebhookJson(response, 401, { error: "invalid_instagram_signature" });
     }
     let payload;
@@ -235,11 +244,19 @@ export async function handleInstagramWebhook(request, response, options = {}) {
     ]);
     const supabase = options.supabase ?? supabaseModule.getSupabaseAdminClient();
     const sendMessage = options.sendMessage ?? ((recipientId, message) => sendInstagramMessage(recipientId, message, config, options.fetchImpl));
-    for (const event of getEvents(payload)) await processEvent(event, { config, supabase, sendMessage, receiptMessage });
+    const events = getEvents(payload);
+    console.info("Instagram webhook events normalized.", {
+      requestId,
+      object: payload.object,
+      entryCount: Array.isArray(payload.entry) ? payload.entry.length : 0,
+      eventCount: events.length,
+    });
+    for (const event of events) await processEvent(event, { config, supabase, sendMessage, receiptMessage });
     await supabase.rpc("cleanup_instagram_receipt_bot_data");
+    console.info("Instagram webhook completed.", { requestId, eventCount: events.length });
     return sendWebhookJson(response, 200, { received: true });
   } catch (error) {
-    console.warn("Instagram receipt webhook failed.", error.message);
+    console.warn("Instagram receipt webhook failed.", { requestId, error: error.message });
     return sendWebhookJson(response, error.statusCode || 500, { error: error.statusCode ? error.message : "instagram_webhook_failed" });
   }
 }

@@ -108,6 +108,30 @@ test("수락 이벤트만 임시 렌더 job과 이미지 답장을 만든다", a
   assert.equal(supabase.state.rpc.at(-1).name, "cleanup_instagram_receipt_bot_data");
 });
 
+test("Instagram changes messages 이벤트도 canonical DM 이벤트로 처리한다", async () => {
+  const payload = {
+    object: "instagram",
+    entry: [{
+      changes: [{
+        field: "messages",
+        value: { sender: { id: "sender-1" }, message: { mid: "event-changes-1", text: validMessage } },
+      }],
+    }],
+  };
+  const raw = Buffer.from(JSON.stringify(payload));
+  const supabase = createSupabase();
+  const sent = [];
+  const response = createResponse();
+  await handleInstagramWebhook({ method: "POST", headers: {}, body: raw }, response, {
+    config, supabase, verifySignature: () => true,
+    sendMessage: async (recipientId, message) => sent.push({ recipientId, message }),
+  });
+  assert.equal(response.statusCode, 200);
+  assert.equal(sent.length, 2);
+  assert.equal(sent[0].message.text, "영수증 만드는 중입니다.");
+  assert.match(sent[1].message.attachment.payload.url, /^https:\/\/example\.com\/api\/instagram\/receipt-image\?id=/u);
+});
+
 test("연결 회원은 프로필 기준 제한과 기록 소유권을 사용한다", async () => {
   const payload = { object: "instagram", entry: [{ messaging: [{ sender: { id: "sender-1" }, message: { mid: "event-1", text: validMessage } }] }] };
   const raw = Buffer.from(JSON.stringify(payload));
