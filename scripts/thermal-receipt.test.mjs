@@ -256,9 +256,17 @@ test("thermal print noise is deterministic for the receipt seed", () => {
 test("thermal print roles keep supplied masks separate and preserve dense QR ink", () => {
   assert.deepEqual(THERMAL_PRINT_ROLES, {
     body: { mask: "body", opacity: 0.84 },
-    team: { mask: "team", opacity: 0.9 },
+    team: { mask: "team", opacity: 0.9, recoveryOpacity: 0.55 },
     heavy: { mask: "heavy", opacity: 0.92 },
     photo: { mask: "photo", opacity: 0.88 },
     qr: { mask: "heavy", opacity: 0.97 },
   });
+});
+
+test("thermal team names recover clean ink after the distressed mask", async () => {
+  const renderer = await readFile(new URL("../src/lib/thermalReceipt.js", import.meta.url), "utf8");
+
+  assert.match(renderer, /const recoveryOpacity = Math\.max\(0, Math\.min\(1, Number\(config\.recoveryOpacity\) \|\| 0\)\)/u);
+  assert.match(renderer, /cleanLayer\?\.getContext\("2d"\)\.drawImage\(canvas, 0, 0\)/u);
+  assert.match(renderer, /drawThermalText\(ctx, name,[\s\S]*printRole: "team"/u);
 });

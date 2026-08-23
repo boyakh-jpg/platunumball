@@ -91,6 +91,9 @@ function applyPrintMask(canvas, image, seed, role = "body") {
   const config = THERMAL_PRINT_ROLES[role] || THERMAL_PRINT_ROLES.body;
   if (!image || !config.mask) return;
   const ctx = canvas.getContext("2d");
+  const recoveryOpacity = Math.max(0, Math.min(1, Number(config.recoveryOpacity) || 0));
+  const cleanLayer = recoveryOpacity > 0 ? createCanvas(canvas.width, canvas.height) : null;
+  cleanLayer?.getContext("2d").drawImage(canvas, 0, 0);
   const random = createThermalRandom(`${seed}|${role}|mask`);
   const sourceWidth = Math.min(image.naturalWidth, canvas.width);
   const sourceHeight = Math.min(image.naturalHeight, canvas.height);
@@ -101,6 +104,12 @@ function applyPrintMask(canvas, image, seed, role = "body") {
   ctx.globalAlpha = config.opacity;
   ctx.drawImage(image, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, canvas.width, canvas.height);
   ctx.restore();
+  if (cleanLayer) {
+    ctx.save();
+    ctx.globalAlpha = recoveryOpacity;
+    ctx.drawImage(cleanLayer, 0, 0);
+    ctx.restore();
+  }
 }
 
 function roundedRectPath(ctx, x, y, width, height, radius) {

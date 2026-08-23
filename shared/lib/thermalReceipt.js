@@ -9,7 +9,7 @@ export const MATCH_RECEIPT_COMMENT_LINE_LENGTH = 11;
 export const THERMAL_RECEIPT_COMMENT_MAX_WEIGHT = MATCH_RECEIPT_COMMENT_MAX_LENGTH;
 export const THERMAL_PRINT_ROLES = Object.freeze({
   body: Object.freeze({ mask: "body", opacity: 0.84 }),
-  team: Object.freeze({ mask: "team", opacity: 0.9 }),
+  team: Object.freeze({ mask: "team", opacity: 0.9, recoveryOpacity: 0.55 }),
   heavy: Object.freeze({ mask: "heavy", opacity: 0.92 }),
   photo: Object.freeze({ mask: "photo", opacity: 0.88 }),
   qr: Object.freeze({ mask: "heavy", opacity: 0.97 }),
