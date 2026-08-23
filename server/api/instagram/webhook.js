@@ -1,10 +1,14 @@
 import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
-import { getSupabaseAdminClient, sendJson } from "../_supabaseAdmin.js";
 import { setApiSecurityHeaders } from "../_requestSecurity.js";
-import { INSTAGRAM_RECEIPT_USAGE, normalizeInstagramMessage, parseInstagramReceiptMessage } from "./_receiptMessage.js";
 
 const BODY_MAX_BYTES = 1024 * 1024;
 const GRAPH_VERSION_PATTERN = /^v\d+\.\d+$/u;
+
+function sendWebhookJson(response, statusCode, payload) {
+  setApiSecurityHeaders(response);
+  if (statusCode === 401) response.setHeader?.("WWW-Authenticate", "Bearer");
+  response.status(statusCode).json(payload);
+}
 
 function secretEqual(actual = "", expected = "") {
   if (!actual || !expected) return false;
@@ -75,8 +79,8 @@ function keyedHash(value, secret) {
   return createHmac("sha256", secret).update(String(value)).digest("hex");
 }
 
-function getCommand(value = "") {
-  const normalized = normalizeInstagramMessage(value);
+function getCommand(value = "", normalizeMessage) {
+  const normalized = normalizeMessage(value);
   return normalized === "연결" || normalized === "기록" ? normalized : "";
 }
 
@@ -125,12 +129,12 @@ export async function sendInstagramMessage(recipientId, message, config, fetchIm
   if (!response.ok) throw new Error(`instagram_send_failed_${response.status}`);
 }
 
-async function processEvent(event, { config, supabase, sendMessage }) {
+async function processEvent(event, { config, supabase, sendMessage, receiptMessage }) {
   const eventHash = keyedHash(event.message.mid, config.hashSecret);
   const senderHash = keyedHash(event.sender.id, config.hashSecret);
-  const normalizedMessage = normalizeInstagramMessage(event.message.text);
+  const normalizedMessage = receiptMessage.normalizeInstagramMessage(event.message.text);
   const contentHash = keyedHash(normalizedMessage, config.hashSecret);
-  const command = getCommand(event.message.text);
+  const command = getCommand(event.message.text, receiptMessage.normalizeInstagramMessage);
   const profileId = await loadLinkedProfileId(supabase, senderHash);
   const principalHash = profileId ? keyedHash(`profile:${profileId}`, config.hashSecret) : senderHash;
   const { data: decision, error: claimError } = await supabase.rpc("claim_instagram_receipt_bot_request_v2", {
@@ -172,9 +176,9 @@ async function processEvent(event, { config, supabase, sendMessage }) {
       outcome = "history_sent";
       return;
     }
-    const parsed = parseInstagramReceiptMessage(event.message.text);
+    const parsed = receiptMessage.parseInstagramReceiptMessage(event.message.text);
     if (parsed.issues.length) {
-      await sendMessage(event.sender.id, { text: `형식이 맞지 않습니다.\n\n${INSTAGRAM_RECEIPT_USAGE}` });
+      await sendMessage(event.sender.id, { text: `형식이 맞지 않습니다.\n\n${receiptMessage.INSTAGRAM_RECEIPT_USAGE}` });
       outcome = "help";
       return;
     }
@@ -211,7 +215,7 @@ export async function handleInstagramWebhook(request, response, options = {}) {
       const tokenMatched = secretEqual(token, config.verifyToken);
       const verified = mode === "subscribe" && Boolean(challenge) && tokenMatched;
       console.info("Instagram webhook verification.", { verified, modeIsSubscribe: mode === "subscribe", hasChallenge: Boolean(challenge), tokenMatched });
-      if (!verified) return sendJson(response, 403, { error: "instagram_webhook_verification_failed" });
+      if (!verified) return sendWebhookJson(response, 403, { error: "instagram_webhook_verification_failed" });
       response.statusCode = 200;
       response.setHeader("Content-Type", "text/plain; charset=utf-8");
       return response.end(challenge);
@@ -219,18 +223,22 @@ export async function handleInstagramWebhook(request, response, options = {}) {
     const rawBody = await readRawBody(request);
     const verifySignature = options.verifySignature ?? verifyInstagramSignature;
     if (!verifySignature(rawBody, request.headers?.["x-hub-signature-256"] ?? request.headers?.["X-Hub-Signature-256"], config.appSecret)) {
-      return sendJson(response, 401, { error: "invalid_instagram_signature" });
+      return sendWebhookJson(response, 401, { error: "invalid_instagram_signature" });
     }
     let payload;
-    try { payload = JSON.parse(rawBody.toString("utf8")); } catch { return sendJson(response, 400, { error: "invalid_json_body" }); }
-    const supabase = options.supabase ?? getSupabaseAdminClient();
+    try { payload = JSON.parse(rawBody.toString("utf8")); } catch { return sendWebhookJson(response, 400, { error: "invalid_json_body" }); }
+    const [receiptMessage, supabaseModule] = await Promise.all([
+      import("./_receiptMessage.js"),
+      options.supabase ? null : import("../_supabaseAdmin.js"),
+    ]);
+    const supabase = options.supabase ?? supabaseModule.getSupabaseAdminClient();
     const sendMessage = options.sendMessage ?? ((recipientId, message) => sendInstagramMessage(recipientId, message, config, options.fetchImpl));
-    for (const event of getEvents(payload)) await processEvent(event, { config, supabase, sendMessage });
+    for (const event of getEvents(payload)) await processEvent(event, { config, supabase, sendMessage, receiptMessage });
     await supabase.rpc("cleanup_instagram_receipt_bot_data");
-    return sendJson(response, 200, { received: true });
+    return sendWebhookJson(response, 200, { received: true });
   } catch (error) {
     console.warn("Instagram receipt webhook failed.", error.message);
-    return sendJson(response, error.statusCode || 500, { error: error.statusCode ? error.message : "instagram_webhook_failed" });
+    return sendWebhookJson(response, error.statusCode || 500, { error: error.statusCode ? error.message : "instagram_webhook_failed" });
   }
 }
 
