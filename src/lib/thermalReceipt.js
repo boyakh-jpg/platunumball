@@ -27,7 +27,7 @@ const TEAM_DISPLAY_FONT_WEIGHT = 900;
 const KOREAN_FONT = '"NeoDunggeunmo", "Pretendard Variable", monospace';
 const KOREAN_WIDTH_SCALE = 0.94;
 const SCORE_PANEL = "#505050";
-const EMBLEM_GRAYSCALE_LEVELS = Object.freeze([16, 72, 128, 192]);
+export const EMBLEM_GRAYSCALE_LEVELS = Object.freeze([18, 70, 124, 176]);
 const SCORE_PANEL_INSET_X = 14;
 const SCORE_PANEL_INSET_Y = 12;
 const SCORE_DIGIT_HEIGHT = 146;
@@ -391,6 +391,37 @@ function drawBrand(ctx, model, layout) {
   drawRule(ctx, layout.content.x, layout.brand.y + layout.brand.height - 4, layout.content.width);
 }
 
+export function quantizeThermalEmblemPixels(data, width, height) {
+  const errors = new Float32Array(width * height);
+  const addError = (pixelIndex, error, weight) => {
+    if (data[pixelIndex * 4 + 3] > 0) errors[pixelIndex] += error * weight;
+  };
+  for (let pixelY = 0; pixelY < height; pixelY += 1) {
+    for (let pixelX = 0; pixelX < width; pixelX += 1) {
+      const pixelIndex = pixelY * width + pixelX;
+      const index = pixelIndex * 4;
+      if (data[index + 3] === 0) continue;
+      const luminance = Math.max(0, Math.min(255,
+        data[index] * 0.2126 + data[index + 1] * 0.7152 + data[index + 2] * 0.0722 + errors[pixelIndex],
+      ));
+      const output = EMBLEM_GRAYSCALE_LEVELS.reduce((closest, level) => (
+        Math.abs(level - luminance) < Math.abs(closest - luminance) ? level : closest
+      ));
+      const error = luminance - output;
+      if (pixelX + 1 < width) addError(pixelIndex + 1, error, 7 / 16);
+      if (pixelY + 1 < height) {
+        if (pixelX > 0) addError(pixelIndex + width - 1, error, 3 / 16);
+        addError(pixelIndex + width, error, 5 / 16);
+        if (pixelX + 1 < width) addError(pixelIndex + width + 1, error, 1 / 16);
+      }
+      data[index] = output;
+      data[index + 1] = output;
+      data[index + 2] = output;
+    }
+  }
+  return data;
+}
+
 function drawEmblem(ctx, emblem, x, y) {
   const layer = createCanvas(184, 184);
   const layerCtx = layer.getContext("2d");
@@ -405,28 +436,7 @@ function drawEmblem(ctx, emblem, x, y) {
     const drawY = (168 - height) / 2;
     bitmapCtx.drawImage(image, drawX, drawY, width, height);
     const pixels = bitmapCtx.getImageData(0, 0, 168, 168);
-    const errors = new Float32Array(168 * 168);
-    for (let pixelY = 0; pixelY < 168; pixelY += 1) {
-      for (let pixelX = 0; pixelX < 168; pixelX += 1) {
-        const pixelIndex = pixelY * 168 + pixelX;
-        const index = pixelIndex * 4;
-        const alpha = pixels.data[index + 3] / 255;
-        const luminance = pixels.data[index] * 0.2126 + pixels.data[index + 1] * 0.7152 + pixels.data[index + 2] * 0.0722;
-        const grayscale = Math.max(0, Math.min(255, luminance * alpha + 255 * (1 - alpha) + errors[pixelIndex]));
-        const output = Math.round(grayscale / 85) * 85;
-        const error = grayscale - output;
-        if (pixelX + 1 < 168) errors[pixelIndex + 1] += error * 7 / 16;
-        if (pixelY + 1 < 168) {
-          if (pixelX > 0) errors[pixelIndex + 167] += error * 3 / 16;
-          errors[pixelIndex + 168] += error * 5 / 16;
-          if (pixelX + 1 < 168) errors[pixelIndex + 169] += error / 16;
-        }
-        pixels.data[index] = 21;
-        pixels.data[index + 1] = 21;
-        pixels.data[index + 2] = 21;
-        pixels.data[index + 3] = 255 - output;
-      }
-    }
+    quantizeThermalEmblemPixels(pixels.data, 168, 168);
     bitmapCtx.putImageData(pixels, 0, 0);
     layerCtx.save();
     layerCtx.beginPath();
@@ -689,32 +699,22 @@ function normalizeThermalData(value, options) {
   };
 }
 
-function quantizeThermalCanvas(canvas, layout) {
+export function grayscaleThermalPixels(data) {
+  for (let index = 0; index < data.length; index += 4) {
+    const luminance = Math.round(data[index] * 0.2126
+      + data[index + 1] * 0.7152
+      + data[index + 2] * 0.0722);
+    data[index] = luminance;
+    data[index + 1] = luminance;
+    data[index + 2] = luminance;
+  }
+  return data;
+}
+
+function grayscaleThermalCanvas(canvas) {
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
   const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  const emblemY = layout.teams.y + 82;
-  const leftEmblemX = layout.teams.x + 126;
-  const rightEmblemX = layout.teams.x + layout.teams.width - 126;
-  const emblemRadiusSquared = 69 ** 2;
-  for (let index = 0; index < pixels.data.length; index += 4) {
-    const pixelIndex = index / 4;
-    const x = pixelIndex % canvas.width;
-    const y = Math.floor(pixelIndex / canvas.width);
-    const luminance = pixels.data[index] * 0.2126
-      + pixels.data[index + 1] * 0.7152
-      + pixels.data[index + 2] * 0.0722;
-    const emblemDistanceY = (y - emblemY) ** 2;
-    const isEmblem = emblemDistanceY <= emblemRadiusSquared && (
-      (x - leftEmblemX) ** 2 + emblemDistanceY <= emblemRadiusSquared
-      || (x - rightEmblemX) ** 2 + emblemDistanceY <= emblemRadiusSquared
-    );
-    const level = isEmblem
-      ? EMBLEM_GRAYSCALE_LEVELS[Math.round(luminance / 255 * (EMBLEM_GRAYSCALE_LEVELS.length - 1))]
-      : Math.round(luminance);
-    pixels.data[index] = level;
-    pixels.data[index + 1] = level;
-    pixels.data[index + 2] = level;
-  }
+  grayscaleThermalPixels(pixels.data);
   ctx.putImageData(pixels, 0, 0);
   return canvas;
 }
@@ -759,7 +759,7 @@ export async function renderThermalReceiptCanvas(value, preset = "story", option
   drawPeriods(ctx, model, layout);
   drawResult(ctx, model, layout, atlas);
   drawFooter(ctx, model, layout);
-  quantizeThermalCanvas(base, layout);
+  grayscaleThermalCanvas(base);
   if (preset === "story") {
     const output = createCanvas(layout.paper.width, layout.paper.height);
     output.getContext("2d").drawImage(

@@ -26,6 +26,11 @@ import {
   getReceiptSearchWithLocale,
   RECEIPT_SHELL_COPY,
 } from "../src/lib/receiptLocale.js";
+import {
+  EMBLEM_GRAYSCALE_LEVELS,
+  grayscaleThermalPixels,
+  quantizeThermalEmblemPixels,
+} from "../src/lib/thermalReceipt.js";
 
 async function assertGrayscalePng(png) {
   const { data, info } = await sharp(png).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
@@ -166,12 +171,11 @@ test("receipt emblems allow style-specific local adjustment while canonical team
   assert.match(emblemEditor, /AI 프롬프트 복사/u);
   assert.match(receiptPage, /conversionMode=\{isThermal \? "monochrome" : "line-art"\}/u);
   assert.match(receiptPage, /onConvert=\{isThermal \? undefined : convertLocalTeamEmblem\}/u);
-  assert.match(
-    thermalRenderer,
-    /const grayscale = Math\.max\(0, Math\.min\(255, luminance \* alpha \+ 255 \* \(1 - alpha\) \+ errors\[pixelIndex\]\)\)/u,
-  );
-  assert.match(thermalRenderer, /const output = Math\.round\(grayscale \/ 85\) \* 85/u);
-  assert.match(thermalRenderer, /pixels\.data\[index \+ 3\] = 255 - output/u);
+  assert.deepEqual(EMBLEM_GRAYSCALE_LEVELS, [18, 70, 124, 176]);
+  assert.match(thermalRenderer, /if \(data\[index \+ 3\] === 0\) continue/u);
+  assert.match(thermalRenderer, /quantizeThermalEmblemPixels\(pixels\.data, 168, 168\)/u);
+  assert.match(thermalRenderer, /grayscaleThermalCanvas\(base\)/u);
+  assert.doesNotMatch(thermalRenderer, /const isEmblem/u);
   assert.match(receiptPage, /저장된 팀 엠블럼 없음/u);
   assert.match(receiptPage, /로그인 · 팀 만들고 엠블럼 저장/u);
   assert.match(receiptPage, /EmblemCropEditor/u);
@@ -196,6 +200,23 @@ test("receipt emblems allow style-specific local adjustment while canonical team
   assert.match(receiptPage, /local:\s*localTeamEmblemUrls/u);
   assert.match(receiptPage, /const activeEmblemUrl = selectedTeamReceiptEmblemUrls\[side\]/u);
   assert.match(teamView, /disabled=\{receiptEmblemPending \|\| receiptEmblemUploadLocked\}/u);
+});
+
+test("thermal emblem D conversion preserves transparency and keeps receipt paper continuous", () => {
+  const emblemPixels = new Uint8ClampedArray([
+    250, 250, 250, 0,
+    150, 100, 50, 255,
+  ]);
+  quantizeThermalEmblemPixels(emblemPixels, 2, 1);
+  assert.deepEqual([...emblemPixels.slice(0, 4)], [250, 250, 250, 0]);
+  assert.ok(EMBLEM_GRAYSCALE_LEVELS.includes(emblemPixels[4]));
+  assert.equal(emblemPixels[4], emblemPixels[5]);
+  assert.equal(emblemPixels[4], emblemPixels[6]);
+  assert.equal(emblemPixels[7], 255);
+
+  const paperPixels = new Uint8ClampedArray([235, 235, 235, 255]);
+  grayscaleThermalPixels(paperPixels);
+  assert.deepEqual([...paperPixels], [235, 235, 235, 255]);
 });
 
 test("canonical receipt keeps dedicated team receipt emblems through public reload", () => {

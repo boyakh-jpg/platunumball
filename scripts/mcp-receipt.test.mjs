@@ -164,10 +164,13 @@ test("MCP가 자동 선택용 영수증 도구를 공개한다", async () => {
   const tool = listed.result.tools.find((candidate) => candidate.name === "create_basketball_receipt");
   assert.ok(tool);
   assert.match(tool.description, /박스티어/);
+  assert.match(tool.description, /BoxTier API만 사용/u);
+  assert.match(tool.description, /PNG 원본만 사용자에게 그대로 전달/u);
+  assert.match(tool.description, /재합성·재렌더·임의 편집하지 않는다/u);
   assert.equal(tool.annotations.readOnlyHint, false);
   assert.equal(tool.annotations.idempotentHint, false);
-  assert.deepEqual(tool._meta.ui, { resourceUri: MCP_RECEIPT_WIDGET_URI });
-  assert.equal(tool._meta["openai/outputTemplate"], MCP_RECEIPT_WIDGET_URI);
+  assert.equal(tool._meta.ui, undefined);
+  assert.equal(tool._meta["openai/outputTemplate"], undefined);
   assert.deepEqual(tool._meta["openai/fileParams"], ["homeEmblemFile", "awayEmblemFile"]);
   assert.deepEqual(tool._meta.securitySchemes, [{ type: "noauth" }]);
   assert.ok(tool.inputSchema.properties.homeEmblem);
@@ -687,7 +690,7 @@ test("MCP quota helper는 원본 IP 대신 해시로 전역 RPC를 호출한다"
   assert.doesNotMatch(rpcCall.params.p_request_hash, /203\.0\.113\.21/);
 });
 
-test("MCP 실제 renderer가 중립 엠블럼과 선택 영역 팔레트를 적용한 Story PNG를 반환한다", async () => {
+test("MCP 실제 renderer가 투명 배경 중립 엠블럼과 연속 회색 종이를 적용한 Story PNG를 반환한다", async () => {
   const { default: sharp } = await import("sharp");
   const handler = createBoxtierMcpHandler({ consumeGenerationQuota: async () => true });
   const called = await rpc(handler, "tools/call", {
@@ -720,14 +723,14 @@ test("MCP 실제 renderer가 중립 엠블럼과 선택 영역 팔레트를 적�
   assert.equal(called.result.structuredContent.sha256, createHash("sha256").update(png).digest("hex"));
   const { data: pixels, info } = await sharp(png).removeAlpha().raw().toBuffer({ resolveWithObject: true });
   assert.equal(info.channels, 3);
-  const emblemLevels = new Set([16, 72, 128, 192]);
+  const emblemLevels = new Set([18, 70, 124, 176]);
   const bodyLevels = new Set();
   const emblemY = layout.teams.y + 82 - layout.paper.y;
   const emblemCenters = [
     layout.teams.x + 126 - layout.paper.x,
     layout.teams.x + layout.teams.width - 126 - layout.paper.x,
   ];
-  const emblemCounts = emblemCenters.map(() => ({ dark: 0, light: 0 }));
+  const emblemCounts = emblemCenters.map(() => ({ palette: 0, paper: 0 }));
   for (let index = 0; index < pixels.length; index += 3) {
     const pixelIndex = index / 3;
     const x = pixelIndex % info.width;
@@ -738,16 +741,15 @@ test("MCP 실제 renderer가 중립 엠블럼과 선택 영역 팔레트를 적�
     assert.equal(pixels[index], pixels[index + 1]);
     assert.equal(pixels[index], pixels[index + 2]);
     if (emblemIndex >= 0) {
-      assert.equal(emblemLevels.has(pixels[index]), true);
-      if (pixels[index] < 192) emblemCounts[emblemIndex].dark += 1;
-      if (pixels[index] === 192) emblemCounts[emblemIndex].light += 1;
+      if (emblemLevels.has(pixels[index])) emblemCounts[emblemIndex].palette += 1;
+      if (pixels[index] > 200) emblemCounts[emblemIndex].paper += 1;
     } else {
       bodyLevels.add(pixels[index]);
     }
   }
   for (const counts of emblemCounts) {
-    assert.ok(counts.dark > 0, "중립 엠블럼 선화가 보여야 한다");
-    assert.ok(counts.light > 0, "중립 엠블럼이 검은 원으로 뭉개지면 안 된다");
+    assert.ok(counts.palette > 0, "중립 엠블럼 D 4단계 선화가 보여야 한다");
+    assert.ok(counts.paper > 0, "엠블럼 투명 영역에 회색 원판이 생기면 안 된다");
   }
   assert.ok(bodyLevels.size > 16, "종이와 본문의 연속 회색 농도가 보존되어야 한다");
   await handler.close();
