@@ -4177,6 +4177,8 @@ flowchart TD
 
 20-2. 공개 MCP의 `create_basketball_receipt`는 비로그인과 로그인 사용자 모두 사용할 수 있고 최근 24시간 10회 원장을 공통 적용한다. 유효한 OAuth Bearer를 canonical 프로필로 확인하고 `rankball_admin_level_for_profile`이 `100`인 owner 계정에만 일일 원장 확인을 면제한다. 다른 관리자와 일반 사용자는 면제하지 않으며 IP별 1분 제한은 owner에게도 적용한다. Bearer가 없으면 익명으로 처리하지만 잘못되거나 만료된 Bearer가 있으면 로그인 challenge를 반환한다.
 
+20-2-1. MCP 첨부 엠블럼 정규화는 투명 캔버스 크기가 아니라 알파 전경의 실제 경계와 가중중심을 canonical 기준으로 사용한다. 전경 비율을 유지해 `320×320px` 투명 캔버스의 중심에 맞추고 모든 전경 픽셀이 반지름 `138px` 원형 안전영역 안에 들어오게 축소한다. `classic-thermal`은 배경과 원판을 투명하게 유지하고 전경 명도 분포만 D 써멀 `18·70·124·176` 4단계로 변환한다. 이 규칙은 가로·세로로 치우친 복합 엠블럼에도 동일하게 적용하며 변환 결과는 요청 메모리에서만 사용한다.
+
 20-3. `list_my_match_records`는 `profile` scope의 Supabase OAuth 인증이 필수인 읽기 전용 MCP 도구다. Bearer를 Supabase Auth로 검증한 뒤 JWT의 실제 `scope` claim에도 `profile`이 있는지 서버에서 다시 확인하고, 없으면 `insufficient_scope` challenge를 반환한다. Auth 사용자와 canonical 프로필을 서버에서 연결하고 `match_record_participants.profile_id`가 그 프로필과 정확히 일치하는 보존 기간 내 compact 기록만 최신순으로 반환한다. 조회 대상 프로필 ID는 tool input으로 받지 않는다. 인증 실패는 보호 리소스 메타데이터를 포함한 `mcp/www_authenticate` challenge로 반환한다.
 
 20-4. Supabase OAuth 동적 클라이언트 등록은 MCP 호환을 위해 공개하되 등록만으로 사용자 데이터 권한을 주지 않는다. 연결 승인은 로그인 사용자의 명시적 동의, 지원 scope, 검증된 Bearer와 canonical 프로필 바인딩을 모두 통과해야 한다. 동의 화면은 외부 앱이 자체 입력한 이름을 인증 표시로 취급하지 않고 client ID와 복귀 origin을 함께 보여준다. 알 수 없는 scope, client ID 누락, HTTPS가 아닌 외부 복귀 주소는 승인하지 않으며 로컬 MCP 클라이언트의 loopback HTTP만 예외로 허용한다. 등록·인가·토큰 발급 증거의 canonical 원본은 Supabase Auth 로그다.

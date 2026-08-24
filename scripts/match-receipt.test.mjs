@@ -260,6 +260,7 @@ import {
 import { handlePublicReceipt } from "../server/api/match-receipts/public.js";
 import { handleCreateReceipt } from "../server/api/match-receipts/create.js";
 import { handleRenderReceipt } from "../server/api/match-receipts/render.js";
+import { prepareReceiptEmblems } from "../server/api/match-receipts/_emblemProcessor.js";
 import {
   cleanupExpiredMatchReceipts,
   cleanupMcpReceiptGenerationEvents,
@@ -427,7 +428,7 @@ test("external receipt PNG input accepts only prepared emblem objects", () => {
     homeEmblem: { imageBase64: "data:image/webp;base64,UklGRg==" },
   }, { allowPreparedEmblems: true });
   assert.ok(remote.issues.some((item) => item.field === "homeEmblem"
-    && item.code === "prepared_webp_base64_required"));
+    && item.code === "raw_image_base64_required"));
 
   const objectKey = parseExternalReceiptInput({
     style: "boxtier-score",
@@ -460,6 +461,50 @@ test("prepared receipt emblem validation preserves safe square WebP bytes", asyn
     validatePreparedReceiptEmblem(rectangle.toString("base64")),
     (error) => error.statusCode === 400 && error.message === "receipt_emblem_invalid_square_required",
   );
+});
+
+test("thermal receipt emblem centers visible artwork inside the circular safe area using D four tones", async () => {
+  const asymmetric = await sharp(Buffer.from(`<svg width="320" height="320" xmlns="http://www.w3.org/2000/svg">
+    <path d="M192 12 232 101 306 147 229 183 198 307 159 220 69 191 150 139Z" fill="#ececec"/>
+    <path d="M192 49 215 115 267 148 211 168 190 267 168 197 106 181 170 145Z" fill="#969696"/>
+    <circle cx="187" cy="154" r="38" fill="#505050"/>
+    <path d="M160 154h54M187 127v54" stroke="#141414" stroke-width="13"/>
+  </svg>`)).webp({ lossless: true }).toBuffer();
+  const { home } = await prepareReceiptEmblems({
+    home: { imageBase64: asymmetric.toString("base64") },
+  }, { style: "classic-thermal" });
+  const prepared = Buffer.from(home.imageBase64, "base64");
+  const { data, info } = await sharp(prepared).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  let alphaTotal = 0;
+  let weightedX = 0;
+  let weightedY = 0;
+  const pixels = [];
+
+  for (let y = 0; y < info.height; y += 1) {
+    for (let x = 0; x < info.width; x += 1) {
+      const index = (y * info.width + x) * 4;
+      if (data[index + 3] < 36) continue;
+      alphaTotal += data[index + 3];
+      weightedX += (x + 0.5) * data[index + 3];
+      weightedY += (y + 0.5) * data[index + 3];
+      pixels.push({ x: x + 0.5, y: y + 0.5, tone: data[index] });
+      assert.equal(data[index], data[index + 1]);
+      assert.equal(data[index], data[index + 2]);
+      assert.equal(data[index + 3], 255);
+    }
+  }
+
+  const centerX = weightedX / alphaTotal;
+  const centerY = weightedY / alphaTotal;
+  const radius = Math.max(...pixels.map((pixel) => Math.hypot(pixel.x - centerX, pixel.y - centerY)));
+  const tones = [...new Set(pixels.map((pixel) => pixel.tone))].sort((a, b) => a - b);
+
+  assert.equal(info.width, 320);
+  assert.equal(info.height, 320);
+  assert.ok(Math.abs(centerX - 160) <= 1.5, `foreground center x=${centerX}`);
+  assert.ok(Math.abs(centerY - 160) <= 1.5, `foreground center y=${centerY}`);
+  assert.ok(radius <= 140, `foreground radius=${radius}`);
+  assert.deepEqual(tones, [18, 70, 124, 176]);
 });
 
 test("external receipt API creates a no-photo thermal draft", async () => {

@@ -355,7 +355,7 @@ export function createBoxtierMcpHandler({
 
         let emblems;
         try {
-          emblems = await prepareEmblems(parsed.emblems);
+          emblems = await prepareEmblems(parsed.emblems, { style: parsed.draft.receiptStyle });
         } catch (error) {
           return toolError("첨부 엠블럼을 처리할 수 없다.", [{
             field: error?.field || "emblem",
