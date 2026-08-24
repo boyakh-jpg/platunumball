@@ -77,6 +77,13 @@ async function loadAssetImage(path) {
   return image;
 }
 
+export function preloadThermalReceiptAssets() {
+  return Promise.all([
+    loadAssetImage(DIGIT_ATLAS_PATH),
+    ...Object.values(THERMAL_ASSET_PATHS).map(loadAssetImage),
+  ]);
+}
+
 function drawImageCover(ctx, image, x, y, width, height) {
   if (!image) return;
   const scale = Math.max(width / image.naturalWidth, height / image.naturalHeight);

@@ -49,7 +49,7 @@ import {
   MATCH_RECEIPT_STYLES,
   sanitizeMatchReceiptCommentInput,
 } from "../../shared/lib/thermalReceipt.js";
-import { THERMAL_RECEIPT_PHOTO_ASPECT } from "../lib/thermalReceipt.js";
+import { THERMAL_RECEIPT_PHOTO_ASPECT, preloadThermalReceiptAssets } from "../lib/thermalReceipt.js";
 
 function loadDraft() {
   return loadMatchReceiptDraft() ?? createDefaultMatchReceiptDraft();
@@ -102,7 +102,7 @@ const RECEIPT_PAGE_COPY = Object.freeze({
     eyebrow: "MATCH RECEIPT", title: "경기 영수증", description: "오늘 경기 결과를 입력하고 바로 자랑할 이미지로 저장하세요.",
     navLabel: "영수증 페이지 이동", back: "뒤로가기", home: "홈으로", finalScore: "경기 결과",
     teamA: "TEAM A", teamB: "TEAM B", teamName: "팀 이름", score: "점수", info: "경기 정보", date: "경기 날짜",
-    style: "출력 스타일", map: "지도", shortName: "짧은 팀명", includePhoto: "출력물에 경기·팀 사진 포함",
+    style: "출력 형식", scoreStyle: "스코어 포스터", thermalStyle: "감열지 영수증", map: "지도", shortName: "짧은 팀명", includePhoto: "출력물에 경기·팀 사진 포함",
     time: "경기 시간", players: "참가 인원", receiptComment: "한줄평", receiptCommentPlaceholder: "선택 · 22자 이내",
     thermalPhotoCrop: "사진 자르기 조정", zoom: "확대", horizontal: "가로 위치", vertical: "세로 위치",
     venue: "짧은 장소", venuePlaceholder: "경기 장소 대신 주소나 장소를 입력 가능", periodScores: "쿼터별 점수",
@@ -129,7 +129,7 @@ const RECEIPT_PAGE_COPY = Object.freeze({
     eyebrow: "GAME RECEIPT", title: "Game Receipt", description: "Turn your game result into a shareable receipt.",
     navLabel: "Receipt page navigation", back: "Back", home: "Home", finalScore: "Final Score",
     teamA: "Team A", teamB: "Team B", teamName: "Team Name", score: "Score", info: "Date / Time / Venue", date: "Date",
-    style: "Receipt Style", map: "Map", shortName: "Short Team Name", includePhoto: "Include game / team photo",
+    style: "Output format", scoreStyle: "Score Poster", thermalStyle: "Thermal Receipt", map: "Map", shortName: "Short Team Name", includePhoto: "Include game / team photo",
     time: "Time", players: "Players", receiptComment: "One-Line Comment", receiptCommentPlaceholder: "Optional · Up to 22 characters",
     thermalPhotoCrop: "Photo crop", zoom: "Zoom", horizontal: "Horizontal", vertical: "Vertical",
     venue: "Venue", venuePlaceholder: "Short venue name", periodScores: "Period Scores",
@@ -364,6 +364,10 @@ export default function MatchReceipt({ auth, app }) {
     localTeamEmblemUrls.home,
   ]);
   const selectedTeamReceiptEmblemUrls = isThermal ? selectedTeamThermalEmblemUrls : selectedTeamLineArtUrls;
+
+  useEffect(() => {
+    preloadThermalReceiptAssets().catch(() => {});
+  }, []);
 
   useEffect(() => () => {
     const frame = photoTransformFrameRef.current;
@@ -1204,10 +1208,13 @@ export default function MatchReceipt({ auth, app }) {
           </Button>
         </nav>
       </header>
-      <div className="match-receipt-page-controls" aria-label={receiptCopy.style}>
-          <div className="match-receipt-compact-toggle" role="group" aria-label={receiptCopy.style}>
-            <button type="button" aria-pressed={!isThermal} onClick={() => updateField("receiptStyle", MATCH_RECEIPT_STYLES.score)}>BOXTIER</button>
-            <button type="button" aria-pressed={isThermal} onClick={() => updateField("receiptStyle", MATCH_RECEIPT_STYLES.thermal)}>THERMAL</button>
+      <div className="match-receipt-page-controls">
+          <div className="match-receipt-output-format">
+            <span className="match-receipt-control-label">{receiptCopy.style}</span>
+            <div className="match-receipt-compact-toggle" role="group" aria-label={receiptCopy.style}>
+              <button type="button" aria-pressed={!isThermal} onClick={() => updateField("receiptStyle", MATCH_RECEIPT_STYLES.score)}>{receiptCopy.scoreStyle}</button>
+              <button type="button" aria-pressed={isThermal} onClick={() => updateField("receiptStyle", MATCH_RECEIPT_STYLES.thermal)}>{receiptCopy.thermalStyle}</button>
+            </div>
           </div>
           <div className="match-receipt-locale-switch" role="group" aria-label="Receipt language">
             <Button type="button" variant={!isEnglish ? "primary" : "ghost"} size="sm" lang="ko" aria-label={isEnglish ? "Korean" : "한국어"} aria-pressed={!isEnglish} onClick={() => selectReceiptLocale("ko")}>🇰🇷</Button>

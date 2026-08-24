@@ -68,6 +68,19 @@ test("receipt English locale stays in the URL and localizes the receipt shell", 
   assert.match(bottomNav, /RECEIPT_SHELL_COPY\[getReceiptLocale\(location\)\]/);
   assert.match(footer, /RECEIPT_SHELL_COPY\[getReceiptLocale\(location\)\]/);
 });
+
+test("receipt format selector uses clear labels and preloads thermal assets", async () => {
+  const [page, thermalRenderer] = await Promise.all([
+    readFile(new URL("../src/pages/MatchReceipt.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/lib/thermalReceipt.js", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(page, /style: "출력 형식", scoreStyle: "스코어 포스터", thermalStyle: "감열지 영수증"/u);
+  assert.match(page, /style: "Output format", scoreStyle: "Score Poster", thermalStyle: "Thermal Receipt"/u);
+  assert.match(page, /preloadThermalReceiptAssets\(\)\.catch\(\(\) => \{\}\)/u);
+  assert.match(thermalRenderer, /export function preloadThermalReceiptAssets\(\)/u);
+  assert.match(thermalRenderer, /Object\.values\(THERMAL_ASSET_PATHS\)\.map\(loadAssetImage\)/u);
+});
 import { getMatchHashtag } from "../shared/lib/handles.js";
 import {
   formatMatchPublicCode,

@@ -15,7 +15,10 @@
   justify-content: flex-end;
   gap: var(--space-3);
   width: 100%;
+  align-items: end;
 }
+.match-receipt-output-format { display: grid; gap: var(--space-1); }
+.match-receipt-control-label { color: var(--rb-muted); font-size: 11px; font-weight: var(--font-weight-support); }
 .match-receipt-compact-toggle {
   display: inline-grid;
   grid-auto-flow: column;
@@ -719,8 +722,9 @@
 @media (max-width: 560px) {
   .match-receipt-workspace { width: min(520px, 100%); }
   .match-receipt-page-controls { display: grid; grid-template-columns: minmax(0, 1fr) auto; width: 100%; }
-  .match-receipt-compact-toggle:first-child { width: 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .match-receipt-compact-toggle:first-child button { min-width: 0; padding-inline: 7px; }
+  .match-receipt-output-format { min-width: 0; }
+  .match-receipt-output-format .match-receipt-compact-toggle { width: 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .match-receipt-output-format .match-receipt-compact-toggle button { min-width: 0; padding-inline: 7px; }
   .match-receipt-page-head-nav { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
   .match-receipt-page-head-nav .ui-button { width: 100%; }
 
