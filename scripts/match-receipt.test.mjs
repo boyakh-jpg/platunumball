@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import sharp from "sharp";
+import { createEdgeConnectedBackdropMask } from "../shared/lib/receiptEmblemBackdrop.js";
 import {
   canCreatePublicMatchReceiptSnapshot,
   createDefaultMatchReceiptDraft,
@@ -484,6 +485,46 @@ test("prepared receipt emblem validation preserves safe square WebP bytes", asyn
   );
 });
 
+test("receipt emblem backdrop removal preserves enclosed light artwork", () => {
+  const width = 7;
+  const height = 7;
+  const pixels = new Uint8ClampedArray(width * height * 4);
+
+  for (let pixel = 0; pixel < width * height; pixel += 1) {
+    const offset = pixel * 4;
+    pixels[offset] = 255;
+    pixels[offset + 1] = 255;
+    pixels[offset + 2] = 255;
+    pixels[offset + 3] = 255;
+  }
+
+  const setBlack = (x, y) => {
+    const offset = (y * width + x) * 4;
+    pixels[offset] = 0;
+    pixels[offset + 1] = 0;
+    pixels[offset + 2] = 0;
+  };
+
+  for (let value = 2; value <= 4; value += 1) {
+    setBlack(value, 2);
+    setBlack(value, 4);
+    setBlack(2, value);
+    setBlack(4, value);
+  }
+
+  const mask = createEdgeConnectedBackdropMask(
+    pixels,
+    width,
+    height,
+    { red: 255, green: 255, blue: 255 },
+    { alphaThreshold: 1, maxDistance: 0 },
+  );
+
+  assert.equal(mask[0], 1);
+  assert.equal(mask[3 * width + 3], 0);
+  assert.equal(mask[2 * width + 3], 0);
+});
+
 test("thermal receipt emblem centers visible artwork inside the circular safe area using D four tones", async () => {
   const asymmetric = await sharp(Buffer.from(`<svg width="320" height="320" xmlns="http://www.w3.org/2000/svg">
     <path d="M192 12 232 101 306 147 229 183 198 307 159 220 69 191 150 139Z" fill="#ececec"/>
@@ -499,6 +540,7 @@ test("thermal receipt emblem centers visible artwork inside the circular safe ar
   let alphaTotal = 0;
   let weightedX = 0;
   let weightedY = 0;
+  let hasAntialiasedPixel = false;
   const pixels = [];
 
   for (let y = 0; y < info.height; y += 1) {
@@ -508,23 +550,35 @@ test("thermal receipt emblem centers visible artwork inside the circular safe ar
       alphaTotal += data[index + 3];
       weightedX += (x + 0.5) * data[index + 3];
       weightedY += (y + 0.5) * data[index + 3];
-      pixels.push({ x: x + 0.5, y: y + 0.5, tone: data[index] });
+      pixels.push({
+        x: x + 0.5,
+        y: y + 0.5,
+        tone: data[index],
+        alpha: data[index + 3],
+      });
       assert.equal(data[index], data[index + 1]);
       assert.equal(data[index], data[index + 2]);
-      assert.equal(data[index + 3], 255);
+      if (data[index + 3] < 255) hasAntialiasedPixel = true;
     }
   }
 
   const centerX = weightedX / alphaTotal;
   const centerY = weightedY / alphaTotal;
   const radius = Math.max(...pixels.map((pixel) => Math.hypot(pixel.x - centerX, pixel.y - centerY)));
-  const tones = [...new Set(pixels.map((pixel) => pixel.tone))].sort((a, b) => a - b);
+  const tones = [
+    ...new Set(
+      pixels
+        .filter(({ alpha }) => alpha === 255)
+        .map(({ tone }) => tone),
+    ),
+  ].sort((a, b) => a - b);
 
   assert.equal(info.width, 320);
   assert.equal(info.height, 320);
   assert.ok(Math.abs(centerX - 160) <= 1.5, `foreground center x=${centerX}`);
   assert.ok(Math.abs(centerY - 160) <= 1.5, `foreground center y=${centerY}`);
   assert.ok(radius <= 140, `foreground radius=${radius}`);
+  assert.equal(hasAntialiasedPixel, true);
   assert.deepEqual(tones, [18, 70, 124, 176]);
 });
 

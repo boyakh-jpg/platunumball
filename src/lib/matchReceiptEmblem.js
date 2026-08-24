@@ -1,3 +1,5 @@
+import { createEdgeConnectedBackdropMask } from "../../shared/lib/receiptEmblemBackdrop.js";
+
 const CACHE = new Map();
 const SIZE = 256;
 const GOLD = [214, 165, 34];
@@ -52,6 +54,15 @@ async function convert(url) {
       return sum;
     }, [0, 0, 0, 0]).map((value) => value / corners.length);
     const transparentBackground = background[3] < 80;
+    const backdropMask = transparentBackground
+      ? null
+      : createEdgeConnectedBackdropMask(
+        source.data,
+        SIZE,
+        SIZE,
+        { red: background[0], green: background[1], blue: background[2] },
+        { alphaThreshold: 29, maxDistance: 42 },
+      );
     const foreground = new Uint8Array(SIZE * SIZE);
     let foregroundCount = 0;
     let minX = SIZE;
@@ -63,7 +74,7 @@ async function convert(url) {
         const pixel = y * SIZE + x;
         const offset = pixel * 4;
         const alpha = source.data[offset + 3];
-        const isForeground = alpha > 28 && (transparentBackground || colorDistance(source.data, offset, background) > 42);
+        const isForeground = alpha > 28 && (transparentBackground || !backdropMask[pixel]);
         if (!isForeground) continue;
         foreground[pixel] = 1;
         foregroundCount += 1;

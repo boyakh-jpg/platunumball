@@ -2,6 +2,7 @@ import {
   TEAM_EMBLEM_MAX_DIMENSION,
   TEAM_EMBLEM_UPLOAD_MAX_BYTES,
 } from "../../../shared/lib/teamEmblem.js";
+import { createEdgeConnectedBackdropMask } from "../../../shared/lib/receiptEmblemBackdrop.js";
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
 import https from "node:https";
@@ -246,13 +247,19 @@ function removeFlatBackdrop(data, info, field) {
       if (!removedBackdrop) throw emblemError(field, "emblem_background_not_removable");
       break;
     }
-    const maxDistance = BACKDROP_COLOR_DISTANCE * BACKDROP_COLOR_DISTANCE;
+    const backdropMask = createEdgeConnectedBackdropMask(
+      cleaned,
+      info.width,
+      info.height,
+      color,
+      {
+        alphaThreshold: FOREGROUND_ALPHA_THRESHOLD,
+        maxDistance: BACKDROP_COLOR_DISTANCE,
+      },
+    );
     const matches = [];
-    for (let index = 0; index < cleaned.length; index += 4) {
-      if (
-        cleaned[index + 3] >= FOREGROUND_ALPHA_THRESHOLD
-        && colorDistanceSquared(cleaned, index, color) <= maxDistance
-      ) matches.push(index);
+    for (let pixel = 0; pixel < backdropMask.length; pixel += 1) {
+      if (backdropMask[pixel]) matches.push(pixel * 4);
     }
     if (shape.count - matches.length < BACKDROP_MIN_REMAINDER) {
       if (!removedBackdrop) throw emblemError(field, "emblem_background_not_removable");
@@ -341,7 +348,6 @@ async function applyDThermalTones(sharp, source) {
     data[index] = tone;
     data[index + 1] = tone;
     data[index + 2] = tone;
-    data[index + 3] = 255;
   }
   return sharp(data, { raw: info });
 }
