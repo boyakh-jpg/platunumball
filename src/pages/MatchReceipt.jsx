@@ -1209,17 +1209,10 @@ export default function MatchReceipt({ auth, app }) {
         </nav>
       </header>
       <div className="match-receipt-page-controls">
-          <div className="match-receipt-output-format">
-            <span className="match-receipt-control-label">{receiptCopy.style}</span>
-            <div className="match-receipt-compact-toggle" role="group" aria-label={receiptCopy.style}>
-              <button type="button" aria-pressed={!isThermal} onClick={() => updateField("receiptStyle", MATCH_RECEIPT_STYLES.score)}>{receiptCopy.scoreStyle}</button>
-              <button type="button" aria-pressed={isThermal} onClick={() => updateField("receiptStyle", MATCH_RECEIPT_STYLES.thermal)}>{receiptCopy.thermalStyle}</button>
-            </div>
-          </div>
-          <div className="match-receipt-locale-switch" role="group" aria-label="Receipt language">
-            <Button type="button" variant={!isEnglish ? "primary" : "ghost"} size="sm" lang="ko" aria-label={isEnglish ? "Korean" : "한국어"} aria-pressed={!isEnglish} onClick={() => selectReceiptLocale("ko")}>🇰🇷</Button>
-            <Button type="button" variant={isEnglish ? "primary" : "ghost"} size="sm" lang="en" aria-label="English" aria-pressed={isEnglish} onClick={() => selectReceiptLocale("en")}>🇺🇸</Button>
-          </div>
+        <div className="match-receipt-locale-switch" role="group" aria-label="Receipt language">
+          <Button type="button" variant={!isEnglish ? "primary" : "ghost"} size="sm" lang="ko" aria-label={isEnglish ? "Korean" : "한국어"} aria-pressed={!isEnglish} onClick={() => selectReceiptLocale("ko")}>🇰🇷</Button>
+          <Button type="button" variant={isEnglish ? "primary" : "ghost"} size="sm" lang="en" aria-label="English" aria-pressed={isEnglish} onClick={() => selectReceiptLocale("en")}>🇺🇸</Button>
+        </div>
       </div>
 
       {requestedPublicCode ? (
@@ -1468,8 +1461,11 @@ export default function MatchReceipt({ auth, app }) {
 
         <aside className="match-receipt-preview-panel" ref={previewRef}>
           <div className="match-receipt-preview-head">
-            <div><span>{receiptCopy.preview}</span></div>
-            <span>{isThermal ? "THERMAL RECEIPT" : "9:16 STORY"}</span>
+            <span>{receiptCopy.preview}</span>
+            <div className="ui-segmented-control segmented-control compact-segments match-receipt-preview-style" role="radiogroup" aria-label={receiptCopy.style}>
+              <button type="button" role="radio" aria-checked={!isThermal} className={!isThermal ? "active" : ""} onClick={() => updateField("receiptStyle", MATCH_RECEIPT_STYLES.score)}>{receiptCopy.scoreStyle}</button>
+              <button type="button" role="radio" aria-checked={isThermal} className={isThermal ? "active" : ""} onClick={() => updateField("receiptStyle", MATCH_RECEIPT_STYLES.thermal)}>{receiptCopy.thermalStyle}</button>
+            </div>
           </div>
           <div className={`match-receipt-preview-stage${isThermal ? " is-thermal" : ""}`}>
             {isThermal ? (

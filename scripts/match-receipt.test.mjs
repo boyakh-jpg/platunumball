@@ -77,6 +77,8 @@ test("receipt format selector uses clear labels and preloads thermal assets", as
 
   assert.match(page, /style: "출력 형식", scoreStyle: "스코어 포스터", thermalStyle: "감열지 영수증"/u);
   assert.match(page, /style: "Output format", scoreStyle: "Score Poster", thermalStyle: "Thermal Receipt"/u);
+  assert.match(page, /className="match-receipt-preview-head"[\s\S]*className="ui-segmented-control segmented-control compact-segments match-receipt-preview-style"/u);
+  assert.doesNotMatch(page, /match-receipt-output-format|match-receipt-compact-toggle/u);
   assert.match(page, /preloadThermalReceiptAssets\(\)\.catch\(\(\) => \{\}\)/u);
   assert.match(thermalRenderer, /export function preloadThermalReceiptAssets\(\)/u);
   assert.match(thermalRenderer, /Object\.values\(THERMAL_ASSET_PATHS\)\.map\(loadAssetImage\)/u);
@@ -1850,7 +1852,7 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.doesNotMatch(renderer, /ctx\.fillText\(model\.outcome\.label, width \/ 2/);
   assert.doesNotMatch(detailStyles, /\.match-receipt-outcome/);
   assert.match(detailStyles, /\.match-receipt-wordmark small/);
-  assert.match(page, /<div><span>\{receiptCopy\.preview\}<\/span><\/div>/);
+  assert.match(page, /<div className="match-receipt-preview-head">\s*<span>\{receiptCopy\.preview\}<\/span>/);
   assert.doesNotMatch(page, /<strong>\{outcome\.label\}<\/strong>/);
   assert.match(renderer, /MY TIER · \$\{model\.personalTier\.label\}/);
   assert.doesNotMatch(renderer, /const badgeSize = actualSize \* 0\.14/);
