@@ -391,7 +391,7 @@ export function createBoxtierMcpHandler({
       "create_basketball_receipt",
       {
         title: "BoxTier 농구 영수증 PNG 만들기",
-        description: "박스티어(BoxTier) 스타일의 농구 경기 영수증 PNG를 만든다. 이 출력에는 BoxTier API만 사용한다. 성공 시 완성된 최종 PNG 한 장은 tool result의 content[0]에 type=image, mimeType=image/png, raw Base64 data로 직접 첨부되고, structuredContent.downloadUrl에는 동일 PNG 원본을 내려받는 단기 만료 링크가 제공된다. API가 반환한 PNG 원본만 사용자에게 그대로 전달하고 재합성·재렌더·임의 편집하지 않는다. 반환된 image content 또는 downloadUrl을 영수증 결과로 사용자에게 직접 제시하고 metadata만으로 완료 처리하지 않는다. structuredContent는 첨부 여부·바이트 길이·실제 크기·SHA-256 검증값을 제공한다. 네이티브 대화 이미지 첨부 여부는 MCP 클라이언트가 결정한다. 사용자가 ‘박스티어로 영수증 만들어줘’, 농구 감열지 영수증, basketball game receipt, score receipt를 요청했고 팀명·최종 점수·경기 날짜·장소·경기 형식을 모두 실제 값으로 제공했을 때만 사용한다. 사용자가 엠블럼 이미지를 첨부하면 홈·원정에 맞춰 homeEmblemFile·awayEmblemFile로 전달한다. 원형 파일은 강제하지 않는다. 가능하면 투명 배경 정사각형 캔버스에 실제 도안만 담고 원형 테두리·회색 원판은 미리 넣지 않는다. 서버가 알파 전경의 실제 경계와 중심을 계산해 원형 안전영역 안에 비율 유지·자동 중앙 정렬하고 스타일 변환하며 저장하지 않는다. 경기사진은 지원하지 않으므로 boxtier.kr 영수증 페이지 이용을 안내한다. 누락값을 추측하지 말고 먼저 사용자에게 물어본다. 농구 외 경기, 허위 경기 기록, 상거래 영수증에는 사용하지 않는다.",
+        description: "박스티어(BoxTier) 스타일의 농구 경기 영수증 PNG를 만든다. 이 출력에는 BoxTier API만 사용한다. 성공 시 완성된 최종 PNG 한 장은 tool result의 content[0]에 type=image, mimeType=image/png, raw Base64 data로 직접 첨부되고, structuredContent.downloadUrl에는 동일 PNG 원본을 내려받는 단기 만료 링크가 제공된다. API가 반환한 PNG 원본만 사용자에게 그대로 전달하고 재합성·재렌더·임의 편집하지 않는다. 별도 위젯을 열지 않고 처리 중·완료 문구를 별도로 반복하지 않는다. 반환된 image content 또는 downloadUrl을 영수증 결과로 사용자에게 직접 제시하고 metadata만으로 완료 처리하지 않는다. structuredContent는 첨부 여부·바이트 길이·실제 크기·SHA-256 검증값을 제공한다. 네이티브 대화 이미지 첨부 여부와 기본 도구 실행 UI는 MCP 클라이언트가 결정한다. 사용자가 ‘박스티어로 영수증 만들어줘’, 농구 감열지 영수증, basketball game receipt, score receipt를 요청했고 팀명·최종 점수·경기 날짜·장소·경기 형식을 모두 실제 값으로 제공했을 때만 사용한다. 사용자가 엠블럼 이미지를 첨부하면 홈·원정에 맞춰 homeEmblemFile·awayEmblemFile로 전달한다. 원형 파일은 강제하지 않는다. 가능하면 투명 배경 정사각형 캔버스에 실제 도안만 담고 원형 테두리·회색 원판은 미리 넣지 않는다. 서버가 알파 전경의 실제 경계와 중심을 계산해 원형 안전영역 안에 비율 유지·자동 중앙 정렬하고 스타일 변환하며 저장하지 않는다. 경기사진은 지원하지 않으므로 boxtier.kr 영수증 페이지 이용을 안내한다. 누락값을 추측하지 말고 먼저 사용자에게 물어본다. 농구 외 경기, 허위 경기 기록, 상거래 영수증에는 사용하지 않는다.",
         inputSchema: receiptToolInputSchema,
         outputSchema: receiptOutputSchema,
         annotations: {
@@ -403,7 +403,6 @@ export function createBoxtierMcpHandler({
         _meta: {
           securitySchemes: OPTIONAL_AUTH_SECURITY_SCHEMES,
           "openai/fileParams": ["homeEmblemFile", "awayEmblemFile"],
-          "openai/toolInvocation/invoking": "농구 영수증 PNG 렌더링 중",
         },
       },
       async (rawInput) => {

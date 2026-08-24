@@ -173,10 +173,13 @@ test("MCP가 자동 선택용 영수증 도구를 공개한다", async () => {
   assert.match(tool.description, /BoxTier API만 사용/u);
   assert.match(tool.description, /PNG 원본만 사용자에게 그대로 전달/u);
   assert.match(tool.description, /재합성·재렌더·임의 편집하지 않는다/u);
+  assert.match(tool.description, /별도 위젯을 열지 않고/u);
+  assert.match(tool.description, /처리 중·완료 문구를 별도로 반복하지 않는다/u);
   assert.equal(tool.annotations.readOnlyHint, false);
   assert.equal(tool.annotations.idempotentHint, false);
   assert.equal(tool._meta.ui, undefined);
   assert.equal(tool._meta["openai/outputTemplate"], undefined);
+  assert.equal(tool._meta["openai/toolInvocation/invoking"], undefined);
   assert.deepEqual(tool._meta["openai/fileParams"], ["homeEmblemFile", "awayEmblemFile"]);
   const optionalAuthSchemes = [
     { type: "noauth" },
