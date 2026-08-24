@@ -1,6 +1,13 @@
 import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { waitUntil } from "@vercel/functions";
 import { setApiSecurityHeaders } from "../_requestSecurity.js";
+import { parseExternalReceiptInput } from "../match-receipts/_createInput.js";
+import { renderMatchReceiptPng } from "../match-receipts/_pngRenderer.js";
+import {
+  deleteTemporaryReceiptPng,
+  storeTemporaryReceiptPng,
+} from "../match-receipts/_temporaryPngStorage.js";
+import { fitInstagramReceiptPng } from "./receipt-image.js";
 
 const BODY_MAX_BYTES = 1024 * 1024;
 const GRAPH_VERSION_PATTERN = /^v\d+\.\d+$/u;
@@ -151,7 +158,16 @@ export async function sendInstagramMessage(recipientId, message, config, fetchIm
   if (!response.ok) throw new Error(`instagram_send_failed_${response.status}`);
 }
 
-async function processEvent(event, { config, supabase, sendMessage, receiptMessage }) {
+async function processEvent(event, {
+  config,
+  supabase,
+  sendMessage,
+  receiptMessage,
+  renderPng,
+  fitPng,
+  storePng,
+  deletePng,
+}) {
   const eventHash = keyedHash(event.message.mid, config.hashSecret);
   const senderHash = keyedHash(event.sender.id, config.hashSecret);
   const normalizedMessage = receiptMessage.normalizeInstagramMessage(event.message.text);
@@ -212,12 +228,33 @@ async function processEvent(event, { config, supabase, sendMessage, receiptMessa
       return;
     }
     await sendMessage(event.sender.id, { text: INSTAGRAM_RECEIPT_PROCESSING_MESSAGE });
-    const publicId = randomBytes(32).toString("base64url");
-    const expiresAt = new Date(Date.now() + config.renderTtlSeconds * 1000).toISOString();
-    const { error: insertError } = await supabase.from("instagram_receipt_bot_render_jobs").insert({
-      public_id: publicId, receipt_input: parsed.input, preset: parsed.preset, expires_at: expiresAt,
-    });
-    if (insertError) throw insertError;
+    const renderInput = parseExternalReceiptInput(parsed.input);
+    if (renderInput.issues.length) throw new Error("invalid_render_job");
+    const publicId = createHmac("sha256", config.hashSecret)
+      .update(`receipt:${eventHash}`)
+      .digest("base64url");
+    const { data: existingJob, error: existingJobError } = await supabase
+      .from("instagram_receipt_bot_render_jobs")
+      .select("expires_at")
+      .eq("public_id", publicId)
+      .maybeSingle();
+    if (existingJobError) throw existingJobError;
+    const reusableJob = existingJob && new Date(existingJob.expires_at).getTime() > Date.now();
+    if (!reusableJob) {
+      const renderedPng = await renderPng({ draft: renderInput.draft, emblems: renderInput.emblems, preset: parsed.preset });
+      const png = await fitPng(renderedPng);
+      const expiresAt = new Date(Date.now() + config.renderTtlSeconds * 1000).toISOString();
+      await storePng(publicId, png);
+      const { error: upsertError } = await supabase.from("instagram_receipt_bot_render_jobs").upsert({
+        public_id: publicId, receipt_input: parsed.input, preset: parsed.preset, expires_at: expiresAt,
+      }, { onConflict: "public_id" });
+      if (upsertError) {
+        await deletePng(publicId).catch((cleanupError) => {
+          console.warn("Instagram receipt PNG cleanup failed.", { error: cleanupError.message });
+        });
+        throw upsertError;
+      }
+    }
     const imageUrl = new URL("/api/instagram/receipt-image", config.publicBaseUrl);
     imageUrl.searchParams.set("id", publicId);
     await sendMessage(event.sender.id, { attachment: { type: "image", payload: { url: imageUrl.toString(), is_reusable: false } } });
@@ -269,8 +306,14 @@ async function processWebhookEvents(payload, { config, requestId, ...options }) 
   ]);
   const supabase = options.supabase ?? supabaseModule.getSupabaseAdminClient();
   const sendMessage = options.sendMessage ?? ((recipientId, message) => sendInstagramMessage(recipientId, message, config, options.fetchImpl));
+  const renderPng = options.renderPng ?? renderMatchReceiptPng;
+  const fitPng = options.fitPng ?? fitInstagramReceiptPng;
+  const storePng = options.storePng ?? storeTemporaryReceiptPng;
+  const deletePng = options.deletePng ?? deleteTemporaryReceiptPng;
   const events = getEvents(payload);
-  const results = await Promise.allSettled(events.map((event) => processEventWithRetry(event, { config, supabase, sendMessage, receiptMessage })));
+  const results = await Promise.allSettled(events.map((event) => processEventWithRetry(event, {
+    config, supabase, sendMessage, receiptMessage, renderPng, fitPng, storePng, deletePng,
+  })));
   await supabase.rpc("cleanup_instagram_receipt_bot_data");
   const failedCount = results.filter(({ status }) => status === "rejected").length;
   console.info("Instagram webhook background processing completed.", { requestId, eventCount: events.length, failedCount });

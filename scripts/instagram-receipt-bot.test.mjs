@@ -5,8 +5,10 @@ import test from "node:test";
 import { config as webhookFunctionConfig } from "../api/instagram-webhook.js";
 import { parseInstagramReceiptMessage } from "../server/api/instagram/_receiptMessage.js";
 import { handleInstagramAccount } from "../server/api/instagram/account.js";
-import { handleInstagramReceiptImage } from "../server/api/instagram/receipt-image.js";
+import { fitInstagramReceiptPng, handleInstagramReceiptImage } from "../server/api/instagram/receipt-image.js";
 import { handleInstagramWebhook, verifyInstagramSignature } from "../server/api/instagram/webhook.js";
+import { parseExternalReceiptInput } from "../server/api/match-receipts/_createInput.js";
+import { renderMatchReceiptPng } from "../server/api/match-receipts/_pngRenderer.js";
 
 const config = Object.freeze({
   appSecret: "app-secret", verifyToken: "verify-token", accessToken: "access-token",
@@ -15,6 +17,10 @@ const config = Object.freeze({
   dailyLimit: 10, globalHourlyLimit: 100, contentDedupeSeconds: 60, renderTtlSeconds: 300,
   linkTtlSeconds: 600,
 });
+const TEST_PNG = Buffer.concat([
+  Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
+  Buffer.from("boxtier-instagram-receipt"),
+]);
 
 test("Instagram webhook Vercel function preserves the raw request body", () => {
   assert.equal(webhookFunctionConfig.api.bodyParser, false);
@@ -33,6 +39,10 @@ function createResponse() {
 async function runWebhook(request, response, options = {}) {
   const tasks = [];
   await handleInstagramWebhook(request, response, {
+    renderPng: async () => TEST_PNG,
+    fitPng: async (png) => png,
+    storePng: async () => {},
+    deletePng: async () => {},
     ...options,
     waitUntil(task) { tasks.push(task); },
   });
@@ -54,9 +64,19 @@ function createSupabase(decision = "accepted", options = {}) {
         order() { return this; },
         async limit() { return { data: options.history ?? [], error: null }; },
         async maybeSingle() {
-          return { data: options.profileId ? { profile_id: options.profileId } : null, error: null };
+          if (table === "instagram_receipt_bot_accounts") {
+            return { data: options.profileId ? { profile_id: options.profileId } : null, error: null };
+          }
+          if (table === "instagram_receipt_bot_render_jobs") {
+            return { data: options.renderJob ?? null, error: null };
+          }
+          return { data: null, error: null };
         },
         async insert(value) { state.inserted.push({ table, value }); return { error: null }; },
+        async upsert(value, upsertOptions) {
+          state.inserted.push({ table, value, upsertOptions });
+          return { error: null };
+        },
         update(value) {
           return { async eq(field, expected) { state.updated.push({ table, value, field, expected }); return { error: null }; } };
         },
@@ -99,9 +119,11 @@ test("수락 이벤트만 임시 렌더 job과 이미지 답장을 만든다", a
   const signature = `sha256=${createHmac("sha256", config.appSecret).update(raw).digest("hex")}`;
   const supabase = createSupabase();
   const sent = [];
+  const stored = [];
   const response = createResponse();
   await runWebhook({ method: "POST", headers: { "x-hub-signature-256": signature }, body: raw }, response, {
-    config, supabase, sendMessage: async (recipientId, message) => sent.push({ recipientId, message }),
+    config, supabase, storePng: async (id, png) => stored.push({ id, png }),
+    sendMessage: async (recipientId, message) => sent.push({ recipientId, message }),
   });
   assert.equal(response.statusCode, 200);
   assert.equal(supabase.state.inserted.length, 2);
@@ -110,11 +132,37 @@ test("수락 이벤트만 임시 렌더 job과 이미지 답장을 만든다", a
   assert.equal(sent.length, 2);
   assert.equal(sent[0].message.text, "영수증 만드는 중입니다.");
   assert.match(sent[1].message.attachment.payload.url, /^https:\/\/example\.com\/api\/instagram\/receipt-image\?id=/u);
+  assert.equal(stored.length, 1);
+  assert.equal(stored[0].id, new URL(sent[1].message.attachment.payload.url).searchParams.get("id"));
+  assert.equal(stored[0].png, TEST_PNG);
   assert.equal(supabase.state.updated[0].value.outcome, "image_sent");
   const claim = supabase.state.rpc.find(({ name }) => name === "claim_instagram_receipt_bot_request_v3");
   assert.equal(claim.args.p_day_limit, 10);
   assert.equal(claim.args.p_request_kind, "receipt");
   assert.equal(supabase.state.rpc.at(-1).name, "cleanup_instagram_receipt_bot_data");
+});
+
+test("Instagram 재시도는 기존 임시 PNG를 재렌더하거나 덮어쓰지 않는다", async () => {
+  const payload = { object: "instagram", entry: [{ messaging: [{ sender: { id: "sender-1" }, message: { mid: "event-retry", text: validMessage } }] }] };
+  const raw = Buffer.from(JSON.stringify(payload));
+  const supabase = createSupabase("retry", {
+    renderJob: { expires_at: new Date(Date.now() + 60_000).toISOString() },
+  });
+  let renderCount = 0;
+  let storeCount = 0;
+  const sent = [];
+  await runWebhook({ method: "POST", headers: {}, body: raw }, createResponse(), {
+    config,
+    supabase,
+    verifySignature: () => true,
+    renderPng: async () => { renderCount += 1; return TEST_PNG; },
+    storePng: async () => { storeCount += 1; },
+    sendMessage: async (_recipientId, message) => sent.push(message),
+  });
+  assert.equal(renderCount, 0);
+  assert.equal(storeCount, 0);
+  assert.equal(supabase.state.inserted.some(({ table }) => table === "instagram_receipt_bot_render_jobs"), false);
+  assert.match(sent.at(-1).attachment.payload.url, /^https:\/\/example\.com\/api\/instagram\/receipt-image\?id=/u);
 });
 
 test("Instagram changes messages 이벤트도 canonical DM 이벤트로 처리한다", async () => {
@@ -226,6 +274,8 @@ test("Webhook은 느린 이미지 처리 전에 200을 반환한다", async () =
   const blockedSend = new Promise((resolve) => { releaseSend = resolve; });
   await handleInstagramWebhook({ method: "POST", headers: {}, body: raw }, response, {
     config, supabase: createSupabase(), verifySignature: () => true,
+    renderPng: async () => TEST_PNG, fitPng: async (png) => png,
+    storePng: async () => {}, deletePng: async () => {},
     sendMessage: async () => blockedSend,
     waitUntil(task) { tasks.push(task); },
   });
@@ -236,38 +286,38 @@ test("Webhook은 느린 이미지 처리 전에 200을 반환한다", async () =
   await Promise.all(tasks);
 });
 
-test("만료되지 않은 임시 입력을 PNG로 렌더하고 이미지 바이트는 저장하지 않는다", async () => {
-  const parsed = parseInstagramReceiptMessage(validMessage);
-  const png = Buffer.from("png");
+test("만료되지 않은 임시 R2 PNG를 재렌더 없이 그대로 반환한다", async () => {
   const supabase = {
     from() {
       return { select() { return this; }, eq() { return this; }, async maybeSingle() {
-        return { data: { receipt_input: parsed.input, preset: parsed.preset, expires_at: new Date(Date.now() + 60_000).toISOString() }, error: null };
+        return { data: { expires_at: new Date(Date.now() + 60_000).toISOString() }, error: null };
       } };
     },
   };
   const response = createResponse();
-  await handleInstagramReceiptImage({ query: { id: "a".repeat(43) } }, response, { supabase, render: async () => png });
+  let requestedId;
+  await handleInstagramReceiptImage({ query: { id: "a".repeat(43) } }, response, {
+    supabase,
+    readPng: async (id) => { requestedId = id; return TEST_PNG; },
+  });
   assert.equal(response.statusCode, 200);
-  assert.equal(response.body, png);
+  assert.equal(requestedId, "a".repeat(43));
+  assert.equal(response.body, TEST_PNG);
   assert.equal(response.headers["content-type"], "image/png");
 });
 
 test("실제 renderer가 Instagram 제한 이내 PNG를 만든다", async () => {
   const parsed = parseInstagramReceiptMessage(validMessage);
-  const supabase = {
-    from() {
-      return { select() { return this; }, eq() { return this; }, async maybeSingle() {
-        return { data: { receipt_input: parsed.input, preset: parsed.preset, expires_at: new Date(Date.now() + 60_000).toISOString() }, error: null };
-      } };
-    },
-  };
-  const response = createResponse();
-  await handleInstagramReceiptImage({ query: { id: "c".repeat(43) } }, response, { supabase });
-  assert.equal(response.statusCode, 200);
-  assert.deepEqual(response.body.subarray(0, 8), Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
-  assert.ok(response.body.length < 8 * 1024 * 1024);
-  assert.equal(response.headers["content-length"], String(response.body.length));
+  const renderInput = parseExternalReceiptInput(parsed.input);
+  assert.deepEqual(renderInput.issues, []);
+  const rendered = await renderMatchReceiptPng({
+    draft: renderInput.draft,
+    emblems: renderInput.emblems,
+    preset: parsed.preset,
+  });
+  const png = await fitInstagramReceiptPng(rendered);
+  assert.deepEqual(png.subarray(0, 8), Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+  assert.ok(png.length < 8 * 1024 * 1024);
 });
 
 test("migration은 해시 dedupe, 원자 잠금, RLS, TTL 정리를 정의한다", async () => {

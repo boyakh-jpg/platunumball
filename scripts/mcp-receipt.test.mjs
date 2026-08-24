@@ -37,6 +37,8 @@ const VALID_RECEIPT_ARGUMENTS = {
 };
 const TEST_PUBLIC_CODE = "BT-00001234";
 const TEST_RECEIPT_PATH = `/app/receipt?code=${TEST_PUBLIC_CODE}`;
+const TEST_DOWNLOAD_URL = "https://boxtier.kr/api/match-receipts/download?id=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA&expires=1787529600&signature=test-signature";
+const TEST_DOWNLOAD_EXPIRES_AT = "2026-08-24T16:00:00.000Z";
 
 function createBoxtierMcpHandler(options = {}) {
   return createRawBoxtierMcpHandler({
@@ -49,6 +51,10 @@ function createBoxtierMcpHandler(options = {}) {
       receiptPath: TEST_RECEIPT_PATH,
       apiPath: `/api/match-receipts/public?code=${TEST_PUBLIC_CODE}`,
       receipt: draft,
+    }),
+    createReceiptDelivery: async () => ({
+      downloadUrl: TEST_DOWNLOAD_URL,
+      downloadExpiresAt: TEST_DOWNLOAD_EXPIRES_AT,
     }),
     ...options,
   });
@@ -199,7 +205,7 @@ test("MCP가 자동 선택용 영수증 도구를 공개한다", async () => {
   assert.ok(tool.outputSchema);
   const renderedOutput = tool.outputSchema.oneOf.find((schema) => schema.properties?.status?.const === "rendered");
   assert.ok(renderedOutput);
-  for (const field of ["status", "mimeType", "preset", "style", "byteLength", "width", "height", "sha256", "imageAttached", "publicCode", "receiptPath"]) {
+  for (const field of ["status", "mimeType", "preset", "style", "byteLength", "width", "height", "sha256", "imageAttached", "publicCode", "receiptPath", "downloadUrl", "downloadExpiresAt"]) {
     assert.equal(renderedOutput.required.includes(field), true);
   }
   assert.equal(renderedOutput.properties.base64.type, "string");
@@ -441,6 +447,8 @@ test("MCP 호출은 유효 입력의 일일 한도를 소비하고 PNG를 직접
     imageAttached: true,
     publicCode: TEST_PUBLIC_CODE,
     receiptPath: TEST_RECEIPT_PATH,
+    downloadUrl: TEST_DOWNLOAD_URL,
+    downloadExpiresAt: TEST_DOWNLOAD_EXPIRES_AT,
   });
   assert.equal("base64" in called.result.structuredContent, false);
   assert.equal(renderCall.preset, "story");

@@ -1,6 +1,5 @@
 import { getSupabaseAdminClient, sendJson } from "../_supabaseAdmin.js";
-import { parseExternalReceiptInput } from "../match-receipts/_createInput.js";
-import { MATCH_RECEIPT_RENDER_PRESETS, renderMatchReceiptPng } from "../match-receipts/_pngRenderer.js";
+import { readTemporaryReceiptPng } from "../match-receipts/_temporaryPngStorage.js";
 import sharp from "sharp";
 
 const PUBLIC_ID_PATTERN = /^[A-Za-z0-9_-]{43}$/u;
@@ -21,14 +20,10 @@ export async function handleInstagramReceiptImage(request, response, options = {
     if (!PUBLIC_ID_PATTERN.test(publicId)) return sendJson(response, 404, { error: "receipt_image_not_found" });
     const supabase = options.supabase ?? getSupabaseAdminClient();
     const { data, error } = await supabase.from("instagram_receipt_bot_render_jobs")
-      .select("receipt_input,preset,expires_at").eq("public_id", publicId).maybeSingle();
+      .select("expires_at").eq("public_id", publicId).maybeSingle();
     if (error) throw error;
     if (!data || new Date(data.expires_at).getTime() <= Date.now()) return sendJson(response, 404, { error: "receipt_image_not_found" });
-    if (!Object.values(MATCH_RECEIPT_RENDER_PRESETS).includes(data.preset)) throw new Error("invalid_render_job");
-    const parsed = parseExternalReceiptInput(data.receipt_input);
-    if (parsed.issues.length) throw new Error("invalid_render_job");
-    const renderedPng = await (options.render ?? renderMatchReceiptPng)({ draft: parsed.draft, emblems: parsed.emblems, preset: data.preset });
-    const png = await fitInstagramReceiptPng(renderedPng, options.sharpImpl);
+    const png = await (options.readPng ?? readTemporaryReceiptPng)(publicId);
     response.statusCode = 200;
     response.setHeader("Content-Type", "image/png");
     response.setHeader("Content-Length", String(png.length));
@@ -37,6 +32,7 @@ export async function handleInstagramReceiptImage(request, response, options = {
     return response.end(png);
   } catch (error) {
     console.warn("Instagram receipt image failed.", error.message);
+    if (error.statusCode === 404) return sendJson(response, 404, { error: "receipt_image_not_found" });
     return sendJson(response, 500, { error: "receipt_image_failed" });
   }
 }

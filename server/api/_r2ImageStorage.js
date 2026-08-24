@@ -1,5 +1,6 @@
 const DEFAULT_R2_BUCKET = "rankball";
 const WEBP_CONTENT_TYPE = "image/webp";
+const PNG_CONTENT_TYPE = "image/png";
 const IMMUTABLE_ASSET_CACHE_CONTROL = "public, max-age=31536000, immutable";
 const PRIVATE_IMAGE_CACHE_CONTROL = "private, no-store";
 
@@ -43,7 +44,11 @@ export async function uploadR2Webp(config, objectKey, bytes, contextLabel = "ima
 }
 
 export async function uploadPrivateR2Webp(config, objectKey, bytes, contextLabel = "private image") {
-  return uploadR2WebpWithCache(config, objectKey, bytes, PRIVATE_IMAGE_CACHE_CONTROL, contextLabel, true);
+  return uploadR2ImageWithCache(config, objectKey, bytes, WEBP_CONTENT_TYPE, PRIVATE_IMAGE_CACHE_CONTROL, contextLabel, true);
+}
+
+export async function uploadPrivateR2Png(config, objectKey, bytes, contextLabel = "private PNG") {
+  return uploadR2ImageWithCache(config, objectKey, bytes, PNG_CONTENT_TYPE, PRIVATE_IMAGE_CACHE_CONTROL, contextLabel, true);
 }
 
 async function createR2Bucket(config, contextLabel) {
@@ -59,12 +64,16 @@ async function createR2Bucket(config, contextLabel) {
 }
 
 async function uploadR2WebpWithCache(config, objectKey, bytes, cacheControl, contextLabel, createBucketIfMissing = false) {
+  return uploadR2ImageWithCache(config, objectKey, bytes, WEBP_CONTENT_TYPE, cacheControl, contextLabel, createBucketIfMissing);
+}
+
+async function uploadR2ImageWithCache(config, objectKey, bytes, contentType, cacheControl, contextLabel, createBucketIfMissing = false) {
   const upload = () => fetch(getObjectApiUrl(config, objectKey), {
     method: "PUT",
     headers: {
       Authorization: `Bearer ${config.apiToken}`,
       "Cache-Control": cacheControl,
-      "Content-Type": WEBP_CONTENT_TYPE,
+      "Content-Type": contentType,
     },
     body: bytes,
   });
