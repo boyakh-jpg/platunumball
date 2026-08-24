@@ -549,14 +549,16 @@ test("MCP 호출은 누락 입력을 구조화해 반환하고 한도를 소비�
 test("MCP 호출은 첨부 원본을 메모리에서 정규화해 렌더러에 전달한다", async () => {
   let renderCall = null;
   const { default: sharp } = await import("sharp");
-  const sourcePng = await sharp({
-    create: {
-      width: 640,
-      height: 320,
-      channels: 4,
-      background: { r: 23, g: 94, b: 180, alpha: 1 },
-    },
-  }).png().toBuffer();
+  const sourcePng = await sharp(Buffer.from(`
+    <svg width="360" height="360" viewBox="0 0 360 360" xmlns="http://www.w3.org/2000/svg">
+      <rect width="360" height="360" fill="#f2f2ef"/>
+      <circle cx="180" cy="180" r="126" fill="#ababab"/>
+      <path d="M180 58 274 118 248 266 180 312 112 266 86 118Z" fill="#171717"/>
+      <path d="M180 91 238 130 221 238 180 270 139 238 122 130Z" fill="#f7f7f4"/>
+      <circle cx="180" cy="180" r="46" fill="#171717"/>
+      <path d="M139 180h82M180 139v82" stroke="#f7f7f4" stroke-width="10"/>
+    </svg>
+  `)).png().toBuffer();
   const emblemBase64 = sourcePng.toString("base64");
   const handler = createBoxtierMcpHandler({
     consumeGenerationQuota: async () => true,
@@ -591,10 +593,46 @@ test("MCP 호출은 첨부 원본을 메모리에서 정규화해 렌더러에 �
     assert.equal(metadata.height, 320);
     assert.ok(normalized.length <= 96 * 1024);
     const { data, info } = await sharp(normalized).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+    let minX = info.width;
+    let minY = info.height;
+    let maxX = -1;
+    let maxY = -1;
+    for (let y = 0; y < info.height; y += 1) {
+      for (let x = 0; x < info.width; x += 1) {
+        const alpha = data[((y * info.width + x) * info.channels) + 3];
+        if (alpha < 36) continue;
+        minX = Math.min(minX, x);
+        minY = Math.min(minY, y);
+        maxX = Math.max(maxX, x);
+        maxY = Math.max(maxY, y);
+      }
+    }
     assert.equal(data[3], 0);
-    assert.ok(data[((160 * info.width + 160) * info.channels) + 3] > 0);
+    assert.ok(maxX - minX + 1 >= 240);
+    assert.ok(maxY - minY + 1 >= 240);
+    assert.ok(maxX - minX + 1 <= 278);
+    assert.ok(maxY - minY + 1 <= 278);
   }
   await handler.close();
+});
+
+test("MCP는 배경과 도안을 분리할 수 없는 단색 엠블럼을 거부한다", async () => {
+  const { default: sharp } = await import("sharp");
+  const sourcePng = await sharp({
+    create: {
+      width: 320,
+      height: 320,
+      channels: 4,
+      background: { r: 128, g: 128, b: 128, alpha: 1 },
+    },
+  }).png().toBuffer();
+
+  await assert.rejects(
+    () => prepareReceiptEmblems({
+      home: { imageBase64: sourcePng.toString("base64") },
+    }),
+    (error) => error?.field === "homeEmblem" && error?.code === "emblem_background_not_removable",
+  );
 });
 
 test("엠블럼 임시 URL은 HTTPS와 공인 주소만 허용한다", async () => {

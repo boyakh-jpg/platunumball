@@ -16,6 +16,12 @@ const DOWNLOAD_TIMEOUT_MS = 8_000;
 const FOREGROUND_ALPHA_THRESHOLD = 36;
 const EMBLEM_SAFE_RADIUS = Math.floor(TEAM_EMBLEM_MAX_DIMENSION * 13 / 30);
 const D_THERMAL_TONES = Object.freeze([18, 70, 124, 176]);
+const BACKDROP_COLOR_DISTANCE = 64;
+const BACKDROP_BOUNDARY_SHARE = 0.52;
+const BACKDROP_MIN_SOLIDITY = 0.65;
+const BACKDROP_MIN_CANVAS_FILL = 0.82;
+const BACKDROP_MIN_CANVAS_SPAN = 0.9;
+const BACKDROP_MIN_REMAINDER = 64;
 
 function emblemError(field, code) {
   const error = new Error(code);
@@ -150,6 +156,119 @@ function inspectForeground(data, info, field) {
   return { centerX, centerY, minX, minY, maxX, maxY, radius };
 }
 
+function inspectAlphaShape(data, info) {
+  let count = 0;
+  let minX = info.width;
+  let minY = info.height;
+  let maxX = -1;
+  let maxY = -1;
+  for (let y = 0; y < info.height; y += 1) {
+    for (let x = 0; x < info.width; x += 1) {
+      if (data[(y * info.width + x) * 4 + 3] < FOREGROUND_ALPHA_THRESHOLD) continue;
+      count += 1;
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x);
+      maxY = Math.max(maxY, y);
+    }
+  }
+  if (!count) return { count: 0, width: 0, height: 0, solidity: 0 };
+  const width = maxX - minX + 1;
+  const height = maxY - minY + 1;
+  return { count, minX, minY, maxX, maxY, width, height, solidity: count / (width * height) };
+}
+
+function colorDistanceSquared(data, index, color) {
+  const red = data[index] - color.red;
+  const green = data[index + 1] - color.green;
+  const blue = data[index + 2] - color.blue;
+  return red * red + green * green + blue * blue;
+}
+
+function findBackdropColor(data, info) {
+  const buckets = new Map();
+  let boundaryCount = 0;
+  const boundaryPixels = [];
+  const addBoundaryPixel = (x, y) => {
+    const pixel = y * info.width + x;
+    const index = pixel * 4;
+    if (data[index + 3] < FOREGROUND_ALPHA_THRESHOLD) return;
+    const neighbors = [pixel - 1, pixel + 1, pixel - info.width, pixel + info.width];
+    const isBoundary = x === 0 || y === 0 || x === info.width - 1 || y === info.height - 1
+      || neighbors.some((neighbor) => data[neighbor * 4 + 3] < FOREGROUND_ALPHA_THRESHOLD);
+    if (!isBoundary) return;
+    boundaryCount += 1;
+    boundaryPixels.push(index);
+    const key = `${data[index] >> 4}:${data[index + 1] >> 4}:${data[index + 2] >> 4}`;
+    const bucket = buckets.get(key) || { count: 0, red: 0, green: 0, blue: 0 };
+    bucket.count += 1;
+    bucket.red += data[index];
+    bucket.green += data[index + 1];
+    bucket.blue += data[index + 2];
+    buckets.set(key, bucket);
+  };
+  for (let y = 0; y < info.height; y += 1) {
+    for (let x = 0; x < info.width; x += 1) addBoundaryPixel(x, y);
+  }
+  if (!boundaryCount || !buckets.size) return null;
+  const dominant = [...buckets.values()].sort((left, right) => right.count - left.count)[0];
+  const color = {
+    red: dominant.red / dominant.count,
+    green: dominant.green / dominant.count,
+    blue: dominant.blue / dominant.count,
+  };
+  let matching = 0;
+  const maxDistance = BACKDROP_COLOR_DISTANCE * BACKDROP_COLOR_DISTANCE;
+  for (const index of boundaryPixels) {
+    if (colorDistanceSquared(data, index, color) <= maxDistance) matching += 1;
+  }
+  return matching / boundaryCount >= BACKDROP_BOUNDARY_SHARE ? color : null;
+}
+
+function removeFlatBackdrop(data, info, field) {
+  const cleaned = Buffer.from(data);
+  const initial = inspectAlphaShape(cleaned, info);
+  const totalPixels = info.width * info.height;
+  const fillsCanvas = initial.count / totalPixels >= BACKDROP_MIN_CANVAS_FILL
+    || (
+      initial.width / info.width >= BACKDROP_MIN_CANVAS_SPAN
+      && initial.height / info.height >= BACKDROP_MIN_CANVAS_SPAN
+      && initial.solidity >= BACKDROP_MIN_SOLIDITY
+    );
+  if (!fillsCanvas) return cleaned;
+
+  let removedBackdrop = false;
+  for (let pass = 0; pass < 2; pass += 1) {
+    const shape = inspectAlphaShape(cleaned, info);
+    if (!shape.count || shape.solidity < BACKDROP_MIN_SOLIDITY) break;
+    const color = findBackdropColor(cleaned, info);
+    if (!color) {
+      if (!removedBackdrop) throw emblemError(field, "emblem_background_not_removable");
+      break;
+    }
+    const maxDistance = BACKDROP_COLOR_DISTANCE * BACKDROP_COLOR_DISTANCE;
+    const matches = [];
+    for (let index = 0; index < cleaned.length; index += 4) {
+      if (
+        cleaned[index + 3] >= FOREGROUND_ALPHA_THRESHOLD
+        && colorDistanceSquared(cleaned, index, color) <= maxDistance
+      ) matches.push(index);
+    }
+    if (shape.count - matches.length < BACKDROP_MIN_REMAINDER) {
+      if (!removedBackdrop) throw emblemError(field, "emblem_background_not_removable");
+      break;
+    }
+    for (const index of matches) {
+      cleaned[index] = 0;
+      cleaned[index + 1] = 0;
+      cleaned[index + 2] = 0;
+      cleaned[index + 3] = 0;
+    }
+    removedBackdrop = true;
+  }
+  return cleaned;
+}
+
 async function centerForeground(sharp, source, field) {
   const decoded = await source
     .clone()
@@ -161,10 +280,11 @@ async function centerForeground(sharp, source, field) {
     .ensureAlpha()
     .raw()
     .toBuffer({ resolveWithObject: true });
-  const foreground = inspectForeground(decoded.data, decoded.info, field);
+  const cleaned = removeFlatBackdrop(decoded.data, decoded.info, field);
+  const foreground = inspectForeground(cleaned, decoded.info, field);
   const cropWidth = foreground.maxX - foreground.minX + 1;
   const cropHeight = foreground.maxY - foreground.minY + 1;
-  const crop = await sharp(decoded.data, { raw: decoded.info })
+  const crop = await sharp(cleaned, { raw: decoded.info })
     .extract({ left: foreground.minX, top: foreground.minY, width: cropWidth, height: cropHeight })
     .png()
     .toBuffer();
