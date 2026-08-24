@@ -17,6 +17,7 @@ const DOWNLOAD_TIMEOUT_MS = 8_000;
 const FOREGROUND_ALPHA_THRESHOLD = 36;
 const EMBLEM_SAFE_RADIUS = Math.floor(TEAM_EMBLEM_MAX_DIMENSION * 13 / 30);
 const D_THERMAL_TONES = Object.freeze([18, 70, 124, 176]);
+const D_THERMAL_THRESHOLDS = Object.freeze([64, 128, 196]);
 const BACKDROP_COLOR_DISTANCE = 64;
 const BACKDROP_BOUNDARY_SHARE = 0.52;
 const BACKDROP_MIN_SOLIDITY = 0.65;
@@ -326,14 +327,6 @@ async function centerForeground(sharp, source, field) {
 
 async function applyDThermalTones(sharp, source) {
   const { data, info } = await source.clone().ensureAlpha().raw().toBuffer({ resolveWithObject: true });
-  const luminances = [];
-  for (let index = 0; index < data.length; index += 4) {
-    if (data[index + 3] < FOREGROUND_ALPHA_THRESHOLD) continue;
-    luminances.push(data[index] * 0.2126 + data[index + 1] * 0.7152 + data[index + 2] * 0.0722);
-  }
-  luminances.sort((a, b) => a - b);
-  const threshold = (ratio) => luminances[Math.min(luminances.length - 1, Math.floor(luminances.length * ratio))];
-  const thresholds = [threshold(0.27), threshold(0.54), threshold(0.78)];
   for (let index = 0; index < data.length; index += 4) {
     if (data[index + 3] < FOREGROUND_ALPHA_THRESHOLD) {
       data[index] = 0;
@@ -343,7 +336,7 @@ async function applyDThermalTones(sharp, source) {
       continue;
     }
     const luminance = data[index] * 0.2126 + data[index + 1] * 0.7152 + data[index + 2] * 0.0722;
-    const toneIndex = thresholds.findIndex((value) => luminance <= value);
+    const toneIndex = D_THERMAL_THRESHOLDS.findIndex((value) => luminance <= value);
     const tone = D_THERMAL_TONES[toneIndex < 0 ? D_THERMAL_TONES.length - 1 : toneIndex];
     data[index] = tone;
     data[index + 1] = tone;

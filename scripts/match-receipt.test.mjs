@@ -641,6 +641,31 @@ test("thermal receipt emblem centers visible artwork inside the circular safe ar
   assert.deepEqual(tones, [18, 70, 124, 176]);
 });
 
+test("thermal receipt emblem does not stretch low-contrast compression noise across D tones", async () => {
+  const lowContrastEmblem = await sharp(Buffer.from(`
+    <svg width="320" height="320" xmlns="http://www.w3.org/2000/svg">
+      <rect x="60" y="70" width="67" height="180" fill="#888888"/>
+      <rect x="127" y="70" width="66" height="180" fill="#8c8c8c"/>
+      <rect x="193" y="70" width="67" height="180" fill="#909090"/>
+    </svg>
+  `)).webp({ lossless: true }).toBuffer();
+
+  const prepared = await prepareReceiptEmblems({
+    home: { imageBase64: lowContrastEmblem.toString("base64") },
+  }, { style: "classic-thermal" });
+  const emblem = Buffer.from(prepared.home.imageBase64, "base64");
+  const { data } = await sharp(emblem).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  const tones = new Set();
+  for (let index = 0; index < data.length; index += 4) {
+    if (data[index + 3] !== 255) continue;
+    assert.equal(data[index], data[index + 1]);
+    assert.equal(data[index], data[index + 2]);
+    tones.add(data[index]);
+  }
+
+  assert.deepEqual([...tones].sort((a, b) => a - b), [124]);
+});
+
 test("external receipt API creates a no-photo thermal draft", async () => {
   const response = createApiResponse();
   const supabase = createReceiptSupabase();
