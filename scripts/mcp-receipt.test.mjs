@@ -7,6 +7,7 @@ import nodeMcpHandler from "../api/mcp.js";
 import { createBoxtierMcpHandler as createRawBoxtierMcpHandler } from "../server/api/mcp.js";
 import {
   MCP_RECEIPT_LEGACY_WIDGET_URIS,
+  MCP_RECEIPT_WIDGET_URI,
   MCP_RECEIPT_WIDGET_MIME_TYPE,
 } from "../server/api/mcpReceiptWidget.js";
 import { consumeMcpReceiptGenerationQuota } from "../server/api/mcpQuota.js";
@@ -165,8 +166,8 @@ test("MCP가 자동 선택용 영수증 도구를 공개한다", async () => {
   assert.match(tool.description, /박스티어/);
   assert.equal(tool.annotations.readOnlyHint, false);
   assert.equal(tool.annotations.idempotentHint, false);
-  assert.equal("ui" in tool._meta, false);
-  assert.equal("openai/outputTemplate" in tool._meta, false);
+  assert.deepEqual(tool._meta.ui, { resourceUri: MCP_RECEIPT_WIDGET_URI });
+  assert.equal(tool._meta["openai/outputTemplate"], MCP_RECEIPT_WIDGET_URI);
   assert.deepEqual(tool._meta["openai/fileParams"], ["homeEmblemFile", "awayEmblemFile"]);
   assert.deepEqual(tool._meta.securitySchemes, [{ type: "noauth" }]);
   assert.ok(tool.inputSchema.properties.homeEmblem);
@@ -205,8 +206,22 @@ test("MCP가 자동 선택용 영수증 도구를 공개한다", async () => {
     "create_basketball_receipt", "fetch", "search",
   ]);
 
+  const activeResource = await rpc(handler, "resources/read", { uri: MCP_RECEIPT_WIDGET_URI }, 3);
+  const activeTemplate = activeResource.result.contents[0];
+  assert.equal(activeTemplate.uri, MCP_RECEIPT_WIDGET_URI);
+  assert.equal(activeTemplate.mimeType, MCP_RECEIPT_WIDGET_MIME_TYPE);
+  assert.match(activeTemplate.text, /ui\/notifications\/tool-result/);
+  assert.match(activeTemplate.text, /type === "image"/);
+  assert.match(activeTemplate.text, /mimeType === "image\/png"/);
+  assert.match(activeTemplate.text, /new Blob/);
+  assert.match(activeTemplate.text, /URL\.createObjectURL/);
+  assert.match(activeTemplate.text, /PNG 다운로드/);
+  assert.match(activeTemplate.text, /download\.download/);
+  assert.doesNotMatch(activeTemplate.text, /영수증 이미지를 불러오는 중/);
+  assert.doesNotMatch(activeTemplate.text, /https?:\/\//);
+
   for (const [index, legacyWidgetUri] of MCP_RECEIPT_LEGACY_WIDGET_URIS.entries()) {
-    const resource = await rpc(handler, "resources/read", { uri: legacyWidgetUri }, 3 + index);
+    const resource = await rpc(handler, "resources/read", { uri: legacyWidgetUri }, 4 + index);
     const template = resource.result.contents[0];
     assert.equal(template.uri, legacyWidgetUri);
     assert.equal(template.mimeType, MCP_RECEIPT_WIDGET_MIME_TYPE);
