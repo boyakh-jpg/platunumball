@@ -10,6 +10,12 @@ import {
 export const RECEIPT_CAPABILITY_COOKIE = "boxtier_receipt_capability";
 export const RECEIPT_DRAFT_TTL_SECONDS = 30 * 24 * 60 * 60;
 
+function getReceiptRateSalt() {
+  return process.env.MATCH_RECEIPT_RATE_SALT
+    || process.env.SUPABASE_SERVICE_ROLE_KEY
+    || "boxtier";
+}
+
 const TEXT_LIMITS = Object.freeze({
   serialSeed: 96,
   homeTeam: 24,
@@ -242,6 +248,14 @@ export function getReceiptRequestHash(request) {
     : request?.headers?.["x-forwarded-for"];
   const forwarded = String(forwardedHeader ?? "").split(",")[0].trim();
   const address = forwarded || String(request.socket?.remoteAddress ?? "unknown");
-  const salt = process.env.MATCH_RECEIPT_RATE_SALT || process.env.SUPABASE_SERVICE_ROLE_KEY || "boxtier";
-  return createHash("sha256").update(`${salt}:${address}`).digest("hex");
+  return createHash("sha256").update(`${getReceiptRateSalt()}:${address}`).digest("hex");
+}
+
+export function getReceiptPrincipalHash(principal = {}) {
+  const type = String(principal.type ?? "").trim().toLowerCase();
+  const id = String(principal.id ?? "").trim();
+  if (type !== "profile" || !id) throw new Error("invalid_receipt_quota_principal");
+  return createHash("sha256")
+    .update(`${getReceiptRateSalt()}:mcp-receipt:${type}:${id}`)
+    .digest("hex");
 }

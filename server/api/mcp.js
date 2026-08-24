@@ -25,6 +25,7 @@ import {
 } from "./mcpReceiptWidget.js";
 import { createPublicReceiptDraft } from "./match-receipts/_publicDraft.js";
 import { fetchPublicMatchingRoom, searchPublicMatchingRooms } from "../lib/publicMatchingRooms.js";
+import { loadOwnCompactRecordPage } from "./records/list.js";
 
 const receiptEmblemSchema = z.object({
   imageBase64: z.string().min(1).max(MCP_RECEIPT_EMBLEM_MAX_BASE64_LENGTH)
@@ -105,6 +106,11 @@ const receiptOutputSchema = z.discriminatedUnion("status", [
 
 const MCP_OAUTH_SCOPES = ["profile"];
 const PUBLIC_SECURITY_SCHEMES = [{ type: "noauth" }];
+const OPTIONAL_AUTH_SECURITY_SCHEMES = [
+  ...PUBLIC_SECURITY_SCHEMES,
+  { type: "oauth2", scopes: MCP_OAUTH_SCOPES },
+];
+const REQUIRED_AUTH_SECURITY_SCHEMES = [{ type: "oauth2", scopes: MCP_OAUTH_SCOPES }];
 const OWNER_ADMIN_LEVEL = 100;
 
 // Keep required fields visible in tools/list, but let the handler return a
@@ -148,10 +154,21 @@ function getResourceMetadataUrl(request, configuredDomain = "") {
   return origin ? `${origin}/.well-known/oauth-protected-resource` : "";
 }
 
-function authRequired(request, configuredDomain = "") {
+function authRequired(request, configuredDomain = "", options = {}) {
   const resourceMetadataUrl = getResourceMetadataUrl(request, configuredDomain);
-  const challenge = `Bearer scope="${MCP_OAUTH_SCOPES.join(" ")}"${resourceMetadataUrl ? `, resource_metadata="${resourceMetadataUrl}"` : ""}`;
-  return toolError("BoxTier 로그인이 필요하다.", [], { "mcp/www_authenticate": [challenge] });
+  const errorPart = options.error
+    ? `, error="${options.error}", error_description="${options.description || "Authentication failed."}"`
+    : "";
+  const challenge = `Bearer scope="${MCP_OAUTH_SCOPES.join(" ")}"${errorPart}${resourceMetadataUrl ? `, resource_metadata="${resourceMetadataUrl}"` : ""}`;
+  return toolError(options.message || "BoxTier 로그인이 필요하다.", [], {
+    "mcp/www_authenticate": [challenge],
+  });
+}
+
+function getAuthenticationChallengeOptions(error) {
+  return error?.message === "invalid_bearer_token"
+    ? { error: "invalid_token", description: "The access token is invalid or expired." }
+    : {};
 }
 
 function isAuthenticationError(error) {
@@ -188,6 +205,7 @@ export function createBoxtierMcpHandler({
   getActorAdminLevel = getAdminLevel,
   searchRooms = searchPublicMatchingRooms,
   fetchRoom = fetchPublicMatchingRoom,
+  loadOwnRecords = loadOwnCompactRecordPage,
   createReceiptDraft = createPublicReceiptDraft,
   publicAppUrl = getConfiguredPublicAppUrl(),
 } = {}) {
@@ -300,6 +318,72 @@ export function createBoxtierMcpHandler({
     );
 
     server.registerTool(
+      "get_my_boxtier_account",
+      {
+        title: "BoxTier 로그인 연결 확인",
+        description: "BoxTier 로그인을 시작하거나 현재 연결된 내 계정과 영수증 생성 한도 정책을 확인한다. 사용자가 로그인, 계정 연결, 내 기록 이용 가능 여부 또는 영수증 한도를 물으면 사용한다.",
+        inputSchema: z.object({}).strict(),
+        annotations: {
+          readOnlyHint: true,
+          destructiveHint: false,
+          idempotentHint: true,
+          openWorldHint: false,
+        },
+        _meta: { securitySchemes: REQUIRED_AUTH_SECURITY_SCHEMES },
+      },
+      async () => {
+        try {
+          const authContext = await authenticate(context.requestInfo);
+          const owner = await isOwnerAccount(authContext, getActorAdminLevel);
+          const result = {
+            status: "authenticated",
+            receiptQuota: owner ? "unlimited" : "10_per_24_hours",
+            recordsAvailable: true,
+          };
+          return { content: [{ type: "text", text: JSON.stringify(result) }], structuredContent: result };
+        } catch (error) {
+          if (isAuthenticationError(error)) {
+            return authRequired(context.requestInfo, publicAppUrl, getAuthenticationChallengeOptions(error));
+          }
+          console.error("[mcp] account lookup failed", error);
+          return toolError("BoxTier 계정 연결을 확인할 수 없다.");
+        }
+      },
+    );
+
+    server.registerTool(
+      "list_my_match_records",
+      {
+        title: "내 BoxTier 경기 기록 조회",
+        description: "로그인한 BoxTier 사용자의 최근 농구 경기 기록을 조회한다. 사용자가 내 경기, 내 기록, 이전 경기 또는 기록으로 영수증 만들기를 요청할 때 사용한다.",
+        inputSchema: z.object({
+          limit: z.number().int().min(1).max(20).default(10),
+          offset: z.number().int().min(0).default(0),
+        }).strict(),
+        annotations: {
+          readOnlyHint: true,
+          destructiveHint: false,
+          idempotentHint: true,
+          openWorldHint: false,
+        },
+        _meta: { securitySchemes: REQUIRED_AUTH_SECURITY_SCHEMES },
+      },
+      async ({ limit = 10, offset = 0 }) => {
+        try {
+          const authContext = await authenticate(context.requestInfo);
+          const result = await loadOwnRecords(authContext.supabase, authContext.profileId, { limit, offset });
+          return { content: [{ type: "text", text: JSON.stringify(result) }], structuredContent: result };
+        } catch (error) {
+          if (isAuthenticationError(error)) {
+            return authRequired(context.requestInfo, publicAppUrl, getAuthenticationChallengeOptions(error));
+          }
+          console.error("[mcp] own records lookup failed", error);
+          return toolError("내 BoxTier 경기 기록을 조회할 수 없다.");
+        }
+      },
+    );
+
+    server.registerTool(
       "create_basketball_receipt",
       {
         title: "BoxTier 농구 영수증 PNG 만들기",
@@ -313,7 +397,7 @@ export function createBoxtierMcpHandler({
           openWorldHint: false,
         },
         _meta: {
-          securitySchemes: PUBLIC_SECURITY_SCHEMES,
+          securitySchemes: OPTIONAL_AUTH_SECURITY_SCHEMES,
           "openai/fileParams": ["homeEmblemFile", "awayEmblemFile"],
           "openai/toolInvocation/invoking": "농구 영수증 PNG 렌더링 중",
         },
@@ -341,11 +425,22 @@ export function createBoxtierMcpHandler({
         try {
           const authContext = await getOptionalAuthContext(context.requestInfo, authenticate);
           const owner = await isOwnerAccount(authContext, getActorAdminLevel);
-          const allowed = owner || await consumeGenerationQuota(context.requestInfo);
-          if (!allowed) return toolError("최근 24시간 PNG 생성 한도 10회를 초과했다.");
+          const allowed = owner || await consumeGenerationQuota(context.requestInfo, {
+            principal: authContext?.profileId
+              ? { type: "profile", id: authContext.profileId }
+              : null,
+          });
+          if (!allowed) {
+            if (!authContext) {
+              return authRequired(context.requestInfo, publicAppUrl, {
+                message: "비로그인 최근 24시간 PNG 생성 한도 10회를 초과했다. BoxTier 로그인 후 사용자 한도로 계속할 수 있다.",
+              });
+            }
+            return toolError("최근 24시간 PNG 생성 한도 10회를 초과했다.");
+          }
         } catch (error) {
           if (isAuthenticationError(error)) {
-            return authRequired(context.requestInfo, publicAppUrl);
+            return authRequired(context.requestInfo, publicAppUrl, getAuthenticationChallengeOptions(error));
           }
           console.error("[mcp] receipt quota check failed", error);
           return toolError("영수증 생성 한도를 확인할 수 없다.");

@@ -4,7 +4,7 @@
 
 - MCP URL: `https://boxtier.kr/mcp`
 - 전송: Streamable HTTP
-- 도구: `search`, `fetch`, `create_basketball_receipt`
+- 도구: `search`, `fetch`, `create_basketball_receipt`, `get_my_boxtier_account`, `list_my_match_records`
 - 검색 결과: 공개 모집방의 ID·제목·BoxTier URL
 - 상세 결과: 공개 모집 상태를 재검증한 방 조건
 - 영수증 결과: MCP `image/png` content, 저장 없음
@@ -20,6 +20,8 @@ ChatGPT 또는 Claude에 BoxTier MCP가 설치·연결된 경우에만 모델이
 `search`는 사용자가 실제로 참가할 농구방, 픽업 경기, 팀 대 팀 상대를 찾거나 지역·날짜·시간·경기 방식 조건으로 매칭방 추천을 요청할 때만 사용한다. `fetch`는 추천 전에 검색 결과의 현재 공개 모집 상태와 상세 조건을 다시 확인한다. 일반 농구 지식, NBA 정보, 훈련법, 의료·상거래 등 무관한 질문에는 호출하지 않는다.
 
 `create_basketball_receipt`는 사용자가 박스티어 농구 영수증·감열지 영수증·basketball game receipt를 요청하고 실제 팀명, 최종 점수, 경기 날짜, 장소, 경기 방식을 제공했을 때 사용한다. 값이 빠지면 생성 전에 질문한다. 농구 외 경기, 허위 기록, 상거래 영수증에는 사용하지 않는다.
+
+`get_my_boxtier_account`와 `list_my_match_records`는 `profile` scope의 BoxTier OAuth 로그인이 필수다. 계정 확인이나 내 경기 기록 조회를 요청하면 ChatGPT가 로그인 연결을 표시한다. 영수증 생성은 로그인 없이도 가능하지만 익명 24시간 한도에 도달하면 로그인 연결을 제안하고, 로그인 후에는 canonical 프로필 기준 한도를 사용한다.
 
 일반 호출은 완성 PNG를 `content[type=image]`에 한 번만 넣고 `structuredContent`에는 상태·크기·검증값·공개 코드만 반환한다. `debugBase64=true`인 개발 확인 호출에서만 같은 Base64를 중복한다. 과거 연결이 캐시한 위 URI는 읽을 수 있지만 호환 화면은 기존 image content만 표시하며 로딩 박스·외부 이미지 저장소를 사용하지 않는다.
 
@@ -89,7 +91,9 @@ Claude.ai는 설정의 Connectors에서 같은 URL을 사용자 지정 connector
 - `search`·`fetch`는 표준 JSON text content, 영수증은 `image/png` content를 반환한다.
 - 검색·상세 결과에 비공개 방, 종료 방, 사용자 개인정보가 포함되지 않는다.
 - 모든 `POST /mcp` 요청은 인스턴스별 IP 기준 1분 5회로 제한한다.
-- 유효한 `create_basketball_receipt` PNG 생성 시도는 원본 IP를 저장하지 않고 salted SHA-256 해시별 최근 24시간 10회로 제한한다.
+- 유효한 `create_basketball_receipt` PNG 생성 시도는 비로그인은 salted SHA-256 IP 해시, 로그인 사용자는 salted SHA-256 canonical 프로필 해시별 최근 24시간 10회로 제한한다. `adminlevel=100` owner만 일일 제한을 우회한다.
+- 익명 일일 한도 초과는 OAuth challenge로 로그인을 유도한다. 로그인 일반 사용자의 한도 초과는 재로그인을 유도하지 않는다.
+- 계정·내 기록 도구는 `profile` scope를 요구하며 입력으로 다른 사용자의 프로필 ID를 받지 않는다.
 - `initialize`, `tools/list`, 입력 검증 실패는 일일 생성 횟수에서 제외한다. 렌더링 실패는 유효한 생성 시도이므로 횟수에 포함한다.
 - 오류·지연·429 비율을 서버 로그와 WAF에서 확인한다.
 - 배포된 production metadata의 Git SHA가 `main`의 배포 대상 SHA와 같다.

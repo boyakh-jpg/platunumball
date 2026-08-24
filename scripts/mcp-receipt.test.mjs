@@ -172,7 +172,11 @@ test("MCP가 자동 선택용 영수증 도구를 공개한다", async () => {
   assert.equal(tool._meta.ui, undefined);
   assert.equal(tool._meta["openai/outputTemplate"], undefined);
   assert.deepEqual(tool._meta["openai/fileParams"], ["homeEmblemFile", "awayEmblemFile"]);
-  assert.deepEqual(tool._meta.securitySchemes, [{ type: "noauth" }]);
+  const optionalAuthSchemes = [
+    { type: "noauth" },
+    { type: "oauth2", scopes: ["profile"] },
+  ];
+  assert.deepEqual(tool._meta.securitySchemes, optionalAuthSchemes);
   assert.ok(tool.inputSchema.properties.homeEmblem);
   assert.ok(tool.inputSchema.properties.awayEmblem);
   assert.ok(tool.inputSchema.properties.homeEmblem.properties.imageBase64);
@@ -206,8 +210,14 @@ test("MCP가 자동 선택용 영수증 도구를 공개한다", async () => {
   ].sort());
 
   assert.deepEqual(listed.result.tools.map((candidate) => candidate.name).sort(), [
-    "create_basketball_receipt", "fetch", "search",
+    "create_basketball_receipt", "fetch", "get_my_boxtier_account", "list_my_match_records", "search",
   ]);
+
+  for (const toolName of ["get_my_boxtier_account", "list_my_match_records"]) {
+    const protectedTool = listed.result.tools.find((candidate) => candidate.name === toolName);
+    const requiredAuthSchemes = [{ type: "oauth2", scopes: ["profile"] }];
+    assert.deepEqual(protectedTool._meta.securitySchemes, requiredAuthSchemes);
+  }
 
   const activeResource = await rpc(handler, "resources/read", { uri: MCP_RECEIPT_WIDGET_URI }, 3);
   const activeTemplate = activeResource.result.contents[0];
@@ -262,11 +272,13 @@ test("owner 계정만 영수증 일일 한도를 건너뛴다", async () => {
 
 test("일반 로그인 사용자는 기존 영수증 일일 한도를 사용한다", async () => {
   let quotaCalls = 0;
+  let quotaOptions = null;
   const handler = createBoxtierMcpHandler({
     authenticate: async () => ({ profileId: "regular-profile" }),
     getActorAdminLevel: async () => 0,
-    consumeGenerationQuota: async () => {
+    consumeGenerationQuota: async (_request, options) => {
       quotaCalls += 1;
+      quotaOptions = options;
       return true;
     },
     renderPng: async () => TEST_PNG,
@@ -278,6 +290,76 @@ test("일반 로그인 사용자는 기존 영수증 일일 한도를 사용한�
 
   assert.equal(called.result.isError, undefined, JSON.stringify(called.result));
   assert.equal(quotaCalls, 1);
+  assert.deepEqual(quotaOptions, { principal: { type: "profile", id: "regular-profile" } });
+  await handler.close();
+});
+
+test("인증 전용 도구가 로그인 challenge를 반환한다", async () => {
+  const missingToken = new Error("missing_bearer_token");
+  missingToken.status = 401;
+  const handler = createBoxtierMcpHandler({
+    authenticate: async () => { throw missingToken; },
+  });
+  const called = await rpc(handler, "tools/call", {
+    name: "get_my_boxtier_account",
+    arguments: {},
+  }, 24);
+
+  assert.equal(called.result.isError, true);
+  assert.match(called.result.content[0].text, /로그인이 필요/u);
+  const challenge = called.result._meta["mcp/www_authenticate"][0];
+  assert.match(challenge, /^Bearer scope="profile"/u);
+  assert.match(challenge, /resource_metadata="https:\/\/boxtier\.kr\/\.well-known\/oauth-protected-resource"/u);
+  assert.doesNotMatch(challenge, /error="invalid_token"/u);
+  await handler.close();
+});
+
+test("로그인 연결 확인은 일반 사용자와 owner의 한도 정책을 구분한다", async () => {
+  for (const [adminLevel, receiptQuota] of [[0, "10_per_24_hours"], [100, "unlimited"]]) {
+    const handler = createBoxtierMcpHandler({
+      authenticate: async () => ({
+        profileId: "private-profile-id",
+        accessTokenClaims: { scope: "profile" },
+      }),
+      getActorAdminLevel: async () => adminLevel,
+    });
+    const called = await rpc(handler, "tools/call", {
+      name: "get_my_boxtier_account",
+      arguments: {},
+    }, 25 + adminLevel, { authorization: "Bearer access-token-1234" });
+
+    assert.deepEqual(called.result.structuredContent, {
+      status: "authenticated",
+      receiptQuota,
+      recordsAvailable: true,
+    });
+    assert.doesNotMatch(called.result.content[0].text, /private-profile-id/u);
+    await handler.close();
+  }
+});
+
+test("내 기록 도구는 JWT scope claim 없이도 검증된 로그인 프로필만 사용한다", async () => {
+  let loadCall = null;
+  const supabase = {};
+  const handler = createBoxtierMcpHandler({
+    authenticate: async () => ({
+      supabase,
+      profileId: "my-profile",
+    }),
+    loadOwnRecords: async (...args) => {
+      loadCall = args;
+      return { records: [], limit: 7, offset: 3, nextOffset: null };
+    },
+  });
+  const called = await rpc(handler, "tools/call", {
+    name: "list_my_match_records",
+    arguments: { limit: 7, offset: 3 },
+  }, 26, { authorization: "Bearer access-token-1234" });
+
+  assert.deepEqual(loadCall, [supabase, "my-profile", { limit: 7, offset: 3 }]);
+  assert.deepEqual(called.result.structuredContent, {
+    records: [], limit: 7, offset: 3, nextOffset: null,
+  });
   await handler.close();
 });
 
@@ -644,7 +726,7 @@ test("쿼터 합계가 최종 점수와 다르면 렌더링을 거부한다", as
   await handler.close();
 });
 
-test("MCP 일일 한도를 넘으면 렌더링하지 않는다", async () => {
+test("익명 MCP 일일 한도를 넘으면 렌더링하지 않고 로그인을 유도한다", async () => {
   let renders = 0;
   const handler = createBoxtierMcpHandler({
     consumeGenerationQuota: async () => false,
@@ -667,8 +749,31 @@ test("MCP 일일 한도를 넘으면 렌더링하지 않는다", async () => {
   }, 5);
 
   assert.equal(called.result.isError, true);
-  assert.match(called.result.content[0].text, /24시간 PNG 생성 한도 10회/);
+  assert.match(called.result.content[0].text, /비로그인 최근 24시간 PNG 생성 한도 10회/);
+  assert.match(called.result.content[0].text, /로그인 후 사용자 한도/);
+  assert.match(called.result._meta["mcp/www_authenticate"][0], /^Bearer scope="profile"/);
   assert.equal(renders, 0);
+  await handler.close();
+});
+
+test("로그인 일반 사용자가 일일 한도를 넘으면 재로그인을 유도하지 않는다", async () => {
+  const handler = createBoxtierMcpHandler({
+    authenticate: async () => ({ profileId: "regular-profile" }),
+    getActorAdminLevel: async () => 0,
+    consumeGenerationQuota: async () => false,
+    renderPng: async () => TEST_PNG,
+  });
+
+  const called = await rpc(handler, "tools/call", {
+    name: "create_basketball_receipt",
+    arguments: VALID_RECEIPT_ARGUMENTS,
+  }, 51, {
+    authorization: "Bearer regular-access-token-1234",
+  });
+
+  assert.equal(called.result.isError, true);
+  assert.match(called.result.content[0].text, /최근 24시간 PNG 생성 한도 10회/);
+  assert.equal(called.result._meta, undefined);
   await handler.close();
 });
 
@@ -688,6 +793,32 @@ test("MCP quota helper는 원본 IP 대신 해시로 전역 RPC를 호출한다"
   assert.equal(rpcCall.name, "consume_mcp_receipt_generation_quota");
   assert.match(rpcCall.params.p_request_hash, /^[0-9a-f]{64}$/);
   assert.doesNotMatch(rpcCall.params.p_request_hash, /203\.0\.113\.21/);
+});
+
+test("MCP quota helper는 로그인 사용자를 프로필별 익명 해시로 집계한다", async () => {
+  const hashes = [];
+  const client = {
+    async rpc(_name, params) {
+      hashes.push(params.p_request_hash);
+      return { data: true, error: null };
+    },
+  };
+  const request = new Request("https://boxtier.kr/mcp", {
+    headers: { "x-forwarded-for": "203.0.113.21" },
+  });
+  await consumeMcpReceiptGenerationQuota(request, {
+    client,
+    principal: { type: "profile", id: "profile-one" },
+  });
+  await consumeMcpReceiptGenerationQuota(request, {
+    client,
+    principal: { type: "profile", id: "profile-two" },
+  });
+
+  assert.equal(hashes.length, 2);
+  assert.match(hashes[0], /^[0-9a-f]{64}$/u);
+  assert.notEqual(hashes[0], hashes[1]);
+  assert.doesNotMatch(hashes.join(""), /profile-(one|two)/u);
 });
 
 test("MCP 실제 renderer가 투명 배경 중립 엠블럼과 연속 회색 종이를 적용한 Story PNG를 반환한다", async () => {
