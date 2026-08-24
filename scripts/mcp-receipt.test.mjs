@@ -1,11 +1,15 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
+import { readFile } from "node:fs/promises";
 import http from "node:http";
 import test from "node:test";
 import nodeMcpHandler from "../api/mcp.js";
 import { createBoxtierMcpHandler as createRawBoxtierMcpHandler } from "../server/api/mcp.js";
 import { consumeMcpReceiptGenerationQuota } from "../server/api/mcpQuota.js";
-import { downloadReceiptEmblem } from "../server/api/match-receipts/_emblemProcessor.js";
+import {
+  downloadReceiptEmblem,
+  prepareReceiptEmblems,
+} from "../server/api/match-receipts/_emblemProcessor.js";
 import { getMcpProtectedResourceMetadata } from "../server/api/oauthProtectedResource.js";
 import { getThermalReceiptLayout } from "../shared/lib/thermalReceipt.js";
 
@@ -58,15 +62,22 @@ function rpcRequest(method, params, id, headers = {}) {
 }
 
 async function rpc(handler, method, params, id, headers = {}) {
+  return (await rpcTransport(handler, method, params, id, headers)).message;
+}
+
+async function rpcTransport(handler, method, params, id, headers = {}) {
   const response = await handler.fetch(rpcRequest(method, params, id, headers));
   assert.equal(response.status, 200);
   const body = await response.text();
+  let message;
   if (response.headers.get("content-type")?.includes("text/event-stream")) {
     const data = body.split("\n").find((line) => line.startsWith("data: "))?.slice(6);
     assert.ok(data);
-    return JSON.parse(data);
+    message = JSON.parse(data);
+  } else {
+    message = JSON.parse(body);
   }
-  return JSON.parse(body);
+  return { message, bodyByteLength: Buffer.byteLength(body) };
 }
 
 test("Node adapter가 공개 MCP 요청을 처리한다", async (context) => {
@@ -707,6 +718,61 @@ test("MCP 실제 renderer가 중립 엠블럼과 선택 영역 팔레트를 적�
     assert.ok(counts.light > 0, "중립 엠블럼이 검은 원으로 뭉개지면 안 된다");
   }
   assert.ok(bodyLevels.size > 16, "종이와 본문의 연속 회색 농도가 보존되어야 한다");
+  await handler.close();
+});
+
+test("MCP 실제 전송은 한국어와 양쪽 첨부 엠블럼이 합성된 최종 PNG 한 장을 반환한다", async (context) => {
+  const [homeEmblemBytes, awayEmblemBytes] = await Promise.all([
+    readFile(new URL("../public/assets/tier-emblems/tier-platinum-outline-v1.png", import.meta.url)),
+    readFile(new URL("../public/assets/tier-emblems/tier-gold-outline-v1.png", import.meta.url)),
+  ]);
+  let preparedEmblems = null;
+  const handler = createBoxtierMcpHandler({
+    consumeGenerationQuota: async () => true,
+    prepareEmblems: async (emblems) => {
+      preparedEmblems = await prepareReceiptEmblems(emblems);
+      return preparedEmblems;
+    },
+  });
+  const transport = await rpcTransport(handler, "tools/call", {
+    name: "create_basketball_receipt",
+    arguments: {
+      homeTeam: "New Court Crew",
+      awayTeam: "마포 터너스",
+      homeScore: 82,
+      awayScore: 76,
+      playedOn: "2026-08-22",
+      playedTime: "20:30",
+      venue: "광명시민체육관",
+      format: "5v5",
+      style: "thermal",
+      preset: "story",
+      locale: "ko",
+      homeEmblem: { imageBase64: homeEmblemBytes.toString("base64"), mimeType: "image/png" },
+      awayEmblem: { imageBase64: awayEmblemBytes.toString("base64"), mimeType: "image/png" },
+    },
+  }, 8);
+  const called = transport.message;
+
+  assert.equal(called.result.isError, undefined, JSON.stringify(called.result));
+  const imageBlocks = called.result.content.filter((block) => block.type === "image");
+  assert.equal(called.result.content.length, 1);
+  assert.equal(imageBlocks.length, 1);
+  assert.equal(imageBlocks[0].mimeType, "image/png");
+  assert.match(imageBlocks[0].data, /^iVBORw0KG/u);
+  assert.doesNotMatch(imageBlocks[0].data, /^data:/u);
+  assert.ok(preparedEmblems?.home?.imageBase64);
+  assert.ok(preparedEmblems?.away?.imageBase64);
+  const png = Buffer.from(imageBlocks[0].data, "base64");
+  assert.equal(png.subarray(0, 8).toString("hex"), "89504e470d0a1a0a");
+  assert.equal(png.length, called.result.structuredContent.byteLength);
+  assert.equal(createHash("sha256").update(png).digest("hex"), called.result.structuredContent.sha256);
+  assert.equal("base64" in called.result.structuredContent, false);
+  context.diagnostic(JSON.stringify({
+    pngByteLength: png.length,
+    base64CharacterLength: imageBlocks[0].data.length,
+    mcpResponseByteLength: transport.bodyByteLength,
+  }));
   await handler.close();
 });
 
