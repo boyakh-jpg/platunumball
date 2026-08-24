@@ -109,7 +109,7 @@
 .guest-landing-section h2 {
   margin: 0;
   font-family: var(--sports-display-font), sans-serif;
-  letter-spacing: -0.045em;
+  letter-spacing: 0;
   line-height: 0.98;
 }
 
@@ -216,6 +216,7 @@
 }
 
 .guest-landing-section h2 {
+  max-width: calc(100% / var(--sports-display-width-scale));
   font-size: clamp(1.55rem, 2.6vw, 2.25rem);
 }
 

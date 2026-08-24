@@ -376,7 +376,7 @@ html[data-theme="light"] .arena-lobby-arena {
   .arena-lobby-score-core i) {
   font-family: var(--sports-display-font);
   letter-spacing: 0;
-  transform: var(--sports-display-condense);
+  transform: var(--sports-display-width-transform);
 }
 :where(.arena-hero-copy h1, .arena-lobby-title h2, .arena-lobby-team-head strong) {
   transform-origin: left center;

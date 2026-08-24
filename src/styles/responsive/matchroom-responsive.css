@@ -158,7 +158,7 @@ html[data-theme="light"] .gm-room-hero::after {
 :where(.gm-room-title h1, .gm-team-head a, .gm-score-core strong, .gm-score-core i) {
   font-family: var(--sports-display-font);
   letter-spacing: 0;
-  transform: var(--sports-display-condense);
+  transform: var(--sports-display-width-transform);
 }
 
 :where(.gm-room-title h1, .gm-team-head a) {

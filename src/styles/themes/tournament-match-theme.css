@@ -3,7 +3,7 @@
 :where(.tournament-hero h1, .bracket-midline) {
   font-family: var(--sports-display-font);
   letter-spacing: 0;
-  transform: var(--sports-display-condense);
+  transform: var(--sports-display-width-transform);
 }
 
 .tournament-hero h1 {

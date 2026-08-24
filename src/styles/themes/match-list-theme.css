@@ -15,7 +15,7 @@
 }
 
 .om-match-copy h1 {
-  transform: var(--sports-display-condense);
+  transform: var(--sports-display-width-transform);
   transform-origin: left center;
 }
 
