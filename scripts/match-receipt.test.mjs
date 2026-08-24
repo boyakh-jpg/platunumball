@@ -29,9 +29,11 @@ import {
 } from "../src/lib/receiptLocale.js";
 import {
   EMBLEM_GRAYSCALE_LEVELS,
+  getThermalEmblemForegroundPlacement,
   grayscaleThermalPixels,
   quantizeThermalEmblemPixels,
 } from "../src/lib/thermalReceipt.js";
+import { getThermalReceiptLayout } from "../shared/lib/thermalReceipt.js";
 
 async function assertGrayscalePng(png) {
   const { data, info } = await sharp(png).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
@@ -174,7 +176,15 @@ test("receipt emblems allow style-specific local adjustment while canonical team
   assert.match(receiptPage, /onConvert=\{isThermal \? undefined : convertLocalTeamEmblem\}/u);
   assert.deepEqual(EMBLEM_GRAYSCALE_LEVELS, [18, 70, 124, 176]);
   assert.match(thermalRenderer, /if \(data\[index \+ 3\] === 0\) continue/u);
-  assert.match(thermalRenderer, /quantizeThermalEmblemPixels\(pixels\.data, 168, 168\)/u);
+  const drawEmblemStart = thermalRenderer.indexOf("function drawEmblem");
+  const drawEmblemEnd = thermalRenderer.indexOf("function drawTeams", drawEmblemStart);
+  assert.notEqual(drawEmblemStart, -1);
+  assert.notEqual(drawEmblemEnd, -1);
+  const drawEmblemSource = thermalRenderer.slice(drawEmblemStart, drawEmblemEnd);
+  assert.doesNotMatch(drawEmblemSource, /quantizeThermalEmblemPixels\(pixels\.data/u);
+  assert.match(drawEmblemSource, /getThermalEmblemForegroundPlacement/u);
+  assert.match(drawEmblemSource, /applyPrintMask\(\s*ringLayer/u);
+  assert.match(thermalRenderer, /if \(!layout\.hasPeriods\)[\s\S]*?drawRule\(ctx, layout\.info\.x, layout\.info\.y \+ 144/u);
   assert.match(thermalRenderer, /grayscaleThermalCanvas\(base\)/u);
   assert.doesNotMatch(thermalRenderer, /const isEmblem/u);
   assert.match(receiptPage, /저장된 팀 엠블럼 없음/u);
@@ -218,6 +228,40 @@ test("thermal emblem D conversion preserves transparency and keeps receipt paper
   const paperPixels = new Uint8ClampedArray([235, 235, 235, 255]);
   grayscaleThermalPixels(paperPixels);
   assert.deepEqual([...paperPixels], [235, 235, 235, 255]);
+});
+
+test("receipt emblem foreground is centered and maximized without cropping", () => {
+  const width = 100;
+  const height = 80;
+  const data = new Uint8ClampedArray(width * height * 4);
+  for (let y = 20; y < 60; y += 1) {
+    for (let x = 60; x < 80; x += 1) {
+      data[(y * width + x) * 4 + 3] = 255;
+    }
+  }
+
+  const placement = getThermalEmblemForegroundPlacement(data, width, height);
+  const expectedRadius = Math.hypot(9.5, 19.5);
+  assert.equal(placement.centerX, 70);
+  assert.equal(placement.centerY, 40);
+  assert.equal(placement.radius, expectedRadius);
+  assert.equal(placement.scale, 68 / expectedRadius);
+});
+
+test("receipt layout keeps a masked separator when period scores are absent", () => {
+  const withPeriods = getThermalReceiptLayout({
+    hasPhoto: false,
+    hasPeriods: true,
+    hasComment: true,
+  });
+  const withoutPeriods = getThermalReceiptLayout({
+    hasPhoto: false,
+    hasPeriods: false,
+    hasComment: true,
+  });
+
+  assert.equal(withPeriods.result.y - withPeriods.info.y, 328);
+  assert.equal(withoutPeriods.result.y - withoutPeriods.info.y, 170);
 });
 
 test("canonical receipt keeps dedicated team receipt emblems through public reload", () => {
@@ -671,7 +715,7 @@ test("external receipt PNG API renders a stateless selective-palette thermal sto
   const metadata = await sharp(response.body).metadata();
   assert.equal(metadata.format, "png");
   assert.equal(metadata.width, 796);
-  assert.equal(metadata.height, 1392);
+  assert.equal(metadata.height, 1420);
   await assertGrayscalePng(response.body);
 });
 

@@ -426,39 +426,98 @@ export function quantizeThermalEmblemPixels(data, width, height) {
   return data;
 }
 
+export function getThermalEmblemForegroundPlacement(data, width, height, targetRadius = 68) {
+  let minX = width;
+  let minY = height;
+  let maxX = -1;
+  let maxY = -1;
+
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      if (data[(y * width + x) * 4 + 3] < 24) continue;
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x);
+      maxY = Math.max(maxY, y);
+    }
+  }
+
+  if (maxX < minX || maxY < minY) return null;
+
+  const centerX = (minX + maxX + 1) / 2;
+  const centerY = (minY + maxY + 1) / 2;
+  let radius = 0;
+  for (let y = minY; y <= maxY; y += 1) {
+    for (let x = minX; x <= maxX; x += 1) {
+      if (data[(y * width + x) * 4 + 3] < 24) continue;
+      radius = Math.max(radius, Math.hypot(x + 0.5 - centerX, y + 0.5 - centerY));
+    }
+  }
+
+  return {
+    centerX,
+    centerY,
+    radius,
+    scale: radius > 0 ? targetRadius / radius : 1,
+  };
+}
+
 function drawEmblem(ctx, emblem, x, y) {
   const layer = createCanvas(184, 184);
   const layerCtx = layer.getContext("2d");
   const image = emblem?.image;
   if (image) {
-    const bitmap = createCanvas(168, 168);
+    const imageWidth = image.naturalWidth || image.width;
+    const imageHeight = image.naturalHeight || image.height;
+    const sourceScale = Math.min(1, 512 / Math.max(imageWidth, imageHeight));
+    const sourceWidth = Math.max(1, Math.round(imageWidth * sourceScale));
+    const sourceHeight = Math.max(1, Math.round(imageHeight * sourceScale));
+    const bitmap = createCanvas(sourceWidth, sourceHeight);
     const bitmapCtx = bitmap.getContext("2d", { willReadFrequently: true });
-    const scale = Math.min(148 / image.naturalWidth, 148 / image.naturalHeight);
-    const width = image.naturalWidth * scale;
-    const height = image.naturalHeight * scale;
-    const drawX = (168 - width) / 2;
-    const drawY = (168 - height) / 2;
-    bitmapCtx.drawImage(image, drawX, drawY, width, height);
-    const pixels = bitmapCtx.getImageData(0, 0, 168, 168);
-    quantizeThermalEmblemPixels(pixels.data, 168, 168);
-    bitmapCtx.putImageData(pixels, 0, 0);
+    bitmapCtx.drawImage(image, 0, 0, sourceWidth, sourceHeight);
+    const pixels = bitmapCtx.getImageData(0, 0, sourceWidth, sourceHeight);
+    const placement = getThermalEmblemForegroundPlacement(
+      pixels.data,
+      sourceWidth,
+      sourceHeight,
+    );
+    const scale = placement?.scale ?? Math.min(136 / sourceWidth, 136 / sourceHeight);
+    const centerX = placement?.centerX ?? sourceWidth / 2;
+    const centerY = placement?.centerY ?? sourceHeight / 2;
     layerCtx.save();
     layerCtx.beginPath();
     layerCtx.arc(92, 92, 69, 0, Math.PI * 2);
     layerCtx.clip();
-    layerCtx.imageSmoothingEnabled = false;
-    layerCtx.drawImage(bitmap, 8, 8, 168, 168);
+    layerCtx.imageSmoothingEnabled = true;
+    layerCtx.imageSmoothingQuality = "high";
+    layerCtx.drawImage(
+      bitmap,
+      92 - centerX * scale,
+      92 - centerY * scale,
+      sourceWidth * scale,
+      sourceHeight * scale,
+    );
     layerCtx.restore();
   }
-  layerCtx.strokeStyle = INK;
-  layerCtx.beginPath();
-  layerCtx.arc(92, 92, 82, 0, Math.PI * 2);
-  layerCtx.lineWidth = 6;
-  layerCtx.stroke();
-  layerCtx.beginPath();
-  layerCtx.arc(92, 92, 73, 0, Math.PI * 2);
-  layerCtx.lineWidth = 2;
-  layerCtx.stroke();
+
+  const ringLayer = createCanvas(184, 184);
+  const ringCtx = ringLayer.getContext("2d");
+  ringCtx.strokeStyle = INK;
+  ringCtx.beginPath();
+  ringCtx.arc(92, 92, 82, 0, Math.PI * 2);
+  ringCtx.lineWidth = 6;
+  ringCtx.stroke();
+  ringCtx.beginPath();
+  ringCtx.arc(92, 92, 73, 0, Math.PI * 2);
+  ringCtx.lineWidth = 2;
+  ringCtx.stroke();
+  applyPrintMask(
+    ringLayer,
+    ctx.__thermalMasks?.body,
+    `${ctx.__thermalSeed}|emblem-ring|${x}|${y}`,
+    "body",
+  );
+  layerCtx.drawImage(ringLayer, 0, 0);
   ctx.drawImage(layer, x - 92, y - 92);
 }
 
@@ -577,6 +636,9 @@ function drawInfo(ctx, model, layout) {
   drawThermalText(ctx, `${playedOn} · ${model.playedTime || ""}`, center, layout.info.y + 58, { size: 24, align: "center", maxWidth: 520 });
   drawThermalText(ctx, model.venue || model.address || "VENUE", center, layout.info.y + 88, { size: 26, align: "center", maxWidth: 620 });
   drawThermalText(ctx, formatLine, center, layout.info.y + 118, { size: fitText(ctx, formatLine, 620, 22, 16), align: "center", maxWidth: 620 });
+  if (!layout.hasPeriods) {
+    drawRule(ctx, layout.info.x, layout.info.y + 144, layout.info.width, true);
+  }
 }
 
 export function getThermalPeriodTableLayout(periodCount, width = 684) {
