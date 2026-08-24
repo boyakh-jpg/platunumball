@@ -8,6 +8,7 @@
 - 검색 결과: 공개 모집방의 ID·제목·BoxTier URL
 - 상세 결과: 공개 모집 상태를 재검증한 방 조건
 - 영수증 결과: MCP `image/png` content, 저장 없음
+- 과거 ChatGPT 연결 호환 resource: `ui://boxtier/basketball-receipt-v2.html`·`ui://boxtier/basketball-receipt-v3.html` (도구 descriptor에는 연결하지 않음)
 - 개인정보처리방침: `https://boxtier.kr/privacy`
 - 이용약관: `https://boxtier.kr/terms`
 - 지원: `privacy@boxtier.kr`
@@ -19,6 +20,8 @@ ChatGPT 또는 Claude에 BoxTier MCP가 설치·연결된 경우에만 모델이
 `search`는 사용자가 실제로 참가할 농구방, 픽업 경기, 팀 대 팀 상대를 찾거나 지역·날짜·시간·경기 방식 조건으로 매칭방 추천을 요청할 때만 사용한다. `fetch`는 추천 전에 검색 결과의 현재 공개 모집 상태와 상세 조건을 다시 확인한다. 일반 농구 지식, NBA 정보, 훈련법, 의료·상거래 등 무관한 질문에는 호출하지 않는다.
 
 `create_basketball_receipt`는 사용자가 박스티어 농구 영수증·감열지 영수증·basketball game receipt를 요청하고 실제 팀명, 최종 점수, 경기 날짜, 장소, 경기 방식을 제공했을 때 사용한다. 값이 빠지면 생성 전에 질문한다. 농구 외 경기, 허위 기록, 상거래 영수증에는 사용하지 않는다.
+
+일반 호출은 완성 PNG를 `content[type=image]`에 한 번만 넣고 `structuredContent`에는 상태·크기·검증값·공개 코드만 반환한다. `debugBase64=true`인 개발 확인 호출에서만 같은 Base64를 중복한다. 과거 연결이 캐시한 위 URI는 읽을 수 있지만 호환 화면은 기존 image content만 표시하며 로딩 박스·외부 이미지 저장소를 사용하지 않는다.
 
 선택 엠블럼은 `homeEmblem`·`awayEmblem`의 `{ imageBase64 }`로 전달한다. 모델은 첨부 원본의 비율과 글자를 보존해 투명 정사각형 WebP, 최대 `320×320px`·`96KB`로 먼저 처리하고 `data:` 접두사 없는 raw Base64만 보낸다. 서버는 180×180 영역에 contain·중앙 정렬하고 저장하지 않는다. 엠블럼이 없으면 용도별 고정 중립 엠블럼을 사용한다. `thermal`은 실제·중립 엠블럼 내부만 4단계 회색조로 변환하고 나머지 최종 PNG는 흑백으로 출력한다.
 

@@ -16,6 +16,11 @@ import { getAuthenticatedContext } from "./_supabaseAuth.js";
 import { getAdminLevel } from "./_supabaseAdmin.js";
 import { parseBearerAuthorization } from "./_requestSecurity.js";
 import { inspectReceiptPng } from "./mcpReceiptImage.js";
+import {
+  MCP_RECEIPT_LEGACY_WIDGET_HTML,
+  MCP_RECEIPT_LEGACY_WIDGET_URIS,
+  MCP_RECEIPT_WIDGET_MIME_TYPE,
+} from "./mcpReceiptWidget.js";
 import { createPublicReceiptDraft } from "./match-receipts/_publicDraft.js";
 import { fetchPublicMatchingRoom, searchPublicMatchingRooms } from "../lib/publicMatchingRooms.js";
 
@@ -186,6 +191,33 @@ export function createBoxtierMcpHandler({
 } = {}) {
   return createMcpHandler((context) => {
     const server = new McpServer({ name: "boxtier", version: "1.1.0" });
+
+    for (const legacyWidgetUri of MCP_RECEIPT_LEGACY_WIDGET_URIS) {
+      server.registerResource(
+        `boxtier-basketball-receipt-${legacyWidgetUri.includes("v2") ? "v2" : "v3"}`,
+        legacyWidgetUri,
+        {
+          title: "BoxTier 농구 영수증 호환 표시",
+          description: "과거 ChatGPT 연결이 요청하는 영수증 PNG 표시 리소스.",
+          mimeType: MCP_RECEIPT_WIDGET_MIME_TYPE,
+        },
+        async (uri) => ({
+          contents: [{
+            uri: uri.href,
+            mimeType: MCP_RECEIPT_WIDGET_MIME_TYPE,
+            text: MCP_RECEIPT_LEGACY_WIDGET_HTML,
+            _meta: {
+              ui: {
+                prefersBorder: false,
+                csp: { connectDomains: [], resourceDomains: [] },
+              },
+              "openai/widgetPrefersBorder": false,
+              "openai/widgetCSP": { connect_domains: [], resource_domains: [] },
+            },
+          }],
+        }),
+      );
+    }
 
     server.registerTool(
       "search",

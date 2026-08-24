@@ -5,6 +5,10 @@ import http from "node:http";
 import test from "node:test";
 import nodeMcpHandler from "../api/mcp.js";
 import { createBoxtierMcpHandler as createRawBoxtierMcpHandler } from "../server/api/mcp.js";
+import {
+  MCP_RECEIPT_LEGACY_WIDGET_URIS,
+  MCP_RECEIPT_WIDGET_MIME_TYPE,
+} from "../server/api/mcpReceiptWidget.js";
 import { consumeMcpReceiptGenerationQuota } from "../server/api/mcpQuota.js";
 import {
   downloadReceiptEmblem,
@@ -200,6 +204,19 @@ test("MCP가 자동 선택용 영수증 도구를 공개한다", async () => {
   assert.deepEqual(listed.result.tools.map((candidate) => candidate.name).sort(), [
     "create_basketball_receipt", "fetch", "search",
   ]);
+
+  for (const [index, legacyWidgetUri] of MCP_RECEIPT_LEGACY_WIDGET_URIS.entries()) {
+    const resource = await rpc(handler, "resources/read", { uri: legacyWidgetUri }, 3 + index);
+    const template = resource.result.contents[0];
+    assert.equal(template.uri, legacyWidgetUri);
+    assert.equal(template.mimeType, MCP_RECEIPT_WIDGET_MIME_TYPE);
+    assert.match(template.text, /toolResponseMetadata/);
+    assert.match(template.text, /ui\/notifications\/tool-result/);
+    assert.match(template.text, /type === "image"/);
+    assert.match(template.text, /mimeType === "image\/png"/);
+    assert.doesNotMatch(template.text, /영수증 이미지를 불러오는 중/);
+    assert.doesNotMatch(template.text, /https?:\/\//);
+  }
 
   await handler.close();
 });
