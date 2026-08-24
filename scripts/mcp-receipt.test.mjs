@@ -180,6 +180,13 @@ test("MCP가 자동 선택용 영수증 도구를 공개한다", async () => {
   assert.ok(tool.inputSchema.properties.homeEmblem);
   assert.ok(tool.inputSchema.properties.awayEmblem);
   assert.ok(tool.inputSchema.properties.homeEmblem.properties.imageBase64);
+  assert.match(tool.inputSchema.properties.preset.description, /thermal story는 종이 경계만/u);
+  assert.match(tool.inputSchema.properties.preset.description, /상·하단 바깥은 완전 투명/u);
+  for (const field of ["homeEmblem", "awayEmblem", "homeEmblemFile", "awayEmblemFile"]) {
+    assert.match(tool.inputSchema.properties[field].description, /투명 배경 정사각형/u);
+    assert.match(tool.inputSchema.properties[field].description, /원형 테두리·회색 원판/u);
+    assert.match(tool.inputSchema.properties[field].description, /자동 중앙 정렬/u);
+  }
   assert.deepEqual(tool.inputSchema.properties.homeEmblem.properties.mimeType.enum, [
     "image/jpeg", "image/png", "image/webp",
   ]);
@@ -852,6 +859,18 @@ test("MCP 실제 renderer가 투명 배경 중립 엠블럼과 연속 회색 종
   assert.equal(called.result.structuredContent.height, metadata.height);
   assert.equal(called.result.structuredContent.byteLength, png.length);
   assert.equal(called.result.structuredContent.sha256, createHash("sha256").update(png).digest("hex"));
+  const { data: rgba, info: rgbaInfo } = await sharp(png).ensureAlpha().raw()
+    .toBuffer({ resolveWithObject: true });
+  assert.equal(rgbaInfo.channels, 4);
+  const alphaAt = (x, y) => rgba[((y * rgbaInfo.width) + x) * 4 + 3];
+  const topEdgeAlpha = Array.from({ length: rgbaInfo.width }, (_, x) => alphaAt(x, 0));
+  const bottomEdgeAlpha = Array.from(
+    { length: rgbaInfo.width },
+    (_, x) => alphaAt(x, rgbaInfo.height - 1),
+  );
+  assert.ok(topEdgeAlpha.some((alpha) => alpha === 0), "Story 찢긴 상단 바깥은 투명해야 한다");
+  assert.ok(bottomEdgeAlpha.some((alpha) => alpha === 0), "Story 찢긴 하단 바깥은 투명해야 한다");
+  assert.equal(alphaAt(Math.floor(rgbaInfo.width / 2), 40), 255, "종이 내부는 불투명해야 한다");
   const { data: pixels, info } = await sharp(png).removeAlpha().raw().toBuffer({ resolveWithObject: true });
   assert.equal(info.channels, 3);
   const emblemLevels = new Set([18, 70, 124, 176]);

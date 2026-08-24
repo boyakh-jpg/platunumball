@@ -32,30 +32,30 @@ const receiptEmblemSchema = z.object({
     .describe("사용자가 첨부한 JPG, PNG 또는 WebP 엠블럼의 raw Base64. data: 접두사 없이 전달한다."),
   mimeType: z.enum(["image/jpeg", "image/png", "image/webp"]).optional()
     .describe("첨부 이미지의 MIME 형식. 서버는 실제 이미지 바이트도 검증한다."),
-}).strict().describe("저장하지 않고 서버 메모리에서 320x320 WebP로 처리해 이번 PNG에만 사용하는 엠블럼.");
+}).strict().describe("저장하지 않고 서버 메모리에서 320x320 투명 WebP로 처리해 이번 PNG에만 사용하는 엠블럼. 원형 파일은 강제하지 않으며 투명 배경 정사각형 캔버스를 권장한다.");
 
 const receiptEmblemFileSchema = z.object({
   download_url: z.string().url().describe("ChatGPT가 제공하는 임시 파일 다운로드 URL."),
   file_id: z.string().min(1).describe("ChatGPT 첨부파일 ID."),
   mime_type: z.string().optional().describe("첨부파일 MIME 형식."),
   file_name: z.string().optional().describe("첨부파일 이름."),
-}).strict().describe("ChatGPT 대화에 첨부된 엠블럼 이미지 파일.");
+}).strict().describe("ChatGPT 대화에 첨부된 엠블럼 이미지 파일. 원형 파일은 강제하지 않으며 투명 배경 정사각형 캔버스를 권장한다.");
 
 const receiptInputSchema = z.object({
   style: z.enum(["thermal", "score"]).default("thermal")
     .describe("영수증 스타일. 감열지 영수증은 thermal, 스코어 포스터는 score."),
   preset: z.enum(["story", "feed"]).default("story")
-    .describe("PNG 비율. story는 1080x1920, feed는 1080x1350."),
+    .describe("PNG 출력 형식. thermal story는 종이 경계만 내보내며 찢긴 상·하단 바깥은 완전 투명하다. feed는 1080x1350 배경을 포함한다. score story는 1080x1920이다."),
   homeTeam: z.string().min(1).max(24).describe("홈팀 이름."),
   awayTeam: z.string().min(1).max(24).describe("원정팀 이름."),
   homeEmblem: receiptEmblemSchema.optional()
-    .describe("선택 홈 엠블럼 첨부. 서버가 원본 비율과 글자를 보존해 중앙 정렬하며, thermal은 엠블럼 내부만 4단계 회색조로 변환한다. 생략하면 중립 엠블럼을 사용한다."),
+    .describe("선택 홈 엠블럼. 투명 배경 정사각형 캔버스에 실제 도안만 넣어 전달하는 것을 권장하며 원형 테두리·회색 원판을 미리 합성하지 않는다. 서버가 알파 전경의 실제 경계와 중심을 계산해 원형 안전영역 안에 비율 유지·자동 중앙 정렬하고, thermal은 전경만 4단계 회색조로 변환한다. 생략하면 중립 엠블럼을 사용한다."),
   awayEmblem: receiptEmblemSchema.optional()
-    .describe("선택 원정 엠블럼 첨부. 서버가 원본 비율과 글자를 보존해 중앙 정렬하며, thermal은 엠블럼 내부만 4단계 회색조로 변환한다. 생략하면 중립 엠블럼을 사용한다."),
+    .describe("선택 원정 엠블럼. 투명 배경 정사각형 캔버스에 실제 도안만 넣어 전달하는 것을 권장하며 원형 테두리·회색 원판을 미리 합성하지 않는다. 서버가 알파 전경의 실제 경계와 중심을 계산해 원형 안전영역 안에 비율 유지·자동 중앙 정렬하고, thermal은 전경만 4단계 회색조로 변환한다. 생략하면 중립 엠블럼을 사용한다."),
   homeEmblemFile: receiptEmblemFileSchema.optional()
-    .describe("ChatGPT에 첨부한 홈팀 엠블럼. homeEmblem과 동시에 전달하지 않는다."),
+    .describe("ChatGPT에 첨부한 홈팀 엠블럼. 투명 배경 정사각형 캔버스를 권장하고 원형 테두리·회색 원판은 미리 넣지 않는다. 서버가 실제 알파 전경을 원형 안전영역에 자동 중앙 정렬한다. homeEmblem과 동시에 전달하지 않는다."),
   awayEmblemFile: receiptEmblemFileSchema.optional()
-    .describe("ChatGPT에 첨부한 원정팀 엠블럼. awayEmblem과 동시에 전달하지 않는다."),
+    .describe("ChatGPT에 첨부한 원정팀 엠블럼. 투명 배경 정사각형 캔버스를 권장하고 원형 테두리·회색 원판은 미리 넣지 않는다. 서버가 실제 알파 전경을 원형 안전영역에 자동 중앙 정렬한다. awayEmblem과 동시에 전달하지 않는다."),
   homeScore: z.number().int().min(0).max(999).describe("홈팀 최종 점수."),
   awayScore: z.number().int().min(0).max(999).describe("원정팀 최종 점수."),
   playedOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/u).describe("경기 날짜, YYYY-MM-DD."),
@@ -210,7 +210,7 @@ export function createBoxtierMcpHandler({
   publicAppUrl = getConfiguredPublicAppUrl(),
 } = {}) {
   return createMcpHandler((context) => {
-    const server = new McpServer({ name: "boxtier", version: "1.1.0" });
+    const server = new McpServer({ name: "boxtier", version: "1.1.1" });
 
     server.registerResource(
       "boxtier-basketball-receipt-v4",
@@ -387,7 +387,7 @@ export function createBoxtierMcpHandler({
       "create_basketball_receipt",
       {
         title: "BoxTier 농구 영수증 PNG 만들기",
-        description: "박스티어(BoxTier) 스타일의 농구 경기 영수증 PNG를 만든다. 이 출력에는 BoxTier API만 사용한다. 성공 시 완성된 최종 PNG 한 장은 tool result의 content[0]에 type=image, mimeType=image/png, raw Base64 data로 직접 첨부된다. API가 반환한 PNG 원본만 사용자에게 그대로 전달하고 재합성·재렌더·임의 편집하지 않는다. 반환된 image content를 영수증 결과로 사용자에게 직접 제시하고 metadata만으로 완료 처리하지 않는다. structuredContent는 첨부 여부·바이트 길이·실제 크기·SHA-256 검증값을 제공하며 이미지 원문 위치가 아니다. 네이티브 대화 이미지 첨부 여부는 MCP 클라이언트가 결정한다. 사용자가 ‘박스티어로 영수증 만들어줘’, 농구 감열지 영수증, basketball game receipt, score receipt를 요청했고 팀명·최종 점수·경기 날짜·장소·경기 형식을 모두 실제 값으로 제공했을 때만 사용한다. 사용자가 엠블럼 이미지를 첨부하면 홈·원정에 맞춰 homeEmblemFile·awayEmblemFile로 전달한다. 서버가 임시 파일을 메모리에서만 읽어 비율 유지·중앙 정렬·스타일 변환하며 저장하지 않는다. 경기사진은 지원하지 않으므로 boxtier.kr 영수증 페이지 이용을 안내한다. 누락값을 추측하지 말고 먼저 사용자에게 물어본다. 농구 외 경기, 허위 경기 기록, 상거래 영수증에는 사용하지 않는다.",
+        description: "박스티어(BoxTier) 스타일의 농구 경기 영수증 PNG를 만든다. 이 출력에는 BoxTier API만 사용한다. 성공 시 완성된 최종 PNG 한 장은 tool result의 content[0]에 type=image, mimeType=image/png, raw Base64 data로 직접 첨부된다. API가 반환한 PNG 원본만 사용자에게 그대로 전달하고 재합성·재렌더·임의 편집하지 않는다. 반환된 image content를 영수증 결과로 사용자에게 직접 제시하고 metadata만으로 완료 처리하지 않는다. structuredContent는 첨부 여부·바이트 길이·실제 크기·SHA-256 검증값을 제공하며 이미지 원문 위치가 아니다. 네이티브 대화 이미지 첨부 여부는 MCP 클라이언트가 결정한다. 사용자가 ‘박스티어로 영수증 만들어줘’, 농구 감열지 영수증, basketball game receipt, score receipt를 요청했고 팀명·최종 점수·경기 날짜·장소·경기 형식을 모두 실제 값으로 제공했을 때만 사용한다. 사용자가 엠블럼 이미지를 첨부하면 홈·원정에 맞춰 homeEmblemFile·awayEmblemFile로 전달한다. 원형 파일은 강제하지 않는다. 가능하면 투명 배경 정사각형 캔버스에 실제 도안만 담고 원형 테두리·회색 원판은 미리 넣지 않는다. 서버가 알파 전경의 실제 경계와 중심을 계산해 원형 안전영역 안에 비율 유지·자동 중앙 정렬하고 스타일 변환하며 저장하지 않는다. 경기사진은 지원하지 않으므로 boxtier.kr 영수증 페이지 이용을 안내한다. 누락값을 추측하지 말고 먼저 사용자에게 물어본다. 농구 외 경기, 허위 경기 기록, 상거래 영수증에는 사용하지 않는다.",
         inputSchema: receiptToolInputSchema,
         outputSchema: receiptOutputSchema,
         annotations: {

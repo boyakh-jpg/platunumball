@@ -288,7 +288,7 @@ function drawBackdrop(ctx, background) {
   drawImageCover(ctx, background, 0, 0, ctx.canvas.width, ctx.canvas.height);
 }
 
-function drawPaper(ctx, layout, seed, textures) {
+function drawPaper(ctx, layout, seed, textures, { shadow = true } = {}) {
   const random = createThermalRandom(seed);
   const { x, y, width, height } = layout.paper;
   const edgeHeight = 16;
@@ -317,12 +317,16 @@ function drawPaper(ctx, layout, seed, textures) {
     paperCtx.drawImage(silhouette, 0, 0);
   }
 
-  ctx.save();
-  ctx.shadowColor = "rgba(0,0,0,.48)";
-  ctx.shadowBlur = 22;
-  ctx.shadowOffsetY = 12;
+  if (shadow) {
+    ctx.save();
+    ctx.shadowColor = "rgba(0,0,0,.48)";
+    ctx.shadowBlur = 22;
+    ctx.shadowOffsetY = 12;
+    ctx.drawImage(paper, x, y);
+    ctx.restore();
+    return;
+  }
   ctx.drawImage(paper, x, y);
-  ctx.restore();
 }
 
 function ditherPhoto(image, draft) {
@@ -750,7 +754,7 @@ export async function renderThermalReceiptCanvas(value, preset = "story", option
   const ctx = base.getContext("2d");
   ctx.__thermalSeed = renderSeed;
   ctx.__thermalMasks = { body: bodyMask, team: teamMask, heavy: heavyMask, photo: photoMask };
-  drawPaper(ctx, layout, renderSeed, { paper, edge });
+  drawPaper(ctx, layout, renderSeed, { paper, edge }, { shadow: preset !== "story" });
   drawBrand(ctx, model, layout);
   drawPhoto(ctx, photo, layout, model);
   drawTeams(ctx, model, layout, { home: homeEmblem, away: awayEmblem });
