@@ -640,12 +640,12 @@ function drawInfo(ctx, model, layout) {
   const nature = model.matchNatureLabel || "COMPETITIVE";
   const formatLine = getThermalReceiptFormatLine(model);
   drawThermalText(ctx, nature, center, layout.info.y + 23, { size: fitText(ctx, nature, 360, 34, 22), align: "center", maxWidth: 360, dotScale: 2 });
+  if (!layout.hasPeriods) {
+    drawRule(ctx, layout.info.x, layout.info.y + 42, layout.info.width, true);
+  }
   drawThermalText(ctx, `${playedOn} · ${model.playedTime || ""}`, center, layout.info.y + 58, { size: 24, align: "center", maxWidth: 520 });
   drawThermalText(ctx, model.venue || model.address || "VENUE", center, layout.info.y + 88, { size: 26, align: "center", maxWidth: 620 });
   drawThermalText(ctx, formatLine, center, layout.info.y + 118, { size: fitText(ctx, formatLine, 620, 22, 16), align: "center", maxWidth: 620 });
-  if (!layout.hasPeriods) {
-    drawRule(ctx, layout.info.x, layout.info.y + 144, layout.info.width, true);
-  }
 }
 
 export function getThermalPeriodTableLayout(periodCount, width = 684) {

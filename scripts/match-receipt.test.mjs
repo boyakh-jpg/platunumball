@@ -199,7 +199,16 @@ test("receipt emblems allow style-specific local adjustment while canonical team
   assert.doesNotMatch(drawEmblemSource, /quantizeThermalEmblemPixels\(pixels\.data/u);
   assert.match(drawEmblemSource, /getThermalEmblemForegroundPlacement/u);
   assert.match(drawEmblemSource, /applyPrintMask\(\s*ringLayer/u);
-  assert.match(thermalRenderer, /if \(!layout\.hasPeriods\)[\s\S]*?drawRule\(ctx, layout\.info\.x, layout\.info\.y \+ 144/u);
+  const drawInfoStart = thermalRenderer.indexOf("function drawInfo");
+  const drawInfoEnd = thermalRenderer.indexOf("function drawPeriods", drawInfoStart);
+  assert.notEqual(drawInfoStart, -1);
+  assert.notEqual(drawInfoEnd, -1);
+  const drawInfoSource = thermalRenderer.slice(drawInfoStart, drawInfoEnd);
+  assert.match(
+    drawInfoSource,
+    /drawThermalText\(ctx, nature,[\s\S]*?if \(!layout\.hasPeriods\)[\s\S]*?layout\.info\.y \+ 42[\s\S]*?drawThermalText\(ctx, `\$\{playedOn\}/u,
+  );
+  assert.doesNotMatch(drawInfoSource, /layout\.info\.y \+ 144/u);
   assert.match(thermalRenderer, /grayscaleThermalCanvas\(base\)/u);
   assert.doesNotMatch(thermalRenderer, /const isEmblem/u);
   assert.match(receiptPage, /저장된 팀 엠블럼 없음/u);
