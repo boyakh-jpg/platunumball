@@ -7,8 +7,8 @@
 - 도구: `search`, `fetch`, `create_basketball_receipt`, `get_my_boxtier_account`, `list_my_match_records`
 - 검색 결과: 공개 모집방의 ID·제목·BoxTier URL
 - 상세 결과: 공개 모집 상태를 재검증한 방 조건
-- 영수증 결과: MCP `image/png` content, 저장 없음
-- 과거 ChatGPT 연결 호환 resource: `ui://boxtier/basketball-receipt-v2.html`·`ui://boxtier/basketball-receipt-v3.html` (도구 descriptor에는 연결하지 않음)
+- 영수증 결과: MCP `image/png` content와 같은 PNG의 만료 R2 다운로드 URL
+- 영수증 UI resource: 등록하지 않음 (`v2`·`v3`·`v4` 포함)
 - 개인정보처리방침: `https://boxtier.kr/privacy`
 - 이용약관: `https://boxtier.kr/terms`
 - 지원: `privacy@boxtier.kr`
@@ -23,7 +23,7 @@ ChatGPT 또는 Claude에 BoxTier MCP가 설치·연결된 경우에만 모델이
 
 `get_my_boxtier_account`와 `list_my_match_records`는 `profile` scope의 BoxTier OAuth 로그인이 필수다. 계정 확인이나 내 경기 기록 조회를 요청하면 ChatGPT가 로그인 연결을 표시한다. 영수증 생성은 로그인 없이도 가능하지만 익명 24시간 한도에 도달하면 로그인 연결을 제안하고, 로그인 후에는 canonical 프로필 기준 한도를 사용한다.
 
-일반 호출은 완성 PNG를 `content[type=image]`에 한 번만 넣고 `structuredContent`에는 상태·크기·검증값·공개 코드만 반환한다. `debugBase64=true`인 개발 확인 호출에서만 같은 Base64를 중복한다. 과거 연결이 캐시한 위 URI는 읽을 수 있지만 호환 화면은 기존 image content만 표시하며 로딩 박스·외부 이미지 저장소를 사용하지 않는다.
+일반 호출은 완성 PNG를 `content[type=image]`에 한 번만 넣고 `structuredContent`에는 상태·크기·검증값·공개 코드·만료 다운로드 정보를 반환한다. `debugBase64=true`인 개발 확인 호출에서만 같은 Base64를 중복한다. 서버는 영수증 UI resource를 제공하지 않는다. 과거 위젯 descriptor를 캐시한 연결은 배포 뒤 해제·재연결하거나 도구를 재스캔해야 한다.
 
 선택 엠블럼은 `homeEmblem`·`awayEmblem`의 `{ imageBase64 }` 또는 ChatGPT 첨부파일 입력으로 전달한다. 원형 파일은 강제하지 않는다. 투명 배경 정사각형 캔버스에 실제 도안만 담는 형식을 권장하며 원형 테두리·회색 원판을 미리 합성하지 않는다. 서버가 JPG·PNG·WebP 원본의 실제 알파 전경 경계와 가중중심을 계산해 비율을 보존하고, 전경 전체를 반지름 `138px` 원형 안전영역 안에 맞춘 `320×320px` 투명 WebP로 자동 중앙 정렬한다. 불투명 입력이 캔버스를 채우면 알파 경계의 지배적인 균일 흰색·회색 배경판을 최대 2단계 제거한 뒤 실제 도안을 계산한다. 배경과 도안을 안전하게 분리할 수 없으면 `emblem_background_not_removable`로 거부하며 배경 전체를 작은 엠블럼으로 축소하지 않는다. 입력과 처리본은 저장하지 않는다. 엠블럼이 없으면 용도별 고정 중립 엠블럼을 사용한다. `thermal`은 실제·중립 엠블럼의 알파 전경만 D 써멀 4단계 회색조로 변환한다. 종이·본문·선·패널은 연속 회색 농도를 보존한다.
 

@@ -5,11 +5,6 @@ import http from "node:http";
 import test from "node:test";
 import nodeMcpHandler from "../api/mcp.js";
 import { createBoxtierMcpHandler as createRawBoxtierMcpHandler } from "../server/api/mcp.js";
-import {
-  MCP_RECEIPT_LEGACY_WIDGET_URIS,
-  MCP_RECEIPT_WIDGET_URI,
-  MCP_RECEIPT_WIDGET_MIME_TYPE,
-} from "../server/api/mcpReceiptWidget.js";
 import { consumeMcpReceiptGenerationQuota } from "../server/api/mcpQuota.js";
 import {
   downloadReceiptEmblem,
@@ -165,6 +160,7 @@ test("MCP가 자동 선택용 영수증 도구를 공개한다", async () => {
     clientInfo: { name: "boxtier-test", version: "1.0.0" },
   }, 1);
   assert.equal(initialized.result.serverInfo.name, "boxtier");
+  assert.equal(initialized.result.capabilities.resources, undefined);
 
   const listed = await rpc(handler, "tools/list", {}, 2);
   const tool = listed.result.tools.find((candidate) => candidate.name === "create_basketball_receipt");
@@ -233,33 +229,6 @@ test("MCP가 자동 선택용 영수증 도구를 공개한다", async () => {
     const protectedTool = listed.result.tools.find((candidate) => candidate.name === toolName);
     const requiredAuthSchemes = [{ type: "oauth2", scopes: ["profile"] }];
     assert.deepEqual(protectedTool._meta.securitySchemes, requiredAuthSchemes);
-  }
-
-  const activeResource = await rpc(handler, "resources/read", { uri: MCP_RECEIPT_WIDGET_URI }, 3);
-  const activeTemplate = activeResource.result.contents[0];
-  assert.equal(activeTemplate.uri, MCP_RECEIPT_WIDGET_URI);
-  assert.equal(activeTemplate.mimeType, MCP_RECEIPT_WIDGET_MIME_TYPE);
-  assert.match(activeTemplate.text, /ui\/notifications\/tool-result/);
-  assert.match(activeTemplate.text, /type === "image"/);
-  assert.match(activeTemplate.text, /mimeType === "image\/png"/);
-  assert.match(activeTemplate.text, /new Blob/);
-  assert.match(activeTemplate.text, /URL\.createObjectURL/);
-  assert.match(activeTemplate.text, /PNG 다운로드/);
-  assert.match(activeTemplate.text, /download\.download/);
-  assert.doesNotMatch(activeTemplate.text, /영수증 이미지를 불러오는 중/);
-  assert.doesNotMatch(activeTemplate.text, /https?:\/\//);
-
-  for (const [index, legacyWidgetUri] of MCP_RECEIPT_LEGACY_WIDGET_URIS.entries()) {
-    const resource = await rpc(handler, "resources/read", { uri: legacyWidgetUri }, 4 + index);
-    const template = resource.result.contents[0];
-    assert.equal(template.uri, legacyWidgetUri);
-    assert.equal(template.mimeType, MCP_RECEIPT_WIDGET_MIME_TYPE);
-    assert.match(template.text, /toolResponseMetadata/);
-    assert.match(template.text, /ui\/notifications\/tool-result/);
-    assert.match(template.text, /type === "image"/);
-    assert.match(template.text, /mimeType === "image\/png"/);
-    assert.doesNotMatch(template.text, /영수증 이미지를 불러오는 중/);
-    assert.doesNotMatch(template.text, /https?:\/\//);
   }
 
   await handler.close();
