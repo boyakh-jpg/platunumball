@@ -42,6 +42,8 @@ import {
   getMatchSideLeaderId,
 } from "../src/lib/matchUtils.js";
 import { getRecruitingApplicantKey, getRecruitingLobby } from "../src/lib/recruiting.js";
+import { getModeClockPreset } from "../src/lib/matchCreationPolicies.js";
+import { getMatchPeriodScoreLabels } from "../shared/lib/matchPeriodScores.js";
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
 const RETIRED_RECORDER_FIELDS = new Set([
@@ -154,9 +156,24 @@ function createResult(match, scoreA = 21, scoreB = 15) {
       }];
     }));
   };
+  const periodLabels = getMatchPeriodScoreLabels(match.rules).slice(0, match.rules?.periodCount);
+  const splitScore = (score, offset = 0) => {
+    const scores = Array.from({ length: periodLabels.length }, () => Math.floor(score / periodLabels.length));
+    for (let index = 0; index < score % periodLabels.length; index += 1) {
+      scores[(index + offset) % periodLabels.length] += 1;
+    }
+    return scores;
+  };
+  const periodScoresA = splitScore(scoreA);
+  const periodScoresB = splitScore(scoreB, 2);
   return {
     scoreA,
     scoreB,
+    periodScores: periodLabels.map((label, index) => ({
+      label,
+      scoreA: periodScoresA[index],
+      scoreB: periodScoresB[index],
+    })),
     playerStats: {
       ...makeSideStats(match.teamA.players, scoreA),
       ...makeSideStats(match.teamB.players, scoreB),
@@ -212,6 +229,7 @@ function addPastMatch(state, index, teamAId, teamBId, daysAgo) {
       },
       rules: {
         ...(match.rules ?? {}),
+        ...(mode === "5v5" ? getModeClockPreset(mode, "quarters") : {}),
         recordType: "match",
       },
     };

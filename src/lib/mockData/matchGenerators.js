@@ -5,6 +5,8 @@ import {
   REGIONS,
   STAT_ENTRY_WINDOW_MINUTES,
 } from "../constants.js";
+import { getModeClockPreset } from "../matchCreationPolicies.js";
+import { getMatchPeriodScoreLabels } from "../../../shared/lib/matchPeriodScores.js";
 import {
   DEMO_NOW,
   DEMO_PRACTICE_COURT,
@@ -128,6 +130,16 @@ function sumPoints(playerStats, playerIds) {
   return playerIds.reduce((sum, playerId) => sum + Number(playerStats[playerId]?.points ?? 0), 0);
 }
 
+function splitDemoScoreByPeriods(total, periodCount, offset = 0) {
+  const normalizedTotal = Math.max(0, Math.trunc(Number(total) || 0));
+  const normalizedCount = Math.max(1, Math.trunc(Number(periodCount) || 1));
+  const scores = Array.from({ length: normalizedCount }, () => Math.floor(normalizedTotal / normalizedCount));
+  for (let index = 0; index < normalizedTotal % normalizedCount; index += 1) {
+    scores[(index + offset) % normalizedCount] += 1;
+  }
+  return scores;
+}
+
 function makeMatchTitle(matchIndex, teamA, teamB, mode) {
   const label = matchIndex % 4 === 0 ? "공식전" : matchIndex % 5 === 0 ? "친선전" : "정규전";
   return `${teamA.region} ${mode} ${label} #${padNumber(matchIndex + 1, 4)}`
@@ -173,6 +185,22 @@ function makeConfirmedMatch(matchIndex, teams, userById) {
   const endedAt = makeDemoTimestamp(scheduledDate, scheduledTime, 12);
   const submittedAt = makeDemoTimestamp(scheduledDate, scheduledTime, 22);
   const court = teamA.homeCourt ?? DEMO_PRACTICE_COURT.name;
+  const rules = {
+    ...getModeClockPreset(mode, "quarters"),
+    targetScore: 21,
+    winByTwo: matchIndex % 3 === 0,
+    ball: "7호 공",
+    attackRule: "공격권은 득점 후 교대",
+    foulRule: "파울은 콜한 쪽 기준으로 즉시 중단",
+  };
+  const periodLabels = getMatchPeriodScoreLabels(rules).slice(0, rules.periodCount);
+  const periodScoresA = splitDemoScoreByPeriods(scoreA, periodLabels.length, matchIndex % periodLabels.length);
+  const periodScoresB = splitDemoScoreByPeriods(scoreB, periodLabels.length, (matchIndex + 2) % periodLabels.length);
+  const periodScores = periodLabels.map((label, index) => ({
+    label,
+    scoreA: periodScoresA[index],
+    scoreB: periodScoresB[index],
+  }));
 
   return {
     id: `md${padNumber(matchIndex + 1, 4)}`,
@@ -190,14 +218,7 @@ function makeConfirmedMatch(matchIndex, teams, userById) {
     refereeTrustMin: REFEREE_TRUST_MIN,
     statEntryMinutes: STAT_ENTRY_WINDOW_MINUTES,
     disputeMinutes: DISPUTE_WINDOW_MINUTES,
-    rules: {
-      targetScore: 21,
-      timeLimit: 12,
-      winByTwo: matchIndex % 3 === 0,
-      ball: "7호 공",
-      attackRule: "공격권은 득점 후 교대",
-      foulRule: "파울은 콜한 쪽 기준으로 즉시 중단",
-    },
+    rules,
     memo: "테스트 리그 시드 경기입니다. 개인 기록과 팀 히스토리 검증용 데이터입니다.",
     stakes: "금전 거래 없이 약속과 벌칙만 기록합니다.",
     objectionWindow: "24시간",
@@ -210,6 +231,7 @@ function makeConfirmedMatch(matchIndex, teams, userById) {
     result: {
       scoreA,
       scoreB,
+      periodScores,
       playerStats,
       statSubmissions: makeDemoStatSubmissions(playersA, playersB, submittedAt),
       submittedBy: playersA[0],

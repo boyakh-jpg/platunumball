@@ -9,17 +9,23 @@ const assetDir = path.resolve("public/assets/showcase");
 const webmPath = path.join(assetDir, "landing-product-demo.webm");
 const mp4Path = path.join(assetDir, "landing-product-demo.mp4");
 const posterPath = path.join(assetDir, "landing-product-demo-poster.webp");
-const transitionDuration = 0.12;
+const transitionDuration = 0.18;
 
 const timeline = [
-  ["attendance-qr", 0.96],
-  ["attendance-complete", 0.76],
-  ["team-assignment", 1.52],
-  ["scoreboard-running", 2.62],
-  ["record-and-tier", 1.62],
-  ["clock-ended", 1.12],
-  ["final-result", 1.12],
-  ["verified-receipt", 3.12],
+  ["attendance-qr", 0.9],
+  ["attendance-action", 1.2],
+  ["attendance-complete", 0.8],
+  ["team-action", 1.2],
+  ["team-assignment", 1.2],
+  ["score-actions", 2.9],
+  ["scoreboard-running", 1.5],
+  ["end-action", 1.2],
+  ["clock-ended", 0.8],
+  ["confirm-action", 1.2],
+  ["final-result", 0.8],
+  ["record-and-tier", 1.12],
+  ["receipt-style-action", 1.2],
+  ["verified-receipt", 3.32],
 ];
 
 function run(command, args) {
@@ -50,7 +56,8 @@ for (let index = 1; index < timeline.length; index += 1) {
   combinedDuration += timeline[index][1] - transitionDuration;
 }
 const filter = `${segments.join(";")};${transitions.join(";")};` +
-  `${transitionInput}trim=end_frame=360,settb=expr=1/30,setpts=N,format=yuv420p[outv]`;
+  `${transitionInput}tpad=stop_mode=clone:stop_duration=0.25,` +
+  "trim=end_frame=511,fps=30,settb=expr=1/30,setpts=N,format=yuv420p[outv]";
 
 await mkdir(assetDir, { recursive: true });
 await run("ffmpeg", [
@@ -70,9 +77,9 @@ await run("ffmpeg", [
   mp4Path,
 ]);
 await run("ffmpeg", [
-  "-y", "-ss", "9.2", "-i", mp4Path,
+  "-y", "-ss", "14.2", "-i", mp4Path,
   "-frames:v", "1", "-c:v", "libwebp", "-quality", "82",
   posterPath,
 ]);
 
-console.log(JSON.stringify({ webmPath, mp4Path, posterPath, duration: 12 }, null, 2));
+console.log(JSON.stringify({ webmPath, mp4Path, posterPath, duration: 17 }, null, 2));

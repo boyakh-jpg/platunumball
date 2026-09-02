@@ -58,11 +58,46 @@ await context.addInitScript(() => {
         animation: box-tier-demo-tap 1.2s ease-out forwards;
       }
 
+      .box-tier-demo-cue {
+        position: fixed;
+        z-index: 2147483646;
+        pointer-events: none;
+        border: 3px solid var(--orange-2);
+        border-radius: 12px;
+        background: color-mix(in srgb, var(--orange-2) 10%, transparent);
+        box-shadow: 0 0 0 6px color-mix(in srgb, var(--orange-2) 18%, transparent);
+        animation: box-tier-demo-cue 0.7s ease-in-out infinite alternate;
+      }
+
+      .box-tier-demo-cue::after {
+        content: "여기 탭";
+        position: absolute;
+        left: 50%;
+        bottom: calc(100% + 10px);
+        transform: translateX(-50%);
+        padding: 5px 10px;
+        border-radius: 999px;
+        background: var(--orange-2);
+        color: var(--bg);
+        font: 800 13px/1 system-ui, sans-serif;
+        white-space: nowrap;
+      }
+
+      .box-tier-demo-cue[data-label-placement="below"]::after {
+        top: calc(100% + 10px);
+        bottom: auto;
+      }
+
       @keyframes box-tier-demo-tap {
         0% { opacity: 0; transform: translate(-50%, -50%) scale(0.3); }
         12% { opacity: 1; }
         58% { opacity: 0.72; }
         100% { opacity: 0; transform: translate(-50%, -50%) scale(1.35); }
+      }
+
+      @keyframes box-tier-demo-cue {
+        from { opacity: 0.72; }
+        to { opacity: 1; }
       }
     `;
     document.head.append(style);
@@ -76,6 +111,25 @@ await context.addInitScript(() => {
     tap.style.top = `${y}px`;
     document.body.append(tap);
     tap.addEventListener("animationend", () => tap.remove(), { once: true });
+  };
+
+  window.__boxTierDemoClearCue = () => {
+    document.querySelector(".box-tier-demo-cue")?.remove();
+  };
+
+  window.__boxTierDemoCue = (bounds) => {
+    installStyle();
+    window.__boxTierDemoClearCue();
+    const padding = 6;
+    const cue = document.createElement("span");
+    cue.className = "box-tier-demo-cue";
+    cue.setAttribute("aria-hidden", "true");
+    cue.style.left = `${Math.max(8, bounds.left - padding)}px`;
+    cue.style.top = `${Math.max(8, bounds.top - padding)}px`;
+    cue.style.width = `${Math.min(innerWidth - 16, bounds.width + padding * 2)}px`;
+    cue.style.height = `${bounds.height + padding * 2}px`;
+    if (bounds.top < 72) cue.dataset.labelPlacement = "below";
+    document.body.append(cue);
   };
 
   document.addEventListener("pointerdown", (event) => {
@@ -106,6 +160,46 @@ async function clickText(text, selector = "button") {
     { expected: text, query: selector },
   );
   await wait();
+}
+
+async function cueTarget(target) {
+  await target.scrollIntoViewIfNeeded();
+  await wait(120);
+  await target.evaluate((element) => {
+    const bounds = element.getBoundingClientRect();
+    window.__boxTierDemoCue({
+      left: bounds.left,
+      top: bounds.top,
+      width: bounds.width,
+      height: bounds.height,
+    });
+  });
+}
+
+function recordScene(name, source, startedAt) {
+  scenes.push({
+    name,
+    source,
+    start: (startedAt - captureStartedAt) / 1000,
+    duration: (Date.now() - startedAt) / 1000,
+    url: page.url(),
+  });
+}
+
+async function captureLocatorClickScene(target, name, source, { cueMs = 650, settleMs = 850 } = {}) {
+  await cueTarget(target);
+  const startedAt = Date.now();
+  await wait(cueMs);
+  await target.evaluate(() => window.__boxTierDemoClearCue());
+  await target.click();
+  await wait(settleMs);
+  recordScene(name, source, startedAt);
+}
+
+async function captureTextClickScene(text, name, source, options) {
+  const target = page.getByRole("button", { name: text, exact: true });
+  await target.waitFor();
+  await captureLocatorClickScene(target, name, source, options);
 }
 
 async function hasText(text, selector = "button") {
@@ -217,9 +311,9 @@ try {
 
   await page.locator('[aria-label="경기 출석 QR 코드"]').scrollIntoViewIfNeeded();
   await holdScene("attendance-qr", "practice", 1_300, { scrollTop: false });
-  await clickText("연습 선수 출석 완료");
+  await captureTextClickScene("연습 선수 출석 완료", "attendance-action", "practice");
   await holdScene("attendance-complete", "practice", 1_100);
-  await clickText("완전 랜덤 배치");
+  await captureTextClickScene("완전 랜덤 배치", "team-action", "practice");
   await holdScene("team-assignment", "practice", 1_700);
   await clickText("배정 확정");
   await clickText("경기 시작");
@@ -234,32 +328,46 @@ try {
     const [activeMinutes, activeSeconds, minimumMinutes, minimumSeconds] = values;
     return activeMinutes * 60 + activeSeconds >= minimumMinutes * 60 + minimumSeconds;
   }, undefined, { timeout: 70_000 });
-  await page.getByLabel("A 점수 조정").getByRole("button", { name: "+3", exact: true }).click();
-  await wait(450);
-  await page.getByLabel("B 점수 조정").getByRole("button", { name: "+2", exact: true }).click();
-  await wait(450);
-  await page.getByLabel("A 점수 조정").getByRole("button", { name: "+2", exact: true }).click();
-  await wait(450);
+  const scoreActions = [
+    page.getByLabel("A 점수 조정").getByRole("button", { name: "+3", exact: true }),
+    page.getByLabel("B 점수 조정").getByRole("button", { name: "+2", exact: true }),
+    page.getByLabel("A 점수 조정").getByRole("button", { name: "+2", exact: true }),
+  ];
+  await cueTarget(scoreActions[0]);
+  const scoreStartedAt = Date.now();
+  for (const [index, scoreAction] of scoreActions.entries()) {
+    if (index > 0) await cueTarget(scoreAction);
+    await wait(520);
+    await scoreAction.evaluate(() => window.__boxTierDemoClearCue());
+    await scoreAction.click();
+    await wait(380);
+  }
+  recordScene("score-actions", "practice", scoreStartedAt);
   await holdScene("scoreboard-running", "practice", 3_000);
   await selectValue("practice-player-self");
   await page.waitForFunction(() => [...document.querySelectorAll("button")]
     .some((button) => button.innerText?.trim() === "경기 종료"));
-  await clickButtonUntil(
-    "경기 종료",
-    ["연습 결과 최종 확정"],
-  );
+  await captureTextClickScene("경기 종료", "end-action", "practice");
+  await clickButtonUntil("경기 종료", ["연습 결과 최종 확정"]);
   await holdScene("clock-ended", "practice", 1_400);
-  await clickText("연습 결과 최종 확정");
+  await captureTextClickScene("연습 결과 최종 확정", "confirm-action", "practice");
   await holdScene("final-result", "practice", 1_400);
 
   await page.goto(`${baseUrl}/app`, { waitUntil: "networkidle" });
   await holdScene("record-and-tier", "seeded-record", 1_900);
-  const matchHref = await page.locator('a[href*="/app/matches?match="]').first().getAttribute("href");
+  const recentMatchLink = page.locator(".home-recent-card .recent-match-list")
+    .locator('a[href*="/app/matches?match="]')
+    .first();
+  await recentMatchLink.waitFor({ state: "visible" });
+  const matchHref = await recentMatchLink.getAttribute("href");
   const matchId = new URL(matchHref, baseUrl).searchParams.get("match");
   if (!matchId) throw new Error("확정 데모 경기 ID를 실제 전적 링크에서 찾지 못했습니다.");
 
   await page.goto(`${baseUrl}/app/receipt?match=${encodeURIComponent(matchId)}`, { waitUntil: "networkidle" });
-  await page.locator('article[aria-label="경기 영수증 미리보기"]').scrollIntoViewIfNeeded();
+  await captureTextClickScene("감열지 영수증", "receipt-style-action", "seeded-record");
+  const thermalReceipt = page.getByRole("img", { name: "감열지 영수증 미리보기", exact: true });
+  await thermalReceipt.waitFor({ state: "visible" });
+  await thermalReceipt.scrollIntoViewIfNeeded();
   await holdScene("verified-receipt", "seeded-record", 3_400, { scrollTop: false });
 
   await page.close();
