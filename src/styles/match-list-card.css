@@ -85,7 +85,7 @@
   overflow: visible;
   color: var(--rb-text);
   font-family: var(--sports-display-font);
-  font-size: clamp(17px, 1.35vw, 22px);
+  font-size: var(--ui-match-list-title-size);
   font-weight: 1000;
   line-height: 1.1;
   overflow-wrap: anywhere;
@@ -140,9 +140,9 @@
   max-width: 100%;
   color: var(--rb-text);
   font-family: var(--sports-display-font);
-  font-size: clamp(15px, 1.45vw, 22px);
+  font-size: var(--ui-match-list-team-size);
   font-weight: 1000;
-  line-height: 1.1;
+  line-height: var(--sports-display-team-line-height);
   text-align: center;
   overflow-wrap: anywhere;
   white-space: normal;
@@ -164,7 +164,7 @@
   min-width: 2.2ch;
   color: var(--rb-text);
   font-family: var(--sports-display-font);
-  font-size: clamp(22px, 2.2vw, 34px);
+  font-size: var(--ui-match-list-score-size);
   font-weight: 1000;
   line-height: 0.9;
   text-transform: uppercase;
@@ -172,7 +172,7 @@
 }
 
 .match-list-summary[data-variant="count"] .match-list-summary__side {
-  font-size: clamp(16px, 1.6vw, 23px);
+  font-size: var(--ui-match-list-count-size);
 }
 
 .match-list-summary[data-variant="participant"] .match-list-summary__line {
@@ -246,7 +246,7 @@
   }
 
   .match-list-card__title {
-    font-size: clamp(17px, 5.4vw, 21px);
+    font-size: var(--ui-match-list-title-size-mobile);
   }
 
   .match-list-summary {
@@ -258,11 +258,11 @@
   }
 
   .match-list-summary__side {
-    font-size: clamp(15px, 5vw, 20px);
+    font-size: var(--ui-match-list-team-size-mobile);
   }
 
   .match-list-summary__line > strong {
-    font-size: clamp(22px, 7vw, 30px);
+    font-size: var(--ui-match-list-score-size-mobile);
   }
 }
 

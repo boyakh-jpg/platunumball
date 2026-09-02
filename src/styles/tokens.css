@@ -266,6 +266,13 @@
   --ui-match-badge-min-height: 18px;
   --ui-match-summary-min-height: 0px;
   --ui-match-summary-min-height-mobile: 0px;
+  --ui-match-list-title-size: clamp(16px, 1.1vw, 19px);
+  --ui-match-list-team-size: clamp(14px, 1.15vw, 18px);
+  --ui-match-list-count-size: clamp(15px, 1.25vw, 19px);
+  --ui-match-list-score-size: clamp(20px, 1.8vw, 28px);
+  --ui-match-list-title-size-mobile: clamp(16px, 4.6vw, 18px);
+  --ui-match-list-team-size-mobile: clamp(14px, 4.2vw, 17px);
+  --ui-match-list-score-size-mobile: clamp(20px, 6vw, 26px);
   --ui-button-font-weight: var(--font-weight-control);
   --ui-button-bg: var(--button-secondary-bg);
   --ui-button-bg-active: var(--button-primary-bg);

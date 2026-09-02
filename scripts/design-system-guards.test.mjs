@@ -1349,12 +1349,16 @@ test("경기 목록 제목과 요약은 데스크톱 여백과 모바일 밀도�
 
   assert.match(titleBody, /min-block-size:\s*0\.98em;/);
   assert.match(titleBody, /max-block-size:\s*1\.96em;/);
+  assert.match(titleBody, /font-size:\s*var\(--ui-match-list-title-size\);/);
   assert.doesNotMatch(titleBody, /(?:^|\n)\s*block-size:\s*1\.96em;/m);
   assert.match(mainBody, /padding:\s*var\(--space-5\) var\(--space-7\) var\(--space-5\) var\(--space-8\);/);
   assert.match(matchListStyles, /\.match-list-badge\s*\{[^}]*min-height:\s*var\(--ui-match-badge-min-height\);/);
   assert.match(tokenStyles, /--ui-match-badge-min-height:\s*18px;/);
   assert.match(tokenStyles, /--ui-match-summary-min-height:\s*0px;/);
   assert.match(tokenStyles, /--ui-match-summary-min-height-mobile:\s*0px;/);
+  assert.match(tokenStyles, /--ui-match-list-title-size:\s*clamp\(16px, 1\.1vw, 19px\);/);
+  assert.match(tokenStyles, /--ui-match-list-team-size:\s*clamp\(14px, 1\.15vw, 18px\);/);
+  assert.match(tokenStyles, /--ui-match-list-score-size:\s*clamp\(20px, 1\.8vw, 28px\);/);
   assert.match(componentSource, /className="match-list-summary__support"/);
   assert.match(
     matchListStyles,

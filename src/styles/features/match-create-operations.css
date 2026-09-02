@@ -33,6 +33,8 @@
 }
 
 .create-match-info-grid.is-standard-room input:not([type="checkbox"]):not([type="radio"]):not([type="color"]) {
+  box-sizing: border-box;
+  height: var(--ui-button-height);
   min-height: var(--ui-button-height);
 }
 
