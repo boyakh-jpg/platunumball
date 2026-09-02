@@ -37,6 +37,51 @@ const context = await browser.newContext({
   hasTouch: true,
   recordVideo: { dir: outputDir, size: { width: 540, height: 960 } },
 });
+await context.addInitScript(() => {
+  const styleId = "box-tier-demo-tap-style";
+
+  function installStyle() {
+    if (document.getElementById(styleId)) return;
+    const style = document.createElement("style");
+    style.id = styleId;
+    style.textContent = `
+      .box-tier-demo-tap {
+        position: fixed;
+        z-index: 2147483647;
+        width: 44px;
+        height: 44px;
+        pointer-events: none;
+        border: 3px solid var(--orange-2);
+        border-radius: 999px;
+        box-shadow: 0 0 0 7px color-mix(in srgb, var(--orange-2) 22%, transparent);
+        transform: translate(-50%, -50%) scale(0.3);
+        animation: box-tier-demo-tap 1.2s ease-out forwards;
+      }
+
+      @keyframes box-tier-demo-tap {
+        0% { opacity: 0; transform: translate(-50%, -50%) scale(0.3); }
+        12% { opacity: 1; }
+        58% { opacity: 0.72; }
+        100% { opacity: 0; transform: translate(-50%, -50%) scale(1.35); }
+      }
+    `;
+    document.head.append(style);
+  }
+
+  window.__boxTierDemoTap = (x, y) => {
+    installStyle();
+    const tap = document.createElement("span");
+    tap.className = "box-tier-demo-tap";
+    tap.style.left = `${x}px`;
+    tap.style.top = `${y}px`;
+    document.body.append(tap);
+    tap.addEventListener("animationend", () => tap.remove(), { once: true });
+  };
+
+  document.addEventListener("pointerdown", (event) => {
+    window.__boxTierDemoTap(event.clientX, event.clientY);
+  }, true);
+});
 const page = await context.newPage();
 page.on("dialog", (dialog) => dialog.accept());
 const video = page.video();
@@ -54,6 +99,8 @@ async function clickText(text, selector = "button") {
     ({ expected, query }) => {
       const target = [...document.querySelectorAll(query)].find((element) => element.innerText?.trim() === expected);
       target.scrollIntoView({ block: "center", inline: "center" });
+      const bounds = target.getBoundingClientRect();
+      window.__boxTierDemoTap(bounds.left + bounds.width / 2, bounds.top + bounds.height / 2);
       target.click();
     },
     { expected: text, query: selector },
@@ -75,7 +122,7 @@ async function clickButtonUntil(source, expected, attempts = 4) {
     if (await button.count()) {
       await button.click().catch(() => {});
     }
-    await wait(1_000);
+    await wait(500);
   }
   const buttons = await page.locator("button").allInnerTexts();
   throw new Error(`${source} 실행 후 상태 전환 실패: ${buttons.join(" | ")}`);
@@ -135,7 +182,7 @@ async function holdScene(name, source, durationMs, { scrollTop = true } = {}) {
   if (scrollTop) {
     await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
   }
-  await wait(250);
+  await wait(180);
   scenes.push({
     name,
     source,
@@ -180,12 +227,6 @@ try {
     await clickText("모바일 전광판 담당 화면으로 전환");
   }
   await clickText("경기시계 시작");
-  await page.getByLabel("A 점수 조정").getByRole("button", { name: "+3", exact: true }).click();
-  await wait(450);
-  await page.getByLabel("B 점수 조정").getByRole("button", { name: "+2", exact: true }).click();
-  await wait(450);
-  await page.getByLabel("A 점수 조정").getByRole("button", { name: "+2", exact: true }).click();
-  await wait(450);
   await page.waitForFunction(() => {
     const text = document.querySelector(".ui-match-clock-badges")?.innerText ?? "";
     const values = text.match(/(\d+):(\d+)\s*\/\s*(\d+):(\d+)/)?.slice(1).map(Number);
@@ -193,6 +234,12 @@ try {
     const [activeMinutes, activeSeconds, minimumMinutes, minimumSeconds] = values;
     return activeMinutes * 60 + activeSeconds >= minimumMinutes * 60 + minimumSeconds;
   }, undefined, { timeout: 70_000 });
+  await page.getByLabel("A 점수 조정").getByRole("button", { name: "+3", exact: true }).click();
+  await wait(450);
+  await page.getByLabel("B 점수 조정").getByRole("button", { name: "+2", exact: true }).click();
+  await wait(450);
+  await page.getByLabel("A 점수 조정").getByRole("button", { name: "+2", exact: true }).click();
+  await wait(450);
   await holdScene("scoreboard-running", "practice", 3_000);
   await selectValue("practice-player-self");
   await page.waitForFunction(() => [...document.querySelectorAll("button")]
