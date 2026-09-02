@@ -1513,7 +1513,7 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(detailStyles, /\.match-receipt-info-fields > label\s*\{[^}]*contain:\s*inline-size;/);
   assert.match(detailStyles, /\.match-receipt-info-fields input\[type="date"\]\s*\{[^}]*min-inline-size:\s*0;[^}]*max-inline-size:\s*100%;/);
   assert.match(landing, /children = "로그인"/);
-  assert.match(landing, /별도 가입 없이 로그인/);
+  assert.doesNotMatch(landing, /별도 가입 없이 로그인/);
   assert.match(page, /className="page-stack match-receipt-page"/);
   assert.match(page, /className="page-header match-receipt-page-head ui-page-hero ui-design-app-hero"/);
   assert.match(page, /back: "뒤로가기"/);
@@ -1906,12 +1906,11 @@ test("receipt photo tools stay outside the export card and reference dividers re
   assert.match(renderer, /const targetX = \(width - targetWidth\) \/ 2/);
   assert.match(renderer, /ctx\.drawImage\(story, targetX, 0, targetWidth, targetHeight\)/);
   assert.match(renderer, /canvasToBlob\(canvas, "image\/png"\)/);
-  assert.match(landing, /<h1>농구 기록을 쌓고 연결하세요\.<\/h1>/u);
-  assert.match(landing, /가입 없이 영수증 만들기/u);
-  assert.match(landing, /별도 가입 없이 로그인/u);
-  assert.match(landing, /to="\/app\/receipt"/u);
-  assert.match(landing, /<MatchReceiptPreview draft=\{LANDING_RECEIPT_DRAFT\}/u);
-  assert.equal(landing.match(/<MatchReceiptPreview/gu)?.length, 1);
+  assert.match(landing, /<h1>농구 끝나면, 기록이 남는다\.<\/h1>/u);
+  assert.match(landing, /to="\/app\/guide\/practice"[\s\S]*샘플 경기 체험/u);
+  assert.match(landing, /to="\/app\/create\?intent=record"[\s\S]*경기 기록 시작하기/u);
+  assert.match(landing, /<LandingDemoFrame \/>/u);
+  assert.doesNotMatch(landing, /MatchReceiptPreview|LANDING_RECEIPT_DRAFT|가입 없이 영수증 만들기|to="\/app\/receipt"/u);
   assert.match(appSource, /path="\/start"/);
   assert.equal(homeNeutralMark.subarray(1, 4).toString("ascii"), "PNG");
   assert.equal(awayNeutralMark.subarray(1, 4).toString("ascii"), "PNG");

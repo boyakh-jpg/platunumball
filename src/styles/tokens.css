@@ -369,6 +369,8 @@
   --ui-content-title-size-mobile: clamp(1.4rem, 6vw, 1.7rem);
   --hero-title-size: clamp(1.55rem, 2.2vw, 1.95rem);
   --hero-title-size-mobile: clamp(1.45rem, 6vw, 1.75rem);
+  --ui-landing-title-size: clamp(2.4rem, 4.8vw, 4.4rem);
+  --ui-landing-title-size-mobile: clamp(2.15rem, 10vw, 3rem);
   --ui-room-title-size: clamp(1.3rem, 1.8vw, 1.55rem);
   --ui-room-title-size-mobile: 1.25rem;
   --ui-room-copy-size: 0.8125rem;

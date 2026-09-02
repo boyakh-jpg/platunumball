@@ -871,18 +871,21 @@ test("게스트는 실제 공개 매칭을 보고 개인 메뉴는 안내 상태
   assert.match(bootstrap, /regionScope: "all", startFilter: "all"/u);
 });
 
-test("비로그인 랜딩은 실제 영수증 한 장과 서비스 기록 흐름만 표시한다", async () => {
-  const [landing, publicShell, attribution] = await Promise.all([
+test("비로그인 랜딩은 경기 기록 서비스 정의와 실제 제품 데모 자리를 표시한다", async () => {
+  const [landing, demoFrame, publicShell, attribution] = await Promise.all([
     read("src/pages/Landing.jsx"),
+    read("src/components/landing/LandingDemoFrame.jsx"),
     read("src/components/layout/PublicShell.jsx"),
     read("src/components/layout/DataAttribution.jsx"),
   ]);
-  assert.match(landing, /농구 기록을[\s\S]*쌓고 연결하세요/u);
-  assert.match(landing, /경기 전부터 종료 후까지[\s\S]*하나의 기록으로 이어집니다/u);
-  assert.match(landing, /한 경기로 끝내지 않으려면[\s\S]*기록을 이어가세요/u);
-  assert.match(landing, /homeTeam: "NEW COURT CREW"[\s\S]*homeScore: 60[\s\S]*awayScore: 46/u);
-  assert.equal(landing.match(/<MatchReceiptPreview/gu)?.length, 1);
-  assert.match(landing, /경기 준비[\s\S]*경기 기록[\s\S]*기록 연결/u);
+  assert.match(landing, /농구 끝나면, 기록이 남는다\./u);
+  assert.match(landing, /출석부터 점수·개인 기록까지 경기 현장에서 남기고,[\s\S]*공유용 영수증으로 이어집니다\./u);
+  assert.match(landing, /샘플 경기 체험[\s\S]*경기 기록 시작하기/u);
+  assert.match(landing, /경기 전[\s\S]*모인다[\s\S]*경기 중[\s\S]*경기한다[\s\S]*경기 후[\s\S]*기록된다/u);
+  assert.equal(landing.match(/<LandingDemoFrame \/>/gu)?.length, 1);
+  assert.match(demoFrame, /autoPlay=\{!prefersReducedMotion\}[\s\S]*muted[\s\S]*playsInline/u);
+  assert.match(demoFrame, /영상 준비 중[\s\S]*최종 제품 데모 영상은 이 프레임에 연결됩니다\./u);
+  assert.doesNotMatch(landing, /MatchReceiptPreview|LANDING_RECEIPT_DRAFT|ui-match-clock-scoreboard/u);
   assert.doesNotMatch(landing, /guest-landing-mobile-cta|guest-landing-final-cta/u);
   assert.doesNotMatch(landing, /fetch\(|openRecruiting|completedMatches|landing-stat-grid/u);
   assert.match(publicShell, /compactFooter = location\.pathname === "\/" \|\| location\.pathname === "\/start"/u);

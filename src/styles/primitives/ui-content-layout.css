@@ -279,12 +279,13 @@ html[data-theme] .app-main .ui-step-nav li.active button {
 }
 
 html[data-theme] .guest-landing-hero {
-  min-height: auto;
+  min-height: calc(100svh - 64px);
   padding-block: clamp(48px, 6vw, 72px);
 }
 
 html[data-theme] .guest-landing-hero h1 {
-  max-width: 18ch;
+  max-width: 12ch;
+  font-size: var(--ui-landing-title-size);
 }
 
 html[data-theme] .guest-landing-lead {
@@ -710,6 +711,14 @@ html[data-theme] .ui-design-host .ui-design-list > * {
   html[data-theme] .guest-landing-primary-actions,
   html[data-theme] .guest-landing-primary-actions .ui-button {
     width: 100%;
+  }
+
+  html[data-theme] .guest-landing-hero {
+    min-height: auto;
+  }
+
+  html[data-theme] .guest-landing-hero h1 {
+    font-size: var(--ui-landing-title-size-mobile);
   }
 
   .ui-help-disclosure-copy {
