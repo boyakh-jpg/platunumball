@@ -7,6 +7,7 @@ import CourtDatabasePanel from "../components/admin/CourtDatabasePanel.jsx";
 import { getAdminReportTypeLabel } from "../lib/admin.js";
 import { ADMIN_DEFAULT_PAGE_LIMIT } from "../lib/queryPolicy.js";
 import {
+  ADMIN_SECTION_GROUPS,
   REVIEW_QUEUE_FILTER_PLACEHOLDERS,
   isPendingCourtRequest,
   formatDate,
@@ -17,6 +18,9 @@ import {
 
 import { AdminAppointmentSection } from "./AdminAppointmentSection.jsx";
 import { AdminDetailPanel } from "./AdminDetailPanel.jsx";
+import AdminOperationsPanel from "./AdminOperationsPanel.jsx";
+import AdminReportsPanel from "./AdminReportsPanel.jsx";
+
 export default function AdminPageView({ controller }) {
   const {
     app,
@@ -42,6 +46,7 @@ export default function AdminPageView({ controller }) {
     courtApprovalStatus,
     reviewActionStatus,
     reviewActionPending,
+    reportOperationPending,
     appointmentActionPending,
     reviewActionConfirming,
     setReviewActionConfirming,
@@ -96,7 +101,8 @@ export default function AdminPageView({ controller }) {
     commitSelectedAction,
     commitAppointmentAction,
   } = controller;
-if (!canAdmin && (!app.adminStatus?.loaded || app.adminStatus?.loading)) {
+
+  if (!canAdmin && (!app.adminStatus?.loaded || app.adminStatus?.loading)) {
     return (
       <div className="page-stack admin-page">
         <Card className="section-card admin-denied-card">
@@ -139,39 +145,50 @@ if (!canAdmin && (!app.adminStatus?.loaded || app.adminStatus?.loading)) {
       </header>
 
       <nav className="admin-section-tabs" aria-label="관리자 업무">
-        {sectionOptions.map((option) => {
-          const Icon = option.icon;
-          return (
-            <Button
-              key={option.id}
-              type="button"
-              variant={section === option.id ? "primary" : "secondary"}
-              aria-current={section === option.id ? "page" : undefined}
-              disabled={reviewActionPending || appointmentActionPending}
-              onClick={() => changeSection(option.id)}
-            >
-              <span className="admin-section-tab-icon"><Icon size={19} /></span>
-              <span>
-                <strong>{option.label}</strong>
-                <em>{option.caption}</em>
-              </span>
-              {sectionCounts[option.id] === "" ? null : <b>{sectionCounts[option.id] ?? 0}</b>}
-            </Button>
-          );
-        })}
+        {ADMIN_SECTION_GROUPS.map((group) => (
+          <section className="admin-section-group" key={group} aria-labelledby={`admin-group-${group}`}>
+            <h2 id={`admin-group-${group}`}>{group}</h2>
+            <div className="admin-section-group-options">
+              {sectionOptions.filter((option) => option.group === group).map((option) => {
+                const Icon = option.icon;
+                return (
+                  <Button
+                    key={option.id}
+                    type="button"
+                    variant={section === option.id ? "primary" : "secondary"}
+                    aria-current={section === option.id ? "page" : undefined}
+                    disabled={reviewActionPending || reportOperationPending || appointmentActionPending}
+                    onClick={() => changeSection(option.id)}
+                  >
+                    <span className="admin-section-tab-icon"><Icon size={19} /></span>
+                    <span>
+                      <strong>{option.label}</strong>
+                      <em>{option.caption}</em>
+                    </span>
+                    {sectionCounts[option.id] === "" ? null : <b>{sectionCounts[option.id] ?? 0}</b>}
+                  </Button>
+                );
+              })}
+            </div>
+          </section>
+        ))}
       </nav>
 
-      {section === "ratingPolicy" ? (
+      {section === "operations" ? (
+        <AdminOperationsPanel controller={controller} />
+      ) : section === "reports" ? (
+        <AdminReportsPanel controller={controller} />
+      ) : section === "ratingPolicy" ? (
         <RatingPolicyPanel app={app} />
       ) : section === "userOps" ? (
         <UserOperationsPanel app={app} />
       ) : section === "courtDb" ? (
         <CourtDatabasePanel app={app} />
       ) : section === "appointments" ? (
-<AdminAppointmentSection controller={controller} />
+        <AdminAppointmentSection controller={controller} />
       ) : (
-      <div className="admin-workbench">
-        <Card className="section-card">
+        <div className="admin-workbench">
+          <Card className="section-card">
           <div className="section-title-row">
             <div>
               <p className="eyebrow">Pending Queue</p>
@@ -248,10 +265,10 @@ if (!canAdmin && (!app.adminStatus?.loaded || app.adminStatus?.loading)) {
               {app.adminStatus?.loading ? "불러오는 중" : `더 보기 (${activeRows.length}/${activeAdminPage.total})`}
             </Button>
           ) : null}
-        </Card>
+          </Card>
 
-<AdminDetailPanel controller={controller} />
-      </div>
+          <AdminDetailPanel controller={controller} />
+        </div>
       )}
     </div>
   );

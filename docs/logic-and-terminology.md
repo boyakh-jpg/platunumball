@@ -3180,12 +3180,16 @@ flowchart TD
 - 서버 거절 또는 통신 실패 시 화면에 가짜 audit, 징계, 임명 상태를 만들지 않는다.
 - local demo mode만 기존 로컬 reducer를 사용한다.
 
-## 2026-07-18 관리자 구장 신청 진입 규칙
+## 2026-07-18 관리자 운영 진입 규칙
 
-- `/app/admin`과 `/app/admin?section=courts`의 기본 업무는 구장 신청 검토다.
-- 관리자 화면의 구장, 플레이어, 경기, 권한 업무는 쿼리 기반 탭으로 분리하되 기존 server action/RPC 권한 검증을 그대로 사용한다.
+- `/app/admin` 기본 업무는 `운영 현황`이다. 구장 신청 전용 링크와 `/app/admin?section=courts`는 기존 구장 신청 검토로 직접 연결한다.
+- 관리자 업무는 `운영 현황 / 신고·검토 / 데이터 관리 / 권한·정책` 그룹으로 나눈다. 기존 구장, 플레이어, 경기, 팀·소속, 구장 DB, 사용자 운영, 임명, MMR·신뢰도 기능과 권한 검증은 유지한다.
+- 운영 현황은 `reports`의 실제 `status`, `priority`, `assigned_to`, `assigned_at`, `created_at`, `resolved_at`만 집계한다. 긴급도와 담당자는 관리자가 명시적으로 지정하며 자동 분류·자동 제재하지 않는다.
+- 응답·처리 시간은 실제 `assigned_at` 또는 `resolved_at`이 있는 행의 표본 수와 함께 표시한다. 표본이 없으면 수치를 만들지 않는다.
+- 시스템 상태는 필수 스키마 조회 성공 여부와 `discord_notification_deliveries`의 최근 bounded 표본만 읽기 전용으로 표시한다. 표본 밖 전체 상태나 worker 생존을 추정하지 않는다.
+- 운영 지표에서 신고 큐로 이동할 때 `mode`, `focus`, 선택 신고를 URL query에 유지한다.
+- 전체 신고 큐의 배정·긴급도 변경은 잠긴 DB RPC에서 관리자 권한, 미처리 상태, 감사 로그를 함께 검증한다. 제재와 최종 판정은 기존 유형별 사람 검토 절차를 사용한다.
 - 구장 신청을 선택하면 신청 상세와 승인 액션을 먼저 보여준다. 연결된 `court`, `court_review`, `court_request` 신고가 있을 때만 신고 조치 폼을 표시한다.
-- 설정의 관리자 메뉴 진입은 구장 신청 탭으로 직접 연결한다.
 ## 2026-07-13 경기 확정과 MMR 원자 커밋
 
 1. 최종 `approveMatch`는 `rankball_match_approval_action()`이 `rankball_match_finalize_locked()`를 호출하는 잠긴 DB RPC 경로를 사용한다.

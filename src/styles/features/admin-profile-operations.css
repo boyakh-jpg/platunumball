@@ -1,0 +1,260 @@
+.admin-operations-dashboard,
+.admin-operation-card,
+.admin-report-queue,
+.admin-report-detail,
+.admin-report-operation,
+.admin-report-history {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-5);
+}
+
+.admin-operation-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.admin-operation-metric {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+  border: var(--ui-card-border-width) solid var(--ui-control-border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  color: var(--text);
+  padding: 16px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.admin-operation-metric:hover {
+  border-color: color-mix(in srgb, var(--rb-orange) 48%, var(--ui-control-border));
+}
+
+.admin-operation-metric:disabled {
+  cursor: default;
+  opacity: 0.72;
+}
+
+.admin-operation-metric.warning {
+  border-color: color-mix(in srgb, var(--rb-gold) 45%, var(--ui-control-border));
+}
+
+.admin-operation-metric.danger {
+  border-color: color-mix(in srgb, var(--rb-orange) 65%, var(--ui-control-border));
+}
+
+.admin-operation-metric > span,
+.admin-operation-metric > small,
+.admin-system-status span,
+.admin-system-status small,
+.admin-operation-generated,
+.admin-report-list small,
+.admin-report-operation span,
+.admin-report-operation small,
+.admin-report-history span,
+.admin-report-history small {
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
+.admin-operation-metric > strong {
+  padding-right: 24px;
+  font-size: 1.45rem;
+  overflow-wrap: anywhere;
+}
+
+.admin-operation-metric > svg {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  color: var(--rb-orange);
+}
+
+.admin-operation-lower-grid,
+.admin-report-workbench {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: var(--space-6);
+}
+
+.admin-timing-list,
+.admin-system-list,
+.admin-report-list,
+.admin-report-history ol {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.admin-timing-list > div,
+.admin-system-status {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-4);
+  --ui-panel-padding: var(--space-6);
+}
+
+.admin-timing-list > div {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.admin-timing-list > div small {
+  grid-column: 1 / -1;
+  color: var(--muted);
+}
+
+.admin-system-status > div,
+.admin-report-list button > span,
+.admin-report-operation > div:first-child {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.admin-system-status > svg,
+.admin-report-operation > div:first-child > svg {
+  color: var(--rb-orange);
+}
+
+.admin-report-focus {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  border: var(--ui-stroke-width) solid color-mix(in srgb, var(--rb-orange) 35%, var(--line));
+  border-radius: var(--ui-control-radius);
+  padding: 8px 10px;
+}
+
+.admin-report-list button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-4);
+  border: var(--ui-card-border-width) solid var(--ui-control-border);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
+  color: var(--text);
+  padding: 11px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.admin-report-list button.active {
+  border-color: color-mix(in srgb, var(--rb-orange) 58%, var(--ui-control-border));
+  background: color-mix(in srgb, var(--rb-orange) 10%, var(--ui-control-bg));
+}
+
+.admin-report-list em {
+  color: var(--text);
+  font-size: 0.8rem;
+  font-style: normal;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.admin-report-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.admin-report-facts > div {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-2);
+  border-bottom: var(--ui-stroke-width) solid var(--line);
+  padding: 8px 0;
+}
+
+.admin-report-facts > div.wide {
+  grid-column: 1 / -1;
+}
+
+.admin-report-facts dt {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.admin-report-facts dd {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin: 0;
+  font-size: 0.86rem;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.admin-report-facts a {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.admin-report-operation {
+  border-top: var(--ui-stroke-width) solid var(--line);
+  padding-top: 14px;
+}
+
+.admin-report-operation > div:first-child {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.admin-report-operation > div:first-child span {
+  grid-column: 2;
+}
+
+.admin-report-history ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.admin-report-history li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-2) var(--space-4);
+  border-bottom: var(--ui-stroke-width) solid var(--line);
+  padding: 8px 0;
+}
+
+.admin-report-history li small {
+  grid-column: 1 / -1;
+}
+
+.admin-operation-refresh {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-align: right;
+}
+
+@media (max-width: 860px) {
+  .admin-operation-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-operation-lower-grid,
+  .admin-report-workbench {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 520px) {
+  .admin-operation-metrics,
+  .admin-report-facts {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-report-facts > div.wide {
+    grid-column: auto;
+  }
+}

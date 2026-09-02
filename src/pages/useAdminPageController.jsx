@@ -2,14 +2,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { ADMIN_REVIEW_ACTIONS, buildAdminAppointmentModel, buildAdminReviewModel, getAdminActionTargetUserIds, getAdminReviewMetrics, isHighImpactAdminReviewAction } from "../lib/admin.js";
 import { getCourtCorrectionPatch, getCourtFacilityBaseName, getCourtLocationMatches, getCourtMapUrl, getCourtStandardName, normalizeCourtSourceUrl } from "../lib/courts.js";
-import { ADMIN_DEFAULT_PAGE_LIMIT, DEFAULT_ADMIN_QUEUE_MODE, DEFAULT_ADMIN_SECTION } from "../lib/queryPolicy.js";
+import { ADMIN_DEFAULT_PAGE_LIMIT, DEFAULT_ADMIN_SECTION, normalizeAdminQueueFocus, normalizeAdminQueueMode } from "../lib/queryPolicy.js";
 import { getTeamEmblemErrorMessage } from "../lib/teamEmblem.js";
 import { ACTION_OPTIONS, ADMIN_SECTION_OPTIONS, REVIEW_WORKFLOW_COPY, isPendingCourtRequest } from "./adminPageModel.js";
 
 export default function useAdminPageController({
   app
 }) {
-const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const adminLevel = Number(app.adminContext?.level ?? 0);
   const canOwner = adminLevel >= 100;
   const sectionOptions = ADMIN_SECTION_OPTIONS.filter((option) => (
@@ -17,10 +17,15 @@ const [searchParams, setSearchParams] = useSearchParams();
   ));
   const requestedSection = searchParams.get("section");
   const section = sectionOptions.some((option) => option.id === requestedSection) ? requestedSection : DEFAULT_ADMIN_SECTION;
-  const view = ["appointments", "ratingPolicy", "userOps", "courtDb"].includes(section) ? "courts" : section;
-  const [queueModeState, setQueueModeState] = useState({ section: DEFAULT_ADMIN_SECTION, value: DEFAULT_ADMIN_QUEUE_MODE });
-  const queueMode = queueModeState.section === section ? queueModeState.value : DEFAULT_ADMIN_QUEUE_MODE;
-  const setQueueMode = (value) => setQueueModeState({ section, value });
+  const view = ["operations", "reports", "appointments", "ratingPolicy", "userOps", "courtDb"].includes(section) ? "courts" : section;
+  const queueMode = normalizeAdminQueueMode(searchParams.get("mode"));
+  const queueFocus = section === "reports" ? normalizeAdminQueueFocus(searchParams.get("focus")) : "";
+  const setQueueMode = (value) => {
+    const next = new URLSearchParams(searchParams);
+    next.set("mode", normalizeAdminQueueMode(value));
+    next.delete("report");
+    setSearchParams(next);
+  };
   const [queueFilterByView, setQueueFilterByView] = useState({});
   const [appliedQueueFilterByView, setAppliedQueueFilterByView] = useState({});
   const queueFilter = queueFilterByView[section] ?? "";
@@ -28,8 +33,8 @@ const [searchParams, setSearchParams] = useSearchParams();
   const loadAdminSection = app.actions.loadAdminSection;
   useEffect(() => {
     if (["ratingPolicy", "userOps", "courtDb"].includes(section)) return;
-    loadAdminSection?.({ section, queueMode, filter: appliedQueueFilter, limit: ADMIN_DEFAULT_PAGE_LIMIT, offset: 0 });
-  }, [appliedQueueFilter, loadAdminSection, queueMode, section]);
+    loadAdminSection?.({ section, queueMode, focus: queueFocus, filter: appliedQueueFilter, limit: ADMIN_DEFAULT_PAGE_LIMIT, offset: 0 });
+  }, [appliedQueueFilter, loadAdminSection, queueFocus, queueMode, section]);
   const [selectedIdByView, setSelectedIdByView] = useState({});
   const [selectedReportIdByScope, setSelectedReportIdByScope] = useState({});
   const [actionDraft, setActionDraft] = useState({
@@ -65,6 +70,8 @@ const [searchParams, setSearchParams] = useSearchParams();
   const selectedCourtRequestIdRef = useRef("");
   const [reviewActionStatus, setReviewActionStatus] = useState("");
   const [reviewActionPending, setReviewActionPending] = useState(false);
+  const [reportOperationStatus, setReportOperationStatus] = useState("");
+  const [reportOperationPending, setReportOperationPending] = useState(false);
   const [reviewActionConfirming, setReviewActionConfirming] = useState(false);
   const selectedReportIdRef = useRef("");
   const [appointmentActionPending, setAppointmentActionPending] = useState(false);
@@ -112,6 +119,15 @@ const [searchParams, setSearchParams] = useSearchParams();
   const userMap = useMemo(() => Object.fromEntries((adminViewState.users ?? []).map((user) => [user.id, user])), [adminViewState.users]);
   const matchMap = useMemo(() => Object.fromEntries((adminViewState.matches ?? []).map((match) => [match.id, match])), [adminViewState.matches]);
   const selectedReport = reportOptions.find((report) => report.id === selectedReportId) ?? reportOptions.find((report) => report.status === "open") ?? reportOptions[0] ?? null;
+  const reportQueueReports = adminViewState.reports ?? [];
+  const requestedReportId = searchParams.get("report") ?? "";
+  const selectedQueueReport = reportQueueReports.find((report) => report.id === requestedReportId) ?? reportQueueReports[0] ?? null;
+  const reportAuditHistory = (adminViewState.settings?.adminAuditLog ?? [])
+    .filter((entry) => entry.reportId === selectedQueueReport?.id)
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  useEffect(() => {
+    setReportOperationStatus("");
+  }, [selectedQueueReport?.id]);
   useEffect(() => {
     selectedReportIdRef.current = selectedReport?.id ?? "";
   }, [selectedReport?.id]);
@@ -144,6 +160,8 @@ const [searchParams, setSearchParams] = useSearchParams();
       report.status === "open" && ["court", "court_review"].includes(report.type)
     )).length;
     const localCounts = {
+      operations: "",
+      reports: (adminViewState.reports ?? []).filter((report) => report.status === "open").length,
       courts: (adminViewState.settings?.courtRequests ?? []).filter(isPendingCourtRequest).length + courtReports,
       courtDb: "",
       players: model.players.filter((row) => row.openCount > 0).length,
@@ -155,16 +173,35 @@ const [searchParams, setSearchParams] = useSearchParams();
     };
     return Object.fromEntries(Object.entries(localCounts).map(([key, value]) => [
       key,
-      ["ratingPolicy", "userOps", "courtDb"].includes(key) ? "" : app.adminStatus?.counts?.[key] ?? (key === section ? value : ""),
+      ["operations", "ratingPolicy", "userOps", "courtDb"].includes(key) ? "" : app.adminStatus?.counts?.[key] ?? (key === section ? value : ""),
     ]));
   }, [adminViewState.reports, adminViewState.settings?.courtRequests, app.adminStatus?.counts, appointments.summary.pendingAppointmentCount, model.matches, model.players, model.teams, section]);
-  const activeAdminPage = app.adminStatus?.section === section && app.adminStatus?.queueMode === queueMode
+  const activeAdminPage = app.adminStatus?.section === section && app.adminStatus?.queueMode === queueMode && app.adminStatus?.focus === queueFocus
     ? app.adminStatus.page
     : null;
   const activeQueueTotal = activeRows.length;
   const changeSection = (nextSection) => {
     const next = new URLSearchParams(searchParams);
     next.set("section", nextSection);
+    next.delete("focus");
+    next.delete("report");
+    if (nextSection !== "reports") next.delete("mode");
+    setSearchParams(next);
+  };
+  const navigateToReportQueue = (focus = "", mode = "pending", reportId = "") => {
+    const next = new URLSearchParams(searchParams);
+    next.set("section", "reports");
+    next.set("mode", normalizeAdminQueueMode(mode));
+    if (focus) next.set("focus", normalizeAdminQueueFocus(focus));
+    else next.delete("focus");
+    if (reportId) next.set("report", reportId);
+    else next.delete("report");
+    setSearchParams(next);
+  };
+  const selectQueueReport = (reportId) => {
+    const next = new URLSearchParams(searchParams);
+    if (reportId) next.set("report", reportId);
+    else next.delete("report");
     setSearchParams(next);
   };
   const applyQueueFilter = () => {
@@ -180,11 +217,25 @@ const [searchParams, setSearchParams] = useSearchParams();
   const refreshQueue = () => loadAdminSection?.({
     section,
     queueMode,
+    focus: queueFocus,
     filter: appliedQueueFilter,
     limit: ADMIN_DEFAULT_PAGE_LIMIT,
     offset: 0,
     force: true,
   });
+  const commitReportOperation = async (operation) => {
+    if (!selectedQueueReport || reportOperationPending) return;
+    setReportOperationPending(true);
+    setReportOperationStatus("저장 중");
+    try {
+      const result = await app.actions.commitAdminReportOperation?.({ reportId: selectedQueueReport.id, operation });
+      setReportOperationStatus(result && result.ok !== false ? "저장했습니다." : "저장하지 못했습니다.");
+    } catch {
+      setReportOperationStatus("저장하지 못했습니다.");
+    } finally {
+      setReportOperationPending(false);
+    }
+  };
   const visibleActionOptions = useMemo(() => {
     if (selectedReportIsVoidRestore) {
       return adminLevel >= 50 ? ACTION_OPTIONS.filter((option) => ["keepMatchVoid", "restoreMatchHalf", "restoreMatchFull"].includes(option.id)) : [];
@@ -427,7 +478,7 @@ const [searchParams, setSearchParams] = useSearchParams();
   };
   return {
     app, adminLevel, sectionOptions, section, view,
-    queueMode, setQueueMode, queueFilter, appliedQueueFilter,
+    queueMode, queueFocus, setQueueMode, queueFilter, appliedQueueFilter,
     loadAdminSection, setSelectedIdByView, setSelectedReportIdByScope,
     actionDraft, mergeAffiliationQuery, setMergeAffiliationQuery,
     appointmentDraft, appointmentUserQuery,
@@ -438,6 +489,8 @@ const [searchParams, setSearchParams] = useSearchParams();
     setCourtRejectionReason,
     reviewActionStatus,
     reviewActionPending,
+    reportOperationStatus,
+    reportOperationPending,
     reviewActionConfirming,
     setReviewActionConfirming,
     appointmentActionPending,
@@ -455,6 +508,9 @@ const [searchParams, setSearchParams] = useSearchParams();
     userMap,
     matchMap,
     selectedReport,
+    reportQueueReports,
+    selectedQueueReport,
+    reportAuditHistory,
     selectedReportIsVoidRestore,
     selectedCourtRequest,
     selectedCourtRequester,
@@ -468,6 +524,8 @@ const [searchParams, setSearchParams] = useSearchParams();
     activeAdminPage,
     activeQueueTotal,
     changeSection,
+    navigateToReportQueue,
+    selectQueueReport,
     applyQueueFilter,
     updateQueueFilter,
     clearQueueFilter,
@@ -493,6 +551,7 @@ const [searchParams, setSearchParams] = useSearchParams();
     approveSelectedCourt,
     rejectSelectedCourt,
     commitSelectedAction,
+    commitReportOperation,
     commitAppointmentAction,
   };
 }

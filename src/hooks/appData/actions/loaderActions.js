@@ -68,6 +68,7 @@ loadMatchDetail,
       return loadAdminSection({
         section: current.section || DEFAULT_ADMIN_SECTION,
         queueMode: current.queueMode || DEFAULT_ADMIN_QUEUE_MODE,
+        focus: current.focus || "",
         limit: current.page?.limit ?? ADMIN_DEFAULT_PAGE_LIMIT,
         offset: nextOffset,
         filter: current.page?.filter ?? "",

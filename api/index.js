@@ -3,6 +3,7 @@ import adminContext from "../server/api/admin/context.js";
 import adminCourts from "../server/api/admin/courts.js";
 import adminDisciplinaryAction from "../server/api/admin/disciplinary-action.js";
 import adminRatingPolicy from "../server/api/admin/rating-policy.js";
+import adminReportOperation from "../server/api/admin/report-operation.js";
 import adminReviewAction from "../server/api/admin/review-action.js";
 import adminUserOperations from "../server/api/admin/user-operations.js";
 import alphaTestLogin from "../server/api/auth/alpha-test-login.js";
@@ -89,6 +90,7 @@ export const API_ROUTES = new Map([
   ["/admin/courts", route(adminCourts, ["POST"], "admin")],
   ["/admin/disciplinary-action", route(adminDisciplinaryAction, ["POST"], "admin")],
   ["/admin/rating-policy", route(adminRatingPolicy, ["POST"], "admin")],
+  ["/admin/report-operation", route(adminReportOperation, ["POST"], "admin")],
   ["/admin/review-action", route(adminReviewAction, ["POST"], "admin")],
   ["/admin/user-operations", route(adminUserOperations, ["POST"], "admin")],
   ["/auth/alpha-test-login", route(alphaTestLogin, ["POST"], "alphaTest")],

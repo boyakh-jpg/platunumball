@@ -109,6 +109,8 @@ export function mergeRemoteTournamentState(state, remoteState = {}) {
   };
 }
 const ADMIN_SECTION_REPORT_TYPES = {
+  operations: new Set(),
+  reports: new Set(["court", "court_review", "court_request", "player", "match", "team_emblem", "team_name", "affiliation_name"]),
   courts: new Set(["court", "court_review", "court_request"]),
   players: new Set(["player"]),
   matches: new Set(["match"]),
@@ -116,6 +118,8 @@ const ADMIN_SECTION_REPORT_TYPES = {
   appointments: new Set(),
 };
 const ADMIN_SECTION_SETTING_KEYS = {
+  operations: [],
+  reports: ["adminAuditLog"],
   courts: ["approvedCourts", "courtRequests", "courtReviews"],
   players: ["adminDisciplinaryActions"],
   matches: [],
@@ -124,7 +128,7 @@ const ADMIN_SECTION_SETTING_KEYS = {
 };
 export function mergeRemoteAdminState(state, remoteState = {}, options = {}) {
   if (!state || options.append !== true) return remoteState;
-  const section = ADMIN_SECTION_SETTING_KEYS[options.section] ? options.section : "courts";
+  const section = ADMIN_SECTION_SETTING_KEYS[options.section] ? options.section : "operations";
   const append = true;
   const reportTypes = ADMIN_SECTION_REPORT_TYPES[section];
   const incomingReports = (remoteState.reports ?? []).filter((report) => reportTypes.has(report.type));

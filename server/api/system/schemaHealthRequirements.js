@@ -413,7 +413,7 @@ export const REQUIRED_COLUMNS = {
   referee_appointments: ["id", "user_id", "role", "status", "starts_at", "ends_at"],
   referee_exam_attempts: ["id", "user_id", "status", "exam_version"],
   referee_requests: ["id", "requested_by", "status", "qualification", "trust_score"],
-  reports: ["id", "type", "target_id", "user_id", "reason", "status"],
+  reports: ["id", "type", "target_id", "user_id", "reason", "status", "priority", "assigned_to", "assigned_at", "resolved_at"],
   team_invitations: ["id", "team_id", "from_user_id", "target_user_id", "role", "request_kind", "status", "application"],
   tournament_teams: ["tournament_id", "team_id", "status", "seed_order"],
   tournaments: ["id", "title", "visibility", "status", "created_by", "referee_ids"],

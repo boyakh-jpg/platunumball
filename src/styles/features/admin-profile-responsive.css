@@ -120,14 +120,15 @@
 
 @media (max-width: 520px) {
   .admin-section-tabs {
+    grid-template-columns: 1fr;
     gap: var(--space-4);
   }
 
-  .admin-section-tabs > button {
+  .admin-section-group-options > button {
     gap: var(--space-4);
   }
 
-  .admin-section-tabs em {
+  .admin-section-group-options em {
     display: none;
   }
 

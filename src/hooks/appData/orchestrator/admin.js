@@ -20,6 +20,7 @@ export function useAppDataAdmin(context) {
     latestAdminRequestRef,
     mergeRemoteAdminState,
     normalizeAdminContext,
+    normalizeAdminQueueFocus,
     normalizeAdminQueueMode,
     normalizeAdminSection,
     normalizeServerState,
@@ -97,13 +98,14 @@ const trackedPostServerAction = useCallback((path, payload = {}, options = {}) =
   const loadAdminSection = useCallback(async (options = {}) => {
     const section = normalizeAdminSection(options.section);
     const queueMode = normalizeAdminQueueMode(options.queueMode);
+    const focus = normalizeAdminQueueFocus(options.focus);
     const { limit, offset } = getDirectoryPageRequest(options, { admin: true });
     const filter = String(options.filter ?? options.query ?? "").trim();
     const force = options.force === true;
-    const cacheKey = `${authUserId || ""}:${section}:${queueMode}:${limit}:${offset}:${filter}`;
+    const cacheKey = `${authUserId || ""}:${section}:${queueMode}:${focus}:${limit}:${offset}:${filter}`;
     latestAdminRequestRef.current = cacheKey;
     if (!isSupabaseConfigured || !authUserId) {
-      setAdminStatus((prev) => ({ ...prev, loading: false, loaded: true, error: "", section, queueMode }));
+      setAdminStatus((prev) => ({ ...prev, loading: false, loaded: true, error: "", section, queueMode, focus }));
       return true;
     }
 
@@ -123,6 +125,7 @@ const trackedPostServerAction = useCallback((path, payload = {}, options = {}) =
         error: "",
         section,
         queueMode,
+        focus,
         page: result?.page ?? null,
         counts: queueMode === "pending"
           ? { ...prev.counts, ...(result?.page?.counts ?? {}) }
@@ -132,15 +135,15 @@ const trackedPostServerAction = useCallback((path, payload = {}, options = {}) =
     }
     if (adminPromiseRef.current.has(cacheKey)) return adminPromiseRef.current.get(cacheKey);
     if (force) adminCacheRef.current.delete(cacheKey);
-    setAdminStatus((prev) => ({ ...prev, loading: true, error: "", section, queueMode }));
+    setAdminStatus((prev) => ({ ...prev, loading: true, error: "", section, queueMode, focus }));
     const promise = trackedPostServerAction(
       "/api/directory/load",
-      { authUserId, authEmail, scope: "admin", section, queueMode, limit, offset, filter },
+      { authUserId, authEmail, scope: "admin", section, queueMode, focus, limit, offset, filter },
       { allowWhenDisabled: true },
     ).then((result) => {
       if (!result?.state) {
         if (latestAdminRequestRef.current === cacheKey) {
-          setAdminStatus((prev) => ({ ...prev, loading: false, loaded: true, error: "admin_section_state_missing", section, queueMode }));
+          setAdminStatus((prev) => ({ ...prev, loading: false, loaded: true, error: "admin_section_state_missing", section, queueMode, focus }));
         }
         return false;
       }
@@ -159,6 +162,7 @@ const trackedPostServerAction = useCallback((path, payload = {}, options = {}) =
         error: "",
         section,
         queueMode,
+        focus,
         page: result.page ?? null,
         counts: queueMode === "pending"
           ? { ...prev.counts, ...(result.page?.counts ?? {}) }
@@ -168,7 +172,7 @@ const trackedPostServerAction = useCallback((path, payload = {}, options = {}) =
     }).catch((error) => {
       if (latestAdminRequestRef.current !== cacheKey) return false;
       console.warn("Admin section load failed.", error.message);
-      setAdminStatus((prev) => ({ ...prev, loading: false, loaded: true, error: error.message ?? "admin_section_load_failed", section, queueMode }));
+      setAdminStatus((prev) => ({ ...prev, loading: false, loaded: true, error: error.message ?? "admin_section_load_failed", section, queueMode, focus }));
       return false;
     }).finally(() => {
       adminPromiseRef.current.delete(cacheKey);
@@ -183,6 +187,7 @@ const trackedPostServerAction = useCallback((path, payload = {}, options = {}) =
     return loadAdminSection({
       section: current.section || DEFAULT_ADMIN_SECTION,
       queueMode: current.queueMode || DEFAULT_ADMIN_QUEUE_MODE,
+      focus: current.focus || "",
       limit: current.page?.limit ?? ADMIN_DEFAULT_PAGE_LIMIT,
       offset: 0,
       filter: current.page?.filter ?? "",

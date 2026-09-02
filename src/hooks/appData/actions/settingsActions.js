@@ -288,6 +288,19 @@ updateSettings: (patch) => {
     await refreshAdminState();
     return result;
   },
+  commitAdminReportOperation: async (draft) => {
+    if (!isSupabaseConfigured) return { ok: false, error: "remote_not_ready" };
+    if (!ensureRemoteReady("신고 운영")) return false;
+    const serverReady = await ensureServerActionAvailable("/api/admin/report-operation", "신고 운영");
+    if (serverReady !== true) return serverReady;
+    const result = await runServerAction("/api/admin/report-operation", draft);
+    if (!result || result.ok === false) {
+      if (result?.error === "report_already_processed") await refreshAdminState();
+      return result;
+    }
+    await refreshAdminState();
+    return result;
+  },
   commitAdminAppointmentAction: async (draft) => {
     if (!isSupabaseConfigured) {
       setState((prev) => commitAdminAppointmentAction({ ...prev, currentUserId }, draft));

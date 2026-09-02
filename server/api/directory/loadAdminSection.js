@@ -16,6 +16,7 @@ import {
 } from "../../../shared/lib/remotePayloadMappers.js";
 import { normalizeState } from "../../../shared/lib/stateNormalizer.js";
 import {
+  ADMIN_AUDIT_COLUMNS,
   ADMIN_DISCIPLINARY_COLUMNS,
   AFFILIATION_COLUMNS,
   APPOINTMENT_COLUMNS,
@@ -34,12 +35,15 @@ import { fromRemoteTeam } from "../../../shared/lib/teamMappers.js";
 import {
   DIRECTORY_ID_BATCH_SIZE,
   getDirectoryPageRequest,
+  normalizeAdminQueueFocus,
   normalizeAdminQueueMode,
   normalizeAdminSection,
   normalizeDirectoryFilter,
 } from "../../../shared/lib/queryPolicy.js";
+import { getKstDayStartIso, loadAdminOperations } from "./adminOperations.js";
 
 export const ADMIN_REPORT_TYPES = {
+  reports: ["court", "court_review", "court_request", "player", "match", "team_emblem", "team_name", "affiliation_name"],
   courts: ["court", "court_review", "court_request"],
   players: ["player"],
   matches: ["match"],
@@ -119,6 +123,8 @@ export function collectReportProfileIds(reports = []) {
     report.user_id,
     ...(report.type === "player" ? [report.target_id] : []),
     ...(Array.isArray(report.reported_user_ids) ? report.reported_user_ids : []),
+    report.assigned_to,
+    report.resolved_by,
   ]));
 }
 
@@ -142,8 +148,9 @@ export function toAdminMatchState(matchRows = [], matchPlayerRows = [], teamRows
 export async function loadAdminSection(context, body = {}) {
   const section = getAdminSection(body.section);
   const queueMode = getQueueMode(body.queueMode ?? body.queue);
+  const focus = normalizeAdminQueueFocus(body.focus);
   const pageRequest = getPageRequest(body, { admin: true });
-  const sourceCount = section === "appointments" ? 3 : section === "teams" ? 1 : 2;
+  const sourceCount = section === "appointments" ? 3 : ["teams", "reports"].includes(section) ? 1 : 2;
   const sourcePageRequest = {
     limit: Math.max(1, Math.floor(pageRequest.limit / sourceCount)),
     offset: pageRequest.offset,
@@ -154,6 +161,24 @@ export async function loadAdminSection(context, body = {}) {
     const error = new Error("admin_required");
     error.statusCode = 403;
     throw error;
+  }
+
+  if (section === "operations") {
+    const currentUser = getCurrentUser(context);
+    const operations = await loadAdminOperations(context.supabase);
+    return {
+      state: normalizeState({ currentUserId: currentUser.id, users: [currentUser], settings: DEFAULT_SETTINGS }, { includeDemo: false }),
+      adminContext: {
+        profileId: context.profileId,
+        adminLevel,
+        adminGrade: adminLevel >= 100 ? "owner" : adminLevel >= 80 ? "senior" : adminLevel >= 60 ? "regionManager" : adminLevel >= 50 ? "matchManager" : "support",
+      },
+      page: {
+        scope: "admin", section, queueMode, focus: "", filter, limit: pageRequest.limit,
+        offset: 0, nextOffset: null, hasMore: false, total: 0, counts: {}, operations,
+      },
+      updatedAt: operations.generatedAt,
+    };
   }
 
   const reportTypes = ADMIN_REPORT_TYPES[section] ?? [];
@@ -171,9 +196,15 @@ export async function loadAdminSection(context, body = {}) {
       .from("reports")
       .select(REPORT_COLUMNS, { count: "exact" })
       .in("type", reportTypes)
-      .order("created_at", { ascending: false, nullsFirst: false })
-      .order("id", { ascending: false });
+      .order("created_at", { ascending: focus === "oldest", nullsFirst: false })
+      .order("id", { ascending: focus === "oldest" });
     if (queueMode === "pending") query = query.eq("status", "open");
+    if (focus === "urgent") query = query.eq("status", "open").eq("priority", "urgent");
+    if (focus === "unassigned") query = query.eq("status", "open").is("assigned_to", null);
+    if (focus === "stale") query = query.eq("status", "open").lt("created_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
+    if (focus === "receivedToday") query = query.gte("created_at", getKstDayStartIso());
+    if (focus === "processedToday") query = query.gte("resolved_at", getKstDayStartIso());
+    if (focus === "oldest") query = query.eq("status", "open");
     if (filter) query = query.ilike("reason", `%${filter}%`);
     reportPage = await readPage(query, sourcePageRequest, "admin_reports");
   }
@@ -259,8 +290,16 @@ export async function loadAdminSection(context, body = {}) {
   }
 
   const reportRows = reportPage.rows;
+  const adminAuditRows = await readRowsByIds(
+    context.supabase,
+    "admin_audit_log",
+    ADMIN_AUDIT_COLUMNS,
+    "report_id",
+    reportRows.map((row) => row.id),
+    { optional: true },
+  );
   const reportRowsByType = (type) => reportRows.filter((row) => row.type === type);
-  const targetCourtRequestRows = section === "courts"
+  const targetCourtRequestRows = ["courts", "reports"].includes(section)
     ? await readRowsByIds(context.supabase, "court_requests", COURT_REQUEST_COLUMNS, "id", reportRowsByType("court_request").map((row) => row.target_id))
     : [];
   let courtRequestRows = uniqueRows([courtRequestPage.rows, targetCourtRequestRows]);
@@ -316,6 +355,7 @@ export async function loadAdminSection(context, body = {}) {
   const profileIds = uniqueValues([
     context.profileId,
     ...collectReportProfileIds(reportRows),
+    ...adminAuditRows.map((row) => row.created_by),
     ...courtRequestRows.map((row) => row.requested_by),
     ...courtReviewRows.flatMap((row) => [row.reviewer_id]),
     ...disciplinaryPage.rows.flatMap((row) => [row.user_id, row.created_by]),
@@ -342,6 +382,7 @@ export async function loadAdminSection(context, body = {}) {
     adminAppointments: adminAppointmentPage.rows.map(fromRemotePayloadRow),
     refereeAppointments: refereeAppointmentPage.rows.map(fromRemotePayloadRow),
     adminDisciplinaryActions: disciplinaryPage.rows.map(fromRemotePayloadRow),
+    adminAuditLog: adminAuditRows.map(fromRemotePayloadRow),
   };
   const state = normalizeState({
     currentUserId: currentUser.id,
@@ -370,6 +411,7 @@ export async function loadAdminSection(context, body = {}) {
       scope: "admin",
       section,
       queueMode,
+      focus,
       filter,
       limit: pageRequest.limit,
       sourceLimit: sourcePageRequest.limit,
@@ -387,6 +429,7 @@ export async function loadAdminSection(context, body = {}) {
       ...affiliationRows,
       ...appointmentRows,
       ...disciplinaryPage.rows,
+      ...adminAuditRows,
     ]),
   };
 }

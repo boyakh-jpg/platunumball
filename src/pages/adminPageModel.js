@@ -1,16 +1,29 @@
-import { Activity, ClipboardList, Database, MapPin, ShieldAlert, ShieldCheck, SlidersHorizontal, UserRound } from "lucide-react";
+import { Activity, BellRing, ClipboardList, Database, Gauge, MapPin, ShieldAlert, ShieldCheck, SlidersHorizontal, UserRound } from "lucide-react";
 import { ADMIN_REVIEW_ACTIONS } from "../lib/admin.js";
 
 export const ADMIN_SECTION_OPTIONS = [
-  { id: "courts", label: "구장 신청", caption: "등록 신청과 구장 신고", icon: MapPin },
-  { id: "courtDb", label: "구장 DB", caption: "전체 조회·이름·이력", icon: Database, minLevel: 50 },
-  { id: "players", label: "플레이어 신고", caption: "신고와 징계", icon: UserRound },
-  { id: "userOps", label: "사용자 운영", caption: "가입자·통계·제재", icon: Activity, minLevel: 50 },
-  { id: "matches", label: "경기 심사", caption: "기록 오류와 이의", icon: ClipboardList },
-  { id: "teams", label: "팀·소속", caption: "이름과 엠블럼 신고", icon: ShieldAlert },
-  { id: "appointments", label: "권한 관리", caption: "심판과 관리자 임명", icon: ShieldCheck },
-  { id: "ratingPolicy", label: "MMR·신뢰도", caption: "이벤트 반영 정책", icon: SlidersHorizontal, ownerOnly: true },
+  { id: "operations", group: "운영 현황", label: "운영 현황", caption: "지금 처리할 업무", icon: Gauge },
+  { id: "reports", group: "신고·검토", label: "신고 큐", caption: "전체 신고와 배정", icon: BellRing },
+  { id: "courts", group: "신고·검토", label: "구장 신청", caption: "등록 신청과 구장 신고", icon: MapPin },
+  { id: "players", group: "신고·검토", label: "플레이어 신고", caption: "신고와 징계", icon: UserRound },
+  { id: "matches", group: "신고·검토", label: "경기 심사", caption: "기록 오류와 이의", icon: ClipboardList },
+  { id: "teams", group: "신고·검토", label: "팀·소속", caption: "이름과 엠블럼 신고", icon: ShieldAlert },
+  { id: "courtDb", group: "데이터 관리", label: "구장 DB", caption: "전체 조회·이름·이력", icon: Database, minLevel: 50 },
+  { id: "userOps", group: "데이터 관리", label: "사용자 운영", caption: "가입자·통계·제재", icon: Activity, minLevel: 50 },
+  { id: "appointments", group: "권한·정책", label: "권한 관리", caption: "심판과 관리자 임명", icon: ShieldCheck },
+  { id: "ratingPolicy", group: "권한·정책", label: "MMR·신뢰도", caption: "이벤트 반영 정책", icon: SlidersHorizontal, ownerOnly: true },
 ];
+
+export const ADMIN_SECTION_GROUPS = ["운영 현황", "신고·검토", "데이터 관리", "권한·정책"];
+
+export const ADMIN_QUEUE_FOCUS_LABELS = {
+  urgent: "긴급 신고",
+  unassigned: "미배정 신고",
+  stale: "24시간 이상 경과",
+  receivedToday: "오늘 접수",
+  processedToday: "오늘 처리",
+  oldest: "가장 오래된 미처리",
+};
 
 export const ACTION_OPTIONS = Object.entries(ADMIN_REVIEW_ACTIONS).map(([id, meta]) => ({ id, ...meta }));
 

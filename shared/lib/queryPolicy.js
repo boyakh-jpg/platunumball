@@ -1,7 +1,8 @@
 export const DIRECTORY_KINDS = Object.freeze(["self", "players", "teams", "affiliations", "all"]);
 export const DIRECTORY_PLAYER_RANKING_SORTS = Object.freeze(["integrated", "1v1", "2v2", "3v3", "5v5"]);
-export const ADMIN_DIRECTORY_SECTION_IDS = Object.freeze(["courts", "players", "matches", "teams", "appointments"]);
+export const ADMIN_DIRECTORY_SECTION_IDS = Object.freeze(["operations", "reports", "courts", "players", "matches", "teams", "appointments"]);
 export const ADMIN_QUEUE_MODES = Object.freeze(["pending", "history"]);
+export const ADMIN_QUEUE_FOCUSES = Object.freeze(["urgent", "unassigned", "stale", "receivedToday", "processedToday", "oldest"]);
 export const DEFAULT_ADMIN_SECTION = ADMIN_DIRECTORY_SECTION_IDS[0];
 export const DEFAULT_ADMIN_QUEUE_MODE = ADMIN_QUEUE_MODES[0];
 
@@ -23,6 +24,7 @@ const DIRECTORY_KIND_SET = new Set(DIRECTORY_KINDS);
 const DIRECTORY_PLAYER_RANKING_SORT_SET = new Set(DIRECTORY_PLAYER_RANKING_SORTS);
 const ADMIN_DIRECTORY_SECTION_SET = new Set(ADMIN_DIRECTORY_SECTION_IDS);
 const ADMIN_QUEUE_MODE_SET = new Set(ADMIN_QUEUE_MODES);
+const ADMIN_QUEUE_FOCUS_SET = new Set(ADMIN_QUEUE_FOCUSES);
 
 export function clampQueryInteger(value, fallback, min, max) {
   const parsed = Number(value);
@@ -48,6 +50,11 @@ export function normalizeAdminSection(value = "") {
 export function normalizeAdminQueueMode(value = "") {
   const queueMode = String(value ?? "").trim();
   return ADMIN_QUEUE_MODE_SET.has(queueMode) ? queueMode : DEFAULT_ADMIN_QUEUE_MODE;
+}
+
+export function normalizeAdminQueueFocus(value = "") {
+  const focus = String(value ?? "").trim();
+  return ADMIN_QUEUE_FOCUS_SET.has(focus) ? focus : "";
 }
 
 export function normalizeDirectoryFilter(value = "") {
