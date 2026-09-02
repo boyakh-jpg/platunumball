@@ -11,6 +11,8 @@ const outputDir = path.resolve("tmp/landing-product-demo");
 const rawVideoPath = path.join(outputDir, "landing-product-demo-raw.webm");
 const metadataPath = path.join(outputDir, "capture.json");
 const receiptAssetPath = path.resolve("public/assets/showcase/landing-product-demo-receipt.png");
+const attendanceAssetPath = path.resolve("public/assets/guide/attendance-qr.png");
+const scoreboardAssetPath = path.resolve("public/assets/guide/live-clock.jpg");
 const browserCandidates = [
   process.env.BOXTIER_BROWSER_PATH,
   "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
@@ -60,7 +62,13 @@ if (email && password) {
 }
 
 await mkdir(outputDir, { recursive: true });
-await access(receiptAssetPath);
+await Promise.all([
+  access(receiptAssetPath),
+  access(attendanceAssetPath),
+  access(scoreboardAssetPath),
+]);
+const attendanceAssetDataUrl = `data:image/png;base64,${(await readFile(attendanceAssetPath)).toString("base64")}`;
+const scoreboardAssetDataUrl = `data:image/jpeg;base64,${(await readFile(scoreboardAssetPath)).toString("base64")}`;
 const executablePath = await firstAvailablePath(browserCandidates);
 const browser = await chromium.launch({ executablePath, headless: true });
 const context = await browser.newContext({
@@ -189,6 +197,62 @@ await context.addInitScript(() => {
         top: calc(100% + 10px);
         bottom: auto;
       }
+      .box-tier-demo-product-visual {
+        position: fixed;
+        z-index: 2147483600;
+        inset: 0;
+        overflow: hidden;
+        pointer-events: none;
+        background: #111318;
+        color: #fff;
+        font-family: system-ui, sans-serif;
+      }
+      .box-tier-demo-product-frame {
+        position: absolute;
+        top: 160px;
+        left: 14px;
+        right: 14px;
+        height: 560px;
+        overflow: hidden;
+        border: 1px solid rgba(255,255,255,.16);
+        border-radius: 18px;
+        background: #08090b;
+        box-shadow: 0 20px 50px rgba(0,0,0,.48);
+      }
+      .box-tier-demo-product-visual img {
+        position: absolute;
+        display: block;
+        max-width: none;
+        transition: left .7s ease-in-out;
+      }
+      .box-tier-demo-product-visual[data-kind="attendance"] img {
+        top: -100px;
+        left: -105px;
+        width: 900px;
+      }
+      .box-tier-demo-product-visual[data-kind="attendance"][data-view="status"] img {
+        left: -105px;
+      }
+      .box-tier-demo-product-visual[data-kind="scoreboard"] .box-tier-demo-product-frame {
+        top: 180px;
+        height: 470px;
+      }
+      .box-tier-demo-product-visual[data-kind="scoreboard"] img {
+        top: 62px;
+        left: -50px;
+        width: 640px;
+      }
+      .box-tier-demo-product-note {
+        position: absolute;
+        left: 20px;
+        right: 20px;
+        top: 742px;
+        color: rgba(255,255,255,.72);
+        font-size: 13px;
+        font-weight: 750;
+        line-height: 1.45;
+        text-align: center;
+      }
       @keyframes box-tier-demo-tap {
         0% { opacity: 0; transform: translate(-50%, -50%) scale(.3); }
         14% { opacity: 1; }
@@ -212,6 +276,32 @@ await context.addInitScript(() => {
     description.textContent = body;
     caption.append(heading, description);
     document.body.append(caption);
+  };
+
+  window.__boxTierDemoShowProductVisual = ({ src, kind, note }) => {
+    installStyle();
+    document.querySelector(".box-tier-demo-product-visual")?.remove();
+    const visual = document.createElement("section");
+    visual.className = "box-tier-demo-product-visual";
+    visual.dataset.kind = kind;
+    visual.setAttribute("aria-hidden", "true");
+    const frame = document.createElement("div");
+    frame.className = "box-tier-demo-product-frame";
+    const image = document.createElement("img");
+    image.src = src;
+    frame.append(image);
+    const noteElement = document.createElement("p");
+    noteElement.className = "box-tier-demo-product-note";
+    noteElement.textContent = note;
+    visual.append(frame, noteElement);
+    document.body.append(visual);
+  };
+  window.__boxTierDemoSetProductView = (view) => {
+    const visual = document.querySelector(".box-tier-demo-product-visual");
+    if (visual) visual.dataset.view = view;
+  };
+  window.__boxTierDemoClearProductVisual = () => {
+    document.querySelector(".box-tier-demo-product-visual")?.remove();
   };
 
   window.__boxTierDemoClearCue = () => document.querySelector(".box-tier-demo-cue")?.remove();
@@ -273,8 +363,10 @@ async function caption(title, body) {
 }
 
 async function cueTarget(target, label = "여기 탭") {
-  await target.scrollIntoViewIfNeeded();
-  await wait(180);
+  await target.evaluate((element) => {
+    element.scrollIntoView({ block: "center", inline: "center", behavior: "instant" });
+  });
+  await wait(300);
   await target.evaluate((element, cueLabel) => {
     const bounds = element.getBoundingClientRect();
     window.__boxTierDemoCue(
@@ -282,6 +374,17 @@ async function cueTarget(target, label = "여기 탭") {
       cueLabel,
     );
   }, label);
+}
+
+async function showProductVisual({ src, kind, note }) {
+  await page.evaluate((visual) => window.__boxTierDemoShowProductVisual(visual), { src, kind, note });
+  await wait(500);
+}
+
+async function cueProductBounds(bounds, label) {
+  await page.evaluate(({ cueBounds, cueLabel }) => {
+    window.__boxTierDemoCue(cueBounds, cueLabel);
+  }, { cueBounds: bounds, cueLabel: label });
 }
 
 async function clickWithCue(target, { cueMs = 800, settleMs = 900 } = {}) {
@@ -338,16 +441,16 @@ try {
   await cueTarget(competitiveOption, "MMR 반영 경쟁전");
   await wait(2_300);
   await page.evaluate(() => window.__boxTierDemoClearCue());
-  await endScene("create-match", startedAt, 7_200);
+  await endScene("create-match", startedAt, 8_000);
 
   await caption(
-    "티어에 맞는 상대 모집",
-    "MMR은 실력이 비슷한 상대를 찾고 순위를 계산하는 경기력 점수입니다. 공개 경쟁 개인방은 허용구간 안에서 모집합니다.",
+    "비슷한 실력대끼리 모집",
+    "경쟁전은 현재 MMR을 기준으로 참가 가능한 점수 범위를 보여줘 실력이 비슷한 상대를 모읍니다.",
   );
   startedAt = startScene();
   const matchCriteria = page.getByText(/SILVER 3 ~ GOLD 2 · 상세 산식 비공개/).first();
   await matchCriteria.waitFor({ timeout: 10_000 });
-  await cueTarget(matchCriteria, "실력 허용구간");
+  await cueTarget(matchCriteria, "참가 가능한 MMR 범위");
   await wait(4_600);
   await page.evaluate(() => window.__boxTierDemoClearCue());
   await endScene("tier-match", startedAt, 6_500);
@@ -376,16 +479,27 @@ try {
   await matchRoom.waitFor({ timeout: 20_000 });
   await matchRoom.getByText("5v5", { exact: true }).first().waitFor({ timeout: 20_000 });
   await caption(
-    "경기 20분 전 QR 체크인",
-    "등록 선수와 후보가 QR로 출석하면 운영자가 실제 참가 명단과 미출석자를 확인합니다.",
+    "QR로 현장 출석 확인",
+    "경기 20분 전부터 등록 선수와 후보가 QR을 스캔하고, A/B 출석 인원을 같은 화면에서 확인합니다.",
   );
   startedAt = startScene();
-  const attendanceRule = matchRoom.getByText("경기 20분 전부터", { exact: false }).first();
-  await attendanceRule.waitFor({ timeout: 10_000 });
-  await cueTarget(attendanceRule, "QR 출석 기준");
-  await wait(4_500);
+  await showProductVisual({
+    src: attendanceAssetDataUrl,
+    kind: "attendance",
+    note: "실제 BoxTier QR 출석판 · QR과 사이드별 출석 상태를 한 화면에서 확인",
+  });
+  await cueProductBounds({ left: 42, top: 210, width: 174, height: 190 }, "현장 QR 스캔");
+  await wait(3_200);
+  await page.evaluate(() => {
+    window.__boxTierDemoClearCue();
+    window.__boxTierDemoSetProductView("status");
+  });
+  await wait(800);
+  await cueProductBounds({ left: 50, top: 340, width: 480, height: 72 }, "A/B 출석 현황");
+  await wait(3_300);
   await page.evaluate(() => window.__boxTierDemoClearCue());
-  await endScene("attendance", startedAt, 7_000);
+  await endScene("attendance", startedAt, 8_400);
+  await page.evaluate(() => window.__boxTierDemoClearProductVisual());
 
   await caption(
     "5v5 참가 확인 · 팀 구성",
@@ -403,15 +517,22 @@ try {
   await resultReceiptButton.waitFor({ state: "visible", timeout: 20_000 });
   await caption(
     "휴대폰이 모바일 전광판",
-    "4쿼터 경기시계와 양 팀 점수를 현장에서 운영하고, 저장된 점수는 참가자 화면에 이어집니다.",
+    "담당자가 1Q 경기시간·양 팀 점수·샷클락을 한 화면에서 조작하고, 저장된 기록은 참가자 화면에 이어집니다.",
   );
   startedAt = startScene();
-  const scoreboardHelp = matchRoom.getByText("BOXTIER 모바일 전광판", { exact: true }).first();
-  await scoreboardHelp.waitFor({ timeout: 10_000 });
-  await cueTarget(scoreboardHelp, "모바일 전광판");
-  await wait(5_000);
+  await showProductVisual({
+    src: scoreboardAssetDataUrl,
+    kind: "scoreboard",
+    note: "실제 BoxTier 모바일 전광판 · 경기시간, 점수, 샷클락을 현장에서 조작",
+  });
+  await cueProductBounds({ left: 205, top: 300, width: 205, height: 150 }, "1Q · 경기시간");
+  await wait(3_700);
   await page.evaluate(() => window.__boxTierDemoClearCue());
-  await endScene("live-scoreboard", startedAt, 7_500);
+  await cueProductBounds({ left: 20, top: 370, width: 490, height: 125 }, "점수 버튼 · 샷클락");
+  await wait(3_700);
+  await page.evaluate(() => window.__boxTierDemoClearCue());
+  await endScene("live-scoreboard", startedAt, 9_000);
+  await page.evaluate(() => window.__boxTierDemoClearProductVisual());
 
   await caption("경기 종료 · 결과 확인", "종료된 경기의 최종 점수와 확정 기록을 검토합니다.");
   startedAt = startScene();
@@ -441,7 +562,10 @@ try {
   const receiptButton = receiptRoom.getByRole("button", { name: "영수증 발급", exact: true });
   await receiptButton.waitFor({ state: "visible", timeout: 20_000 });
 
-  await caption("기록방에서 영수증 만들기", "같은 5v5 기록방 모달의 실제 영수증 발급 버튼을 누릅니다.");
+  await caption(
+    "기록방에서 영수증 만들기",
+    "확정된 5v5 기록으로 감열지 영수증을 만들고 이미지·Story·Feed로 공유할 수 있습니다.",
+  );
   startedAt = startScene();
   await cueTarget(receiptButton);
   await wait(4_500);
@@ -464,14 +588,17 @@ try {
     captionAccentRemoved: true,
     rawVideoPath,
     receiptAssetPath,
+    attendanceAssetPath,
+    scoreboardAssetPath,
     match: { id: matchId, mode: "5v5" },
     facts: {
-      create: "실제 공개 경쟁 개인방 생성 폼에서 5v5와 MMR 허용구간을 확인하되 방을 생성하지 않습니다.",
+      create: "실제 공개 경쟁 개인방 생성 폼에서 5v5와 참가 가능한 MMR 범위를 확인하되 방을 생성하지 않습니다.",
       matching: "지역은 자동 배정이 아니라 공개 매칭 목록의 시·도/시·군·구 필터로 설명합니다.",
-      room: "출석 기준, 팀 구성, 모바일 전광판 안내, 최종 결과를 동일한 실제 5v5 기록방에서 읽기 전용으로 녹화합니다.",
-      scoreboard: "캡처 시점에 진행 중인 테스트 경기가 없어 종료·확정된 기록방이 안내하는 실제 모바일 전광판 흐름을 보여줍니다. 진행 중 조작을 꾸미지 않습니다.",
+      room: "팀 구성과 최종 결과는 동일한 실제 5v5 기록방에서 읽기 전용으로 녹화합니다.",
+      attendance: "서비스 사용 설명에 포함된 실제 QR 출석판 캡처로 QR과 A/B 출석 현황을 보여줍니다. 오래된 안내 문장 영역은 제외하고 현재 20분 전 기준을 설명합니다.",
+      scoreboard: "서비스 사용 설명에 포함된 실제 모바일 전광판 캡처로 경기시간, 점수 버튼, 샷클락을 보여줍니다. 진행 중 점수 변경을 꾸미지 않습니다.",
       tier: "확정 경쟁전 결과가 서버 계산을 거쳐 통합·경기 방식별 MMR과 티어에 반영된다는 정책과 실제 통합 랭크보드를 보여줍니다. 비어 있는 5v5 순위를 꾸미지 않습니다.",
-      receipt: "같은 5v5 기록방 모달의 실제 영수증 발급 버튼을 클릭하고, 마지막 감열지는 사용자가 제공한 완성 이미지를 사용합니다.",
+      receipt: "같은 5v5 기록방 모달의 실제 영수증 발급 버튼을 클릭하고, 이미지·Story·Feed 공유 흐름을 설명한 뒤 사용자가 제공한 감열지 완성 이미지를 사용합니다.",
     },
     scenes,
   };

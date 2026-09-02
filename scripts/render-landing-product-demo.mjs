@@ -16,16 +16,16 @@ const legacyCaptionCorrection = metadata.captionAccentRemoved === true
   : "delogo=x=8:y=8:w=18:h=86:show=0,";
 
 const timeline = [
-  ["create-match", 6.8],
-  ["tier-match", 6.0],
+  ["create-match", 7.5],
+  ["tier-match", 6.2],
   ["region-filter", 6.0],
-  ["attendance", 6.4],
+  ["attendance", 8.0],
   ["team-assignment", 5.7],
-  ["live-scoreboard", 7.0],
+  ["live-scoreboard", 8.6],
   ["final-result", 5.3],
   ["tier-update", 6.5],
   ["receipt-entry", 5.0],
-  ["thermal-receipt", 7.0, "receipt"],
+  ["thermal-receipt", 3.6, "receipt"],
 ];
 
 function run(command, args) {
