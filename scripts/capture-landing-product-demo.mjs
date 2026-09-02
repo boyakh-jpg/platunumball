@@ -321,65 +321,134 @@ async function endScene(name, startedAt, minimumDurationMs) {
 try {
   await authenticate();
 
-  await gotoApp("/app/create?intent=record");
-  const createButton = page.getByRole("button", { name: /^(경기 기록 만들기|로그인하고 이어서 만들기)$/ });
-  await createButton.waitFor({ timeout: 20_000 });
-  await caption("경기 기록방 만들기", "경기 정보와 규칙을 입력해 실제 기록방을 엽니다.");
+  await gotoApp("/app/create?intent=match");
+  const publicMatchButton = page.getByRole("button", { name: /^공개 매칭방/ });
+  await publicMatchButton.waitFor({ timeout: 20_000 });
+  await caption(
+    "공개 5v5 경쟁방 만들기",
+    "공개방·경쟁전·개인전·5v5를 고르면 매칭 목록에서 참가자를 모집합니다.",
+  );
   let startedAt = startScene();
-  await clickWithCue(page.getByRole("radio", { name: "5v5", exact: true }).first());
-  await createButton.scrollIntoViewIfNeeded();
-  await endScene("create-room", startedAt, 5_000);
+  await clickWithCue(publicMatchButton, { cueMs: 1_000, settleMs: 700 });
+  await clickWithCue(page.getByRole("radio", { name: "5v5", exact: true }).first(), {
+    cueMs: 1_000,
+    settleMs: 700,
+  });
+  const competitiveOption = page.getByRole("radio", { name: /^경쟁전/ });
+  await cueTarget(competitiveOption, "MMR 반영 경쟁전");
+  await wait(2_300);
+  await page.evaluate(() => window.__boxTierDemoClearCue());
+  await endScene("create-match", startedAt, 7_200);
+
+  await caption(
+    "티어에 맞는 상대 모집",
+    "MMR은 실력이 비슷한 상대를 찾고 순위를 계산하는 경기력 점수입니다. 공개 경쟁 개인방은 허용구간 안에서 모집합니다.",
+  );
+  startedAt = startScene();
+  const matchCriteria = page.getByText(/SILVER 3 ~ GOLD 2 · 상세 산식 비공개/).first();
+  await matchCriteria.waitFor({ timeout: 10_000 });
+  await cueTarget(matchCriteria, "실력 허용구간");
+  await wait(4_600);
+  await page.evaluate(() => window.__boxTierDemoClearCue());
+  await endScene("tier-match", startedAt, 6_500);
+
+  await gotoApp("/app/recruiting");
+  await caption(
+    "지역별 공개방 찾기",
+    "시·도와 시·군·구 필터로 가까운 코트의 공개 매칭방을 찾습니다.",
+  );
+  startedAt = startScene();
+  const cityFilter = page.getByRole("combobox", { name: "시도" });
+  await cityFilter.waitFor({ timeout: 20_000 });
+  await showTapCue(cityFilter, { cueMs: 1_100, settleMs: 300 });
+  await cityFilter.selectOption({ label: "부산광역시" });
+  await wait(800);
+  const districtFilter = page.getByRole("combobox", { name: "시군구" });
+  await showTapCue(districtFilter, { cueMs: 1_100, settleMs: 300 });
+  await districtFilter.selectOption({ label: "중구" });
+  await cueTarget(districtFilter, "지역 필터");
+  await wait(2_100);
+  await page.evaluate(() => window.__boxTierDemoClearCue());
+  await endScene("region-filter", startedAt, 6_500);
 
   await gotoApp(`/app/matches?match=${encodeURIComponent(matchId)}`);
   const matchRoom = page.getByRole("dialog", { name: "매치방" });
   await matchRoom.waitFor({ timeout: 20_000 });
   await matchRoom.getByText("5v5", { exact: true }).first().waitFor({ timeout: 20_000 });
-  await caption("QR 출석 · 참가 확인", "같은 5v5 기록방에서 QR 출석 기준과 참가 명단을 확인합니다.");
+  await caption(
+    "경기 20분 전 QR 체크인",
+    "등록 선수와 후보가 QR로 출석하면 운영자가 실제 참가 명단과 미출석자를 확인합니다.",
+  );
   startedAt = startScene();
   const attendanceRule = matchRoom.getByText("경기 20분 전부터", { exact: false }).first();
   await attendanceRule.waitFor({ timeout: 10_000 });
   await cueTarget(attendanceRule, "QR 출석 기준");
-  await wait(3_200);
+  await wait(4_500);
   await page.evaluate(() => window.__boxTierDemoClearCue());
-  await endScene("attendance", startedAt, 6_200);
+  await endScene("attendance", startedAt, 7_000);
 
-  await caption("참가 확인 · 팀 구성", "같은 5v5 기록방의 실제 HOME TEAM과 상대 팀 구성을 확인합니다.");
+  await caption(
+    "5v5 참가 확인 · 팀 구성",
+    "출석한 선수의 포지션과 출전·후보 상태를 확인하고 양쪽 5명 구성을 맞춥니다.",
+  );
   startedAt = startScene();
   const homeTeam = matchRoom.getByText("HOME TEAM", { exact: true }).first();
   await homeTeam.waitFor({ timeout: 10_000 });
   await cueTarget(homeTeam, "5v5 팀 구성");
-  await wait(3_200);
+  await wait(3_900);
   await page.evaluate(() => window.__boxTierDemoClearCue());
-  await endScene("team-assignment", startedAt, 5_800);
+  await endScene("team-assignment", startedAt, 6_200);
 
   const resultReceiptButton = matchRoom.getByRole("button", { name: "영수증 발급", exact: true });
   await resultReceiptButton.waitFor({ state: "visible", timeout: 20_000 });
-  await caption("모바일 전광판 · 점수 기록", "경기 중 입력한 점수와 개인 기록이 같은 5v5 기록방에 이어집니다.");
+  await caption(
+    "휴대폰이 모바일 전광판",
+    "4쿼터 경기시계와 양 팀 점수를 현장에서 운영하고, 저장된 점수는 참가자 화면에 이어집니다.",
+  );
   startedAt = startScene();
   const scoreboardHelp = matchRoom.getByText("BOXTIER 모바일 전광판", { exact: true }).first();
   await scoreboardHelp.waitFor({ timeout: 10_000 });
   await cueTarget(scoreboardHelp, "모바일 전광판");
-  await wait(4_000);
+  await wait(5_000);
   await page.evaluate(() => window.__boxTierDemoClearCue());
-  await endScene("live-scoreboard", startedAt, 7_000);
+  await endScene("live-scoreboard", startedAt, 7_500);
 
   await caption("경기 종료 · 결과 확인", "종료된 경기의 최종 점수와 확정 기록을 검토합니다.");
   startedAt = startScene();
   const finalScore = matchRoom.locator(".arena-source-record-score strong").first();
   await finalScore.waitFor({ timeout: 10_000 });
   await cueTarget(finalScore, "최종 점수");
-  await wait(2_600);
+  await wait(3_200);
   await page.evaluate(() => window.__boxTierDemoClearCue());
-  await endScene("final-result", startedAt, 5_200);
+  await endScene("final-result", startedAt, 5_800);
+
+  await gotoApp("/app/rankings");
+  await caption(
+    "기록이 쌓이면 티어도 변화",
+    "확정된 경쟁전 결과를 서버가 계산해 통합·경기 방식별 MMR과 티어, 랭크보드를 갱신합니다.",
+  );
+  startedAt = startScene();
+  const integratedRanking = page.getByRole("heading", { name: "전국 통합 MMR", exact: true });
+  await integratedRanking.waitFor({ timeout: 20_000 });
+  await cueTarget(integratedRanking, "통합 MMR 랭크보드");
+  await wait(4_900);
+  await page.evaluate(() => window.__boxTierDemoClearCue());
+  await endScene("tier-update", startedAt, 7_000);
+
+  await gotoApp(`/app/matches?match=${encodeURIComponent(matchId)}`);
+  const receiptRoom = page.getByRole("dialog", { name: "매치방" });
+  await receiptRoom.waitFor({ timeout: 20_000 });
+  const receiptButton = receiptRoom.getByRole("button", { name: "영수증 발급", exact: true });
+  await receiptButton.waitFor({ state: "visible", timeout: 20_000 });
 
   await caption("기록방에서 영수증 만들기", "같은 5v5 기록방 모달의 실제 영수증 발급 버튼을 누릅니다.");
   startedAt = startScene();
-  await cueTarget(resultReceiptButton);
-  await wait(4_100);
-  await resultReceiptButton.evaluate(() => window.__boxTierDemoClearCue());
-  await resultReceiptButton.click({ noWaitAfter: true });
+  await cueTarget(receiptButton);
+  await wait(4_500);
+  await receiptButton.evaluate(() => window.__boxTierDemoClearCue());
+  await receiptButton.click({ noWaitAfter: true });
   await wait(150);
-  await endScene("receipt-entry", startedAt, 5_000);
+  await endScene("receipt-entry", startedAt, 5_500);
 
   await page.close();
   await video.saveAs(rawVideoPath);
@@ -397,9 +466,11 @@ try {
     receiptAssetPath,
     match: { id: matchId, mode: "5v5" },
     facts: {
-      create: "실제 기록방 생성 폼을 조작하되 추가 방은 생성하지 않습니다.",
+      create: "실제 공개 경쟁 개인방 생성 폼에서 5v5와 MMR 허용구간을 확인하되 방을 생성하지 않습니다.",
+      matching: "지역은 자동 배정이 아니라 공개 매칭 목록의 시·도/시·군·구 필터로 설명합니다.",
       room: "출석 기준, 팀 구성, 모바일 전광판 안내, 최종 결과를 동일한 실제 5v5 기록방에서 읽기 전용으로 녹화합니다.",
       scoreboard: "캡처 시점에 진행 중인 테스트 경기가 없어 종료·확정된 기록방이 안내하는 실제 모바일 전광판 흐름을 보여줍니다. 진행 중 조작을 꾸미지 않습니다.",
+      tier: "확정 경쟁전 결과가 서버 계산을 거쳐 통합·경기 방식별 MMR과 티어에 반영된다는 정책과 실제 통합 랭크보드를 보여줍니다. 비어 있는 5v5 순위를 꾸미지 않습니다.",
       receipt: "같은 5v5 기록방 모달의 실제 영수증 발급 버튼을 클릭하고, 마지막 감열지는 사용자가 제공한 완성 이미지를 사용합니다.",
     },
     scenes,
