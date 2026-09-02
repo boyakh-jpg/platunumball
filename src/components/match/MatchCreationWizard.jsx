@@ -75,12 +75,10 @@ export function MatchCreationWizardActions({
   const currentIndex = Math.max(0, steps.findIndex((step) => step.id === currentStep));
   const previousStep = steps[currentIndex - 1];
   const nextStep = steps[currentIndex + 1];
-  const singleStep = steps.length < 2;
-  const edgeStep = !previousStep || !nextStep;
-  const lastStep = Boolean(previousStep && !nextStep);
   return (
-    <div className={`match-creation-wizard-actions${singleStep ? " is-single-step" : ""}${edgeStep ? " is-edge-step" : ""}${lastStep ? " is-last-step" : ""}`}>
-      <span className="match-creation-wizard-secondary-actions">
+    <div className="ui-action-row match-creation-wizard-actions">
+      {submitFeedback ? <small className="create-submit-warning">{submitFeedback}</small> : null}
+      <span className="ui-action-row match-creation-wizard-secondary-actions">
         <Button type="button" variant="secondary" onClick={onCancel}>
           <X size={16} /> 취소하기
         </Button>
@@ -90,8 +88,7 @@ export function MatchCreationWizardActions({
           </Button>
         ) : null}
       </span>
-      <span className="match-creation-wizard-primary-actions">
-        {submitFeedback ? <small className="create-submit-warning">{submitFeedback}</small> : null}
+      <span className="ui-action-row ui-action-row-end match-creation-wizard-primary-actions">
         {nextStep ? (
           <Button type="button" onClick={() => onStepChange(nextStep.id)}>
             다음 <ChevronRight size={17} />

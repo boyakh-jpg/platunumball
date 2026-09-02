@@ -1097,8 +1097,8 @@ test("생성 control은 공용 폭과 높이를 사용한다", () => {
     /@media \(min-width:\s*900px\)[\s\S]*?\.create-match-page \.create-mode-grid:has\(> button:nth-child\(2\):last-child\)\s*\{[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\);/,
   );
   assert.match(
-    courtControlStyles,
-    /\.match-creation-wizard-secondary-actions,[\s\S]*?\.match-creation-wizard-primary-actions\s*\{[^}]*display:\s*flex;[^}]*align-items:\s*center;/,
+    matchCreationWizardSource,
+    /className="ui-action-row match-creation-wizard-secondary-actions"/,
   );
   assert.match(
     courtControlStyles,
@@ -1108,6 +1108,26 @@ test("생성 control은 공용 폭과 높이를 사용한다", () => {
     matchCreationWizardSource,
     /match-creation-wizard-secondary-actions[\s\S]*취소하기[\s\S]*이전[\s\S]*match-creation-wizard-primary-actions[\s\S]*다음[\s\S]*<Button type="button" disabled=\{submitDisabled\} onClick=\{onSubmit\}/,
   );
+});
+
+test("생성 footer와 공용 방 모달은 버튼 행 정렬을 공유한다", () => {
+  const roomPrimary = read("src/components/recruiting/RecruitingRoomPrimarySection.jsx");
+  const roomActions = read("src/components/recruiting/RecruitingRoomActionSection.jsx");
+  const roomStyles = read("src/styles/features/recruiting-source-actions.css");
+  const roomToolbarStyles = read("src/styles/features/recruiting-party-lobby.css");
+  const createResponsive = read("src/styles/features/match-create-responsive.css");
+  assert.match(primitiveStyles, /\.ui-action-row-end\s*\{\s*justify-content: flex-end;/);
+  assert.match(primitiveStyles, /\.ui-action-row-end:empty\s*\{\s*display: none;/);
+  assert.match(matchCreationWizardSource, /className="ui-action-row match-creation-wizard-actions"/);
+  assert.match(matchCreationWizardSource, /className="ui-action-row ui-action-row-end match-creation-wizard-primary-actions"/);
+  assert.match(matchCreationWizardSource, /create-submit-warning[\s\S]*match-creation-wizard-secondary-actions/);
+  assert.doesNotMatch(createResponsive, /\.match-creation-wizard-(?:actions|secondary-actions|primary-actions)/);
+  assert.match(roomPrimary, /className="ui-action-row ui-action-row-end arena-room-share-actions"/);
+  assert.match(roomStyles, /\.arena-join-panel\s*\{[^}]*grid-template-columns: minmax\(0, 1fr\);/);
+  assert.doesNotMatch(roomToolbarStyles, /\.arena-lobby-topline > div:last-child|--ui-button-height-sm:/);
+  assert.match(roomActions, /ui-action-row ui-action-row-end">\s*\{!sourceRoomReadOnly && canFinalizeSourceMatch/);
+  assert.match(roomActions, /ui-action-row ui-action-row-end">\s*\{!sourceRoomReadOnly && !matchRoom && !recruitingRoomConfirmed && mine/);
+  assert.match(roomActions, /ui-action-row ui-action-row-end">\s*<Button type="submit" disabled=\{!canJoin \|\| joiningThisRoom\}/);
 });
 
 test("매칭과 기록 생성 선택 영역은 같은 제목과 버튼 타이포그래피를 사용한다", () => {

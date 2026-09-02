@@ -146,46 +146,17 @@
   gap: 12px;
 }
 
-.arena-lobby-topline > div:last-child {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.arena-lobby-topline > div:last-child > span {
-  color: var(--gold);
-  font-size: 0.86rem;
-  font-weight: 950;
-}
-
-.arena-lobby-topline > .arena-room-share-actions:last-child {
-  --ui-button-height-sm: 30px;
-  --ui-button-padding-x: 8px;
-  --ui-button-font-size: 0.74rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: flex-end;
-  flex-wrap: wrap;
-  gap: 6px;
+.arena-room-share-actions {
   min-width: 0;
 }
 
-.arena-lobby-topline > .arena-room-share-actions .button {
-  min-height: var(--ui-button-height-sm);
-  padding-inline: var(--ui-button-padding-x);
-  font-size: var(--ui-button-font-size);
-}
-
-.arena-lobby-topline > .arena-room-share-actions .button svg {
-  width: 14px;
-  height: 14px;
-}
-
 .arena-room-share-message {
+  flex-basis: 100%;
   color: var(--gold);
   font-size: 0.78rem;
   font-weight: 950;
-  white-space: nowrap;
+  text-align: right;
+  overflow-wrap: anywhere;
 }
 
 .arena-lobby-title {

@@ -1418,7 +1418,7 @@ test("CreateMatch persists bench capacity at top level and inside rules", () => 
   const cssSource = readCssManifest("src/styles/globals.css");
   assert.doesNotMatch(cssSource, /\.match-creation-wizard-nav ol\s*\{[^}]*min-width:\s*720px/);
   assert.doesNotMatch(cssSource, /\.create-match-page input\[type="checkbox"\][\s\S]*accent-color:/);
-  assert.match(cssSource, /@media \(max-width: 420px\)[\s\S]*\.match-creation-wizard-actions/);
+  assert.match(wizardSource, /className="ui-action-row match-creation-wizard-actions"/);
   const recruitingSource = readPageSourceGroup(RECRUITING_PAGE_SOURCE_PATHS);
   assert.match(recruitingSource, /참가 상태[\s\S]*?joinDraft\.reserve \? "reserve" : "starter"/);
   assert.match(recruitingSource, /const reserve = event\.target\.value === "reserve"/);

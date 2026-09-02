@@ -125,7 +125,7 @@ export function RecruitingRoomPrimarySection({ context }) {
                     <Badge tone={referee ? "blue" : "neutral"}>{getRoomRefereeLabel(selectedPost)}</Badge>
                     {requiresPaidCourtNotice(selectedPost) ? <Badge tone="orange">유료 구장</Badge> : null}
                   </div>
-                  <div className="arena-room-share-actions" aria-label={roomShareEnabled ? "방 공유" : "방 작업"}>
+                  <div className="ui-action-row ui-action-row-end arena-room-share-actions" aria-label={roomShareEnabled ? "방 공유" : "방 작업"}>
                     <Button type="button" size="sm" variant="secondary" onClick={() => setRoomHelpOpen(true)}>
                       <CircleHelp size={15} /> 진행 도움말
                     </Button>

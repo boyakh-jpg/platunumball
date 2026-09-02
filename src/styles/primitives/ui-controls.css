@@ -625,6 +625,14 @@ input[type="checkbox"]:hover:not(:disabled) {
   flex: 0 0 auto;
 }
 
+.ui-action-row-end {
+  justify-content: flex-end;
+}
+
+.ui-action-row-end:empty {
+  display: none;
+}
+
 .ui-modal-shell.ui-modal-shell {
   color: var(--rb-text);
   background: var(--ui-modal-bg);

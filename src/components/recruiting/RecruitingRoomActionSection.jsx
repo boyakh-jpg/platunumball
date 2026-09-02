@@ -34,7 +34,9 @@ export function RecruitingRoomActionSection({ context }) {
                   <div className="arena-owner-panel">
                     <strong>방 정보는 지금 확인할 수 있습니다</strong>
                     <span>로그인하면 이 방에 참가하고 채팅과 참가 관리를 사용할 수 있습니다.</span>
-                    <Button type="button" onClick={() => navigate(getLoginPath(`${window.location.pathname}${window.location.search}${window.location.hash}`))}>로그인</Button>
+                    <div className="ui-action-row ui-action-row-end">
+                      <Button type="button" onClick={() => navigate(getLoginPath(`${window.location.pathname}${window.location.search}${window.location.hash}`))}>로그인</Button>
+                    </div>
                   </div>
                 ) : matchRoom ? (
                   <div className="arena-owner-panel">
@@ -55,9 +57,11 @@ export function RecruitingRoomActionSection({ context }) {
                       <span className="arena-cancellation-reason"><b>취소 사유</b>{cancellationReasonText}</span>
                     ) : null}
                     {canRemakeRoom ? (
+                      <div className="ui-action-row ui-action-row-end">
                       <Button type="button" variant="secondary" onClick={remakeRoom}>
                         <RotateCcw size={17} /> {sourceMatch?.status === "confirmed" ? "같은 경기 또하기" : "같은 설정으로 다시 만들기"}
                       </Button>
+                      </div>
                     ) : null}
                     {!sourceMatchRecordBoardFirst && !sourceMatchIsRecordRoom && showSourceMatchRecordSummary ? (
                       <SourceMatchRecordSummary match={sourceMatch} userById={userById} />
@@ -72,6 +76,7 @@ export function RecruitingRoomActionSection({ context }) {
                       />
                     ) : null}
                     {sourceMatchApprovalOpen && !sourceMatchAction.disputed && canRefreshSourceMatchReview ? (
+                      <div className="ui-action-row ui-action-row-end">
                       <Button
                         type="button"
                         size="sm"
@@ -82,6 +87,7 @@ export function RecruitingRoomActionSection({ context }) {
                         <RefreshCw size={15} />
                         {sourceMatchReviewRefreshing ? "갱신 중" : "결과·이의 새로고침"}
                       </Button>
+                      </div>
                     ) : null}
                     {sourceMatchApprovalOpen && sourceMatch.refereeId ? (
                       <form className="arena-dispute-editor" onSubmit={submitSourceDispute}>
@@ -124,7 +130,7 @@ export function RecruitingRoomActionSection({ context }) {
                             />
                           </label>
                         ) : null}
-                        <div className="match-action-row">
+                        <div className="ui-action-row ui-action-row-end">
                           <Button type="submit" variant="secondary" disabled={!canRequestSourceMatchPointDispute || sourceDisputePending}>{sourceDisputePending ? "접수 중" : sourceHasOwnOpenDispute ? "처리 대기 중" : "이의제기"}</Button>
                         </div>
                         {sourceDisputeStatus ? <span className="form-warning" role="status">{sourceDisputeStatus}</span> : null}
@@ -146,7 +152,7 @@ export function RecruitingRoomActionSection({ context }) {
                           점수 정정 사유
                           <textarea disabled={!canRequestSourceMatchPointDispute} value={sourceDisputeDraft.customReason} onChange={(event) => setSourceDisputeDraft((current) => ({ ...current, customReason: event.target.value }))} />
                         </label>
-                        <div className="match-action-row">
+                        <div className="ui-action-row ui-action-row-end">
                           <Button type="submit" variant="secondary" disabled={sourceDisputePending || !canRequestSourceMatchPointDispute || !sourceDisputeDraft.customReason.trim()}>{sourceDisputePending ? "접수 중" : "이의제기"}</Button>
                         </div>
                         {sourceDisputeStatus ? <span className="form-warning" role="status">{sourceDisputeStatus}</span> : null}
@@ -174,7 +180,7 @@ export function RecruitingRoomActionSection({ context }) {
                       />
                     ) : null}
                     {showSourceNoDisputeAction ? (
-                      <div className="match-action-row">
+                      <div className="ui-action-row ui-action-row-end">
                         <span>이의 없음 {sourceNoDisputeStatus.count}/{sourceNoDisputeStatus.requiredCount}</span>
                         <Button
                           type="button"
@@ -186,6 +192,7 @@ export function RecruitingRoomActionSection({ context }) {
                         </Button>
                       </div>
                     ) : null}
+                    <div className="ui-action-row ui-action-row-end">
                     {!sourceRoomReadOnly && canFinalizeSourceMatch ? (
                       <Button
                         type="button"
@@ -250,6 +257,7 @@ export function RecruitingRoomActionSection({ context }) {
                         개인 기록 삭제
                       </Button>
                     ) : null}
+                    </div>
                   </div>
                 ) : recruitingRoomTerminalStatus ? (
                   <div className="arena-owner-panel">
@@ -259,9 +267,11 @@ export function RecruitingRoomActionSection({ context }) {
                       <span className="arena-cancellation-reason"><b>취소 사유</b>{cancellationReasonText}</span>
                     ) : null}
                     {canRemakeRoom ? (
+                      <div className="ui-action-row ui-action-row-end">
                       <Button type="button" variant="secondary" onClick={remakeRoom}>
                         <RotateCcw size={17} /> {sourceMatch?.status === "confirmed" ? "같은 경기 또하기" : "같은 설정으로 다시 만들기"}
                       </Button>
+                      </div>
                     ) : null}
                   </div>
                 ) : mine ? (
@@ -483,14 +493,17 @@ export function RecruitingRoomActionSection({ context }) {
                         />
                       )}
                     </div>
+                    <div className="ui-action-row ui-action-row-end">
                     <Button type="submit" disabled={!canJoin || joiningThisRoom}>
                       {joinDraft.joinMode === "team" ? <UsersRound size={18} /> : joinDraft.joinMode === "referee" ? <ShieldCheck size={18} /> : <UserRound size={18} />}
                       {joiningThisRoom ? "참여 중" : "참여하기"}
                     </Button>
+                    </div>
                     </>
                   </form>
                 )}
 
+                <div className="ui-action-row ui-action-row-end">
                 {!sourceRoomReadOnly && !matchRoom && !recruitingRoomConfirmed && mine ? (
                   <Button
                     type="button"
@@ -537,6 +550,7 @@ export function RecruitingRoomActionSection({ context }) {
                     {getRoomCancellationActionLabel("경기 취소", roomCancellationPolicy)}
                   </Button>
                 ) : null}
+                </div>
               </div>
               <RecruitingRoomActionFeedback context={context} />
     </>

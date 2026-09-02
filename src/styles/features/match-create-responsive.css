@@ -169,27 +169,6 @@
     margin-left: 0;
   }
 
-  .match-creation-wizard-actions {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: var(--space-4);
-  }
-
-  .match-creation-wizard-secondary-actions,
-  .match-creation-wizard-primary-actions {
-    display: contents;
-  }
-
-  .match-creation-wizard-actions .button {
-    width: 100%;
-    min-width: 0;
-  }
-
-  .match-creation-wizard-primary-actions .create-submit-warning {
-    grid-column: 1 / -1;
-    max-width: none;
-    text-align: right;
-  }
 }
 
 @media (max-width: 420px) {
@@ -226,18 +205,6 @@
     line-height: 1.15;
   }
 
-  .match-creation-wizard-actions {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .match-creation-wizard-actions:not(.is-edge-step) .match-creation-wizard-secondary-actions > :first-child,
-  .match-creation-wizard-actions.is-last-step .match-creation-wizard-secondary-actions > :first-child {
-    grid-column: 1 / -1;
-  }
-
-  .match-creation-wizard-primary-actions .create-submit-warning {
-    grid-column: 1 / -1;
-  }
 }
 
 /* 2026-07-17 external page surface convergence.

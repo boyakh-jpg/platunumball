@@ -90,17 +90,7 @@
   }
 
   .arena-room-share-actions {
-    justify-content: flex-start;
     width: 100%;
-  }
-
-  .arena-room-share-actions .button {
-    flex: 1 1 0;
-    min-width: 0;
-  }
-
-  .arena-room-share-message {
-    flex: 1 0 100%;
   }
 
   .arena-reserve-panel {

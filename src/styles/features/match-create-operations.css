@@ -646,24 +646,9 @@ html[data-theme] .app-main .create-match-page :is(
   color: var(--rb-orange);
 }
 
-.match-creation-wizard-actions {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-6);
-}
-
-.match-creation-wizard-actions .button,
 .match-creation-wizard-secondary-actions,
 .match-creation-wizard-primary-actions {
-  flex: 0 0 auto;
-}
-
-.match-creation-wizard-secondary-actions,
-.match-creation-wizard-primary-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
+  max-width: 100%;
 }
 
 .match-creation-wizard-primary-actions {
@@ -671,13 +656,9 @@ html[data-theme] .app-main .create-match-page :is(
   margin-left: auto;
 }
 
-.match-creation-wizard-actions .button {
-  min-width: 112px;
-  min-height: var(--ui-button-height);
-}
-
-.match-creation-wizard-primary-actions .create-submit-warning {
-  max-width: min(420px, 45vw);
+.match-creation-wizard-actions .create-submit-warning {
+  flex-basis: 100%;
+  text-align: right;
 }
 
 .create-referee-row {
