@@ -85,6 +85,9 @@ test("신고 운영 변경은 서버 전용 원자적 RPC와 감사 로그를 �
   assert.match(migration, /rankball_admin_level_for_profile/);
   assert.match(migration, /report_already_assigned/);
   assert.match(migration, /insert into public\.admin_audit_log/i);
+  assert.match(migration, /p_actor_admin_level\s+pg_catalog\.int4/i);
+  assert.doesNotMatch(migration, /pg_catalog\.integer/i);
+  assert.match(migration, /set search_path = ''/i);
   assert.match(migration, /grant execute[^;]+service_role/is);
   assert.doesNotMatch(migration, /^\s*(?:delete\s+from|truncate|drop\s+table)\b/im);
   assert.match(endpoint, /rankball_admin_report_operation/);

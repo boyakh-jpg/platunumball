@@ -1,5 +1,6 @@
 import { Activity, BellRing, ClipboardList, Database, Gauge, MapPin, ShieldAlert, ShieldCheck, SlidersHorizontal, UserRound } from "lucide-react";
-import { ADMIN_REVIEW_ACTIONS } from "../lib/admin.js";
+import { ADMIN_REVIEW_ACTIONS, getAdminActionTargetUserIds, isHighImpactAdminReviewAction } from "../lib/admin.js";
+import { getCourtCorrectionPatch } from "../lib/courts.js";
 
 export const ADMIN_SECTION_OPTIONS = [
   { id: "operations", group: "운영 현황", label: "운영 현황", caption: "지금 처리할 업무", icon: Gauge },
@@ -26,6 +27,94 @@ export const ADMIN_QUEUE_FOCUS_LABELS = {
 };
 
 export const ACTION_OPTIONS = Object.entries(ADMIN_REVIEW_ACTIONS).map(([id, meta]) => ({ id, ...meta }));
+
+export function getAdminSectionCounts({ adminViewState, adminStatus, appointments, model, section }) {
+  const courtReports = (adminViewState.reports ?? []).filter((report) => (
+    report.status === "open" && ["court", "court_review"].includes(report.type)
+  )).length;
+  const localCounts = {
+    operations: "",
+    reports: (adminViewState.reports ?? []).filter((report) => report.status === "open").length,
+    courts: (adminViewState.settings?.courtRequests ?? []).filter(isPendingCourtRequest).length + courtReports,
+    courtDb: "",
+    players: model.players.filter((row) => row.openCount > 0).length,
+    userOps: "",
+    matches: model.matches.filter((row) => row.issueCount > 0).length,
+    teams: model.teams.filter((row) => row.openCount > 0).length,
+    appointments: appointments.summary.pendingAppointmentCount,
+    ratingPolicy: "",
+  };
+  return Object.fromEntries(Object.entries(localCounts).map(([key, value]) => [
+    key,
+    ["operations", "ratingPolicy", "userOps", "courtDb"].includes(key) ? "" : adminStatus?.counts?.[key] ?? (key === section ? value : ""),
+  ]));
+}
+
+export function getVisibleAdminActionOptions({ adminLevel, selectedMatch, selectedReport, selectedReportIsVoidRestore }) {
+  if (selectedReportIsVoidRestore) {
+    return adminLevel >= 50 ? ACTION_OPTIONS.filter((option) => ["keepMatchVoid", "restoreMatchHalf", "restoreMatchFull"].includes(option.id)) : [];
+  }
+  const typeActions = {
+    team_emblem: ["resetTeamEmblem", "dismissReport", "maliciousReporter"],
+    team_name: ["renameTeam", "dismissReport", "maliciousReporter"],
+    affiliation_name: ["renameAffiliation", "mergeAffiliation", "dismissReport", "maliciousReporter"],
+  };
+  let ids = typeActions[selectedReport?.type];
+  if (selectedReport?.type === "court" && selectedReport.courtCorrection?.field === "duplicate") {
+    ids = ["markCourtDuplicate", "dismissReport", "hideCourt", "maliciousReporter"];
+  } else if (selectedReport?.type === "court" && getCourtCorrectionPatch(selectedReport.courtCorrection)) {
+    ids = ["applyCourtCorrection", "dismissReport", "hideCourt", "maliciousReporter"];
+  }
+  if (ids) {
+    const permittedIds = adminLevel >= 50 ? ids : ["dismissReport"];
+    return ACTION_OPTIONS.filter((option) => permittedIds.includes(option.id));
+  }
+  ids = ["validReport", "dismissReport"];
+  if (adminLevel >= 50) {
+    ids.push("maliciousReporter");
+    if (selectedReport?.type === "court") ids.push("hideCourt");
+    if (selectedReport?.type === "court_review") ids.push("hideCourtReview");
+    if (getAdminActionTargetUserIds(selectedReport, "suspendTarget", selectedMatch).length) ids.push("suspendTarget");
+    if (getAdminActionTargetUserIds(selectedReport, "refereeDiscipline", selectedMatch).length) ids.push("refereeDiscipline");
+  }
+  return ACTION_OPTIONS.filter((option) => ids.includes(option.id));
+}
+
+export function getAdminActionState({ actionDraft, selectedMatch, selectedReport, selectedReportIsVoidRestore, userMap }) {
+  const actionTargetUserIds = getAdminActionTargetUserIds(
+    selectedReport,
+    selectedReportIsVoidRestore && actionDraft.penaltyType ? "suspendTarget" : actionDraft.actionType,
+    selectedMatch,
+  );
+  const targetCandidates = actionTargetUserIds.map((userId) => userMap[userId]).filter(Boolean);
+  const selectedTargetUserId = targetCandidates.some((user) => user.id === actionDraft.targetUserId)
+    ? actionDraft.targetUserId
+    : targetCandidates[0]?.id ?? "";
+  const actionNeedsTarget = ["maliciousReporter", "suspendTarget", "refereeDiscipline"].includes(actionDraft.actionType)
+    || (selectedReportIsVoidRestore && Boolean(actionDraft.penaltyType));
+  const actionNeedsReplacementName = ["renameTeam", "renameAffiliation"].includes(actionDraft.actionType);
+  const actionNeedsMergeTarget = actionDraft.actionType === "mergeAffiliation";
+  const nameModerationInvalid = (actionNeedsReplacementName && !actionDraft.replacementName.trim())
+    || (actionNeedsMergeTarget && !actionDraft.mergeTargetId);
+  const reviewReasonMaxLength = actionDraft.actionType === "markCourtDuplicate" ? 160 : 500;
+  return {
+    targetCandidates,
+    selectedTargetUserId,
+    actionNeedsTarget,
+    actionTargetIsReporter: actionDraft.actionType === "maliciousReporter",
+    actionNeedsReplacementName,
+    actionNeedsMergeTarget,
+    nameModerationAction: actionNeedsReplacementName || actionNeedsMergeTarget,
+    reviewReasonMaxLength,
+    reviewActionInvalid: actionDraft.reason.trim().length < 4
+      || actionDraft.feedback.trim().length < 4
+      || actionDraft.reason.trim().length > reviewReasonMaxLength
+      || actionDraft.feedback.trim().length > 500
+      || (actionNeedsTarget && !selectedTargetUserId)
+      || nameModerationInvalid,
+    reviewActionHighImpact: isHighImpactAdminReviewAction(actionDraft.actionType),
+  };
+}
 
 export const APPOINTMENT_ACTION_OPTIONS = [
   { id: "appointReferee", label: "심판 임명" },

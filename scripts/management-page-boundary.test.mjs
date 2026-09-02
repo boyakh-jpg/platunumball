@@ -417,6 +417,7 @@ const managementModules = [
   "src/pages/settingsPageModel.js",
   "src/pages/useSettingsPageController.jsx",
   "src/pages/useSettingsReportController.jsx",
+  "src/pages/settingsReportSearchModel.js",
   "src/pages/useSettingsCourtRequestController.js",
   "src/pages/useSettingsCourtEvidenceController.js",
   "src/pages/useSettingsFavorites.jsx",
@@ -434,6 +435,8 @@ const managementModules = [
   "src/pages/AdminCourtRequestEvidence.jsx",
   "src/pages/AdminAppointmentSection.jsx",
   "src/pages/AdminDetailPanel.jsx",
+  "src/pages/AdminOperationsPanel.jsx",
+  "src/pages/AdminReportsPanel.jsx",
   "src/pages/useAdminPageController.jsx",
   "src/pages/AdminPageView.jsx",
   "src/components/admin/CourtDatabasePanel.jsx",
@@ -736,8 +739,8 @@ test("관리자 조치는 현재 선택 대상과 서버 전체 대기 건수를
 
 test("관리자 업무 탭은 임명 처리 상태를 controller에서 받는다", async () => {
   const source = await read("src/pages/AdminPageView.jsx");
-  assert.match(source, /reviewActionPending,\s*appointmentActionPending,/);
-  assert.match(source, /disabled=\{reviewActionPending \|\| appointmentActionPending\}/);
+  assert.match(source, /reviewActionPending,\s*reportOperationPending,\s*appointmentActionPending,/);
+  assert.match(source, /disabled=\{reviewActionPending \|\| reportOperationPending \|\| appointmentActionPending\}/);
 });
 
 test("설정 포털은 열린 동안 뒤 화면을 잠그고 포커스를 내부에서 순환한다", async () => {
@@ -884,7 +887,9 @@ test("비로그인 랜딩은 경기 기록 서비스 정의와 실제 제품 데
   assert.match(landing, /경기 전[\s\S]*모인다[\s\S]*경기 중[\s\S]*경기한다[\s\S]*경기 후[\s\S]*기록된다/u);
   assert.equal(landing.match(/<LandingDemoFrame \/>/gu)?.length, 1);
   assert.match(demoFrame, /autoPlay=\{!prefersReducedMotion\}[\s\S]*muted[\s\S]*playsInline/u);
-  assert.match(demoFrame, /영상 준비 중[\s\S]*최종 제품 데모 영상은 이 프레임에 연결됩니다\./u);
+  assert.match(demoFrame, /assetUrl\("\/assets\/showcase\/landing-product-demo\.webm"\)[\s\S]*video\/webm/u);
+  assert.match(demoFrame, /assetUrl\("\/assets\/showcase\/landing-product-demo\.mp4"\)[\s\S]*video\/mp4/u);
+  assert.match(demoFrame, /assetUrl\("\/assets\/showcase\/landing-product-demo-poster\.webp"\)/u);
   assert.doesNotMatch(landing, /MatchReceiptPreview|LANDING_RECEIPT_DRAFT|ui-match-clock-scoreboard/u);
   assert.doesNotMatch(landing, /guest-landing-mobile-cta|guest-landing-final-cta/u);
   assert.doesNotMatch(landing, /fetch\(|openRecruiting|completedMatches|landing-stat-grid/u);

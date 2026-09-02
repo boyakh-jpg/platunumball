@@ -2381,20 +2381,20 @@ end;
 $$;
 
 create or replace function public.rankball_admin_report_operation(
-  p_actor_profile_id text,
-  p_actor_admin_level integer,
-  p_report_id text,
-  p_operation text
+  p_actor_profile_id pg_catalog.text,
+  p_actor_admin_level pg_catalog.int4,
+  p_report_id pg_catalog.text,
+  p_operation pg_catalog.text
 )
-returns jsonb
+returns pg_catalog.jsonb
 language plpgsql
 security definer
-set search_path = public
+set search_path = ''
 as $$
 declare
   report_row public.reports%rowtype;
   updated_row public.reports%rowtype;
-  now_ts timestamptz := now();
+  now_ts pg_catalog.timestamptz := pg_catalog.now();
 begin
   if public.rankball_admin_level_for_profile(p_actor_profile_id, p_actor_admin_level) < 30 then
     raise exception 'admin_permission_required' using errcode = '42501';
@@ -2452,19 +2452,21 @@ begin
     payload,
     created_at
   ) values (
-    'admin_report_operation_' || md5(random()::text || clock_timestamp()::text),
+    'admin_report_operation_' || pg_catalog.md5(
+      pg_catalog.random()::pg_catalog.text || pg_catalog.clock_timestamp()::pg_catalog.text
+    ),
     'report_operation',
     'committed',
     p_report_id,
     p_actor_profile_id,
-    jsonb_build_object(
+    pg_catalog.jsonb_build_object(
       'operation', p_operation,
-      'previous', jsonb_build_object(
+      'previous', pg_catalog.jsonb_build_object(
         'priority', report_row.priority,
         'assignedTo', report_row.assigned_to,
         'assignedAt', report_row.assigned_at
       ),
-      'next', jsonb_build_object(
+      'next', pg_catalog.jsonb_build_object(
         'priority', updated_row.priority,
         'assignedTo', updated_row.assigned_to,
         'assignedAt', updated_row.assigned_at
@@ -2473,7 +2475,10 @@ begin
     now_ts
   );
 
-  return jsonb_build_object('ok', true, 'report', to_jsonb(updated_row));
+  return pg_catalog.jsonb_build_object(
+    'ok', true,
+    'report', pg_catalog.to_jsonb(updated_row)
+  );
 end;
 $$;
 
@@ -2979,12 +2984,22 @@ end;
 $$;
 
 revoke all on function public.rankball_approve_court_request(text, integer, text) from public;
-revoke all on function public.rankball_admin_report_operation(text, integer, text, text) from public, anon, authenticated;
+revoke all on function public.rankball_admin_report_operation(
+  pg_catalog.text,
+  pg_catalog.int4,
+  pg_catalog.text,
+  pg_catalog.text
+) from public, anon, authenticated;
 revoke all on function public.rankball_report_court_request(text, text, text) from public;
 revoke all on function public.rankball_submit_court_review(text, jsonb) from public;
 revoke all on function public.rankball_submit_court_request(text, jsonb) from public;
 grant execute on function public.rankball_approve_court_request(text, integer, text) to service_role;
-grant execute on function public.rankball_admin_report_operation(text, integer, text, text) to service_role;
+grant execute on function public.rankball_admin_report_operation(
+  pg_catalog.text,
+  pg_catalog.int4,
+  pg_catalog.text,
+  pg_catalog.text
+) to service_role;
 grant execute on function public.rankball_report_court_request(text, text, text) to service_role;
 grant execute on function public.rankball_submit_court_review(text, jsonb) to service_role;
 grant execute on function public.rankball_submit_court_request(text, jsonb) to service_role;

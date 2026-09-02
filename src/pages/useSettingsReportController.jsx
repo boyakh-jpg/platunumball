@@ -3,11 +3,12 @@ import { useLocation } from "react-router-dom";
 import { REPORT_TARGET_TYPES, VOID_MATCH_RESTORE_REPORT_REASON, getCourtCorrectionFieldForReportReason, getReportReasonValue, getReportTargetType } from "../lib/reportReasons.js";
 import { canRequestVoidMatchRestore, getReportableMatchTimeMs } from "../lib/matchUtils.js";
 import { REPORT_MATCH_WINDOW_MS } from "../lib/constants.js";
-import { getCourtHashtag, getMatchHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
+import { getMatchHashtag, getUserHashtag } from "../lib/handles.js";
 import { DIRECTORY_SELF_PAGE_LIMIT } from "../lib/queryPolicy.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 import { isReportTargetCompatible, parseReportEntry } from "../lib/reportEntry.js";
-import { getReportParticipantRows, getMatchReportTitle, matchesReportSearchQuery } from "./settingsPageModel.js";
+import { getReportParticipantRows, getMatchReportTitle } from "./settingsPageModel.js";
+import { buildReportTargetSearchItems, getReportRemoteSearchTypes, mapReportRemoteTarget } from "./settingsReportSearchModel.js";
 
 export default function useSettingsReportController({ app, userMap, matchMap, courtRequests, approvedCourts, courtReviews }) {
 const location = useLocation();
@@ -166,186 +167,26 @@ useEffect(() => {
     }
     initializedEntryRef.current = entryKey;
   }, [app.currentUserId, location.pathname, location.search, reportEntry, reportableMatchCandidates, userMap]);
-const reportTargetSearchItems = useMemo(() => {
-    if (!reportReason) return [];
-    const includePlayers = reportTargetType === REPORT_TARGET_TYPES.player || reportTargetType === REPORT_TARGET_TYPES.mixed;
-    const includeMatches = reportTargetType === REPORT_TARGET_TYPES.match || reportTargetType === REPORT_TARGET_TYPES.mixed;
-    const includeCourtRequests = reportTargetType === REPORT_TARGET_TYPES.courtRequest || reportTargetType === REPORT_TARGET_TYPES.mixed;
-    const includeCourts = reportTargetType === REPORT_TARGET_TYPES.court || reportTargetType === REPORT_TARGET_TYPES.mixed;
-    const includeCourtReviews = reportTargetType === REPORT_TARGET_TYPES.courtReview || reportTargetType === REPORT_TARGET_TYPES.mixed;
-    const includeTeams = reportTargetType === REPORT_TARGET_TYPES.teamName || reportTargetType === REPORT_TARGET_TYPES.teamEmblem;
-    const items = [];
-
-    if (includeMatches) {
-      reportableMatchCandidates.forEach((match) => {
-        const hashtag = getMatchHashtag(match);
-        const title = getMatchReportTitle(match);
-        items.push({
-          id: `match:${match.id}`,
-          kind: "match",
-          match,
-          title,
-          subtitle: `${match.scheduledDate || match.scheduledAt || "일정 미정"} · ${match.court || "구장 미정"}`,
-          meta: hashtag,
-          haystack: `${title} ${hashtag} ${match.teamA?.name ?? ""} ${match.teamB?.name ?? ""} ${match.court ?? ""} ${match.scheduledDate ?? ""} ${match.scheduledTime ?? ""}`.toLowerCase(),
-        });
-      });
-    }
-
-    if (includePlayers) {
-      reportableMatchCandidates.forEach((match) => {
-        const matchHashtag = getMatchHashtag(match);
-        getReportParticipantRows(match, userMap).forEach((row) => {
-          if (row.userId === app.currentUserId) return;
-          const userHashtag = getUserHashtag(row.user);
-          const matchTitle = getMatchReportTitle(match);
-          items.push({
-            id: `player:${match.id}:${row.userId}`,
-            kind: "player",
-            match,
-            row,
-            title: row.user.name,
-            subtitle: `${row.sideLabel} · ${row.teamName} · ${row.role} · ${matchTitle}`,
-            meta: `${userHashtag} · ${matchHashtag}`,
-            haystack: `${row.user.name} ${userHashtag} ${row.user.position} ${row.teamName} ${row.role} ${matchTitle} ${matchHashtag} ${match.court ?? ""}`.toLowerCase(),
-          });
-        });
-      });
-    }
-
-    if (includeCourtRequests) {
-      reportableCourtRequests.forEach((request) => {
-        const requester = userMap[request.requestedBy];
-        const hashtag = request.hashtag ? getCourtHashtag(request) : "";
-        items.push({
-          id: `court-request:${request.id}`,
-          kind: "court_request",
-          request,
-          title: request.name,
-          subtitle: `${request.addressText || "주소 미정"} · ${requester?.name ?? "요청자"}`,
-          meta: hashtag || "구장요청",
-          haystack: `${request.name} ${request.addressText ?? ""} ${request.region ?? ""} ${requester?.name ?? ""} ${hashtag}`.toLowerCase(),
-        });
-      });
-    }
-
-    if (includeCourts) {
-      reportableCourts.forEach((court) => {
-        const hashtag = court.hashtag ? getCourtHashtag(court) : "";
-        items.push({
-          id: `court:${court.id}`,
-          kind: "court",
-          court,
-          title: court.name,
-          subtitle: `${court.addressText || "주소 미정"} · 등록 구장`,
-          meta: hashtag || "승인 구장",
-          haystack: `${court.name} ${court.addressText ?? ""} ${court.region ?? ""} ${hashtag}`.toLowerCase(),
-        });
-      });
-    }
-
-    if (includeCourtReviews) {
-      reportableCourtReviews.forEach((review) => {
-        const reviewer = userMap[review.reviewerId];
-        const match = matchMap[review.matchId];
-        items.push({
-          id: `court-review:${review.id}`,
-          kind: "court_review",
-          review,
-          title: review.courtName || "구장 리뷰",
-          subtitle: `${review.rating ?? "-"}점 · ${reviewer?.name ?? "작성자"} · ${match?.title ?? "경기"}`,
-          meta: match ? getMatchHashtag(match) : "구장 리뷰",
-          haystack: `${review.courtName ?? ""} ${review.memo ?? ""} ${review.tags?.join?.(" ") ?? ""} ${reviewer?.name ?? ""} ${match?.title ?? ""}`.toLowerCase(),
-        });
-      });
-    }
-
-    if (includeTeams) {
-      reportableTeams.forEach((team) => {
-        items.push({
-          id: `team:${team.id}`,
-          kind: "team",
-          team,
-          title: team.name,
-          subtitle: `${team.region || "지역 미정"} · ${team.homeCourt || "홈코트 미정"}`,
-          meta: getTeamHashtag(team),
-          haystack: `${team.name} ${team.region ?? ""} ${team.homeCourt ?? ""} ${getTeamHashtag(team)}`.toLowerCase(),
-        });
-      });
-    }
-
-    return items.filter((item) => matchesReportSearchQuery(item.haystack, reportTargetQuery));
-  }, [app.currentUserId, matchMap, reportReason, reportTargetQuery, reportTargetType, reportableCourtRequests, reportableCourtReviews, reportableCourts, reportableMatchCandidates, reportableTeams, userMap]);
-const reportRemoteSearchTypes = reportTargetType === REPORT_TARGET_TYPES.courtReview
-    ? ["court_review"]
-    : reportTargetType === REPORT_TARGET_TYPES.teamName || reportTargetType === REPORT_TARGET_TYPES.teamEmblem
-      ? ["team"]
-      : reportTargetType === REPORT_TARGET_TYPES.courtRequest
-        ? ["court_request"]
-        : reportTargetType === REPORT_TARGET_TYPES.court
-          ? ["court"]
-          : reportTargetType === REPORT_TARGET_TYPES.mixed
-            ? ["court", "court_review", "match_code"]
-            : reportNeedsMatchData
-              ? ["match_code"]
-              : [];
-const mapRemoteReportTarget = (item) => {
-    if (item?.kind === "match_code") {
-      const match = reportableMatchCandidates.find((candidate) => candidate.id === item.matchId);
-      if (!match) return null;
-      return {
-        id: `match:${match.id}`,
-        kind: "match",
-        match,
-        title: getMatchReportTitle(match),
-        subtitle: `${match.scheduledDate || match.scheduledAt || "일정 미정"} · ${match.court || "구장 미정"}`,
-        meta: getMatchHashtag(match),
-      };
-    }
-    if (item?.kind === "court_request") {
-      return {
-        id: `court-request:${item.id}`,
-        kind: "court_request",
-        request: item,
-        title: item.name,
-        subtitle: `${item.addressText || "주소 미정"} · 등록요청`,
-        meta: item.hashtag || "구장요청",
-      };
-    }
-    if (item?.kind === "team") {
-      if (item.members?.some((member) => member.role === "captain" && member.userId === app.currentUserId)) return null;
-      return {
-        id: `team:${item.id}`,
-        kind: "team",
-        team: item,
-        title: item.name,
-        subtitle: `${item.region || "지역 미정"} · ${item.homeCourt || "홈코트 미정"}`,
-        meta: getTeamHashtag(item),
-      };
-    }
-    if (item?.kind === "court") {
-      const hashtag = item.hashtag ? getCourtHashtag(item) : "";
-      return {
-        id: `court:${item.id}`,
-        kind: "court",
-        court: item,
-        title: item.name,
-        subtitle: `${item.addressText || "주소 미정"} · 등록 구장`,
-        meta: hashtag || "승인 구장",
-      };
-    }
-    if (item?.kind === "court_review") {
-      return {
-        id: `court-review:${item.id}`,
-        kind: "court_review",
-        review: item,
-        title: item.courtName || "구장 리뷰",
-        subtitle: `${item.rating ?? "-"}점 · ${userMap[item.reviewerId]?.name ?? "작성자"} · ${matchMap[item.matchId]?.title ?? "경기"}`,
-        meta: matchMap[item.matchId] ? getMatchHashtag(matchMap[item.matchId]) : "구장 리뷰",
-      };
-    }
-    return null;
-  };
+const reportTargetSearchItems = useMemo(() => buildReportTargetSearchItems({
+    currentUserId: app.currentUserId,
+    matchMap,
+    reportReason,
+    reportTargetQuery,
+    reportTargetType,
+    reportableCourtRequests,
+    reportableCourtReviews,
+    reportableCourts,
+    reportableMatchCandidates,
+    reportableTeams,
+    userMap,
+  }), [app.currentUserId, matchMap, reportReason, reportTargetQuery, reportTargetType, reportableCourtRequests, reportableCourtReviews, reportableCourts, reportableMatchCandidates, reportableTeams, userMap]);
+const reportRemoteSearchTypes = getReportRemoteSearchTypes(reportTargetType, reportNeedsMatchData);
+const mapRemoteReportTarget = (item) => mapReportRemoteTarget(item, {
+    currentUserId: app.currentUserId,
+    matchMap,
+    reportableMatchCandidates,
+    userMap,
+  });
 const hasValidVoidRestoreMemo = !isVoidRestoreReport || reportMemo.trim().length >= 10;
 const canSubmitReport = Boolean(reportReason) && hasValidVoidRestoreMemo && (
     reportTargetType === REPORT_TARGET_TYPES.courtRequest

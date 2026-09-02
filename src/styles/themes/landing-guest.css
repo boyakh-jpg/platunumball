@@ -206,7 +206,7 @@
 
 .guest-landing-demo-video {
   display: block;
-  object-fit: cover;
+  object-fit: contain;
 }
 
 .guest-landing-demo-poster {

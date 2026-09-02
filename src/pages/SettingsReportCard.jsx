@@ -105,8 +105,10 @@ export function SettingsReportCard({ controller, onOpenList, onOpenDetail }) {
                 <h2>신고 접수</h2>
                 <p className="eyebrow">신고</p>
               </div>
-              <Badge tone={currentUserReports.length ? "orange" : "neutral"}>{currentUserReports.length}건</Badge>
             </legend>
+            <div className="settings-fieldset-status-row">
+              <Badge tone={currentUserReports.length ? "orange" : "neutral"}>{currentUserReports.length}건</Badge>
+            </div>
             <form className="form-stack" onSubmit={submitReport}>
               <label>
                 사유

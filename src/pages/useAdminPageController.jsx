@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { ADMIN_REVIEW_ACTIONS, buildAdminAppointmentModel, buildAdminReviewModel, getAdminActionTargetUserIds, getAdminReviewMetrics, isHighImpactAdminReviewAction } from "../lib/admin.js";
-import { getCourtCorrectionPatch, getCourtFacilityBaseName, getCourtLocationMatches, getCourtMapUrl, getCourtStandardName, normalizeCourtSourceUrl } from "../lib/courts.js";
+import { ADMIN_REVIEW_ACTIONS, buildAdminAppointmentModel, buildAdminReviewModel, getAdminReviewMetrics } from "../lib/admin.js";
+import { getCourtFacilityBaseName, getCourtLocationMatches, getCourtMapUrl, getCourtStandardName, normalizeCourtSourceUrl } from "../lib/courts.js";
 import { ADMIN_DEFAULT_PAGE_LIMIT, DEFAULT_ADMIN_SECTION, normalizeAdminQueueFocus, normalizeAdminQueueMode } from "../lib/queryPolicy.js";
 import { getTeamEmblemErrorMessage } from "../lib/teamEmblem.js";
-import { ACTION_OPTIONS, ADMIN_SECTION_OPTIONS, REVIEW_WORKFLOW_COPY, isPendingCourtRequest } from "./adminPageModel.js";
+import { ADMIN_SECTION_OPTIONS, REVIEW_WORKFLOW_COPY, getAdminActionState, getAdminSectionCounts, getVisibleAdminActionOptions, isPendingCourtRequest } from "./adminPageModel.js";
 
 export default function useAdminPageController({
   app
@@ -155,27 +155,9 @@ export default function useAdminPageController({
     name: courtApprovalDraft.approvedName,
   }) : "";
   const workflow = REVIEW_WORKFLOW_COPY[view] ?? REVIEW_WORKFLOW_COPY.players;
-  const sectionCounts = useMemo(() => {
-    const courtReports = (adminViewState.reports ?? []).filter((report) => (
-      report.status === "open" && ["court", "court_review"].includes(report.type)
-    )).length;
-    const localCounts = {
-      operations: "",
-      reports: (adminViewState.reports ?? []).filter((report) => report.status === "open").length,
-      courts: (adminViewState.settings?.courtRequests ?? []).filter(isPendingCourtRequest).length + courtReports,
-      courtDb: "",
-      players: model.players.filter((row) => row.openCount > 0).length,
-      userOps: "",
-      matches: model.matches.filter((row) => row.issueCount > 0).length,
-      teams: model.teams.filter((row) => row.openCount > 0).length,
-      appointments: appointments.summary.pendingAppointmentCount,
-      ratingPolicy: "",
-    };
-    return Object.fromEntries(Object.entries(localCounts).map(([key, value]) => [
-      key,
-      ["operations", "ratingPolicy", "userOps", "courtDb"].includes(key) ? "" : app.adminStatus?.counts?.[key] ?? (key === section ? value : ""),
-    ]));
-  }, [adminViewState.reports, adminViewState.settings?.courtRequests, app.adminStatus?.counts, appointments.summary.pendingAppointmentCount, model.matches, model.players, model.teams, section]);
+  const sectionCounts = useMemo(() => getAdminSectionCounts({
+    adminViewState, adminStatus: app.adminStatus, appointments, model, section,
+  }), [adminViewState, app.adminStatus, appointments, model, section]);
   const activeAdminPage = app.adminStatus?.section === section && app.adminStatus?.queueMode === queueMode && app.adminStatus?.focus === queueFocus
     ? app.adminStatus.page
     : null;
@@ -236,74 +218,16 @@ export default function useAdminPageController({
       setReportOperationPending(false);
     }
   };
-  const visibleActionOptions = useMemo(() => {
-    if (selectedReportIsVoidRestore) {
-      return adminLevel >= 50 ? ACTION_OPTIONS.filter((option) => ["keepMatchVoid", "restoreMatchHalf", "restoreMatchFull"].includes(option.id)) : [];
-    }
-    if (selectedReport?.type === "court" && selectedReport.courtCorrection?.field === "duplicate") {
-      const ids = adminLevel >= 50
-        ? ["markCourtDuplicate", "dismissReport", "hideCourt", "maliciousReporter"]
-        : ["dismissReport"];
-      return ACTION_OPTIONS.filter((option) => ids.includes(option.id));
-    }
-    if (selectedReport?.type === "court" && getCourtCorrectionPatch(selectedReport.courtCorrection)) {
-      const ids = adminLevel >= 50
-        ? ["applyCourtCorrection", "dismissReport", "hideCourt", "maliciousReporter"]
-        : ["dismissReport"];
-      return ACTION_OPTIONS.filter((option) => ids.includes(option.id));
-    }
-    if (selectedReport?.type === "team_emblem") {
-      const ids = adminLevel >= 50 ? ["resetTeamEmblem", "dismissReport", "maliciousReporter"] : ["dismissReport"];
-      return ACTION_OPTIONS.filter((option) => ids.includes(option.id));
-    }
-    if (selectedReport?.type === "team_name") {
-      const ids = adminLevel >= 50 ? ["renameTeam", "dismissReport", "maliciousReporter"] : ["dismissReport"];
-      return ACTION_OPTIONS.filter((option) => ids.includes(option.id));
-    }
-    if (selectedReport?.type === "affiliation_name") {
-      const ids = adminLevel >= 50 ? ["renameAffiliation", "mergeAffiliation", "dismissReport", "maliciousReporter"] : ["dismissReport"];
-      return ACTION_OPTIONS.filter((option) => ids.includes(option.id));
-    }
-    const ids = ["validReport", "dismissReport"];
-    if (adminLevel >= 50) {
-      ids.push("maliciousReporter");
-      if (selectedReport?.type === "court") ids.push("hideCourt");
-      if (selectedReport?.type === "court_review") ids.push("hideCourtReview");
-      if (getAdminActionTargetUserIds(selectedReport, "suspendTarget", selectedMatch).length) ids.push("suspendTarget");
-      if (getAdminActionTargetUserIds(selectedReport, "refereeDiscipline", selectedMatch).length) ids.push("refereeDiscipline");
-    }
-    return ACTION_OPTIONS.filter((option) => ids.includes(option.id));
-  }, [adminLevel, selectedMatch, selectedReport, selectedReportIsVoidRestore]);
-  const actionTargetUserIds = useMemo(
-    () => getAdminActionTargetUserIds(
-      selectedReport,
-      selectedReportIsVoidRestore && actionDraft.penaltyType ? "suspendTarget" : actionDraft.actionType,
-      selectedMatch,
-    ),
-    [actionDraft.actionType, actionDraft.penaltyType, selectedMatch, selectedReport, selectedReportIsVoidRestore],
-  );
-  const targetCandidates = useMemo(() => {
-    return actionTargetUserIds.map((userId) => userMap[userId]).filter(Boolean);
-  }, [actionTargetUserIds, userMap]);
-  const selectedTargetUserId = targetCandidates.some((user) => user.id === actionDraft.targetUserId)
-    ? actionDraft.targetUserId
-    : targetCandidates[0]?.id ?? "";
-  const actionNeedsTarget = ["maliciousReporter", "suspendTarget", "refereeDiscipline"].includes(actionDraft.actionType)
-    || (selectedReportIsVoidRestore && Boolean(actionDraft.penaltyType));
-  const actionTargetIsReporter = actionDraft.actionType === "maliciousReporter";
-  const actionNeedsReplacementName = ["renameTeam", "renameAffiliation"].includes(actionDraft.actionType);
-  const actionNeedsMergeTarget = actionDraft.actionType === "mergeAffiliation";
-  const nameModerationAction = actionNeedsReplacementName || actionNeedsMergeTarget;
-  const nameModerationInvalid = (actionNeedsReplacementName && !actionDraft.replacementName.trim())
-    || (actionNeedsMergeTarget && !actionDraft.mergeTargetId);
-  const reviewReasonMaxLength = actionDraft.actionType === "markCourtDuplicate" ? 160 : 500;
-  const reviewActionInvalid = actionDraft.reason.trim().length < 4
-    || actionDraft.feedback.trim().length < 4
-    || actionDraft.reason.trim().length > reviewReasonMaxLength
-    || actionDraft.feedback.trim().length > 500
-    || (actionNeedsTarget && !selectedTargetUserId)
-    || nameModerationInvalid;
-  const reviewActionHighImpact = isHighImpactAdminReviewAction(actionDraft.actionType);
+  const visibleActionOptions = useMemo(() => getVisibleAdminActionOptions({
+    adminLevel, selectedMatch, selectedReport, selectedReportIsVoidRestore,
+  }), [adminLevel, selectedMatch, selectedReport, selectedReportIsVoidRestore]);
+  const {
+    targetCandidates, selectedTargetUserId, actionNeedsTarget, actionTargetIsReporter,
+    actionNeedsReplacementName, actionNeedsMergeTarget, nameModerationAction,
+    reviewReasonMaxLength, reviewActionInvalid, reviewActionHighImpact,
+  } = useMemo(() => getAdminActionState({
+    actionDraft, selectedMatch, selectedReport, selectedReportIsVoidRestore, userMap,
+  }), [actionDraft, selectedMatch, selectedReport, selectedReportIsVoidRestore, userMap]);
   const reviewMetrics = selectedRow ? getAdminReviewMetrics(view, selectedRow) : [];
   const selectedNeedsAction = Boolean(
     selectedRow && (

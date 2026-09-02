@@ -960,7 +960,11 @@ test("설정 메인은 운영·테스트 카드를 숨기고 표시 설정을 �
   );
   assert.equal(
     count(pageSources.settings, 'as="fieldset" className="section-card settings-fieldset-card'),
-    11,
+    10,
+  );
+  assert.match(
+    pageSources.settings,
+    /as="fieldset"[\s\S]{0,120}className="section-card settings-fieldset-card settings-report-card"/,
   );
   assert.match(
     externalNotificationSettingsCardSource,
@@ -1597,7 +1601,6 @@ test("hero inner boards share one restrained solid surface system", () => {
   assert.match(visualSystemStyles, /html\[data-theme\] \.app-main \.ui-page-hero \.ui-liquid-glass :where\(\*\)\s*\{[^}]*color:\s*inherit;/);
   assert.match(visualSystemStyles, /\.ui-page-hero \.ui-liquid-glass :is\([\s\S]*?\.home-hero-stats em[\s\S]*?\)\s*\{[^}]*color:\s*var\(--ui-liquid-glass-muted-color\);/);
   assert.match(visualSystemStyles, /\.home-hero-next > strong,[\s\S]*?\.arena-hero-stats strong[\s\S]*?color:\s*var\(--hero-title-color\);/);
-  assert.match(landingGuestStyles, /\.guest-landing-hero h1\s*\{[^}]*font-size:\s*clamp\(2\.15rem,\s*4vw,\s*3\.35rem\);/);
   assert.match(primitiveStyles, /html\[data-theme\] \.app-main \.ui-page-hero :is\(h1, h2\)\s*\{[^}]*font-size:\s*var\(--hero-title-size\);/);
   const sharedHeroHeadingBlock = primitiveStyles.match(
     /html\[data-theme\] \.app-main \.ui-page-hero :is\(h1, h2\),\s*\.guest-landing-hero h1\s*\{([^}]*)\}/,
@@ -1612,7 +1615,9 @@ test("hero inner boards share one restrained solid surface system", () => {
   assert.match(landingGuestStyles, /@media \(max-width:\s*760px\)[\s\S]*?\.guest-landing-record-flow,[\s\S]*?width:\s*calc\(100% - 24px\);/);
   assert.match(landingGuestStyles, /@media \(prefers-reduced-motion: reduce\)[\s\S]*?\.guest-landing-demo-video\s*\{[^}]*animation:\s*none;/);
   assert.match(tokenStyles, /--ui-landing-title-size:\s*clamp\(/);
+  assert.match(tokenStyles, /--ui-landing-title-size-mobile:\s*clamp\(/);
   assert.match(primitiveStyles, /html\[data-theme\] \.guest-landing-hero h1\s*\{[^}]*font-size:\s*var\(--ui-landing-title-size\);/);
+  assert.match(primitiveStyles, /@media \(max-width:\s*760px\)[\s\S]*?html\[data-theme\] \.guest-landing-hero h1\s*\{[^}]*font-size:\s*var\(--ui-landing-title-size-mobile\);/);
   assert.doesNotMatch(landingGuestStyles, /\.guest-landing-mobile-cta|position:\s*fixed;/);
   assert.equal(count(primitiveStyles, "-webkit-mask-composite: xor;"), 0);
   assert.equal(count(primitiveStyles, "mask-composite: exclude;"), 0);

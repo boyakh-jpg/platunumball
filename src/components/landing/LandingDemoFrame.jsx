@@ -1,4 +1,11 @@
 import { useEffect, useRef, useState } from "react";
+import { assetUrl } from "../../lib/assets.js";
+
+const DEFAULT_VIDEO_SOURCES = Object.freeze([
+  { src: assetUrl("/assets/showcase/landing-product-demo.webm"), type: "video/webm" },
+  { src: assetUrl("/assets/showcase/landing-product-demo.mp4"), type: "video/mp4" },
+]);
+const DEFAULT_POSTER_SRC = assetUrl("/assets/showcase/landing-product-demo-poster.webp");
 
 const DEMO_PHASES = [
   { phase: "경기 전", detail: "출석 확인" },
@@ -11,9 +18,13 @@ function getPrefersReducedMotion() {
     && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 }
 
-export default function LandingDemoFrame({ videoSrc = "", posterSrc = "" }) {
+export default function LandingDemoFrame({
+  videoSources = DEFAULT_VIDEO_SOURCES,
+  posterSrc = DEFAULT_POSTER_SRC,
+}) {
   const videoRef = useRef(null);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(getPrefersReducedMotion);
+  const hasVideo = videoSources.length > 0;
 
   useEffect(() => {
     const mediaQuery = window.matchMedia?.("(prefers-reduced-motion: reduce)");
@@ -26,7 +37,7 @@ export default function LandingDemoFrame({ videoSrc = "", posterSrc = "" }) {
 
   useEffect(() => {
     const video = videoRef.current;
-    if (!video || !videoSrc) return;
+    if (!video || !hasVideo) return;
 
     if (prefersReducedMotion) {
       video.pause();
@@ -35,15 +46,15 @@ export default function LandingDemoFrame({ videoSrc = "", posterSrc = "" }) {
     }
 
     video.play()?.catch(() => {});
-  }, [prefersReducedMotion, videoSrc]);
+  }, [hasVideo, prefersReducedMotion]);
 
-  const showPosterState = !videoSrc || (prefersReducedMotion && !posterSrc);
+  const showPosterState = !hasVideo || (prefersReducedMotion && !posterSrc);
 
   return (
     <figure className="guest-landing-demo-frame">
       <figcaption className="guest-landing-demo-caption">
         <span>제품 데모</span>
-        <strong>{videoSrc ? "실제 경기 기록 화면" : "영상 준비 중"}</strong>
+        <strong>{hasVideo ? "실제 경기 기록 화면" : "영상 준비 중"}</strong>
       </figcaption>
 
       <div className="guest-landing-demo-viewport">
@@ -76,13 +87,15 @@ export default function LandingDemoFrame({ videoSrc = "", posterSrc = "" }) {
             poster={posterSrc || undefined}
             aria-label="BoxTier 경기 기록 제품 데모"
           >
-            <source src={videoSrc} type="video/mp4" />
+            {videoSources.map((source) => (
+              <source key={source.src} src={source.src} type={source.type} />
+            ))}
           </video>
         )}
       </div>
 
       <p className="guest-landing-demo-note">
-        {videoSrc
+        {hasVideo
           ? "출석부터 결과 확정까지 실제 제품 흐름을 확인할 수 있습니다."
           : "최종 제품 데모 영상은 이 프레임에 연결됩니다."}
       </p>

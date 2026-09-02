@@ -7,6 +7,7 @@ export const SETTINGS_PAGE_SOURCE_PATHS = [
   "src/pages/useSettingsFavorites.jsx",
   "src/pages/useSettingsRefereeController.js",
   "src/pages/useSettingsReportController.jsx",
+  "src/pages/settingsReportSearchModel.js",
   "src/pages/SettingsPageView.jsx",
   "src/pages/SettingsActivityDialog.jsx",
   "src/pages/SettingsListDialog.jsx",
@@ -25,6 +26,8 @@ export const ADMIN_PAGE_SOURCE_PATHS = [
   "src/pages/AdminCourtRequestEvidence.jsx",
   "src/pages/AdminAppointmentSection.jsx",
   "src/pages/AdminDetailPanel.jsx",
+  "src/pages/AdminOperationsPanel.jsx",
+  "src/pages/AdminReportsPanel.jsx",
 ];
 
 export const COURT_DATABASE_SOURCE_PATHS = [
