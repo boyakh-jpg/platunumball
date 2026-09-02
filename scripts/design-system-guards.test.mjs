@@ -205,7 +205,10 @@ test("앱은 분류 박스 없는 표준 디자인을 사용하고 비교 데모
   assert.match(pageSources.landing, /if \(auth\?\.user\) return <Navigate to="\/app" replace \/>;/);
   assert.match(pageSources.landing, /<h1>농구 끝나면, 기록이 남는다\.<\/h1>/);
   assert.match(pageSources.landing, /출석부터 점수·개인 기록까지 경기 현장에서 남기고,[\s\S]*확정된 결과는 전적과 티어,[\s\S]*공유용 영수증으로 이어집니다\./);
-  assert.match(pageSources.landing, /to="\/app\/guide\/practice"[\s\S]*샘플 경기 체험/);
+  assert.match(pageSources.landing, /import \{ MATCH_RECEIPT_PATH \} from "\.\.\/lib\/receiptLocale\.js"/);
+  assert.match(pageSources.landing, /to=\{MATCH_RECEIPT_PATH\}[\s\S]*영수증 만들어보기/);
+  assert.equal(count(pageSources.landing, "<Button as={Link}"), 2);
+  assert.match(pageSources.landing, /className="guest-landing-actions"[\s\S]*className="guest-landing-primary-actions"[\s\S]*className="guest-landing-explore-link"/);
   assert.match(pageSources.landing, /to="\/app\/create\?intent=record"[\s\S]*경기 기록 시작하기/);
   assert.match(pageSources.landing, /<LandingDemoFrame \/>/);
   assert.match(pageSources.landing, /경기 전[\s\S]*모인다[\s\S]*경기 중[\s\S]*경기한다[\s\S]*경기 후[\s\S]*기록된다/);
@@ -1610,8 +1613,11 @@ test("hero inner boards share one restrained solid surface system", () => {
   assert.match(landingGuestStyles, /\.guest-landing-header\s*\{[^}]*position:\s*sticky;[^}]*height:\s*64px;/);
   assert.match(landingGuestStyles, /@media \(max-width:\s*760px\)[\s\S]*?\.guest-landing-hero\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\);/);
   assert.match(landingGuestStyles, /\.guest-landing-record-flow\s*\{[^}]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\);/);
-  assert.match(landingGuestStyles, /\.guest-landing-demo-viewport\s*\{[^}]*aspect-ratio:\s*16 \/ 10;/);
-  assert.match(landingGuestStyles, /\.guest-landing-demo-poster-flow\s*\{[^}]*grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)\);/);
+  assert.match(landingGuestStyles, /\.guest-landing-demo-viewport\s*\{[^}]*aspect-ratio:\s*9 \/ 16;/);
+  assert.match(landingGuestStyles, /\.guest-landing-demo-frame\s*\{[^}]*width:\s*min\(100%, 24rem\);/);
+  assert.doesNotMatch(landingGuestStyles, /\.guest-landing-demo-(?:frame|viewport)\s*\{[^}]*(?:border|background|box-shadow):/);
+  assert.doesNotMatch(landingDemoFrameSource, /guest-landing-demo-caption|guest-landing-demo-note/);
+  assert.match(landingGuestStyles, /\.guest-landing-demo-poster-flow\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\);/);
   assert.match(landingGuestStyles, /@media \(max-width:\s*760px\)[\s\S]*?\.guest-landing-record-flow,[\s\S]*?width:\s*calc\(100% - 24px\);/);
   assert.match(landingGuestStyles, /@media \(prefers-reduced-motion: reduce\)[\s\S]*?\.guest-landing-demo-video\s*\{[^}]*animation:\s*none;/);
   assert.match(tokenStyles, /--ui-landing-title-size:\s*clamp\(/);

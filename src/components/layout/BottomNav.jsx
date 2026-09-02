@@ -1,7 +1,6 @@
-import { Bell, CalendarDays, ClipboardList, Ellipsis, Flag, Handshake, House, MessageSquareText, Settings, UserRound, UsersRound } from "lucide-react";
+import { Bell, CalendarDays, ClipboardList, Ellipsis, Handshake, House, MessageSquareText, Settings, UserRound, UsersRound } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { NavLink, useLocation } from "react-router-dom";
-import { buildReportEntryPath } from "../../lib/reportEntry.js";
 import { getReceiptLocale, RECEIPT_SHELL_COPY } from "../../lib/receiptLocale.js";
 
 const items = [
@@ -14,7 +13,6 @@ const items = [
 
 const moreItems = [
   { to: "/app/notifications", labelKey: "notifications", icon: Bell, authenticatedOnly: true },
-  { to: buildReportEntryPath(), labelKey: "reportHelp", icon: Flag },
   { to: "/app/profile", labelKey: "me", icon: UserRound },
   { to: "/app/teams", labelKey: "teams", icon: UsersRound },
   { to: "/app/settings", labelKey: "settings", icon: Settings },

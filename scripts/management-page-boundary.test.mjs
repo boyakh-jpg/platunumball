@@ -874,6 +874,16 @@ test("게스트는 실제 공개 매칭을 보고 개인 메뉴는 안내 상태
   assert.match(bootstrap, /regionScope: "all", startFilter: "all"/u);
 });
 
+test("더보기는 신고 메뉴를 중복하지 않고 설정 진입을 유지한다", async () => {
+  const [bottomNav, shellCopy] = await Promise.all([
+    read("src/components/layout/BottomNav.jsx"),
+    read("src/lib/receiptLocale.js"),
+  ]);
+  assert.doesNotMatch(bottomNav, /reportHelp|buildReportEntryPath/u);
+  assert.doesNotMatch(shellCopy, /reportHelp/u);
+  assert.match(bottomNav, /to: "\/app\/settings", labelKey: "settings"/u);
+});
+
 test("비로그인 랜딩은 경기 기록 서비스 정의와 실제 제품 데모 자리를 표시한다", async () => {
   const [landing, demoFrame, publicShell, attribution] = await Promise.all([
     read("src/pages/Landing.jsx"),
@@ -883,7 +893,7 @@ test("비로그인 랜딩은 경기 기록 서비스 정의와 실제 제품 데
   ]);
   assert.match(landing, /농구 끝나면, 기록이 남는다\./u);
   assert.match(landing, /출석부터 점수·개인 기록까지 경기 현장에서 남기고,[\s\S]*공유용 영수증으로 이어집니다\./u);
-  assert.match(landing, /샘플 경기 체험[\s\S]*경기 기록 시작하기/u);
+  assert.match(landing, /영수증 만들어보기[\s\S]*경기 기록 시작하기/u);
   assert.match(landing, /경기 전[\s\S]*모인다[\s\S]*경기 중[\s\S]*경기한다[\s\S]*경기 후[\s\S]*기록된다/u);
   assert.equal(landing.match(/<LandingDemoFrame \/>/gu)?.length, 1);
   assert.match(demoFrame, /autoPlay=\{!prefersReducedMotion\}[\s\S]*muted[\s\S]*playsInline/u);

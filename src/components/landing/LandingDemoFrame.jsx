@@ -52,11 +52,6 @@ export default function LandingDemoFrame({
 
   return (
     <figure className="guest-landing-demo-frame">
-      <figcaption className="guest-landing-demo-caption">
-        <span>제품 데모</span>
-        <strong>{hasVideo ? "실제 경기 기록 화면" : "영상 준비 중"}</strong>
-      </figcaption>
-
       <div className="guest-landing-demo-viewport">
         {showPosterState ? (
           <div
@@ -66,11 +61,10 @@ export default function LandingDemoFrame({
           >
             <p>한 경기의 기록 흐름</p>
             <ol className="guest-landing-demo-poster-flow">
-              {DEMO_PHASES.map((item, index) => (
+              {DEMO_PHASES.map((item) => (
                 <li key={item.phase}>
                   <span>{item.phase}</span>
                   <strong>{item.detail}</strong>
-                  {index < DEMO_PHASES.length - 1 ? <span aria-hidden="true">→</span> : null}
                 </li>
               ))}
             </ol>
@@ -93,12 +87,6 @@ export default function LandingDemoFrame({
           </video>
         )}
       </div>
-
-      <p className="guest-landing-demo-note">
-        {hasVideo
-          ? "출석부터 결과 확정까지 실제 제품 흐름을 확인할 수 있습니다."
-          : "최종 제품 데모 영상은 이 프레임에 연결됩니다."}
-      </p>
     </figure>
   );
 }

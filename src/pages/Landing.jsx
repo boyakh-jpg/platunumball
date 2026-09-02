@@ -6,6 +6,7 @@ import LandingLoading from "../components/common/LandingLoading.jsx";
 import LandingDemoFrame from "../components/landing/LandingDemoFrame.jsx";
 import { BRAND_NAME } from "../lib/brand.js";
 import { getLoginPath } from "../lib/profileSetup.js";
+import { MATCH_RECEIPT_PATH } from "../lib/receiptLocale.js";
 
 function LoginButton({ children = "로그인", className = "", variant = "secondary" }) {
   return (
@@ -43,17 +44,19 @@ export default function Landing({ auth }) {
             출석부터 점수·개인 기록까지 경기 현장에서 남기고, 확정된 결과는 전적과 티어,
             공유용 영수증으로 이어집니다.
           </p>
-          <div className="guest-landing-primary-actions">
-            <Button as={Link} to="/app/guide/practice" className="guest-landing-primary-cta">
-              샘플 경기 체험 <ArrowRight aria-hidden="true" size={18} />
-            </Button>
-            <Button as={Link} to="/app/create?intent=record" variant="secondary">
-              경기 기록 시작하기
-            </Button>
+          <div className="guest-landing-actions">
+            <div className="guest-landing-primary-actions">
+              <Button as={Link} to={MATCH_RECEIPT_PATH} className="guest-landing-primary-cta">
+                영수증 만들어보기 <ArrowRight aria-hidden="true" size={18} />
+              </Button>
+              <Button as={Link} to="/app/create?intent=record" variant="secondary">
+                경기 기록 시작하기
+              </Button>
+            </div>
+            <Link to="/app" className="guest-landing-explore-link">
+              로그인 없이 둘러보기 <ArrowRight aria-hidden="true" size={16} />
+            </Link>
           </div>
-          <Link to="/app" className="guest-landing-explore-link">
-            로그인 없이 둘러보기 <ArrowRight aria-hidden="true" size={16} />
-          </Link>
           {auth?.error ? <p className="guest-landing-auth-error">로그인을 완료하지 못했습니다. 다시 시도해주세요.</p> : null}
         </div>
 
