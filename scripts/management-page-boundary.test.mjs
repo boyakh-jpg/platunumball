@@ -897,6 +897,21 @@ test("비로그인 랜딩은 경기 기록 서비스 정의와 실제 제품 데
   assert.match(attribution, /compact \? " is-compact" : ""/u);
 });
 
+test("랜딩 데모는 운영 R2 동기화에 영상 MIME과 재검증 캐시를 포함한다", async () => {
+  const [sync, packageSource] = await Promise.all([
+    read("scripts/sync-receipt-assets-to-r2.mjs"),
+    read("package.json"),
+  ]);
+  for (const file of ["landing-product-demo.webm", "landing-product-demo.mp4", "landing-product-demo-poster.webp"]) {
+    assert.ok(sync.includes(`"public/assets/showcase/${file}"`));
+  }
+  assert.match(sync, /for \(const file of \[\.\.\.RECEIPT_ASSETS, \.\.\.SHOWCASE_ASSETS\]\)/u);
+  assert.match(sync, /\["\.webm", "video\/webm"\]/u);
+  assert.match(sync, /\["\.mp4", "video\/mp4"\]/u);
+  assert.match(sync, /SHOWCASE_ASSETS\.includes\(file\)[\s\S]*"public, no-cache"/u);
+  assert.match(JSON.parse(packageSource).scripts.build, /node scripts\/sync-receipt-assets-to-r2\.mjs/u);
+});
+
 test("경로 없는 검색과 방 팝업은 키보드 이동과 조회 실패 복구를 제공한다", async () => {
   const [picker, navigation, home, notifications, courtMap] = await Promise.all([
     read("src/components/common/SearchPicker.jsx"),

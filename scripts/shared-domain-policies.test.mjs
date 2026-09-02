@@ -2054,6 +2054,7 @@ test("server and browser keep untrusted text out of executable sinks", async () 
   assert.match(csp, /frame-ancestors 'none'/);
   assert.match(csp, /script-src[^;]*https:\/\/nrbe\.pstatic\.net/);
   assert.match(csp, /media-src 'self' blob: data:/);
+  assert.match(csp, /media-src[^;]*https:\/\/\*\.r2\.dev/);
   assert.doesNotMatch(csp, /script-src[^;]*'unsafe-(?:inline|eval)'/);
   assert.match(permissionsPolicy, /camera=\(self\)/);
   assert.match(permissionsPolicy, /geolocation=\(self\)/);

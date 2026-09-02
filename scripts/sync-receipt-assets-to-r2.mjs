@@ -33,10 +33,18 @@ const RECEIPT_ASSETS = [
   "public/assets/tier-emblems/tier-neutral-away-outline-v5.png",
 ];
 
+const SHOWCASE_ASSETS = [
+  "public/assets/showcase/landing-product-demo.webm",
+  "public/assets/showcase/landing-product-demo.mp4",
+  "public/assets/showcase/landing-product-demo-poster.webp",
+];
+
 const CONTENT_TYPES = new Map([
   [".png", "image/png"],
   [".svg", "image/svg+xml"],
   [".webp", "image/webp"],
+  [".webm", "video/webm"],
+  [".mp4", "video/mp4"],
 ]);
 const R2_UPLOAD_MAX_ATTEMPTS = 3;
 const R2_UPLOAD_RETRY_BASE_DELAY_MS = 750;
@@ -56,7 +64,7 @@ if (!accountId || !apiToken || !bucket) {
   throw new Error("receipt_r2_sync_not_configured");
 }
 
-for (const file of RECEIPT_ASSETS) {
+for (const file of [...RECEIPT_ASSETS, ...SHOWCASE_ASSETS]) {
   const objectKey = file.replace(/^public\//, "");
   const encodedKey = objectKey.split("/").map(encodeURIComponent).join("/");
   const bytes = await readFile(resolve(file));
@@ -69,7 +77,10 @@ for (const file of RECEIPT_ASSETS) {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${apiToken}`,
-          "Cache-Control": "public, max-age=31536000, immutable",
+          // Showcase filenames are stable across recordings; revalidate instead of pinning old media.
+          "Cache-Control": SHOWCASE_ASSETS.includes(file)
+            ? "public, no-cache"
+            : "public, max-age=31536000, immutable",
           "Content-Type": CONTENT_TYPES.get(extname(file)) || "application/octet-stream",
         },
         body: bytes,

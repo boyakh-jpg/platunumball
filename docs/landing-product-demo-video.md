@@ -8,6 +8,10 @@
 - 사용자 제공 감열지: `/assets/showcase/landing-product-demo-receipt.png`
 - 규격: 1080×1920, 9:16, 30fps, 약 60초, 무음
 
+## 운영 배포
+
+랜딩은 `assetUrl()`의 공용 R2 경로를 사용한다. production 빌드의 기존 `scripts/sync-receipt-assets-to-r2.mjs`가 WebM·MP4·poster 세 파일도 함께 업로드하며, 영상 MIME은 각각 `video/webm`·`video/mp4`로 저장한다. 고정 이름을 재사용하는 데모 파일은 `public, no-cache`로 재검증하고 버전형 영수증 자산의 immutable 캐시는 유지한다. Vercel CSP의 `media-src`는 이미지와 동일한 공개 `https://*.r2.dev` 호스트를 허용한다. 배포 후 세 객체의 응답과 실제 랜딩 재생을 함께 확인한다.
+
 ## 사실 범위
 
 모든 제품 화면은 `boxtier.kr`의 공개 운영 화면과 읽기 전용 경기 데이터를 540×960 모바일 viewport에서 실제 조작·녹화한다. AI 생성 화면과 연습 경기는 사용하지 않는다.
