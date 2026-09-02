@@ -1556,10 +1556,9 @@ test("알파 온보딩은 기록 중심 무료 핵심 흐름을 안내한다", (
   assert.doesNotMatch(pageSources.home, /onboardingComplete[\s\S]*home-guide-card/);
 });
 
-test("home Season Zero banner routes by founding player status", () => {
-  assert.match(pageSources.home, /to=\{user\.foundingPlayer \? "\/app\/profile#icons" : "\/app\/signup"\}/);
-  assert.match(pageSources.home, /FOUNDING PLAYER 특전 지급 완료/);
-  assert.match(pageSources.home, /getProfileIcon\("341-founding-player-s0"\)/);
+test("home omits Season Zero banner and preserves guide and profile icon entry", () => {
+  assert.doesNotMatch(pageSources.home, /home-season-zero-card|FOUNDING PLAYER|foundingPlayer|341-founding-player-s0/);
+  assert.match(pageSources.home, /isHomeGuideCardVisible\(app\.state\.settings\)/);
   assert.match(read("src/lib/assets.js"), /normalizedPath\.startsWith\("\/assets\/profile-icons\/"\)/);
   assert.match(gettingStartedStyles, /\.home-guide-card\s*\{[^}]*--ui-card-bg:\s*transparent;/s);
   assert.match(gettingStartedStyles, /\.home-guide-card::before\s*\{[^}]*var\(--ui-status-rail-width\)/s);
