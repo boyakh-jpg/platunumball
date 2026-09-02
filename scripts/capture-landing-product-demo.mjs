@@ -6,9 +6,7 @@ const baseUrl = (process.env.BOXTIER_BASE_URL ?? "https://boxtier.kr").replace(/
 const readApiBaseUrl = (process.env.BOXTIER_READ_API_BASE_URL ?? baseUrl).replace(/\/$/, "");
 const email = process.env.BOXTIER_DEMO_EMAIL;
 const password = process.env.BOXTIER_DEMO_PASSWORD;
-const liveMatchId = process.env.BOXTIER_LIVE_MATCH_ID ?? "m_mshmjm2k_lvd25";
-const receiptMatchId = process.env.BOXTIER_RECEIPT_MATCH_ID ?? "tm_31b5b240e7876ae208743610";
-const resultMatchId = process.env.BOXTIER_RESULT_MATCH_ID ?? receiptMatchId;
+const matchId = process.env.BOXTIER_DEMO_MATCH_ID ?? "tm_31b5b240e7876ae208743610";
 const outputDir = path.resolve("tmp/landing-product-demo");
 const rawVideoPath = path.join(outputDir, "landing-product-demo-raw.webm");
 const metadataPath = path.join(outputDir, "capture.json");
@@ -58,7 +56,7 @@ if (!authResponse.ok) throw new Error(`데모 계정 로그인 실패: HTTP ${au
 const session = await authResponse.json();
 
 await mkdir(outputDir, { recursive: true });
-await mkdir(path.dirname(receiptAssetPath), { recursive: true });
+await access(receiptAssetPath);
 const executablePath = await firstAvailablePath(browserCandidates);
 const browser = await chromium.launch({ executablePath, headless: true });
 const context = await browser.newContext({
@@ -128,7 +126,6 @@ await context.addInitScript(() => {
         padding: 13px 15px 14px;
         pointer-events: none;
         border: 1px solid rgba(255,255,255,.15);
-        border-left: 5px solid #ff7a1a;
         border-radius: 14px;
         background: rgba(13,15,19,.94);
         box-shadow: 0 10px 30px rgba(0,0,0,.4);
@@ -327,63 +324,53 @@ try {
   await page.getByRole("button", { name: "경기 기록 만들기", exact: true }).scrollIntoViewIfNeeded();
   await endScene("create-room", startedAt, 4_600);
 
-  await gotoApp(`/app/matches?match=${encodeURIComponent(liveMatchId)}`);
-  await page.getByText("오늘의 2v2 픽업", { exact: false }).first().waitFor({ timeout: 20_000 });
-  await caption("QR 출석 · 참가 확인", "QR 참가 확인 후 실제 경기방에서 출석 상태를 관리합니다.");
+  await gotoApp(`/app/matches?match=${encodeURIComponent(matchId)}`);
+  const matchRoom = page.getByRole("dialog", { name: "매치방" });
+  await matchRoom.waitFor({ timeout: 20_000 });
+  await matchRoom.getByText("5v5", { exact: true }).first().waitFor({ timeout: 20_000 });
+  await caption("QR 출석 · 참가 확인", "같은 5v5 기록방에서 QR 출석 기준과 참가 명단을 확인합니다.");
   startedAt = startScene();
-  const attendanceButtons = page.getByRole("button", { name: "출석", exact: true });
-  const attendanceCount = await attendanceButtons.count();
-  for (let index = 0; index < Math.min(attendanceCount, 2); index += 1) {
-    await showTapCue(attendanceButtons.nth(index), { cueMs: 700, settleMs: 750 });
-  }
-  await endScene("attendance", startedAt, 5_400);
-
-  await caption("참가자 · 팀 구성", "출석한 선수를 기준으로 양 팀을 자동 배정할 수 있습니다.");
-  startedAt = startScene();
-  const assignmentPanel = page.locator('section[aria-label="출석 및 팀 배정 대상"]');
-  await assignmentPanel.waitFor({ timeout: 10_000 });
-  await cueTarget(assignmentPanel, "팀 배정 영역");
-  await wait(2_200);
+  const attendanceRule = matchRoom.getByText("경기 20분 전부터", { exact: false }).first();
+  await attendanceRule.waitFor({ timeout: 10_000 });
+  await cueTarget(attendanceRule, "QR 출석 기준");
+  await wait(3_200);
   await page.evaluate(() => window.__boxTierDemoClearCue());
-  await endScene("team-assignment", startedAt, 4_400);
+  await endScene("attendance", startedAt, 6_200);
 
-  await gotoApp(`/app/matches?match=${encodeURIComponent(resultMatchId)}`);
-  const resultReceiptButton = page.getByRole("button", { name: "영수증 발급", exact: true });
-  await resultReceiptButton.waitFor({ state: "visible", timeout: 20_000 });
-  await caption("모바일 전광판 · 경기 결과", "경기 중 기록한 점수가 종료 후 같은 기록방의 최종 결과로 확정됩니다.");
+  await caption("참가 확인 · 팀 구성", "같은 5v5 기록방의 실제 HOME TEAM과 상대 팀 구성을 확인합니다.");
   startedAt = startScene();
-  await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
-  await endScene("live-scoreboard", startedAt, 6_500);
+  const homeTeam = matchRoom.getByText("HOME TEAM", { exact: true }).first();
+  await homeTeam.waitFor({ timeout: 10_000 });
+  await cueTarget(homeTeam, "5v5 팀 구성");
+  await wait(3_200);
+  await page.evaluate(() => window.__boxTierDemoClearCue());
+  await endScene("team-assignment", startedAt, 5_800);
+
+  const resultReceiptButton = matchRoom.getByRole("button", { name: "영수증 발급", exact: true });
+  await resultReceiptButton.waitFor({ state: "visible", timeout: 20_000 });
+  await caption("모바일 전광판 · 점수 기록", "경기 중 입력한 점수와 개인 기록이 같은 5v5 기록방에 이어집니다.");
+  startedAt = startScene();
+  const scoreboardHelp = matchRoom.getByText("BOXTIER 모바일 전광판", { exact: true }).first();
+  await scoreboardHelp.waitFor({ timeout: 10_000 });
+  await cueTarget(scoreboardHelp, "모바일 전광판");
+  await wait(4_000);
+  await page.evaluate(() => window.__boxTierDemoClearCue());
+  await endScene("live-scoreboard", startedAt, 7_000);
 
   await caption("경기 종료 · 결과 확인", "종료된 경기의 최종 점수와 확정 기록을 검토합니다.");
   startedAt = startScene();
-  await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
-  await endScene("final-result", startedAt, 4_200);
+  const finalScore = matchRoom.locator(".arena-source-record-score strong").first();
+  await finalScore.waitFor({ timeout: 10_000 });
+  await cueTarget(finalScore, "최종 점수");
+  await wait(2_600);
+  await page.evaluate(() => window.__boxTierDemoClearCue());
+  await endScene("final-result", startedAt, 5_200);
 
-  await gotoApp(`/app/matches?match=${encodeURIComponent(receiptMatchId)}`);
-  const issueReceipt = page.getByRole("button", { name: "영수증 발급", exact: true });
-  await issueReceipt.waitFor({ timeout: 20_000 });
-  await caption("기록방에서 영수증 만들기", "확정된 5v5 기록에서 실제 영수증 발급을 시작합니다.");
+  await caption("기록방에서 영수증 만들기", "같은 5v5 기록방 모달의 실제 영수증 발급 버튼을 누릅니다.");
   startedAt = startScene();
-  await clickWithCue(issueReceipt, { cueMs: 1_000, settleMs: 1_200 });
-  await endScene("receipt-entry", startedAt, 4_000);
-
-  await page.getByText("경기 영수증", { exact: true }).first().waitFor({ timeout: 20_000 });
-  const periodScores = [[0, 0], [1, 0], [0, 0], [0, 0]];
-  for (const [index, [teamAScore, teamBScore]] of periodScores.entries()) {
-    const period = index + 1;
-    await page.getByLabel(`${period}Q TEAM A 점수`, { exact: true }).fill(String(teamAScore));
-    await page.getByLabel(`${period}Q TEAM B 점수`, { exact: true }).fill(String(teamBScore));
-  }
-  const thermalButton = page.getByRole("button", { name: "감열지 영수증", exact: true });
-  await caption("4쿼터 감열지 영수증", "1Q–4Q 점수와 최종 결과를 실제 제품 미리보기에서 확인합니다.");
-  startedAt = startScene();
-  await clickWithCue(thermalButton, { cueMs: 1_000, settleMs: 1_000 });
-  const thermalReceipt = page.getByRole("img", { name: "감열지 영수증 미리보기", exact: true });
-  await thermalReceipt.waitFor({ state: "visible", timeout: 20_000 });
-  await thermalReceipt.scrollIntoViewIfNeeded();
-  await thermalReceipt.screenshot({ path: receiptAssetPath });
-  await endScene("thermal-receipt", startedAt, 5_600);
+  await clickWithCue(resultReceiptButton, { cueMs: 1_400, settleMs: 1_600 });
+  await page.waitForURL(`**/app/receipt?match=${encodeURIComponent(matchId)}`, { timeout: 20_000 });
+  await endScene("receipt-entry", startedAt, 5_000);
 
   await page.close();
   await video.saveAs(rawVideoPath);
@@ -395,14 +382,15 @@ try {
     baseUrl,
     readApiBaseUrl,
     viewport: { width: 540, height: 960 },
+    captionAccentRemoved: true,
     rawVideoPath,
     receiptAssetPath,
-    matches: { liveMatchId, resultMatchId, receiptMatchId },
+    match: { id: matchId, mode: "5v5" },
     facts: {
       create: "실제 기록방 생성 폼을 조작하되 추가 방은 생성하지 않습니다.",
-      live: "운영 테스트 계정의 실제 경기방에서 출석·팀 배정 위치를 안내하고 공유 데이터는 변경하지 않습니다.",
-      scoreboard: "캡처 시점에 진행 중인 테스트 경기가 없어 종료·확정된 실제 기록방의 모바일 결과를 읽기 전용으로 녹화합니다.",
-      receipt: "실제 5v5 기록방의 영수증 발급 화면에서 4쿼터 점수를 입력하고 제품 감열지 미리보기를 캡처합니다.",
+      room: "출석 기준, 팀 구성, 모바일 전광판 안내, 최종 결과를 동일한 실제 5v5 기록방에서 읽기 전용으로 녹화합니다.",
+      scoreboard: "캡처 시점에 진행 중인 테스트 경기가 없어 종료·확정된 기록방이 안내하는 실제 모바일 전광판 흐름을 보여줍니다. 진행 중 조작을 꾸미지 않습니다.",
+      receipt: "같은 5v5 기록방 모달의 실제 영수증 발급 버튼으로 진입하고, 마지막 감열지는 사용자가 제공한 완성 이미지를 사용합니다.",
     },
     scenes,
   };

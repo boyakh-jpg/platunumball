@@ -11,15 +11,18 @@ const webmPath = path.join(assetDir, "landing-product-demo.webm");
 const mp4Path = path.join(assetDir, "landing-product-demo.mp4");
 const posterPath = path.join(assetDir, "landing-product-demo-poster.webp");
 const transitionDuration = 0.22;
+const legacyCaptionCorrection = metadata.captionAccentRemoved === true
+  ? ""
+  : "delogo=x=8:y=8:w=18:h=86:show=0,";
 
 const timeline = [
-  ["create-room", 4.3],
-  ["attendance", 5.0],
-  ["team-assignment", 4.0],
-  ["live-scoreboard", 6.0],
-  ["final-result", 3.6],
-  ["receipt-entry", 3.3],
-  ["thermal-receipt", 5.0, "receipt"],
+  ["create-room", 4.8],
+  ["attendance", 5.8],
+  ["team-assignment", 5.4],
+  ["live-scoreboard", 6.6],
+  ["final-result", 4.8],
+  ["receipt-entry", 4.6],
+  ["thermal-receipt", 6.0, "receipt"],
 ];
 
 function run(command, args) {
@@ -41,6 +44,7 @@ const segments = timeline.map(([name, duration, source = "video"], index) => {
   if (!scene) throw new Error(`캡처 장면 누락: ${name}`);
   if (scene.duration < duration) throw new Error(`캡처 장면 길이 부족: ${name}`);
   return `[0:v]trim=start=${scene.start}:duration=${duration},setpts=PTS-STARTPTS,` +
+    legacyCaptionCorrection +
     `fps=30,scale=1080:1920:flags=lanczos,setsar=1,format=yuv420p,settb=1/30[v${index}]`;
 });
 const transitions = [];
