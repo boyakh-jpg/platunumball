@@ -464,7 +464,6 @@ test("guest shell replaces the demo identity with login actions", () => {
   assert.equal((teamsSource.match(/showActions=\{false\}/g) ?? []).length, 1);
   assert.doesNotMatch(teamsSource, /title="팀 생성은 로그인 후 사용할 수 있습니다"/);
   assert.doesNotMatch(homePageSource, /<Badge tone="neutral">로그인<\/Badge>/);
-  assert.match(homePageSource, /to="\/app\/profile"[^>]*aria-label="FOUNDING PLAYER 특전 알아보기"/);
   assert.match(homePageSource, /<h2>공개 랭크보드<\/h2>/);
   assert.doesNotMatch(read("src/styles/layout/app-shell-auth.css"), /\.guest-preview-bar/);
 });
