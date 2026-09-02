@@ -53,7 +53,23 @@ export default async function handler(request, response) {
       throw error;
     }
 
-    sendJson(response, 200, data ?? { ok: true });
+    const reportId = String(data?.reportId ?? "").trim();
+    if (!reportId) throw new Error("court_request_report_receipt_missing");
+    const { data: reportReceipt, error: reportReceiptError } = await context.supabase
+      .from("reports")
+      .select("id,status,created_at")
+      .eq("id", reportId)
+      .eq("user_id", context.profileId)
+      .maybeSingle();
+    if (reportReceiptError) throw reportReceiptError;
+    if (!reportReceipt) throw new Error("court_request_report_receipt_missing");
+
+    sendJson(response, 200, {
+      ...(data ?? { ok: true }),
+      reportId: reportReceipt.id,
+      status: reportReceipt.status,
+      createdAt: reportReceipt.created_at,
+    });
   } catch (error) {
     console.error("Court request report failed.", error);
     sendJson(response, error.statusCode || 500, { error: error.message || "court_request_report_failed" });

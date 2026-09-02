@@ -53,7 +53,14 @@ export function buildSettingsActions(context) {
   } = context;
 
   const persistCreatedReport = async (createdReport, syncedNotifications) => {
-    if (!isSupabaseConfigured) return { ok: true, reportId: createdReport.id };
+    if (!isSupabaseConfigured) {
+      return {
+        ok: true,
+        reportId: createdReport.id,
+        status: createdReport.status,
+        createdAt: createdReport.createdAt,
+      };
+    }
     const result = await submitReportServer(createdReport, syncedNotifications);
     if (!result || result.ok === false || result.duplicate === true) {
       setState((current) => ({
@@ -65,6 +72,22 @@ export function buildSettingsActions(context) {
       }));
     }
     return result;
+  };
+
+  const getExistingReportReceipt = (type, targetId) => {
+    const existingReport = (stateRef.current.reports ?? []).find((report) => (
+      report.type === type
+      && report.targetId === targetId
+      && report.by === currentUserId
+      && !["dismissed", "resolved"].includes(report.status)
+    ));
+    return existingReport ? {
+      ok: true,
+      duplicate: true,
+      reportId: existingReport.id,
+      status: existingReport.status,
+      createdAt: existingReport.createdAt,
+    } : null;
   };
 
   const restoreNotificationsAfterReadFailure = async (previousNotifications) => {
@@ -139,6 +162,8 @@ updateSettings: (patch) => {
   blockUser: (user) => applyBlockedUserMutation(user, true),
   unblockUser: (userId) => applyBlockedUserMutation(userId, false),
   reportMatch: async (matchId, reason, reportedUserIds) => {
+    const existingReceipt = getExistingReportReceipt("match", matchId);
+    if (existingReceipt) return existingReceipt;
     const previousState = stateRef.current;
     const existingIds = new Set((previousState.reports ?? []).map((report) => report.id));
     const nextState = reportMatch({ ...previousState, currentUserId }, matchId, reason, reportedUserIds);
@@ -149,6 +174,8 @@ updateSettings: (patch) => {
     return persistCreatedReport(createdReport, syncedNotifications);
   },
   reportPlayer: async (playerId, matchId, reason) => {
+    const existingReceipt = getExistingReportReceipt("player", playerId);
+    if (existingReceipt) return existingReceipt;
     const previousState = stateRef.current;
     const existingIds = new Set((previousState.reports ?? []).map((report) => report.id));
     const nextState = reportPlayer({ ...previousState, currentUserId }, playerId, matchId, reason);
@@ -159,9 +186,21 @@ updateSettings: (patch) => {
     return persistCreatedReport(createdReport, syncedNotifications);
   },
   reportCourtRequest: async (requestId, reason) => {
+    const existingReceipt = getExistingReportReceipt("court_request", requestId);
+    if (existingReceipt) return existingReceipt;
     if (!isSupabaseConfigured) {
-      setState((prev) => reportCourtRequest({ ...prev, currentUserId }, requestId, reason));
-      return { ok: true };
+      const previousState = stateRef.current;
+      const existingIds = new Set((previousState.reports ?? []).map((report) => report.id));
+      const nextState = reportCourtRequest({ ...previousState, currentUserId }, requestId, reason);
+      const createdReport = (nextState.reports ?? []).find((report) => !existingIds.has(report.id)) ?? null;
+      if (!createdReport) return { ok: false, error: "court_request_report_unavailable" };
+      setState(nextState);
+      return {
+        ok: true,
+        reportId: createdReport.id,
+        status: createdReport.status,
+        createdAt: createdReport.createdAt,
+      };
     }
     const result = await runServerAction("/api/court-requests/report", { requestId, reason });
     if (!result || result.ok === false || result.duplicate === true) return result;
@@ -169,11 +208,13 @@ updateSettings: (patch) => {
       { ...prev, currentUserId },
       requestId,
       reason,
-      { reportId: result.reportId },
+      { reportId: result.reportId, status: result.status, createdAt: result.createdAt },
     ));
     return result;
   },
   reportCourt: async (courtId, reason, courtCorrection = null, courtSnapshot = null) => {
+    const existingReceipt = getExistingReportReceipt("court", courtId);
+    if (existingReceipt) return existingReceipt;
     const previousState = stateRef.current;
     let createdReport = null;
     let syncedNotifications = [];
@@ -198,6 +239,8 @@ updateSettings: (patch) => {
     return persistCreatedReport(createdReport, syncedNotifications);
   },
   reportCourtReview: async (reviewId, reason) => {
+    const existingReceipt = getExistingReportReceipt("court_review", reviewId);
+    if (existingReceipt) return existingReceipt;
     const previousState = stateRef.current;
     const existingIds = new Set((previousState.reports ?? []).map((report) => report.id));
     const next = reportCourtReview({ ...previousState, currentUserId }, reviewId, reason);
@@ -208,6 +251,8 @@ updateSettings: (patch) => {
     return persistCreatedReport(createdReport, syncedNotifications);
   },
   reportTeamEmblem: async (teamId, reason, teamSnapshot = null) => {
+    const existingReceipt = getExistingReportReceipt("team_emblem", teamId);
+    if (existingReceipt) return existingReceipt;
     const serverReady = await ensureServerActionAvailable("/api/reports/submit", "팀 엠블럼 신고");
     if (serverReady !== true) return serverReady;
     if (!ensureRemoteReady("팀 엠블럼 신고")) return { ok: false, error: "remote_not_ready" };

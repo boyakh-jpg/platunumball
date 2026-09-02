@@ -106,6 +106,16 @@ export default function SettingsPageView({ controller, auth }) {
     validRequestedProviderId,
   ]);
 
+  useEffect(() => {
+    if (new URLSearchParams(location.search).get("focus") !== "report") return undefined;
+    const focusFrame = window.requestAnimationFrame(() => {
+      const reportCard = document.getElementById("settings-report-card");
+      reportCard?.scrollIntoView({ block: "start" });
+      reportCard?.focus({ preventScroll: true });
+    });
+    return () => window.cancelAnimationFrame(focusFrame);
+  }, [location.search]);
+
   const switchTestAccount = async (event) => {
     event.preventDefault();
     setTestSwitchStatus("");
@@ -156,7 +166,7 @@ export default function SettingsPageView({ controller, auth }) {
       <div className={`content-grid ${settingsSection === "main" ? "" : "settings-section-grid"}`}>
         <SettingsPrimaryColumn controller={controller} />
 
-        <SettingsSideColumn controller={controller} onOpenList={setActivityList} />
+        <SettingsSideColumn controller={controller} onOpenList={setActivityList} onOpenDetail={setActivityDetail} />
         {settingsSection === "main" && auth ? (
           <Card as="fieldset" className="section-card settings-fieldset-card settings-account-card">
             <legend className="section-title-row">

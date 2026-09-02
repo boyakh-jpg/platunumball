@@ -9,7 +9,7 @@ import { COURT_COST_OPTIONS, COURT_LIGHTING_OPTIONS, formatCourtDistance } from 
 import { COURT_REQUEST_PHOTO_MAX } from "../../shared/lib/courtRequestImagePolicy.js";
 
 import { SettingsReportCard } from "./SettingsReportCard.jsx";
-export default function SettingsSideColumn({ controller, onOpenList }) {
+export default function SettingsSideColumn({ controller, onOpenList, onOpenDetail }) {
   const {
     app,
     blockedUserIds,
@@ -423,7 +423,7 @@ export default function SettingsSideColumn({ controller, onOpenList }) {
             <Button type="button" variant="secondary" className="settings-list-open-button" onClick={() => onOpenList?.("courtRequests")}>구장 신청 목록 {courtRequests.length}건</Button>
           </Card>
 
-<SettingsReportCard controller={controller} onOpenList={onOpenList} />
+<SettingsReportCard controller={controller} onOpenList={onOpenList} onOpenDetail={onOpenDetail} />
 
         </aside>
   );

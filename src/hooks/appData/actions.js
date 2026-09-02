@@ -316,6 +316,21 @@ export function createAppActions({
   };
   const submitNameReport = async (type, targetId, reason, targetName = "") => {
     if (!targetId) return { ok: false, error: "missing_report_target" };
+    const existingReport = (stateRef.current.reports ?? []).find((item) => (
+      item.type === type
+      && item.targetId === targetId
+      && item.by === currentUserId
+      && !["dismissed", "resolved"].includes(item.status)
+    ));
+    if (existingReport) {
+      return {
+        ok: true,
+        duplicate: true,
+        reportId: existingReport.id,
+        status: existingReport.status,
+        createdAt: existingReport.createdAt,
+      };
+    }
     const report = {
       id: makeClientNotificationId("r"),
       type,
@@ -329,7 +344,7 @@ export function createAppActions({
     };
     if (!isSupabaseConfigured) {
       setState((prev) => ({ ...prev, reports: [report, ...(prev.reports ?? [])] }));
-      return { ok: true, reportId: report.id };
+      return { ok: true, reportId: report.id, status: report.status, createdAt: report.createdAt };
     }
     const serverReady = await ensureServerActionAvailable("/api/reports/submit", "이름 신고");
     if (serverReady !== true) return serverReady;

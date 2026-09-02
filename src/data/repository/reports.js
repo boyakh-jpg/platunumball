@@ -204,8 +204,8 @@ export function reportCourtRequest(state, requestId, reason = "허위 구장 등
     by: state.currentUserId,
     reportedUserIds: [request.requestedBy].filter(Boolean),
     reason: String(reason || "허위 구장 등록").trim(),
-    status: "open",
-    createdAt: new Date().toISOString(),
+    status: String(options.status ?? "open"),
+    createdAt: String(options.createdAt ?? "").trim() || new Date().toISOString(),
   };
   const nextRequests = (state.settings?.courtRequests ?? []).map((item) => (
     item.id === requestId

@@ -1,12 +1,16 @@
 import { Database, MapPin } from "lucide-react";
+import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import SearchPicker from "../components/common/SearchPicker.jsx";
 import ProfileEmblem from "../components/profile/ProfileEmblem.jsx";
 import TeamEmblem from "../components/team/TeamEmblem.jsx";
 import { REPORT_REASONS, REPORT_TARGET_TYPES } from "../lib/reportReasons.js";
+import { getCurrentUserReports, getOpenReportCount } from "../lib/reportEntry.js";
+import { getAdminStatusLabel } from "../lib/admin.js";
 import { formatStatLine } from "../lib/matchUtils.js";
 import { getMatchHashtag } from "../lib/handles.js";
+import { formatKoreanDateTime } from "../../shared/lib/matchTimeUtils.js";
 import {
   getMatchReportTitle,
   getReportTargetLabel,
@@ -14,7 +18,7 @@ import {
   getReportTargetEmptyText,
 } from "./settingsPageModel.js";
 
-export function SettingsReportCard({ controller, onOpenList }) {
+export function SettingsReportCard({ controller, onOpenList, onOpenDetail }) {
   const {
     app,
     blockedUserIds,
@@ -22,21 +26,14 @@ export function SettingsReportCard({ controller, onOpenList }) {
     blockUserQuery,
     setBlockUserQuery,
     blockSavePending,
-    setReportMatchId,
     reportReason,
-    setReportReason,
+    changeReportReason,
     reportTargetQuery,
-    setReportTargetQuery,
-    setReportCourtRequestId,
-    setReportCourtId,
-    setReportCourtReviewId,
-    setReportTeamId,
-    setReportRemoteTarget,
     reportMemo,
     setReportMemo,
-    setReportedUserIds,
     reportSubmitPending,
     reportSubmitStatus,
+    reportReceipt,
     reportMatchesLoading,
     reportMatchesError,
     retryReportMatches,
@@ -94,30 +91,28 @@ export function SettingsReportCard({ controller, onOpenList }) {
     reportCourtRequest,
     toggleReportedUser,
   } = controller;
+  const currentUserReports = getCurrentUserReports(app.state.reports ?? [], app.currentUserId);
+  const openReportCount = getOpenReportCount(app.state.reports ?? [], app.currentUserId);
   return (
-          <Card as="fieldset" className="section-card settings-fieldset-card settings-report-card">
+          <Card
+            as="fieldset"
+            id="settings-report-card"
+            tabIndex={-1}
+            className="section-card settings-fieldset-card settings-report-card"
+          >
             <legend className="section-title-row">
               <div>
                 <h2>신고 접수</h2>
                 <p className="eyebrow">신고</p>
               </div>
+              <Badge tone={currentUserReports.length ? "orange" : "neutral"}>{currentUserReports.length}건</Badge>
             </legend>
             <form className="form-stack" onSubmit={submitReport}>
               <label>
                 사유
                 <select
                   value={reportReason}
-                  onChange={(event) => {
-                    setReportReason(event.target.value);
-                    setReportTargetQuery("");
-                    setReportMatchId("");
-                    setReportCourtRequestId("");
-                    setReportCourtId("");
-                    setReportCourtReviewId("");
-                    setReportTeamId("");
-                    setReportRemoteTarget(null);
-                    setReportedUserIds([]);
-                  }}
+                  onChange={(event) => changeReportReason(event.target.value)}
                 >
                   <option value="">신고 사유 선택</option>
                   {REPORT_REASONS.map((reason) => <option key={reason} value={reason}>{reason}</option>)}
@@ -231,7 +226,7 @@ export function SettingsReportCard({ controller, onOpenList }) {
                     {reportParticipantRows.map((row) => {
                       const checked = selectedReportedUserIds.includes(row.userId);
                       return (
-                        <button key={row.userId} type="button" className={checked ? "ui-choice-tile selected" : "ui-choice-tile"} onClick={() => toggleReportedUser(row.userId)}>
+                        <button key={row.userId} type="button" aria-pressed={checked} className={checked ? "ui-choice-tile selected" : "ui-choice-tile"} onClick={() => toggleReportedUser(row.userId)}>
                           <ProfileEmblem user={row.user} className="small" />
                           <span className="report-player-info">
                             <strong>{row.user.name}</strong>
@@ -257,9 +252,19 @@ export function SettingsReportCard({ controller, onOpenList }) {
               </label>
               <div className="settings-paired-actions">
                 <Button type="submit" variant="secondary" disabled={!canSubmitReport || reportSubmitPending}>{reportSubmitPending ? "저장 중" : "신고 접수"}</Button>
-                <Button type="button" variant="secondary" onClick={() => onOpenList?.("reports")}>신고 목록 열람 {app.state.reports?.length ?? 0}건</Button>
+                <Button type="button" variant="secondary" onClick={() => onOpenList?.("reports")}>내 신고 내역 · 검토 중 {openReportCount}건</Button>
               </div>
               {reportSubmitStatus ? <small role="status">{reportSubmitStatus}</small> : null}
+              {reportReceipt ? (
+                <div className="arena-mini-note settings-report-receipt" role="status">
+                  <div>
+                    <span>{reportReceipt.duplicate ? "기존 신고" : "접수 완료"}</span>
+                    <strong>신고 번호 {reportReceipt.id}</strong>
+                    <em>{formatKoreanDateTime(reportReceipt.createdAt)} · {getAdminStatusLabel(reportReceipt.status)}</em>
+                  </div>
+                  <Button type="button" size="sm" variant="secondary" onClick={() => onOpenDetail?.({ kind: "report", item: reportReceipt })}>상세 보기</Button>
+                </div>
+              ) : null}
             </form>
           </Card>
   );

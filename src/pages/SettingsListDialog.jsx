@@ -5,6 +5,7 @@ import Button from "../components/common/Button.jsx";
 import ModalShell from "../components/common/ModalShell.jsx";
 import { getAdminStatusLabel } from "../lib/admin.js";
 import { getCourtPublicAccessLabel } from "../lib/courts.js";
+import { getCurrentUserReports } from "../lib/reportEntry.js";
 import { getSettingsReportTargetName } from "./settingsPageModel.js";
 
 export default function SettingsListDialog({ kind, controller, onClose, onOpenDetail }) {
@@ -58,10 +59,10 @@ export default function SettingsListDialog({ kind, controller, onClose, onOpenDe
     app, blockedUserIds, blockSavePending, releaseBlock, userMap, matchMap,
     courtRequests, approvedCourts, courtReviews, reportCourtRequest,
   } = controller;
-  const reports = app.state.reports ?? [];
+  const reports = getCurrentUserReports(app.state.reports, app.currentUserId);
   const isReports = kind === "reports";
   const isBlocks = kind === "blocks";
-  const title = isReports ? "신고 목록" : isBlocks ? "차단 플레이어" : "구장 신청 목록";
+  const title = isReports ? "내 신고 내역" : isBlocks ? "차단 플레이어" : "구장 신청 목록";
   const count = isReports ? reports.length : isBlocks ? blockedUserIds.length : courtRequests.length;
   const openDetail = (detail) => {
     onClose();

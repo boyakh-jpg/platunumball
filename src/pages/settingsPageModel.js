@@ -306,6 +306,7 @@ export function getSettingsActivityDetail(detail = {}, context = {}) {
     status: getAdminStatusLabel(status),
     tone: status === "resolved" ? "green" : status === "dismissed" ? "orange" : "neutral",
     rows: [
+      { label: "신고 번호", value: report.id || "-" },
       { label: "신고 사유", value: report.reason || "-" },
       { label: "접수 시각", value: formatSettingsActivityTime(report.createdAt) },
       { label: "처리 시각", value: report.resolvedAt ? formatSettingsActivityTime(report.resolvedAt) : "-" },

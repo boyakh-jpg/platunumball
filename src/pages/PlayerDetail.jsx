@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
-import { ArrowUpRight, ShieldCheck } from "lucide-react";
+import { ArrowUpRight, Flag, MessageCircle, ShieldCheck } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import BasketballLoader from "../components/common/BasketballLoader.jsx";
 import Button from "../components/common/Button.jsx";
@@ -15,9 +15,11 @@ import RatingCard from "../components/rating/RatingCard.jsx";
 import TierEmblem from "../components/rating/TierEmblem.jsx";
 import TeamEmblem from "../components/team/TeamEmblem.jsx";
 import { getUserHashtag } from "../lib/handles.js";
-import { getTeamRoleLabel } from "../lib/constants.js";
-import { getActualMatchPlayerSideName, getMatchSideScore as getSideScore, getPlayerRecentRecordMatches, isEligibleReferee, isPersonalRecordMatch } from "../lib/matchUtils.js";
+import { getTeamRoleLabel, REPORT_MATCH_WINDOW_MS } from "../lib/constants.js";
+import { getActualMatchPlayerSideName, getMatchSideScore as getSideScore, getPlayerRecentRecordMatches, getReportableMatchTimeMs, getReportableMatchUserIds, isEligibleReferee, isPersonalRecordMatch } from "../lib/matchUtils.js";
 import { getRepresentativeTeam, getUserProfileTeams } from "../lib/profileSetup.js";
+import { buildReportEntryPath } from "../lib/reportEntry.js";
+import { REPORT_TARGET_TYPES } from "../lib/reportReasons.js";
 import { getPlacementLabel, isPlacementComplete } from "../lib/rating.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 import { getTierDivision } from "../lib/tier.js";
@@ -150,6 +152,18 @@ export default function PlayerDetail({ app }) {
     Number(teamB.id === representativeTeam?.id) - Number(teamA.id === representativeTeam?.id)
   ));
   const allPlayerHistory = app.state.matches.filter((match) => getActualMatchPlayerSideName(match, player.id));
+  const nowMs = Date.now();
+  const contextualReportMatch = isOwnProfile ? null : app.state.matches
+    .map((match) => ({ match, reportTime: getReportableMatchTimeMs(match) }))
+    .filter(({ match, reportTime }) => {
+      const reportableUserIds = getReportableMatchUserIds(match);
+      return Number.isFinite(reportTime)
+        && reportTime >= nowMs - REPORT_MATCH_WINDOW_MS
+        && reportTime <= nowMs
+        && reportableUserIds.includes(app.currentUser.id)
+        && reportableUserIds.includes(player.id);
+    })
+    .sort((left, right) => right.reportTime - left.reportTime)[0]?.match ?? null;
   const history = allPlayerHistory.filter((match) => (
     !isPersonalRecordMatch(match)
     && (isOwnProfile || (match.visibility ?? match.rules?.visibility ?? "public") !== "private")
@@ -242,7 +256,7 @@ export default function PlayerDetail({ app }) {
         </Card>
       ) : null}
 
-      {canViewStatSummary || canViewTeamHistory || canViewCommunity || hasRefereeProfile ? (
+      {canViewStatSummary || canViewTeamHistory || canViewCommunity || hasRefereeProfile || contextualReportMatch ? (
         <div className="profile-page-navigation">
           {canViewStatSummary || canViewTeamHistory || canViewCommunity ? <nav className="rank-profile-tabs">
             {canViewStatSummary ? <Button as="a" href="#summary" size="sm">종합</Button> : null}
@@ -256,6 +270,22 @@ export default function PlayerDetail({ app }) {
               <ShieldCheck size={15} aria-hidden="true" />
               심판 프로필
               <ArrowUpRight size={15} aria-hidden="true" />
+            </Button>
+          ) : null}
+          {contextualReportMatch ? (
+            <Button
+              as={Link}
+              size="sm"
+              variant="secondary"
+              className="profile-role-link"
+              to={buildReportEntryPath({
+                targetType: REPORT_TARGET_TYPES.player,
+                targetId: player.id,
+                sourceMatchId: contextualReportMatch.id,
+              })}
+            >
+              <Flag size={15} aria-hidden="true" />
+              신고하기
             </Button>
           ) : null}
         </div>

@@ -311,7 +311,7 @@ async function buildReportRow(context, report = {}) {
 async function getActiveReport(context, reportRow) {
   const { data, error } = await context.supabase
     .from("reports")
-    .select("id, status")
+    .select("id, status, created_at")
     .eq("type", reportRow.type)
     .eq("target_id", reportRow.target_id)
     .eq("user_id", context.profileId)
@@ -340,6 +340,7 @@ export default async function handler(request, response) {
         duplicate: true,
         reportId: existingReport.id,
         status: existingReport.status,
+        createdAt: existingReport.created_at,
       });
       return;
     }
@@ -354,6 +355,7 @@ export default async function handler(request, response) {
             duplicate: true,
             reportId: concurrentReport.id,
             status: concurrentReport.status,
+            createdAt: concurrentReport.created_at,
           });
           return;
         }
@@ -376,6 +378,8 @@ export default async function handler(request, response) {
     sendJson(response, 200, {
       ok: true,
       reportId: reportRow.id,
+      status: reportRow.status,
+      createdAt: reportRow.created_at,
       notificationCount: notificationSyncPending ? 0 : notificationRows.length,
       notificationSyncPending,
     });

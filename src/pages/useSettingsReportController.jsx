@@ -1,13 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { REPORT_TARGET_TYPES, VOID_MATCH_RESTORE_REPORT_REASON, getCourtCorrectionFieldForReportReason, getReportReasonValue, getReportTargetType } from "../lib/reportReasons.js";
 import { canRequestVoidMatchRestore, getReportableMatchTimeMs } from "../lib/matchUtils.js";
 import { REPORT_MATCH_WINDOW_MS } from "../lib/constants.js";
 import { getCourtHashtag, getMatchHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
 import { DIRECTORY_SELF_PAGE_LIMIT } from "../lib/queryPolicy.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
+import { isReportTargetCompatible, parseReportEntry } from "../lib/reportEntry.js";
 import { getReportParticipantRows, getMatchReportTitle, matchesReportSearchQuery } from "./settingsPageModel.js";
 
 export default function useSettingsReportController({ app, userMap, matchMap, courtRequests, approvedCourts, courtReviews }) {
+const location = useLocation();
+const reportEntry = useMemo(() => parseReportEntry(location.search), [location.search]);
 const loadDirectory = app.actions.loadDirectory;
 const [reportMatchId, setReportMatchId] = useState("");
 const [reportReason, setReportReason] = useState("");
@@ -22,9 +26,11 @@ const [reportedUserIds, setReportedUserIds] = useState([]);
 const [reportSubmitPending, setReportSubmitPending] = useState(false);
 const reportSubmitPendingRef = useRef(false);
 const [reportSubmitStatus, setReportSubmitStatus] = useState("");
+const [reportReceipt, setReportReceipt] = useState(null);
 const [reportMatchesLoading, setReportMatchesLoading] = useState(false);
 const [reportMatchesError, setReportMatchesError] = useState("");
 const reportMatchesLoadRef = useRef("");
+const initializedEntryRef = useRef("");
 const recentReportMatches = useMemo(() => {
     const now = Date.now();
     const cutoff = now - REPORT_MATCH_WINDOW_MS;
@@ -137,6 +143,29 @@ const reportParticipantIds = useMemo(
     [reportParticipantRows],
   );
 const selectedReportedUserIds = reportedUserIds.filter((userId) => reportParticipantIds.includes(userId));
+useEffect(() => {
+    const entryKey = `${location.pathname}${location.search}`;
+    if (!reportEntry.focus || initializedEntryRef.current === entryKey) return;
+    if (reportEntry.targetType === REPORT_TARGET_TYPES.match) {
+      const match = reportableMatchCandidates.find((candidate) => candidate.id === reportEntry.targetId);
+      if (!match) return;
+      setReportMatchId(match.id);
+      setReportTargetQuery(`${getMatchReportTitle(match)} ${getMatchHashtag(match)}`.trim());
+      initializedEntryRef.current = entryKey;
+      return;
+    }
+    if (reportEntry.targetType === REPORT_TARGET_TYPES.player) {
+      const match = reportableMatchCandidates.find((candidate) => candidate.id === reportEntry.sourceMatchId);
+      const row = match ? getReportParticipantRows(match, userMap).find((candidate) => candidate.userId === reportEntry.targetId) : null;
+      if (!match || !row || row.userId === app.currentUserId) return;
+      setReportMatchId(match.id);
+      setReportedUserIds([row.userId]);
+      setReportTargetQuery(`${row.user.name} ${getUserHashtag(row.user)} ${getMatchHashtag(match)}`.trim());
+      initializedEntryRef.current = entryKey;
+      return;
+    }
+    initializedEntryRef.current = entryKey;
+  }, [app.currentUserId, location.pathname, location.search, reportEntry, reportableMatchCandidates, userMap]);
 const reportTargetSearchItems = useMemo(() => {
     if (!reportReason) return [];
     const includePlayers = reportTargetType === REPORT_TARGET_TYPES.player || reportTargetType === REPORT_TARGET_TYPES.mixed;
@@ -393,6 +422,31 @@ const changeReportTargetQuery = (value) => {
     setReportRemoteTarget(null);
     setReportedUserIds([]);
   };
+const changeReportReason = (nextReason) => {
+    const nextTargetType = nextReason ? getReportTargetType(nextReason) : "";
+    const selectedTargetType = selectedReportedUserIds.length
+      ? REPORT_TARGET_TYPES.player
+      : selectedReportMatch
+        ? REPORT_TARGET_TYPES.match
+        : selectedReportCourtRequest
+          ? REPORT_TARGET_TYPES.courtRequest
+          : selectedReportCourt
+            ? REPORT_TARGET_TYPES.court
+            : selectedReportCourtReview
+              ? REPORT_TARGET_TYPES.courtReview
+              : selectedReportTeam
+                ? reportTargetType
+                : "";
+    const compatible = !selectedTargetType
+      || isReportTargetCompatible(selectedTargetType, nextTargetType)
+      || selectedTargetType === nextTargetType;
+    if (!compatible) {
+      const confirmed = window.confirm("신고 사유를 바꾸면 선택한 대상만 초기화됩니다. 계속할까요?");
+      if (!confirmed) return;
+      changeReportTargetQuery("");
+    }
+    setReportReason(nextReason);
+  };
 const renderReportTargetSearchItem = (item) => (
     <button
       key={item.id}
@@ -410,6 +464,17 @@ const submitReport = async (event) => {
     event.preventDefault();
     if (!canSubmitReport || reportSubmitPendingRef.current) return;
     const memo = reportMemo.trim();
+    const receiptTarget = selectedReportTeam
+      ? { type: reportTargetType, id: selectedReportTeam.id }
+      : selectedReportCourtRequest
+        ? { type: REPORT_TARGET_TYPES.courtRequest, id: selectedReportCourtRequest.id }
+        : selectedReportCourt
+          ? { type: REPORT_TARGET_TYPES.court, id: selectedReportCourt.id }
+          : selectedReportCourtReview
+            ? { type: REPORT_TARGET_TYPES.courtReview, id: selectedReportCourtReview.id }
+            : reportTargetType === REPORT_TARGET_TYPES.player
+              ? { type: REPORT_TARGET_TYPES.player, id: selectedReportedUserIds[0] }
+              : { type: REPORT_TARGET_TYPES.match, id: selectedReportMatchId };
     reportSubmitPendingRef.current = true;
     setReportSubmitPending(true);
     setReportSubmitStatus("신고 저장 중");
@@ -455,6 +520,16 @@ const submitReport = async (event) => {
         return;
       }
       setReportSubmitStatus(result.duplicate ? "이미 접수된 신고입니다." : "신고가 접수됐습니다.");
+      setReportReceipt({
+        id: result.reportId,
+        status: result.status ?? "open",
+        createdAt: result.createdAt,
+        reason: [reportReason, memo].filter(Boolean).join(" · "),
+        type: receiptTarget.type,
+        targetId: receiptTarget.id,
+        by: app.currentUserId,
+        duplicate: result.duplicate === true,
+      });
       if (loadDirectory) {
         await Promise.resolve()
           .then(() => loadDirectory({ kind: "self", limit: DIRECTORY_SELF_PAGE_LIMIT, offset: 0, force: true }))
@@ -488,11 +563,5 @@ const toggleReportedUser = (userId) => {
         : [userId]
     ));
   };
-useEffect(() => {
-    setReportedUserIds((current) => {
-      const next = current.filter((userId) => reportParticipantIds.includes(userId));
-      return next.length === current.length ? current : next;
-    });
-  }, [reportParticipantIds]);
-  return { reportMatchId, setReportMatchId, reportReason, setReportReason, reportTargetQuery, setReportTargetQuery, reportCourtRequestId, setReportCourtRequestId, reportCourtId, setReportCourtId, reportCourtReviewId, setReportCourtReviewId, reportTeamId, setReportTeamId, reportRemoteTarget, setReportRemoteTarget, reportMemo, setReportMemo, reportedUserIds, setReportedUserIds, reportSubmitPending, setReportSubmitPending, reportSubmitStatus, setReportSubmitStatus, reportMatchesLoading, setReportMatchesLoading, reportMatchesError, setReportMatchesError, retryReportMatches, recentReportMatches, reportTargetType, isVoidRestoreReport, reportableMatchCandidates, reportNeedsMatchData, reportableCourtRequests, reportableCourts, reportableCourtReviews, reportableTeams, selectedReportMatchId, selectedReportMatch, selectedReportCourtRequest, selectedReportCourt, selectedReportCourtReview, selectedReportTeam, selectedTeamHasUploadedEmblem, reportParticipantRows, reportParticipantIds, selectedReportedUserIds, reportTargetSearchItems, reportRemoteSearchTypes, mapRemoteReportTarget, hasValidVoidRestoreMemo, canSubmitReport, selectReportTarget, changeReportTargetQuery, renderReportTargetSearchItem, submitReport, toggleReportedUser };
+  return { reportMatchId, setReportMatchId, reportReason, setReportReason, changeReportReason, reportTargetQuery, setReportTargetQuery, reportCourtRequestId, setReportCourtRequestId, reportCourtId, setReportCourtId, reportCourtReviewId, setReportCourtReviewId, reportTeamId, setReportTeamId, reportRemoteTarget, setReportRemoteTarget, reportMemo, setReportMemo, reportedUserIds, setReportedUserIds, reportSubmitPending, setReportSubmitPending, reportSubmitStatus, setReportSubmitStatus, reportReceipt, reportMatchesLoading, setReportMatchesLoading, reportMatchesError, setReportMatchesError, retryReportMatches, recentReportMatches, reportTargetType, isVoidRestoreReport, reportableMatchCandidates, reportNeedsMatchData, reportableCourtRequests, reportableCourts, reportableCourtReviews, reportableTeams, selectedReportMatchId, selectedReportMatch, selectedReportCourtRequest, selectedReportCourt, selectedReportCourtReview, selectedReportTeam, selectedTeamHasUploadedEmblem, reportParticipantRows, reportParticipantIds, selectedReportedUserIds, reportTargetSearchItems, reportRemoteSearchTypes, mapRemoteReportTarget, hasValidVoidRestoreMemo, canSubmitReport, selectReportTarget, changeReportTargetQuery, renderReportTargetSearchItem, submitReport, toggleReportedUser };
 }
