@@ -10,6 +10,10 @@ import {
   getAccountRecoveryConnectionRequest,
   getAuthProviderLabel,
 } from "../lib/authProviders.js";
+import {
+  createOriginalAdminAccount,
+  ORIGINAL_ADMIN_ACCOUNT_ID,
+} from "../lib/originalAdminSession.js";
 import SettingsPrimaryColumn from "./SettingsPrimaryColumn.jsx";
 import SettingsSideColumn from "./SettingsSideColumn.jsx";
 import SettingsRefereeSection from "./SettingsRefereeSection.jsx";
@@ -20,10 +24,24 @@ export default function SettingsPageView({ controller, auth }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { sectionMeta, settingsSection, selectedReportCourtRequest } = controller;
-  const canSwitchTestAccount = controller.serverAdminLevel >= 100 || Boolean(controller.currentTestLoginId);
+  const liveOriginalAdminAccount = controller.serverAdminLevel >= 100
+    ? createOriginalAdminAccount({
+        userId: auth?.user?.id,
+        loginId: auth?.user?.email,
+      })
+    : null;
+  const originalAdminAccount = liveOriginalAdminAccount || auth?.originalAdminAccount;
+  const switchAccounts = originalAdminAccount
+    ? [originalAdminAccount, ...(auth?.testAccounts ?? [])]
+    : (auth?.testAccounts ?? []);
+  const currentSwitchAccountId = controller.currentTestLoginId
+    || (liveOriginalAdminAccount ? ORIGINAL_ADMIN_ACCOUNT_ID : "");
+  const canSwitchTestAccount = Boolean(originalAdminAccount)
+    || controller.serverAdminLevel >= 100
+    || Boolean(controller.currentTestLoginId);
   const [activityDetail, setActivityDetail] = useState(null);
   const [activityList, setActivityList] = useState("");
-  const [testLoginId, setTestLoginId] = useState(() => controller.currentTestLoginId || auth?.testAccounts?.[0]?.id || "");
+  const [testLoginId, setTestLoginId] = useState(() => currentSwitchAccountId || switchAccounts[0]?.id || "");
   const [testSwitchStatus, setTestSwitchStatus] = useState("");
   const [identityStatus, setIdentityStatus] = useState("");
   const [identityStatusTone, setIdentityStatusTone] = useState("");
@@ -43,6 +61,10 @@ export default function SettingsPageView({ controller, auth }) {
     .filter((provider) => !linkedProviderIds.includes(provider.id))
     .sort((left, right) => Number(right.id === validRequestedProviderId) - Number(left.id === validRequestedProviderId));
   useBodyScrollLock(withdrawalOpen || Boolean(activityList) || Boolean(activityDetail));
+
+  useEffect(() => {
+    if (currentSwitchAccountId) setTestLoginId(currentSwitchAccountId);
+  }, [currentSwitchAccountId]);
 
   useEffect(() => {
     if (!requestedProviderLinked) return;
@@ -150,15 +172,15 @@ export default function SettingsPageView({ controller, auth }) {
                   <label>
                     로그인 ID
                     <select value={testLoginId} onChange={(event) => setTestLoginId(event.target.value)}>
-                      {auth.testAccounts.map((account) => (
-                        <option key={account.id} value={account.id}>{account.id} · {account.label}</option>
+                      {switchAccounts.map((account) => (
+                        <option key={account.id} value={account.id}>{account.loginId || account.id} · {account.label}</option>
                       ))}
                     </select>
                   </label>
                   <Button
                     type="submit"
                     variant="primary"
-                    disabled={auth.testLoginPending || !testLoginId || testLoginId === controller.currentTestLoginId}
+                    disabled={auth.testLoginPending || !testLoginId || testLoginId === currentSwitchAccountId}
                   >
                     <ArrowRightLeft size={16} /> 전환
                   </Button>

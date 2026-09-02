@@ -7,6 +7,14 @@ import {
   getLinkedProviderIds,
 } from "../lib/authProviders.js";
 import { getOAuthCallbackRedirectUrl, getOAuthCallbackState } from "../lib/authCallback.js";
+import {
+  clearOriginalAdminSession,
+  getOriginalAdminAccount,
+  ORIGINAL_ADMIN_ACCOUNT_ID,
+  readOriginalAdminSession,
+  shouldPreserveOriginalAdminSession,
+  writeOriginalAdminSession,
+} from "../lib/originalAdminSession.js";
 import { getLoginPath, getSafeAppRedirect } from "../lib/profileSetup.js";
 import { isSupabaseConfigured, supabase } from "../lib/supabase.js";
 import { postServerAction, setClientActionSession } from "../lib/serverActions.js";
@@ -218,6 +226,7 @@ export function useAuthSession() {
       setMessage("");
       try {
         if (isSupabaseConfigured) {
+          clearOriginalAdminSession();
           const redirectTo = getOAuthCallbackRedirectUrl(
             window.location.origin,
             getSafeAppRedirect(redirectPath),
@@ -264,6 +273,7 @@ export function useAuthSession() {
           localSignOutRequired = Boolean(signOutError);
         }
         if (localSignOutRequired) clearSupabaseSessionStorage();
+        clearOriginalAdminSession();
         writeTestSession(null);
         setClientActionSession(null);
         setSession(null);
@@ -322,6 +332,7 @@ export function useAuthSession() {
           { confirmation },
           { allowWhenDisabled: true },
         );
+        clearOriginalAdminSession();
         clearSupabaseSessionStorage();
         writeTestSession(null);
         setClientActionSession(null);
@@ -352,6 +363,7 @@ export function useAuthSession() {
           { confirmation },
           { allowWhenDisabled: true },
         );
+        clearOriginalAdminSession();
         clearSupabaseSessionStorage();
         writeTestSession(null);
         setClientActionSession(null);
@@ -408,6 +420,24 @@ export function useAuthSession() {
               : "선택한 테스트 계정으로 로그인하지 못했습니다.");
             return null;
           }
+          if (alphaPayload.allowOriginalAdminReturn === true) {
+            const { data: currentAuthData, error: currentAuthError } = await supabase.auth.getSession()
+              .catch((currentAuthError) => ({ data: null, error: currentAuthError }));
+            const currentAuthSession = currentAuthData?.session;
+            const storedOriginalSession = readOriginalAdminSession();
+            const preserveStoredOriginal = shouldPreserveOriginalAdminSession(
+              storedOriginalSession,
+              currentAuthSession,
+            );
+            if (
+              currentAuthError
+              || !currentAuthSession
+              || (!preserveStoredOriginal && !writeOriginalAdminSession(currentAuthSession))
+            ) {
+              setError("관리자 원계정 복귀 정보를 보관하지 못했습니다. 다시 시도해 주세요.");
+              return null;
+            }
+          }
           const { data: testAuthData, error: testAuthError } = await supabase.auth.verifyOtp({
             token_hash: alphaPayload.tokenHash,
             type: "magiclink",
@@ -435,6 +465,59 @@ export function useAuthSession() {
         }
       }
     },
+    restoreOriginalAdminSession: async () => {
+      if (testLoginPendingRef.current || authActionPendingRef.current || !isSupabaseConfigured) return null;
+      const storedSession = readOriginalAdminSession();
+      if (!storedSession) {
+        setError("관리자 원계정 복귀 정보를 찾지 못했습니다.");
+        return null;
+      }
+
+      const loginGeneration = testLoginGenerationRef.current + 1;
+      testLoginGenerationRef.current = loginGeneration;
+      testLoginPendingRef.current = true;
+      setTestLoginPending(true);
+      setError("");
+      setMessage("");
+      try {
+        const { data: restoredAuthData, error: restoreError } = await supabase.auth.setSession({
+          access_token: storedSession.accessToken,
+          refresh_token: storedSession.refreshToken,
+        }).catch((restoreError) => ({ data: null, error: restoreError }));
+        const restoredSession = restoredAuthData?.session;
+        const restoredWrongUser = Boolean(
+          restoredSession
+          && restoredSession.user?.id !== storedSession.userId,
+        );
+        if (
+          loginGeneration !== testLoginGenerationRef.current
+          || restoreError
+          || !restoredSession
+          || restoredWrongUser
+        ) {
+          if (restoredWrongUser) {
+            clearOriginalAdminSession();
+            await supabase.auth.signOut().catch(() => null);
+            clearSupabaseSessionStorage();
+            writeTestSession(null);
+            setClientActionSession(null);
+            setSession(null);
+          }
+          setError("관리자 원계정으로 복귀하지 못했습니다. 다시 로그인해 주세요.");
+          return null;
+        }
+        clearOriginalAdminSession();
+        writeTestSession(null);
+        setClientActionSession(restoredSession);
+        setSession(restoredSession);
+        return restoredSession;
+      } finally {
+        if (loginGeneration === testLoginGenerationRef.current) {
+          testLoginPendingRef.current = false;
+          setTestLoginPending(false);
+        }
+      }
+    },
   }), []);
 
   return {
@@ -442,6 +525,7 @@ export function useAuthSession() {
     enabledProviders: ENABLED_AUTH_PROVIDERS,
     linkedProviderIds: getLinkedProviderIds(session?.user),
     authActionPending,
+    originalAdminAccount: getOriginalAdminAccount(),
     testAccounts: TEST_ACCOUNTS,
     testLoginAllowed: isDemoLoginAllowed(),
     testLoginPending,
@@ -452,6 +536,10 @@ export function useAuthSession() {
     error,
     isAuthenticated: !isSupabaseConfigured || Boolean(session),
     ...actions,
-    switchTestAccount: (testLoginId) => actions.signInWithTestAccount(testLoginId, { settingsSwitch: true }),
+    switchTestAccount: (testLoginId) => (
+      testLoginId === ORIGINAL_ADMIN_ACCOUNT_ID
+        ? actions.restoreOriginalAdminSession()
+        : actions.signInWithTestAccount(testLoginId, { settingsSwitch: true })
+    ),
   };
 }

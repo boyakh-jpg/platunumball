@@ -9,6 +9,28 @@ import handler, {
   normalizeAlphaTestLoginId,
 } from "../server/api/auth/alpha-test-login.js";
 import { getBoundAuthProfileId } from "../src/hooks/appData/metadata.js";
+import {
+  clearOriginalAdminSession,
+  getOriginalAdminAccount,
+  readOriginalAdminSession,
+  shouldPreserveOriginalAdminSession,
+  writeOriginalAdminSession,
+} from "../src/lib/originalAdminSession.js";
+
+function createStorage() {
+  const values = new Map();
+  return {
+    getItem(key) {
+      return values.get(key) ?? null;
+    },
+    setItem(key, value) {
+      values.set(key, value);
+    },
+    removeItem(key) {
+      values.delete(key);
+    },
+  };
+}
 
 function createResponse() {
   return {
@@ -185,6 +207,37 @@ test("settings test account switching requires the owner or an exact test auth i
     testLoginId: "rankball-051",
     email: "rankball-051@rankball.test",
   }), false);
+});
+
+test("original administrator session is tab-scoped and bound to the exact auth user", () => {
+  const storage = createStorage();
+  assert.equal(writeOriginalAdminSession({ user: { id: "admin-auth" } }, storage), false);
+  assert.equal(writeOriginalAdminSession({
+    access_token: "admin-access",
+    refresh_token: "admin-refresh",
+    user: { id: "admin-auth", email: "owner@example.com" },
+  }, storage), true);
+  assert.deepEqual(readOriginalAdminSession(storage), {
+    accessToken: "admin-access",
+    refreshToken: "admin-refresh",
+    userId: "admin-auth",
+    loginId: "owner@example.com",
+  });
+  assert.deepEqual(getOriginalAdminAccount(storage), {
+    id: "__original-admin-account__",
+    loginId: "owner@example.com",
+    label: "관리자 원계정",
+  });
+  assert.equal(shouldPreserveOriginalAdminSession(
+    readOriginalAdminSession(storage),
+    { user: { id: "test-admin-auth" } },
+  ), true);
+  assert.equal(shouldPreserveOriginalAdminSession(
+    readOriginalAdminSession(storage),
+    { user: { id: "admin-auth" } },
+  ), false);
+  clearOriginalAdminSession(storage);
+  assert.equal(readOriginalAdminSession(storage), null);
 });
 
 test("local test session selects the demo profile with the exact login id", () => {

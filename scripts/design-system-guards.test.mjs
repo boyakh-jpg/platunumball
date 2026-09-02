@@ -414,6 +414,7 @@ test("signed-in login redirects and settings exposes logout", () => {
   assert.match(settingsSource, /settings-signout-row[\s\S]*?variant="danger"/);
   assert.match(settingsSource, /canSwitchTestAccount[\s\S]*?<details className="settings-test-account-switcher"/);
   assert.match(settingsSource, /auth\.switchTestAccount\(testLoginId\)/);
+  assert.match(settingsSource, /createOriginalAdminAccount[\s\S]*?ORIGINAL_ADMIN_ACCOUNT_ID[\s\S]*?switchAccounts\.map/);
   assert.match(settingsStyles, /\.settings-signout-row \.button\s*\{[^}]*width:\s*100%;/);
 });
 

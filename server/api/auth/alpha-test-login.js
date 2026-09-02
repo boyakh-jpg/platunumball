@@ -103,7 +103,11 @@ async function getSettingsTestSwitchAccess(request) {
   })) {
     throw createAlphaLoginError("test_account_switch_forbidden", 403);
   }
-  return { allowActiveAdminTarget: Number(adminLevel) >= 100 };
+  const isOwner = Number(adminLevel) >= 100;
+  return {
+    allowActiveAdminTarget: isOwner,
+    allowOriginalAdminReturn: isOwner,
+  };
 }
 
 export async function assertTestProfileAvailable(client, testLoginId, email, { allowActiveAdminTarget = false } = {}) {
@@ -160,6 +164,7 @@ export default async function handler(request, response) {
       ok: true,
       tokenHash,
       verificationType: "magiclink",
+      allowOriginalAdminReturn: switchAccess.allowOriginalAdminReturn === true,
     });
   } catch (error) {
     const statusCode = error.statusCode || 500;
