@@ -36,6 +36,37 @@ async function firstAvailablePath(paths) {
   throw new Error("Edge 또는 Chrome 실행 파일을 찾지 못했습니다. BOXTIER_BROWSER_PATH를 지정하세요.");
 }
 
+async function loadPublicMatchDemoData() {
+  const response = await fetch(`${readApiBaseUrl}/api/matches/public-detail`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ matchId }),
+  });
+  if (!response.ok) throw new Error(`공개 경기 데이터 조회 실패: HTTP ${response.status}`);
+
+  const state = (await response.json())?.state ?? {};
+  const match = (state.matches ?? []).find((item) => String(item.id) === String(matchId));
+  if (!match) throw new Error(`공개 경기 데이터에서 ${matchId}를 찾지 못했습니다.`);
+
+  const activePlayerIds = new Set([
+    ...(match.teamA?.players ?? []),
+    ...(match.teamB?.players ?? []),
+  ].map(String));
+  const tierPlayer = (state.users ?? [])
+    .filter((user) => activePlayerIds.has(String(user.id)))
+    .filter((user) => {
+      const placement = user.ratings?.placement;
+      return !placement
+        || placement.completed === true
+        || Number(placement.matchCount) >= Math.max(1, Number(placement.target) || 5);
+    })
+    .filter((user) => Number.isFinite(Number(user.ratings?.integrated)))
+    .sort((left, right) => Number(right.ratings.integrated) - Number(left.ratings.integrated))[0];
+  if (!tierPlayer) throw new Error("녹화 경기 참가자 중 공개 티어를 확인할 수 있는 선수가 없습니다.");
+
+  return { match, tierPlayer };
+}
+
 function parseEnv(source) {
   return Object.fromEntries(source.split(/\r?\n/).flatMap((line) => {
     const separator = line.indexOf("=");
@@ -69,6 +100,7 @@ await Promise.all([
 ]);
 const attendanceAssetDataUrl = `data:image/png;base64,${(await readFile(attendanceAssetPath)).toString("base64")}`;
 const scoreboardAssetDataUrl = `data:image/jpeg;base64,${(await readFile(scoreboardAssetPath)).toString("base64")}`;
+const demoMatchData = await loadPublicMatchDemoData();
 const executablePath = await firstAvailablePath(browserCandidates);
 const browser = await chromium.launch({ executablePath, headless: true });
 const context = await browser.newContext({
@@ -197,6 +229,16 @@ await context.addInitScript(() => {
         top: calc(100% + 10px);
         bottom: auto;
       }
+      .box-tier-demo-cue[data-label-align="right"]::after {
+        right: 0;
+        left: auto;
+        transform: none;
+      }
+      .box-tier-demo-cue[data-label-align="left"]::after {
+        right: auto;
+        left: 0;
+        transform: none;
+      }
       .box-tier-demo-product-visual {
         position: fixed;
         z-index: 2147483600;
@@ -239,8 +281,8 @@ await context.addInitScript(() => {
       }
       .box-tier-demo-product-visual[data-kind="scoreboard"] img {
         top: 62px;
-        left: -50px;
-        width: 640px;
+        left: -27px;
+        width: 570px;
       }
       .box-tier-demo-product-note {
         position: absolute;
@@ -322,12 +364,28 @@ await context.addInitScript(() => {
     cue.className = "box-tier-demo-cue";
     cue.setAttribute("aria-hidden", "true");
     cue.dataset.label = label;
-    cue.style.left = `${Math.max(8, bounds.left - padding)}px`;
+    const cueLeft = Math.max(8, bounds.left - padding);
+    const cueRight = Math.min(innerWidth - 8, bounds.left + bounds.width + padding);
+    const cueCenter = (cueLeft + cueRight) / 2;
+    cue.style.left = `${cueLeft}px`;
     cue.style.top = `${Math.max(8, bounds.top - padding)}px`;
-    cue.style.width = `${Math.min(innerWidth - 16, bounds.width + padding * 2)}px`;
+    cue.style.width = `${Math.max(0, cueRight - cueLeft)}px`;
     cue.style.height = `${bounds.height + padding * 2}px`;
     if (bounds.top < 150) cue.dataset.labelPlacement = "below";
+    if (cueCenter > innerWidth - 90) cue.dataset.labelAlign = "right";
+    if (cueCenter < 90) cue.dataset.labelAlign = "left";
     document.body.append(cue);
+  };
+  window.__boxTierDemoCueProductRegion = (region, label) => {
+    const image = document.querySelector(".box-tier-demo-product-visual img");
+    if (!image?.naturalWidth || !image?.naturalHeight) throw new Error("제품 이미지 좌표를 계산할 수 없습니다.");
+    const bounds = image.getBoundingClientRect();
+    window.__boxTierDemoCue({
+      left: bounds.left + (region.left / image.naturalWidth) * bounds.width,
+      top: bounds.top + (region.top / image.naturalHeight) * bounds.height,
+      width: (region.width / image.naturalWidth) * bounds.width,
+      height: (region.height / image.naturalHeight) * bounds.height,
+    }, label);
   };
   document.addEventListener("pointerdown", (event) => {
     window.__boxTierDemoTap(event.clientX, event.clientY);
@@ -385,6 +443,12 @@ async function cueProductBounds(bounds, label) {
   await page.evaluate(({ cueBounds, cueLabel }) => {
     window.__boxTierDemoCue(cueBounds, cueLabel);
   }, { cueBounds: bounds, cueLabel: label });
+}
+
+async function cueProductRegion(region, label) {
+  await page.evaluate(({ cueRegion, cueLabel }) => {
+    window.__boxTierDemoCueProductRegion(cueRegion, cueLabel);
+  }, { cueRegion: region, cueLabel: label });
 }
 
 async function clickWithCue(target, { cueMs = 800, settleMs = 900 } = {}) {
@@ -525,11 +589,14 @@ try {
     kind: "scoreboard",
     note: "실제 BoxTier 모바일 전광판 · 경기시간, 점수, 샷클락을 현장에서 조작",
   });
-  await cueProductBounds({ left: 205, top: 300, width: 205, height: 150 }, "1Q · 경기시간");
-  await wait(3_700);
+  await cueProductRegion({ left: 310, top: 175, width: 300, height: 260 }, "1Q · 경기시간");
+  await wait(2_800);
   await page.evaluate(() => window.__boxTierDemoClearCue());
-  await cueProductBounds({ left: 20, top: 370, width: 490, height: 125 }, "점수 버튼 · 샷클락");
-  await wait(3_700);
+  await cueProductRegion({ left: 62, top: 245, width: 798, height: 205 }, "양 팀 점수 · 득점 버튼");
+  await wait(2_700);
+  await page.evaluate(() => window.__boxTierDemoClearCue());
+  await cueProductRegion({ left: 875, top: 225, width: 143, height: 245 }, "샷클락 30초");
+  await wait(2_500);
   await page.evaluate(() => window.__boxTierDemoClearCue());
   await endScene("live-scoreboard", startedAt, 9_000);
   await page.evaluate(() => window.__boxTierDemoClearProductVisual());
@@ -543,16 +610,21 @@ try {
   await page.evaluate(() => window.__boxTierDemoClearCue());
   await endScene("final-result", startedAt, 5_800);
 
-  await gotoApp("/app/rankings");
+  await gotoApp(`/app/players/${encodeURIComponent(demoMatchData.tierPlayer.id)}`);
   await caption(
     "기록이 쌓이면 티어도 변화",
-    "확정된 경쟁전 결과를 서버가 계산해 통합·경기 방식별 MMR과 티어, 랭크보드를 갱신합니다.",
+    "확정된 경쟁전 결과가 MMR에 반영되고, 누적 기록에 따라 현재 티어와 다음 승급 조건을 프로필에서 확인합니다.",
   );
   startedAt = startScene();
-  const integratedRanking = page.getByRole("heading", { name: "전국 통합 MMR", exact: true });
-  await integratedRanking.waitFor({ timeout: 20_000 });
-  await cueTarget(integratedRanking, "통합 MMR 랭크보드");
-  await wait(4_900);
+  const tierHero = page.locator(".player-tier-hero");
+  await tierHero.waitFor({ timeout: 20_000 });
+  await cueTarget(tierHero, `현재 티어 · ${Math.round(Number(demoMatchData.tierPlayer.ratings.integrated))} MMR`);
+  await wait(3_200);
+  await page.evaluate(() => window.__boxTierDemoClearCue());
+  const promotionHeading = page.getByRole("heading", { name: /승급 조건$|최상위 티어$/ }).first();
+  await promotionHeading.waitFor({ timeout: 20_000 });
+  await cueTarget(promotionHeading, "다음 티어 승급 조건");
+  await wait(2_500);
   await page.evaluate(() => window.__boxTierDemoClearCue());
   await endScene("tier-update", startedAt, 7_000);
 
@@ -590,14 +662,19 @@ try {
     receiptAssetPath,
     attendanceAssetPath,
     scoreboardAssetPath,
-    match: { id: matchId, mode: "5v5" },
+    match: { id: matchId, mode: demoMatchData.match.mode },
+    tierPlayer: {
+      id: demoMatchData.tierPlayer.id,
+      name: demoMatchData.tierPlayer.name,
+      integratedMmr: Math.round(Number(demoMatchData.tierPlayer.ratings.integrated)),
+    },
     facts: {
       create: "실제 공개 경쟁 개인방 생성 폼에서 5v5와 참가 가능한 MMR 범위를 확인하되 방을 생성하지 않습니다.",
       matching: "지역은 자동 배정이 아니라 공개 매칭 목록의 시·도/시·군·구 필터로 설명합니다.",
       room: "팀 구성과 최종 결과는 동일한 실제 5v5 기록방에서 읽기 전용으로 녹화합니다.",
       attendance: "서비스 사용 설명에 포함된 실제 QR 출석판 캡처로 QR과 A/B 출석 현황을 보여줍니다. 오래된 안내 문장 영역은 제외하고 현재 20분 전 기준을 설명합니다.",
-      scoreboard: "서비스 사용 설명에 포함된 실제 모바일 전광판 캡처로 경기시간, 점수 버튼, 샷클락을 보여줍니다. 진행 중 점수 변경을 꾸미지 않습니다.",
-      tier: "확정 경쟁전 결과가 서버 계산을 거쳐 통합·경기 방식별 MMR과 티어에 반영된다는 정책과 실제 통합 랭크보드를 보여줍니다. 비어 있는 5v5 순위를 꾸미지 않습니다.",
+      scoreboard: "서비스 사용 설명에 포함된 실제 모바일 전광판 캡처의 원본 좌표를 화면 좌표로 변환해 경기시간, 양 팀 점수 버튼, 샷클락을 정확히 강조합니다. 진행 중 점수 변경을 꾸미지 않습니다.",
+      tier: "같은 5v5 경기의 실제 참가자 중 배치가 완료된 선수 프로필에서 현재 티어, 통합 MMR, 다음 티어 승급 조건을 보여줍니다.",
       receipt: "같은 5v5 기록방 모달의 실제 영수증 발급 버튼을 클릭하고, 이미지·Story·Feed 공유 흐름을 설명한 뒤 사용자가 제공한 감열지 완성 이미지를 사용합니다.",
     },
     scenes,
