@@ -303,12 +303,6 @@ html[data-theme] .guest-landing-primary-actions .ui-button {
   max-width: 100%;
 }
 
-html[data-theme] .guest-landing-experience-actions,
-html[data-theme] .guest-landing-experience-actions .ui-button {
-  width: 100%;
-  max-width: 100%;
-}
-
 html[data-theme] .guest-landing-primary-cta {
   min-height: var(--ui-button-height);
   padding-inline: var(--ui-button-padding-x);
@@ -391,7 +385,7 @@ html[data-theme] .app-main .ui-page-hero :is(h1, h2) {
 }
 
 html[data-theme] .app-main .ui-page-hero .ui-page-hero__copy > p:not(.eyebrow),
-.guest-landing-hero-copy > p:not(.guest-landing-eyebrow) {
+.guest-landing-hero-copy > p {
   max-width: 62ch;
   color: var(--hero-copy-color);
   font-size: var(--font-size-body);
@@ -399,8 +393,7 @@ html[data-theme] .app-main .ui-page-hero .ui-page-hero__copy > p:not(.eyebrow),
   text-shadow: var(--hero-copy-shadow);
 }
 
-html[data-theme] :is(.ui-design-app, .ui-design-host) .eyebrow,
-.guest-landing-eyebrow {
+html[data-theme] :is(.ui-design-app, .ui-design-host) .eyebrow {
   font-family: var(--font-body);
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-control);
