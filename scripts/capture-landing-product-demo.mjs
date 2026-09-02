@@ -1,17 +1,28 @@
-import { access, mkdir } from "node:fs/promises";
+import { access, mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { chromium } from "playwright-core";
 
-const baseUrl = (process.env.BOXTIER_BASE_URL ?? "http://127.0.0.1:4176").replace(/\/$/, "");
+const baseUrl = (process.env.BOXTIER_BASE_URL ?? "https://boxtier.kr").replace(/\/$/, "");
+const readApiBaseUrl = (process.env.BOXTIER_READ_API_BASE_URL ?? baseUrl).replace(/\/$/, "");
+const email = process.env.BOXTIER_DEMO_EMAIL;
+const password = process.env.BOXTIER_DEMO_PASSWORD;
+const liveMatchId = process.env.BOXTIER_LIVE_MATCH_ID ?? "m_mshmjm2k_lvd25";
+const receiptMatchId = process.env.BOXTIER_RECEIPT_MATCH_ID ?? "tm_31b5b240e7876ae208743610";
+const resultMatchId = process.env.BOXTIER_RESULT_MATCH_ID ?? receiptMatchId;
 const outputDir = path.resolve("tmp/landing-product-demo");
 const rawVideoPath = path.join(outputDir, "landing-product-demo-raw.webm");
 const metadataPath = path.join(outputDir, "capture.json");
+const receiptAssetPath = path.resolve("public/assets/showcase/landing-product-demo-receipt.png");
 const browserCandidates = [
   process.env.BOXTIER_BROWSER_PATH,
   "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
   "C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe",
   "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
 ].filter(Boolean);
+
+if (!email || !password) {
+  throw new Error("BOXTIER_DEMO_EMAIL과 BOXTIER_DEMO_PASSWORD가 필요합니다.");
+}
 
 async function firstAvailablePath(paths) {
   for (const candidate of paths) {
@@ -25,7 +36,29 @@ async function firstAvailablePath(paths) {
   throw new Error("Edge 또는 Chrome 실행 파일을 찾지 못했습니다. BOXTIER_BROWSER_PATH를 지정하세요.");
 }
 
+function parseEnv(source) {
+  return Object.fromEntries(source.split(/\r?\n/).flatMap((line) => {
+    const separator = line.indexOf("=");
+    if (separator < 1 || line.trimStart().startsWith("#")) return [];
+    return [[line.slice(0, separator), line.slice(separator + 1).replace(/^['\"]|['\"]$/g, "")]];
+  }));
+}
+
+const productionEnv = parseEnv(await readFile(".env.production", "utf8"));
+const supabaseUrl = productionEnv.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey = productionEnv.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+if (!supabaseUrl || !supabaseKey) throw new Error(".env.production의 Supabase 설정을 찾지 못했습니다.");
+
+const authResponse = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
+  method: "POST",
+  headers: { apikey: supabaseKey, "Content-Type": "application/json" },
+  body: JSON.stringify({ email, password }),
+});
+if (!authResponse.ok) throw new Error(`데모 계정 로그인 실패: HTTP ${authResponse.status}`);
+const session = await authResponse.json();
+
 await mkdir(outputDir, { recursive: true });
+await mkdir(path.dirname(receiptAssetPath), { recursive: true });
 const executablePath = await firstAvailablePath(browserCandidates);
 const browser = await chromium.launch({ executablePath, headless: true });
 const context = await browser.newContext({
@@ -37,72 +70,150 @@ const context = await browser.newContext({
   hasTouch: true,
   recordVideo: { dir: outputDir, size: { width: 540, height: 960 } },
 });
+
+if (readApiBaseUrl !== baseUrl) {
+  const readOnlyApiPaths = new Set([
+    "/api/matches/detail",
+    "/api/matches/public-detail",
+  ]);
+  await context.route("**/api/**", async (route) => {
+    const request = route.request();
+    const requestUrl = new URL(request.url());
+    const pathname = requestUrl.pathname;
+    if (
+      request.method() !== "POST"
+      || !readOnlyApiPaths.has(pathname)
+    ) {
+      await route.abort("blockedbyclient");
+      return;
+    }
+    const requestHeaders = { ...request.headers() };
+    delete requestHeaders.host;
+    delete requestHeaders.origin;
+    const response = await fetch(`${readApiBaseUrl}${pathname}`, {
+      method: "POST",
+      headers: requestHeaders,
+      body: request.postDataBuffer(),
+    });
+    const responseHeaders = Object.fromEntries(response.headers.entries());
+    // fetch() has already decoded the upstream body. Do not make the browser
+    // try to decode the fulfilled response a second time.
+    delete responseHeaders["content-encoding"];
+    delete responseHeaders["content-length"];
+    delete responseHeaders["transfer-encoding"];
+    delete responseHeaders.connection;
+    console.log(JSON.stringify({ readProxy: pathname, status: response.status }));
+    await route.fulfill({
+      status: response.status,
+      headers: responseHeaders,
+      body: Buffer.from(await response.arrayBuffer()),
+    });
+  });
+}
+
 await context.addInitScript(() => {
-  const styleId = "box-tier-demo-tap-style";
+  const styleId = "box-tier-demo-overlay-style";
 
   function installStyle() {
     if (document.getElementById(styleId)) return;
     const style = document.createElement("style");
     style.id = styleId;
     style.textContent = `
+      .box-tier-demo-caption {
+        position: fixed;
+        z-index: 2147483647;
+        top: max(14px, env(safe-area-inset-top));
+        left: 14px;
+        right: 14px;
+        padding: 13px 15px 14px;
+        pointer-events: none;
+        border: 1px solid rgba(255,255,255,.15);
+        border-left: 5px solid #ff7a1a;
+        border-radius: 14px;
+        background: rgba(13,15,19,.94);
+        box-shadow: 0 10px 30px rgba(0,0,0,.4);
+        color: #fff;
+        font-family: system-ui, sans-serif;
+      }
+      .box-tier-demo-caption strong {
+        display: block;
+        margin-bottom: 5px;
+        color: #ff9b52;
+        font-size: 18px;
+        line-height: 1.2;
+      }
+      .box-tier-demo-caption span {
+        display: block;
+        color: rgba(255,255,255,.88);
+        font-size: 13px;
+        font-weight: 650;
+        line-height: 1.45;
+      }
       .box-tier-demo-tap {
         position: fixed;
         z-index: 2147483647;
-        width: 44px;
-        height: 44px;
+        width: 46px;
+        height: 46px;
         pointer-events: none;
-        border: 3px solid var(--orange-2);
+        border: 3px solid #ff7a1a;
         border-radius: 999px;
-        box-shadow: 0 0 0 7px color-mix(in srgb, var(--orange-2) 22%, transparent);
-        transform: translate(-50%, -50%) scale(0.3);
-        animation: box-tier-demo-tap 1.2s ease-out forwards;
+        box-shadow: 0 0 0 8px rgba(255,122,26,.24);
+        transform: translate(-50%, -50%) scale(.3);
+        animation: box-tier-demo-tap 1.15s ease-out forwards;
       }
-
       .box-tier-demo-cue {
         position: fixed;
         z-index: 2147483646;
         pointer-events: none;
-        border: 3px solid var(--orange-2);
+        border: 3px solid #ff7a1a;
         border-radius: 12px;
-        background: color-mix(in srgb, var(--orange-2) 10%, transparent);
-        box-shadow: 0 0 0 6px color-mix(in srgb, var(--orange-2) 18%, transparent);
-        animation: box-tier-demo-cue 0.7s ease-in-out infinite alternate;
+        background: rgba(255,122,26,.12);
+        box-shadow: 0 0 0 7px rgba(255,122,26,.2);
+        animation: box-tier-demo-cue .7s ease-in-out infinite alternate;
       }
-
       .box-tier-demo-cue::after {
-        content: "여기 탭";
+        content: attr(data-label);
         position: absolute;
         left: 50%;
         bottom: calc(100% + 10px);
         transform: translateX(-50%);
-        padding: 5px 10px;
+        padding: 6px 11px;
         border-radius: 999px;
-        background: var(--orange-2);
-        color: var(--bg);
-        font: 800 13px/1 system-ui, sans-serif;
+        background: #ff7a1a;
+        color: #111;
+        font: 850 13px/1 system-ui, sans-serif;
         white-space: nowrap;
       }
-
       .box-tier-demo-cue[data-label-placement="below"]::after {
         top: calc(100% + 10px);
         bottom: auto;
       }
-
       @keyframes box-tier-demo-tap {
-        0% { opacity: 0; transform: translate(-50%, -50%) scale(0.3); }
-        12% { opacity: 1; }
-        58% { opacity: 0.72; }
-        100% { opacity: 0; transform: translate(-50%, -50%) scale(1.35); }
+        0% { opacity: 0; transform: translate(-50%, -50%) scale(.3); }
+        14% { opacity: 1; }
+        58% { opacity: .72; }
+        100% { opacity: 0; transform: translate(-50%, -50%) scale(1.4); }
       }
-
-      @keyframes box-tier-demo-cue {
-        from { opacity: 0.72; }
-        to { opacity: 1; }
-      }
+      @keyframes box-tier-demo-cue { from { opacity: .7; } to { opacity: 1; } }
     `;
     document.head.append(style);
   }
 
+  window.__boxTierDemoCaption = (title, body) => {
+    installStyle();
+    document.querySelector(".box-tier-demo-caption")?.remove();
+    const caption = document.createElement("aside");
+    caption.className = "box-tier-demo-caption";
+    caption.setAttribute("aria-hidden", "true");
+    const heading = document.createElement("strong");
+    const description = document.createElement("span");
+    heading.textContent = title;
+    description.textContent = body;
+    caption.append(heading, description);
+    document.body.append(caption);
+  };
+
+  window.__boxTierDemoClearCue = () => document.querySelector(".box-tier-demo-cue")?.remove();
   window.__boxTierDemoTap = (x, y) => {
     installStyle();
     const tap = document.createElement("span");
@@ -112,263 +223,167 @@ await context.addInitScript(() => {
     document.body.append(tap);
     tap.addEventListener("animationend", () => tap.remove(), { once: true });
   };
-
-  window.__boxTierDemoClearCue = () => {
-    document.querySelector(".box-tier-demo-cue")?.remove();
-  };
-
-  window.__boxTierDemoCue = (bounds) => {
+  window.__boxTierDemoCue = (bounds, label = "여기 탭") => {
     installStyle();
     window.__boxTierDemoClearCue();
     const padding = 6;
     const cue = document.createElement("span");
     cue.className = "box-tier-demo-cue";
     cue.setAttribute("aria-hidden", "true");
+    cue.dataset.label = label;
     cue.style.left = `${Math.max(8, bounds.left - padding)}px`;
     cue.style.top = `${Math.max(8, bounds.top - padding)}px`;
     cue.style.width = `${Math.min(innerWidth - 16, bounds.width + padding * 2)}px`;
     cue.style.height = `${bounds.height + padding * 2}px`;
-    if (bounds.top < 72) cue.dataset.labelPlacement = "below";
+    if (bounds.top < 150) cue.dataset.labelPlacement = "below";
     document.body.append(cue);
   };
-
   document.addEventListener("pointerdown", (event) => {
     window.__boxTierDemoTap(event.clientX, event.clientY);
   }, true);
 });
+
 const page = await context.newPage();
 page.on("dialog", (dialog) => dialog.accept());
 const video = page.video();
 const captureStartedAt = Date.now();
 const scenes = [];
+const wait = (milliseconds) => page.waitForTimeout(milliseconds);
 
-const wait = (milliseconds = 450) => new Promise((resolve) => setTimeout(resolve, milliseconds));
-
-async function clickText(text, selector = "button") {
-  await page.waitForFunction(
-    ({ expected, query }) => [...document.querySelectorAll(query)].some((element) => element.innerText?.trim() === expected),
-    { expected: text, query: selector },
-  );
-  await page.evaluate(
-    ({ expected, query }) => {
-      const target = [...document.querySelectorAll(query)].find((element) => element.innerText?.trim() === expected);
-      target.scrollIntoView({ block: "center", inline: "center" });
-      const bounds = target.getBoundingClientRect();
-      window.__boxTierDemoTap(bounds.left + bounds.width / 2, bounds.top + bounds.height / 2);
-      target.click();
-    },
-    { expected: text, query: selector },
-  );
-  await wait();
-}
-
-async function cueTarget(target) {
-  await target.scrollIntoViewIfNeeded();
-  await wait(120);
-  await target.evaluate((element) => {
-    const bounds = element.getBoundingClientRect();
-    window.__boxTierDemoCue({
-      left: bounds.left,
-      top: bounds.top,
-      width: bounds.width,
-      height: bounds.height,
-    });
+async function authenticate() {
+  await page.goto(baseUrl, { waitUntil: "domcontentloaded" });
+  const storageKey = `sb-${new URL(supabaseUrl).hostname.split(".")[0]}-auth-token`;
+  await page.evaluate(({ key, value }) => localStorage.setItem(key, JSON.stringify(value)), {
+    key: storageKey,
+    value: session,
   });
 }
 
-function recordScene(name, source, startedAt) {
+async function gotoApp(route) {
+  await page.goto(`${baseUrl}${route}`, { waitUntil: "domcontentloaded" });
+  await wait(1_500);
+}
+
+async function caption(title, body) {
+  await page.evaluate(({ heading, description }) => {
+    window.__boxTierDemoCaption(heading, description);
+  }, { heading: title, description: body });
+}
+
+async function cueTarget(target, label = "여기 탭") {
+  await target.scrollIntoViewIfNeeded();
+  await wait(180);
+  await target.evaluate((element, cueLabel) => {
+    const bounds = element.getBoundingClientRect();
+    window.__boxTierDemoCue(
+      { left: bounds.left, top: bounds.top, width: bounds.width, height: bounds.height },
+      cueLabel,
+    );
+  }, label);
+}
+
+async function clickWithCue(target, { cueMs = 800, settleMs = 900 } = {}) {
+  await cueTarget(target);
+  await wait(cueMs);
+  await target.evaluate(() => window.__boxTierDemoClearCue());
+  await target.click();
+  await wait(settleMs);
+}
+
+async function showTapCue(target, { cueMs = 900, settleMs = 850 } = {}) {
+  await cueTarget(target);
+  await wait(cueMs);
+  await target.evaluate((element) => {
+    const bounds = element.getBoundingClientRect();
+    window.__boxTierDemoClearCue();
+    window.__boxTierDemoTap(bounds.left + bounds.width / 2, bounds.top + bounds.height / 2);
+  });
+  await wait(settleMs);
+}
+
+function startScene() {
+  return Date.now();
+}
+
+async function endScene(name, startedAt, minimumDurationMs) {
+  const elapsed = Date.now() - startedAt;
+  if (elapsed < minimumDurationMs) await wait(minimumDurationMs - elapsed);
   scenes.push({
     name,
-    source,
     start: (startedAt - captureStartedAt) / 1000,
     duration: (Date.now() - startedAt) / 1000,
     url: page.url(),
   });
 }
 
-async function captureLocatorClickScene(target, name, source, { cueMs = 650, settleMs = 850 } = {}) {
-  await cueTarget(target);
-  const startedAt = Date.now();
-  await wait(cueMs);
-  await target.evaluate(() => window.__boxTierDemoClearCue());
-  await target.click();
-  await wait(settleMs);
-  recordScene(name, source, startedAt);
-}
-
-async function captureTextClickScene(text, name, source, options) {
-  const target = page.getByRole("button", { name: text, exact: true });
-  await target.waitFor();
-  await captureLocatorClickScene(target, name, source, options);
-}
-
-async function hasText(text, selector = "button") {
-  return page.evaluate(
-    ({ expected, query }) => [...document.querySelectorAll(query)].some((element) => element.innerText?.trim() === expected),
-    { expected: text, query: selector },
-  );
-}
-
-async function clickButtonUntil(source, expected, attempts = 4) {
-  for (let attempt = 0; attempt < attempts; attempt += 1) {
-    if (await Promise.all(expected.map((text) => hasText(text))).then((matches) => matches.some(Boolean))) return;
-    const button = page.getByRole("button", { name: source, exact: true });
-    if (await button.count()) {
-      await button.click().catch(() => {});
-    }
-    await wait(500);
-  }
-  const buttons = await page.locator("button").allInnerTexts();
-  throw new Error(`${source} 실행 후 상태 전환 실패: ${buttons.join(" | ")}`);
-}
-
-async function setLabeledValue(label, value) {
-  const changed = await page.evaluate(
-    ({ expected, nextValue }) => {
-      const input = [...document.querySelectorAll("input, textarea")]
-        .find((element) => element.labels?.[0]?.innerText?.trim() === expected);
-      if (!input) return false;
-      input.scrollIntoView({ block: "center", inline: "center" });
-      const prototype = input instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
-      Object.getOwnPropertyDescriptor(prototype, "value").set.call(input, String(nextValue));
-      input.dispatchEvent(new Event("input", { bubbles: true }));
-      input.dispatchEvent(new Event("change", { bubbles: true }));
-      return true;
-    },
-    { expected: label, nextValue: value },
-  );
-  if (!changed) throw new Error(`입력란을 찾지 못함: ${label}`);
-  await wait();
-}
-
-async function setPlaceholderValue(placeholder, value) {
-  const changed = await page.evaluate(
-    ({ expected, nextValue }) => {
-      const input = [...document.querySelectorAll("input, textarea")]
-        .find((element) => element.placeholder === expected);
-      if (!input) return false;
-      const prototype = input instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
-      Object.getOwnPropertyDescriptor(prototype, "value").set.call(input, String(nextValue));
-      input.dispatchEvent(new Event("input", { bubbles: true }));
-      input.dispatchEvent(new Event("change", { bubbles: true }));
-      return true;
-    },
-    { expected: placeholder, nextValue: value },
-  );
-  if (!changed) throw new Error(`입력란을 찾지 못함: ${placeholder}`);
-  await wait();
-}
-
-async function selectValue(value) {
-  const changed = await page.evaluate((nextValue) => {
-    const select = [...document.querySelectorAll("select")]
-      .find((element) => [...element.options].some((option) => option.value === nextValue));
-    if (!select) return false;
-    Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value").set.call(select, nextValue);
-    select.dispatchEvent(new Event("change", { bubbles: true }));
-    return true;
-  }, value);
-  if (!changed) throw new Error(`선택값을 찾지 못함: ${value}`);
-  await wait();
-}
-
-async function holdScene(name, source, durationMs, { scrollTop = true } = {}) {
-  if (scrollTop) {
-    await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
-  }
-  await wait(180);
-  scenes.push({
-    name,
-    source,
-    start: (Date.now() - captureStartedAt) / 1000,
-    duration: durationMs / 1000,
-    url: page.url(),
-  });
-  await wait(durationMs);
-}
-
 try {
-  await page.goto(`${baseUrl}/app/guide/practice`, { waitUntil: "networkidle" });
-  await clickText("개인전");
-  await clickText("현장 픽업\n개인으로 참가해 현장에서 팀과 교대 순서를 정합니다.");
-  await clickText("즉시");
-  await clickText("3v3");
-  await clickText("2명");
-  await clickText("다음");
-  await clickText("커스텀");
-  await clickText("단일 경기");
-  await setLabeledValue("경기 시간 (분)", 1);
-  await clickText("다음");
-  await clickText("경기 생성");
-  await clickText("빈 슬롯\n초대");
-  await setPlaceholderValue("선수 검색", "한유진");
-  await clickText("한유진\n#practice-guard-3 · PG\n선택");
-  await clickText("선택 1명 초대");
-  await selectValue("practice-guard-3");
-  await clickText("수락");
-  await selectValue("practice-player-self");
-  await clickText("경기 확정");
+  await authenticate();
 
-  await page.locator('[aria-label="경기 출석 QR 코드"]').scrollIntoViewIfNeeded();
-  await holdScene("attendance-qr", "practice", 1_300, { scrollTop: false });
-  await captureTextClickScene("연습 선수 출석 완료", "attendance-action", "practice");
-  await holdScene("attendance-complete", "practice", 1_100);
-  await captureTextClickScene("완전 랜덤 배치", "team-action", "practice");
-  await holdScene("team-assignment", "practice", 1_700);
-  await clickText("배정 확정");
-  await clickText("경기 시작");
-  if (await hasText("모바일 전광판 담당 화면으로 전환")) {
-    await clickText("모바일 전광판 담당 화면으로 전환");
+  await gotoApp("/app/create?intent=record");
+  await page.getByRole("button", { name: "경기 기록 만들기", exact: true }).waitFor({ timeout: 20_000 });
+  await caption("경기 기록방 만들기", "경기 정보와 규칙을 입력해 실제 기록방을 엽니다.");
+  let startedAt = startScene();
+  await clickWithCue(page.getByRole("radio", { name: "5v5", exact: true }).first());
+  await page.getByRole("button", { name: "경기 기록 만들기", exact: true }).scrollIntoViewIfNeeded();
+  await endScene("create-room", startedAt, 4_600);
+
+  await gotoApp(`/app/matches?match=${encodeURIComponent(liveMatchId)}`);
+  await page.getByText("오늘의 2v2 픽업", { exact: false }).first().waitFor({ timeout: 20_000 });
+  await caption("QR 출석 · 참가 확인", "QR 참가 확인 후 실제 경기방에서 출석 상태를 관리합니다.");
+  startedAt = startScene();
+  const attendanceButtons = page.getByRole("button", { name: "출석", exact: true });
+  const attendanceCount = await attendanceButtons.count();
+  for (let index = 0; index < Math.min(attendanceCount, 2); index += 1) {
+    await showTapCue(attendanceButtons.nth(index), { cueMs: 700, settleMs: 750 });
   }
-  await clickText("경기시계 시작");
-  await page.waitForFunction(() => {
-    const text = document.querySelector(".ui-match-clock-badges")?.innerText ?? "";
-    const values = text.match(/(\d+):(\d+)\s*\/\s*(\d+):(\d+)/)?.slice(1).map(Number);
-    if (!values) return false;
-    const [activeMinutes, activeSeconds, minimumMinutes, minimumSeconds] = values;
-    return activeMinutes * 60 + activeSeconds >= minimumMinutes * 60 + minimumSeconds;
-  }, undefined, { timeout: 70_000 });
-  const scoreActions = [
-    page.getByLabel("A 점수 조정").getByRole("button", { name: "+3", exact: true }),
-    page.getByLabel("B 점수 조정").getByRole("button", { name: "+2", exact: true }),
-    page.getByLabel("A 점수 조정").getByRole("button", { name: "+2", exact: true }),
-  ];
-  await cueTarget(scoreActions[0]);
-  const scoreStartedAt = Date.now();
-  for (const [index, scoreAction] of scoreActions.entries()) {
-    if (index > 0) await cueTarget(scoreAction);
-    await wait(520);
-    await scoreAction.evaluate(() => window.__boxTierDemoClearCue());
-    await scoreAction.click();
-    await wait(380);
+  await endScene("attendance", startedAt, 5_400);
+
+  await caption("참가자 · 팀 구성", "출석한 선수를 기준으로 양 팀을 자동 배정할 수 있습니다.");
+  startedAt = startScene();
+  const assignmentPanel = page.locator('section[aria-label="출석 및 팀 배정 대상"]');
+  await assignmentPanel.waitFor({ timeout: 10_000 });
+  await cueTarget(assignmentPanel, "팀 배정 영역");
+  await wait(2_200);
+  await page.evaluate(() => window.__boxTierDemoClearCue());
+  await endScene("team-assignment", startedAt, 4_400);
+
+  await gotoApp(`/app/matches?match=${encodeURIComponent(resultMatchId)}`);
+  const resultReceiptButton = page.getByRole("button", { name: "영수증 발급", exact: true });
+  await resultReceiptButton.waitFor({ state: "visible", timeout: 20_000 });
+  await caption("모바일 전광판 · 경기 결과", "경기 중 기록한 점수가 종료 후 같은 기록방의 최종 결과로 확정됩니다.");
+  startedAt = startScene();
+  await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
+  await endScene("live-scoreboard", startedAt, 6_500);
+
+  await caption("경기 종료 · 결과 확인", "종료된 경기의 최종 점수와 확정 기록을 검토합니다.");
+  startedAt = startScene();
+  await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
+  await endScene("final-result", startedAt, 4_200);
+
+  await gotoApp(`/app/matches?match=${encodeURIComponent(receiptMatchId)}`);
+  const issueReceipt = page.getByRole("button", { name: "영수증 발급", exact: true });
+  await issueReceipt.waitFor({ timeout: 20_000 });
+  await caption("기록방에서 영수증 만들기", "확정된 5v5 기록에서 실제 영수증 발급을 시작합니다.");
+  startedAt = startScene();
+  await clickWithCue(issueReceipt, { cueMs: 1_000, settleMs: 1_200 });
+  await endScene("receipt-entry", startedAt, 4_000);
+
+  await page.getByText("경기 영수증", { exact: true }).first().waitFor({ timeout: 20_000 });
+  const periodScores = [[0, 0], [1, 0], [0, 0], [0, 0]];
+  for (const [index, [teamAScore, teamBScore]] of periodScores.entries()) {
+    const period = index + 1;
+    await page.getByLabel(`${period}Q TEAM A 점수`, { exact: true }).fill(String(teamAScore));
+    await page.getByLabel(`${period}Q TEAM B 점수`, { exact: true }).fill(String(teamBScore));
   }
-  recordScene("score-actions", "practice", scoreStartedAt);
-  await holdScene("scoreboard-running", "practice", 3_000);
-  await selectValue("practice-player-self");
-  await page.waitForFunction(() => [...document.querySelectorAll("button")]
-    .some((button) => button.innerText?.trim() === "경기 종료"));
-  await captureTextClickScene("경기 종료", "end-action", "practice");
-  await clickButtonUntil("경기 종료", ["연습 결과 최종 확정"]);
-  await holdScene("clock-ended", "practice", 1_400);
-  await captureTextClickScene("연습 결과 최종 확정", "confirm-action", "practice");
-  await holdScene("final-result", "practice", 1_400);
-
-  await page.goto(`${baseUrl}/app`, { waitUntil: "networkidle" });
-  await holdScene("record-and-tier", "seeded-record", 1_900);
-  const recentMatchLink = page.locator(".home-recent-card .recent-match-list")
-    .locator('a[href*="/app/matches?match="]')
-    .first();
-  await recentMatchLink.waitFor({ state: "visible" });
-  const matchHref = await recentMatchLink.getAttribute("href");
-  const matchId = new URL(matchHref, baseUrl).searchParams.get("match");
-  if (!matchId) throw new Error("확정 데모 경기 ID를 실제 전적 링크에서 찾지 못했습니다.");
-
-  await page.goto(`${baseUrl}/app/receipt?match=${encodeURIComponent(matchId)}`, { waitUntil: "networkidle" });
-  await captureTextClickScene("감열지 영수증", "receipt-style-action", "seeded-record");
+  const thermalButton = page.getByRole("button", { name: "감열지 영수증", exact: true });
+  await caption("4쿼터 감열지 영수증", "1Q–4Q 점수와 최종 결과를 실제 제품 미리보기에서 확인합니다.");
+  startedAt = startScene();
+  await clickWithCue(thermalButton, { cueMs: 1_000, settleMs: 1_000 });
   const thermalReceipt = page.getByRole("img", { name: "감열지 영수증 미리보기", exact: true });
-  await thermalReceipt.waitFor({ state: "visible" });
+  await thermalReceipt.waitFor({ state: "visible", timeout: 20_000 });
   await thermalReceipt.scrollIntoViewIfNeeded();
-  await holdScene("verified-receipt", "seeded-record", 3_400, { scrollTop: false });
+  await thermalReceipt.screenshot({ path: receiptAssetPath });
+  await endScene("thermal-receipt", startedAt, 5_600);
 
   await page.close();
   await video.saveAs(rawVideoPath);
@@ -378,18 +393,21 @@ try {
   const metadata = {
     capturedAt: new Date().toISOString(),
     baseUrl,
+    readApiBaseUrl,
     viewport: { width: 540, height: 960 },
-    browserExecutable: executablePath,
     rawVideoPath,
-    matchId,
+    receiptAssetPath,
+    matches: { liveMatchId, resultMatchId, receiptMatchId },
     facts: {
-      practice: "QR 출석, 팀 배정, 전광판, 종료·확정은 비저장 연습 경기입니다.",
-      seededRecord: "전적·티어·영수증은 홈 화면에서 발견한 별도 확정 데모 경기입니다.",
+      create: "실제 기록방 생성 폼을 조작하되 추가 방은 생성하지 않습니다.",
+      live: "운영 테스트 계정의 실제 경기방에서 출석·팀 배정 위치를 안내하고 공유 데이터는 변경하지 않습니다.",
+      scoreboard: "캡처 시점에 진행 중인 테스트 경기가 없어 종료·확정된 실제 기록방의 모바일 결과를 읽기 전용으로 녹화합니다.",
+      receipt: "실제 5v5 기록방의 영수증 발급 화면에서 4쿼터 점수를 입력하고 제품 감열지 미리보기를 캡처합니다.",
     },
     scenes,
   };
-  await import("node:fs/promises").then(({ writeFile }) => writeFile(metadataPath, `${JSON.stringify(metadata, null, 2)}\n`));
-  console.log(JSON.stringify({ rawVideoPath, metadataPath, matchId, sceneCount: scenes.length }, null, 2));
+  await writeFile(metadataPath, `${JSON.stringify(metadata, null, 2)}\n`);
+  console.log(JSON.stringify({ rawVideoPath, metadataPath, receiptAssetPath, sceneCount: scenes.length }, null, 2));
 } catch (error) {
   await context.close().catch(() => {});
   await browser.close().catch(() => {});

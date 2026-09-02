@@ -5,27 +5,21 @@ import path from "node:path";
 const workDir = path.resolve("tmp/landing-product-demo");
 const metadata = JSON.parse(await readFile(path.join(workDir, "capture.json"), "utf8"));
 const rawVideoPath = path.resolve(metadata.rawVideoPath);
+const receiptAssetPath = path.resolve(metadata.receiptAssetPath);
 const assetDir = path.resolve("public/assets/showcase");
 const webmPath = path.join(assetDir, "landing-product-demo.webm");
 const mp4Path = path.join(assetDir, "landing-product-demo.mp4");
 const posterPath = path.join(assetDir, "landing-product-demo-poster.webp");
-const transitionDuration = 0.18;
+const transitionDuration = 0.22;
 
 const timeline = [
-  ["attendance-qr", 0.9],
-  ["attendance-action", 1.2],
-  ["attendance-complete", 0.8],
-  ["team-action", 1.2],
-  ["team-assignment", 1.2],
-  ["score-actions", 2.9],
-  ["scoreboard-running", 1.5],
-  ["end-action", 1.2],
-  ["clock-ended", 0.8],
-  ["confirm-action", 1.2],
-  ["final-result", 0.8],
-  ["record-and-tier", 1.12],
-  ["receipt-style-action", 1.2],
-  ["verified-receipt", 3.32],
+  ["create-room", 4.3],
+  ["attendance", 5.0],
+  ["team-assignment", 4.0],
+  ["live-scoreboard", 6.0],
+  ["final-result", 3.6],
+  ["receipt-entry", 3.3],
+  ["thermal-receipt", 5.0, "receipt"],
 ];
 
 function run(command, args) {
@@ -36,7 +30,13 @@ function run(command, args) {
   });
 }
 
-const segments = timeline.map(([name, duration], index) => {
+const segments = timeline.map(([name, duration, source = "video"], index) => {
+  if (source === "receipt") {
+    return `[1:v]trim=duration=${duration},setpts=PTS-STARTPTS,` +
+      "fps=30,scale=1080:1920:force_original_aspect_ratio=decrease:flags=lanczos," +
+      "pad=1080:1920:(ow-iw)/2:(oh-ih)/2:color=#eeede7,setsar=1,format=yuv420p,settb=1/30" +
+      `[v${index}]`;
+  }
   const scene = metadata.scenes.find((item) => item.name === name);
   if (!scene) throw new Error(`캡처 장면 누락: ${name}`);
   if (scene.duration < duration) throw new Error(`캡처 장면 길이 부족: ${name}`);
@@ -57,11 +57,12 @@ for (let index = 1; index < timeline.length; index += 1) {
 }
 const filter = `${segments.join(";")};${transitions.join(";")};` +
   `${transitionInput}tpad=stop_mode=clone:stop_duration=0.25,` +
-  "trim=end_frame=511,fps=30,settb=expr=1/30,setpts=N,format=yuv420p[outv]";
+  `trim=duration=${(combinedDuration + 0.25).toFixed(3)},` +
+  "fps=30,settb=expr=1/30,setpts=N/(30*TB),format=yuv420p[outv]";
 
 await mkdir(assetDir, { recursive: true });
 await run("ffmpeg", [
-  "-y", "-i", rawVideoPath,
+  "-y", "-i", rawVideoPath, "-loop", "1", "-framerate", "30", "-i", receiptAssetPath,
   "-filter_complex", filter,
   "-map", "[outv]", "-an",
   "-c:v", "libvpx-vp9", "-crf", "38", "-b:v", "0",
@@ -69,7 +70,7 @@ await run("ffmpeg", [
   webmPath,
 ]);
 await run("ffmpeg", [
-  "-y", "-i", rawVideoPath,
+  "-y", "-i", rawVideoPath, "-loop", "1", "-framerate", "30", "-i", receiptAssetPath,
   "-filter_complex", filter,
   "-map", "[outv]", "-an",
   "-c:v", "libx264", "-preset", "medium", "-crf", "24",
@@ -77,9 +78,14 @@ await run("ffmpeg", [
   mp4Path,
 ]);
 await run("ffmpeg", [
-  "-y", "-ss", "14.2", "-i", mp4Path,
+  "-y", "-ss", (combinedDuration - 3.8).toFixed(2), "-i", mp4Path,
   "-frames:v", "1", "-c:v", "libwebp", "-quality", "82",
   posterPath,
 ]);
 
-console.log(JSON.stringify({ webmPath, mp4Path, posterPath, duration: 17 }, null, 2));
+console.log(JSON.stringify({
+  webmPath,
+  mp4Path,
+  posterPath,
+  duration: Number((combinedDuration + 0.25).toFixed(3)),
+}, null, 2));
