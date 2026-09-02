@@ -252,6 +252,19 @@ html[data-theme] .ui-button.ui-button-secondary:active:not(:disabled) {
     color 140ms ease;
 }
 
+html[data-theme] .ui-button.ui-button-text {
+  color: inherit;
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+html[data-theme] .ui-button.ui-button-text:hover:not(:disabled) {
+  background: transparent;
+  text-decoration: underline;
+  text-underline-offset: var(--space-2);
+}
+
 html[data-theme] .app-main .ui-segmented-control:not(.create-choice-segments):not([role="radiogroup"]):not(.ui-filter-row) {
   width: fit-content;
   max-width: 100%;

@@ -192,6 +192,10 @@ button.ui-choice-tile,
   font-weight: var(--font-weight-control);
   letter-spacing: 0;
 }
+button.ui-choice-tile {
+  padding-inline: var(--control-padding-x);
+}
+
 button.ui-choice-tile:is(.active, .selected),
 .provider-test,
 .settings-page .section-card button.active:not(.favorite-toggle-button) {

@@ -229,12 +229,8 @@
   min-height: var(--ui-button-height);
   align-content: center;
   gap: 5px;
-  padding: var(--space-2) var(--space-3);
+  padding-block: var(--space-2);
   text-align: left;
-}
-
-.match-purpose-options > button {
-  padding-inline-start: var(--space-5);
 }
 
 .create-match-page .ui-segmented-control.create-choice-segments.age-restriction-segments > button {
@@ -310,7 +306,6 @@
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: var(--space-5);
-  padding: var(--space-2) var(--space-3);
 }
 
 .match-intent-preset-grid > button.has-icon:not(.active) > svg {

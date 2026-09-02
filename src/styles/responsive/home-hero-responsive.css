@@ -220,20 +220,11 @@ html[data-theme="light"] .rank-home .rank-spotlight-card {
 .rank-home .rank-spotlight-links {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-3);
-}
-.rank-home .rank-spotlight-links a {
-  min-height: 28px;
-  border-color: rgba(255, 255, 255, 0.2);
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
-  font-size: 0.72rem;
+  gap: var(--space-6);
+  color: var(--ui-button-color-active);
 }
 /* Image cards should not contain small framed cards inside them.
    Keep secondary links as text actions unless the user explicitly asks for boxed controls. */
-.rank-home .rank-spotlight-card .rank-spotlight-links {
-  gap: var(--space-6);
-}
 .rank-home .rank-spotlight-card .rank-spotlight-links a,
 .rank-home .rank-spotlight-card .rank-spotlight-links a:first-child,
 html[data-theme="light"] .rank-home .rank-spotlight-card .rank-spotlight-links a,
@@ -241,12 +232,6 @@ html[data-theme="light"] .rank-home .rank-spotlight-card .rank-spotlight-links a
   font-size: 0.72rem;
   font-weight: 950;
   line-height: 1;
-}
-.rank-home .rank-spotlight-card .rank-spotlight-links a:hover,
-.rank-home .rank-spotlight-card .rank-spotlight-links a:focus-visible {
-  color: #fff;
-  text-decoration: underline;
-  text-underline-offset: 3px;
 }
 html[data-theme="light"] .rank-home .rank-spotlight-card {
   border-color: rgba(30, 24, 18, 0.16);
@@ -377,27 +362,6 @@ html[data-theme="light"] .rank-home .home-top-rail .rank-spotlight-card::before 
   background: none;
   box-shadow: none;
   opacity: 0;
-}
-.rank-home .rank-spotlight-card .rank-spotlight-links a,
-.rank-home .rank-spotlight-card .rank-spotlight-links a:first-child,
-html[data-theme="light"] .rank-home .rank-spotlight-card .rank-spotlight-links a,
-html[data-theme="light"] .rank-home .rank-spotlight-card .rank-spotlight-links a:first-child {
-  min-height: auto;
-  border: 0;
-  border-bottom: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-  color: rgba(255, 255, 255, 0.92);
-  padding: 0;
-  text-decoration: none;
-}
-.rank-home .rank-spotlight-card .rank-spotlight-links a:hover,
-html[data-theme="light"] .rank-home .rank-spotlight-card .rank-spotlight-links a:hover {
-  border: 0;
-  border-bottom: 0;
-  box-shadow: none;
-  text-decoration: none;
 }
 .rank-home .rank-spotlight-card .rank-spotlight-links a:focus-visible,
 html[data-theme="light"] .rank-home .rank-spotlight-card .rank-spotlight-links a:focus-visible {

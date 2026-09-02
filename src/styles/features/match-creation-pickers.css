@@ -146,7 +146,7 @@ label {
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: var(--space-5);
-  padding: 12px;
+  padding-block: var(--space-6);
   text-align: left;
 }
 .create-mode-grid span,
