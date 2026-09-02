@@ -6,15 +6,17 @@
 }
 
 .affiliation-editor-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--ui-control-group-gap);
-  justify-content: flex-end;
+  width: min(100%, var(--ui-action-pair-max-inline-size));
+  margin-inline-start: auto;
 }
 
-.affiliation-editor-actions > .button,
-.profile-icon-card-actions > .button {
-  width: min(100%, var(--ui-action-button-max-inline-size));
+.affiliation-editor-actions:has(> .button:only-child) {
+  max-width: var(--ui-action-button-max-inline-size);
+}
+
+.profile-icon-card-actions {
+  min-width: 0;
+  max-width: var(--ui-action-pair-max-inline-size);
 }
 
 .affiliation-search-result > span {
@@ -140,12 +142,11 @@
 
 @media (max-width: 520px) {
   .affiliation-editor-actions {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
   }
 
-  .affiliation-editor-actions > .button:only-child {
-    grid-column: 1 / -1;
+  .affiliation-editor-actions:has(> .button:only-child) {
+    max-width: none;
   }
 
   .profile-icon-group-tabs {

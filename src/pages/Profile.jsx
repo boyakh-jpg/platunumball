@@ -254,7 +254,7 @@ export default function Profile({ app }) {
               </div>
               <div className="profile-icon-card-tools">
                 <ProfileEmblem user={user} className="hero-avatar" />
-                <div className="ui-action-row profile-icon-card-actions">
+                <div className="ui-action-row ui-action-row-equal profile-icon-card-actions">
                   <Button type="button" size="sm" onClick={() => setIconDialogOpen(true)}>아이콘 변경</Button>
                   <Button as={Link} variant="secondary" size="sm" to="/app/profile/achievements">업적 보기</Button>
                 </div>

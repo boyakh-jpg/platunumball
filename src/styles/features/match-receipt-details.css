@@ -109,12 +109,13 @@
 }
 .match-receipt-info-fields input[type="date"]::-webkit-calendar-picker-indicator { flex: 0 0 auto; margin: 0; }
 .match-receipt-venue-control { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-4); }
-.match-receipt-map-button { display: inline-flex; align-items: center; gap: var(--space-3); min-height: 44px; white-space: nowrap; }
+.match-receipt-map-button { display: inline-flex; align-items: center; gap: var(--space-3); white-space: nowrap; }
 .match-receipt-map-button svg { width: 16px; height: 16px; }
 
 .match-receipt-period-fields {
+  --control-padding-x: var(--space-3);
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, calc(var(--control-height) * 3)), 1fr));
   gap: var(--space-4);
   min-width: 0;
   margin: 0;
@@ -153,7 +154,6 @@
 .match-receipt-period-fields label > span { grid-column: 1 / -1; color: var(--rb-muted); font-size: 12px; font-weight: 900; text-align: center; }
 .match-receipt-period-fields input[type="number"] {
   min-width: 0;
-  padding-inline: var(--space-3);
   border: var(--ui-stroke-width) solid var(--line);
   background: var(--surface-3);
   text-align: center;
@@ -195,10 +195,12 @@
 .match-receipt-game-detail em { font-style: normal; font-variant-numeric: tabular-nums; text-align: left; }
 
 @media (max-width: 760px) {
-  .match-receipt-period-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .match-receipt-emblem-upload-grid { grid-template-columns: 1fr; }
 }
 
+@media (max-width: 560px) {
+  .match-receipt-venue-control { grid-template-columns: 1fr; }
+}
 .match-receipt-ticket-game--info > strong {
   position: absolute;
   top: 0;

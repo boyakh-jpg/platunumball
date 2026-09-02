@@ -187,10 +187,6 @@ html[data-theme="light"] .gm-room-hero::after {
 }
 
 @media (max-width: 640px) {
-  .match-room .score-form {
-    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  }
-
   .match-room .match-derived-score {
     min-height: 60px;
     font-size: 2rem;

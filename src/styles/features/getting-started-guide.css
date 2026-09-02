@@ -94,6 +94,7 @@ html[data-theme] [data-design] .ui-design-app .home-guide-card {
 
 .home-guide-card__link {
   display: inline-flex;
+  grid-column: -2 / -1;
   gap: var(--space-3);
   align-items: center;
   color: var(--rb-text);

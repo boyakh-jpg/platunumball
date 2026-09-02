@@ -266,7 +266,7 @@ html[data-theme] .ui-button.ui-button-text:hover:not(:disabled) {
 }
 
 html[data-theme] .app-main .ui-segmented-control:not(.create-choice-segments):not([role="radiogroup"]):not(.ui-filter-row) {
-  width: fit-content;
+  width: 100%;
   max-width: 100%;
   justify-content: flex-start;
   gap: 0;
@@ -282,7 +282,7 @@ html[data-theme] .app-main .ui-segmented-control:not(.create-choice-segments):no
 html[data-theme] .app-main .ui-segmented-control:not(.create-choice-segments):not([role="radiogroup"]):not(.ui-filter-row) > button {
   width: auto;
   min-width: max-content;
-  flex: 0 0 auto;
+  flex: 1 1 0;
   min-height: var(--ui-button-height-sm);
   padding: 0 var(--ui-button-padding-x-sm);
   border: 0;
@@ -646,6 +646,11 @@ input[type="checkbox"]:hover:not(:disabled) {
   display: none;
 }
 
+.ui-action-row.ui-action-row-equal > .ui-button {
+  flex: 1 1 0;
+  min-inline-size: 0;
+}
+
 .ui-modal-shell.ui-modal-shell {
   color: var(--rb-text);
   background: var(--ui-modal-bg);
@@ -687,7 +692,7 @@ html[data-theme] .ui-design-app .ui-filter-row {
   max-width: 100%;
   flex-wrap: nowrap;
   gap: var(--ui-filter-gap);
-  overflow-x: hidden;
+  overflow-x: auto;
   scrollbar-width: none;
 }
 
@@ -697,8 +702,7 @@ html[data-theme] .ui-design-app .ui-filter-row::-webkit-scrollbar {
 
 html[data-theme] .ui-design-app .ui-filter-row > * {
   flex: 1 1 0;
-  width: 0;
-  min-width: 0;
+  min-width: max-content;
 }
 
 @media (max-width: 720px) {

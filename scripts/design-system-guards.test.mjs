@@ -1742,7 +1742,7 @@ test("shared primitives own application-wide density, surfaces, and modals", () 
   );
   assert.match(
     primitiveStyles,
-    /\.ui-segmented-control:not\(\.create-choice-segments\):not\(\[role="radiogroup"\]\):not\(\.ui-filter-row\)\s*\{[^}]*width:\s*fit-content;/,
+    /\.ui-segmented-control:not\(\.create-choice-segments\):not\(\[role="radiogroup"\]\):not\(\.ui-filter-row\)\s*\{[^}]*width:\s*100%;/,
   );
   assert.match(
     primitiveStyles,
@@ -2076,7 +2076,7 @@ test("경기 기록 참가 확인은 공용 surface token과 모달 밀도를 �
   );
   assert.match(
     landingScoreThemeStyles,
-    /@media \(max-width:\s*640px\)[\s\S]*?\.approval-panel \.approval-grid,[\s\S]*?grid-template-columns:\s*1fr;/,
+    /@media \(max-width:\s*640px\)[\s\S]*?\.approval-panel \.approval-grid\s*\{[^}]*grid-template-columns:\s*1fr;/,
   );
   assert.doesNotMatch(globalAdminStyles, /\.approval-panel \.approval-(?:voter-list|guard-note)[^}]*rgba\(/);
   assert.doesNotMatch(globalAdminStyles, /html\[data-theme="light"\] \.approval-(?:grid|voter-list)/);

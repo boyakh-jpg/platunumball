@@ -419,7 +419,7 @@ html[data-theme="light"] .rank-mode-pill {
   box-shadow: none;
 }
 
-.settings-page .contract-grid.single > div + div {
+.settings-page .contract-grid.single > div:where(:nth-child(even)) {
   margin-left: var(--space-3);
   padding-left: calc(12px + var(--space-3));
   border-left: var(--ui-stroke-width) solid var(--ui-divider-subtle);
@@ -431,11 +431,6 @@ html[data-theme="light"] .rank-mode-pill {
 
 .settings-page label {
   gap: var(--space-3);
-}
-
-.settings-page input,
-.settings-page select {
-  min-height: 42px;
 }
 
 .settings-page textarea {

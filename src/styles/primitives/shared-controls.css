@@ -71,7 +71,7 @@ html[data-theme="light"] .profile-side-grid > .card {
   background: var(--button-primary-bg);
   color: #fff;
 }
-input:is([type="date"], [type="time"], [type="datetime-local"], [type="month"]) {
+input:is([type="date"], [type="time"], [type="datetime-local"], [type="month"]):where(:not(.ui-control-xs)) {
   box-sizing: border-box;
   inline-size: 100%;
   width: 100%;
@@ -84,18 +84,16 @@ input:is([type="date"], [type="time"], [type="datetime-local"], [type="month"]) 
   height: var(--ui-button-height);
   min-block-size: var(--ui-button-height);
   display: block;
-  padding-block: 9px;
   line-height: 20px;
 }
-input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):where(:not(.ui-control-xs)),
 select,
 .auth-card select,
 .home-search-box input {
   box-sizing: border-box;
   width: 100%;
-  height: var(--ui-button-height);
   min-height: var(--ui-button-height);
-  padding: 0 12px;
+  padding: 0 var(--control-padding-x);
   border: var(--ui-stroke-width) solid var(--ui-control-border);
   border-radius: var(--ui-control-radius);
   outline: none;
@@ -105,8 +103,12 @@ select,
   font-size: max(0.9rem, 16px);
   touch-action: manipulation;
 }
+input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):where(:not([type="file"]):not([type="range"]):not(.ui-control-xs):not(.ui-numeric-stepper > input)),
 select {
+  height: var(--ui-button-height);
   padding-block: 0;
+}
+select {
   line-height: normal;
 }
 select option,

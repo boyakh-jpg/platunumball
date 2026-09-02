@@ -32,7 +32,7 @@
 }
 .score-form {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   gap: var(--space-6);
   align-items: end;
 }

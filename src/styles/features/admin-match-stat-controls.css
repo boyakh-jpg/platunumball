@@ -314,14 +314,6 @@
     padding: 14px;
   }
 
-  .match-room .score-form {
-    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  }
-
-  .match-room .score-form > button {
-    grid-column: 1 / -1;
-  }
-
   .match-room .result-card .score-form input {
     min-height: 62px;
     font-size: 2rem;

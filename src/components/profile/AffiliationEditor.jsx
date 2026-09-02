@@ -116,7 +116,7 @@ export default function AffiliationEditor({ user, affiliations = [], actions }) 
         </p>
         {!changeAllowed && nextChangeDate ? <small className="form-warning">다음 변경 가능일: {formatAffiliationChangeDate(nextChangeDate)}</small> : null}
         {feedback ? <small role="status" className={feedback.includes("못") || feedback.includes("이상") ? "form-warning" : "muted"}>{feedback}</small> : null}
-        <div className="affiliation-editor-actions">
+        <div className="ui-action-row ui-action-row-equal affiliation-editor-actions">
           <Button type="submit" disabled={pending || !changeAllowed}>{pending ? "저장 중" : "소속 저장"}</Button>
           {currentId ? (
             <Button type="button" variant="secondary" disabled={pending || !changeAllowed} onClick={() => { setSelected(null); setQuery(""); setFeedback("소속 저장을 누르면 소속이 비워집니다."); }}>

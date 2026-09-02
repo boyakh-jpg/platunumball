@@ -265,13 +265,8 @@
   .court-reservation-row,
   .search-controls,
   .two-column,
-  .approval-panel .approval-grid,
-  .score-form {
+  .approval-panel .approval-grid {
     grid-template-columns: 1fr;
-  }
-
-  .score-form > span {
-    display: none;
   }
 
   .member-row,

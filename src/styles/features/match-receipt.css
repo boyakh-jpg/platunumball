@@ -69,8 +69,6 @@
 .match-receipt-editor select {
   width: 100%;
   min-width: 0;
-  min-height: 44px;
-  padding: 10px 12px;
   border: var(--ui-stroke-width) solid var(--line);
   border-radius: 12px;
   background: var(--surface-3);
@@ -703,8 +701,6 @@
   .match-receipt-info-fields { grid-template-columns: 1fr; }
 
   .match-receipt-info-fields .is-wide { grid-column: auto; }
-
-  .match-receipt-venue-control { grid-template-columns: 1fr; }
 
   .match-receipt-editor > section,
   .match-receipt-save-card { --ui-panel-padding: 0; --ui-panel-radius: 0; }
