@@ -6,17 +6,15 @@
 - MP4 fallback: `/assets/showcase/landing-product-demo.mp4`
 - poster: `/assets/showcase/landing-product-demo-poster.webp`
 - 사용자 제공 감열지: `/assets/showcase/landing-product-demo-receipt.png`
-- 목표 규격: 1080×1920, 9:16, 30fps, 약 37초, 무음
-
-현재 WebM·MP4·poster는 이전 캡처에 2v2 장면이 섞여 있어 사용 금지다. 아래 조건으로 새 원본을 녹화한 뒤 다시 렌더해야 한다.
+- 규격: 1080×1920, 9:16, 30fps, 36.87초, 무음
 
 ## 사실 범위
 
-모든 제품 화면은 현재 저장소 프런트엔드를 production 모드로 실행하고, 인증된 운영 테스트 계정의 읽기 전용 경기 데이터를 연결해 540×960 모바일 viewport에서 실제 조작·녹화한다. AI 생성 화면과 연습 경기는 사용하지 않는다.
+모든 제품 화면은 `boxtier.kr`의 공개 운영 화면과 읽기 전용 경기 데이터를 540×960 모바일 viewport에서 실제 조작·녹화한다. AI 생성 화면과 연습 경기는 사용하지 않는다.
 
-- 방 만들기: `/app/create?intent=record`의 실제 `경기 기록 만들기` 폼. 불필요한 운영 데이터를 만들지 않도록 폼 조작까지만 녹화한다.
+- 방 만들기: `/app/create?intent=record`의 실제 경기 기록 폼. `5v5`를 선택하되 불필요한 운영 데이터를 만들지 않도록 생성은 실행하지 않는다.
 - 출석·팀 구성·모바일 전광판 안내·종료 결과: 모두 동일한 실제 5v5 기록방 `tm_31b5b240e7876ae208743610`. 다른 경기나 2v2 화면을 섞지 않는다.
-- 영수증 진입: 같은 기록방 모달의 실제 `영수증 발급` 버튼을 누르고 `/app/receipt?match=tm_31b5b240e7876ae208743610`로 이동한다.
+- 영수증 진입: 같은 기록방 모달의 실제 `영수증 발급` 버튼을 누른다. 공개 비로그인 캡처에서는 실제 로그인 게이트가 호출되며, 편집본은 게이트가 나타나기 전에 사용자 제공 감열지로 전환한다. 테스트 계정 환경 변수를 지정하면 인증 후 영수증 경로로 진입한다.
 - 캡처 시점에 이 기록은 종료·확정 상태다. QR 출석과 전광판은 기록방에 실제 표시되는 운영 안내만 읽기 전용으로 보여주며, 진행 중 화면이나 조작을 꾸미지 않는다.
 - 감열지 결과: 사용자가 제공한 완성 이미지. 최종 `1:0`, `1Q 0:0 · 2Q 1:0 · 3Q 0:0 · 4Q 0:0`을 표시한다.
 
@@ -39,14 +37,12 @@
 ## 재현
 
 ```powershell
-$env:BOXTIER_DEMO_EMAIL='<운영 테스트 계정 이메일>'
-$env:BOXTIER_DEMO_PASSWORD='<운영 테스트 계정 비밀번호>'
 $env:BOXTIER_DEMO_MATCH_ID='tm_31b5b240e7876ae208743610'
 node scripts/capture-landing-product-demo.mjs
 node scripts/render-landing-product-demo.mjs
 ```
 
-운영 외 환경이면 `BOXTIER_BASE_URL`을 지정한다. 모든 장면은 `BOXTIER_DEMO_MATCH_ID` 하나만 사용하며 스크립트가 실제 `5v5` 표시를 확인한 뒤 녹화를 시작한다. 렌더 전에 사용자 제공 감열지를 `/assets/showcase/landing-product-demo-receipt.png`에 둔다. 캡처 원본과 장면 시각은 `tmp/landing-product-demo/`에 생성된다. Edge/Chrome 자동 탐색이 실패하면 `BOXTIER_BROWSER_PATH`에 실행 파일 절대 경로를 지정한다. 렌더에는 `ffmpeg`와 `ffprobe`가 필요하다.
+공개 화면 캡처에는 로그인이 필요 없다. 인증 상태까지 재현하려면 `BOXTIER_DEMO_EMAIL`과 `BOXTIER_DEMO_PASSWORD`를 함께 지정한다. 운영 외 환경이면 `BOXTIER_BASE_URL`을 지정한다. 모든 장면은 `BOXTIER_DEMO_MATCH_ID` 하나만 사용하며 스크립트가 실제 `5v5` 표시를 확인한 뒤 녹화를 시작한다. 렌더 전에 사용자 제공 감열지를 `/assets/showcase/landing-product-demo-receipt.png`에 둔다. 캡처 원본과 장면 시각은 `tmp/landing-product-demo/`에 생성된다. Edge/Chrome 자동 탐색이 실패하면 `BOXTIER_BROWSER_PATH`에 실행 파일 절대 경로를 지정한다. 렌더에는 `ffmpeg`, 검증에는 `ffprobe`가 필요하다.
 
 ## 권장 HTML
 

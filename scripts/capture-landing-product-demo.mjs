@@ -18,8 +18,8 @@ const browserCandidates = [
   "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
 ].filter(Boolean);
 
-if (!email || !password) {
-  throw new Error("BOXTIER_DEMO_EMAIL과 BOXTIER_DEMO_PASSWORD가 필요합니다.");
+if (Boolean(email) !== Boolean(password)) {
+  throw new Error("BOXTIER_DEMO_EMAIL과 BOXTIER_DEMO_PASSWORD는 함께 지정해야 합니다.");
 }
 
 async function firstAvailablePath(paths) {
@@ -42,18 +42,22 @@ function parseEnv(source) {
   }));
 }
 
-const productionEnv = parseEnv(await readFile(".env.production", "utf8"));
-const supabaseUrl = productionEnv.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = productionEnv.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-if (!supabaseUrl || !supabaseKey) throw new Error(".env.production의 Supabase 설정을 찾지 못했습니다.");
+let supabaseUrl;
+let session;
+if (email && password) {
+  const productionEnv = parseEnv(await readFile(".env.production", "utf8"));
+  supabaseUrl = productionEnv.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = productionEnv.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  if (!supabaseUrl || !supabaseKey) throw new Error(".env.production의 Supabase 설정을 찾지 못했습니다.");
 
-const authResponse = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
-  method: "POST",
-  headers: { apikey: supabaseKey, "Content-Type": "application/json" },
-  body: JSON.stringify({ email, password }),
-});
-if (!authResponse.ok) throw new Error(`데모 계정 로그인 실패: HTTP ${authResponse.status}`);
-const session = await authResponse.json();
+  const authResponse = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
+    method: "POST",
+    headers: { apikey: supabaseKey, "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+  if (!authResponse.ok) throw new Error(`데모 계정 로그인 실패: HTTP ${authResponse.status}`);
+  session = await authResponse.json();
+}
 
 await mkdir(outputDir, { recursive: true });
 await access(receiptAssetPath);
@@ -248,6 +252,7 @@ const scenes = [];
 const wait = (milliseconds) => page.waitForTimeout(milliseconds);
 
 async function authenticate() {
+  if (!session) return;
   await page.goto(baseUrl, { waitUntil: "domcontentloaded" });
   const storageKey = `sb-${new URL(supabaseUrl).hostname.split(".")[0]}-auth-token`;
   await page.evaluate(({ key, value }) => localStorage.setItem(key, JSON.stringify(value)), {
@@ -317,12 +322,13 @@ try {
   await authenticate();
 
   await gotoApp("/app/create?intent=record");
-  await page.getByRole("button", { name: "경기 기록 만들기", exact: true }).waitFor({ timeout: 20_000 });
+  const createButton = page.getByRole("button", { name: /^(경기 기록 만들기|로그인하고 이어서 만들기)$/ });
+  await createButton.waitFor({ timeout: 20_000 });
   await caption("경기 기록방 만들기", "경기 정보와 규칙을 입력해 실제 기록방을 엽니다.");
   let startedAt = startScene();
   await clickWithCue(page.getByRole("radio", { name: "5v5", exact: true }).first());
-  await page.getByRole("button", { name: "경기 기록 만들기", exact: true }).scrollIntoViewIfNeeded();
-  await endScene("create-room", startedAt, 4_600);
+  await createButton.scrollIntoViewIfNeeded();
+  await endScene("create-room", startedAt, 5_000);
 
   await gotoApp(`/app/matches?match=${encodeURIComponent(matchId)}`);
   const matchRoom = page.getByRole("dialog", { name: "매치방" });
@@ -368,8 +374,11 @@ try {
 
   await caption("기록방에서 영수증 만들기", "같은 5v5 기록방 모달의 실제 영수증 발급 버튼을 누릅니다.");
   startedAt = startScene();
-  await clickWithCue(resultReceiptButton, { cueMs: 1_400, settleMs: 1_600 });
-  await page.waitForURL(`**/app/receipt?match=${encodeURIComponent(matchId)}`, { timeout: 20_000 });
+  await cueTarget(resultReceiptButton);
+  await wait(4_100);
+  await resultReceiptButton.evaluate(() => window.__boxTierDemoClearCue());
+  await resultReceiptButton.click({ noWaitAfter: true });
+  await wait(150);
   await endScene("receipt-entry", startedAt, 5_000);
 
   await page.close();
@@ -381,6 +390,7 @@ try {
     capturedAt: new Date().toISOString(),
     baseUrl,
     readApiBaseUrl,
+    authenticated: Boolean(session),
     viewport: { width: 540, height: 960 },
     captionAccentRemoved: true,
     rawVideoPath,
@@ -390,7 +400,7 @@ try {
       create: "실제 기록방 생성 폼을 조작하되 추가 방은 생성하지 않습니다.",
       room: "출석 기준, 팀 구성, 모바일 전광판 안내, 최종 결과를 동일한 실제 5v5 기록방에서 읽기 전용으로 녹화합니다.",
       scoreboard: "캡처 시점에 진행 중인 테스트 경기가 없어 종료·확정된 기록방이 안내하는 실제 모바일 전광판 흐름을 보여줍니다. 진행 중 조작을 꾸미지 않습니다.",
-      receipt: "같은 5v5 기록방 모달의 실제 영수증 발급 버튼으로 진입하고, 마지막 감열지는 사용자가 제공한 완성 이미지를 사용합니다.",
+      receipt: "같은 5v5 기록방 모달의 실제 영수증 발급 버튼을 클릭하고, 마지막 감열지는 사용자가 제공한 완성 이미지를 사용합니다.",
     },
     scenes,
   };
