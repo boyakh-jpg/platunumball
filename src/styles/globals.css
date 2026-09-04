@@ -9,5 +9,6 @@
 @import "./design-classic.css";
 @import "./design-editorial.css";
 @import "./features/match-receipt.css";
+@import "./features/match-receipt-confirmation.css";
 @import "./features/match-receipt-preview-controls.css";
 @import "./features/match-receipt-details.css";

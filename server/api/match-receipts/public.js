@@ -1,6 +1,6 @@
 import { normalizeMatchPublicCode } from "../../../shared/lib/matchPublicCode.js";
 import { allowRequestMethod, getSupabaseAdminClient, sendJson } from "../_supabaseAdmin.js";
-import { projectPublicReceiptDraft } from "./_draftSecurity.js";
+import { projectPublicReceiptDraft, projectReceiptVerification } from "./_draftSecurity.js";
 import {
   canExposeStoredReceiptDraft,
   consumePublicReceiptReadQuota,
@@ -21,7 +21,7 @@ export async function handlePublicReceipt(request, response, options = {}) {
 
     const { data, error } = await supabase
       .from("match_receipt_drafts")
-      .select("public_id,public_code,payload,expires_at")
+      .select("public_id,public_code,payload,expires_at,opponent_response,opponent_responded_at")
       .eq("public_code", publicCode)
       .gt("expires_at", new Date().toISOString())
       .order("updated_at", { ascending: false })
@@ -42,6 +42,7 @@ export async function handlePublicReceipt(request, response, options = {}) {
         publicId: data.public_id,
         publicCode: data.public_code,
       }),
+      verification: projectReceiptVerification(data),
     });
   } catch (error) {
     console.warn("Public receipt lookup failed.", error.message);

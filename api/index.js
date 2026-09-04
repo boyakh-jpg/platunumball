@@ -37,6 +37,8 @@ import matchReceiptClaim from "../server/api/match-receipts/claim.js";
 import matchReceiptCreate from "../server/api/match-receipts/create.js";
 import matchReceiptDraft from "../server/api/match-receipts/draft.js";
 import matchReceiptDownload from "../server/api/match-receipts/download.js";
+import matchReceiptOpponentAccess from "../server/api/match-receipts/opponent-access.js";
+import matchReceiptOpponentResponse from "../server/api/match-receipts/opponent-response.js";
 import matchReceiptPublic from "../server/api/match-receipts/public.js";
 import matchReceiptResolve from "../server/api/match-receipts/resolve.js";
 import matchAttendanceQr from "../server/api/matches/attendance-qr.js";
@@ -129,6 +131,10 @@ export const API_ROUTES = new Map([
   ["/match-receipts/download", route(matchReceiptDownload, ["GET"], "publicRead", {
     allowedSensitiveQueryKeysByMethod: Object.freeze({ GET: Object.freeze(["signature"]) }),
   })],
+  ["/match-receipts/opponent-access", route(matchReceiptOpponentAccess, ["GET"], "publicRead", {
+    allowedSensitiveQueryKeysByMethod: Object.freeze({ GET: Object.freeze(["token"]) }),
+  })],
+  ["/match-receipts/opponent-response", route(matchReceiptOpponentResponse, ["POST"], "user")],
   ["/match-receipts/public", route(matchReceiptPublic, ["GET"], "publicRead")],
   ["/match-receipts/resolve", route(matchReceiptResolve, ["GET"], "publicRead")],
   ["/matches/attendance-qr", route(matchAttendanceQr, ["POST"], "user")],

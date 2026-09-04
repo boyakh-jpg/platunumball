@@ -8,6 +8,7 @@ import {
 } from "../../../shared/lib/thermalReceipt.js";
 
 export const RECEIPT_CAPABILITY_COOKIE = "boxtier_receipt_capability";
+export const RECEIPT_OPPONENT_CAPABILITY_COOKIE = "boxtier_receipt_opponent_capability";
 export const RECEIPT_DRAFT_TTL_SECONDS = 30 * 24 * 60 * 60;
 
 function getReceiptRateSalt() {
@@ -212,16 +213,16 @@ export function receiptCapabilityMatches(secret = "", expectedHash = "") {
   return actual.length === expected.length && timingSafeEqual(actual, expected);
 }
 
-function getReceiptCapabilityCookieName(publicId = "") {
+function getReceiptCapabilityCookieName(publicId = "", prefix = RECEIPT_CAPABILITY_COOKIE) {
   const suffix = String(publicId).replace(/[^A-Za-z0-9-]/g, "");
-  return suffix ? `${RECEIPT_CAPABILITY_COOKIE}_${suffix}` : RECEIPT_CAPABILITY_COOKIE;
+  return suffix ? `${prefix}_${suffix}` : prefix;
 }
 
-export function getReceiptCapabilityCookie(request, publicId = "") {
+function getCapabilityCookie(request, publicId, prefix) {
   const header = String(request.headers?.cookie ?? "");
   const names = publicId
-    ? [getReceiptCapabilityCookieName(publicId), RECEIPT_CAPABILITY_COOKIE]
-    : [RECEIPT_CAPABILITY_COOKIE];
+    ? [getReceiptCapabilityCookieName(publicId, prefix), prefix]
+    : [prefix];
   const parts = header.split(";").map((part) => part.trim());
   const raw = names
     .map((name) => parts.find((part) => part.startsWith(`${name}=`)))
@@ -236,10 +237,40 @@ export function getReceiptCapabilityCookie(request, publicId = "") {
   }
 }
 
-export function setReceiptCapabilityCookie(response, capability) {
+export function getReceiptCapabilityCookie(request, publicId = "") {
+  return getCapabilityCookie(request, publicId, RECEIPT_CAPABILITY_COOKIE);
+}
+
+export function getOpponentReceiptCapabilityCookie(request, publicId = "") {
+  return getCapabilityCookie(request, publicId, RECEIPT_OPPONENT_CAPABILITY_COOKIE);
+}
+
+function setCapabilityCookie(response, capability, prefix) {
   const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
-  const name = getReceiptCapabilityCookieName(capability.publicId);
-  response.setHeader("Set-Cookie", `${name}=${encodeURIComponent(`${capability.publicId}.${capability.secret}`)}; HttpOnly; SameSite=Lax${secure}; Path=/api/match-receipts; Max-Age=${RECEIPT_DRAFT_TTL_SECONDS}`);
+  const name = getReceiptCapabilityCookieName(capability.publicId, prefix);
+  const nextCookie = `${name}=${encodeURIComponent(`${capability.publicId}.${capability.secret}`)}; HttpOnly; SameSite=Lax${secure}; Path=/api/match-receipts; Max-Age=${RECEIPT_DRAFT_TTL_SECONDS}`;
+  const current = response.getHeader?.("Set-Cookie");
+  response.setHeader("Set-Cookie", current ? [...(Array.isArray(current) ? current : [current]), nextCookie] : nextCookie);
+}
+
+export function setReceiptCapabilityCookie(response, capability) {
+  setCapabilityCookie(response, capability, RECEIPT_CAPABILITY_COOKIE);
+}
+
+export function setOpponentReceiptCapabilityCookie(response, capability) {
+  setCapabilityCookie(response, capability, RECEIPT_OPPONENT_CAPABILITY_COOKIE);
+}
+
+export function getOpponentReceiptInvitePath(capability) {
+  return `/api/match-receipts/opponent-access?draft=${encodeURIComponent(capability.publicId)}&token=${encodeURIComponent(capability.secret)}`;
+}
+
+export function projectReceiptVerification(value = {}) {
+  if (value.payload?._canonicalReceipt === true) return { status: "not_applicable", respondedAt: null };
+  const status = ["accepted", "disputed"].includes(value.opponent_response)
+    ? value.opponent_response
+    : "pending";
+  return { status, respondedAt: value.opponent_responded_at ?? null };
 }
 
 export function getReceiptRequestHash(request) {

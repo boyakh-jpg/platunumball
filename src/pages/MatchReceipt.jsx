@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Copy, Download, House, ImagePlus, MapPin, RotateCcw, Share2, Trash2 } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Copy, Download, House, ImagePlus, MapPin, RotateCcw, Share2, Swords, Trash2, XCircle } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import Button from "../components/common/Button.jsx";
 import EmptyState from "../components/common/EmptyState.jsx";
@@ -191,6 +191,14 @@ function getPhotoGestureSnapshot(pointers) {
   };
 }
 
+/*
+ * THESIS: 직접 입력 영수증은 공식 기록이 아니라 상대를 소환하는 확인 요청이다.
+ * OWN-WORLD: 기존 BOXTIER 영수증·포스터 재질과 공용 버튼만 쓴다.
+ * STORY: 생성 → 상대 확인 대기 → 인정/이의제기 → 리벤지.
+ * FIRST VIEWPORT: 영수증 위에서 현재 확인 상태와 다음 행동이 바로 읽힌다.
+ * FORM: existing-receipt-extension
+ * FINISH: 데스크톱·모바일에서 상태·소환·응답 action이 한 덩어리로 끝난다.
+ */
 export default function MatchReceipt({ auth, app }) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -209,6 +217,10 @@ export default function MatchReceipt({ auth, app }) {
   );
   const requestedPublicCode = useMemo(
     () => new URLSearchParams(location.search).get("code")?.trim() ?? "",
+    [location.search],
+  );
+  const requestedOpponentResponse = useMemo(
+    () => new URLSearchParams(location.search).get("respond") === "1",
     [location.search],
   );
   const sourceDraftRef = useRef(location.state?.receiptDraft
@@ -232,6 +244,9 @@ export default function MatchReceipt({ auth, app }) {
   const [photoUrl, setPhotoUrl] = useState("");
   const [publicDraftId, setPublicDraftId] = useState("");
   const [requestedDraftCanClaim, setRequestedDraftCanClaim] = useState(false);
+  const [verification, setVerification] = useState({ status: "pending", respondedAt: null });
+  const [opponentInvitePath, setOpponentInvitePath] = useState("");
+  const [canRespondAsOpponent, setCanRespondAsOpponent] = useState(false);
   const [courtMapOpen, setCourtMapOpen] = useState(false);
   const [selectedCourtId, setSelectedCourtId] = useState("");
   const [discoveredCourts, setDiscoveredCourts] = useState([]);
@@ -259,6 +274,7 @@ export default function MatchReceipt({ auth, app }) {
   const publicDraftIdRef = useRef("");
   const isEnglish = receiptLocale === "en";
   const receiptCopy = RECEIPT_PAGE_COPY[receiptLocale];
+  const opponentInvitePathRef = useRef("");
   draftRef.current = draft;
   publicDraftIdRef.current = publicDraftId;
   photoTransformRef.current = {
@@ -492,6 +508,10 @@ export default function MatchReceipt({ auth, app }) {
         setDraft(normalizedDraft);
         setGenerated(true);
         setRequestedDraftCanClaim(Boolean(result.canClaim));
+        setVerification(result.verification ?? { status: "pending", respondedAt: null });
+        opponentInvitePathRef.current = result.opponentInvitePath ?? "";
+        setOpponentInvitePath(opponentInvitePathRef.current);
+        setCanRespondAsOpponent(Boolean(result.canRespondAsOpponent));
         setStatus(result.claimed ? receiptCopy.claimedReceipt : receiptCopy.sharedReceipt);
       })
       .catch(() => {
@@ -988,6 +1008,9 @@ export default function MatchReceipt({ auth, app }) {
         publicDraftIdRef.current = result.publicId;
         publicDraftSavedRevisionRef.current = requestRevision;
         setPublicDraftId(result.publicId);
+        setVerification(result.verification ?? { status: "pending", respondedAt: null });
+        opponentInvitePathRef.current = result.opponentInvitePath ?? opponentInvitePathRef.current;
+        setOpponentInvitePath(opponentInvitePathRef.current);
         const serverDraft = result.draft ?? {};
         const serialSeed = result.serialSeed || serverDraft.serialSeed || draftRef.current.serialSeed;
         const publicCode = result.publicCode || serverDraft.publicCode || draftRef.current.publicCode;
@@ -1145,6 +1168,60 @@ export default function MatchReceipt({ auth, app }) {
       setStatus(receiptCopy.creatorCopied);
     } catch {
       setStatus(receiptCopy.creatorCopyFailed);
+    }
+  }
+
+  async function shareOpponentInvite() {
+    setBusy("opponent-invite");
+    try {
+      await ensurePublicDraft(draftRef.current);
+      const invitePath = opponentInvitePathRef.current;
+      if (!invitePath) throw new Error("receipt_opponent_invite_unavailable");
+      const inviteUrl = new URL(invitePath, window.location.origin).toString();
+      const shareData = {
+        title: isEnglish ? "Confirm this BOXTIER receipt" : "BOXTIER 경기 영수증 확인 요청",
+        text: isEnglish
+          ? `${draft.homeTeam} ${draft.homeScore} : ${draft.awayScore} ${draft.awayTeam}`
+          : `${draft.homeTeam} ${draft.homeScore} : ${draft.awayScore} ${draft.awayTeam} — 인정 또는 이의제기해 주세요.`,
+        url: inviteUrl,
+      };
+      if (navigator.share) {
+        await navigator.share(shareData);
+        setStatus(isEnglish ? "Opponent confirmation share opened." : "상대 소환 공유 화면을 열었습니다.");
+      } else {
+        await navigator.clipboard.writeText(`${shareData.text}\n${inviteUrl}`);
+        setStatus(isEnglish ? "Opponent confirmation link copied." : "상대 소환 링크를 복사했습니다.");
+      }
+      trackMatchReceiptEvent("receipt_opponent_invited", { loggedIn: Boolean(auth?.session) });
+    } catch (error) {
+      if (error.name !== "AbortError") {
+        setStatus(isEnglish ? "Could not share the opponent confirmation link." : "상대 소환 링크를 공유하지 못했습니다.");
+      }
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function respondToReceipt(nextResponse) {
+    setBusy(`opponent-${nextResponse}`);
+    try {
+      const result = await postServerAction("/api/match-receipts/opponent-response", {
+        publicId: activePublicDraftId,
+        response: nextResponse,
+      }, { allowWhenDisabled: true });
+      setVerification(result.verification);
+      setStatus(nextResponse === "accepted"
+        ? (isEnglish ? "Both teams confirmed this score." : "양 팀 확인이 완료됐습니다.")
+        : (isEnglish ? "Score dispute submitted." : "점수 이의제기를 남겼습니다."));
+    } catch (error) {
+      if (error.message !== "server_action_missing_access_token") {
+        const ownerError = error.message === "receipt_owner_cannot_respond";
+        setStatus(ownerError
+          ? (isEnglish ? "The receipt creator cannot confirm it as the opponent." : "작성자는 상대 대신 인정할 수 없습니다.")
+          : (isEnglish ? "Could not submit the response." : "응답을 반영하지 못했습니다."));
+      }
+    } finally {
+      setBusy("");
     }
   }
 
@@ -1496,6 +1573,50 @@ export default function MatchReceipt({ auth, app }) {
               <button type="button" className="button ui-button button-secondary ui-button-secondary button-md ui-button-md" disabled={Boolean(busy)} onClick={() => handleDownload("feed")}><Download aria-hidden="true" /> {receiptCopy.post}</button>
               <button type="button" className="button ui-button button-secondary ui-button-secondary button-md ui-button-md" disabled={Boolean(busy)} onClick={copyCreatorLink}><Copy aria-hidden="true" /> {receiptCopy.create}</button>
             </div>
+          ) : null}
+
+          {generated && !canonicalMatchId && verification.status !== "not_applicable" ? (
+            <section className="ui-panel match-receipt-confirmation-card" aria-live="polite">
+              <div className="match-receipt-confirmation-head">
+                <span className={`ui-badge ${verification.status === "accepted" ? "ui-badge-green" : verification.status === "disputed" ? "ui-badge-orange" : "ui-badge-blue"}`}>
+                  {verification.status === "accepted"
+                    ? (isEnglish ? "BOTH TEAMS CONFIRMED" : "양 팀 확인 완료")
+                    : verification.status === "disputed"
+                      ? (isEnglish ? "SCORE DISPUTED" : "점수 이의제기")
+                      : (isEnglish ? "WAITING FOR OPPONENT" : "상대 확인 대기")}
+                </span>
+                <h2>{verification.status === "accepted"
+                  ? (isEnglish ? "Score accepted by the opponent" : "상대가 이 점수를 인정했습니다")
+                  : verification.status === "disputed"
+                    ? (isEnglish ? "The opponent disputes this score" : "상대가 이 점수에 이의를 제기했습니다")
+                    : (isEnglish ? "Call in the opponent" : "상대를 소환하세요")}</h2>
+              </div>
+              <p>{verification.status === "accepted"
+                ? (isEnglish ? "Acknowledged by both teams, but still not an official match record and never affects MMR." : "양 팀이 확인했지만 공식 경기 기록은 아니며 MMR에 반영되지 않습니다.")
+                : verification.status === "disputed"
+                  ? (isEnglish ? "This receipt remains a unilateral claim. Resolve the score outside BOXTIER and create a new receipt." : "이 영수증은 일방 주장 상태로 남습니다. 실제 점수를 확인한 뒤 새 영수증을 만드세요.")
+                  : (isEnglish ? "This is a unilateral score until the opponent responds. It is never an official record or MMR result." : "상대가 응답하기 전에는 일방 입력입니다. 공식 기록이나 MMR 결과가 아닙니다.")}</p>
+              {!selectedTeamReceiptEmblemUrls.home || !selectedTeamReceiptEmblemUrls.away ? (
+                <p className="match-receipt-confirmation-note">{isEnglish ? "Missing emblems use temporary team marks, never fabricated official emblems." : "엠블럼이 없으면 임시 팀 마크를 표시하며 공식 엠블럼을 꾸며내지 않습니다."}</p>
+              ) : null}
+              {requestedOpponentResponse && canRespondAsOpponent && verification.status === "pending" ? (
+                auth?.session ? (
+                  <div className="match-receipt-confirmation-actions">
+                    <button type="button" className="button ui-button button-primary ui-button-primary button-md ui-button-md" disabled={Boolean(busy)} onClick={() => respondToReceipt("accepted")}><CheckCircle2 aria-hidden="true" /> {isEnglish ? "Accept Score" : "점수 인정"}</button>
+                    <button type="button" className="button ui-button button-secondary ui-button-secondary button-md ui-button-md" disabled={Boolean(busy)} onClick={() => respondToReceipt("disputed")}><XCircle aria-hidden="true" /> {isEnglish ? "Dispute" : "이의제기"}</button>
+                  </div>
+                ) : (
+                  <button type="button" className="button ui-button button-primary ui-button-primary button-md ui-button-md" onClick={() => {
+                    const currentPath = `${location.pathname}${location.search}${location.hash}`;
+                    navigate(getLoginPath(currentPath, currentPath));
+                  }}><CheckCircle2 aria-hidden="true" /> {isEnglish ? "Sign In with Social to Respond" : "SNS 로그인 후 응답"}</button>
+                )
+              ) : opponentInvitePath && verification.status === "pending" ? (
+                <button type="button" className="button ui-button button-primary ui-button-primary button-md ui-button-md" disabled={Boolean(busy)} onClick={shareOpponentInvite}><Share2 aria-hidden="true" /> {isEnglish ? "Call Opponent to Confirm" : "상대 소환 링크 공유"}</button>
+              ) : verification.status === "accepted" ? (
+                <button type="button" className="button ui-button button-secondary ui-button-secondary button-md ui-button-md" onClick={() => navigate("/app/create")}><Swords aria-hidden="true" /> {isEnglish ? "Create a Rematch" : "리벤지 경기 만들기"}</button>
+              ) : null}
+            </section>
           ) : null}
 
           {generated ? (

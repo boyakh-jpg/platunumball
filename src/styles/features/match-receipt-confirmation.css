@@ -1,0 +1,50 @@
+.match-receipt-confirmation-card {
+  min-width: 0;
+  max-width: 100%;
+  --ui-panel-padding: 0;
+  --ui-panel-radius: 0;
+  display: grid;
+  gap: var(--space-4);
+  padding-top: var(--space-9);
+  border: 0;
+  border-top: var(--ui-stroke-width) solid var(--rb-line);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  text-align: left;
+}
+
+.match-receipt-confirmation-head {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-3);
+}
+
+.match-receipt-confirmation-card h2,
+.match-receipt-confirmation-card p { margin: 0; }
+
+.match-receipt-confirmation-card h2 { font-size: 18px; }
+
+.match-receipt-confirmation-card p {
+  color: var(--rb-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.match-receipt-confirmation-note {
+  padding-inline-start: var(--space-4);
+  border-inline-start: var(--ui-stroke-width) solid var(--rb-line);
+}
+
+.match-receipt-confirmation-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+@media (max-width: 560px) {
+  .match-receipt-confirmation-actions { display: grid; }
+
+  .match-receipt-confirmation-card > .ui-button,
+  .match-receipt-confirmation-actions .ui-button { width: 100%; }
+}

@@ -1,4 +1,4 @@
-import { getSupabaseAdminClient } from "../_supabaseAuth.js";
+import { getBearerToken, getSupabaseAdminClient } from "../_supabaseAuth.js";
 import {
   allowRequestMethod,
   getAdminLevel,
@@ -19,11 +19,15 @@ import {
   createCanonicalReceiptSerialSeed,
   createReceiptCapability,
   getReceiptCapabilityCookie,
+  getOpponentReceiptCapabilityCookie,
+  getOpponentReceiptInvitePath,
   getReceiptRequestHash,
   hashReceiptCapability,
   projectPublicReceiptDraft,
+  projectReceiptVerification,
   receiptCapabilityMatches,
   sanitizeReceiptDraftPayload,
+  setOpponentReceiptCapabilityCookie,
   setReceiptCapabilityCookie,
 } from "./_draftSecurity.js";
 import {
@@ -163,7 +167,7 @@ export default async function handler(request, response) {
     }
     const { data, error } = await supabase
       .from("match_receipt_drafts")
-      .select("public_id,public_code,capability_hash,payload,expires_at,claimed_at")
+      .select("public_id,public_code,capability_hash,opponent_capability_hash,opponent_response,opponent_responded_at,payload,expires_at,claimed_at")
       .eq("public_id", publicId)
       .gt("expires_at", new Date().toISOString())
       .maybeSingle();
@@ -173,9 +177,15 @@ export default async function handler(request, response) {
       return sendJson(response, 404, { error: "receipt_draft_not_found" });
     }
     const capability = getReceiptCapabilityCookie(request, data.public_id);
-    const canClaim = !data.claimed_at
-      && capability?.publicId === data.public_id
+    const ownsDraft = capability?.publicId === data.public_id
       && receiptCapabilityMatches(capability.secret, data.capability_hash);
+    const canClaim = !data.claimed_at && ownsDraft;
+    const opponentCapability = getOpponentReceiptCapabilityCookie(request, data.public_id);
+    const canRespondAsOpponent = data.payload?._canonicalReceipt !== true
+      && opponentCapability?.publicId === data.public_id
+      && receiptCapabilityMatches(opponentCapability.secret, data.opponent_capability_hash);
+    const canInviteOpponent = ownsDraft
+      && canRespondAsOpponent;
     response.setHeader("Cache-Control", "private, no-store");
     return sendJson(response, 200, {
       publicId: data.public_id,
@@ -184,6 +194,9 @@ export default async function handler(request, response) {
       expiresAt: data.expires_at,
       claimed: Boolean(data.claimed_at),
       canClaim,
+      canRespondAsOpponent: canRespondAsOpponent && !ownsDraft,
+      verification: projectReceiptVerification(data),
+      opponentInvitePath: canInviteOpponent ? getOpponentReceiptInvitePath(opponentCapability) : "",
     });
   }
 
@@ -201,7 +214,7 @@ export default async function handler(request, response) {
   if (publicId) {
     const { data: existing, error: existingError } = await supabase
       .from("match_receipt_drafts")
-      .select("id,public_id,public_code,capability_hash,payload,expires_at,claimed_at")
+      .select("id,public_id,public_code,capability_hash,opponent_capability_hash,opponent_response,opponent_responded_at,payload,expires_at,claimed_at")
       .eq("public_id", publicId)
       .gt("expires_at", new Date().toISOString())
       .maybeSingle();
@@ -225,16 +238,26 @@ export default async function handler(request, response) {
       .maybeSingle();
     if (error) throw error;
     if (!data) return sendJson(response, 409, { error: "receipt_draft_claimed" });
+    const opponentCapability = getOpponentReceiptCapabilityCookie(request, data.public_id);
+    const canInviteOpponent = payload?._canonicalReceipt !== true
+      && opponentCapability?.publicId === data.public_id
+      && receiptCapabilityMatches(opponentCapability.secret, existing.opponent_capability_hash);
     return sendJson(response, 200, {
       publicId: data.public_id,
       publicCode: data.public_code,
       serialSeed: payload.serialSeed,
       expiresAt: data.expires_at,
       draft: projectPublicReceiptDraft(payload, { publicId: data.public_id, publicCode: data.public_code }),
+      verification: projectReceiptVerification(existing),
+      opponentInvitePath: canInviteOpponent ? getOpponentReceiptInvitePath(opponentCapability) : "",
     });
   }
 
   const capability = createReceiptCapability();
+  const opponentCapability = {
+    ...createReceiptCapability(),
+    publicId: capability.publicId,
+  };
   const clone = clonePublicId ? await clonePublicPayload(supabase, clonePublicId) : null;
   const canonical = sourceMatchId ? await createCanonicalPayload(request, sourceMatchId, body.draft) : null;
   const payload = sourceMatchId
@@ -253,11 +276,21 @@ export default async function handler(request, response) {
   if (rateError) throw rateError;
   if (!allowed) return sendJson(response, 429, { error: "receipt_draft_rate_limited" });
 
+  let createdBy = null;
+  if (getBearerToken(request)) {
+    const context = await getAuthenticatedContext(request, { allowMissingProfile: true });
+    createdBy = context.profileId ?? null;
+  }
+
   const { data, error } = await supabase
     .from("match_receipt_drafts")
     .insert({
       public_id: capability.publicId,
       capability_hash: hashReceiptCapability(capability.secret),
+      created_by: createdBy,
+      ...(payload._canonicalReceipt !== true ? {
+        opponent_capability_hash: hashReceiptCapability(opponentCapability.secret),
+      } : {}),
       payload,
       ...(canonical?.publicCode ? { public_code: canonical.publicCode } : {}),
     })
@@ -266,11 +299,14 @@ export default async function handler(request, response) {
   if (error) throw error;
 
   setReceiptCapabilityCookie(response, capability);
+  if (payload._canonicalReceipt !== true) setOpponentReceiptCapabilityCookie(response, opponentCapability);
   return sendJson(response, 201, {
     publicId: data.public_id,
     publicCode: data.public_code,
     serialSeed: payload.serialSeed,
     expiresAt: data.expires_at,
     draft: projectPublicReceiptDraft(payload, { publicId: data.public_id, publicCode: data.public_code }),
+    verification: projectReceiptVerification({ payload }),
+    opponentInvitePath: payload._canonicalReceipt !== true ? getOpponentReceiptInvitePath(opponentCapability) : "",
   });
 }

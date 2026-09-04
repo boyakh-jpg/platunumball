@@ -4198,6 +4198,8 @@ flowchart TD
 
 21-1. Meta의 `entry.messaging` 직접 이벤트와 `entry.changes[field=messages].value` 변경 이벤트를 하나의 canonical DM 이벤트로 정규화한다. 서명과 payload를 확인한 Webhook은 처리 작업을 Vercel background lifetime에 등록하고 Meta에 즉시 `200`을 반환한다. 형식이 유효하고 제한 판정을 통과한 Instagram 영수증 요청에는 처리 안내를 보낸 뒤 영수증 이미지를 전송하며 형식 오류에는 사용법을 보낸다.
 
+22. 직접 작성한 비canonical 공개 영수증은 생성 시 소유자 capability와 분리된 256비트 상대 응답 capability를 발급한다. 상대 링크의 token은 최초 진입에서 서버 해시와 검증한 뒤 `HttpOnly`, `SameSite=Lax` 쿠키로 옮기고 URL에서 제거한다. 응답자는 공용 SNS 로그인을 완료해야 하며 작성자는 소유자 쿠키 또는 `created_by`가 일치하면 상대 대신 응답할 수 없다. 상대는 `accepted` 또는 `disputed` 중 하나를 한 번만 확정하고 이후 변경할 수 없다. `accepted`는 양 팀 확인 완료, `disputed`는 일방 주장·이의 상태로 표시하지만 어느 상태도 공식 경기, verified, 전적, MMR 원본으로 승격하지 않는다. 기존 draft와 canonical 경기에는 상대 capability를 소급 발급하지 않는다. 엠블럼이 없으면 팀명에서 만든 결정론적 임시 마크만 사용하고 공식 엠블럼으로 표시하지 않는다.
+
 ## 2026-08-13 비로그인 랜딩과 인증 복귀
 
 1. `/`와 `/start`는 비로그인 전용 랜딩이다. 인증 확인 중에는 로고와 `기록 불러오는 중...`만 표시하고, 인증 사용자는 `replace`로 `/app`에 이동한다.

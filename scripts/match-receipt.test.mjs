@@ -333,11 +333,15 @@ import {
   createCanonicalReceiptSerialSeed,
   createReceiptCapability,
   getLegacyCanonicalReceiptMatchId,
+  getOpponentReceiptCapabilityCookie,
+  getOpponentReceiptInvitePath,
   getReceiptCapabilityCookie,
   hashReceiptCapability,
+  projectReceiptVerification,
   projectPublicReceiptDraft,
   receiptCapabilityMatches,
   sanitizeReceiptDraftPayload,
+  setOpponentReceiptCapabilityCookie,
   setReceiptCapabilityCookie,
 } from "../server/api/match-receipts/_draftSecurity.js";
 import {
@@ -365,6 +369,7 @@ function createApiResponse() {
     body: null,
     headers: {},
     statusCode: 0,
+    getHeader(name) { return this.headers[name]; },
     setHeader(name, value) { this.headers[name] = value; },
     status(statusCode) {
       this.statusCode = statusCode;
@@ -1385,6 +1390,7 @@ test("receipt ownership capability is secret, hashed, and cookie-scoped", () => 
   const hash = hashReceiptCapability(capability.secret);
   const response = {
     headers: {},
+    getHeader(name) { return this.headers[name]; },
     setHeader(name, value) { this.headers[name] = value; },
   };
 
@@ -1400,6 +1406,47 @@ test("receipt ownership capability is secret, hashed, and cookie-scoped", () => 
   assert.match(cookie, /SameSite=Lax/);
   assert.match(cookie, /Path=\/api\/match-receipts/);
   assert.equal(cookie.includes(hash), false);
+});
+
+test("receipt creation keeps owner and opponent capabilities separate", () => {
+  const owner = createReceiptCapability();
+  const opponent = { ...createReceiptCapability(), publicId: owner.publicId };
+  const response = createApiResponse();
+
+  setReceiptCapabilityCookie(response, owner);
+  setOpponentReceiptCapabilityCookie(response, opponent);
+  const cookies = response.headers["Set-Cookie"];
+  const request = {
+    headers: { cookie: cookies.map((value) => value.split(";")[0]).join("; ") },
+  };
+
+  assert.equal(Array.isArray(cookies), true);
+  assert.deepEqual(getReceiptCapabilityCookie(request, owner.publicId), owner);
+  assert.deepEqual(getOpponentReceiptCapabilityCookie(request, owner.publicId), opponent);
+  assert.match(getOpponentReceiptInvitePath(opponent), new RegExp(owner.publicId));
+  assert.equal(receiptCapabilityMatches(owner.secret, hashReceiptCapability(opponent.secret)), false);
+});
+
+test("receipt opponent acknowledgement stays non-canonical", () => {
+  assert.deepEqual(projectReceiptVerification({ payload: {}, opponent_response: null }), {
+    status: "pending",
+    respondedAt: null,
+  });
+  assert.deepEqual(projectReceiptVerification({
+    payload: {},
+    opponent_response: "accepted",
+    opponent_responded_at: "2026-09-04T00:00:00.000Z",
+  }), {
+    status: "accepted",
+    respondedAt: "2026-09-04T00:00:00.000Z",
+  });
+  assert.deepEqual(projectReceiptVerification({
+    payload: { _canonicalReceipt: true },
+    opponent_response: "accepted",
+  }), {
+    status: "not_applicable",
+    respondedAt: null,
+  });
 });
 
 test("receipt capability cookies stay isolated when creation responses arrive out of order", () => {
