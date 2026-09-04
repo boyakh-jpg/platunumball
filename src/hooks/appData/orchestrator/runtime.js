@@ -94,6 +94,7 @@ const authUserId = typeof authUser === "string" ? authUser : authUser?.id ?? nul
   const matchPagePromiseRef = useRef(null);
   const matchRecruitingSchedulePromiseRef = useRef(null);
   const matchTeamSchedulePromiseRef = useRef(null);
+  const operationsMatchesPromiseRef = useRef(null);
   const settingsAuthUserIdRef = useRef(authUserId);
   const settingsSyncQueueRef = useRef(Promise.resolve(null));
   const themeMutationVersionRef = useRef(0);
@@ -225,7 +226,7 @@ const authUserId = typeof authUser === "string" ? authUser : authUser?.id ?? nul
     directoryCacheRef, directoryPromiseRef, homeRouteLoadKeyRef, latestAdminRequestRef,
     latestDirectoryRequestRef, latestRecruitingLoadMoreRequestRef, latestRecruitingRegionRequestRef,
     matchDetailPromiseRef, matchPagePromiseRef, matchRecruitingSchedulePromiseRef,
-    matchTeamSchedulePromiseRef, pendingMatchIdsRef, pendingMatchMutationCountsRef,
+    matchTeamSchedulePromiseRef, operationsMatchesPromiseRef, pendingMatchIdsRef, pendingMatchMutationCountsRef,
     pendingRecruitingMutationCountsRef, pendingRecruitingPostIdsRef, playMatchesPromiseRef, profileRecordArchiveRef,
     profileRecordsPromiseRef, profileRefreshPromiseRef, publicProfileRecordArchivesRef,
     publicProfileRecordsPromiseRef, recentMatchMutationTimesRef, recentRecruitingMutationTimesRef,
@@ -342,6 +343,7 @@ const authUserId = typeof authUser === "string" ? authUser : authUser?.id ?? nul
     matchPagination,
     matchRecruitingSchedulePromiseRef,
     matchTeamSchedulePromiseRef,
+    operationsMatchesPromiseRef,
     pendingMatchIdsRef,
     pendingMatchMutationCountsRef,
     pendingRecruitingMutationCountsRef,

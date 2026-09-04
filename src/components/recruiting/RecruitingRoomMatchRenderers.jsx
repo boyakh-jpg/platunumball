@@ -7,7 +7,7 @@ export function createRecruitingRoomMatchRenderers(context) {
     SourceMatchRecordSummary, app, benchCapacity, canInviteSideFromRoom, canManageEntry, canManageMatchCheckin,
     canManageSourceMatchSubstitutionSide, canRefreshSourceMatchReview, canResolveSourceMatchDispute, canShowSourceMatchRecordEditor, changeApprovalSource, currentUserIsSourceReferee,
     getEditableSourceMatchStatFields, getMatchCancelCopy, getMatchParticipationCancellationPenalty, getMatchRecordCompositionLabel, getRecruitingDisplayTitle, getRoomCancellationActionLabel, getRoomCancellationPolicy,
-    getRoomCompetitionLabel, getRoomEditAvailability, getRoomRemakeDraft, getRoomTitleSizeClass, getRoomVisibilityLabel, getTournamentMatchDisplayTitle,
+    getRoomCompetitionLabel, getRoomEditAvailability, getRoomRemakeNavigationState, getRoomTitleSizeClass, getRoomVisibilityLabel, getTournamentMatchDisplayTitle,
     individualOnlyRoom, isMatchSideTeamParty, isPartyEntry, lobby, matchRoom, mine,
     moveCandidate, navigate, onRemake, openInviteSlot, openSelfSlotAction, playingIds,
     recruitingRoomTerminalStatus, refreshSourceMatchReview, roomCancellationPending, roomCancellationTarget, roomOwnerId,
@@ -209,26 +209,8 @@ const renderSourceMatchRecordBoard = () => {
             onRemake();
             return;
           }
-          const repeatMatch = sourceMatch?.status === "confirmed";
-          const remakeSource = sourceMatch
-            ? {
-                ...selectedPost,
-                ...sourceMatch,
-                visibility: selectedPost.visibility,
-                hostJoinMode: selectedPost.hostJoinMode,
-                teamOnly: selectedPost.teamOnly,
-                teamId: selectedPost.teamId,
-                targetTeamId: selectedPost.targetTeamId,
-                rules: { ...(selectedPost.rules ?? {}), ...(sourceMatch.rules ?? {}) },
-                repeatMatch,
-              }
-            : selectedPost;
           navigate("/app/create", {
-            state: {
-              remakeDraft: getRoomRemakeDraft(remakeSource),
-              remakeSourceId: repeatMatch ? "" : sourceMatch?.recruitingPostId ?? (/^match-room-/.test(selectedPost.id) ? "" : selectedPost.id),
-              remakeSourceMatchId: repeatMatch ? "" : sourceMatch?.id ?? "",
-            },
+            state: getRoomRemakeNavigationState(selectedPost, sourceMatch),
           });
         };
 

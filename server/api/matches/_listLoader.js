@@ -8,11 +8,12 @@ import { createProfileShell, fromRemoteProfile, getRemoteAppSettings } from "../
 import { DEFAULT_SETTINGS } from "../../../shared/lib/repositoryDefaults.js";
 import { COURT_COLUMNS, MATCH_PLAYER_COLUMNS, MATCH_RESULT_COLUMNS, PLAYER_STAT_COLUMNS, PROFILE_CARD_COLUMNS, TEAM_COLUMNS } from "../../../shared/lib/repositoryColumns.js";
 import { REMOTE_CLIENT_MATCH_LIMIT } from "../../../shared/lib/constants.js";
-import { loadCurrentUserRecruitingFeedList } from "../recruiting/list.js";
+import { loadCompactRecruitingList, loadCurrentUserRecruitingFeedList } from "../recruiting/list.js";
 import { isMatchInPlayMenu } from "../../../shared/lib/matchUtils.js";
 
-import { MATCH_RELATED_FALLBACK_MAX_LIMIT, RECENT_COMPLETED_MATCH_HOURS, fetchClosedNoticeMatchFeedPage, fetchCurrentUserCompletedMatchIds, fetchCurrentUserMatchPage, fetchMatchFeedPage, fetchMatchRowsByIds, fetchPlayMatchPage, fetchRecentCompletedMatchFeedPage, fetchRefereeMatchPage, fetchRelatedActiveMatchPage, getCompletedSince, getRecentCompletedHours, isLegacyListFallbackAllowed, mergeMatchFeedPages } from "./_listQueries.js";
-import { appendRowFallbackSource, attachMatchCardReferences, canReadMatchRow, collectMissingMatchCardReferences, filterActiveMatchCards, getMatchRowActorIds, isPlayableMatch, mergeMatchCardsWithRows, mergeMatchRowsById, sortByFeedOrder, toClientMatch, toClientTeam } from "./_listProjection.js";
+import { RECENT_COMPLETED_MATCH_HOURS, fetchClosedNoticeMatchFeedPage, fetchCurrentUserCompletedMatchIds, fetchCurrentUserMatchPage, fetchMatchFeedPage, fetchMatchRowsByIds, fetchPlayMatchPage, fetchRecentCompletedMatchFeedPage, fetchRefereeMatchPage, fetchRelatedActiveMatchPage, getCompletedSince, getRecentCompletedHours, isLegacyListFallbackAllowed, mergeMatchFeedPages } from "./_listQueries.js";
+import { MATCH_RELATED_FALLBACK_MAX_LIMIT, fetchOperationsMatchPage } from "./_listOperationsQueries.js";
+import { appendRowFallbackSource, attachMatchCardReferences, canReadMatchRow, collectMissingMatchCardReferences, filterActiveMatchCards, filterOperationsMatchCards, getMatchRowActorIds, isPlayableMatch, mergeMatchCardsWithRows, mergeMatchRowsById, sortByFeedOrder, toClientMatch, toClientTeam } from "./_listProjection.js";
 import { attachMatchPlayerCountsToCards, attachOpenDisputeQueues } from "./_listEnrichment.js";
 
 const MATCH_CARD_SOURCE_COLUMNS = "id,court_id,court_name,scheduled_date,scheduled_time,scheduled_at,timing_type:rules->>timingType,updated_at";
@@ -31,6 +32,23 @@ async function loadCurrentRecruitingSchedule(context, adminLevel = 0) {
     return result?.state?.recruitingPosts?.length ? result : null;
   } catch (error) {
     console.warn("Match list recruiting schedule skipped.", error.message);
+    return null;
+  }
+}
+
+async function loadReferencedRecruitingPosts(context, matches = [], adminLevel = 0) {
+  const explicitPostIds = unique((matches ?? []).map((match) => match?.recruitingPostId));
+  if (!context.profileId || !explicitPostIds.length) return null;
+  try {
+    const result = await loadCompactRecruitingList(context, {
+      adminLevel,
+      pagePostIds: explicitPostIds,
+      limit: explicitPostIds.length,
+      preferFreshRows: true,
+    });
+    return result?.state?.recruitingPosts?.length ? result : null;
+  } catch (error) {
+    console.warn("Match list referenced recruiting posts skipped.", error.message);
     return null;
   }
 }
@@ -95,17 +113,19 @@ async function buildCompactMatchListResult({
 export async function loadCompactMatchList(context, body = {}, adminLevel = 0, limit = REMOTE_CLIENT_MATCH_LIMIT, debugTiming = null) {
   const cursor = String(body.cursor ?? body.matchUpdatedBefore ?? "").trim();
   const refereeProfileId = String(body.refereeProfileId ?? "").trim();
-  const shouldLoadRecruitingSchedule = !cursor && body.includeRecruitingSchedule === true;
-  const completedOnly = body.completedOnly === true;
-  const playOnly = body.playOnly === true;
-  const scheduleOnly = body.scheduleOnly === true && !playOnly && !completedOnly;
+  const operationsOnly = String(body.scope ?? "").trim().toLowerCase() === "operations";
+  const shouldLoadRecruitingSchedule = !operationsOnly && !cursor && body.includeRecruitingSchedule === true;
+  const completedOnly = !operationsOnly && body.completedOnly === true;
+  const playOnly = !operationsOnly && body.playOnly === true;
+  const scheduleOnly = !operationsOnly && body.scheduleOnly === true && !playOnly && !completedOnly;
   const completedSince = completedOnly ? getCompletedSince(body) : "";
   const activeOnly = body.activeOnly === true || playOnly;
-  const includeTeamSchedule = body.includeTeamSchedule === true;
-  const shouldLoadRecentCompleted = !scheduleOnly && !completedOnly && activeOnly && !cursor && body.includeRecentCompleted === true;
+  const includeTeamSchedule = !operationsOnly && body.includeTeamSchedule === true;
+  const shouldLoadRecentCompleted = !operationsOnly && !scheduleOnly && !completedOnly && activeOnly && !cursor && body.includeRecentCompleted === true;
   const recentCompletedHours = shouldLoadRecentCompleted ? getRecentCompletedHours(body) : RECENT_COMPLETED_MATCH_HOURS;
   const includeCancelledSchedule = scheduleOnly && body.includeCancelledSchedule === true;
   const shouldLoadClosedNotices = body.includeClosedNotices !== false
+    && !operationsOnly
     && !refereeProfileId
     && !playOnly
     && !completedOnly
@@ -114,6 +134,7 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
     && (!scheduleOnly || includeCancelledSchedule);
   const allowLegacyFallback = isLegacyListFallbackAllowed(body);
   const filterMatchItems = (items = []) => {
+    if (operationsOnly) return filterOperationsMatchCards(items, context.profileId);
     let filtered = filterActiveMatchCards(items, activeOnly, {
       includeRecentCompleted: shouldLoadRecentCompleted,
       includeRecordRooms: playOnly,
@@ -131,7 +152,8 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
     ? loadCurrentRecruitingSchedule(context, adminLevel)
     : Promise.resolve(null);
   const [baseFeedPage, recentCompletedPage, closedNoticePage, relatedActivePage, relatedTournamentState] = await Promise.all([
-    playOnly
+    operationsOnly
+      || playOnly
       || refereeProfileId
       ? Promise.resolve(null)
       : completedOnly
@@ -143,12 +165,12 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
     shouldLoadClosedNotices
       ? timeStep(debugTiming, "closedNoticeMs", () => fetchClosedNoticeMatchFeedPage(context.supabase, context.profileId))
       : Promise.resolve(null),
-    !refereeProfileId && !cursor && !completedOnly && !playOnly && (activeOnly || includeTeamSchedule)
+    !operationsOnly && !refereeProfileId && !cursor && !completedOnly && !playOnly && (activeOnly || includeTeamSchedule)
       ? timeStep(debugTiming, "relatedActiveMatchIdsMs", () => (
           fetchRelatedActiveMatchPage(context.supabase, context.profileId, limit, includeTeamSchedule)
         ))
       : Promise.resolve({ rows: [], source: "none" }),
-    !refereeProfileId && !cursor && !completedOnly && !playOnly
+    !operationsOnly && !refereeProfileId && !cursor && !completedOnly && !playOnly
       ? timeStep(debugTiming, "relatedTournamentsMs", () => loadCurrentUserTournamentIndex(context.supabase, context.profileId))
       : Promise.resolve({ users: [], teams: [], tournaments: [] }),
   ]);
@@ -164,7 +186,15 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
   let matchRows = [];
   let matches = [];
   let playPageIds = [];
-  if (refereeProfileId) {
+  if (operationsOnly) {
+    const operationsPage = await timeStep(debugTiming, "operationsMatchesMs", () => (
+      fetchOperationsMatchPage(context.supabase, context.profileId, limit)
+    ));
+    matchRows = operationsPage.rows;
+    pageSource = operationsPage.source;
+    pageCursor = operationsPage.cursor;
+    pageExhausted = operationsPage.exhausted;
+  } else if (refereeProfileId) {
     const refereePage = await timeStep(debugTiming, "refereeMatchesMs", () => (
       fetchRefereeMatchPage(context.supabase, refereeProfileId, limit)
     ));
@@ -303,11 +333,13 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
   if (playerError) throw playerError;
 
   const playersByMatch = groupBy(playerRows ?? [], "match_id");
-  const readableRows = matchRows.filter((row) => (
-    captainTournamentMatchIds.has(row.id) ||
-    memberTeamMatchIds.has(row.id) ||
-    canReadMatchRow(row, playersByMatch.get(row.id) ?? [], context.profileId ?? "", adminLevel >= 30)
-  ));
+  const readableRows = matchRows.filter((row) => operationsOnly
+    ? row.created_by === context.profileId || row.referee_id === context.profileId
+    : (
+      captainTournamentMatchIds.has(row.id) ||
+      memberTeamMatchIds.has(row.id) ||
+      canReadMatchRow(row, playersByMatch.get(row.id) ?? [], context.profileId ?? "", adminLevel >= 30)
+    ));
   const hydrationRows = playOnly ? readableRows : readableRows.filter((row) => {
     const preview = toClientMatch(row, playersByMatch, {}, {}, {}, new Map());
     return filterMatchItems([preview]).length > 0;
@@ -383,7 +415,7 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
       ? sortByFeedOrder(mergeMatchCardsWithRows(countedMatches, rowMatches), feedPage.ids)
       : countedMatches.sort((a, b) => String(b.updatedAt ?? b.createdAt ?? "").localeCompare(String(a.updatedAt ?? a.createdAt ?? "")));
   matches = await attachOpenDisputeQueues(context.supabase, matches, debugTiming);
-  if (playOnly) {
+  if (playOnly || operationsOnly) {
     matches = matches.filter((match) => filterMatchItems([match]).length > 0);
   }
   const state = normalizeState({
@@ -393,13 +425,16 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
     matches,
     settings,
   }, { includeDemo: false });
+  const resultRecruitingSchedulePromise = operationsOnly
+    ? loadReferencedRecruitingPosts(context, matches, adminLevel)
+    : recruitingSchedulePromise;
   return buildCompactMatchListResult({
     context,
     currentUser,
     state,
     matches,
     relatedTournamentState,
-    recruitingSchedulePromise,
+    recruitingSchedulePromise: resultRecruitingSchedulePromise,
     debugTiming,
     limit,
     pageCursor,

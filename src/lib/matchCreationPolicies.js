@@ -296,6 +296,31 @@ export function getRoomRemakeDraft(source = {}) {
   });
 }
 
+export function getRoomRemakeNavigationState(selectedPost = {}, sourceMatch = null) {
+  const repeatMatch = sourceMatch?.status === "confirmed";
+  const remakeSource = sourceMatch
+    ? {
+        ...selectedPost,
+        ...sourceMatch,
+        visibility: selectedPost.visibility,
+        hostJoinMode: selectedPost.hostJoinMode,
+        teamOnly: selectedPost.teamOnly,
+        teamId: selectedPost.teamId,
+        targetTeamId: selectedPost.targetTeamId,
+        rules: { ...(selectedPost.rules ?? {}), ...(sourceMatch.rules ?? {}) },
+        repeatMatch,
+      }
+    : selectedPost;
+
+  return {
+    remakeDraft: getRoomRemakeDraft(remakeSource),
+    remakeSourceId: repeatMatch
+      ? ""
+      : sourceMatch?.recruitingPostId ?? (/^match-room-/.test(selectedPost.id) ? "" : selectedPost.id),
+    remakeSourceMatchId: repeatMatch ? "" : sourceMatch?.id ?? "",
+  };
+}
+
 export function getMatchCreationPolicyPayload(source = {}) {
   const policySource = getMatchCreationPolicySource(source);
   const mode = String(policySource.mode || "5v5");

@@ -1,4 +1,4 @@
-import { Bell, CalendarDays, ClipboardList, Handshake, House, LogIn, MessageSquareText, Settings, Trophy, UserRound, UsersRound } from "lucide-react";
+import { Bell, CalendarDays, ClipboardList, Handshake, House, ListChecks, LogIn, MessageSquareText, Settings, Trophy, UserRound, UsersRound } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import BrandLockup from "../common/BrandLockup.jsx";
 import PlayerHoverCard from "../profile/PlayerHoverCard.jsx";
@@ -16,6 +16,7 @@ const navItems = [
   { to: "/app/matches", labelKey: "schedule", icon: CalendarDays },
   { to: "/app/recruiting", labelKey: "matching", icon: Handshake },
   { to: "/app/recorder", labelKey: "play", icon: ClipboardList },
+  { to: "/app/operations", labelKey: "operations", icon: ListChecks, authenticatedOnly: true },
   { to: "/app/teams", labelKey: "teams", icon: UsersRound },
   { to: "/app/community", labelKey: "community", icon: MessageSquareText },
   { to: "/app/rankings", labelKey: "rankings", icon: Trophy },

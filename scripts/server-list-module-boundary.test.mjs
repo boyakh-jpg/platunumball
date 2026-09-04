@@ -60,6 +60,7 @@ const domains = [
       "_listFeedQueries.js",
       "_listHandler.js",
       "_listLoader.js",
+      "_listOperationsQueries.js",
       "_listProjection.js",
       "_listQueries.js",
     ],

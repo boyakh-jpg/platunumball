@@ -19,7 +19,11 @@ import {
   updateMatchRoomRules,
   updateRecruitingRoomRules,
 } from "../src/data/repository.js";
-import { getRoomRemakeDraft, getRoomRemakeWarningCopy } from "../src/lib/matchCreationPolicies.js";
+import {
+  getRoomRemakeDraft,
+  getRoomRemakeNavigationState,
+  getRoomRemakeWarningCopy,
+} from "../src/lib/matchCreationPolicies.js";
 import {
   getRoomCancellationActionLabel,
   getRoomCancellationConfirmMessage,
@@ -515,6 +519,48 @@ test("confirmed match repeat creates a private room and reinvites only prior pla
   assert.equal(invitedIds.includes("ref"), false);
 });
 
+test("room remake navigation preserves recruiting ownership fields and match rule overrides", () => {
+  const selectedPost = {
+    ...makeRecruitingPost("private-team"),
+    visibility: "public",
+    hostJoinMode: "team",
+    teamOnly: true,
+    teamId: "post-team-a",
+    targetTeamId: "post-team-b",
+    rules: { periodMinutes: 8, clockMode: "running" },
+  };
+  const confirmed = getRoomRemakeNavigationState(selectedPost, {
+    id: "match-confirmed",
+    recruitingPostId: selectedPost.id,
+    status: "confirmed",
+    visibility: "private",
+    hostJoinMode: "player",
+    teamOnly: false,
+    teamId: "match-team-a",
+    targetTeamId: "match-team-b",
+    rules: { periodMinutes: 10 },
+  });
+
+  assert.equal(confirmed.remakeSourceId, "");
+  assert.equal(confirmed.remakeSourceMatchId, "");
+  assert.equal(confirmed.remakeDraft.repeatMatch, true);
+  assert.equal(confirmed.remakeDraft.visibility, "private");
+  assert.equal(confirmed.remakeDraft.hostJoinMode, "team");
+  assert.equal(confirmed.remakeDraft.teamAId, "post-team-a");
+  assert.equal(confirmed.remakeDraft.teamBId, "post-team-b");
+  assert.equal(confirmed.remakeDraft.periodMinutes, 10);
+  assert.equal(confirmed.remakeDraft.clockMode, "running");
+
+  const cancelled = getRoomRemakeNavigationState(selectedPost, {
+    id: "match-cancelled",
+    recruitingPostId: selectedPost.id,
+    status: "cancelled",
+  });
+  assert.equal(cancelled.remakeSourceId, selectedPost.id);
+  assert.equal(cancelled.remakeSourceMatchId, "match-cancelled");
+  assert.equal(cancelled.remakeDraft.repeatMatch, false);
+});
+
 test("match rule acknowledgement records only the current revision", () => {
   const match = makeMatch();
   const changed = updateMatchRoomRules(makeMatchState(match), match.id, { periodMinutes: 10 });
@@ -641,7 +687,7 @@ test("server routes room edits to dedicated authoritative RPCs", () => {
   assert.match(recruitingPage, /참가자가 있으면 규칙 변경은 각 참가자의 확인이 필요합니다/);
   assert.match(recruitingPage, /같은 설정으로 다시 만들기/);
   assert.match(recruitingPage, /취소 사유를 5~200자로 입력해 주세요/);
-  assert.match(recruitingPage, /remakeSourceMatchId/);
+  assert.match(recruitingPage, /getRoomRemakeNavigationState/);
   assert.match(createMatchPage, /getRoomRemakeWarningCopy/);
   assert.match(createMatchPage, /remakeSourceId, remakeSourceMatchId/);
   assert.match(createMatchPage, /이전 참가자.*다시 초대/);

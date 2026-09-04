@@ -53,6 +53,7 @@ export function useAppDataRuntimeHydration(context, runtime) {
     matchPagePromiseRef,
     matchRecruitingSchedulePromiseRef,
     matchTeamSchedulePromiseRef,
+    operationsMatchesPromiseRef,
     pendingMatchIdsRef,
     pendingMatchMutationCountsRef,
     pendingRecruitingMutationCountsRef,
@@ -107,6 +108,7 @@ export function useAppDataRuntimeHydration(context, runtime) {
       matchPagePromiseRef.current = null;
       matchRecruitingSchedulePromiseRef.current = null;
       matchTeamSchedulePromiseRef.current = null;
+      operationsMatchesPromiseRef.current = null;
       recruitingPagePromiseRef.current = null;
       playMatchesPromiseRef.current = null;
       reportableMatchesPromiseRef.current = null;
@@ -158,6 +160,7 @@ export function useAppDataRuntimeHydration(context, runtime) {
     matchPagePromiseRef.current = null;
     matchRecruitingSchedulePromiseRef.current = null;
     matchTeamSchedulePromiseRef.current = null;
+    operationsMatchesPromiseRef.current = null;
     recruitingPagePromiseRef.current = null;
     playMatchesPromiseRef.current = null;
     reportableMatchesPromiseRef.current = null;

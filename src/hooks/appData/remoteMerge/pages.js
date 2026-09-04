@@ -115,6 +115,11 @@ export function createInitialMatchListStore(state = {}) {
     },
     [MATCH_LIST_SCOPES.TEAM]: localScope,
     [MATCH_LIST_SCOPES.PLAY]: localScope,
+    [MATCH_LIST_SCOPES.OPERATIONS]: {
+      ids: [],
+      recruitingPostIds: [],
+      status: MATCH_LIST_STATUSES.READY,
+    },
   });
 }
 export function getRecruitingRegionRequest(page = {}) {

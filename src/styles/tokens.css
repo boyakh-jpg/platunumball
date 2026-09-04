@@ -256,6 +256,8 @@
   --ui-action-button-max-inline-size: 176px;
   --ui-action-pair-max-inline-size: 364px;
   --ui-action-trio-max-inline-size: 552px;
+  --ui-operations-filter-max-inline-size: 32rem;
+  --ui-operations-row-content-max-inline-size: 36rem;
   --ui-compact-list-gap: var(--space-3);
   --ui-compact-record-row-min-height: 44px;
   --ui-compact-record-row-padding: var(--space-4) var(--space-5);

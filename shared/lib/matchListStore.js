@@ -2,6 +2,7 @@ export const MATCH_LIST_SCOPES = Object.freeze({
   PERSONAL: "personal",
   TEAM: "team",
   PLAY: "play",
+  OPERATIONS: "operations",
 });
 
 export const MATCH_LIST_STATUSES = Object.freeze({

@@ -18,6 +18,7 @@ export function useMatchLoaders(context) {
     matchPagination,
     matchRecruitingSchedulePromiseRef,
     matchTeamSchedulePromiseRef,
+    operationsMatchesPromiseRef,
     mergeRemoteMatchPage,
     normalizeServerState,
     pendingMatchIdsRef,
@@ -155,6 +156,62 @@ export function useMatchLoaders(context) {
       if (matchRecruitingSchedulePromiseRef.current === promise) matchRecruitingSchedulePromiseRef.current = null;
     });
     matchRecruitingSchedulePromiseRef.current = promise;
+    return promise;
+  }, [authEmail, authUserId, setState, trackedPostServerAction]);
+
+  const loadOperationsMatches = useCallback(async (options = {}) => {
+    if (!isSupabaseConfigured) return 0;
+    if (!authUserId) return false;
+    if (operationsMatchesPromiseRef.current) return operationsMatchesPromiseRef.current;
+    const promise = (async () => {
+      const roomMutationVersion = roomMutationVersionRef.current;
+      const roomMutationPending = pendingMatchIdsRef.current.size > 0 || pendingRecruitingPostIdsRef.current.size > 0;
+      setMatchLists((prev) => updateMatchListScope(prev, MATCH_LIST_SCOPES.OPERATIONS, {
+        status: MATCH_LIST_STATUSES.LOADING,
+        error: "",
+      }));
+      try {
+        const result = await trackedPostServerAction(
+          "/api/matches/list",
+          {
+            authUserId,
+            authEmail,
+            limit: REMOTE_CLIENT_MATCH_LIMIT,
+            scope: MATCH_LIST_SCOPES.OPERATIONS,
+            adminContext: false,
+          },
+          { allowWhenDisabled: true, blocking: true },
+        );
+        const preserveCurrentRoomLists = roomMutationPending || roomMutationVersion !== roomMutationVersionRef.current;
+        const remoteState = normalizeServerState(filterPendingMatches(
+          filterPendingRecruitingPosts(result?.state ?? {}, pendingRecruitingPostIdsRef.current, recentRecruitingMutationTimesRef.current),
+          pendingMatchIdsRef.current,
+          recentMatchMutationTimesRef.current,
+        ));
+        setState((prev) => mergeRemoteMatchPage(prev, remoteState, {
+          forceRecruitingPostIds: preserveCurrentRoomLists ? new Set() : new Set(getStateRecruitingPostIds(remoteState)),
+        }));
+        setMatchLists((prev) => updateMatchListScope(prev, MATCH_LIST_SCOPES.OPERATIONS, {
+          ids: getStateMatchIds(remoteState),
+          recruitingPostIds: getStateRecruitingPostIds(remoteState),
+          preserveCurrentIds: preserveCurrentRoomLists,
+          preserveCurrentRecruitingPostIds: preserveCurrentRoomLists,
+          status: MATCH_LIST_STATUSES.READY,
+          error: "",
+        }));
+        return remoteState.matches?.length ?? 0;
+      } catch (error) {
+        console.warn("Operations match load failed.", error.message);
+        setMatchLists((prev) => updateMatchListScope(prev, MATCH_LIST_SCOPES.OPERATIONS, {
+          status: MATCH_LIST_STATUSES.ERROR,
+          error: error.message ?? "operations_match_load_failed",
+        }));
+        return false;
+      }
+    })().finally(() => {
+      if (operationsMatchesPromiseRef.current === promise) operationsMatchesPromiseRef.current = null;
+    });
+    operationsMatchesPromiseRef.current = promise;
     return promise;
   }, [authEmail, authUserId, setState, trackedPostServerAction]);
 
@@ -332,6 +389,7 @@ export function useMatchLoaders(context) {
     loadMatchRecruitingSchedule,
     loadMatchTeamSchedule,
     loadMoreMatches,
+    loadOperationsMatches,
     loadPlayMatches,
     loadReportableMatches,
   };

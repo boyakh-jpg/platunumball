@@ -453,6 +453,10 @@ test("guest shell replaces the demo identity with login actions", () => {
   assert.match(appSource, /<GuestAccessNotice title="플레이는 로그인 후 확인할 수 있습니다"/);
   assert.match(appSource, /<GuestAccessNotice title="내 정보는 로그인 후 확인할 수 있습니다"/);
   assert.match(appSource, /<GuestAccessNotice title="설정은 로그인 후 확인할 수 있습니다"/);
+  assert.match(
+    appSource,
+    /path="\/app\/operations"[\s\S]*?<GuestAccessNotice[\s\S]*?title="운영은 로그인 후 확인할 수 있습니다"/,
+  );
   assert.match(guestAccessNotice, /showActions = true/);
   assert.match(guestAccessNotice, /action=\{showActions \? \(/);
   assert.doesNotMatch(appSource, /showActions=\{false\}/);

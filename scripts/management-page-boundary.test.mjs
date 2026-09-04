@@ -865,6 +865,8 @@ test("게스트는 실제 공개 매칭을 보고 개인 메뉴는 안내 상태
   assert.match(home, /<GuestAccessNotice title="일정은 로그인 후 확인할 수 있습니다"[\s\S]*returnTo="\/app\/matches"/u);
   assert.match(matches, /<GuestAccessNotice[\s\S]*일정은 로그인 후 확인할 수 있습니다/u);
   assert.match(app, /"\/app\/profile"[\s\S]*"\/app\/recorder"[\s\S]*"\/app\/settings"/u);
+  assert.match(app, /"\/app\/operations"/u);
+  assert.match(app, /path="\/app\/operations"[\s\S]*guestPreview \? \([\s\S]*<GuestAccessNotice/u);
   assert.match(app, /path="\/app\/recorder"[\s\S]*guestPreview \? \([\s\S]*<GuestAccessNotice/u);
   assert.match(app, /path="\/app\/profile"[\s\S]*guestPreview \? \([\s\S]*<GuestAccessNotice/u);
   assert.match(app, /path="\/app\/settings"[\s\S]*guestPreview \? \([\s\S]*<GuestAccessNotice/u);

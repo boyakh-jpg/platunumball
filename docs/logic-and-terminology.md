@@ -311,6 +311,13 @@
 - 일반 경기의 과반 승인·전원 승인·팀장 승인과 마지막 이의 판정 즉시 자동 확정 규칙.
 - 아래 날짜별 기록이 이 절과 충돌하면 이 절이 우선한다.
 
+## 2026-09-04 운영 업무함
+
+1. `/app/operations`는 전용 서버 조회 scope에서 `matches.created_by` 또는 `matches.referee_id`가 현재 인증 사용자와 일치하는 canonical 경기만 받는다. 개인 일정·feed 관계값·참가자 여부·과거 심판·관리자 레벨로 운영 대상을 늘리지 않으며, 동일 경기에서는 배정 심판 역할을 우선 표시한다. 반환 경기의 `recruitingPostId`가 참조하는 읽기 허용 모집글만 함께 반환하며, 개인 일정 scope의 의미는 바꾸지 않는다.
+2. 업무함은 새 phase·권한·저장 경로를 만들지 않는다. 경기 선택은 현재 경로를 복귀 경로로 보존해 공용 `MatchRoomModal`을 열고, 모든 action은 기존 phase helper와 서버 권한 검증을 그대로 사용한다.
+3. 전용 scope는 `closed`와 개인·사후 기록방을 제외하고 `waiting / locked / checkin / live / postgame / dispute / record / cancelled / void` phase를 함께 반환한다. 업무함은 이를 `지금 / 다음 / 지난`으로 분류하며, 로딩·실패·빈 상태를 분리하고 실패를 빈 목록으로 숨기지 않는다.
+4. `다시 만들기`는 현재 사용자가 canonical 방장이고 원본 `recruitingPostId`가 있는 종료 경기에서만 기존 모집 재생성 경로를 연다. 심판 역할이나 업무함 자체는 경기·모집 데이터를 직접 복제하지 않는다.
+
 ## 2026-07-26 홈 독립 bootstrap
 
 1. 홈의 내 소속 팀, 지역 라이벌, 지역 랭킹, 즐겨찾기는 다른 메뉴에서 directory를 먼저 불러왔는지와 무관하게 `/api/home/load` 응답만으로 동일해야 한다.

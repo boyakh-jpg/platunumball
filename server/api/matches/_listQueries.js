@@ -4,6 +4,7 @@ import { MATCH_LIST_COLUMNS } from "../../../shared/lib/repositoryColumns.js";
 import { isMatchInPlayMenu } from "../../../shared/lib/matchRoomLifecycle.js";
 
 import { isPlayableMatchRow } from "./_listProjection.js";
+import { MATCH_RELATED_FALLBACK_MAX_LIMIT } from "./_listOperationsQueries.js";
 import {
   userRoomFeedAvailable,
   disableUserRoomFeed,
@@ -18,13 +19,12 @@ import {
   fetchMatchRowsByIds,
 } from "./_listFeedQueries.js";
 export { RECENT_COMPLETED_MATCH_HOURS, isLegacyListFallbackAllowed, getCappedLimit, getCompletedSince, getRecentCompletedHours, fetchMatchFeedPage, fetchRecentCompletedMatchFeedPage, fetchClosedNoticeMatchFeedPage, mergeMatchFeedPages, fetchMatchRowsByIds, fetchCurrentUserCompletedMatchIds } from "./_listFeedQueries.js";
+export { MATCH_RELATED_FALLBACK_MAX_LIMIT } from "./_listOperationsQueries.js";
 
 let relatedActiveMatchListAvailable = true;
 let recorderMatchPageAvailable = true;
 
 const ACTIVE_MATCH_EXCLUDED_STATUSES = new Set(ACTIVE_MATCH_EXCLUDED_STATUS_VALUES);
-
-export const MATCH_RELATED_FALLBACK_MAX_LIMIT = 80;
 
 function isMissingRecorderMatchPage(error = {}) {
   const message = String(error?.message ?? "");
@@ -113,29 +113,6 @@ export async function fetchRefereeMatchPage(client, refereeId = "", limit = REMO
   const rows = data ?? [];
   return { rows, cursor: "", exhausted: rows.length < candidateLimit };
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

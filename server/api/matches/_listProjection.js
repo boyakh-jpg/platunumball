@@ -8,6 +8,17 @@ import { getMatchRoomPhase, isMatchClosedNotice, isMatchInScheduleMenu, isMatchR
 import { isPubliclyReadableConfirmedMatch } from "../../../shared/lib/matchRecordTypes.js";
 
 const ACTIVE_MATCH_EXCLUDED_PHASES = new Set(["record"]);
+const OPERATIONS_MATCH_PHASES = new Set([
+  "waiting",
+  "locked",
+  "checkin",
+  "live",
+  "postgame",
+  "dispute",
+  "record",
+  "cancelled",
+  "void",
+]);
 
 export function sortByFeedOrder(items = [], ids = []) {
   const order = new Map((ids ?? []).filter(Boolean).map((id, index) => [id, index]));
@@ -149,6 +160,22 @@ export function filterActiveMatchCards(matches = [], activeOnly = false, options
       )
     )
   ));
+}
+
+export function filterOperationsMatchCards(matches = [], profileId = "", now = new Date()) {
+  const safeProfileId = String(profileId ?? "").trim();
+  if (!safeProfileId) return [];
+  return (matches ?? []).filter((match) => {
+    if (
+      !match
+      || isSeedSampleMatch(match)
+      || isPersonalRecordMatch(match)
+      || isMatchRecordMatch(match)
+    ) return false;
+    if (String(match.status ?? "").trim().toLowerCase() === "closed") return false;
+    if (match.createdBy !== safeProfileId && match.refereeId !== safeProfileId) return false;
+    return OPERATIONS_MATCH_PHASES.has(getMatchRoomPhase(match, now).phase);
+  });
 }
 
 function getMatchUserIds(match = {}) {

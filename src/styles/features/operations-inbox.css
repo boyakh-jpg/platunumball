@@ -1,0 +1,125 @@
+.operations-page {
+  width: 100%;
+}
+
+.operations-header {
+  --ui-page-hero-min-height: 0px;
+  --ui-page-hero-min-height-mobile: 0px;
+  --ui-page-hero-padding: var(--space-4);
+  align-items: end;
+}
+
+.operations-header .ui-page-hero__copy > p,
+.operations-inbox__head p,
+.operations-group__head p,
+.operations-row__main > p {
+  margin: 0;
+  color: var(--rb-muted);
+}
+
+.operations-inbox {
+  display: grid;
+  gap: var(--space-6);
+}
+
+.operations-refresh-status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--rb-muted);
+  font-size: var(--font-size-meta);
+}
+
+.operations-inbox__head > div,
+.operations-group__head > div {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.operations-filter-shell {
+  max-width: var(--ui-operations-filter-max-inline-size);
+}
+
+.operations-filter-shell .operations-filter {
+  width: 100%;
+}
+
+.operations-group {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.operations-group__head {
+  display: block;
+}
+
+.operations-group__head h3 {
+  margin: 0;
+}
+
+.operations-list {
+  display: grid;
+}
+
+.operations-row {
+  display: grid;
+  grid-template-columns: minmax(0, var(--ui-operations-row-content-max-inline-size)) auto;
+  justify-content: start;
+  gap: var(--space-4);
+  align-items: center;
+  padding: var(--space-4) 0;
+}
+
+.operations-row__main {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-2);
+}
+
+.operations-row__title,
+.operations-row__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.operations-row__title h4 {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.operations-row__meta {
+  color: var(--rb-muted);
+  font-size: var(--font-size-meta);
+}
+
+.operations-row__meta > span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.operations-row__actions {
+  flex-wrap: nowrap;
+}
+
+@media (max-width: 720px) {
+  .operations-header {
+    align-items: stretch;
+  }
+
+  .operations-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .operations-row__actions {
+    width: 100%;
+  }
+
+  .operations-row__actions > * {
+    flex: 1 1 0;
+  }
+}

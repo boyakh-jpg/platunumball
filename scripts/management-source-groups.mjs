@@ -186,6 +186,7 @@ export const MATCH_LIST_SOURCE_PATHS = [
   "server/api/matches/_listFeedQueries.js",
   "server/api/matches/_listHandler.js",
   "server/api/matches/_listLoader.js",
+  "server/api/matches/_listOperationsQueries.js",
   "server/api/matches/_listProjection.js",
   "server/api/matches/_listQueries.js",
 ];

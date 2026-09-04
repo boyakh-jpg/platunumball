@@ -756,6 +756,7 @@ test("large CSS entrypoints are ordered manifests over responsibility modules", 
       "./themes/landing-team-visual.css",
       "./features/settings-court-workflows.css",
       "./features/referee-report-workflows.css",
+      "./features/operations-inbox.css",
     ]],
     ["src/styles/matches-arena.css", [
       "./features/matches-tournament.css",
