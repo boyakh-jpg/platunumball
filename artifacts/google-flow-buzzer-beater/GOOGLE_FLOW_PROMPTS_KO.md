@@ -46,7 +46,8 @@
 | CUT 04 림 회전 후반·거의 정지 | `assets/04-start-rim-orbit-b.png` | — | `assets/04-end-near-stop.png` |
 | CUT 05 성공·환호 | `assets/05-start-final-tip.png` | — | `assets/05-end-ball-through-net.png` |
 | CUT 06 실제 전광판 조작 | `assets/ref-mobile-scoreboard-fullscreen-before-74-75.png` | `assets/ref-mobile-scoreboard-fullscreen-press-plus3.png` | `assets/ref-mobile-scoreboard-fullscreen-after-77-75.png` |
-| CUT 07 실제 영수증 엔딩 | `assets/07-start-receipt-airborne-actual.png` | `assets/07-mid-receipt-floor-actual.png` | `assets/07-end-receipt-zoom-actual.png` |
+| CUT 07-A 영수증 비행·착지 | `assets/07-start-receipt-airborne-actual.png` | — | `assets/07-mid-receipt-floor-actual.png` |
+| CUT 07-B 영수증 바닥·줌인 | `assets/07-mid-receipt-floor-actual.png` | — | `assets/07-end-receipt-zoom-actual.png` |
 
 보조 참조:
 
@@ -205,16 +206,17 @@ During the first 0.25 second, a realistic human index finger enters from the low
 - 실제 캡처의 팀명, 엠블럼, 버튼, 전체화면 구조를 재디자인하지 않는다.
 - 화면 바깥의 휴대폰 베젤, 손바닥, 경기장 합성 금지.
 
-## 12. CUT 07 — 실제 발급 영수증 비행, 바닥 착지, 줌인
+## 12. CUT 07-A/B — 실제 발급 영수증 비행, 바닥 착지, 줌인
 
 ### 입력
 
-- 시작·비행 구도: `assets/07-start-receipt-airborne-actual.png`
-- 중간·바닥 착지 구도: `assets/07-mid-receipt-floor-actual.png`
-- 종료·줌인 구도: `assets/07-end-receipt-zoom-actual.png`
+- CUT 07-A 시작: `assets/07-start-receipt-airborne-actual.png`
+- CUT 07-A 종료 / CUT 07-B 시작: `assets/07-mid-receipt-floor-actual.png`
+- CUT 07-B 종료: `assets/07-end-receipt-zoom-actual.png`
 - 실제 인쇄면 원본: `assets/ref-receipt-buzzer-beater-issued.png`
 - 실제 Story 원본: `assets/ref-receipt-buzzer-beater-issued-story.png`
-- 길이: `3.2초`
+- CUT 07-A 길이: `1.1초`
+- CUT 07-B 길이: `2.1초`
 
 ### 프레임 배치
 
@@ -222,16 +224,20 @@ During the first 0.25 second, a realistic human index finger enters from the low
 - `00:11.3–00:12.2`: 중간 이미지처럼 영수증이 거친 아스팔트에 닿아 완전히 눕는다.
 - `00:12.2–00:13.4`: 종이는 움직이지 않고 카메라만 종료 이미지까지 광학적으로 밀고 들어간다.
 
-### Flow 동작 프롬프트
+### CUT 07-A Flow 동작 프롬프트 — 비행 시작 → 바닥 착지
 
 ```text
-Hard cut from the real mobile scoreboard to the same outdoor court just after the game. The playing area is now empty, while the celebrating spectators remain only beyond the sideline and gradually soften out of focus. Keep the same hoop, chain-link fence, apartment windows and floodlights. Use the supplied airborne, floor and close-up frames to lock the outdoor environment, one-paper silhouette, physical pose, lighting and camera composition. Use the supplied actual BOXTIER Story receipt as the mandatory identity texture. Treat its printed face as one rigid, already-issued thermal-paper texture from the first frame to the last. Never regenerate, rewrite, translate, rearrange or morph its pixels.
+Hard cut from the real mobile scoreboard to the same outdoor court just after the game. The playing area is now empty, while the celebrating spectators remain only beyond the sideline and gradually soften out of focus. Keep the same hoop, chain-link fence, apartment windows and floodlights. Use the supplied airborne start frame and floor end frame to lock the outdoor environment, one-paper silhouette, physical pose, lighting and camera composition. Use the supplied actual BOXTIER Story receipt as the mandatory identity texture. Treat its printed face as one rigid, already-issued thermal-paper texture from the first frame to the last. Never regenerate, rewrite, translate, rearrange or morph its pixels.
 
-From 00:10.2 to 00:11.3, begin exactly on the supplied airborne frame. The exact same cream BOXTIER thermal receipt drifts diagonally in a light natural breeze, starting about 40 centimeters above the asphalt. It flutters twice with physically believable paper flex, rotates less than 90 degrees, loses lift and approaches the exact pose and ground position shown in the supplied floor frame. No hand enters and no second paper appears.
+Generate a 1.1-second normal-real-time clip beginning exactly on the supplied airborne start frame and finishing exactly on the supplied floor end frame. The exact same cream BOXTIER thermal receipt drifts diagonally in a light natural breeze, starting about 40 centimeters above the asphalt. It flutters twice with physically believable paper flex, rotates less than 90 degrees, loses lift and approaches the exact pose and ground position shown in the supplied floor frame. The lower torn edge touches first and the receipt settles fully flat. No hand enters and no second paper appears. End only after the whole paper is visibly resting on the court.
+```
 
-From 00:11.3 to 00:12.2, the lower torn edge touches first and the receipt settles fully flat in the exact supplied floor-frame pose. Hold long enough to clearly register that it has landed. It does not lift, slide or blow away again; only two tiny corners may move a few millimeters in the wind.
+### CUT 07-B Flow 동작 프롬프트 — 바닥 착지 → 최종 줌인
 
-From 00:12.2 to 00:13.4, keep the paper completely fixed and perform one smooth low physical camera push-in with a slight downward tilt, not a digital zoom or a paper scale animation. Finish exactly on the supplied close-up frame with a narrow border of rough outdoor asphalt still visible. Keep the actual issued typography stable and legible: BOXTIER 77, NIGHT OWLS 75, FINAL, and the exact Korean comment “버저비터 승리 · 마지막 1초, 2점 차 역전승”. The score and Korean comment are both fully inside frame and tack sharp. Transition the sound from distant fading cheers to quiet outdoor wind, the dry tick of thermal paper touching rough asphalt, then near silence during the final push-in.
+```text
+Generate a 2.1-second normal-real-time continuation beginning exactly on the supplied floor start frame and finishing exactly on the supplied close-up end frame. Use the supplied actual BOXTIER Story receipt as the mandatory rigid identity texture. For the first 0.9 second, hold the landed receipt fully flat in its exact start-frame position so the audience clearly registers the landing. It does not lift, slide, rotate or blow away again; only two tiny corners may move a few millimeters in the wind.
+
+For the final 1.2 seconds, keep the paper completely fixed and perform one smooth low physical camera push-in with a slight downward tilt, not a digital zoom or a paper scale animation. Finish exactly on the supplied close-up end frame with a narrow border of rough outdoor asphalt still visible. Keep the actual issued typography stable and legible: BOXTIER 77, NIGHT OWLS 75, FINAL, and the exact Korean comment “버저비터 승리 · 마지막 1초, 2점 차 역전승”. The score and Korean comment are both fully inside frame and tack sharp. Transition the sound from distant fading cheers to quiet outdoor wind, the dry tick of thermal paper touching rough asphalt, then near silence during the final push-in. Never regenerate, rewrite, translate, rearrange or morph the printed pixels.
 ```
 
 ### 절대 금지
@@ -292,7 +298,7 @@ node artifacts/google-flow-buzzer-beater/capture-actual-scoreboard.mjs
 4. CUT 02→03, CUT 03→04, CUT 04→05는 디졸브 금지. 프레임 일치 하드컷.
 5. CUT 05→06은 의도적 하드컷. 득점 직후 실제 모바일 전광판 전체화면으로 전환한다.
 6. CUT 06→07은 의도적 하드컷. 점수 확인음과 빈 코트 정적을 대비한다.
-7. CUT 07은 새 시작·중간·종료 이미지를 순서대로 사용한다. 최종 영수증은 바닥에 닿은 상태로 `2.1초` 유지하고, 그중 마지막 `1.2초`는 종이를 움직이지 않은 채 카메라만 줌인한다.
+7. CUT 07은 Flow 클립 두 개로 만든다. `07-A`는 비행 시작→바닥 착지, `07-B`는 같은 바닥 이미지를 시작점으로 바닥 착지→줌인이다. 최종 영수증은 바닥에 닿은 상태로 `2.1초` 유지하고, 그중 마지막 `1.2초`는 종이를 움직이지 않은 채 카메라만 줌인한다.
 8. 림 6초가 길다고 자동 단축하지 않는다. 이 답답함이 후킹이다.
 
 ## 16. 생성 실패 시 재시도 문장
