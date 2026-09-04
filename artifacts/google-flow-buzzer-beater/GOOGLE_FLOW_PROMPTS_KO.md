@@ -38,15 +38,15 @@
 
 모든 경로는 이 문서가 있는 폴더 기준이다.
 
-| 용도 | 시작 이미지 | 종료 이미지 |
-|---|---|---|
-| CUT 01 릴리스 | `assets/01-start-release.png` | `assets/01-end-release.png` |
-| CUT 02 비행·첫 림 접촉 | `assets/02-start-flight.png` | `assets/02-end-first-rim-contact.png` |
-| CUT 03 림 회전 전반 | `assets/03-start-rim-orbit-a.png` | `assets/03-end-rim-orbit-a.png` |
-| CUT 04 림 회전 후반·거의 정지 | `assets/04-start-rim-orbit-b.png` | `assets/04-end-near-stop.png` |
-| CUT 05 성공·환호 | `assets/05-start-final-tip.png` | `assets/05-end-ball-through-net.png` |
-| CUT 06 실제 전광판 조작 | `assets/ref-mobile-scoreboard-fullscreen-before-74-75.png` | `assets/ref-mobile-scoreboard-fullscreen-after-77-75.png` |
-| CUT 07 실제 영수증 엔딩 | `assets/06-start-receipt-airborne.png` | `assets/06-end-receipt-floor.png` |
+| 용도 | 시작 이미지 | 중간 이미지 | 종료 이미지 |
+|---|---|---|---|
+| CUT 01 릴리스 | `assets/01-start-release.png` | — | `assets/01-end-release.png` |
+| CUT 02 비행·첫 림 접촉 | `assets/02-start-flight.png` | — | `assets/02-end-first-rim-contact.png` |
+| CUT 03 림 회전 전반 | `assets/03-start-rim-orbit-a.png` | — | `assets/03-end-rim-orbit-a.png` |
+| CUT 04 림 회전 후반·거의 정지 | `assets/04-start-rim-orbit-b.png` | — | `assets/04-end-near-stop.png` |
+| CUT 05 성공·환호 | `assets/05-start-final-tip.png` | — | `assets/05-end-ball-through-net.png` |
+| CUT 06 실제 전광판 조작 | `assets/ref-mobile-scoreboard-fullscreen-before-74-75.png` | `assets/ref-mobile-scoreboard-fullscreen-press-plus3.png` | `assets/ref-mobile-scoreboard-fullscreen-after-77-75.png` |
+| CUT 07 실제 영수증 엔딩 | `assets/07-start-receipt-airborne-actual.png` | `assets/07-mid-receipt-floor-actual.png` | `assets/07-end-receipt-zoom-actual.png` |
 
 보조 참조:
 
@@ -56,7 +56,7 @@
 - 실제 BOXTIER 발급 Story 원본: `assets/ref-receipt-buzzer-beater-issued-story.png`
 - 팀 엠블럼: `assets/emblem-boxtier.png`, `assets/emblem-night-owls.png`
 
-인접 컷 경계 이미지는 동일 파일을 복제해 이름만 나눴다. 예: CUT 01 종료 이미지와 CUT 02 시작 이미지는 같은 프레임이다. Flow에서 컷을 따로 생성해도 연결점이 흔들리지 않게 하기 위한 구조다.
+인접 컷 경계 이미지는 동일 파일을 복제해 이름만 나눴다. 예: CUT 01 종료 이미지와 CUT 02 시작 이미지는 같은 프레임이다. Flow에서 컷을 따로 생성해도 연결점이 흔들리지 않게 하기 위한 구조다. CUT 07의 세 이미지는 각각 비행 시작, 바닥 착지, 최종 줌인 구도를 고정한다. 세 이미지의 인쇄면 정체성 기준은 반드시 실제 Story 원본을 함께 사용한다.
 
 ## 5. 공통 스타일 프롬프트
 
@@ -209,20 +209,29 @@ During the first 0.25 second, a realistic human index finger enters from the low
 
 ### 입력
 
-- 시작: `assets/06-start-receipt-airborne.png`
-- 종료: `assets/06-end-receipt-floor.png`
+- 시작·비행 구도: `assets/07-start-receipt-airborne-actual.png`
+- 중간·바닥 착지 구도: `assets/07-mid-receipt-floor-actual.png`
+- 종료·줌인 구도: `assets/07-end-receipt-zoom-actual.png`
 - 실제 인쇄면 원본: `assets/ref-receipt-buzzer-beater-issued.png`
 - 실제 Story 원본: `assets/ref-receipt-buzzer-beater-issued-story.png`
 - 길이: `3.2초`
 
+### 프레임 배치
+
+- `00:10.2–00:11.3`: 시작 이미지처럼 같은 영수증 한 장이 코트 위 바람에 날린다.
+- `00:11.3–00:12.2`: 중간 이미지처럼 영수증이 거친 아스팔트에 닿아 완전히 눕는다.
+- `00:12.2–00:13.4`: 종이는 움직이지 않고 카메라만 종료 이미지까지 광학적으로 밀고 들어간다.
+
 ### Flow 동작 프롬프트
 
 ```text
-Hard cut from the real mobile scoreboard to the same outdoor court just after the game. The court is now empty and quiet, with the same hoop, chain-link fence, apartment windows and floodlights. Use the supplied airborne and floor frames only for outdoor environment, paper silhouette, physical pose, lighting and camera composition. Completely replace any synthetic text visible on those pose frames with the supplied actual BOXTIER-issued receipt face. Treat the supplied issued receipt as one rigid, already-printed thermal-paper texture from the first frame to the last. Never regenerate, rewrite, translate, rearrange or morph its pixels.
+Hard cut from the real mobile scoreboard to the same outdoor court just after the game. The playing area is now empty, while the celebrating spectators remain only beyond the sideline and gradually soften out of focus. Keep the same hoop, chain-link fence, apartment windows and floodlights. Use the supplied airborne, floor and close-up frames to lock the outdoor environment, one-paper silhouette, physical pose, lighting and camera composition. Use the supplied actual BOXTIER Story receipt as the mandatory identity texture. Treat its printed face as one rigid, already-issued thermal-paper texture from the first frame to the last. Never regenerate, rewrite, translate, rearrange or morph its pixels.
 
-The exact same cream BOXTIER thermal receipt drifts diagonally from upper-left toward lower-right in a light natural breeze, starting about 40 centimeters above the asphalt. It flutters twice with physically believable paper flex, rotates less than 90 degrees, loses lift and touches the court first with its lower torn edge. It then settles fully flat on the asphalt. No hand enters. Nobody picks it up. It does not blow away again.
+From 00:10.2 to 00:11.3, begin exactly on the supplied airborne frame. The exact same cream BOXTIER thermal receipt drifts diagonally in a light natural breeze, starting about 40 centimeters above the asphalt. It flutters twice with physically believable paper flex, rotates less than 90 degrees, loses lift and approaches the exact pose and ground position shown in the supplied floor frame. No hand enters and no second paper appears.
 
-As soon as the receipt contacts the ground, the camera performs one smooth low physical push-in and slight downward tilt, not a digital zoom, until the paper occupies the lower 55 percent of frame. Finish on the supplied ground-level composition. The receipt lies flat on the floor; only two tiny corners lift a few millimeters in the wind. Keep the actual issued typography stable and legible: BOXTIER 77, NIGHT OWLS 75, FINAL, and the exact Korean comment “버저비터 승리 · 마지막 1초, 2점 차 역전승”. Focus locks on that comment. The empty hoop and floodlights remain softly defocused in the background. Transition the sound from distant fading cheers to quiet outdoor wind and the dry tick of thermal paper touching rough asphalt.
+From 00:11.3 to 00:12.2, the lower torn edge touches first and the receipt settles fully flat in the exact supplied floor-frame pose. Hold long enough to clearly register that it has landed. It does not lift, slide or blow away again; only two tiny corners may move a few millimeters in the wind.
+
+From 00:12.2 to 00:13.4, keep the paper completely fixed and perform one smooth low physical camera push-in with a slight downward tilt, not a digital zoom or a paper scale animation. Finish exactly on the supplied close-up frame with a narrow border of rough outdoor asphalt still visible. Keep the actual issued typography stable and legible: BOXTIER 77, NIGHT OWLS 75, FINAL, and the exact Korean comment “버저비터 승리 · 마지막 1초, 2점 차 역전승”. The score and Korean comment are both fully inside frame and tack sharp. Transition the sound from distant fading cheers to quiet outdoor wind, the dry tick of thermal paper touching rough asphalt, then near silence during the final push-in.
 ```
 
 ### 절대 금지
@@ -232,6 +241,8 @@ As soon as the receipt contacts the ground, the camera performs one smooth low p
 - 화면 위 자막으로 문구를 따로 띄우지 않는다.
 - 종이 문구가 영상 중 다른 단어로 변형되지 않는다.
 - 영수증이 여러 장으로 복제되지 않는다.
+- 시작·중간·종료 사이에서 영수증의 방향, 비율, 엠블럼, 점수, 문구가 바뀌면 실패.
+- 줌인은 카메라 이동이어야 하며 종이 자체가 커지거나 카메라 쪽으로 떠오르면 실패.
 
 ## 13. 실제 BOXTIER 사이트 발급·캡처 재현
 
@@ -266,9 +277,10 @@ node artifacts/google-flow-buzzer-beater/capture-actual-scoreboard.mjs
 | 00:09.25 | 손가락이 `BOXTIER +3`을 누르는 짧은 터치음 |
 | 00:09.55 | 74→77 점수 확인음 |
 | 00:10.2 | 하드컷과 함께 환호가 멀리 사라지고 야간 바람으로 전환 |
-| 00:10.4–00:12.4 | 감열지 펄럭임 2회 |
-| 00:12.5 | 종이가 바닥에 닿는 마른 소리 |
-| 00:12.5–00:13.4 | 낮은 바람, 멀리서 남은 한 번의 환호 잔향 |
+| 00:10.4–00:11.3 | 감열지 펄럭임 2회 |
+| 00:11.3 | 종이가 바닥에 닿는 마른 소리 |
+| 00:11.3–00:12.2 | 종이가 완전히 눕고 낮은 바람만 유지 |
+| 00:12.2–00:13.4 | 카메라 줌인, 멀리서 남은 한 번의 환호 뒤 거의 무음 |
 
 음악은 없어도 된다. 넣는다면 저역 드론만 사용하고, 림 6초 동안 비트를 넣지 않는다. 금속 접촉음과 침묵이 후킹을 만든다.
 
@@ -280,7 +292,7 @@ node artifacts/google-flow-buzzer-beater/capture-actual-scoreboard.mjs
 4. CUT 02→03, CUT 03→04, CUT 04→05는 디졸브 금지. 프레임 일치 하드컷.
 5. CUT 05→06은 의도적 하드컷. 득점 직후 실제 모바일 전광판 전체화면으로 전환한다.
 6. CUT 06→07은 의도적 하드컷. 점수 확인음과 빈 코트 정적을 대비한다.
-7. 최종 영수증은 바닥에 닿은 상태로 최소 `0.7초` 유지해 문구를 읽게 한다.
+7. CUT 07은 새 시작·중간·종료 이미지를 순서대로 사용한다. 최종 영수증은 바닥에 닿은 상태로 `2.1초` 유지하고, 그중 마지막 `1.2초`는 종이를 움직이지 않은 채 카메라만 줌인한다.
 8. 림 6초가 길다고 자동 단축하지 않는다. 이 답답함이 후킹이다.
 
 ## 16. 생성 실패 시 재시도 문장
