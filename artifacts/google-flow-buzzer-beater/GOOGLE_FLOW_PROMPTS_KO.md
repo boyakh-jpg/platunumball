@@ -46,8 +46,8 @@
 | CUT 04 림 회전 후반·거의 정지 | `assets/04-start-rim-orbit-b.png` | — | `assets/04-end-near-stop.png` |
 | CUT 05 성공·환호 | `assets/05-start-final-tip.png` | — | `assets/05-end-ball-through-net.png` |
 | CUT 06 실제 전광판 조작 | `assets/ref-mobile-scoreboard-fullscreen-before-74-75.png` | `assets/ref-mobile-scoreboard-fullscreen-press-plus3.png` | `assets/ref-mobile-scoreboard-fullscreen-after-77-75.png` |
-| CUT 07-A 영수증 비행·착지 | `assets/07-start-receipt-airborne-actual.png` | — | `assets/07-mid-receipt-floor-actual.png` |
-| CUT 07-B 영수증 바닥·줌인 | `assets/07-mid-receipt-floor-actual.png` | — | `assets/07-end-receipt-zoom-actual.png` |
+| CUT 07-A 영수증 비행·착지 | `assets/07-start-receipt-airborne-web.png` | — | `assets/07-mid-receipt-floor-web.png` |
+| CUT 07-B 영수증 바닥·줌인 | `assets/07-mid-receipt-floor-web.png` | — | `assets/07-end-receipt-zoom-web.png` |
 
 보조 참조:
 
@@ -210,13 +210,16 @@ During the first 0.25 second, a realistic human index finger enters from the low
 
 ### 입력
 
-- CUT 07-A 시작: `assets/07-start-receipt-airborne-actual.png`
-- CUT 07-A 종료 / CUT 07-B 시작: `assets/07-mid-receipt-floor-actual.png`
-- CUT 07-B 종료: `assets/07-end-receipt-zoom-actual.png`
+- CUT 07-A 시작: `assets/07-start-receipt-airborne-web.png`
+- CUT 07-A 종료 / CUT 07-B 시작: `assets/07-mid-receipt-floor-web.png`
+- CUT 07-B 종료: `assets/07-end-receipt-zoom-web.png`
 - 실제 인쇄면 원본: `assets/ref-receipt-buzzer-beater-issued.png`
 - 실제 Story 원본: `assets/ref-receipt-buzzer-beater-issued-story.png`
+- 합성 재현 스크립트: `composite-web-receipt.mjs`
 - CUT 07-A 길이: `1.1초`
 - CUT 07-B 길이: `2.1초`
+
+`07-*-web.png` 3장은 실제 BOXTIER 웹에서 저장한 Story PNG를 원근 변환해 장면에 직접 합성한 프레임이다. 인쇄면은 생성형 이미지가 아니며 글자, 점수, 엠블럼, QR의 픽셀을 다시 그리지 않는다. Flow에는 `*-actual.png`가 아니라 반드시 `*-web.png`를 넣는다.
 
 ### 프레임 배치
 
@@ -257,6 +260,12 @@ For the final 1.2 seconds, keep the paper completely fixed and perform one smoot
 ```powershell
 $env:BOXTIER_PREVIEW_URL='http://127.0.0.1:4176'
 node artifacts/google-flow-buzzer-beater/issue-actual-receipt.mjs
+```
+
+실제 Story PNG를 CUT 07 시작·중간·종료 프레임에 픽셀 합성:
+
+```powershell
+node artifacts/google-flow-buzzer-beater/composite-web-receipt.mjs
 ```
 
 실제 연습경기 전광판 전체화면 캡처:
