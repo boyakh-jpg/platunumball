@@ -704,7 +704,7 @@ Remaining:
 
 ## 2026-07-30 경기 공용 도메인 물리 경계
 
-1. `shared/lib/matchUtils.js`는 기존 공개 API 144개만 유지하는 호환 배럴이다.
+1. `shared/lib/matchUtils.js`는 경기 도메인 공용 API를 재노출하는 호환 배럴이다. 공개 API 목록과 개수는 `scripts/shared-match-module-boundary.test.mjs`로 검증한다.
 2. 참가자 투영, 명단, 일정 시간, 방 단계, 권한, 결과 입력, 사후 기록 검증, 이의 요청, 판정 상태를 `shared/lib/match*.js` 책임 모듈로 분리한다.
 3. 책임 모듈은 `matchUtils.js`를 역참조하지 않는다. 내부 구현은 소유 모듈을 직접 import하고 화면·서버의 기존 import는 호환 배럴을 계속 사용할 수 있다.
 4. `scripts/shared-match-module-boundary.test.mjs`가 공개 export 수, 배럴 크기, 책임 모듈 최대 크기와 순환 의존을 감시한다.
@@ -725,3 +725,9 @@ Remaining:
 4. 쿼리 순서, 권한 판정, fallback 조건, 응답 shape는 진입점 분리 전과 동일하다. DB와 RPC가 계속 권위 원본이다.
 5. 브라우저 코드는 `server/`를 import하지 않고, 서버 모듈은 `src/`를 import하지 않는다. 공통 도메인은 `shared/`만 사용한다.
 6. `scripts/server-list-module-boundary.test.mjs`가 공개 export, 얇은 진입점, 모듈 크기, 파일 목록, 순환 참조, 브라우저·서버 역참조를 고정한다.
+
+## 운영 업무함 조회 경계
+
+1. `operations` scope의 원본은 인증 사용자가 `created_by` 또는 `referee_id`인 `matches` row다. 미확정·진행 상태를 먼저 읽고 확정·취소·무효 상태를 이어 읽으며 `closed`는 제외한다. 개인·사후 기록방 제외와 상세 접근 권한은 기존 서버 projection을 유지한다.
+2. 각 응답은 최대 80개로 제한하며 상태 구간과 offset을 담은 cursor를 반환한다. 모든 페이지에서 동일한 인증 사용자 조건을 다시 적용하고 정렬은 `updated_at`, `id` 내림차순을 사용한다. 전체 경기를 무제한 읽거나 별도 운영 상태 테이블을 만들지 않는다.
+3. 브라우저의 scope별 목록 상태가 cursor와 불러온 ID를 소유한다. 추가 조회는 ID 중복을 제거해 병합하고 실패 시 이전 ID·cursor를 유지한다. 새로고침은 cursor를 초기화하고 첫 페이지로 교체한다.

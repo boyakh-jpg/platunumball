@@ -188,7 +188,7 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
   let playPageIds = [];
   if (operationsOnly) {
     const operationsPage = await timeStep(debugTiming, "operationsMatchesMs", () => (
-      fetchOperationsMatchPage(context.supabase, context.profileId, limit)
+      fetchOperationsMatchPage(context.supabase, context.profileId, limit, cursor)
     ));
     matchRows = operationsPage.rows;
     pageSource = operationsPage.source;

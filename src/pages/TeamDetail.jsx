@@ -54,7 +54,7 @@ export default function TeamDetail({ app }) {
   const [memberQuery, setMemberQuery] = useState("");
   const [selectedInviteProfile, setSelectedInviteProfile] = useState(null);
   const [teamInvitePending, setTeamInvitePending] = useState(false);
-  const teamInvitePendingRef = useRef(false);
+  const teamInvitePendingRef = useRef(null);
   const [teamInviteError, setTeamInviteError] = useState("");
   const [favoritePending, setFavoritePending] = useState(false);
   const [favoriteError, setFavoriteError] = useState("");
@@ -100,7 +100,8 @@ export default function TeamDetail({ app }) {
   currentTeamIdRef.current = teamId;
   const emblemStatusRequestRef = useRef("");
   const detailRequestRef = useRef("");
-  const teamManagementPendingRef = useRef(false);
+  const teamManagementPendingRef = useRef(null);
+  const teamOperationSequenceRef = useRef(0);
   const favoritePendingRef = useRef(false);
   const teamDetailReady = !isSupabaseConfigured || (teamDetailLoad.teamId === teamId && teamDetailLoad.loaded);
   const teamDetailError = teamDetailLoad.teamId === teamId ? teamDetailLoad.error : "";
@@ -111,6 +112,24 @@ export default function TeamDetail({ app }) {
   const canManage = teamDetailReady
     && authoritativeTeam?.membersPartial !== true
     && authoritativeCaptain?.userId === app.currentUser.id;
+
+  useEffect(() => {
+    teamInvitePendingRef.current = null;
+    teamManagementPendingRef.current = null;
+    setTeamInvitePending(false);
+    setTeamManagementPending(false);
+    setTeamInviteError("");
+    setTeamManagementError("");
+    setMemberDraft({ userId: "", role: "regular" });
+    setMemberQuery("");
+    setSelectedInviteProfile(null);
+    setJoinApplicationOpen(false);
+    setReviewedJoinApplication(null);
+    return () => {
+      teamInvitePendingRef.current = null;
+      teamManagementPendingRef.current = null;
+    };
+  }, [teamId]);
 
   useEffect(() => {
     emblemPendingRef.current = null;
@@ -330,11 +349,13 @@ export default function TeamDetail({ app }) {
   const inviteMember = async (event) => {
     event.preventDefault();
     if (!canAddMember || teamInvitePendingRef.current || teamManagementPendingRef.current) return;
-    teamInvitePendingRef.current = true;
+    const operation = { scopeId: team.id, operationId: ++teamOperationSequenceRef.current };
+    teamInvitePendingRef.current = operation;
     setTeamInvitePending(true);
     setTeamInviteError("");
     try {
       const result = await app.actions.inviteTeamMember(team.id, addUserId, memberDraft.role);
+      if (!isCurrentScopedOperation(teamInvitePendingRef.current, operation, currentTeamIdRef.current)) return;
       if (!result || result.ok === false) {
         setTeamInviteError("팀 초대를 보내지 못했습니다. 잠시 후 다시 시도해 주세요.");
         return;
@@ -343,10 +364,14 @@ export default function TeamDetail({ app }) {
       setMemberQuery("");
       setSelectedInviteProfile(null);
     } catch {
-      setTeamInviteError("팀 초대를 보내지 못했습니다. 잠시 후 다시 시도해 주세요.");
+      if (isCurrentScopedOperation(teamInvitePendingRef.current, operation, currentTeamIdRef.current)) {
+        setTeamInviteError("팀 초대를 보내지 못했습니다. 잠시 후 다시 시도해 주세요.");
+      }
     } finally {
-      teamInvitePendingRef.current = false;
-      setTeamInvitePending(false);
+      if (isCurrentScopedOperation(teamInvitePendingRef.current, operation, currentTeamIdRef.current)) {
+        teamInvitePendingRef.current = null;
+        setTeamInvitePending(false);
+      }
     }
   };
   const toggleTeamFavorite = async () => {
@@ -366,22 +391,28 @@ export default function TeamDetail({ app }) {
   };
   const runTeamManagementMutation = async (mutation) => {
     if (teamManagementPendingRef.current || teamInvitePendingRef.current) return false;
-    teamManagementPendingRef.current = true;
+    const operation = { scopeId: team.id, operationId: ++teamOperationSequenceRef.current };
+    teamManagementPendingRef.current = operation;
     setTeamManagementPending(true);
     setTeamManagementError("");
     try {
       const result = await mutation();
+      if (!isCurrentScopedOperation(teamManagementPendingRef.current, operation, currentTeamIdRef.current)) return false;
       if (!result || result.ok === false) {
         setTeamManagementError("팀 관리 변경을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.");
         return false;
       }
       return true;
     } catch {
-      setTeamManagementError("팀 관리 변경을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+      if (isCurrentScopedOperation(teamManagementPendingRef.current, operation, currentTeamIdRef.current)) {
+        setTeamManagementError("팀 관리 변경을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+      }
       return false;
     } finally {
-      teamManagementPendingRef.current = false;
-      setTeamManagementPending(false);
+      if (isCurrentScopedOperation(teamManagementPendingRef.current, operation, currentTeamIdRef.current)) {
+        teamManagementPendingRef.current = null;
+        setTeamManagementPending(false);
+      }
     }
   };
   const cancelPendingTeamInvitation = (invitationId) => (

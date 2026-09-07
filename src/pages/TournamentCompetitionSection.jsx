@@ -134,7 +134,7 @@ export function TournamentCompetitionSection({ controller }) {
                       <div className="league-fixture-actions">
                         {openMatchId ? (
                           <button type="button" className="league-fixture-open" onClick={() => setSelectedMatchId(openMatchId)}>
-                            방 보기 <ChevronRight size={16} />
+                            {fixtureState.actionLabel ?? "방 보기"} <ChevronRight size={16} />
                           </button>
                         ) : (
                           <span className="league-fixture-pending">생성 전</span>

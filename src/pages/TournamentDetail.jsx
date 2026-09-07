@@ -11,6 +11,7 @@ import { getUserHashtag } from "../lib/handles.js";
 import { isCurrentScopedRequest } from "../lib/asyncState.js";
 import { addDateDays, getLocalDateInputValue, isEligibleReferee } from "../lib/matchUtils.js";
 import { getTournamentMatches } from "../lib/tournamentMatches.js";
+import { formatTournamentError } from "../lib/tournamentErrors.js";
 import { REFEREE_TRUST_MIN } from "../lib/constants.js";
 import { TOURNAMENT_SANCTION_STATUS, getActiveTournamentTeamIds, getAcceptedTournamentRefereeIds, getRequiredTournamentRefereeCount, getTournamentRefereeStatus, isTournamentGovernanceEnabled } from "../lib/tournamentGovernance.js";
 import "../styles/matches-arena.css";
@@ -214,15 +215,6 @@ const location = useLocation();
     }
     setScheduleDialog({ mode: "confirm", matchId, scheduledDate, scheduledTime, courtId, courtName: court.name });
   };
-  const formatScheduleError = (message = "") => {
-    if (message.includes("tournament_schedule_lineup_submitted")) return "한 팀이라도 출전 명단을 제출한 뒤에는 경기 일정을 변경할 수 없습니다.";
-    if (message.includes("tournament_schedule_revision_limit")) return "경기 일정은 최초 지정 후 한 번만 변경할 수 있습니다.";
-    if (message.includes("tournament_match_schedule_locked")) return "이미 시작·종료·취소·무효 처리된 경기는 일정을 바꿀 수 없습니다.";
-    if (message.includes("invalid_tournament_match_schedule")) return "오늘부터 365일 안의 날짜와 시간을 입력해야 합니다.";
-    if (message.includes("tournament_owner_required")) return "대회 생성자만 경기 일정을 저장할 수 있습니다.";
-    if (message.includes("tournament_court_not_allowed") || message.includes("tournament_court_not_active")) return "대회 사용 구장으로 등록된 승인 구장만 선택할 수 있습니다.";
-    return "일정을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.";
-  };
   const confirmSchedule = async () => {
     if (scheduleDialog?.mode !== "confirm" || savingScheduleRef.current) return;
     const { matchId, scheduledDate, scheduledTime, courtId, courtName } = scheduleDialog;
@@ -234,7 +226,7 @@ const location = useLocation();
       setEditingScheduleId("");
       setScheduleDialog({ mode: "success", matchId, scheduledDate, scheduledTime });
     } catch (error) {
-      setScheduleDialog({ mode: "error", message: formatScheduleError(error.message) });
+      setScheduleDialog({ mode: "error", message: formatTournamentError(error.message, "일정을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.") });
     } finally {
       savingScheduleRef.current = "";
       setSavingScheduleId("");
@@ -263,16 +255,6 @@ const location = useLocation();
       setSavingForfeitId("");
     }
   };
-  const formatGovernanceError = (message = "") => {
-    if (message.includes("tournament_referee_not_eligible")) return "심판 자격, 임기 또는 신뢰도 조건을 충족하지 못했습니다.";
-    if (message.includes("tournament_referee_pool_insufficient")) return "팀 수에 필요한 승인 심판 수가 부족합니다.";
-    if (message.includes("tournament_neutral_referee_coverage_required")) return "모든 가능한 대진에 중립 심판을 배정할 수 있어야 합니다.";
-    if (message.includes("tournament_approval_not_ready")) return "팀장과 필수 심판 전원의 승인이 먼저 필요합니다.";
-    if (message.includes("tournament_region_manager_required")) return "해당 지역관리자 이상만 처리할 수 있습니다.";
-    if (message.includes("tournament_referee_not_neutral")) return "양 팀 어느 쪽에도 속하지 않은 중립 심판만 배정할 수 있습니다.";
-    if (message.includes("tournament_referee_schedule_conflict")) return "같은 심판이 겹치는 시간대의 다른 경기에 배정되어 있습니다.";
-    return "대회 승인·심판 작업을 완료하지 못했습니다.";
-  };
   const runGovernanceAction = async (key, action, successMessage) => {
     if (governanceActionRef.current) return false;
     governanceActionRef.current = key;
@@ -287,7 +269,7 @@ const location = useLocation();
         .catch(() => false);
       return true;
     } catch (error) {
-      setGovernanceFeedback(formatGovernanceError(error.message));
+      setGovernanceFeedback(formatTournamentError(error.message, "대회 승인·심판 작업을 완료하지 못했습니다."));
       return false;
     } finally {
       governanceActionRef.current = "";

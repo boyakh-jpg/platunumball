@@ -6,7 +6,7 @@ export function buildRecruitingRoomMatchModel(context) {
     getMissingStartAttendanceIds, getOpenMatchDisputes, getPickupRerollState, getPostgameRecordVerification, getRecruitingBenchCapacity, getRecruitingPostTerminalState,
     getRecruitingRoomStatus, getRecruitingSideCapacity, getRecruitingSideLeaderId, getTeamCaptainId, getTournamentRosterTeam, individualOnlyRoom,
     isMatchPregameSlotManagementOpen, isMatchRecordMatch, isMatchRecordParticipantSetupOpen, isMatchRecordParticipantSetupRequired, isMatchReferee, isPersonalRecordMatch,
-    isTournamentGovernanceEnabled, isTournamentMatchLineupEditable, lobby, matchRoom, mine, myEntry,
+    isTournamentGovernanceEnabled, isTournamentMatchLineupEditable, isTournamentMatchRosterReady, lobby, matchRoom, mine, myEntry,
     pickupAssignmentPolicy, readOnly, roomChatLocked, roomOwnerId, roomPhaseViewModel, roomState, ruleAcknowledgementPending,
     scheduleChangePending, selectedMatchRules, selectedPost, sourceMatch, sourceMatchSideName, sourceMatchStatus,
     teamById,
@@ -179,9 +179,13 @@ const roomQueueStatus = getRecruitingRoomStatus(lobby, { post: selectedPost, myE
           && (canManageMatchCheckin || currentUserCheckedInForPickup),
         );
         const pickupRerollTrustReady = Number(app.currentUser.trustScore ?? 0) >= 1;
+        const sourceMatchRosterReady = !sourceMatch || isTournamentMatchRosterReady(sourceMatch);
+        const sourceMatchRosterBlocked = !sourceMatchRosterReady
+          || sourceMatchServerStartStatus?.blockReason === "tournament_roster_not_ready";
         const canStartSourceMatch = canShowStartSourceMatch
           && !scheduleChangePending
           && !ruleAcknowledgementPending
+          && !sourceMatchRosterBlocked
           && (
             sourceMatchUsesQrAttendance
               ? sourceMatchServerStartStatus?.canStart === true
@@ -194,6 +198,8 @@ const roomQueueStatus = getRecruitingRoomStatus(lobby, { post: selectedPost, myE
             ? "일정 승인 대기"
             : ruleAcknowledgementPending
               ? "변경 확인 대기"
+          : sourceMatchRosterBlocked
+            ? "양 팀 명단 확정 필요"
           : sourceMatchUsesQrAttendance && !sourceMatchServerStartStatus
             ? "서버시간 확인 중"
           : sourceMatchUsesQrAttendance && sourceMatchServerStartStatus?.blockReason === "attendance_not_open"
@@ -211,6 +217,8 @@ const roomQueueStatus = getRecruitingRoomStatus(lobby, { post: selectedPost, myE
             ? "일정 또는 구장 변경안을 전원이 승인해야 합니다."
             : ruleAcknowledgementPending
               ? "현재 참가자 전원이 최신 규칙을 확인해야 합니다."
+          : sourceMatchRosterBlocked
+            ? "양 팀 주장이 출전 명단을 확정해야 경기 시작이 가능합니다."
           : sourceMatchUsesQrAttendance && !sourceMatchServerStartStatus
             ? "서버시간과 최신 출석 상태를 확인한 뒤 시작할 수 있습니다."
           : sourceMatchUsesQrAttendance && sourceMatchServerStartStatus?.blockReason === "attendance_not_open"

@@ -99,6 +99,8 @@ export default function MatchAttendanceQrPanel({ match, onChanged, onStatusChang
   const startStatus = response?.startStatus;
   const attendanceStatusCopy = !startStatus
     ? "서버시간과 출석 상태를 확인하고 있습니다."
+    : startStatus.blockReason === "tournament_roster_not_ready"
+      ? "양 팀 명단 확정 필요 · 양 팀 주장이 출전 명단을 확정해야 경기 시작이 가능합니다."
     : !startStatus.checkinOpen
       ? "출석 시작 전 · QR 출석은 경기 20분 전부터 시작합니다."
       : startStatus.scheduledStartReached

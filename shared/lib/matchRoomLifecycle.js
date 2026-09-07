@@ -108,15 +108,17 @@ export function isTournamentMatchRosterReady(match = {}) {
   );
 }
 
+export function isMatchResultConfirmed(match = {}) {
+  return match?.status === "confirmed";
+}
+
 export function getMatchRoomPhase(match = {}, now = new Date()) {
   if (match.status === "cancelled") return ROOM_PHASE_META.cancelled;
   if (match.status === "void") return ROOM_PHASE_META.void;
-  if (match.status === "confirmed") return ROOM_PHASE_META.record;
+  if (isMatchResultConfirmed(match)) return ROOM_PHASE_META.record;
   if (match.status === "disputed" && getOpenMatchDisputes(match).length) return ROOM_PHASE_META.dispute;
   if ((match.status === "approval" || match.status === "disputed") && hasMatchFinalSubmission(match)) {
-    return getMatchRecordWindow(match, now).disputeExpired
-      ? ROOM_PHASE_META.record
-      : ROOM_PHASE_META.dispute;
+    return ROOM_PHASE_META.dispute;
   }
   if (match.status === "approval" && match.endedAt) return ROOM_PHASE_META.postgame;
   if (match.status === "approval" || match.status === "disputed") return ROOM_PHASE_META.dispute;

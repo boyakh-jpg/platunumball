@@ -37,6 +37,7 @@ export default function TeamJoinApplicationDialog({
   applicantName = "지원자",
   mode = "apply",
   pending = false,
+  serverError = "",
   onClose,
   onSubmit,
 }) {
@@ -61,14 +62,20 @@ export default function TeamJoinApplicationDialog({
 
   if (!open) return null;
   const review = mode === "review";
-  const update = (key) => (event) => setDraft((current) => ({ ...current, [key]: event.target.value }));
+  const displayedError = error || serverError;
+  const update = (key) => (event) => {
+    setDraft((current) => ({ ...current, [key]: event.target.value }));
+    setError("");
+  };
   const submit = async (event) => {
     event.preventDefault();
+    if (pending) return;
     const validationError = getTeamJoinApplicationError(draft);
     if (validationError) {
       setError(validationError);
       return;
     }
+    setError("");
     await onSubmit?.(normalizeTeamJoinApplication(draft));
   };
 
@@ -92,15 +99,15 @@ export default function TeamJoinApplicationDialog({
         ) : (
           <form className="team-join-application-form" onSubmit={submit}>
             <div className="team-join-application-grid">
-              <label>SNS<input value={draft.sns} maxLength={TEAM_JOIN_APPLICATION_LIMITS.sns} placeholder="인스타그램 등" onChange={update("sns")} /></label>
-              <label>연락처<input value={draft.contact} maxLength={TEAM_JOIN_APPLICATION_LIMITS.contact} placeholder="전화번호, 카카오톡 등" onChange={update("contact")} /></label>
-              <label>키(cm)<input type="number" inputMode="numeric" min={TEAM_JOIN_APPLICATION_LIMITS.heightMin} max={TEAM_JOIN_APPLICATION_LIMITS.heightMax} value={draft.heightCm ?? ""} onChange={update("heightCm")} /></label>
-              <label>포지션<select value={draft.position} onChange={update("position")}><option value="">선택 안 함</option>{BASKETBALL_POSITIONS.map((position) => <option key={position} value={position}>{position}</option>)}</select></label>
-              <label>연령대<select value={draft.ageGroup} onChange={update("ageGroup")}><option value="">선택 안 함</option>{TEAM_JOIN_AGE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
-              <label>성별<select value={draft.gender} onChange={update("gender")}><option value="">선택 안 함</option>{TEAM_JOIN_GENDER_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
-              <label className="team-join-application-wide">경기 가능 시간<textarea rows="3" maxLength={TEAM_JOIN_APPLICATION_LIMITS.availability} value={draft.availability} placeholder="예: 평일 저녁, 토요일 오후" onChange={update("availability")} /></label>
+              <label>SNS<input disabled={pending} value={draft.sns} maxLength={TEAM_JOIN_APPLICATION_LIMITS.sns} placeholder="인스타그램 등" onChange={update("sns")} /></label>
+              <label>연락처<input disabled={pending} value={draft.contact} maxLength={TEAM_JOIN_APPLICATION_LIMITS.contact} placeholder="전화번호, 카카오톡 등" onChange={update("contact")} /></label>
+              <label>키(cm)<input disabled={pending} type="number" inputMode="numeric" min={TEAM_JOIN_APPLICATION_LIMITS.heightMin} max={TEAM_JOIN_APPLICATION_LIMITS.heightMax} value={draft.heightCm ?? ""} onChange={update("heightCm")} /></label>
+              <label>포지션<select disabled={pending} value={draft.position} onChange={update("position")}><option value="">선택 안 함</option>{BASKETBALL_POSITIONS.map((position) => <option key={position} value={position}>{position}</option>)}</select></label>
+              <label>연령대<select disabled={pending} value={draft.ageGroup} onChange={update("ageGroup")}><option value="">선택 안 함</option>{TEAM_JOIN_AGE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
+              <label>성별<select disabled={pending} value={draft.gender} onChange={update("gender")}><option value="">선택 안 함</option>{TEAM_JOIN_GENDER_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
+              <label className="team-join-application-wide">경기 가능 시간<textarea disabled={pending} rows="3" maxLength={TEAM_JOIN_APPLICATION_LIMITS.availability} value={draft.availability} placeholder="예: 평일 저녁, 토요일 오후" onChange={update("availability")} /></label>
             </div>
-            {error ? <span className="form-warning" role="alert">{error}</span> : null}
+            {displayedError ? <span className="form-warning" role="alert">{displayedError}</span> : null}
             <div className="app-confirm-actions ui-action-row">
               <Button type="button" variant="secondary" disabled={pending} onClick={onClose}>취소</Button>
               <Button type="submit" disabled={pending}>{pending ? "신청 중" : "가입 신청 보내기"}</Button>

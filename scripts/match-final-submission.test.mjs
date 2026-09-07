@@ -70,8 +70,11 @@ test("명시 최종 제출 시각부터 이의·확정 창을 계산한다", () 
 
   assert.equal(hasMatchFinalSubmission(match), true);
   assert.equal(getMatchRoomPhase(match, "2026-08-21T00:05:00.000Z").phase, "dispute");
-  assert.equal(getMatchRoomPhase(match, "2026-08-21T00:12:00.000Z").phase, "record");
-  assert.equal(isMatchInPlayMenu(match, "2026-08-21T00:12:00.000Z"), false);
+  assert.equal(getMatchRoomPhase(match, "2026-08-21T00:12:00.000Z").phase, "dispute");
+  assert.equal(isMatchInPlayMenu(match, "2026-08-21T00:12:00.000Z"), true);
+  const confirmed = { ...match, status: "confirmed", confirmedAt: "2026-08-21T00:12:00.000Z" };
+  assert.equal(getMatchRoomPhase(confirmed, "2026-08-21T00:12:00.000Z").phase, "record");
+  assert.equal(isMatchInPlayMenu(confirmed, "2026-08-21T00:12:00.000Z"), false);
 
   const manualWindow = getMatchFinalizationWindow(match, "2026-08-21T00:05:00.000Z");
   assert.equal(manualWindow.ready, true);
@@ -80,6 +83,26 @@ test("명시 최종 제출 시각부터 이의·확정 창을 계산한다", () 
     getMatchFinalizationWindow(match, "2026-08-21T00:11:00.000Z").automaticReady,
     true,
   );
+});
+
+test("입력 시간이 지나도 미확정 개인기록 누락은 배정 심판이 보완할 수 있다", () => {
+  const stats = { points: 4, rebounds: 0, assists: 0, steals: 0, blocks: 0, turnovers: 0, fouls: 0 };
+  const match = makeMatch({
+    status: "approval",
+    refereeId: "referee",
+    result: { ...makeMatch().result, finalSubmittedAt, playerStats: { host: stats } },
+  });
+  const options = { now: "2026-08-21T01:00:00.000Z", canOperatePostStart: true };
+  assert.equal(getMatchResultEntryPermission(match, "referee", options).canSubmitPostgame, true);
+  assert.deepEqual(getMatchResultEntryPermission(match, "referee", options).editablePlayerIds, ["host", "guest"]);
+  assert.equal(getMatchResultEntryPermission(match, "host", options).canSubmit, false);
+  assert.equal(getMatchResultEntryPermission(match, "guest", options).canSubmit, false);
+  assert.equal(getMatchResultEntryPermission(match, "referee", { ...options, refereeEligible: false }).canSubmit, false);
+  for (const status of ["confirmed", "cancelled", "void"]) {
+    assert.equal(getMatchResultEntryPermission({ ...match, status }, "referee", options).canSubmit, false);
+  }
+  const complete = { ...match, result: { ...match.result, playerStats: { host: stats, guest: stats } } };
+  assert.equal(getMatchResultEntryPermission(complete, "referee", options).canSubmit, false);
 });
 
 test("무심판 경기 방장은 canonical 점수만 명시 제출하고 +/-는 사용하지 않는다", () => {

@@ -163,6 +163,7 @@ export function useMatchLoaders(context) {
     if (!isSupabaseConfigured) return 0;
     if (!authUserId) return false;
     if (operationsMatchesPromiseRef.current) return operationsMatchesPromiseRef.current;
+    const cursor = options.force === true ? "" : String(options.cursor ?? "");
     const promise = (async () => {
       const roomMutationVersion = roomMutationVersionRef.current;
       const roomMutationPending = pendingMatchIdsRef.current.size > 0 || pendingRecruitingPostIdsRef.current.size > 0;
@@ -178,6 +179,7 @@ export function useMatchLoaders(context) {
             authEmail,
             limit: REMOTE_CLIENT_MATCH_LIMIT,
             scope: MATCH_LIST_SCOPES.OPERATIONS,
+            cursor,
             adminContext: false,
           },
           { allowWhenDisabled: true, blocking: true },
@@ -194,8 +196,9 @@ export function useMatchLoaders(context) {
         setMatchLists((prev) => updateMatchListScope(prev, MATCH_LIST_SCOPES.OPERATIONS, {
           ids: getStateMatchIds(remoteState),
           recruitingPostIds: getStateRecruitingPostIds(remoteState),
-          preserveCurrentIds: preserveCurrentRoomLists,
-          preserveCurrentRecruitingPostIds: preserveCurrentRoomLists,
+          preserveCurrentIds: Boolean(cursor) || preserveCurrentRoomLists,
+          preserveCurrentRecruitingPostIds: Boolean(cursor) || preserveCurrentRoomLists,
+          cursor: result?.page?.cursor ?? "",
           status: MATCH_LIST_STATUSES.READY,
           error: "",
         }));

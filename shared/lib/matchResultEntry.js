@@ -12,6 +12,7 @@ import { getMatchRecordPlayerIds } from "./matchRoster.js";
 import {
   canOperatorSubmitMissingPostgameResult,
   getMatchRecordWindow,
+  hasMatchFinalSubmission,
 } from "./matchRoomLifecycle.js";
 import { isMatchReferee } from "./refereeEligibility.js";
 
@@ -108,6 +109,7 @@ export function getMatchResultEntryPermission(match = {}, userId = "", options =
     && (
       (canOperatePostgame && recordWindow.statOpen)
       || canSubmitMissingPostgameResult
+      || (canOperatePostgame && hasMatchFinalSubmission(match) && !getStatSubmissionStatus(match).complete)
     )
   );
 

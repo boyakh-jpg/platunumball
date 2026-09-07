@@ -324,6 +324,43 @@ test("서버 시작 상태는 예정시간 전 전원 출석만 허용하고 예
   assert.equal(scheduledStart.scheduledStartReached, true);
 });
 
+test("대회는 전원 QR 출석과 예정시간 도달만으로 양 팀 명단 확정을 우회하지 않는다", () => {
+  const match = {
+    tournament_id: "tournament",
+    scheduled_date: "2026-07-24",
+    scheduled_time: "20:00:00",
+    referee_id: "referee",
+    rules: { qrAttendanceEnabled: true },
+  };
+  const entries = [{ player_id: "player", status: "on_time" }];
+  for (const rosterReady of [{ teamA: false, teamB: false }, { teamA: true, teamB: false }]) {
+    for (const time of ["19:55:00", "20:05:00"]) {
+      const status = getStartStatus(
+        { ...match, rules: { ...match.rules, rosterReady } },
+        entries,
+        Date.parse(`2026-07-24T${time}+09:00`),
+      );
+      assert.equal(status.allCheckedIn, true);
+      assert.equal(status.rosterReady, false);
+      assert.equal(status.canStart, false);
+      assert.equal(status.canStartEarly, false);
+      assert.equal(status.blockReason, "tournament_roster_not_ready");
+    }
+  }
+  const readyMatch = {
+    ...match,
+    rules: {
+      ...match.rules,
+      rosterReady: { teamA: true, teamB: true },
+      rosterReadyAt: { teamA: "2026-07-24T19:50:00+09:00", teamB: "2026-07-24T19:51:00+09:00" },
+    },
+  };
+  assert.equal(getStartStatus(readyMatch, entries, Date.parse("2026-07-24T19:55:00+09:00")).canStartEarly, true);
+  assert.equal(getStartStatus(readyMatch, [{ player_id: "player", status: "pending" }], Date.parse("2026-07-24T20:05:00+09:00")).canStart, true);
+  readyMatch.rules.rosterReadyAt.teamB = "2026-07-24T20:01:00+09:00";
+  assert.equal(getStartStatus(readyMatch, entries, Date.parse("2026-07-24T20:05:00+09:00")).canStart, false);
+});
+
 test("QR 전원 출석 계산은 선수 방장과 후보를 포함하고 비선수 방장과 심판을 제외한다", () => {
   const match = {
     createdBy: "host-player",

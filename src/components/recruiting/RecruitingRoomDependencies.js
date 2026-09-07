@@ -161,6 +161,7 @@ import {
   isMatchSideTeamParty,
   isPersonalRecordMatch,
   isTournamentMatchLineupEditable,
+  isTournamentMatchRosterReady,
 } from "../../lib/matchUtils.js";
 import {
   getMatchPeriodLabel,
@@ -283,7 +284,7 @@ export const RECRUITING_ROOM_DEPENDENCIES = {
   getMatchRecordPlayerIds, getMatchParticipationCancellationState, getMatchParticipationCancellationPenalty, getMatchResultEntryPermission, getMatchRecordWindow, getMatchManualFinalizationStatus, getMatchResultRevision, getMatchRoomPhase, hasMatchFinalSubmission,
   getMatchReservePlayerIds, getMatchSideLeaderId, getMatchSidePlayerIds, getTournamentMatchDisplayTitle, getPublicRoomTimingStatus, getRoomScheduleLabel,
   canOperateAssignedMatchReferee, isEligibleReferee, isMatchReferee, isMatchRecordMatch, isMatchRoomChatLocked, isMatchSideTeamParty, isPersonalRecordMatch,
-  isTournamentMatchLineupEditable, getMatchPeriodLabel, getMatchRuleDetailRows, getMatchRuleInputValidation, getMatchRuleSummary, getMeetingPointSummary, normalizeMatchRules,
+  isTournamentMatchLineupEditable, isTournamentMatchRosterReady, getMatchPeriodLabel, getMatchRuleDetailRows, getMatchRuleInputValidation, getMatchRuleSummary, getMeetingPointSummary, normalizeMatchRules,
   PICKUP_TEAM_ASSIGNMENT_MODE_OPTIONS, getMatchOperationsSummaryRows, getRoomRemakeNavigationState, ROOM_BODY_MODES, getPickupOpenSlotPlacements, getPickupParticipantIds,
   getPickupRerollState, getPickupResizeValidation, getPickupTeamAssignmentPolicy, getPostgameRecordVerification, getRecruitingRuleAcknowledgement, getRoomCancellationActionLabel,
   getRoomCancellationPolicy, getRoomEditAvailability, getRoomPhaseViewModel, getRoomScheduleProposalProgress, isMatchPregameSlotManagementOpen, isMatchRecordParticipantSetupOpen, isMatchRecordParticipantSetupRequired,

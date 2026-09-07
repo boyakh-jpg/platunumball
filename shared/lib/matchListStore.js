@@ -35,6 +35,7 @@ export function createMatchListScope(options = {}) {
       ? options.status
       : MATCH_LIST_STATUSES.IDLE,
     error: String(options.error ?? ""),
+    ...(options.cursor !== undefined ? { cursor: String(options.cursor ?? "") } : {}),
   };
 }
 

@@ -2736,7 +2736,7 @@ test("team management mutations are serialized and participant setup stays recov
 
   assert.match(teamDetail, /teamManagementPendingRef\.current/);
   assert.match(teamDetail, /const runTeamManagementMutation = async/);
-  assert.match(teamDetail, /finally \{\s*teamManagementPendingRef\.current = false;\s*setTeamManagementPending\(false\);/);
+  assert.match(teamDetail, /finally \{\s*if \(isCurrentScopedOperation\(teamManagementPendingRef\.current, operation, currentTeamIdRef\.current\)\) \{\s*teamManagementPendingRef\.current = null;\s*setTeamManagementPending\(false\);/);
   assert.match(teamDetailView, /const teamControlPending = teamInvitePending \|\| teamManagementPending/);
   assert.doesNotMatch(teamDetailView, /app\.actions\.(cancelTeamInvitation|updateTeamMemberRole|removeTeamMember)/);
   assert.match(participantSetup, /getTeamCaptainMemberId\(team\)/);

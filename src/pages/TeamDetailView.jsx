@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ImageUp, RotateCcw, Star, Trash2 } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
@@ -44,6 +44,10 @@ export default function TeamDetailView({ controller }) {
   const [dangerAction, setDangerAction] = useState(null);
   const [dangerAcknowledged, setDangerAcknowledged] = useState(false);
   useBodyScrollLock(Boolean(dangerAction));
+  useEffect(() => {
+    setDangerAction(null);
+    setDangerAcknowledged(false);
+  }, [teamId]);
   const closeDangerAction = () => {
     setDangerAction(null);
     setDangerAcknowledged(false);
@@ -601,7 +605,7 @@ export default function TeamDetailView({ controller }) {
           entryPoint="team-history"
         />
       ) : null}
-      <TeamJoinApplicationDialog open={joinApplicationOpen} pending={teamManagementPending}
+      <TeamJoinApplicationDialog open={joinApplicationOpen} pending={teamManagementPending} serverError={teamManagementError}
         onClose={() => setJoinApplicationOpen(false)} onSubmit={requestTeamMembership} />
       <TeamJoinApplicationDialog
         open={Boolean(reviewedJoinApplication)} mode="review"

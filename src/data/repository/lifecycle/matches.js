@@ -9,6 +9,7 @@ import { getSelectableTeamPlayerIds } from "../../../lib/recruiting.js";
 import { getTeamCaptainId } from "../../../lib/matchUtils.js";
 import { getTeamEventEligibility } from "../../../lib/recruiting.js";
 import { isEligibleReferee } from "../../../lib/matchUtils.js";
+import { isMatchResultConfirmed } from "../../../lib/matchUtils.js";
 import { isPracticeEntity } from "../../../lib/practiceMode.js";
 import { isSupportedMatchMode } from "../../../lib/constants.js";
 import { isTournamentRefereeNeutral } from "../../../lib/tournamentGovernance.js";
@@ -202,7 +203,7 @@ export function getLocalTournamentTeamSnapshot(state, team, options = {}) {
   };
 }
 function getTournamentMatchWinnerTeamId(match = {}) {
-  if (!match || match.status !== "confirmed") return "";
+  if (!isMatchResultConfirmed(match)) return "";
   const scoreA = Number(match.result?.scoreA ?? match.teamA?.score ?? 0);
   const scoreB = Number(match.result?.scoreB ?? match.teamB?.score ?? 0);
   if (scoreA === scoreB) return "";

@@ -1,5 +1,6 @@
 import { allowRequestMethod, getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
 import { createMatchAttendanceQr, verifyMatchAttendanceQr } from "./_attendanceQr.js";
+import { isTournamentMatchRosterReady } from "../../../shared/lib/matchRoomLifecycle.js";
 import {
   queueMatchDiscordDeliveries,
   reconcileMatchAttendanceNotifications,
@@ -185,6 +186,7 @@ function toNotificationMatch(match = {}, roster = []) {
     status: match.status,
     createdBy: match.created_by,
     refereeId: match.referee_id,
+    tournamentId: match.tournament_id,
     scheduledAt: match.rules?.timingType === "instant"
       ? "즉시"
       : [match.scheduled_date, String(match.scheduled_time || "").slice(0, 5)].filter(Boolean).join(" "),
@@ -210,10 +212,13 @@ export function getStartStatus(match = {}, entries = [], nowMs = Date.now()) {
   const serverTimeAvailable = match.rules?.timingType === "instant" || Number.isFinite(scheduledAtMs);
   const scheduledStartReached = serverTimeAvailable && nowMs >= scheduledAtMs;
   const allCheckedIn = requiredCount > 0 && missingCount === 0;
-  const canStartEarly = checkinOpen && !scheduledStartReached && allCheckedIn;
-  const canStart = scheduledStartReached || canStartEarly;
+  const rosterReady = isTournamentMatchRosterReady(toNotificationMatch(match));
+  const canStartEarly = rosterReady && checkinOpen && !scheduledStartReached && allCheckedIn;
+  const canStart = rosterReady && (scheduledStartReached || canStartEarly);
   const blockReason = canStart
     ? ""
+    : !rosterReady
+      ? "tournament_roster_not_ready"
     : !serverTimeAvailable
       ? "server_time_unavailable"
       : !checkinOpen
@@ -226,6 +231,7 @@ export function getStartStatus(match = {}, entries = [], nowMs = Date.now()) {
     checkinOpen,
     scheduledStartReached,
     allCheckedIn,
+    rosterReady,
     canStartEarly,
     canStart,
     blockReason,

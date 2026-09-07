@@ -1,7 +1,7 @@
 import TierBadge from "../components/rating/TierBadge.jsx";
 import TeamEmblem from "../components/team/TeamEmblem.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
-import { getMatchRoomPhase, getTournamentScheduleEditPolicy } from "../lib/matchUtils.js";
+import { getMatchRoomPhase, getTournamentScheduleEditPolicy, isMatchResultConfirmed } from "../lib/matchUtils.js";
 import { formatTournamentWindow as formatWindow } from "../../shared/lib/scheduleUtils.js";
 
 export { formatWindow };
@@ -72,10 +72,7 @@ export function getWinnerName(match) {
 }
 
 export function getMatchWinnerTeamId(match) {
-  const hasForfeit = Boolean(match?.rules?.forfeit?.losingSide || match?.forfeitSide);
-  const hasFinalState = ["confirmed", "closed"].includes(match?.status) || Boolean(match?.confirmedAt);
-  const hasStoredScore = match?.scoreA != null || match?.scoreB != null || match?.score_a != null || match?.score_b != null;
-  if (!match || (!match.result && !hasForfeit && !hasFinalState && !hasStoredScore)) return "";
+  if (!isMatchResultConfirmed(match)) return "";
   const score = getMatchFinalScore(match);
   if (!score) return "";
   const { scoreA, scoreB } = score;
@@ -84,9 +81,7 @@ export function getMatchWinnerTeamId(match) {
 }
 
 export function getLeagueMatchResult(match) {
-  const hasForfeit = Boolean(match?.rules?.forfeit?.losingSide || match?.forfeitSide);
-  const hasFinalState = ["confirmed", "closed"].includes(match?.status) || Boolean(match?.confirmedAt);
-  if (!match || (!match.result && !hasForfeit && !hasFinalState)) return null;
+  if (!isMatchResultConfirmed(match)) return null;
   const score = getMatchFinalScore(match);
   const teamAId = match.teamA?.teamId ?? match.teamAId ?? "";
   const teamBId = match.teamB?.teamId ?? match.teamBId ?? "";
@@ -100,13 +95,15 @@ export function getLeagueFixtureState(match, matchId = "") {
     : { label: "경기 생성 전", tone: "neutral" };
 
   const phase = getMatchRoomPhase(match);
+  if (phase.phase === "dispute" || (["approval", "disputed"].includes(match.status) && match.result)) {
+    return { label: "결과 확인 중", tone: "orange", actionLabel: "결과 확인", resultPending: true };
+  }
   const labels = {
     waiting: match.scheduledDate || match.scheduledAt ? "일정 확정" : "일정 대기",
     locked: "경기 예정",
     checkin: "경기 준비",
     live: "경기 중",
     postgame: "결과 입력",
-    dispute: "결과 확인",
     record: "결과 확정",
     cancelled: "취소",
     void: "무효",
@@ -307,7 +304,9 @@ export function getBracketNodeStatus(node, teamById) {
   if (node.byeTeamId) return `${teamById[node.byeTeamId]?.name ?? "팀"} 부전승 진출`;
   if (node.match) {
     const winner = getWinnerName(node.match);
-    return winner ? `${winner} 승` : getMatchTime(node.match);
+    if (winner) return `${winner} 승`;
+    const fixtureState = getLeagueFixtureState(node.match);
+    return fixtureState.resultPending ? fixtureState.label : getMatchTime(node.match);
   }
   const sourceA = getBracketSourceInfo(node.sourceA, teamById);
   const sourceB = getBracketSourceInfo(node.sourceB, teamById);
@@ -362,7 +361,7 @@ export function renderBracketNode(node, teamById, onOpenMatch) {
     <article key={node.id} className={winner || node.byeTeamId ? "bracket-match-card done" : "bracket-match-card"}>
       <div className="bracket-node-head">
         <span>{node.name}</span>
-        {node.match ? <button type="button" onClick={() => onOpenMatch?.(node.match.id)}>방 보기</button> : <b>{node.byeTeamId ? "BYE" : "예정"}</b>}
+        {node.match ? <button type="button" onClick={() => onOpenMatch?.(node.match.id)}>{getLeagueFixtureState(node.match).actionLabel ?? "방 보기"}</button> : <b>{node.byeTeamId ? "BYE" : "예정"}</b>}
       </div>
       {renderBracketSource(node.sourceA, teamById)}
       <strong className="bracket-midline">vs</strong>

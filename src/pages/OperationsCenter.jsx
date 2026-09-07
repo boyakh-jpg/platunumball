@@ -139,14 +139,14 @@ export default function OperationsCenter({ app }) {
   }, [clockNow, scopedMatches, scopedRecruitingPosts, userId]);
   const totalCount = groupedItems.now.length + groupedItems.upcoming.length + groupedItems.past.length;
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (cursor = "") => {
     if (!app.remoteReady || !userId || !loadOperationsMatches) return false;
     if (refreshRequestRef.current) return refreshRequestRef.current;
     const request = (async () => {
       setRefreshing(true);
       setRefreshError("");
       try {
-        const result = await loadOperationsMatches({ force: true });
+        const result = await loadOperationsMatches({ force: !cursor, cursor });
         if (result === false) {
           setRefreshError("운영 경기 목록을 불러오지 못했습니다.");
           return false;
@@ -226,15 +226,15 @@ export default function OperationsCenter({ app }) {
       ) : !totalCount ? (
         <EmptyState
           icon={ListChecks}
-          title="운영할 경기 없음"
-          action={<Button as={Link} to="/app/create">경기 만들기</Button>}
+          title={operationsMatchList.cursor ? "다음 목록을 확인하세요" : "운영할 경기 없음"}
+          action={operationsMatchList.cursor ? null : <Button as={Link} to="/app/create">경기 만들기</Button>}
         />
       ) : (
         <Card className="section-card operations-inbox">
           <div className="section-title-row operations-inbox__head">
             <div>
               <h2>내 운영 업무</h2>
-              <p>{totalCount}개 경기</p>
+              <p>{operationsMatchList.cursor ? "불러온 " : ""}{totalCount}개 경기</p>
             </div>
             <Button type="button" variant="secondary" size="sm" disabled={refreshing} onClick={() => void refresh()}>
               <RefreshCw size={16} /> {refreshing ? "확인 중" : "새로고침"}
@@ -279,6 +279,13 @@ export default function OperationsCenter({ app }) {
           ))}
         </Card>
       )}
+      {operationsMatchList.cursor ? (
+        <div className="ui-action-row">
+          <Button type="button" variant="secondary" disabled={refreshing} onClick={() => void refresh(operationsMatchList.cursor)}>
+            {refreshing ? "확인 중" : "운영 경기 더 보기"}
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
 }

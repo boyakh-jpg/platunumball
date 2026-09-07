@@ -8,6 +8,7 @@ import {
   finalizeMatchByAuthority,
   resolveMatchDispute,
   runAutomaticStateMaintenance,
+  submitMatchResult,
 } from "../src/data/repository.js";
 import {
   DISPUTE_WINDOW_MINUTES,
@@ -349,9 +350,9 @@ test("미처리 이의는 제한시간이 지나도 이의 단계에 남는다",
   assert.equal(getMatchRoomPhase(match).phase, "dispute");
 });
 
-test("심판 개인기록이 미완성이면 disputeMinutes 뒤에도 보험성 자동 확정하지 않는다", () => {
+test("미완성 개인기록은 시간이 지나도 미확정 상태를 유지하고 심판 보완 후 확정한다", () => {
   const state = makeState("referee");
-  const submittedAt = new Date(Date.now() - 20 * 60_000).toISOString();
+  const submittedAt = new Date(Date.now() - 120 * 60_000).toISOString();
   const incompleteMatch = {
     ...state.matches[0],
     endedAt: submittedAt,
@@ -365,19 +366,17 @@ test("심판 개인기록이 미완성이면 disputeMinutes 뒤에도 보험성 
   const incompleteState = { ...state, matches: [incompleteMatch] };
   const blocked = runAutomaticStateMaintenance(incompleteState, new Date());
   assert.equal(blocked.matches[0].status, "approval");
+  assert.equal(getMatchRoomPhase(blocked.matches[0]).phase, "dispute");
 
-  const completeState = {
-    ...blocked,
-    matches: [{
-      ...blocked.matches[0],
-      result: {
-        ...blocked.matches[0].result,
-        playerStats: state.matches[0].result.playerStats,
-      },
-    }],
-  };
+  const completeState = submitMatchResult(blocked, incompleteMatch.id, {
+    scoreA: 5,
+    scoreB: 7,
+    playerStats: state.matches[0].result.playerStats,
+  });
+  assert.equal(completeState.matches[0].result.playerStats.guest.points, 7);
   const finalized = runAutomaticStateMaintenance(completeState, new Date());
   assert.equal(finalized.matches[0].status, "confirmed");
+  assert.equal(getMatchRoomPhase(finalized.matches[0]).phase, "record");
 });
 
 test("DB와 목록 API가 병렬 큐를 새로고침 가능한 형태로 조회한다", async () => {
