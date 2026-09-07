@@ -66,7 +66,7 @@ test("입력 배열과 객체를 변경하지 않는다", () => {
   assert.deepEqual(tournament.matchIds, ["match-1"]);
 });
 
-test("대회 결과는 실제 확정 후에만 순위와 후속 대진에 반영한다", async (t) => {
+test("대회 진행 상태는 확정 여부와 현재 역할에 맞게 안내한다", async (t) => {
   const { createServer } = await import("vite");
   const vite = await createServer({
     configFile: false,
@@ -157,6 +157,79 @@ test("대회 결과는 실제 확정 후에만 순위와 후속 대진에 반영
       assert.equal(model.getMatchWinnerTeamId({ ...forfeit, status: "approval" }), "");
       const byeTournament = { bracket: { bracketSize: 2, firstRound: [{ fixture: 1, teamAId: "a", teamBId: null, byeTeamId: "a" }] } };
       assert.equal(model.getNodeWinnerTeamId(model.buildTournamentBracketTree(byeTournament, {})[0].nodes[0]), "a");
+    });
+
+    const nextActionBase = {
+      tournament: { id: "t", format: "league", status: "active" },
+      governanceEnabled: false,
+      canManageSchedule: true,
+    };
+    const unscheduledMatch = { id: "unscheduled", tournamentId: "t", status: "agreed" };
+
+    await t.test("팀장과 심판은 다른 준비 항목보다 자신의 승인 요청을 먼저 확인한다", () => {
+      const pending = { ...nextActionBase, tournament: { ...nextActionBase.tournament, status: "draft" }, hasPendingTeamApprovals: true, governanceEnabled: true, requiredRefereeCount: 2 };
+      const captain = model.getTournamentNextAction({ ...pending, teamRows: [{ team: teamById.a, canApprove: true }] });
+      assert.equal(captain.target, model.tournamentDetailSections.teams);
+      assert.match(captain.title, /A 참가를 승인/);
+      const representative = model.getTournamentNextAction({ ...pending, teamRows: [{ team: teamById.a, needsRepresentativeTeam: true }] });
+      assert.match(representative.title, /대표팀 설정/);
+      const referee = model.getTournamentNextAction({ ...pending, refereeRows: [{ canApprove: true }] });
+      assert.equal(referee.target, model.tournamentDetailSections.referees);
+      assert.match(referee.title, /초대에 응답/);
+      assert.equal(model.getTournamentNextAction(pending).target, model.tournamentDetailSections.teams);
+    });
+
+    await t.test("필수 승인·심판 자격·중립 조건을 충족한 뒤 개최 방식을 안내한다", () => {
+      const users = ["ref-a", "ref-b"].map((id) => ({ id, trustScore: 95 }));
+      const refereeAppointments = users.map((user) => ({ userId: user.id, role: "referee", grade: "candidate", status: "active", startsAt: "2020-01-01T00:00:00.000Z", endsAt: "2099-12-31T23:59:59.000Z" }));
+      const ready = {
+        ...nextActionBase,
+        tournament: { ...nextActionBase.tournament, status: "draft", endDate: "2099-01-01", teamIds: ["a", "b"], refereeIds: users.map((user) => user.id), refereeStatuses: { "ref-a": "accepted", "ref-b": "accepted" } },
+        app: { state: { teams: [{ id: "a", members: [] }, { id: "b", members: [] }], users, settings: { refereeAppointments } } },
+        governanceEnabled: true,
+        requiredRefereeCount: 2,
+        acceptedRefereeIds: users.map((user) => user.id),
+        canStartCommunity: true,
+      };
+      const missingReferee = model.getTournamentNextAction({ ...ready, acceptedRefereeIds: ["ref-a"] });
+      assert.equal(missingReferee.target, model.tournamentDetailSections.referees);
+      assert.match(missingReferee.title, /1명의 승인/);
+      const ineligible = model.getTournamentNextAction({ ...ready, app: { state: { ...ready.app.state, settings: { refereeAppointments: [] } } } });
+      assert.equal(ineligible.target, model.tournamentDetailSections.referees);
+      assert.match(ineligible.description, /자격/);
+      const nonneutral = model.getTournamentNextAction({ ...ready, app: { state: { ...ready.app.state, teams: [{ id: "a", members: users.map((user) => ({ userId: user.id })) }, { id: "b", members: [] }] } } });
+      assert.equal(nonneutral.target, model.tournamentDetailSections.referees);
+      assert.match(nonneutral.description, /중립 심판/);
+      assert.equal(model.getTournamentNextAction(ready).target, model.tournamentDetailSections.sanction);
+      assert.match(model.getTournamentNextAction(ready).title, /개최 방식을 선택/);
+      assert.match(model.getTournamentNextAction({ ...ready, canStartCommunity: false }).title, /개최 승인을 기다리고/);
+    });
+
+    await t.test("미배정 심판부터 안내하고 주최자만 첫 미정 일정의 편집을 연다", () => {
+      const active = { ...nextActionBase, tournamentMatches: [unscheduledMatch] };
+      assert.equal(model.getTournamentNextAction({ ...active, governanceEnabled: true }).target, model.tournamentDetailSections.matchReferees);
+      const ownerAction = model.getTournamentNextAction(active);
+      assert.equal(ownerAction.scheduleMatchId, unscheduledMatch.id);
+      assert.equal(ownerAction.target, model.tournamentDetailSections.competition);
+      const viewerAction = model.getTournamentNextAction({ ...active, canManageSchedule: false });
+      assert.equal(viewerAction.scheduleMatchId, "");
+      assert.equal(viewerAction.actionLabel, "경기 일정 보기");
+      assert.equal(model.getTournamentNextAction({ ...active, tournament: { ...active.tournament, format: "tournament" } }).target, model.tournamentDetailSections.schedule);
+    });
+
+    await t.test("명단 제출·경기 시작으로 잠긴 일정은 편집으로 안내하지 않고 미확정 결과를 연결한다", () => {
+      const locked = [
+        { ...unscheduledMatch, id: "lineup", rules: { rosterReady: { teamA: true } } },
+        { ...unscheduledMatch, id: "started", startedAt: "2020-01-01T00:00:00.000Z" },
+        { ...makeMatch("pending"), tournamentId: "t", status: "disputed" },
+      ];
+      const action = model.getTournamentNextAction({ ...nextActionBase, tournamentMatches: locked });
+      assert.equal(action.matchId, "pending");
+      assert.equal(action.scheduleMatchId, undefined);
+      assert.match(action.title, /결과 확인 중 1경기/);
+      const closed = model.getTournamentNextAction({ ...nextActionBase, tournament: { ...nextActionBase.tournament, status: "closed" }, tournamentMatches: locked });
+      assert.equal(closed.matchId, undefined);
+      assert.match(closed.title, /종료/);
     });
   } finally {
     await vite.close();

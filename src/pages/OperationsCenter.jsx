@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { CalendarClock, ListChecks, MapPin, RefreshCw } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import BasketballLoader from "../components/common/BasketballLoader.jsx";
@@ -15,7 +15,7 @@ import {
   selectMatchListMatches,
 } from "../lib/matchUtils.js";
 import { getRoomRemakeNavigationState } from "../lib/matchCreationPolicies.js";
-import { selectOperationsMatches } from "../lib/operationsCenter.js";
+import { getOperationsDefaultFilter, matchesOperationsSearch, selectOperationsMatches } from "../lib/operationsCenter.js";
 
 const FILTERS = [
   { id: "all", label: "전체" },
@@ -47,6 +47,18 @@ const PHASE_DESCRIPTIONS = {
   void: "무효 처리된 경기입니다.",
 };
 
+const PHASE_ACTIONS = {
+  waiting: "참가 확인",
+  locked: "준비 확인",
+  checkin: "출석 확인",
+  live: "진행 확인",
+  postgame: "결과 확인",
+  dispute: "이의 확인",
+  record: "기록 보기",
+  cancelled: "취소 확인",
+  void: "종료 확인",
+};
+
 function getMatchTitle(match = {}) {
   const title = cleanRoomTitle(match.title, "");
   if (title) return title;
@@ -74,7 +86,12 @@ function sortOperationsItems(items = [], descending = false) {
 function OperationsRow({ item, onOpen, onRepeat }) {
   const { match, phase, role, canRepeat } = item;
   const phaseLabel = phase.listLabel ?? phase.label ?? "상태 확인";
-  const phaseDescription = PHASE_DESCRIPTIONS[phase.phase] ?? "경기 상태를 확인하세요.";
+  const phaseDescription = phase.phase === "live" && role !== "referee"
+    ? "경기 진행과 점수를 확인하세요."
+    : PHASE_DESCRIPTIONS[phase.phase] ?? "경기 상태를 확인하세요.";
+  const actionLabel = phase.phase === "live" && role === "referee"
+    ? "경기 진행"
+    : PHASE_ACTIONS[phase.phase] ?? "경기 열기";
 
   return (
     <article className="operations-row">
@@ -100,7 +117,7 @@ function OperationsRow({ item, onOpen, onRepeat }) {
           </Button>
         ) : null}
         <Button type="button" onClick={() => onOpen(match.id)}>
-          경기 열기
+          {actionLabel}
         </Button>
       </div>
     </article>
@@ -111,7 +128,7 @@ export default function OperationsCenter({ app }) {
   const userId = app.currentUser?.id ?? "";
   const location = useLocation();
   const navigate = useNavigate();
-  const [filter, setFilter] = useState("all");
+  const [searchParams, setSearchParams] = useSearchParams();
   const [clockNow, setClockNow] = useState(() => new Date());
   const [refreshing, setRefreshing] = useState(false);
   const [refreshError, setRefreshError] = useState("");
@@ -138,6 +155,29 @@ export default function OperationsCenter({ app }) {
     };
   }, [clockNow, scopedMatches, scopedRecruitingPosts, userId]);
   const totalCount = groupedItems.now.length + groupedItems.upcoming.length + groupedItems.past.length;
+  const requestedFilter = searchParams.get("filter");
+  const filter = FILTERS.some((item) => item.id === requestedFilter)
+    ? requestedFilter
+    : getOperationsDefaultFilter(groupedItems);
+  const query = searchParams.get("q") ?? "";
+  const hasQuery = Boolean(query.trim());
+  const searchedItems = useMemo(() => Object.fromEntries(
+    GROUPS.map(({ id }) => [id, groupedItems[id].filter(({ match }) => matchesOperationsSearch(match, query))]),
+  ), [groupedItems, query]);
+  const searchCount = GROUPS.reduce((count, { id }) => count + searchedItems[id].length, 0);
+  const visibleCount = filter === "all" ? searchCount : searchedItems[filter].length;
+  const updateFilters = (changes) => {
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      // Preserve the chosen section while typing and when returning from a match.
+      next.set("filter", filter);
+      for (const [key, value] of Object.entries(changes)) {
+        if (value) next.set(key, value);
+        else next.delete(key);
+      }
+      return next;
+    }, { replace: true });
+  };
 
   const refresh = useCallback(async (cursor = "") => {
     if (!app.remoteReady || !userId || !loadOperationsMatches) return false;
@@ -196,7 +236,7 @@ export default function OperationsCenter({ app }) {
     ? "운영 경기 목록을 불러오지 못했습니다."
     : "";
   const visibleGroups = filter === "all"
-    ? GROUPS.filter((group) => groupedItems[group.id].length)
+    ? GROUPS.filter((group) => searchedItems[group.id].length)
     : GROUPS.filter((group) => group.id === filter);
 
   return (
@@ -234,7 +274,7 @@ export default function OperationsCenter({ app }) {
           <div className="section-title-row operations-inbox__head">
             <div>
               <h2>내 운영 업무</h2>
-              <p>{operationsMatchList.cursor ? "불러온 " : ""}{totalCount}개 경기</p>
+              <p>{operationsMatchList.cursor ? "불러온 경기에서 검색합니다. 더 보기로 나머지 경기를 확인하세요." : "출석부터 결과 확인까지, 필요한 업무로 바로 이동하세요."}</p>
             </div>
             <Button type="button" variant="secondary" size="sm" disabled={refreshing} onClick={() => void refresh()}>
               <RefreshCw size={16} /> {refreshing ? "확인 중" : "새로고침"}
@@ -242,6 +282,15 @@ export default function OperationsCenter({ app }) {
           </div>
 
           <div className="operations-filter-shell">
+            <label>
+              <span>운영 경기 검색</span>
+              <input
+                type="search"
+                value={query}
+                placeholder="경기명, 팀명, 장소"
+                onChange={(event) => updateFilters({ q: event.target.value })}
+              />
+            </label>
             <div className="ui-filter-row operations-filter" role="group" aria-label="운영 경기 필터">
               {FILTERS.map((item) => (
                 <Button
@@ -250,15 +299,26 @@ export default function OperationsCenter({ app }) {
                   size="sm"
                   variant={filter === item.id ? "primary" : "secondary"}
                   aria-pressed={filter === item.id}
-                  onClick={() => setFilter(item.id)}
+                  onClick={() => updateFilters({ filter: item.id })}
                 >
-                  {item.label}
+                  {item.label} {item.id === "all" ? searchCount : searchedItems[item.id].length}
                 </Button>
               ))}
             </div>
           </div>
 
-          {visibleGroups.map((group) => (
+          {!visibleCount ? (
+            <EmptyState
+              title={hasQuery ? "검색 결과 없음" : "이 구간에 운영할 경기 없음"}
+              description={hasQuery && searchCount ? "다른 구간에 검색한 경기가 있습니다." : operationsMatchList.cursor ? "조건을 바꾸거나 아래에서 운영 경기를 더 불러오세요." : "검색어나 경기 구간을 바꿔 확인하세요."}
+              action={(
+                <>
+                  {hasQuery ? <Button variant="secondary" onClick={() => updateFilters({ q: "" })}>검색 지우기</Button> : null}
+                  {filter !== "all" ? <Button variant="secondary" onClick={() => updateFilters({ filter: "all" })}>전체 보기</Button> : null}
+                </>
+              )}
+            />
+          ) : visibleGroups.map((group) => (
             <section key={group.id} className="operations-group" aria-labelledby={`operations-${group.id}`}>
               <div className="operations-group__head">
                 <div>
@@ -266,15 +326,11 @@ export default function OperationsCenter({ app }) {
                   <p>{group.description}</p>
                 </div>
               </div>
-              {groupedItems[group.id].length ? (
-                <div className="operations-list ui-design-borderless-list">
-                  {groupedItems[group.id].map((item) => (
-                    <OperationsRow key={item.match.id} item={item} onOpen={openMatch} onRepeat={repeatMatch} />
-                  ))}
-                </div>
-              ) : (
-                <EmptyState title={`${group.label} 없음`} description="다른 구간을 확인하세요." />
-              )}
+              <div className="operations-list ui-design-borderless-list">
+                {searchedItems[group.id].map((item) => (
+                  <OperationsRow key={item.match.id} item={item} onOpen={openMatch} onRepeat={repeatMatch} />
+                ))}
+              </div>
             </section>
           ))}
         </Card>

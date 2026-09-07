@@ -4,10 +4,33 @@ import {
   canRepeatOperationsMatch,
   getOperationsMatchBucket,
   getOperationsMatchRole,
+  getOperationsDefaultFilter,
+  matchesOperationsSearch,
   selectOperationsMatches,
 } from "../src/lib/operationsCenter.js";
 
 const NOW = new Date("2026-09-04T03:00:00.000Z");
+
+test("업무함 첫 구간은 지금 처리할 경기부터 고르고 빈 구간은 건너뛴다", () => {
+  assert.equal(getOperationsDefaultFilter({ now: [1], upcoming: [2], past: [3] }), "now");
+  assert.equal(getOperationsDefaultFilter({ now: [], upcoming: [2], past: [3] }), "upcoming");
+  assert.equal(getOperationsDefaultFilter({ now: [], upcoming: [], past: [3] }), "past");
+  assert.equal(getOperationsDefaultFilter({ now: [], upcoming: [], past: [] }), "all");
+});
+
+test("업무 검색은 표시 경기명·양 팀·장소의 공백과 대소문자를 정규화한다", () => {
+  const match = { title: "주말 결승", teamA: { name: "TEAM A" }, teamB: { name: "블루 팀" }, court: "서울 체육관" };
+  for (const query of ["", "  ", "주말결승", "team a", "ＴＥＡＭ", "블루팀", "서울체육관"]) {
+    assert.equal(matchesOperationsSearch(match, query), true, query);
+  }
+  assert.equal(matchesOperationsSearch(match, "없는 팀"), false);
+  assert.equal(matchesOperationsSearch({}, "서울"), false);
+  const selected = selectOperationsMatches([
+    { ...match, id: "mine", createdBy: "user", status: "recruiting" },
+    { ...match, id: "other", createdBy: "other", status: "recruiting" },
+  ], "user", { now: NOW });
+  assert.deepEqual(selected.upcoming.filter(({ match: item }) => matchesOperationsSearch(item, "서울")).map(({ match: item }) => item.id), ["mine"]);
+});
 
 test("운영 역할은 canonical 주최자와 배정 심판만 반환한다", () => {
   assert.equal(getOperationsMatchRole({ createdBy: "host" }, "host"), "host");

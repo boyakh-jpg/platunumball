@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { CalendarDays, ChevronLeft, Flag, Save, ShieldCheck, UserRound } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Flag, Save, ShieldCheck, UserRound } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import ModalShell from "../components/common/ModalShell.jsx";
@@ -19,10 +19,13 @@ import {
   isTournamentScheduleEditable,
   getTournamentSchedulePolicyLabel,
   getLeagueFixtureState,
+  getTournamentNextAction,
+  tournamentDetailSections,
 } from "./tournamentDetailModel.jsx";
 
 import { TournamentCompetitionSection } from "./TournamentCompetitionSection.jsx";
 export default function TournamentDetailView({ controller }) {
+  const nextAction = getTournamentNextAction(controller);
   const { app, tournament, scheduleDialog, setScheduleDialog, savingScheduleId, forfeitDialog, setForfeitDialog, savingForfeitId, selectedMatchId, setSelectedMatchId, editingScheduleId, setEditingScheduleId, refereeQuery, setRefereeQuery, governanceAction, governanceFeedback, teamById, userById, matchesById, tournamentMatches, teamRows, acceptedCount, hasPendingTeamApprovals, governanceEnabled, requiredRefereeCount, acceptedRefereeIds, refereeRows, eligibleRefereeCandidates, canInviteReferee, canReviewRegion, canStartCommunity, verticalBracket, championTeam, canManageSchedule, todayValue, maxScheduleDate, leagueFixtures, leagueMatchesByFixture, leagueStandings, tournamentCourts, saveSchedule, confirmSchedule, confirmForfeit, runGovernanceAction, saveMatchReferee, renderRefereeInviteItem, organizer, dialogMatch, forfeitMatch, matchesReturnTo } = controller;
 return (
     <div className="page-stack tournament-detail-page">
@@ -81,8 +84,20 @@ return (
         </div>
       </section>
 
+      <section className="tournament-section" aria-label="다음 할 일">
+        <div className="section-title-row om-list-head"><h2>{nextAction.title}</h2></div>
+        <p className="tournament-governance-note">{nextAction.description}</p>
+        <div className="ui-action-row">
+          {nextAction.matchId ? (
+            <Button onClick={() => setSelectedMatchId(nextAction.matchId)}>{nextAction.actionLabel}<ChevronRight size={16} /></Button>
+          ) : (
+            <Button as="a" href={`#${nextAction.target}`} onClick={() => nextAction.scheduleMatchId && setEditingScheduleId(nextAction.scheduleMatchId)}>{nextAction.actionLabel}<ChevronRight size={16} /></Button>
+          )}
+        </div>
+      </section>
+
       {hasPendingTeamApprovals ? (
-        <section className="tournament-section">
+        <section id={tournamentDetailSections.teams} tabIndex={-1} className="tournament-section">
           <div className="section-title-row om-list-head">
             <div>
               <span className="eyebrow">INVITED TEAMS</span>
@@ -123,7 +138,7 @@ return (
       ) : null}
 
       {governanceEnabled ? (
-        <section className="tournament-section tournament-governance-section">
+        <section id={tournamentDetailSections.referees} tabIndex={-1} className="tournament-section tournament-governance-section">
         <div className="section-title-row om-list-head">
           <div>
             <span className="eyebrow">REFEREE APPROVAL</span>
@@ -191,7 +206,7 @@ return (
       ) : null}
 
       {governanceEnabled && tournament.status === "draft" ? (
-        <section className="tournament-section tournament-sanction-panel">
+        <section id={tournamentDetailSections.sanction} tabIndex={-1} className="tournament-section tournament-sanction-panel">
           <div>
             <span className="eyebrow">REGIONAL REVIEW</span>
             <h2>{getTournamentSanctionLabel(tournament)}</h2>
@@ -243,7 +258,7 @@ return (
 <TournamentCompetitionSection controller={controller} />
 
       {governanceEnabled && tournamentMatches.length ? (
-        <section className="tournament-section">
+        <section id={tournamentDetailSections.matchReferees} tabIndex={-1} className="tournament-section">
           <div className="section-title-row om-list-head">
             <div>
               <span className="eyebrow">MATCH REFEREES</span>
@@ -292,7 +307,7 @@ return (
       ) : null}
 
       {tournament.format === "tournament" && tournamentMatches.length ? (
-        <section className="tournament-section">
+        <section id={tournamentDetailSections.schedule} tabIndex={-1} className="tournament-section">
           <div className="section-title-row om-list-head">
             <div>
               <span className="eyebrow">SCHEDULE</span>

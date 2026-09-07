@@ -9,12 +9,13 @@ import {
   getLeagueMatchResult,
   getLeagueFixtureState,
   renderBracketNode,
+  tournamentDetailSections,
 } from "./tournamentDetailModel.jsx";
 
 export function TournamentCompetitionSection({ controller }) {
   const { app, tournament, scheduleDialog, setScheduleDialog, savingScheduleId, forfeitDialog, setForfeitDialog, savingForfeitId, selectedMatchId, setSelectedMatchId, editingScheduleId, setEditingScheduleId, refereeQuery, setRefereeQuery, governanceAction, governanceFeedback, teamById, userById, matchesById, tournamentMatches, teamRows, acceptedCount, hasPendingTeamApprovals, governanceEnabled, requiredRefereeCount, acceptedRefereeIds, refereeRows, eligibleRefereeCandidates, canInviteReferee, canReviewRegion, canStartCommunity, verticalBracket, championTeam, canManageSchedule, todayValue, maxScheduleDate, leagueFixtures, leagueMatchesByFixture, leagueStandings, tournamentCourts, saveSchedule, confirmSchedule, confirmForfeit, runGovernanceAction, saveMatchReferee, renderRefereeInviteItem, organizer, dialogMatch, forfeitMatch, matchesReturnTo } = controller;
   return (
-      <section className="tournament-section">
+      <section id={tournamentDetailSections.competition} tabIndex={-1} className="tournament-section">
         <div className="section-title-row om-list-head">
           <div>
             <span className="eyebrow">{tournament.format === "tournament" ? "BRACKET" : "LEAGUE FIXTURES"}</span>

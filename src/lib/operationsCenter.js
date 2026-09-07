@@ -7,6 +7,18 @@ const NOW_PHASES = new Set(["checkin", "live", "postgame", "dispute"]);
 const PAST_PHASES = new Set(["record", "cancelled", "void"]);
 const OPERATIONS_PHASES = new Set(["waiting", "locked", ...NOW_PHASES, ...PAST_PHASES]);
 
+export function getOperationsDefaultFilter(groupedItems) {
+  return ["now", "upcoming", "past"].find((key) => groupedItems[key]?.length) ?? "all";
+}
+
+export function matchesOperationsSearch(match = {}, query = "") {
+  const normalize = (value) => String(value ?? "").normalize("NFKC").toLocaleLowerCase().replace(/\s+/gu, "");
+  const needle = normalize(query);
+  if (!needle) return true;
+  return [match.title, match.teamA?.name, match.teamB?.name, match.court]
+    .some((value) => normalize(value).includes(needle));
+}
+
 function getSourcePost(recruitingPosts, recruitingPostId) {
   if (!recruitingPostId) return null;
   if (recruitingPosts instanceof Map) return recruitingPosts.get(recruitingPostId) ?? null;

@@ -37,6 +37,8 @@
 }
 
 .operations-filter-shell {
+  display: grid;
+  gap: var(--space-3);
   max-width: var(--ui-operations-filter-max-inline-size);
 }
 

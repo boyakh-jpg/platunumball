@@ -3,6 +3,7 @@ import TeamEmblem from "../components/team/TeamEmblem.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { getMatchRoomPhase, getTournamentScheduleEditPolicy, isMatchResultConfirmed } from "../lib/matchUtils.js";
 import { formatTournamentWindow as formatWindow } from "../../shared/lib/scheduleUtils.js";
+import { getTournamentRefereePoolValidation } from "../lib/tournamentGovernance.js";
 
 export { formatWindow };
 
@@ -24,6 +25,80 @@ export const mmrPolicyLabels = {
   standard: "일반 MMR",
   event_only: "대회 점수만",
 };
+
+export const tournamentDetailSections = Object.freeze({
+  teams: "tournament-teams",
+  referees: "tournament-referees",
+  sanction: "tournament-sanction",
+  competition: "tournament-competition",
+  matchReferees: "tournament-match-referees",
+  schedule: "tournament-schedule",
+});
+
+export function getTournamentNextAction({
+  app,
+  tournament,
+  teamRows = [],
+  hasPendingTeamApprovals,
+  governanceEnabled,
+  requiredRefereeCount = 0,
+  acceptedRefereeIds = [],
+  refereeRows = [],
+  canInviteReferee,
+  canReviewRegion,
+  canStartCommunity,
+  canManageSchedule,
+  tournamentMatches = [],
+}) {
+  const competitionLabel = tournament.format === "league" ? "리그 경기표 보기" : "대진표 보기";
+  const competition = { target: tournamentDetailSections.competition, actionLabel: competitionLabel };
+  if (["closed", "cancelled"].includes(tournament.status)) {
+    return { title: `대회가 ${tournament.status === "cancelled" ? "취소" : "종료"}되었습니다`, description: "아래에서 경기별 상태와 확정 기록을 확인할 수 있습니다.", ...competition };
+  }
+  const myTeamApproval = teamRows.find((row) => row.canApprove || row.needsRepresentativeTeam);
+  if (myTeamApproval) {
+    return {
+      title: myTeamApproval.needsRepresentativeTeam ? "대표팀 설정 후 참가를 승인해 주세요" : `${myTeamApproval.team.name} 참가를 승인해 주세요`,
+      description: myTeamApproval.needsRepresentativeTeam ? "참가팀을 내 대표팀으로 설정하면 팀장 승인을 할 수 있습니다." : "참가팀의 승인 버튼에서 내 팀의 대회 참여를 확정합니다.",
+      target: tournamentDetailSections.teams,
+      actionLabel: "내 팀 승인 확인",
+    };
+  }
+  if (refereeRows.some((row) => row.canApprove)) {
+    return { title: "심판 초대에 응답해 주세요", description: "대회 심판에서 참여를 승인하거나 거절할 수 있습니다.", target: tournamentDetailSections.referees, actionLabel: "심판 초대 확인" };
+  }
+  if (tournament.status === "draft") {
+    if (hasPendingTeamApprovals) {
+      return { title: "참가팀 승인을 기다리고 있습니다", description: "참가팀 목록에서 승인 대기 팀과 담당 팀장을 확인해 주세요.", target: tournamentDetailSections.teams, actionLabel: "승인 대기 팀 확인" };
+    }
+    if (governanceEnabled) {
+      const remainingReferees = Math.max(0, requiredRefereeCount - acceptedRefereeIds.length);
+      if (remainingReferees) {
+        return { title: `심판 ${remainingReferees}명의 승인이 더 필요합니다`, description: canInviteReferee ? "심판의 응답 상태를 확인하고, 거절했거나 참여가 어려운 심판 대신 새 심판을 초대해 주세요." : "대회 심판에서 초대와 승인 현황을 확인할 수 있습니다.", target: tournamentDetailSections.referees, actionLabel: "심판 승인 확인" };
+      }
+      const refereePool = getTournamentRefereePoolValidation({ tournament, teams: app?.state?.teams, users: app?.state?.users, refereeAppointments: app?.state?.settings?.refereeAppointments, requireAccepted: true });
+      if (!refereePool.allowed) {
+        return { title: "심판 구성을 확인해 주세요", description: refereePool.ineligibleRefereeId ? "승인 심판의 자격 정보를 확인하고 유효한 심판으로 교체해 주세요." : "승인 인원은 충족했지만 중립 심판이 없는 대진이 있습니다. 양 팀과 무관한 심판의 승인이 필요합니다.", target: tournamentDetailSections.referees, actionLabel: "대회 심판 확인" };
+      }
+      return { title: canReviewRegion || canStartCommunity ? "개최 방식을 선택해 주세요" : "개최 승인을 기다리고 있습니다", description: "지역관리자의 공식 승인 또는 주최자의 지역 비승인 개최 후 대진이 생성됩니다.", target: tournamentDetailSections.sanction, actionLabel: canReviewRegion || canStartCommunity ? "개최 방식 확인" : "개최 승인 현황" };
+    }
+    return { title: "참가팀 승인이 완료되었습니다", description: "경기가 생성되면 대진과 일정을 확인할 수 있습니다.", ...competition };
+  }
+  const editableMatches = tournamentMatches.filter((match) => isTournamentScheduleEditable(match));
+  const unassignedMatches = governanceEnabled ? editableMatches.filter((match) => !match.refereeId) : [];
+  if (unassignedMatches.length) {
+    return { title: `심판 미배정 ${unassignedMatches.length}경기`, description: "경기별 중립 심판을 배정해야 일정을 저장할 수 있습니다.", target: tournamentDetailSections.matchReferees, actionLabel: canManageSchedule ? "심판 배정하기" : "심판 배정 현황" };
+  }
+  const unscheduledMatches = editableMatches.filter((match) => !getTournamentScheduleEditPolicy(match).hasSchedule);
+  if (unscheduledMatches.length) {
+    return { title: `일정 미정 ${unscheduledMatches.length}경기`, description: canManageSchedule ? "날짜·시간·구장을 저장하면 각 팀장이 출전 명단을 준비할 수 있습니다." : "주최자가 일정을 저장하면 각 팀장이 출전 명단을 준비할 수 있습니다.", target: tournament.format === "league" ? tournamentDetailSections.competition : tournamentDetailSections.schedule, actionLabel: canManageSchedule ? "다음 경기 일정 설정" : "경기 일정 보기", scheduleMatchId: canManageSchedule ? unscheduledMatches[0].id : "" };
+  }
+  const pendingResults = tournamentMatches.filter((match) => getLeagueFixtureState(match).resultPending);
+  if (pendingResults.length) {
+    return { title: `결과 확인 중 ${pendingResults.length}경기`, description: "경기 방에서 이의와 승인 상태를 확인해 주세요. 결과 확정 후 순위와 다음 대진에 반영됩니다.", actionLabel: "첫 경기 결과 확인", matchId: pendingResults[0].id };
+  }
+  return { title: "경기별 준비 상태를 확인해 주세요", description: "경기 방에서 출전 명단, 출석, 경기 진행 상태를 확인할 수 있습니다.", ...competition };
+}
 
 export function getMatchTime(match) {
   return [match.scheduledDate, match.scheduledTime].filter(Boolean).join(" ") || match.scheduledAt || "일정 미정";
