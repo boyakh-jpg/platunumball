@@ -10,6 +10,60 @@ import {
   getTournamentTeamIds,
   getTournamentTeamStatus,
 } from "../src/data/tournamentMappers.js";
+import { getTournamentListStatus } from "../src/pages/matchesPageBaseSelectors.js";
+
+test("대회 목록은 팀 승인 완료 후 남은 필수 심판 승인을 안내한다", () => {
+  const tournament = {
+    status: "draft",
+    teamIds: ["team-a", "team-b"],
+    teamStatuses: { "team-a": "accepted", "team-b": "accepted" },
+    refereeIds: ["ref-a", "ref-b"],
+    refereeStatuses: { "ref-a": "accepted", "ref-b": "invited" },
+    rules: { governanceVersion: 2 },
+  };
+  assert.deepEqual(getTournamentListStatus(tournament), {
+    label: "심판 승인 대기",
+    tone: "gold",
+    teamApprovalLabel: "팀 2/2 승인",
+    refereeApprovalLabel: "심판 1/2명 승인",
+    approvalLabel: "심판 승인 대기",
+    approvalTone: "gold",
+  });
+  const approved = getTournamentListStatus({
+    ...tournament,
+    refereeStatuses: { "ref-a": "accepted", "ref-b": "accepted" },
+  });
+  assert.equal(approved.label, "참가 승인 완료");
+  assert.equal(approved.approvalTone, "green");
+});
+
+test("대회 목록 승인 수는 팀 snapshot을 포함하고 거절한 팀을 제외한다", () => {
+  const status = getTournamentListStatus({
+    teamIds: ["team-a", "team-b"],
+    teamStatuses: { "team-a": "accepted", "team-b": "declined", "team-c": "invited" },
+    rules: { governanceVersion: 2 },
+  });
+  assert.equal(status.label, "팀 승인 대기");
+  assert.equal(status.teamApprovalLabel, "팀 1/2 승인");
+  assert.equal(status.refereeApprovalLabel, "심판 0/2명 승인");
+});
+
+test("대회 목록은 기존 대회에 심판 승인을 요구하지 않고 빈 참가를 완료로 표시하지 않는다", () => {
+  const legacy = getTournamentListStatus({
+    status: "active",
+    teamIds: ["team-a", "team-b"],
+    teamStatuses: { "team-a": "accepted", "team-b": "accepted" },
+  });
+  assert.equal(legacy.label, "진행 중");
+  assert.equal(legacy.tone, "green");
+  assert.equal(legacy.approvalLabel, "참가 승인 완료");
+  assert.equal(legacy.refereeApprovalLabel, "");
+  const empty = getTournamentListStatus();
+  assert.equal(empty.label, "참가팀 확인 필요");
+  assert.equal(empty.approvalTone, "gold");
+  assert.equal(getTournamentListStatus({ status: "closed" }).label, "종료");
+  assert.equal(getTournamentListStatus({ status: "unexpected_status" }).label, "상태 확인 중");
+});
 
 test("대회 팀 ID와 상태는 명시 목록·상태 snapshot을 함께 사용한다", () => {
   const tournament = {

@@ -4,7 +4,7 @@ export function CreateMatchIntentSection({ context }) {
   const {
     Badge, Card, ClipboardList, Globe2, Lock, MatchIntentPresetSelector, RECORD_COMPOSITION_OPTIONS,
     RECORD_ENTRY_MODE_OPTIONS, RECORD_TYPES, Trophy, app, canCreateTeamRoom, currentRoomKind, defaultMode,
-    defaultTeamA, defaultTournamentTeamA, defaultTournamentTeamB, draft, getDefaultCreateTitle, getDefaultTeamPlayerIds, getDefaultTournamentTitle,
+    defaultTeamA, defaultTournamentTeamA, defaultTournamentTeamB, draft, getDefaultCreateTitle, getDefaultTeamPlayerIds, getTournamentCreateSelectionPatch,
     getMatchConfigurationChangePatch, getMatchFormationMode, getMatchIntentChangePatch, getMatchModeChangePatch, getMatchModeOrDefault, getMatchRecordMemo, getRecordComposition,
     getRecordEntryMode, getRepresentativePlayerIds, getRoomKindLabel, getSeoulTimeInputValue, goToWizardStep, isDefaultCreateTitle, isDefaultTournamentTitle,
     hasTeamChallenge, isMatchRecordRoom, isPublicRoom, isRecordCreateIntent, isSoloRecord, isStandardCreateWizard, isTournamentRoom, practiceMode,
@@ -99,19 +99,7 @@ export function CreateMatchIntentSection({ context }) {
                 </button>
                 <button type="button" className={isTournamentRoom ? "ui-choice-tile active" : "ui-choice-tile"} disabled={practiceMode || hasTeamChallenge} onClick={() => {
                   setTeamRegion("전체");
-                  const mode = getMatchModeOrDefault(draft.mode, defaultMode);
-                  update({
-                    ...getMatchConfigurationChangePatch(draft, { matchPurpose: "competitive", formationMode: "prearranged" }),
-                    ...getMatchModeChangePatch(draft, mode),
-                    recordType: RECORD_TYPES.match,
-                    visibility: "tournament",
-                    qrAttendanceEnabled: undefined,
-                    timingType: "scheduled",
-                    hostJoinMode: "team",
-                    teamOnly: true,
-                    title: isDefaultCreateTitle(draft.title) ? getDefaultTournamentTitle(draft.tournamentFormat) : draft.title,
-                    tournamentTeamIds: draft.tournamentTeamIds?.length ? draft.tournamentTeamIds : [defaultTournamentTeamA?.id, defaultTournamentTeamB?.id].filter(Boolean),
-                  });
+                  update(getTournamentCreateSelectionPatch(draft, defaultMode, [defaultTournamentTeamA?.id, defaultTournamentTeamB?.id]));
                 }}>
                   <Trophy size={19} />
                   <span>

@@ -36,6 +36,12 @@ import {
 } from "../lib/recruiting.js";
 import { getTeamCaptainMemberId as getTeamCaptainId } from "../data/teamMappers.js";
 import { getTournamentTeamIds, getTournamentTeamStatus } from "../data/tournamentMappers.js";
+import {
+  getAcceptedTournamentRefereeIds,
+  getActiveTournamentTeamIds,
+  getRequiredTournamentRefereeCount,
+  isTournamentGovernanceEnabled,
+} from "../lib/tournamentGovernance.js";
 
 export const VIEWS = [
   {
@@ -104,12 +110,36 @@ export const tournamentMmrLabels = {
 };
 
 export const tournamentStatusLabels = {
-  draft: "팀장 승인 대기",
+  draft: "참가 승인 대기",
   active: "진행 중",
   scheduled: "예정",
   closed: "종료",
   cancelled: "취소",
 };
+
+export function getTournamentListStatus(tournament = {}) {
+  const teamIds = getActiveTournamentTeamIds({ ...tournament, teamIds: getTournamentTeamIds(tournament) });
+  const acceptedTeamCount = teamIds.filter((teamId) => getTournamentTeamStatus(tournament, teamId) === "accepted").length;
+  const governanceEnabled = isTournamentGovernanceEnabled(tournament);
+  const requiredRefereeCount = getRequiredTournamentRefereeCount(teamIds.length);
+  const acceptedRefereeCount = getAcceptedTournamentRefereeIds(tournament).length;
+  const teamApprovalsComplete = teamIds.length > 0 && acceptedTeamCount === teamIds.length;
+  const refereeApprovalsComplete = !governanceEnabled || acceptedRefereeCount >= requiredRefereeCount;
+  const approvalsComplete = teamApprovalsComplete && refereeApprovalsComplete;
+  const approvalLabel = !teamIds.length
+    ? "참가팀 확인 필요"
+    : !teamApprovalsComplete ? "팀 승인 대기"
+      : !refereeApprovalsComplete ? "심판 승인 대기" : "참가 승인 완료";
+  const status = tournament.status ?? "draft";
+  return {
+    label: status === "draft" ? approvalLabel : tournamentStatusLabels[status] ?? "상태 확인 중",
+    tone: status === "active" ? "green" : status === "draft" || status === "scheduled" ? "gold" : "neutral",
+    teamApprovalLabel: `팀 ${acceptedTeamCount}/${teamIds.length} 승인`,
+    refereeApprovalLabel: governanceEnabled ? `심판 ${acceptedRefereeCount}/${requiredRefereeCount}명 승인` : "",
+    approvalLabel,
+    approvalTone: approvalsComplete ? "green" : "gold",
+  };
+}
 
 export const getSafeMatchSide = (match = {}, sideName = "teamA") => getSafeMatchSideBase(match, sideName, { teamIdFallback: null });
 

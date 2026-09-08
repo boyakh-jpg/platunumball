@@ -249,8 +249,11 @@
   gap: var(--page-section-gap-mobile);
 }
 
-.section-card:has(.search-picker.is-floating:focus-within) {
+.section-card:where(:has(.search-picker.is-floating)) {
   position: relative;
+}
+
+.section-card:has(.search-picker.is-floating:focus-within) {
   z-index: 18;
   overflow: visible;
 }

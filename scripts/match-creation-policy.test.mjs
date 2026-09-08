@@ -74,12 +74,57 @@ import {
 import {
   clearCreateMatchGuestDraft,
   getCreateMatchGuestDraft,
+  getCreateMatchIntent,
   getTeamChallengeEligibilityPolicy,
+  getTournamentCreateSelectionPatch,
   hydrateCreateMatchTeam,
   saveCreateMatchGuestDraft,
 } from "../src/lib/createMatchPage.js";
 
 configureServerRatingAuthority(SERVER_RATING_AUTHORITY);
+
+test("생성 의도는 기록·대회 바로가기 값만 허용한다", () => {
+  assert.equal(getCreateMatchIntent("?intent=record&step=1"), "record");
+  assert.equal(getCreateMatchIntent("?intent=tournament"), "tournament");
+  for (const search of ["", "?intent=", "?intent=Tournament", "?intent=public", "?intent=constructor"]) {
+    assert.equal(getCreateMatchIntent(search), "");
+  }
+});
+
+test("대회 생성 선택은 기존 경기 설정을 대회 규칙으로 전환하고 작성값을 보존한다", () => {
+  const draft = {
+    mode: "3v3",
+    title: "가을 리그",
+    matchPurpose: "friendly",
+    formationMode: "pickup",
+    tournamentTeamIds: ["team-a", "team-b"],
+    gameClockEnabled: false,
+    periodMinutes: 8,
+  };
+  const original = structuredClone(draft);
+  const patch = getTournamentCreateSelectionPatch(draft, "5v5", ["other-team"]);
+  assert.equal(patch.mode, "3v3");
+  assert.equal(patch.title, "가을 리그");
+  assert.deepEqual(patch.tournamentTeamIds, ["team-a", "team-b"]);
+  assert.equal(patch.visibility, "tournament");
+  assert.equal(patch.matchPurpose, "competitive");
+  assert.equal(patch.formationMode, "prearranged");
+  assert.equal(patch.ranked, true);
+  assert.equal(patch.hostJoinMode, "team");
+  assert.equal(patch.teamOnly, true);
+  assert.equal({ ...draft, ...patch }.periodMinutes, 8);
+  assert.equal({ ...draft, ...patch }.gameClockEnabled, false);
+  assert.deepEqual(draft, original);
+
+  const initialPatch = getTournamentCreateSelectionPatch({
+    mode: "invalid",
+    title: "오늘의 5v5 경쟁전",
+    tournamentFormat: "tournament",
+  }, "5v5", ["team-a", undefined, "team-b"]);
+  assert.equal(initialPatch.mode, "5v5");
+  assert.equal(initialPatch.title, "새 토너먼트");
+  assert.deepEqual(initialPatch.tournamentTeamIds, ["team-a", "team-b"]);
+});
 
 test("게스트 생성 draft는 같은 생성 URL에서만 복원하고 실제 생성 전 로그인을 확인한다", () => {
   const values = new Map();

@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PlusCircle, Search } from "lucide-react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import GuestAccessNotice from "../components/auth/GuestAccessNotice.jsx";
 import Badge from "../components/common/Badge.jsx";
 import BasketballLoader from "../components/common/BasketballLoader.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
+import EmptyState from "../components/common/EmptyState.jsx";
 import SearchPicker from "../components/common/SearchPicker.jsx";
 import { getTierEmblemSrc } from "../components/rating/TierEmblem.jsx";
 import TeamCard from "../components/team/TeamCard.jsx";
@@ -39,6 +41,8 @@ function isHashtagQuery(query = "") {
 }
 
 export default function Teams({ app }) {
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const readOnly = app.demoPreview === true;
   const loadDirectory = app.actions.loadDirectory;
   const directoryCourts = useMemo(() => getRegisteredCourts(app.state), [app.state]);
@@ -51,10 +55,12 @@ export default function Teams({ app }) {
   const teamCreatePendingRef = useRef(false);
   const [teamCreateError, setTeamCreateError] = useState("");
   const [representativeSavePendingId, setRepresentativeSavePendingId] = useState(""); const representativeSavePendingRef = useRef("");
-  const [representativeSaveError, setRepresentativeSaveError] = useState(""); const [query, setQuery] = useState("");
+  const [representativeSaveError, setRepresentativeSaveError] = useState("");
+  const query = searchParams.get("q") ?? "";
   const [selectedSearchTeam, setSelectedSearchTeam] = useState(null);
-  const [regionSido, setRegionSido] = useState(TEAM_DISCOVERY_VIEW);
-  const [regionDistrict, setRegionDistrict] = useState(defaultRegionSelection.district);
+  const requestedSido = searchParams.get("sido");
+  const regionSido = REGION_TREE.some((item) => item.sido === requestedSido) ? requestedSido : TEAM_DISCOVERY_VIEW;
+  const regionDistrict = searchParams.get("district") ?? defaultRegionSelection.district;
   const [courtQuery, setCourtQuery] = useState("");
   const [courtRegion, setCourtRegion] = useState(defaultTeamRegion);
   const directoryFilter = query.trim();
@@ -63,6 +69,16 @@ export default function Teams({ app }) {
   const selectedRegionDistrict = regionDistrictOptions.includes(regionDistrict) ? regionDistrict : regionDistrictOptions[0] ?? "";
   const selectedRegion = regionSido === TEAM_DISCOVERY_VIEW ? "" : `${regionSido} ${selectedRegionDistrict}`;
   const directoryRegion = isHashtagQuery(query) ? "" : selectedRegion;
+  const updateSearch = (changes) => {
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      for (const [key, value] of Object.entries(changes)) {
+        if (value) next.set(key, value);
+        else next.delete(key);
+      }
+      return next;
+    }, { replace: true });
+  };
   useEffect(() => {
     const timer = window.setTimeout(() => {
       loadDirectory?.({
@@ -165,9 +181,7 @@ export default function Teams({ app }) {
       onClick={() => {
         setSelectedSearchTeam(team);
         const nextRegion = inferRegionSelection(team.region);
-        setRegionSido(nextRegion.sido);
-        setRegionDistrict(nextRegion.district);
-        setQuery(team.name);
+        updateSearch({ q: team.name, sido: nextRegion.sido, district: nextRegion.district });
       }}
     >
       <strong>{team.name}</strong>
@@ -213,6 +227,7 @@ export default function Teams({ app }) {
       setDraft({ name: "", region: defaultTeamRegion, homeCourt: "", homeCourtId: "", captainId: app.currentUser.id, accent: "#58d2c0" });
       setCourtQuery("");
       setCourtRegion(defaultTeamRegion);
+      navigate(`/app/teams/${result}#team-control`);
     } catch (error) {
       setTeamCreateError("팀을 만들지 못했습니다. 입력 내용을 확인한 뒤 다시 시도해 주세요.");
     } finally {
@@ -335,10 +350,10 @@ export default function Teams({ app }) {
                 value={regionSido}
                 onChange={(event) => {
                   const nextSido = event.target.value;
-                  setRegionSido(nextSido);
-                  if (nextSido !== TEAM_DISCOVERY_VIEW) {
-                    setRegionDistrict(REGION_TREE.find((item) => item.sido === nextSido)?.districts[0] ?? "");
-                  }
+                  updateSearch({
+                    sido: nextSido === TEAM_DISCOVERY_VIEW ? "" : nextSido,
+                    district: nextSido === TEAM_DISCOVERY_VIEW ? "" : REGION_TREE.find((item) => item.sido === nextSido)?.districts[0] ?? "",
+                  });
                 }}
               >
                 <option value={TEAM_DISCOVERY_VIEW}>추천</option>
@@ -351,7 +366,7 @@ export default function Teams({ app }) {
                 aria-label="팀 지역 시군구"
                 value={selectedRegionDistrict}
                 disabled={regionSido === TEAM_DISCOVERY_VIEW}
-                onChange={(event) => setRegionDistrict(event.target.value)}
+                onChange={(event) => updateSearch({ district: event.target.value })}
               >
                 {regionDistrictOptions.map((district) => <option key={district} value={district}>{district}</option>)}
               </select>
@@ -360,7 +375,7 @@ export default function Teams({ app }) {
               <span>팀 검색</span>
               <SearchPicker
                 value={query}
-                onChange={setQuery}
+                onChange={(value) => updateSearch({ q: value })}
                 placeholder="팀명, 홈코트, 해시태그"
                 items={visibleTeams}
                 remoteSearchType="team"
@@ -399,7 +414,14 @@ export default function Teams({ app }) {
                   ))}
                 </div>
               ) : (
-                <div className="ui-empty-state-compact">조건에 맞는 팀이 없습니다.</div>
+                <EmptyState
+                  title="조건에 맞는 팀이 없습니다."
+                  description="검색 조건을 초기화하고 추천 팀을 확인해 보세요."
+                  action={<Button type="button" variant="secondary" onClick={() => {
+                    setSelectedSearchTeam(null);
+                    updateSearch({ q: "", sido: "", district: "" });
+                  }}>검색 초기화</Button>}
+                />
               )}
             </section>
           ) : discoverySections.length ? discoverySections.map((section) => (

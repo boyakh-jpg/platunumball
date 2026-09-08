@@ -12,7 +12,7 @@ export function useCreateMatchBaseController({
   const {
     COURT_MAP_SEARCH_LIMIT, COURT_MAP_SEARCH_PURPOSE, DEFAULT_MATCH_MEMO, DEFAULT_TOURNAMENT_MMR_GAP, DIRECTORY_PICKER_PAGE_LIMIT, DISPUTE_WINDOW_MINUTES, MATCH_MODES, MAX_PARTY_RESERVES,
     RECORD_TYPES, REGIONS, ROOM_SCHEDULE_MAX_DAYS, SCHEDULE_MAX_DAYS, addDateDays, getAgeGroupForUser, getAgeRestrictionOption,
-    getCanonicalRegion, getCourtPickerResults, getCourtRecommendationScore, getCreateMatchGuestDraft, getMatchReceiptCreateDraft, loadMatchReceiptDraft, getCreateStepFromSearch, getCreateStepSearch, getDefaultCreateMode, getDefaultCreateTitle,
+    getCanonicalRegion, getCourtPickerResults, getCourtRecommendationScore, getCreateMatchGuestDraft, getCreateMatchIntent, getTournamentCreateSelectionPatch, getMatchReceiptCreateDraft, loadMatchReceiptDraft, getCreateStepFromSearch, getCreateStepSearch, getDefaultCreateMode, getDefaultCreateTitle,
     getDefaultMatchCreationPolicy, getDefaultMmrLimitMode, getDefaultTeamPlayerIds, getLocalDateInputValue, getMatchCreationSteps, getMatchCreationValidation, getMatchCreationWizardType,
     getMatchFormationMode, getMatchModeChangePatch, getMmrSpread, getNextQueueSchedule, getOpponentTeam, getPartyPlayerIds, getPartyReserveIds,
     getPublicRoomMaxDateInput, getRecordComposition, getRecordEntryMode, getRecruitingSideCapacity, getRegisteredCourts, getRepresentativePlayerIds, getRepresentativeTeam,
@@ -42,10 +42,11 @@ const navigate = useNavigate();
   const maxScheduleDate = addDateDays(today, SCHEDULE_MAX_DAYS);
   const maxPrivateScheduleDate = addDateDays(today, ROOM_SCHEDULE_MAX_DAYS);
   const maxPublicScheduleDate = getPublicRoomMaxDateInput();
-  const isRecordCreateIntent = useMemo(
-    () => !practiceMode && new URLSearchParams(location.search).get("intent") === "record",
+  const createIntent = useMemo(
+    () => practiceMode ? "" : getCreateMatchIntent(location.search),
     [location.search, practiceMode],
   );
+  const isRecordCreateIntent = createIntent === "record";
   const receiptDraftId = useMemo(() => (
     practiceMode ? "" : String(new URLSearchParams(location.search).get("receiptDraft") ?? "").trim()
   ), [location.search, practiceMode]);
@@ -158,7 +159,7 @@ const navigate = useNavigate();
   const defaultSchedule = getNextQueueSchedule(app.state.recruitingPosts ?? []);
   const createReturnTo = `${location.pathname}${location.search}${location.hash}`;
   const restoredGuestDraft = practiceMode ? null : getCreateMatchGuestDraft(createReturnTo);
-  const [draft, setDraft] = useState({
+  const defaultDraft = {
     recordType: RECORD_TYPES.match,
     visibility: "private",
     timingType: "scheduled",
@@ -215,6 +216,12 @@ const navigate = useNavigate();
     tournamentScheduleNote: "초대팀 확정 후 경기별 일정을 배정합니다.",
     tournamentMmrPolicy: "gap_adjusted",
     tournamentMaxMmrGap: DEFAULT_TOURNAMENT_MMR_GAP,
+  };
+  const [draft, setDraft] = useState({
+    ...defaultDraft,
+    ...(createIntent === "tournament" && !hasTeamChallenge && !remakeDraft && !restoredGuestDraft && !receiptCreateDraft && !initialDraft
+      ? getTournamentCreateSelectionPatch(defaultDraft, defaultMode)
+      : {}),
     ...(remakeDraft ?? {}),
     ...(hasTeamChallenge ? {
       visibility: "private",

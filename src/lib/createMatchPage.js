@@ -2,9 +2,11 @@ import {
   DEFAULT_RATING,
   MATCH_MODES,
   PLAYER_STAT_FIELDS,
+  RECORD_TYPES,
   isSameRegion,
 } from "./constants.js";
 import { AGE_GROUPS } from "./profileSetup.js";
+import { getMatchConfigurationChangePatch, getMatchModeChangePatch } from "./matchCreationPolicies.js";
 import {
   MMR_RANGE_POLICIES,
   getSelectableTeamPlayerIds,
@@ -176,6 +178,22 @@ export function getMatchModeOrDefault(mode = "", fallback = "5v5") {
   return MATCH_MODE_IDS.has(String(mode)) ? String(mode) : fallback;
 }
 
+export function getTournamentCreateSelectionPatch(draft = {}, defaultMode = "5v5", defaultTeamIds = []) {
+  const mode = getMatchModeOrDefault(draft.mode, defaultMode);
+  return {
+    ...getMatchConfigurationChangePatch(draft, { matchPurpose: "competitive", formationMode: "prearranged" }),
+    ...getMatchModeChangePatch(draft, mode),
+    recordType: RECORD_TYPES.match,
+    visibility: "tournament",
+    qrAttendanceEnabled: undefined,
+    timingType: "scheduled",
+    hostJoinMode: "team",
+    teamOnly: true,
+    title: isDefaultCreateTitle(draft.title) ? getDefaultTournamentTitle(draft.tournamentFormat) : draft.title,
+    tournamentTeamIds: draft.tournamentTeamIds?.length ? draft.tournamentTeamIds : defaultTeamIds.filter(Boolean),
+  };
+}
+
 export function formatCreateSaveError(result, fallback) {
   const errorCode = getActionErrorCode(result);
   if (!errorCode) return fallback;
@@ -296,6 +314,11 @@ export function getDefaultCreateMode(team) {
 
 export function getDefaultMmrLimitMode(_teamA, _teamB, ranked = true) {
   return ranked ? "block" : "off";
+}
+
+export function getCreateMatchIntent(search = "") {
+  const intent = new URLSearchParams(search).get("intent");
+  return intent === "record" || intent === "tournament" ? intent : "";
 }
 
 export function getCreateStepFromSearch(search = "", steps = []) {

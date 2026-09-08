@@ -18,7 +18,7 @@ import {
   WEEKDAYS,
   tournamentFormatLabels,
   tournamentMmrLabels,
-  tournamentStatusLabels,
+  getTournamentListStatus,
   getSafeMatchSide,
   getMonthKey,
   addMonths,
@@ -32,7 +32,6 @@ import {
   getRoomCardTitle,
   getWinner,
   getMatchActionLabel,
-  getTournamentTeamRows,
 } from "./matchesPageSelectors.js";
 import {
   RoomModalErrorBoundary,
@@ -43,6 +42,9 @@ import {
 
 export default function MatchesPageView({ controller }) {
   const { app, location, viewId, panelMode, branchFilter, relationFilter, dateFilter, calendarMonth, selectedRecruitingPostId, setSelectedRecruitingPostId, setSelectedRecruitingPostDetailLoadingId, setSelectedRecruitingPostDetailFailedId, attendanceScanState, attendanceQrFlow, activeSelectedMatchId, todayValue, selectedView, teamById, userById, matchesById, courtById, courtByName, activeTournaments, selectedRecruitingPost, selectedRecruitingLobby, selectedRecruitingPostDetailFailed, selectedRecruitingPostDetailLoading, selectedMatch, selectedMatchRoomPost, selectedMatchRoomError, selectedMatchDetailLoading, selectedMatchDetailFailed, applyFilterState, closeSelectedMatch, requestMatchDetail, openSelectedRecruitingPost, openSelectedMatch, matchPagination, teamMatchList, calendarCounts, calendarDays, calendarMonthCount, scheduleLoading, scheduleError, displayScheduleItems, scheduleCountLabel, displayActiveCount, displayTodoCount, displayScheduledCount, getDisplayViewButtonCount, teamScheduleCount } = controller;
+  const hasScheduleFilters = Boolean(dateFilter || (panelMode !== "team" && (branchFilter !== "all" || relationFilter !== "all")));
+  const clearScheduleFilters = () => applyFilterState({ branchFilter: "all", relationFilter: "all", dateFilter: "" });
+  const scheduleTitle = panelMode === "team" ? "내 팀 경기" : selectedView.title;
 return (
     <div className="page-stack om-match-page">
       <section className="om-match-hero ui-page-hero ui-design-app-hero">
@@ -74,6 +76,7 @@ return (
               key={view.id}
               type="button"
               className={active ? "om-view-card ui-design-filter-tile active" : "om-view-card ui-design-filter-tile"}
+              aria-pressed={active}
               onClick={() => {
                 applyFilterState({
                   panelMode: "schedule",
@@ -95,6 +98,7 @@ return (
             <button
           type="button"
           className={panelMode === "team" ? "om-view-card ui-design-filter-tile active" : "om-view-card ui-design-filter-tile"}
+          aria-pressed={panelMode === "team"}
           onClick={() => {
             applyFilterState({
               panelMode: "team",
@@ -117,6 +121,7 @@ return (
             <button
           type="button"
           className={panelMode === "tournament" ? "om-view-card ui-design-filter-tile active" : "om-view-card ui-design-filter-tile"}
+          aria-pressed={panelMode === "tournament"}
           onClick={() => applyFilterState({ panelMode: "tournament" })}
         >
           <span className="om-view-icon"><Trophy size={22} /></span>
@@ -139,10 +144,10 @@ return (
                 {panelMode !== "team" ? <div className="om-calendar-filter-row">
                   <span className="om-calendar-filter-label">관계</span>
                   <div className="ui-segmented-control segmented-control compact-segments om-relation-filter-grid ui-design-filter-tile" role="group" aria-label="관계 필터">
-                    <button type="button" className={relationFilter === "all" ? "active" : ""} onClick={() => applyFilterState({ relationFilter: "all" })}>전체</button>
-                    <button type="button" className={relationFilter === "created" ? "active" : ""} onClick={() => applyFilterState({ relationFilter: "created" })}>내가 만든 방</button>
-                    <button type="button" className={relationFilter === "joined" ? "active" : ""} onClick={() => applyFilterState({ relationFilter: "joined" })}>내 참여방</button>
-                    <button type="button" className={relationFilter === "invited" ? "active" : ""} onClick={() => applyFilterState({ relationFilter: "invited" })}>초대받은 방</button>
+                    <button type="button" className={relationFilter === "all" ? "active" : ""} aria-pressed={relationFilter === "all"} onClick={() => applyFilterState({ relationFilter: "all" })}>전체</button>
+                    <button type="button" className={relationFilter === "created" ? "active" : ""} aria-pressed={relationFilter === "created"} onClick={() => applyFilterState({ relationFilter: "created" })}>내가 만든 방</button>
+                    <button type="button" className={relationFilter === "joined" ? "active" : ""} aria-pressed={relationFilter === "joined"} onClick={() => applyFilterState({ relationFilter: "joined" })}>내 참여방</button>
+                    <button type="button" className={relationFilter === "invited" ? "active" : ""} aria-pressed={relationFilter === "invited"} onClick={() => applyFilterState({ relationFilter: "invited" })}>초대받은 방</button>
                   </div>
                 </div> : null}
                 {panelMode !== "team" ? <div className="om-calendar-filter-row">
@@ -153,6 +158,7 @@ return (
                         key={option.id}
                         type="button"
                         className={branchFilter === option.id ? "active" : ""}
+                        aria-pressed={branchFilter === option.id}
                         onClick={() => applyFilterState({ branchFilter: option.id })}
                       >
                         {option.label}
@@ -193,6 +199,9 @@ return (
                   key={day}
                   type="button"
                   className={`${selected ? "active" : ""} ${isToday ? "today" : ""}`}
+                  aria-label={`${day} · ${scheduleLoading ? "일정 확인 중" : `${count}경기`}`}
+                  aria-pressed={selected}
+                  aria-current={isToday ? "date" : undefined}
                   onClick={() => applyFilterState({
                     dateFilter: dateFilter === day ? "" : day,
                     calendarMonth: getMonthKey(day),
@@ -206,6 +215,10 @@ return (
               );
             })}
           </div>
+          <div className="ui-action-row">
+            <Button variant="secondary" size="sm" onClick={() => applyFilterState({ dateFilter: todayValue, calendarMonth: getMonthKey(todayValue) })}>오늘</Button>
+            {dateFilter ? <Button variant="secondary" size="sm" onClick={() => applyFilterState({ dateFilter: "" })}>날짜 선택 해제</Button> : null}
+          </div>
         </div>
           </section>
         ) : null}
@@ -218,15 +231,14 @@ return (
           </div>
           <div className="om-tournament-head-actions">
             <span>{activeTournaments.length}개</span>
+            <Button as={Link} to="/app/create?intent=tournament" size="sm"><PlusCircle size={16} /> 대회 만들기</Button>
           </div>
         </div>
         <div id="private-tournament-list" className="om-tournament-grid">
           {activeTournaments.length ? activeTournaments.map((tournament) => {
             const tournamentMatches = getTournamentMatches(tournament, matchesById, app.state.matches);
-            const teamRows = getTournamentTeamRows(tournament, teamById, userById, app.currentUser.id);
+            const tournamentState = getTournamentListStatus(tournament);
             const organizer = userById[tournament.createdBy] ?? null;
-            const acceptedCount = teamRows.filter((row) => row.status === "accepted").length;
-            const pendingRows = teamRows.filter((row) => row.status !== "accepted");
             return (
               <article key={tournament.id} className="om-tournament-card">
                 <div className="om-tournament-copy">
@@ -252,12 +264,13 @@ return (
                   <span>{tournament.mode}</span>
                   <span>{tournament.ranked === false ? "친선" : "정규"}</span>
                   <span>{tournamentMmrLabels[tournament.mmrPolicy] ?? "MMR 조건 확인"}</span>
-                  <strong>{acceptedCount}/{teamRows.length} 승인</strong>
+                  <strong>{tournamentState.teamApprovalLabel}</strong>
+                  {tournamentState.refereeApprovalLabel ? <strong>{tournamentState.refereeApprovalLabel}</strong> : null}
                   <strong>{tournamentMatches.length}경기</strong>
                 </div>
                 <div className="om-tournament-state">
-                  <span>{tournamentStatusLabels[tournament.status] ?? "상태 확인 중"}</span>
-                  <em>{pendingRows.length ? `${pendingRows.length}팀 승인 대기` : "참가 승인 완료"}</em>
+                  <span>{tournamentState.label}</span>
+                  {tournamentState.label !== tournamentState.approvalLabel ? <em>{tournamentState.approvalLabel}</em> : null}
                 </div>
                 <div className="om-tournament-actions">
                   <Button
@@ -354,9 +367,12 @@ return (
         <div className="section-title-row om-list-head">
           <div>
             <span className="eyebrow">{selectedView.code}</span>
-            <h2>{panelMode === "team" ? "내 팀 경기" : dateFilter ? `${selectedView.title} · ${formatDateLabel(dateFilter)}` : selectedView.title}</h2>
+            <h2>{dateFilter ? `${scheduleTitle} · ${formatDateLabel(dateFilter)}` : scheduleTitle}</h2>
           </div>
-          <span>{scheduleCountLabel}</span>
+          <div className="ui-action-row">
+            <span>{scheduleCountLabel}</span>
+            {hasScheduleFilters ? <Button variant="secondary" size="sm" onClick={clearScheduleFilters}>필터 초기화</Button> : null}
+          </div>
         </div>
 
         {scheduleError && !displayScheduleItems.length ? (
@@ -483,10 +499,12 @@ return (
           </div>
         ) : null}
           </>
-        ) : scheduleLoading ? null : (
+        ) : scheduleLoading ? (
+          <EmptyState tone="loading" title="일정을 불러오는 중" description="선택한 조건에 맞는 일정을 확인하고 있습니다." />
+        ) : (
           <EmptyState
             title="해당 일정 없음"
-            description="다른 상태를 선택하거나 새 경기를 만들어 보세요."
+            description={hasScheduleFilters ? "선택한 조건에 맞는 일정이 없습니다. 필터를 초기화해 다른 일정을 확인해 보세요." : "다른 상태를 선택하거나 새 경기를 만들어 보세요."}
           />
         )}
       </section> : null}
