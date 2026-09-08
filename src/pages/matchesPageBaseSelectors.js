@@ -78,7 +78,7 @@ export const CHILD_VIEW_IDS = ["todo", "scheduled"];
 
 export const VIEW_IDS = new Set(VIEWS.map((view) => view.id));
 
-export const PANEL_MODES = new Set(["schedule", "team", "tournament"]);
+export const PANEL_MODES = new Set(["schedule", "team", "tournament", "operations"]);
 
 export const RELATION_FILTER_IDS = new Set(["all", "created", "joined", "invited"]);
 

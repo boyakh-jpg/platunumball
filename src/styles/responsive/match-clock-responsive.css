@@ -44,6 +44,31 @@
     height: 100%;
   }
 
+  .ui-match-clock-panel-focus .ui-match-clock-scoreboard {
+    container-type: size;
+  }
+
+  .ui-match-clock-panel-focus .ui-match-clock-main-time {
+    gap: var(--space-1);
+  }
+
+  .ui-match-clock-panel-focus .ui-match-clock-main-time-label {
+    display: none;
+  }
+
+  .ui-match-clock-panel-focus .ui-match-clock-main-time time {
+    font-size: min(var(--match-clock-focus-time-size), 60cqh);
+  }
+
+  .ui-match-clock-panel-focus .ui-match-clock-team-score {
+    font-size: min(max(2.5rem, min(13vmin, 9cqi)), 60cqh);
+  }
+
+  .ui-match-clock-panel-focus .ui-match-clock-team-label,
+  .ui-match-clock-panel-focus .ui-match-clock-period {
+    font-size: min(clamp(var(--font-size-body), 5vmin, var(--font-size-section-title)), 18cqh);
+  }
+
   .ui-match-clock-panel-focus .ui-match-clock-device-tools .ui-button,
   .ui-match-clock-panel-focus .ui-match-clock-volume {
     height: 30px;

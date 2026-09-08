@@ -327,7 +327,7 @@ const location = useLocation();
   }, [dateFilter, personalBaseFilteredMatches]);
 
   const refreshScheduleFromServer = useCallback(async ({ force = false } = {}) => {
-    if (!app.remoteReady || !app.currentUser.id) return false;
+    if (!app.remoteReady || !app.currentUser.id || panelMode === "operations") return false;
     const now = Date.now();
     if (!force && now - lastScheduleRefreshAtRef.current < REMOTE_LIST_REFRESH_MIN_INTERVAL_MS) return false;
 

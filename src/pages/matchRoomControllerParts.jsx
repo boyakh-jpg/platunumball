@@ -150,8 +150,8 @@ export function createMatchRoomActions(context) {
       );
       if (!isCurrentScopedOperation(resultSaveOperationRef.current, operation, currentMatchIdRef.current)) return;
       setResultSaveFeedback(!response || response?.ok === false ? "경기 결과를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요." : canEditDisputeDraft ? "수정되었습니다." : "저장되었습니다.");
-    } catch {
-      if (isCurrentScopedOperation(resultSaveOperationRef.current, operation, currentMatchIdRef.current)) setResultSaveFeedback("경기 결과를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+    } catch (error) {
+      if (isCurrentScopedOperation(resultSaveOperationRef.current, operation, currentMatchIdRef.current)) setResultSaveFeedback(error?.userMessage || "경기 결과를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.");
     } finally {
       if (isCurrentScopedOperation(resultSaveOperationRef.current, operation, currentMatchIdRef.current)) {
         resultSaveOperationRef.current = null;

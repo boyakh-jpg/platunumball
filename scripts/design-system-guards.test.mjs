@@ -436,18 +436,15 @@ test("guest shell replaces the demo identity with login actions", () => {
   const guestAccessNotice = read("src/components/auth/GuestAccessNotice.jsx");
 
   assert.match(appShellSource, /<Sidebar[^>]*guestPreview=\{guestPreview\}/);
-  assert.match(appShellSource, /<BottomNav guestPreview=\{guestPreview\} unreadNotificationCount=\{unreadNotificationCount\} \/>/);
+  assert.match(appShellSource, /<BottomNav \/>/);
   assert.doesNotMatch(appShellSource, /guest-preview-bar/);
   assert.match(sidebar, /guestPreview \? \([\s\S]*?<strong>\{shellCopy\.signIn\}<\/strong>/);
-  assert.match(bottomNav, /<NavLink key=\{item\.to\} to=\{item\.to\}/);
-  assert.match(bottomNav, /<details ref=\{moreRef\} className="bottom-nav-more">/);
-  assert.match(bottomNav, /document\.addEventListener\("pointerdown", closeMoreOutside\)/);
-  assert.match(bottomNav, /!more\.contains\(event\.target\)[\s\S]*removeAttribute\("open"\)/);
-  assert.match(bottomNav, /<Ellipsis size=\{20\} \/>[\s\S]*?<span>\{shellCopy\.more\}<\/span>/);
-  assert.match(bottomNav, /to: "\/app\/profile", labelKey: "me"/);
-  assert.match(bottomNav, /to: "\/app\/teams", labelKey: "teams"/);
-  assert.match(bottomNav, /to: "\/app\/settings", labelKey: "settings"/);
-  assert.match(bottomNav, /closest\("details"\)\?\.removeAttribute\("open"\)/);
+  assert.match(bottomNav, /<PrimaryNavigationLinks \/>/);
+  assert.match(sidebar, /<PrimaryNavigationLinks className="nav-item" iconSize=\{18\} \/>/);
+  assert.doesNotMatch(bottomNav, /<details|moreRef|Ellipsis|bottom-nav-more/);
+  assert.match(appShellSource, /className="app-shell-tools"[\s\S]*?<Bell size=\{18\}/);
+  assert.match(appShellSource, /getLoginPath\(APP_NOTIFICATION_PATH\) : APP_NOTIFICATION_PATH/);
+  assert.match(appShellSource, /shellCopy\.unreadNotifications\(unreadNotificationCount\)/);
   assert.doesNotMatch(bottomNav, /isGuestProfile|getLoginPath|LogIn/);
   assert.match(appSource, /"\/app\/community"/);
   assert.match(appSource, /<GuestAccessNotice title="플레이는 로그인 후 확인할 수 있습니다"/);
@@ -455,8 +452,9 @@ test("guest shell replaces the demo identity with login actions", () => {
   assert.match(appSource, /<GuestAccessNotice title="설정은 로그인 후 확인할 수 있습니다"/);
   assert.match(
     appSource,
-    /path="\/app\/operations"[\s\S]*?<GuestAccessNotice[\s\S]*?title="운영은 로그인 후 확인할 수 있습니다"/,
+    /path="\/app\/operations" element=\{<LegacyOperationsRedirect \/>\}/,
   );
+  assert.match(appSource, /searchParams\.set\("panel", "operations"\)/);
   assert.match(guestAccessNotice, /showActions = true/);
   assert.match(guestAccessNotice, /action=\{showActions \? \(/);
   assert.doesNotMatch(appSource, /showActions=\{false\}/);

@@ -412,7 +412,7 @@ html[data-theme="light"] .om-calendar-filter-bar {
     align-content: start;
   }
 
-  .om-schedule-workspace > :is(.om-calendar-panel, .om-tournament-panel) {
+.om-schedule-workspace > :is(.om-calendar-panel, .om-tournament-panel, .operations-page) {
     grid-column: 2;
     grid-row: 1;
     min-width: 0;

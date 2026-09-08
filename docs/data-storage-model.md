@@ -731,3 +731,10 @@ Remaining:
 1. `operations` scope의 원본은 인증 사용자가 `created_by` 또는 `referee_id`인 `matches` row다. 미확정·진행 상태를 먼저 읽고 확정·취소·무효 상태를 이어 읽으며 `closed`는 제외한다. 개인·사후 기록방 제외와 상세 접근 권한은 기존 서버 projection을 유지한다.
 2. 각 응답은 최대 80개로 제한하며 상태 구간과 offset을 담은 cursor를 반환한다. 모든 페이지에서 동일한 인증 사용자 조건을 다시 적용하고 정렬은 `updated_at`, `id` 내림차순을 사용한다. 전체 경기를 무제한 읽거나 별도 운영 상태 테이블을 만들지 않는다.
 3. 브라우저의 scope별 목록 상태가 cursor와 불러온 ID를 소유한다. 추가 조회는 ID 중복을 제거해 병합하고 실패 시 이전 ID·cursor를 유지한다. 새로고침은 cursor를 초기화하고 첫 페이지로 교체한다.
+
+## 모바일 전광판 구간 점수 저장
+
+1. 구간 점수의 원본은 `match_results.period_scores`의 순서 있는 `[{label, scoreA, scoreB}]`다. 별도 전광판 점수 테이블이나 브라우저 저장 원본을 만들지 않는다. 규칙의 1·2·4구간 라벨과 단일 연장 `OT`를 사용한다.
+2. `20260908052745_match_live_period_score_deltas.sql`의 내부 helper와 기존 점수 증감·결과 제출 RPC가 canonical 총점 변경과 현재 구간 누적을 같은 트랜잭션으로 저장한다. 내부 helper는 외부 실행 권한을 열지 않는다. 진행 중 수동 `periodScores`는 무시하며 종료 후에는 기존 제출 권한과 합계 검증을 적용한다.
+3. 서버 경기시계가 없거나 유효하지 않거나, 이전 구간 합계 불일치·과거 구간 회귀·음수 구간이 생기면 총점 저장을 유지하고 구간 배열만 `[]`로 만든다. 총점이 그대로면 기존 구간 배열을 보존한다. JS 공용 helper와 SQL helper는 같은 경계값을 검증한다.
+4. 경기시계 API는 canonical `score.periodScores`와 파생된 `periodScoresNeedReview`를 반환한다. 브라우저는 이 응답으로 읽기 전용 요약을 갱신하며 확인 상태를 별도 DB 값으로 저장하지 않는다.

@@ -1,4 +1,5 @@
 import { MATCH_SIDES } from "../../../lib/constants.js";
+import { accumulateMatchPeriodScores } from "../../../../shared/lib/matchPeriodScores.js";
 import { SIDE_LABEL_TEXT } from "../../../lib/constants.js";
 import { getMatchOverlapConflict } from "../../../lib/matchUtils.js";
 import { getMatchManualFinalizationStatus, hasMatchFinalSubmission } from "../../../lib/matchUtils.js";
@@ -117,7 +118,8 @@ export function incrementMatchScore(state, matchId, deltaA = 0, deltaB = 0, revi
     ...result,
     scoreA,
     scoreB,
-    periodScores: [],
+    periodScores: live ? accumulateMatchPeriodScores(result.periodScores, match.rules, revisions.clock,
+      { scoreA: scoreA - deltaA, scoreB: scoreB - deltaB }, { scoreA: deltaA, scoreB: deltaB }) : [],
     playerStats: match.refereeId ? result.playerStats ?? {} : {},
     statSubmissions: match.refereeId ? result.statSubmissions ?? {} : {},
     scoreRevisionA: revisionA + (deltaA ? 1 : 0),

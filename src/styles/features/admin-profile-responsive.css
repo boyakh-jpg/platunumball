@@ -67,10 +67,6 @@
 }
 
 @media (max-width: 860px) {
-  .admin-section-tabs {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
   .admin-summary-grid,
   .admin-workbench,
   .admin-user-ops-workbench,
@@ -119,24 +115,6 @@
 }
 
 @media (max-width: 520px) {
-  .admin-section-tabs {
-    grid-template-columns: 1fr;
-    gap: var(--space-4);
-  }
-
-  .admin-section-group-options > button {
-    gap: var(--space-4);
-  }
-
-  .admin-section-group-options em {
-    display: none;
-  }
-
-  .admin-section-tab-icon {
-    width: 34px;
-    height: 34px;
-  }
-
   .admin-rating-field-grid,
   .admin-rating-save {
     grid-template-columns: 1fr;

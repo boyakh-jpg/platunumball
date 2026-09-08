@@ -16,6 +16,7 @@ import {
 } from "../src/lib/postgameRecordVerification.js";
 import { getApprovalStatus } from "../src/lib/matchUtils.js";
 import { SERVER_RATING_AUTHORITY } from "../server/lib/ratingAuthority.js";
+import { submitMatchResult } from "../src/data/repository/matches/resultSubmission.js";
 
 const submittedAt = "2026-07-23T00:00:00.000Z";
 const players = Array.from({ length: 14 }, (_item, index) => `player-${index + 1}`);
@@ -301,19 +302,45 @@ test("공식·내 기록 summary는 턴오버를 같은 표준 스탯으로 보�
   assert.doesNotMatch(migration, /delete\s+from|drop\s+table|truncate\s+table/i);
 });
 
-test("referee stat submissions preserve the authoritative team score", async () => {
-  const repository = await readSourceGroup(
-    (relativePath) => readFile(new URL(`../${relativePath}`, import.meta.url), "utf8"),
-    REPOSITORY_MATCHES_SOURCE_PATHS,
-  );
+test("종료 결과는 심판 PTS 합계 또는 무심판 전광판 총점을 유지한다", () => {
+  for (const hasReferee of [true, false]) {
+    const now = Date.now();
+    const match = {
+      id: "score-authority", status: "agreed", createdBy: "host",
+      refereeId: hasReferee ? "referee" : null,
+      startedAt: new Date(now - 60_000).toISOString(),
+      endedAt: new Date(now - 1_000).toISOString(),
+      teamA: { players: ["host"], score: 4 },
+      teamB: { players: ["guest"], score: 2 },
+      rules: { recordType: "match", periodCount: 4 },
+      result: { scoreA: 4, scoreB: 2 },
+    };
+    const state = {
+      currentUserId: hasReferee ? "referee" : "host",
+      users: [{ id: "host" }, { id: "referee", officialReferee: true }],
+      matches: [match], teams: [], notifications: [], settings: {},
+    };
+    const expectedScores = hasReferee ? [6, 3] : [4, 2];
+    const periodScores = [{ label: "1Q", scoreA: expectedScores[0], scoreB: expectedScores[1] }];
+    const updated = submitMatchResult(state, match.id, {
+      scoreA: 999, scoreB: 999,
+      playerStats: { host: { points: 6 }, guest: { points: 3 } },
+      periodScores,
+    }).matches[0];
+    assert.equal(updated.status, "approval");
+    assert.deepEqual([updated.result.scoreA, updated.result.scoreB], expectedScores);
+    assert.deepEqual(updated.result.periodScores, periodScores);
+    assert.deepEqual([updated.teamA.score, updated.teamB.score], expectedScores);
+    assert.ok(updated.result.finalSubmittedAt);
+  }
+});
+
+test("공유 기록 점수와 이의 수정 권한은 공용 정책을 따른다", async () => {
   const matchUtils = await readSourceGroup(
     (relativePath) => readFile(new URL(`../${relativePath}`, import.meta.url), "utf8"),
     SHARED_MATCH_SOURCE_PATHS,
   );
 
-  assert.match(repository, /matchRecordRoom \|\| refereeCanSubmitScores \? result\.scoreA : currentResult\?\.scoreA/);
-  assert.match(repository, /matchRecordRoom \|\| refereeCanSubmitScores \? result\.scoreB : currentResult\?\.scoreB/);
-  assert.doesNotMatch(repository, /const nextScoreA = getMergedResultScore/);
   assert.match(matchUtils, /const canEnterSharedRecordScore = Boolean/);
   assert.match(matchUtils, /match\.rules\?\.recordSetupReady === true/);
   assert.match(matchUtils, /match\.status === "disputed"[\s\S]*\? \[\]/);

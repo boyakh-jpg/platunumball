@@ -73,3 +73,34 @@ export function validateMatchPeriodScores(source = [], rules = {}, totals = {}) 
   }
   return { valid: true, periodScores: populated };
 }
+
+export function matchPeriodScoresNeedReview(source = [], rules = {}, totals = {}) {
+  const result = validateMatchPeriodScores(source, rules, totals);
+  return !result.valid || (!result.periodScores.length && (Number(totals.scoreA) > 0 || Number(totals.scoreB) > 0));
+}
+
+export function accumulateMatchPeriodScores(source = [], rules = {}, clock, totals = {}, delta = {}) {
+  if (Number(delta.scoreA ?? 0) === 0 && Number(delta.scoreB ?? 0) === 0) return Array.isArray(source) ? source : [];
+  const count = Number(rules?.periodCount);
+  const period = Number(clock?.currentPeriod);
+  const overtime = Number(clock?.overtimeCount ?? 0);
+  if (![1, 2, 4].includes(count)
+    || !["running", "paused", "break"].includes(clock?.status)
+    || !Number.isInteger(period) || period < 1 || period > count
+    || !Number.isInteger(overtime) || overtime < 0
+    || (overtime > 0 && period !== count)
+    || matchPeriodScoresNeedReview(source, rules, totals)) return [];
+
+  const currentIndex = overtime > 0 ? count : period - 1;
+  const previous = validateMatchPeriodScores(source, rules, totals).periodScores;
+  if (previous.length > currentIndex + 1) return [];
+  const rows = getMatchPeriodScoreLabels(rules).slice(0, currentIndex + 1).map((label, index) => (
+    previous[index] ?? { label, scoreA: 0, scoreB: 0 }
+  ));
+  const current = rows[currentIndex];
+  const scoreA = current.scoreA + Number(delta.scoreA ?? 0);
+  const scoreB = current.scoreB + Number(delta.scoreB ?? 0);
+  if (toNullableScore(scoreA) === null || toNullableScore(scoreB) === null) return [];
+  rows[currentIndex] = { ...current, scoreA, scoreB };
+  return rows;
+}

@@ -128,6 +128,9 @@ export function getMatchResultEntryPermission(match = {}, userId = "", options =
     canSubmitPostgame,
     canSubmitMissingPostgameResult,
     editableScoreSides,
+    editablePeriodScoreSides: match.endedAt && (canEditDisputeDraft || canSubmitPostgame || canEnterSharedRecordScore)
+      ? MATCH_SIDES
+      : [],
     editablePlayerIds,
     getEditableStatFields,
     operatorPostgamePoints,

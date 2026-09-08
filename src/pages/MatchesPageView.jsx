@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
-import { CalendarDays, ClipboardCheck, ChevronLeft, ChevronRight, PlusCircle, Trophy, UserRound, UsersRound } from "lucide-react";
+import { CalendarDays, ClipboardCheck, ChevronLeft, ChevronRight, ListChecks, PlusCircle, Trophy, UserRound, UsersRound } from "lucide-react";
+import OperationsCenter from "./OperationsCenter.jsx";
 import Button from "../components/common/Button.jsx";
 import EmptyState from "../components/common/EmptyState.jsx";
 import CourtHoverCard from "../components/court/CourtHoverCard.jsx";
@@ -45,6 +46,7 @@ export default function MatchesPageView({ controller }) {
   const hasScheduleFilters = Boolean(dateFilter || (panelMode !== "team" && (branchFilter !== "all" || relationFilter !== "all")));
   const clearScheduleFilters = () => applyFilterState({ branchFilter: "all", relationFilter: "all", dateFilter: "" });
   const scheduleTitle = panelMode === "team" ? "내 팀 경기" : selectedView.title;
+  const isCalendarPanel = panelMode === "schedule" || panelMode === "team";
 return (
     <div className="page-stack om-match-page">
       <section className="om-match-hero ui-page-hero ui-design-app-hero">
@@ -60,7 +62,7 @@ return (
         </div>
       </section>
 
-      <div className={panelMode === "tournament" ? "om-schedule-workspace" : "om-schedule-workspace is-calendar"}>
+      <div className={isCalendarPanel ? "om-schedule-workspace is-calendar" : "om-schedule-workspace"}>
         <aside className="om-schedule-rail">
           <section className="om-view-grid" aria-label="경기 상태">
             {VIEWS.map((view) => {
@@ -127,6 +129,19 @@ return (
           </span>
           <b>{activeTournaments.length}</b>
             </button>
+            <button
+              type="button"
+              className={panelMode === "operations" ? "om-view-card ui-design-filter-tile active" : "om-view-card ui-design-filter-tile"}
+              aria-pressed={panelMode === "operations"}
+              onClick={() => applyFilterState({ panelMode: "operations" })}
+            >
+              <span className="om-view-icon"><ListChecks size={22} /></span>
+              <span>
+                <small>HOST</small>
+                <strong>내가 운영</strong>
+                <em>방장·심판 할 일</em>
+              </span>
+            </button>
           </section>
 
           {panelMode === "schedule" ? (
@@ -166,7 +181,7 @@ return (
           ) : null}
         </aside>
 
-        {panelMode !== "tournament" ? (
+        {isCalendarPanel ? (
           <section className="om-calendar-panel" aria-label="경기 일정 캘린더">
         <div className="om-calendar-box">
           <div className="om-calendar-toolbar">
@@ -287,6 +302,9 @@ return (
           )}
         </div>
         </section> : null}
+        {panelMode === "operations" ? (
+          <OperationsCenter app={app} embedded onOpenMatch={openSelectedMatch} />
+        ) : null}
       </div>
 
       {attendanceQrFlow ? (
@@ -358,7 +376,7 @@ return (
         />
       ) : null}
 
-      {panelMode !== "tournament" ? <section className="om-match-list" aria-label="경기 목록">
+      {isCalendarPanel ? <section className="om-match-list" aria-label="경기 목록">
         <div className="section-title-row om-list-head">
           <div>
             <span className="eyebrow">{selectedView.code}</span>

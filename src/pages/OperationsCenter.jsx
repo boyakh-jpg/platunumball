@@ -31,7 +31,7 @@ const GROUPS = [
 ];
 
 const ROLE_LABELS = {
-  host: "주최자",
+  host: "방장",
   referee: "심판",
 };
 
@@ -124,7 +124,7 @@ function OperationsRow({ item, onOpen, onRepeat }) {
   );
 }
 
-export default function OperationsCenter({ app }) {
+export default function OperationsCenter({ app, embedded = false, onOpenMatch }) {
   const userId = app.currentUser?.id ?? "";
   const location = useLocation();
   const navigate = useNavigate();
@@ -219,6 +219,10 @@ export default function OperationsCenter({ app }) {
 
   const openMatch = (matchId) => {
     if (!matchId) return;
+    if (onOpenMatch) {
+      onOpenMatch(matchId);
+      return;
+    }
     navigate(`/app/matches?match=${encodeURIComponent(matchId)}`, {
       state: { matchModalReturnTo: `${location.pathname}${location.search}` },
     });
@@ -241,14 +245,16 @@ export default function OperationsCenter({ app }) {
 
   return (
     <div className="page-stack operations-page">
-      <header className="section-title-row">
-        <h1>경기 운영</h1>
-        {totalCount ? (
-          <Button type="button" variant="secondary" size="sm" disabled={refreshing} onClick={() => void refresh()}>
-            <RefreshCw size={16} /> {refreshing ? "확인 중" : "새로고침"}
-          </Button>
-        ) : null}
-      </header>
+      {!embedded ? (
+        <header className="section-title-row">
+          <h1>경기 운영</h1>
+          {totalCount ? (
+            <Button type="button" variant="secondary" size="sm" disabled={refreshing} onClick={() => void refresh()}>
+              <RefreshCw size={16} /> {refreshing ? "확인 중" : "새로고침"}
+            </Button>
+          ) : null}
+        </header>
+      ) : null}
 
       {refreshError && totalCount ? (
         <div className="operations-refresh-status" role="status" aria-live="polite">
@@ -283,19 +289,26 @@ export default function OperationsCenter({ app }) {
                 onChange={(event) => updateFilters({ q: event.target.value })}
               />
             </label>
-            <div className="ui-filter-row operations-filter" role="group" aria-label="운영 경기 필터">
-              {FILTERS.map((item) => (
-                <Button
-                  key={item.id}
-                  type="button"
-                  size="sm"
-                  variant={filter === item.id ? "primary" : "secondary"}
-                  aria-pressed={filter === item.id}
-                  onClick={() => updateFilters({ filter: item.id })}
-                >
-                  {item.label} {item.id === "all" ? searchCount : searchedItems[item.id].length}
+            <div className="operations-filter-toolbar">
+              <div className="ui-filter-row operations-filter" role="group" aria-label="운영 경기 필터">
+                {FILTERS.map((item) => (
+                  <Button
+                    key={item.id}
+                    type="button"
+                    size="sm"
+                    variant={filter === item.id ? "primary" : "secondary"}
+                    aria-pressed={filter === item.id}
+                    onClick={() => updateFilters({ filter: item.id })}
+                  >
+                    {item.label} {item.id === "all" ? searchCount : searchedItems[item.id].length}
+                  </Button>
+                ))}
+              </div>
+              {embedded ? (
+                <Button type="button" variant="secondary" size="sm" disabled={refreshing} onClick={() => void refresh()}>
+                  <RefreshCw size={16} /> {refreshing ? "확인 중" : "새로고침"}
                 </Button>
-              ))}
+              ) : null}
             </div>
           </div>
 

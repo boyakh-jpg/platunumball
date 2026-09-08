@@ -10,6 +10,8 @@ export default function MatchPeriodScoreFields({
   teamALabel = "TEAM A",
   teamBLabel = "TEAM B",
   disabled = false,
+  readOnly = false,
+  needsReview = false,
 }) {
   const periodScores = normalizeMatchPeriodScores(value, rules);
   const updateScore = (index, sideName, rawValue) => {
@@ -21,6 +23,24 @@ export default function MatchPeriodScoreFields({
         : item
     )));
   };
+
+  if (readOnly) {
+    return (
+      <fieldset className="match-period-score-fields">
+        <legend>구간별 점수</legend>
+        <table className="match-period-score-summary" aria-label="구간별 점수">
+          <thead><tr><th scope="col">팀</th>{periodScores.map(({ label }) => <th scope="col" key={label}>{label}</th>)}</tr></thead>
+          <tbody>
+            <tr><th scope="row">{teamALabel}</th>{periodScores.map((item) => <td key={item.label}>{item.scoreA ?? "—"}</td>)}</tr>
+            <tr><th scope="row">{teamBLabel}</th>{periodScores.map((item) => <td key={item.label}>{item.scoreB ?? "—"}</td>)}</tr>
+          </tbody>
+        </table>
+        <small>{needsReview
+          ? "구간별 점수 확인이 필요합니다. 경기 종료 후 방장·심판이 최종 기록에서 수정할 수 있습니다."
+          : "전광판 점수를 구간별로 자동 기록합니다. 종료 후 최종 기록에서 수정할 수 있습니다."}</small>
+      </fieldset>
+    );
+  }
 
   return (
     <fieldset className="match-period-score-fields">
@@ -53,7 +73,7 @@ export default function MatchPeriodScoreFields({
           />
         </div>
       ))}
-      <small>구간별 합계는 최종 점수와 같아야 합니다. 입력하지 않아도 저장할 수 있습니다.</small>
+      <small>자동 기록된 구간별 점수를 확인하고 필요할 때 수정하세요. 합계는 최종 점수와 같아야 합니다.</small>
     </fieldset>
   );
 }

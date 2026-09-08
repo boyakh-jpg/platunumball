@@ -246,6 +246,7 @@ export default function MatchRoomView({ controller }) {
                 match={match}
                 label="최종 팀 점수"
                 editableScoreSides={resultEntryPermission.editableScoreSides}
+                disabled={resultSavePending}
                 onIncrementScore={(sideName, delta, revisions) => app.actions.incrementMatchScore?.(
                   match.id,
                   sideName === "teamA" ? delta : 0,
@@ -277,7 +278,9 @@ export default function MatchRoomView({ controller }) {
               <MatchPeriodScoreFields
                 rules={match.rules}
                 value={score.periodScores}
-                editableScoreSides={resultEntryPermission.editableScoreSides}
+                editableScoreSides={resultEntryPermission.editablePeriodScoreSides}
+                readOnly={!resultEntryPermission.editablePeriodScoreSides.length}
+                disabled={resultSavePending}
                 teamALabel={teamASide.name}
                 teamBLabel={teamBSide.name}
                 onChange={(periodScores) => setScore((current) => ({ ...current, periodScores }))}
@@ -376,6 +379,26 @@ export default function MatchRoomView({ controller }) {
                     })}
                   </div>
                 )}
+                <form className="score-form" onSubmit={submitResult}>
+                  <MatchPeriodScoreFields
+                    rules={match.rules}
+                    value={score.periodScores}
+                    editableScoreSides={resultEntryPermission.editablePeriodScoreSides}
+                    readOnly={!resultEntryPermission.editablePeriodScoreSides.length}
+                    disabled={resultSavePending}
+                    teamALabel={teamASide.name}
+                    teamBLabel={teamBSide.name}
+                    onChange={(periodScores) => setScore((current) => ({ ...current, periodScores }))}
+                  />
+                  {resultEntryPermission.editablePeriodScoreSides.length ? (
+                    <div className="match-action-row stat-entry-actions">
+                      <Button type="submit" disabled={!canSubmitResult || resultSavePending}>
+                        {resultSavePending ? "저장 중" : "최종 기록 제출"}
+                      </Button>
+                    </div>
+                  ) : null}
+                  {resultSaveFeedback ? <div className="stat-save-feedback" role="status">{resultSaveFeedback}</div> : null}
+                </form>
                 {canFinalizeMatch ? <Button type="button" disabled={finalizeActionPending} onClick={requestFinalizeMatch}>{finalizeActionPending ? "승인 중" : "최종 승인"}</Button> : null}
                 {isSoloRecord && finalizeActionError ? <small role="status" className="form-warning">{finalizeActionError}</small> : null}
               </Card>

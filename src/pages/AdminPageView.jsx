@@ -101,6 +101,9 @@ export default function AdminPageView({ controller }) {
     commitSelectedAction,
     commitAppointmentAction,
   } = controller;
+  const activeGroup = sectionOptions.find((option) => option.id === section)?.group;
+  const activeGroupOptions = sectionOptions.filter((option) => option.group === activeGroup);
+  const navigationPending = reviewActionPending || reportOperationPending || appointmentActionPending;
 
   if (!canAdmin && (!app.adminStatus?.loaded || app.adminStatus?.loading)) {
     return (
@@ -108,7 +111,6 @@ export default function AdminPageView({ controller }) {
         <Card className="section-card admin-denied-card">
           <div className="section-title-row">
             <div>
-              <p className="eyebrow">Admin</p>
               <h1>관리자 권한 확인 중</h1>
             </div>
             <ShieldCheck size={22} />
@@ -124,7 +126,6 @@ export default function AdminPageView({ controller }) {
         <Card className="section-card admin-denied-card">
           <div className="section-title-row">
             <div>
-              <p className="eyebrow">Admin</p>
               <h1>관리자 권한 없음</h1>
             </div>
             <ShieldCheck size={22} />
@@ -138,40 +139,47 @@ export default function AdminPageView({ controller }) {
     <div className="page-stack admin-page">
       <header className="page-header ui-page-hero ui-design-app-hero">
         <div className="ui-page-hero__copy">
-          <p className="eyebrow">Admin Console</p>
           <h1>관리자 메뉴</h1>
         </div>
         <Badge tone="team">관리자</Badge>
       </header>
 
       <nav className="admin-section-tabs" aria-label="관리자 업무">
-        {ADMIN_SECTION_GROUPS.map((group) => (
-          <section className="admin-section-group" key={group} aria-labelledby={`admin-group-${group}`}>
-            <h2 id={`admin-group-${group}`}>{group}</h2>
-            <div className="admin-section-group-options">
-              {sectionOptions.filter((option) => option.group === group).map((option) => {
-                const Icon = option.icon;
-                return (
-                  <Button
-                    key={option.id}
-                    type="button"
-                    variant={section === option.id ? "primary" : "secondary"}
-                    aria-current={section === option.id ? "page" : undefined}
-                    disabled={reviewActionPending || reportOperationPending || appointmentActionPending}
-                    onClick={() => changeSection(option.id)}
-                  >
-                    <span className="admin-section-tab-icon"><Icon size={19} /></span>
-                    <span>
-                      <strong>{option.label}</strong>
-                      <em>{option.caption}</em>
-                    </span>
-                    {sectionCounts[option.id] === "" ? null : <b>{sectionCounts[option.id] ?? 0}</b>}
-                  </Button>
-                );
-              })}
-            </div>
-          </section>
-        ))}
+        <div className="ui-filter-row" role="group" aria-label="관리자 업무 그룹">
+          {ADMIN_SECTION_GROUPS.map((group) => {
+            const firstOption = sectionOptions.find((option) => option.group === group);
+            return firstOption ? (
+              <Button
+                key={group}
+                type="button"
+                size="sm"
+                variant={activeGroup === group ? "primary" : "secondary"}
+                aria-pressed={activeGroup === group}
+                disabled={navigationPending}
+                onClick={() => { if (activeGroup !== group) changeSection(firstOption.id); }}
+              >
+                {group}
+              </Button>
+            ) : null;
+          })}
+        </div>
+        {activeGroupOptions.length > 1 ? (
+          <div className="ui-filter-row" role="group" aria-label={`${activeGroup} 업무`}>
+            {activeGroupOptions.map((option) => (
+              <Button
+                key={option.id}
+                type="button"
+                size="sm"
+                variant={section === option.id ? "primary" : "secondary"}
+                aria-current={section === option.id ? "page" : undefined}
+                disabled={navigationPending}
+                onClick={() => changeSection(option.id)}
+              >
+                {option.label}{sectionCounts[option.id] === "" ? "" : ` ${sectionCounts[option.id] ?? 0}`}
+              </Button>
+            ))}
+          </div>
+        ) : null}
       </nav>
 
       {section === "operations" ? (
@@ -191,7 +199,6 @@ export default function AdminPageView({ controller }) {
           <Card className="section-card">
           <div className="section-title-row">
             <div>
-              <p className="eyebrow">Pending Queue</p>
               <h2>{workflow.queueTitle}</h2>
             </div>
             <Badge tone="blue">{activeRows.length}건</Badge>

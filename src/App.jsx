@@ -6,6 +6,7 @@ import GuestAccessNotice from "./components/auth/GuestAccessNotice.jsx";
 import BasketballLoader from "./components/common/BasketballLoader.jsx";
 import LandingLoading from "./components/common/LandingLoading.jsx";
 import AppShell from "./components/layout/AppShell.jsx";
+import ProfileNavigation from "./components/profile/ProfileNavigation.jsx";
 import PublicShell from "./components/layout/PublicShell.jsx";
 import { useAuthSession } from "./hooks/useAuthSession.js";
 import { useAppData } from "./hooks/useAppData.js";
@@ -29,7 +30,6 @@ const Login = lazy(() => import("./pages/Login.jsx"));
 const Matches = lazy(() => import("./pages/Matches.jsx"));
 const Notifications = lazy(() => import("./pages/Notifications.jsx"));
 const NotFound = lazy(() => import("./pages/NotFound.jsx"));
-const OperationsCenter = lazy(() => import("./pages/OperationsCenter.jsx"));
 const OAuthConsent = lazy(() => import("./pages/OAuthConsent.jsx"));
 const PlayerDetail = lazy(() => import("./pages/PlayerDetail.jsx"));
 const RefereeDetail = lazy(() => import("./pages/RefereeDetail.jsx"));
@@ -91,6 +91,13 @@ export function isGuestPublicAppPath(pathname = "") {
   const normalizedPathname = pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname;
   return GUEST_PUBLIC_APP_PATHS.has(normalizedPathname)
     || GUEST_PUBLIC_APP_PREFIXES.some((prefix) => normalizedPathname.startsWith(prefix));
+}
+
+function LegacyOperationsRedirect() {
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  searchParams.set("panel", "operations");
+  return <Navigate to={{ pathname: "/app/matches", search: `?${searchParams}`, hash: location.hash }} state={location.state} replace />;
 }
 
 function LegacyMatchRoomRedirect() {
@@ -274,18 +281,16 @@ export default function App() {
             <Route path="/app/players/:playerId" element={<PlayerDetail app={app} />} />
             <Route path="/app/referees/:refereeId" element={<RefereeDetail app={app} />} />
             <Route path="/app/profile" element={guestPreview ? (
-              <GuestAccessNotice title="내 정보는 로그인 후 확인할 수 있습니다" description="로그인하면 프로필, 랭크, 업적과 경기 기록을 불러옵니다." />
+              <div className="page-stack">
+                <ProfileNavigation app={app} guestPreview />
+                <GuestAccessNotice title="내 정보는 로그인 후 확인할 수 있습니다" description="로그인하면 프로필, 랭크, 업적과 경기 기록을 불러옵니다." />
+              </div>
             ) : <Profile app={app} />} />
             <Route path="/app/profile/achievements" element={<ProfileAchievements app={app} />} />
             <Route path="/app/profile/records" element={<ProfileRecords app={app} />} />
             <Route path="/app/affiliations" element={<Affiliations app={app} />} />
             <Route path="/app/notifications" element={<Notifications app={app} />} />
-            <Route path="/app/operations" element={guestPreview ? (
-              <GuestAccessNotice
-                title="운영은 로그인 후 확인할 수 있습니다"
-                description="로그인하면 내가 주최하거나 심판을 맡은 경기의 다음 할 일을 불러옵니다."
-              />
-            ) : <OperationsCenter app={app} />} />
+            <Route path="/app/operations" element={<LegacyOperationsRedirect />} />
             <Route path="/app/admin" element={<RequireAdmin app={app}><Admin app={app} /></RequireAdmin>} />
             <Route path="/app/settings" element={guestPreview ? (
               <GuestAccessNotice title="설정은 로그인 후 확인할 수 있습니다" description="로그인하면 계정, 화면, 구장과 연동 설정을 불러옵니다." />

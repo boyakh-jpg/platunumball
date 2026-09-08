@@ -144,6 +144,86 @@ test("무심판 경기 방장은 canonical 점수만 명시 제출하고 +/-는 
   assert.equal(submission.scoreB, 4);
 });
 
+test("종료 후 쿼터 수정은 무심판 방장·배정 심판에게만 열리고 확정 후 잠긴다", () => {
+  const match = makeMatch({ reservePlayers: { teamA: ["reserve"], teamB: [] } });
+  const now = "2026-08-21T00:02:00.000Z";
+  const scenarios = [
+    { match, userId: "host", canOperatePostStart: true, allowed: true },
+    { match, userId: "guest", canOperatePostStart: false, allowed: false },
+    { match, userId: "reserve", canOperatePostStart: false, allowed: false },
+    { match: { ...match, refereeId: "referee" }, userId: "referee", canOperatePostStart: true, allowed: true },
+    { match: { ...match, refereeId: "referee" }, userId: "host", canOperatePostStart: false, allowed: false },
+    { match: { ...match, refereeId: "referee" }, userId: "guest", canOperatePostStart: false, allowed: false },
+    { match: { ...match, refereeId: "referee" }, userId: "reserve", canOperatePostStart: false, allowed: false },
+  ];
+  for (const scenario of scenarios) {
+    const options = { now, canOperatePostStart: scenario.canOperatePostStart };
+    const permission = getMatchResultEntryPermission(scenario.match, scenario.userId, options);
+    const label = `${scenario.match.refereeId ? "심판 경기" : "무심판 경기"} ${scenario.userId}`;
+    assert.equal(permission.canSubmitPostgame, scenario.allowed, label);
+    assert.deepEqual(permission.editablePeriodScoreSides, scenario.allowed ? ["teamA", "teamB"] : [], label);
+    for (const confirmation of [{ status: "confirmed" }, { confirmedAt: now }]) {
+      const confirmed = getMatchResultEntryPermission({ ...scenario.match, ...confirmation }, scenario.userId, options);
+      assert.equal(confirmed.canSubmitPostgame, false, `${label} 확정`);
+      assert.deepEqual(confirmed.editablePeriodScoreSides, [], `${label} 확정`);
+    }
+  }
+});
+
+test("실시간 심판 기록 제출은 이전 쿼터 입력을 검증·덮어쓰기하지 않는다", () => {
+  const stalePeriods = [{ label: "1Q", scoreA: 90, scoreB: 80 }];
+  const match = makeMatch({
+    endedAt: null,
+    refereeId: "referee",
+    rules: { recordType: "match", periodCount: 4 },
+    result: { ...makeMatch().result, periodScores: stalePeriods },
+  });
+  const options = { now: "2026-08-20T23:05:00.000Z", canOperatePostStart: true };
+  const referee = getMatchResultEntryPermission(match, "referee", options);
+  assert.equal(referee.canSubmitLive, true);
+  assert.deepEqual(referee.editablePeriodScoreSides, []);
+  const noRefHost = getMatchResultEntryPermission({ ...match, refereeId: null }, "host", options);
+  assert.deepEqual(noRefHost.editablePeriodScoreSides, []);
+
+  for (const periodScores of [stalePeriods, [{ label: "invalid", scoreA: -1 }]]) {
+    const submission = buildMatchResultSubmission(
+      match,
+      { scoreA: 6, scoreB: 5, periodScores, playerStats: { host: { points: 6 }, guest: { points: 5 } } },
+      referee.getEditableStatFields,
+      { editableScoreSides: referee.editableScoreSides },
+    );
+    assert.equal(submission.scoreA, 6);
+    assert.equal(submission.scoreB, 5);
+    assert.equal(Object.hasOwn(submission, "periodScores"), false);
+    assert.equal(submission.playerStats.host.points, 6);
+    assert.equal(submission.playerStats.guest.points, 5);
+  }
+  assert.deepEqual(match.result.periodScores, stalePeriods);
+});
+
+test("종료 후 무심판 쿼터 제출은 canonical 팀 점수에 맞춰 검증한다", () => {
+  const match = makeMatch({ rules: { recordType: "match", periodCount: 4 } });
+  const permission = getMatchResultEntryPermission(match, "host", {
+    now: "2026-08-21T00:02:00.000Z",
+    canOperatePostStart: true,
+  });
+  const periodScores = [
+    { label: "1Q", scoreA: 1, scoreB: 2 },
+    { label: "2Q", scoreA: 3, scoreB: 2 },
+  ];
+  const options = { editableScoreSides: permission.editableScoreSides, preserveCanonicalScores: true };
+  const draft = { scoreA: 0, scoreB: 0, playerStats: { host: { points: 0 }, guest: { points: 0 } }, periodScores };
+  const submission = buildMatchResultSubmission(match, draft, permission.getEditableStatFields, options);
+  assert.equal(submission.scoreA, 4);
+  assert.equal(submission.scoreB, 4);
+  assert.deepEqual(submission.playerStats, {});
+  assert.deepEqual(submission.periodScores, periodScores);
+  assert.throws(
+    () => buildMatchResultSubmission(match, { ...draft, periodScores: [periodScores[0]] }, permission.getEditableStatFields, options),
+    (error) => error.message === "invalid_match_period_scores" && Boolean(error.userMessage),
+  );
+});
+
 test("SQL은 legacy 결과만 backfill하고 terminal 경기를 재활성화하지 않는다", async () => {
   const source = await readSource("supabase/migrations/20260821150000_explicit_match_final_submission_and_recorder_page.sql");
   const wrapperStart = source.indexOf("create or replace function public.rankball_match_result_action(");

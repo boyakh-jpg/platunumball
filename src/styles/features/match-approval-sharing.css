@@ -88,6 +88,22 @@
   color: var(--muted);
   line-height: 1.45;
 }
+.match-period-score-summary {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: var(--font-size-meta);
+  font-variant-numeric: tabular-nums;
+}
+.match-period-score-summary th,
+.match-period-score-summary td {
+  padding: var(--space-2) 0;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.match-period-score-summary th {
+  color: var(--muted);
+}
 .arena-dispute-editor > .match-period-score-fields {
   margin-top: var(--space-4);
 }

@@ -1,3 +1,15 @@
+.ui-match-clock-score-display {
+  display: grid;
+  grid-area: score;
+  gap: var(--space-3);
+  min-width: 0;
+  min-height: 0;
+}
+
+.ui-match-clock-score-display .ui-match-clock-scoreboard {
+  grid-area: auto;
+}
+
 .ui-match-clock-break-over strong {
   color: var(--rb-danger);
 }
@@ -179,13 +191,39 @@
   display: contents;
 }
 
-.ui-match-clock-panel-focus .ui-match-clock-scoreboard {
+.ui-match-clock-panel-focus .ui-match-clock-score-display {
   grid-column: 1 / -1;
   grid-row: 1;
+  grid-template-rows: minmax(0, 1fr) max-content;
+  gap: var(--match-clock-focus-gap);
+  height: 100%;
+}
+
+.ui-match-clock-panel-focus .ui-match-clock-scoreboard {
   align-self: center;
   height: 100%;
   max-height: var(--match-clock-focus-scoreboard-height);
   min-height: 0;
+}
+
+.ui-match-clock-panel-focus .ui-match-clock-period-scores .match-period-score-fields {
+  gap: var(--space-1);
+  padding: 0;
+  border: 0;
+}
+
+.ui-match-clock-panel-focus .ui-match-clock-period-scores legend,
+.ui-match-clock-panel-focus .ui-match-clock-period-scores:not(.ui-match-clock-period-scores-needs-review) small {
+  display: none;
+}
+
+.ui-match-clock-panel-focus .ui-match-clock-period-scores .match-period-score-summary,
+.ui-match-clock-panel-focus .ui-match-clock-period-scores small {
+  font-size: var(--font-size-caption);
+}
+
+.ui-match-clock-panel-focus .ui-match-clock-period-scores :is(th, td) {
+  padding-block: var(--space-1);
 }
 
 .ui-match-clock-panel-focus .ui-match-clock-attendance-qr,

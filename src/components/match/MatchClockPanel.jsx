@@ -14,6 +14,7 @@ import {
   playMatchClockBuzzer,
 } from "../../lib/matchClockAudio.js";
 import { hasMatchScoreboardOperators } from "../../lib/matchUtils.js";
+import { matchPeriodScoresNeedReview } from "../../../shared/lib/matchPeriodScores.js";
 import "../../styles/match-clock.css";
 import MatchClockPanelView from "./MatchClockPanelView.jsx";
 import useMatchClockRequests from "./useMatchClockRequests.js";
@@ -90,10 +91,12 @@ export default function MatchClockPanel({
     const nextScoreB = Number(match?.result?.scoreB ?? match?.teamB?.score);
     if (!Number.isFinite(nextScoreA) || !Number.isFinite(nextScoreB)) return;
     setScore((current) => {
-      if (current.a === nextScoreA && current.b === nextScoreB) return current;
-      return { ...current, a: nextScoreA, b: nextScoreB };
+      return { ...current, a: nextScoreA, b: nextScoreB, periodScores: match?.result?.periodScores ?? [],
+        revisionA: Number(match?.result?.scoreRevisionA ?? current.revisionA),
+        revisionB: Number(match?.result?.scoreRevisionB ?? current.revisionB) };
     });
-  }, [match?.result?.scoreA, match?.result?.scoreB, match?.teamA?.score, match?.teamB?.score]);
+  }, [match?.result?.scoreA, match?.result?.scoreB, match?.result?.periodScores,
+    match?.result?.scoreRevisionA, match?.result?.scoreRevisionB, match?.teamA?.score, match?.teamB?.score]);
 
   const runAction = useCallback(async (action, payload = {}) => {
     if (!match?.id || pendingAction) return false;
@@ -128,6 +131,7 @@ export default function MatchClockPanel({
         expectedRevisionA: score.revisionA,
         expectedRevisionB: score.revisionB,
         clockController: controllerCanEditScores,
+        clock: snapshot,
       });
       if (!clockRequests.isCurrent(requestId, requestMatchId)) return;
       if (response?.scoreA != null && response?.scoreB != null) {
@@ -137,8 +141,10 @@ export default function MatchClockPanel({
           b: Number(response.scoreB),
           revisionA: Number(response.scoreRevisionA ?? current.revisionA),
           revisionB: Number(response.scoreRevisionB ?? current.revisionB),
+          periodScores: response.periodScores ?? current.periodScores,
         }));
-      } else {
+      }
+      if (!Array.isArray(response?.periodScores)) {
         const refreshed = await clockClient(match.id, "read").catch(() => null);
         if (refreshed && clockRequests.isCurrent(requestId, requestMatchId)) applyResponse(refreshed);
       }
@@ -151,7 +157,7 @@ export default function MatchClockPanel({
     } finally {
       if (clockRequests.finishMutation(requestId)) setScorePendingSide("");
     }
-  }, [applyResponse, clockClient, controllerCanEditScores, editableScoreSides, match.id, onIncrementScore, score.revisionA, score.revisionB, scorePendingSide]);
+  }, [applyResponse, clockClient, controllerCanEditScores, editableScoreSides, match.id, onIncrementScore, score.revisionA, score.revisionB, scorePendingSide, snapshot]);
 
   useEffect(() => {
     configurationDirtyRef.current = false;
@@ -180,8 +186,9 @@ export default function MatchClockPanel({
   const regulationEnded = isBreak && liveClock.currentPeriod >= liveClock.expectedPeriodCount;
   const visibleScore = displayScoreA != null && displayScoreB != null
     && Number.isFinite(Number(displayScoreA)) && Number.isFinite(Number(displayScoreB))
-    ? { ...score, a: Number(displayScoreA), b: Number(displayScoreB) }
-    : score;
+    ? { ...score, a: Number(displayScoreA), b: Number(displayScoreB),
+      periodScoresNeedReview: matchPeriodScoresNeedReview(score.periodScores, match.rules, { scoreA: score.a, scoreB: score.b }) }
+    : { ...score, periodScoresNeedReview: matchPeriodScoresNeedReview(score.periodScores, match.rules, { scoreA: score.a, scoreB: score.b }) };
   const tied = visibleScore.a === visibleScore.b;
   const deadlineRemainingMs = Math.max(0, Date.parse(liveClock?.startDeadlineAt || "") - nowMs);
   const scoreboardEnabled = hasMatchScoreboardOperators(match);

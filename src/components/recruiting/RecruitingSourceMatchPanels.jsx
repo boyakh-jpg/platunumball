@@ -263,6 +263,7 @@ export function SourceMatchDisputeEditor({
   onDraftScoreChange = null,
   getEditableStatFields = null,
   editableScoreSides = [],
+  editablePeriodScoreSides = [],
   submitLabel = "",
 }) {
   const [draft, setDraft] = useState(() => makeSourceMatchDraft(match));
@@ -277,10 +278,10 @@ export function SourceMatchDisputeEditor({
   useEffect(() => {
     if (!match || typeof onDraftScoreChange !== "function") return;
     onDraftScoreChange({
-      scoreA: getMergedResultScore(match, draft.playerStats, "teamA", 0),
-      scoreB: getMergedResultScore(match, draft.playerStats, "teamB", 0),
+      scoreA: match.refereeId ? getMergedResultScore(match, draft.playerStats, "teamA", 0) : draft.scoreA,
+      scoreB: match.refereeId ? getMergedResultScore(match, draft.playerStats, "teamB", 0) : draft.scoreB,
     });
-  }, [draft.playerStats, match, onDraftScoreChange]);
+  }, [draft.playerStats, draft.scoreA, draft.scoreB, match, onDraftScoreChange]);
 
   if (!match) return null;
   const hasResult = Boolean(match.result);
@@ -292,11 +293,17 @@ export function SourceMatchDisputeEditor({
         ? getEditableStatFields(playerId) ?? []
         : []
   );
-  const getDerivedScore = (sideName) => getMergedResultScore(match, draft.playerStats, sideName, 0);
-  const getDerivedDraft = () => buildMatchResultSubmission(match, draft, getEditableFieldsForPlayer, { editableScoreSides });
+  const getDerivedScore = (sideName) => match.refereeId
+    ? getMergedResultScore(match, draft.playerStats, sideName, 0)
+    : draft[sideName === "teamA" ? "scoreA" : "scoreB"];
+  const getDerivedDraft = () => buildMatchResultSubmission(match, draft, getEditableFieldsForPlayer, {
+    editableScoreSides,
+    preserveCanonicalScores: !match.refereeId,
+  });
   const canSaveDraft = (
     canReview ||
     editableScoreSides.length > 0 ||
+    editablePeriodScoreSides.length > 0 ||
     sideNames
       .flatMap((sideName) => getMatchSideRecordPlayerIds(match, sideName))
       .some((playerId) => getEditableFieldsForPlayer(playerId).length > 0)
@@ -311,8 +318,8 @@ export function SourceMatchDisputeEditor({
       if (result === false || result?.ok === false) {
         setSaveError("경기 기록을 저장하지 못했습니다. 입력을 유지했으니 다시 시도해 주세요.");
       }
-    } catch {
-      setSaveError("경기 기록을 저장하지 못했습니다. 입력을 유지했으니 다시 시도해 주세요.");
+    } catch (error) {
+      setSaveError(error?.userMessage || "경기 기록을 저장하지 못했습니다. 입력을 유지했으니 다시 시도해 주세요.");
     } finally {
       savePendingRef.current = false;
       setSavePending(false);
@@ -364,7 +371,7 @@ export function SourceMatchDisputeEditor({
             value={editableScoreSides.includes("teamA") ? draft.scoreA : getDerivedScore("teamA")}
             onChange={(event) => updateTeamScore("teamA", event.target.value)}
           />
-          <small>개인 PTS 합계 {getDerivedScore("teamA")}</small>
+          <small>{match.refereeId ? "개인 PTS 합계" : "팀 점수"} {getDerivedScore("teamA")}</small>
         </label>
         <strong>:</strong>
         <label>
@@ -378,13 +385,14 @@ export function SourceMatchDisputeEditor({
             value={editableScoreSides.includes("teamB") ? draft.scoreB : getDerivedScore("teamB")}
             onChange={(event) => updateTeamScore("teamB", event.target.value)}
           />
-          <small>개인 PTS 합계 {getDerivedScore("teamB")}</small>
+          <small>{match.refereeId ? "개인 PTS 합계" : "팀 점수"} {getDerivedScore("teamB")}</small>
         </label>
       </div>
       <MatchPeriodScoreFields
         rules={match.rules}
         value={draft.periodScores}
-        editableScoreSides={editableScoreSides}
+        editableScoreSides={editablePeriodScoreSides}
+        readOnly={!editablePeriodScoreSides.length}
         teamALabel={match.teamA?.name ?? "TEAM A"}
         teamBLabel={match.teamB?.name ?? "TEAM B"}
         disabled={savePending}

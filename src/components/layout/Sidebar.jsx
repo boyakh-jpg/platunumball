@@ -1,4 +1,4 @@
-import { Bell, CalendarDays, ClipboardList, Handshake, House, ListChecks, LogIn, MessageSquareText, Settings, Trophy, UserRound, UsersRound } from "lucide-react";
+import { LogIn } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import BrandLockup from "../common/BrandLockup.jsx";
 import PlayerHoverCard from "../profile/PlayerHoverCard.jsx";
@@ -9,22 +9,9 @@ import { getUserHashtag } from "../../lib/handles.js";
 import { DEFAULT_RATING, getTestAccountDisplayLabel } from "../../lib/constants.js";
 import { getLoginPath } from "../../lib/profileSetup.js";
 import { getReceiptLocale, RECEIPT_SHELL_COPY } from "../../lib/receiptLocale.js";
+import PrimaryNavigationLinks from "./PrimaryNavigationLinks.jsx";
 
-const navItems = [
-  { to: "/app", labelKey: "home", icon: House },
-  { to: "/app/notifications", labelKey: "notifications", icon: Bell, authenticatedOnly: true },
-  { to: "/app/matches", labelKey: "schedule", icon: CalendarDays },
-  { to: "/app/recruiting", labelKey: "matching", icon: Handshake },
-  { to: "/app/recorder", labelKey: "play", icon: ClipboardList },
-  { to: "/app/operations", labelKey: "operations", icon: ListChecks, authenticatedOnly: true },
-  { to: "/app/teams", labelKey: "teams", icon: UsersRound },
-  { to: "/app/community", labelKey: "community", icon: MessageSquareText },
-  { to: "/app/rankings", labelKey: "rankings", icon: Trophy },
-  { to: "/app/profile", labelKey: "me", icon: UserRound },
-  { to: "/app/settings", labelKey: "settings", icon: Settings },
-];
-
-export default function Sidebar({ user, teams = [], auth, guestPreview = false, unreadNotificationCount = 0 }) {
+export default function Sidebar({ user, teams = [], auth, guestPreview = false }) {
   const location = useLocation();
   const shellCopy = RECEIPT_SHELL_COPY[getReceiptLocale(location)];
   const safeUser = user ?? {};
@@ -39,20 +26,7 @@ export default function Sidebar({ user, teams = [], auth, guestPreview = false, 
         <BrandLockup />
       </NavLink>
       <nav className="sidebar-nav" aria-label={shellCopy.primaryNavigation}>
-        {navItems.filter((item) => !item.authenticatedOnly || !guestPreview).map((item) => {
-          const Icon = item.icon;
-          const isNotifications = item.to === "/app/notifications";
-          const accessibleLabel = isNotifications && unreadNotificationCount
-            ? shellCopy.unreadNotifications(unreadNotificationCount)
-            : undefined;
-          return (
-            <NavLink key={item.to} to={item.to} end={item.to === "/app"} className={`nav-item${isNotifications ? " app-notification-nav" : ""}`} aria-label={accessibleLabel}>
-              <Icon size={18} />
-              <span>{shellCopy[item.labelKey]}</span>
-              {isNotifications && unreadNotificationCount ? <b className="app-notification-badge" aria-hidden="true">{unreadNotificationCount > 99 ? "99+" : unreadNotificationCount}</b> : null}
-            </NavLink>
-          );
-        })}
+        <PrimaryNavigationLinks className="nav-item" iconSize={18} />
       </nav>
       {guestPreview ? (
         <NavLink to={loginPath} className="sidebar-profile">

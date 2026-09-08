@@ -1,11 +1,18 @@
 import { useEffect } from "react";
-import { Outlet } from "react-router-dom";
+import { Bell } from "lucide-react";
+import { Link, Outlet, useLocation } from "react-router-dom";
 import BasketballLoader from "../common/BasketballLoader.jsx";
+import Button from "../common/Button.jsx";
 import BottomNav from "./BottomNav.jsx";
 import DataAttribution from "./DataAttribution.jsx";
 import Sidebar from "./Sidebar.jsx";
+import { APP_NOTIFICATION_PATH } from "../../lib/appNavigation.js";
+import { getLoginPath } from "../../lib/profileSetup.js";
+import { getReceiptLocale, RECEIPT_SHELL_COPY } from "../../lib/receiptLocale.js";
 
 export default function AppShell({ app, auth, guestPreview = false }) {
+  const location = useLocation();
+  const shellCopy = RECEIPT_SHELL_COPY[getReceiptLocale(location)];
   const remoteLoading = app.remoteReady === false;
   const loadedUnreadCount = (app.state.notifications ?? []).filter((notification) => !notification.readAt).length;
   const unreadNotificationCount = guestPreview
@@ -21,12 +28,19 @@ export default function AppShell({ app, auth, guestPreview = false }) {
 
   return (
     <div className="app-shell ui-design-host" data-design="editorial">
-      <Sidebar user={app.currentUser} teams={app.state.teams} auth={auth} guestPreview={guestPreview} unreadNotificationCount={unreadNotificationCount} />
+      <Sidebar user={app.currentUser} teams={app.state.teams} auth={auth} guestPreview={guestPreview} />
       <main className="app-main ui-design-app" aria-busy={remoteLoading}>
+        <div className="app-shell-tools">
+          <Button as={Link} to={guestPreview ? getLoginPath(APP_NOTIFICATION_PATH) : APP_NOTIFICATION_PATH} variant="secondary" size="sm" aria-label={unreadNotificationCount ? shellCopy.unreadNotifications(unreadNotificationCount) : shellCopy.notifications}>
+            <Bell size={18} aria-hidden="true" />
+            <span>{shellCopy.notifications}</span>
+            {unreadNotificationCount ? <b className="app-notification-badge" aria-hidden="true">{unreadNotificationCount > 99 ? "99+" : unreadNotificationCount}</b> : null}
+          </Button>
+        </div>
         {remoteLoading ? null : <Outlet />}
         {remoteLoading ? null : <DataAttribution />}
       </main>
-      <BottomNav guestPreview={guestPreview} unreadNotificationCount={unreadNotificationCount} />
+      <BottomNav />
       {remoteLoading ? <BasketballLoader overlay randomLabel /> : null}
     </div>
   );

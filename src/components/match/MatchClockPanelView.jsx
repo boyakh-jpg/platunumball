@@ -12,6 +12,7 @@ import {
 import Badge from "../common/Badge.jsx";
 import Button from "../common/Button.jsx";
 import QrCode from "../common/QrCode.jsx";
+import MatchPeriodScoreFields from "./MatchPeriodScoreFields.jsx";
 import {
   SHOT_CLOCK_OPTIONS,
   formatClockTime,
@@ -146,29 +147,37 @@ export default function MatchClockPanelView({ context }) {
                 <span>지각 출석</span>
               </div>
             ) : null}
-            <div
-              className={`ui-match-clock-scoreboard${scoreboardEnabled ? "" : " ui-match-clock-scoreboard-time-only"}`}
-              aria-label={scoreboardEnabled ? "기록 점수판" : "경기시간"}
-            >
-              {scoreboardEnabled ? (
-                <span className="ui-match-clock-scoreboard-label">점수판</span>
-              ) : null}
-              {scoreboardEnabled ? (
-                <div className="ui-match-clock-team ui-match-clock-team-a">
-                  <span className="ui-match-clock-team-label">A 점수</span>
-                  <strong className="ui-match-clock-team-score">{score.a}</strong>
+            <div className="ui-match-clock-score-display">
+              <div
+                className={`ui-match-clock-scoreboard${scoreboardEnabled ? "" : " ui-match-clock-scoreboard-time-only"}`}
+                aria-label={scoreboardEnabled ? "기록 점수판" : "경기시간"}
+              >
+                {scoreboardEnabled ? (
+                  <span className="ui-match-clock-scoreboard-label">점수판</span>
+                ) : null}
+                {scoreboardEnabled ? (
+                  <div className="ui-match-clock-team ui-match-clock-team-a">
+                    <span className="ui-match-clock-team-label">A 점수</span>
+                    <strong className="ui-match-clock-team-score">{score.a}</strong>
+                  </div>
+                ) : null}
+                <div className="ui-match-clock-main-time">
+                  <span className="ui-match-clock-main-time-label">경기시계</span>
+                  <strong className="ui-match-clock-period">{periodDisplayLabel}</strong>
+                  <time>{formatClockTime(liveClock.periodRemainingMs, { tenths: true })}</time>
+                  <small>{scoreboardEnabled ? "서버시간 · 점수 3초 자동 갱신" : "서버시간 기준"}</small>
                 </div>
-              ) : null}
-              <div className="ui-match-clock-main-time">
-                <span className="ui-match-clock-main-time-label">경기시계</span>
-                <strong className="ui-match-clock-period">{periodDisplayLabel}</strong>
-                <time>{formatClockTime(liveClock.periodRemainingMs, { tenths: true })}</time>
-                <small>{scoreboardEnabled ? "서버시간 · 점수 3초 자동 갱신" : "서버시간 기준"}</small>
+                {scoreboardEnabled ? (
+                  <div className="ui-match-clock-team ui-match-clock-team-b">
+                    <span className="ui-match-clock-team-label">B 점수</span>
+                    <strong className="ui-match-clock-team-score">{score.b}</strong>
+                  </div>
+                ) : null}
               </div>
+
               {scoreboardEnabled ? (
-                <div className="ui-match-clock-team ui-match-clock-team-b">
-                  <span className="ui-match-clock-team-label">B 점수</span>
-                  <strong className="ui-match-clock-team-score">{score.b}</strong>
+                <div className={`ui-match-clock-period-scores${score.periodScoresNeedReview ? " ui-match-clock-period-scores-needs-review" : ""}`}>
+                  <MatchPeriodScoreFields rules={matchRules} value={score.periodScores} readOnly needsReview={score.periodScoresNeedReview} />
                 </div>
               ) : null}
             </div>

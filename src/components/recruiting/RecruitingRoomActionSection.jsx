@@ -175,6 +175,7 @@ export function RecruitingRoomActionSection({ context }) {
                         canReview={false}
                         getEditableStatFields={getEditableSourceMatchStatFields}
                         editableScoreSides={sourceMatchResultEntryPermission?.editableScoreSides ?? []}
+                        editablePeriodScoreSides={sourceMatchResultEntryPermission?.editablePeriodScoreSides ?? []}
                         submitLabel={sourceMatchResultSubmitLabel} onDraftScoreChange={setSourceMatchDraftScore}
                         onSave={(draft) => app.actions.submitMatchResult(sourceMatch.id, draft)}
                       />

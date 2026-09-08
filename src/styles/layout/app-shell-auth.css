@@ -240,8 +240,10 @@ body.rankball-scroll-locked .app-main {
   color: var(--text);
 }
 
-.app-notification-nav {
-  position: relative;
+.app-shell-tools {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--space-4);
 }
 
 .app-notification-badge {

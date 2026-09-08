@@ -178,7 +178,10 @@ export function buildMatchResultSubmission(
 
   const scoreA = getSubmittedScore("teamA");
   const scoreB = getSubmittedScore("teamB");
-  const periodScoreResult = validateMatchPeriodScores(draft.periodScores, match.rules, { scoreA, scoreB });
+  const live = Boolean(match.startedAt && !match.endedAt);
+  const periodScoreResult = live
+    ? { valid: true }
+    : validateMatchPeriodScores(draft.periodScores, match.rules, { scoreA, scoreB });
   if (!periodScoreResult.valid) {
     const error = new Error("invalid_match_period_scores");
     error.userMessage = periodScoreResult.error;
@@ -189,7 +192,7 @@ export function buildMatchResultSubmission(
     scoreA,
     scoreB,
     playerStats,
-    periodScores: periodScoreResult.periodScores,
+    ...(!live ? { periodScores: periodScoreResult.periodScores } : {}),
   };
 }
 

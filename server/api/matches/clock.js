@@ -1,6 +1,7 @@
 import { allowRequestMethod, getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
 import { createMatchAttendanceQr } from "./_attendanceQr.js";
 import { isPracticeId, PRACTICE_LOCAL_ONLY_ERROR } from "../../../shared/lib/practiceMode.js";
+import { matchPeriodScoresNeedReview } from "../../../shared/lib/matchPeriodScores.js";
 
 const ALLOWED_ACTIONS = new Set([
   "read",
@@ -73,7 +74,7 @@ export default async function handler(request, response) {
     ] = await Promise.all([
       context.supabase
         .from("match_results")
-        .select("score_a,score_b,score_revision_a,score_revision_b,submitted_at")
+        .select("score_a,score_b,score_revision_a,score_revision_b,period_scores,submitted_at")
         .eq("match_id", matchId)
         .maybeSingle(),
       context.supabase
@@ -153,6 +154,11 @@ export default async function handler(request, response) {
         updatedAt: result?.submitted_at || null,
         revisionA: Number(result?.score_revision_a || 0),
         revisionB: Number(result?.score_revision_b || 0),
+        periodScores: result?.period_scores || [],
+        periodScoresNeedReview: matchPeriodScoresNeedReview(result?.period_scores || [], matchRow?.rules, {
+          scoreA: Number(result?.score_a || 0),
+          scoreB: Number(result?.score_b || 0),
+        }),
       },
       rosterRevision: matchRow?.updated_at || null,
       activePlayers: controllerCandidates.map((player) => ({

@@ -5,6 +5,7 @@ import { getMatchRecordWindow } from "../../../lib/matchUtils.js";
 import { getMatchResultEntryPermission } from "../../../lib/matchUtils.js";
 import { getMatchRosterSideName } from "../../../lib/matchUtils.js";
 import { getMatchStartDate } from "../../../lib/matchUtils.js";
+import { getMergedResultScore } from "../../../lib/matchUtils.js";
 import { getPostgameRecordRequiredParticipantIds } from "../../../lib/postgameRecordVerification.js";
 import { getSubmittedStatPatch } from "../../../lib/matchUtils.js";
 import { getTeamCaptainId } from "../../../lib/matchUtils.js";
@@ -14,7 +15,7 @@ import { makeId } from "../../rowUtils.js";
 import { normalizePlayerStats } from "../../../lib/matchUtils.js";
 import { getDisciplineBlockedState } from "../guards.js";
 import { currentUserCanOperateStartedMatch } from "../matchAccess.js";
-import { validateMatchPeriodScores } from "../../../../shared/lib/matchPeriodScores.js";
+import { accumulateMatchPeriodScores, validateMatchPeriodScores } from "../../../../shared/lib/matchPeriodScores.js";
 
 function getSelfDecisionId(state, match, sideName, decisionKey, playerId) {
   const currentUserId = state.currentUserId;
@@ -260,21 +261,26 @@ export function submitMatchResult(state, matchId, result) {
     })),
   };
   const currentResult = draftEntry ? match.disputeDraftResult ?? match.result : match.result;
-  const refereeCanSubmitScores = currentUserIsEligibleReferee
-    && resultEntryPermission.editableScoreSides.includes("teamA")
-    && resultEntryPermission.editableScoreSides.includes("teamB");
-  const nextScoreA = Number(matchRecordRoom || refereeCanSubmitScores ? result.scoreA : currentResult?.scoreA ?? match.teamA?.score ?? 0);
-  const nextScoreB = Number(matchRecordRoom || refereeCanSubmitScores ? result.scoreB : currentResult?.scoreB ?? match.teamB?.score ?? 0);
+  const currentScoreA = Number(currentResult?.scoreA ?? match.teamA?.score ?? 0);
+  const currentScoreB = Number(currentResult?.scoreB ?? match.teamB?.score ?? 0);
+  const nextScoreA = matchRecordRoom ? Number(result.scoreA) : currentUserIsEligibleReferee
+    ? getMergedResultScore(match, nextPlayerStats, "teamA", currentScoreA) : currentScoreA;
+  const nextScoreB = matchRecordRoom ? Number(result.scoreB) : currentUserIsEligibleReferee
+    ? getMergedResultScore(match, nextPlayerStats, "teamB", currentScoreB) : currentScoreB;
   if (
     !Number.isInteger(nextScoreA) || nextScoreA < 0 || nextScoreA > 999
     || !Number.isInteger(nextScoreB) || nextScoreB < 0 || nextScoreB > 999
   ) return state;
   const periodScoreResult = validateMatchPeriodScores(
-    result.periodScores ?? currentResult?.periodScores ?? [],
+    liveEntry
+      ? accumulateMatchPeriodScores(currentResult?.periodScores, match.rules, null,
+        { scoreA: currentScoreA, scoreB: currentScoreB },
+        { scoreA: nextScoreA - currentScoreA, scoreB: nextScoreB - currentScoreB })
+      : result.periodScores ?? currentResult?.periodScores ?? [],
     match.rules,
     {
-    scoreA: nextScoreA,
-    scoreB: nextScoreB,
+      scoreA: nextScoreA,
+      scoreB: nextScoreB,
     },
   );
   if (!periodScoreResult.valid) return state;
