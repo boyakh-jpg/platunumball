@@ -6,7 +6,6 @@ import Button from "../common/Button.jsx";
 import BottomNav from "./BottomNav.jsx";
 import DataAttribution from "./DataAttribution.jsx";
 import Sidebar from "./Sidebar.jsx";
-import MyNavigation from "../profile/MyNavigation.jsx";
 import { APP_NOTIFICATION_PATH, APP_SETTINGS_PATH } from "../../lib/appNavigation.js";
 import { getLoginPath } from "../../lib/profileSetup.js";
 import { getReceiptLocale, RECEIPT_SHELL_COPY } from "../../lib/receiptLocale.js";
@@ -42,7 +41,6 @@ export default function AppShell({ app, auth, guestPreview = false }) {
             <span>{shellCopy.settings}</span>
           </Button>
         </div>
-        {remoteLoading ? null : <MyNavigation />}
         {remoteLoading ? null : <Outlet />}
         {remoteLoading ? null : <DataAttribution />}
       </main>

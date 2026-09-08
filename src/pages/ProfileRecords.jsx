@@ -6,6 +6,7 @@ import Card from "../components/common/Card.jsx";
 import { PersonalRecordMetaLabels } from "../components/match/MatchRecordMeta.jsx";
 import RecentMatchRow from "../components/match/RecentMatchRow.jsx";
 import ProfileRecordSummaryCard from "../components/profile/ProfileRecordSummaryCard.jsx";
+import MyNavigation from "../components/profile/MyNavigation.jsx";
 import { PLAYER_STAT_FIELDS } from "../lib/constants.js";
 import { filterProfileRecords, formatStatLine, getActualMatchPlayerSideName, getMatchSideResult, getMatchSideScore as getSideScore, getPlayerRecentRecordMatches, hasVerifiedPlayerStats, isPersonalRecordMatch } from "../lib/matchUtils.js";
 import { MatchRoomModal } from "./Matches.jsx";
@@ -107,6 +108,7 @@ export default function ProfileRecords({ app }) {
         </div>
         <Button as={Link} variant="secondary" to="/app/profile">프로필로</Button>
       </header>
+      <MyNavigation />
 
       <ProfileRecordSummaryCard
         records={recentRecords}

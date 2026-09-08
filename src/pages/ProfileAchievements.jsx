@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
+import MyNavigation from "../components/profile/MyNavigation.jsx";
 import { assetUrl } from "../lib/assets.js";
 import { getProfileIconAchievementState, PROFILE_ICON_GROUPS } from "../lib/profileIcons.js";
 
@@ -98,6 +99,7 @@ export default function ProfileAchievements({ app }) {
         </div>
         <Button as={Link} variant="secondary" to="/app/profile">프로필로</Button>
       </header>
+      <MyNavigation />
 
       <Card className="section-card profile-achievement-summary">
         <div>

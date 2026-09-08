@@ -9,6 +9,7 @@ import ProfileBasicsFields from "../components/profile/ProfileBasicsFields.jsx";
 import ProfileEmblem from "../components/profile/ProfileEmblem.jsx";
 import ProfileIconDialog from "../components/profile/ProfileIconDialog.jsx";
 import ProfileNavigation from "../components/profile/ProfileNavigation.jsx";
+import MyNavigation from "../components/profile/MyNavigation.jsx";
 import AffiliationEditor from "../components/profile/AffiliationEditor.jsx";
 import ProgressionChecklist from "../components/rating/ProgressionChecklist.jsx";
 import RatingCard from "../components/rating/RatingCard.jsx";
@@ -245,6 +246,7 @@ export default function Profile({ app }) {
           <Button as={Link} className="ui-liquid-glass" variant="secondary" to="/app/signup">가입 정보 설정</Button>
         </div>
       </header>
+      <MyNavigation />
       <ProfileNavigation app={app} />
       <div className="content-grid profile-overview-grid">
         <div className="page-stack profile-main-stack">

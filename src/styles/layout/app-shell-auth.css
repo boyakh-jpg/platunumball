@@ -247,10 +247,6 @@ body.rankball-scroll-locked .app-main {
   margin-bottom: var(--space-4);
 }
 
-.my-navigation {
-  margin-bottom: var(--space-4);
-}
-
 .app-notification-badge {
   display: inline-grid;
   place-items: center;

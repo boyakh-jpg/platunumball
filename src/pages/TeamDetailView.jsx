@@ -8,6 +8,7 @@ import ModalShell from "../components/common/ModalShell.jsx";
 import SearchPicker from "../components/common/SearchPicker.jsx";
 import RecentMatchRow from "../components/match/RecentMatchRow.jsx";
 import EntityProfileHero from "../components/profile/EntityProfileHero.jsx";
+import MyNavigation from "../components/profile/MyNavigation.jsx";
 import TeamEmblem from "../components/team/TeamEmblem.jsx";
 import TeamJoinApplicationDialog from "../components/team/TeamJoinApplicationDialog.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
@@ -98,6 +99,7 @@ export default function TeamDetailView({ controller }) {
         )}
         visual={<div className="team-tier-hero"><TierEmblem mmr={team.mmr} size="hero" showLabel /></div>}
       />
+      <MyNavigation />
       {favoriteError ? <span role="status" className="form-warning">{favoriteError}</span> : null}
 
       <Card className="section-card team-description-card">
