@@ -1608,7 +1608,7 @@ test("hero inner boards share one restrained solid surface system", () => {
   assert.match(primitiveStyles, /\.app-main \.ui-liquid-glass-segments > \* \+ \*\s*\{[^}]*border-left:\s*0;/);
   assert.match(pageSources.home, /home-hero-board ui-liquid-glass/);
   assert.match(pageSources.teams, /team-hub-board ui-liquid-glass/);
-  assert.match(pageSources.matches, /om-match-panel ui-liquid-glass[\s\S]*om-match-stats ui-liquid-glass-segments/);
+  assert.match(pageSources.matches, /om-match-panel ui-liquid-glass[\s\S]*om-match-actions/);
   assert.match(pageSources.recruiting, /arena-hero-panel ui-liquid-glass[\s\S]*arena-hero-stats ui-liquid-glass-segments/);
   assert.match(pageSources.season, /<header className="page-header ui-page-hero ui-design-app-hero">/);
   assert.match(pageSources.season, /section-card season-overview-card/);
@@ -1681,7 +1681,7 @@ test("page heroes keep shared eyebrows without implementation copy", () => {
   assert.doesNotMatch(heroSources, /kicker/);
   assert.doesNotMatch(allStyleSources, /kicker/);
   assert.match(heroSources, /className="eyebrow">MATCH QUEUE</);
-  assert.match(heroSources, /className="eyebrow">Team Hub</);
+  assert.match(pageSources.teams, /ui-page-hero__copy[\s\S]*<h1>팀<\/h1>/);
   assert.match(heroSources, /className="eyebrow">Study guide</);
   assert.doesNotMatch(heroSources, /공용 방 모달|저장 통로|같은 값|현재 알파 테스트|서버 원본|내부 보정값|실제 공용 방 모달|현재 서비스 화면/);
 

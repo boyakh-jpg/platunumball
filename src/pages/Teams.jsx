@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { PlusCircle, Search } from "lucide-react";
+import { ChevronDown, ChevronUp, PlusCircle } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import GuestAccessNotice from "../components/auth/GuestAccessNotice.jsx";
 import Badge from "../components/common/Badge.jsx";
@@ -53,6 +53,8 @@ export default function Teams({ app }) {
   const [draft, setDraft] = useState({ name: "", region: defaultTeamRegion, homeCourt: "", homeCourtId: "", captainId: app.currentUser.id, accent: "#58d2c0" });
   const [teamCreatePending, setTeamCreatePending] = useState(false);
   const teamCreatePendingRef = useRef(false);
+  const [teamCreateExpanded, setTeamCreateExpanded] = useState(false);
+  const teamNameInputRef = useRef(null);
   const [teamCreateError, setTeamCreateError] = useState("");
   const [representativeSavePendingId, setRepresentativeSavePendingId] = useState(""); const representativeSavePendingRef = useRef("");
   const [representativeSaveError, setRepresentativeSaveError] = useState("");
@@ -79,6 +81,9 @@ export default function Teams({ app }) {
       return next;
     }, { replace: true });
   };
+  useEffect(() => {
+    if (teamCreateExpanded) teamNameInputRef.current?.focus();
+  }, [teamCreateExpanded]);
   useEffect(() => {
     const timer = window.setTimeout(() => {
       loadDirectory?.({
@@ -252,7 +257,6 @@ export default function Teams({ app }) {
     <div className="page-stack teams-page">
       <section className="team-hub-hero ui-page-hero ui-design-app-hero">
         <div className="ui-page-hero__copy">
-          <p className="eyebrow">Team Hub</p>
           <h1>팀</h1>
         </div>
         {heroTeam ? (
@@ -284,10 +288,15 @@ export default function Teams({ app }) {
         <Card className="section-card my-team-management-card">
           <div className="section-title-row">
             <div>
-              <p className="eyebrow">My Teams</p>
               <h2>내 팀 관리</h2>
             </div>
-            <Badge tone={readOnly ? "neutral" : myTeamCountTone}>{readOnly ? "로그인" : myTeamCountLabel}</Badge>
+            <div className="ui-action-row">
+              <Badge tone={readOnly ? "neutral" : myTeamCountTone}>{readOnly ? "로그인" : myTeamCountLabel}</Badge>
+              {readOnly ? null : <Button size="sm" variant="secondary" aria-expanded={teamCreateExpanded} aria-controls="team-create-form" onClick={() => {
+                setTeamCreateExpanded(true);
+                teamNameInputRef.current?.focus();
+              }}><PlusCircle size={18} /> 새 팀 만들기</Button>}
+            </div>
           </div>
           <div className="my-team-list ui-design-borderless-list">
             {readOnly ? (
@@ -337,10 +346,8 @@ export default function Teams({ app }) {
         <Card className="section-card team-search-card">
           <div className="section-title-row">
             <div>
-              <p className="eyebrow">Find Teams</p>
               <h2>팀 찾기</h2>
             </div>
-            <Search size={22} />
           </div>
           <div className="search-controls">
             <label>
@@ -449,15 +456,31 @@ export default function Teams({ app }) {
         {readOnly ? null : <Card className="section-card team-create-panel">
           <div className="section-title-row">
             <div>
-              <p className="eyebrow">Create Squad</p>
               <h2>새 팀 만들기</h2>
             </div>
-            <PlusCircle size={22} />
+            <Button
+              variant="secondary"
+              size="sm"
+              className="button-icon section-disclosure-button"
+              aria-expanded={teamCreateExpanded}
+              aria-controls="team-create-form"
+              aria-label={teamCreateExpanded ? "팀 만들기 접기" : "팀 만들기 펼치기"}
+              title={teamCreateExpanded ? "팀 만들기 접기" : "팀 만들기 펼치기"}
+              disabled={teamCreatePending}
+              onClick={() => setTeamCreateExpanded((current) => !current)}
+            >
+              {teamCreateExpanded ? <ChevronUp size={18} strokeWidth={2.5} /> : <ChevronDown size={18} strokeWidth={2.5} />}
+            </Button>
           </div>
-          <form className="form-stack" onSubmit={submit}>
+          {teamCreateExpanded ? <form id="team-create-form" className="form-stack" onSubmit={submit}>
+            <span className={captainLimitReached ? "form-warning" : "form-chip"}>
+              팀장 {app.currentUser.name} · 소속 {selectedCaptainTeamCount}/{MAX_TEAM_MEMBERSHIPS}팀
+              {captainLimitReached ? " · 소속 팀 한도에 도달했습니다." : " · 생성 후 팀장이 됩니다."}
+            </span>
             <label>
               팀 이름
               <input
+                ref={teamNameInputRef}
                 value={draft.name}
                 maxLength={MAX_TEAM_NAME_LENGTH}
                 onChange={(event) => update({ name: event.target.value.slice(0, MAX_TEAM_NAME_LENGTH) })}
@@ -509,19 +532,12 @@ export default function Teams({ app }) {
               <span className={homeCourtInvalid ? "form-warning" : "form-chip"}>{homeCourtInvalid ? "승인 구장을 선택해 주세요." : draft.homeCourt}</span>
             </label>
             <label>
-              팀장
-              <input value={`${app.currentUser.name} · ${selectedCaptainTeamCount}/${MAX_TEAM_MEMBERSHIPS}팀`} readOnly disabled />
-              <span className={captainLimitReached ? "form-warning" : "form-chip"}>
-                팀 생성자는 팀장으로 고정됩니다.
-              </span>
-            </label>
-            <label>
               팀 컬러
               <input type="color" value={draft.accent} onChange={(event) => update({ accent: event.target.value })} />
             </label>
             {teamCreateError ? <span className="form-warning">{teamCreateError}</span> : null}
             <Button type="submit" disabled={captainLimitReached || teamNameInvalid || homeCourtInvalid || teamCreatePending}><PlusCircle size={18} /> {teamCreatePending ? "저장 중" : "팀 만들기"}</Button>
-          </form>
+          </form> : null}
         </Card>}
         </div>
       </div>}

@@ -41,7 +41,7 @@ import {
 } from "./MatchesPagePanels.jsx";
 
 export default function MatchesPageView({ controller }) {
-  const { app, location, viewId, panelMode, branchFilter, relationFilter, dateFilter, calendarMonth, selectedRecruitingPostId, setSelectedRecruitingPostId, setSelectedRecruitingPostDetailLoadingId, setSelectedRecruitingPostDetailFailedId, attendanceScanState, attendanceQrFlow, activeSelectedMatchId, todayValue, selectedView, teamById, userById, matchesById, courtById, courtByName, activeTournaments, selectedRecruitingPost, selectedRecruitingLobby, selectedRecruitingPostDetailFailed, selectedRecruitingPostDetailLoading, selectedMatch, selectedMatchRoomPost, selectedMatchRoomError, selectedMatchDetailLoading, selectedMatchDetailFailed, applyFilterState, closeSelectedMatch, requestMatchDetail, openSelectedRecruitingPost, openSelectedMatch, matchPagination, teamMatchList, calendarCounts, calendarDays, calendarMonthCount, scheduleLoading, scheduleError, displayScheduleItems, scheduleCountLabel, displayActiveCount, displayTodoCount, displayScheduledCount, getDisplayViewButtonCount, teamScheduleCount } = controller;
+  const { app, location, viewId, panelMode, branchFilter, relationFilter, dateFilter, calendarMonth, selectedRecruitingPostId, setSelectedRecruitingPostId, setSelectedRecruitingPostDetailLoadingId, setSelectedRecruitingPostDetailFailedId, attendanceScanState, attendanceQrFlow, activeSelectedMatchId, todayValue, selectedView, teamById, userById, matchesById, courtById, courtByName, activeTournaments, selectedRecruitingPost, selectedRecruitingLobby, selectedRecruitingPostDetailFailed, selectedRecruitingPostDetailLoading, selectedMatch, selectedMatchRoomPost, selectedMatchRoomError, selectedMatchDetailLoading, selectedMatchDetailFailed, applyFilterState, closeSelectedMatch, requestMatchDetail, openSelectedRecruitingPost, openSelectedMatch, matchPagination, teamMatchList, calendarCounts, calendarDays, calendarMonthCount, scheduleLoading, scheduleError, displayScheduleItems, scheduleCountLabel, getDisplayViewButtonCount, teamScheduleCount } = controller;
   const hasScheduleFilters = Boolean(dateFilter || (panelMode !== "team" && (branchFilter !== "all" || relationFilter !== "all")));
   const clearScheduleFilters = () => applyFilterState({ branchFilter: "all", relationFilter: "all", dateFilter: "" });
   const scheduleTitle = panelMode === "team" ? "내 팀 경기" : selectedView.title;
@@ -53,11 +53,6 @@ return (
           <h1>일정</h1>
         </div>
         <div className="om-match-panel ui-liquid-glass">
-          <div className="om-match-stats ui-liquid-glass-segments">
-            <span><strong>{displayActiveCount}</strong>MY</span>
-            <span><strong>{displayTodoCount}</strong>ACTION</span>
-            <span><strong>{displayScheduledCount}</strong>SOON</span>
-          </div>
           <div className="om-match-actions">
             <Button as={Link} to="/app/create"><PlusCircle size={18} /> 방 만들기</Button>
             <Button as={Link} to="/app/create?intent=record" variant="secondary"><ClipboardCheck size={18} /> 기록하기</Button>
@@ -134,14 +129,14 @@ return (
             </button>
           </section>
 
-          {panelMode !== "tournament" ? (
+          {panelMode === "schedule" ? (
             <fieldset className="om-calendar-summary">
               <legend className="om-calendar-heading">
-                <strong>{panelMode === "team" ? "내 팀 일정" : "내 경기 일정"}</strong>
+                <strong>내 경기 일정</strong>
                 <span className="eyebrow">SCHEDULE</span>
               </legend>
               <section className="om-calendar-filter-bar" aria-label="경기 필터">
-                {panelMode !== "team" ? <div className="om-calendar-filter-row">
+                <div className="om-calendar-filter-row">
                   <span className="om-calendar-filter-label">관계</span>
                   <div className="ui-segmented-control segmented-control compact-segments om-relation-filter-grid ui-design-filter-tile" role="group" aria-label="관계 필터">
                     <button type="button" className={relationFilter === "all" ? "active" : ""} aria-pressed={relationFilter === "all"} onClick={() => applyFilterState({ relationFilter: "all" })}>전체</button>
@@ -149,8 +144,8 @@ return (
                     <button type="button" className={relationFilter === "joined" ? "active" : ""} aria-pressed={relationFilter === "joined"} onClick={() => applyFilterState({ relationFilter: "joined" })}>내 참여방</button>
                     <button type="button" className={relationFilter === "invited" ? "active" : ""} aria-pressed={relationFilter === "invited"} onClick={() => applyFilterState({ relationFilter: "invited" })}>초대받은 방</button>
                   </div>
-                </div> : null}
-                {panelMode !== "team" ? <div className="om-calendar-filter-row">
+                </div>
+                <div className="om-calendar-filter-row">
                   <span className="om-calendar-filter-label">유형</span>
                   <div className="ui-segmented-control segmented-control compact-segments om-branch-filter-grid ui-design-filter-tile" role="group" aria-label="유형 필터">
                     {SCHEDULE_BRANCH_FILTERS.map((option) => (
@@ -165,7 +160,7 @@ return (
                       </button>
                     ))}
                   </div>
-                </div> : null}
+                </div>
               </section>
             </fieldset>
           ) : null}

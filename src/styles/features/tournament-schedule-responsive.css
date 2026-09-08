@@ -344,10 +344,6 @@
     padding: 10px;
   }
 
-  .om-match-stats span {
-    padding: 8px 6px;
-  }
-
   .om-view-icon,
   .om-list-head > span {
     display: none;

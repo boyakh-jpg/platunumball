@@ -17,16 +17,6 @@
   display: grid;
 }
 
-.om-match-stats {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.om-match-stats span {
-  display: grid;
-  text-align: center;
-}
-
 .om-match-actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

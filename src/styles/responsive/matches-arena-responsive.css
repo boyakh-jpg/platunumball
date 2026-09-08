@@ -37,7 +37,23 @@ html[data-theme="light"] .tournament-detail-page > .tournament-section > .om-lis
   gap: 10px 12px;
 }
 .tournament-schedule-list form {
-  grid-template-columns: minmax(180px, 1fr) 62px 140px 105px minmax(150px, 0.8fr) 82px 82px;
+  grid-template-columns: minmax(0, 1fr) max-content max-content max-content minmax(0, 0.8fr) max-content max-content;
+}
+.tournament-schedule-list form:where(.is-readonly),
+.tournament-match-referee-list form:where(.is-readonly) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-4);
+}
+.tournament-schedule-list form:where(.is-readonly) > .tournament-match-open,
+.tournament-match-referee-list form:where(.is-readonly) > strong {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.tournament-schedule-list .tournament-schedule-meta {
+  color: var(--muted);
+  overflow-wrap: anywhere;
 }
 .om-tournament-actions {
   grid-area: action;
@@ -50,10 +66,16 @@ html[data-theme="light"] .tournament-detail-page > .tournament-section > .om-lis
 }
 @media (max-width: 1220px) {
   .tournament-schedule-list form {
-    grid-template-columns: minmax(0, 1fr) minmax(130px, 0.8fr) 105px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 @media (max-width: 720px) {
+  .tournament-schedule-list form:where(.is-readonly),
+  .tournament-match-referee-list form:where(.is-readonly) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
   .league-fixture-grid,
   .league-fixture-card {
     grid-template-columns: minmax(0, 1fr);

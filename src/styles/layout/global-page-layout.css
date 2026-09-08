@@ -249,7 +249,6 @@ html[data-theme] .app-main :is(.home-hero-next > span, .team-hub-board-head > sp
 html[data-theme] .app-main :is(
   .home-hero-next > strong,
   .home-hero-stats strong,
-  .om-match-stats strong,
   .arena-hero-stats strong
 ) {
   color: var(--hero-title-color);
@@ -297,11 +296,11 @@ html[data-theme] .app-main :is(.om-match-panel, .arena-hero-panel) {
   background: color-mix(in srgb, var(--ui-liquid-glass-bg) 82%, transparent);
   box-shadow: none;
 }
-html[data-theme] .app-main :is(.om-match-stats, .arena-hero-stats) {
+html[data-theme] .app-main .arena-hero-stats {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
-html[data-theme] .app-main :is(.om-match-stats, .arena-hero-stats) > span {
+html[data-theme] .app-main .arena-hero-stats > span {
   min-height: var(--ui-hero-metric-min-height);
   align-content: center;
   justify-items: center;
@@ -311,7 +310,7 @@ html[data-theme] .app-main :is(.om-match-stats, .arena-hero-stats) > span {
   opacity: 1;
   text-shadow: none;
 }
-html[data-theme] .app-main :is(.om-match-stats, .arena-hero-stats) strong {
+html[data-theme] .app-main .arena-hero-stats strong {
   color: var(--text);
   font-family: var(--sports-display-font);
   font-variant-numeric: tabular-nums;

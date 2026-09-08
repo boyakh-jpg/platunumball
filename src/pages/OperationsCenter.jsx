@@ -25,9 +25,9 @@ const FILTERS = [
 ];
 
 const GROUPS = [
-  { id: "now", label: "지금 처리", description: "출석, 진행, 결과 확인이 필요한 경기" },
-  { id: "upcoming", label: "다음 경기", description: "확정과 준비 상태를 확인할 경기" },
-  { id: "past", label: "지난 경기", description: "기록 또는 종료 상태를 확인할 경기" },
+  { id: "now", label: "지금 처리" },
+  { id: "upcoming", label: "다음 경기" },
+  { id: "past", label: "지난 경기" },
 ];
 
 const ROLE_LABELS = {
@@ -241,11 +241,13 @@ export default function OperationsCenter({ app }) {
 
   return (
     <div className="page-stack operations-page">
-      <header className="page-header operations-header ui-page-hero ui-design-app-hero">
-        <div className="ui-page-hero__copy">
-          <h1>운영</h1>
-          <p>내가 주최하거나 심판을 맡은 경기의 다음 할 일만 모았습니다.</p>
-        </div>
+      <header className="section-title-row">
+        <h1>경기 운영</h1>
+        {totalCount ? (
+          <Button type="button" variant="secondary" size="sm" disabled={refreshing} onClick={() => void refresh()}>
+            <RefreshCw size={16} /> {refreshing ? "확인 중" : "새로고침"}
+          </Button>
+        ) : null}
       </header>
 
       {refreshError && totalCount ? (
@@ -271,16 +273,6 @@ export default function OperationsCenter({ app }) {
         />
       ) : (
         <Card className="section-card operations-inbox">
-          <div className="section-title-row operations-inbox__head">
-            <div>
-              <h2>내 운영 업무</h2>
-              <p>{operationsMatchList.cursor ? "불러온 경기에서 검색합니다. 더 보기로 나머지 경기를 확인하세요." : "출석부터 결과 확인까지, 필요한 업무로 바로 이동하세요."}</p>
-            </div>
-            <Button type="button" variant="secondary" size="sm" disabled={refreshing} onClick={() => void refresh()}>
-              <RefreshCw size={16} /> {refreshing ? "확인 중" : "새로고침"}
-            </Button>
-          </div>
-
           <div className="operations-filter-shell">
             <label>
               <span>운영 경기 검색</span>
@@ -319,13 +311,8 @@ export default function OperationsCenter({ app }) {
               )}
             />
           ) : visibleGroups.map((group) => (
-            <section key={group.id} className="operations-group" aria-labelledby={`operations-${group.id}`}>
-              <div className="operations-group__head">
-                <div>
-                  <h3 id={`operations-${group.id}`}>{group.label}</h3>
-                  <p>{group.description}</p>
-                </div>
-              </div>
+            <section key={group.id} className="operations-group" aria-label={group.label}>
+              {filter === "all" ? <h2 className="operations-group__title">{group.label}</h2> : null}
               <div className="operations-list ui-design-borderless-list">
                 {searchedItems[group.id].map((item) => (
                   <OperationsRow key={item.match.id} item={item} onOpen={openMatch} onRepeat={repeatMatch} />
@@ -336,7 +323,8 @@ export default function OperationsCenter({ app }) {
         </Card>
       )}
       {operationsMatchList.cursor ? (
-        <div className="ui-action-row">
+        <div className="operations-pagination">
+          <p>불러온 경기 기준입니다. 나머지 경기는 더 보기로 확인하세요.</p>
           <Button type="button" variant="secondary" disabled={refreshing} onClick={() => void refresh(operationsMatchList.cursor)}>
             {refreshing ? "확인 중" : "운영 경기 더 보기"}
           </Button>

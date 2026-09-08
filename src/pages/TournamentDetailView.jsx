@@ -15,6 +15,7 @@ import {
   statusLabels,
   mmrPolicyLabels,
   formatWindow,
+  getMatchTime,
   isTournamentForfeitAvailable,
   isTournamentScheduleEditable,
   getTournamentSchedulePolicyLabel,
@@ -268,6 +269,7 @@ return (
           </div>
           <div className="tournament-match-referee-list">
             {tournamentMatches.map((match) => {
+              const canEditReferee = canManageSchedule && !match.startedAt && !match.endedAt;
               const teamAId = match.teamA?.teamId ?? match.teamAId;
               const teamBId = match.teamB?.teamId ?? match.teamBId;
               const neutralRefereeIds = acceptedRefereeIds.filter((refereeId) => (
@@ -279,25 +281,26 @@ return (
                 && isTournamentRefereeNeutral(tournament, refereeId, teamAId, teamBId, app.state.teams)
               ));
               return (
-                <form key={`${match.id}:${match.refereeId ?? ""}`} onSubmit={(event) => saveMatchReferee(event, match)}>
+                <form key={`${match.id}:${match.refereeId ?? ""}`} className={canEditReferee ? "" : "is-readonly"} onSubmit={(event) => saveMatchReferee(event, match)}>
                   <strong>{match.teamA?.name ?? "A"} vs {match.teamB?.name ?? "B"}</strong>
-                  <select
-                    name="refereeId"
-                    defaultValue={match.refereeId ?? ""}
-                    disabled={!canManageSchedule || Boolean(match.startedAt || match.endedAt)}
-                    aria-label={`${match.teamA?.name ?? "A"} 대 ${match.teamB?.name ?? "B"} 심판`}
-                  >
-                    <option value="">심판 선택</option>
-                    {neutralRefereeIds.map((refereeId) => (
-                      <option key={refereeId} value={refereeId}>{userById[refereeId]?.name ?? refereeId}</option>
-                    ))}
-                  </select>
-                  {canManageSchedule ? (
-                    <button type="submit" disabled={Boolean(governanceAction || match.startedAt || match.endedAt || !neutralRefereeIds.length)}>
-                      <ShieldCheck size={14} /> 배정
-                    </button>
+                  {canEditReferee ? (
+                    <>
+                      <select
+                        name="refereeId"
+                        defaultValue={match.refereeId ?? ""}
+                        aria-label={`${match.teamA?.name ?? "A"} 대 ${match.teamB?.name ?? "B"} 심판`}
+                      >
+                        <option value="">심판 선택</option>
+                        {neutralRefereeIds.map((refereeId) => (
+                          <option key={refereeId} value={refereeId}>{userById[refereeId]?.name ?? refereeId}</option>
+                        ))}
+                      </select>
+                      <button type="submit" disabled={Boolean(governanceAction || !neutralRefereeIds.length)}>
+                        <ShieldCheck size={14} /> 배정
+                      </button>
+                    </>
                   ) : (
-                    <span>{userById[match.refereeId]?.name ?? "미배정"}</span>
+                    <span>심판 · {userById[match.refereeId]?.name ?? (match.refereeId ? "이름 확인 중" : "미배정")}</span>
                   )}
                 </form>
               );
@@ -313,15 +316,20 @@ return (
               <span className="eyebrow">SCHEDULE</span>
               <h2>경기 일정</h2>
             </div>
-            <span>{canManageSchedule ? "생성자 일정 입력" : "생성자만 수정 가능"}</span>
+            <span>{canManageSchedule ? "주최자 일정 관리" : "일정 현황"}</span>
           </div>
           <div className="tournament-schedule-list">
-            {tournamentMatches.map((match) => (
+            {tournamentMatches.map((match) => {
+              const scheduleEditable = isTournamentScheduleEditable(match);
+              const canEditSchedule = canManageSchedule && scheduleEditable;
+              const matchCourt = tournamentCourts.find((court) => court.id === (match.courtId ?? tournament.courtId));
+              const courtName = match.court || match.courtName || matchCourt?.name || tournament.court || "구장 미정";
+              return (
               <form
                 key={match.id}
-                className={canManageSchedule && isTournamentScheduleEditable(match) ? "" : "locked"}
+                className={canEditSchedule ? "" : "is-readonly"}
                 onSubmit={(event) => saveSchedule(event, match.id)}
-                title={getTournamentSchedulePolicyLabel(match)}
+                title={canManageSchedule ? getTournamentSchedulePolicyLabel(match) : undefined}
               >
                 <button type="button" className="tournament-match-open" onClick={() => setSelectedMatchId(match.id)}>
                   <TeamHoverCard team={teamById[match.teamA?.teamId]} as="span">{match.teamA?.name ?? "A"}</TeamHoverCard>
@@ -329,12 +337,21 @@ return (
                   <TeamHoverCard team={teamById[match.teamB?.teamId]} as="span">{match.teamB?.name ?? "B"}</TeamHoverCard>
                 </button>
                 <span>{getLeagueFixtureState(match, match.id).label}</span>
-                <input type="date" name="scheduledDate" min={todayValue} max={maxScheduleDate} defaultValue={match.scheduledDate ?? ""} disabled={!canManageSchedule || !isTournamentScheduleEditable(match)} aria-label="경기 날짜" />
-                <input type="time" name="scheduledTime" defaultValue={match.scheduledTime ?? ""} disabled={!canManageSchedule || !isTournamentScheduleEditable(match)} aria-label="경기 시간" />
-                <select name="courtId" defaultValue={match.courtId ?? tournament.courtId ?? tournamentCourts[0]?.id} disabled={!canManageSchedule || !isTournamentScheduleEditable(match)} aria-label="경기 구장">
-                  {tournamentCourts.map((court) => <option key={court.id} value={court.id}>{court.name}</option>)}
-                </select>
-                <button type="submit" disabled={!canManageSchedule || !isTournamentScheduleEditable(match) || savingScheduleId === match.id}><Save size={14} /> {savingScheduleId === match.id ? "저장 중" : isTournamentScheduleEditable(match) ? "저장" : getTournamentSchedulePolicyLabel(match)}</button>
+                {canEditSchedule ? (
+                  <>
+                    <input type="date" name="scheduledDate" min={todayValue} max={maxScheduleDate} defaultValue={match.scheduledDate ?? ""} aria-label="경기 날짜" />
+                    <input type="time" name="scheduledTime" defaultValue={match.scheduledTime ?? ""} aria-label="경기 시간" />
+                    <select name="courtId" defaultValue={match.courtId ?? tournament.courtId ?? tournamentCourts[0]?.id} aria-label="경기 구장">
+                      {tournamentCourts.map((court) => <option key={court.id} value={court.id}>{court.name}</option>)}
+                    </select>
+                    <button type="submit" disabled={savingScheduleId === match.id}><Save size={14} /> {savingScheduleId === match.id ? "저장 중" : "저장"}</button>
+                  </>
+                ) : (
+                  <>
+                    <span className="tournament-schedule-meta">{getMatchTime(match)} · {courtName}</span>
+                    {canManageSchedule && !scheduleEditable ? <span className="tournament-schedule-policy">{getTournamentSchedulePolicyLabel(match)}</span> : null}
+                  </>
+                )}
                 {canManageSchedule ? (
                   <button
                     type="button"
@@ -345,7 +362,8 @@ return (
                   ><Flag size={14} /> 몰수</button>
                 ) : null}
               </form>
-            ))}
+              );
+            })}
           </div>
         </section>
       ) : null}
