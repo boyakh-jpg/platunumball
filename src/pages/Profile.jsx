@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
+import PageFrame, { PageHeader } from "../components/common/PageFrame.jsx";
 import { PersonalRecordMetaLabels } from "../components/match/MatchRecordMeta.jsx";
 import RecentMatchRow from "../components/match/RecentMatchRow.jsx";
 import ProfileBasicsFields from "../components/profile/ProfileBasicsFields.jsx";
@@ -235,18 +236,21 @@ export default function Profile({ app }) {
     }
   };
   return (
-    <div className="page-stack profile-page">
-      <header className="page-header ui-page-hero ui-design-app-hero">
-        <div className="ui-page-hero__copy">
-          <p className="eyebrow">Profile</p>
-          <h1>프로필</h1>
-        </div>
-        <div className="ui-action-row">
-          <Button as={Link} className="ui-liquid-glass" variant="secondary" to={`/app/players/${user.id}`}>내 프로필 페이지</Button>
-          <Button as={Link} className="ui-liquid-glass" variant="secondary" to="/app/signup">가입 정보 설정</Button>
-        </div>
-      </header>
-      <MyNavigation />
+    <PageFrame
+      className="profile-page"
+      hero={(
+        <PageHeader
+          title="프로필"
+          actions={(
+            <>
+              <Button as={Link} className="ui-liquid-glass" variant="secondary" to={`/app/players/${user.id}`}>내 프로필 페이지</Button>
+              <Button as={Link} className="ui-liquid-glass" variant="secondary" to="/app/signup">가입 정보 설정</Button>
+            </>
+          )}
+        />
+      )}
+      navigation={<MyNavigation />}
+    >
       <ProfileNavigation app={app} />
       <div className="content-grid profile-overview-grid">
         <div className="page-stack profile-main-stack">
@@ -360,6 +364,6 @@ export default function Profile({ app }) {
         />
       ) : null}
       <MatchRoomModal app={app} matchId={selectedRecordMatchId} onClose={() => setSelectedRecordMatchId("")} />
-    </div>
+    </PageFrame>
   );
 }

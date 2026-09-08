@@ -6,20 +6,8 @@
   margin-inline: auto;
 }
 
-.om-match-copy h1,
 .om-view-card b {
   font-family: var(--sports-display-font);
   letter-spacing: 0;
   font-variant-numeric: tabular-nums;
-}
-
-.om-match-copy h1 {
-  transform: var(--sports-display-width-transform);
-  transform-origin: left center;
-}
-
-@media (max-width: 720px) {
-  .om-match-panel {
-    display: none;
-  }
 }

@@ -333,10 +333,6 @@
   font-weight: 800;
 }
 
-html[data-theme="light"] .om-match-copy p {
-  color: var(--muted);
-}
-
 html[data-theme="light"] .tournament-summary-grid > div,
 html[data-theme="light"] .tournament-team-list article,
 html[data-theme="light"] .tournament-referee-list article,
@@ -366,10 +362,6 @@ html[data-theme="light"] .tournament-referee-actions button.secondary {
 }
 
 @media (max-width: 1120px) {
-  .om-match-hero {
-    grid-template-columns: 1fr;
-  }
-
   .tournament-hero,
   .tournament-schedule-list form {
     grid-template-columns: 1fr;

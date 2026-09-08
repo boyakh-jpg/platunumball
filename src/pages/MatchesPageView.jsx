@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { CalendarDays, ClipboardCheck, ChevronLeft, ChevronRight, ListChecks, PlusCircle, Trophy, UserRound, UsersRound } from "lucide-react";
 import OperationsCenter from "./OperationsCenter.jsx";
 import Button from "../components/common/Button.jsx";
+import PageFrame, { PageHeader } from "../components/common/PageFrame.jsx";
 import EmptyState from "../components/common/EmptyState.jsx";
 import CourtHoverCard from "../components/court/CourtHoverCard.jsx";
 import MatchListCard, { MatchListSummary } from "../components/match/MatchListCard.jsx";
@@ -48,20 +49,15 @@ export default function MatchesPageView({ controller }) {
   const scheduleTitle = panelMode === "team" ? "내 팀 경기" : selectedView.title;
   const isCalendarPanel = panelMode === "schedule" || panelMode === "team";
 return (
-    <div className="page-stack om-match-page">
-      <section className="om-match-hero ui-page-hero ui-design-app-hero">
-        <div className="om-match-copy ui-page-hero__copy">
-          <span className="eyebrow">MATCH QUEUE</span>
-          <h1>일정</h1>
-        </div>
-        <div className="om-match-panel ui-liquid-glass">
-          <div className="om-match-actions">
+    <PageFrame
+      className="om-match-page"
+      hero={<PageHeader title="일정" actions={
+          <>
             <Button as={Link} to="/app/create"><PlusCircle size={18} /> 방 만들기</Button>
             <Button as={Link} to="/app/create?intent=record" variant="secondary"><ClipboardCheck size={18} /> 기록하기</Button>
-          </div>
-        </div>
-      </section>
-
+          </>
+      } />}
+    >
       <div className={isCalendarPanel ? "om-schedule-workspace is-calendar" : "om-schedule-workspace"}>
         <aside className="om-schedule-rail">
           <section className="om-view-grid" aria-label="경기 상태">
@@ -521,6 +517,6 @@ return (
           />
         )}
       </section> : null}
-    </div>
+    </PageFrame>
   );
 }

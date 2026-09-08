@@ -3,11 +3,6 @@
 .om-match-page {
   gap: var(--page-section-gap);
 }
-@media (min-width: 721px) {
-  .om-match-hero {
-    grid-template-columns: minmax(0, 1fr) minmax(250px, 285px);
-  }
-}
 @media (max-width: 720px) {
   .om-match-page {
     gap: var(--page-section-gap-mobile);

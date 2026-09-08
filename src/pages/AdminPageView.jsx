@@ -2,6 +2,7 @@ import { ShieldCheck } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
+import PageFrame, { PageHeader } from "../components/common/PageFrame.jsx";
 import UserOperationsPanel from "../components/admin/UserOperationsPanel.jsx";
 import CourtDatabasePanel from "../components/admin/CourtDatabasePanel.jsx";
 import { getAdminReportTypeLabel } from "../lib/admin.js";
@@ -136,15 +137,10 @@ export default function AdminPageView({ controller }) {
   }
 
   return (
-    <div className="page-stack admin-page">
-      <header className="page-header ui-page-hero ui-design-app-hero">
-        <div className="ui-page-hero__copy">
-          <h1>관리자 메뉴</h1>
-        </div>
-        <Badge tone="team">관리자</Badge>
-      </header>
-
-      <nav className="admin-section-tabs" aria-label="관리자 업무">
+    <PageFrame
+      className="admin-page"
+      hero={<PageHeader title="관리자 메뉴" />}
+      navigation={<nav className="admin-section-tabs" aria-label="관리자 업무">
         <div className="ui-filter-row" role="group" aria-label="관리자 업무 그룹">
           {ADMIN_SECTION_GROUPS.map((group) => {
             const firstOption = sectionOptions.find((option) => option.group === group);
@@ -180,8 +176,8 @@ export default function AdminPageView({ controller }) {
             ))}
           </div>
         ) : null}
-      </nav>
-
+      </nav>}
+    >
       {section === "operations" ? (
         <AdminOperationsPanel controller={controller} />
       ) : section === "reports" ? (
@@ -277,6 +273,6 @@ export default function AdminPageView({ controller }) {
           <AdminDetailPanel controller={controller} />
         </div>
       )}
-    </div>
+    </PageFrame>
   );
 }

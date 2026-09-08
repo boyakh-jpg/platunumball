@@ -25,7 +25,6 @@
   :is(
     .arena-recruit-hero,
     .gm-room-hero,
-    .om-match-hero,
     .tournament-hero
   ) {
     width: calc(100% + (2 * var(--app-main-pad-x, var(--page-gutter))));

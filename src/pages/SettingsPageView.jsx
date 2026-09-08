@@ -4,6 +4,7 @@ import { ArrowRightLeft, LogOut, Trash2 } from "lucide-react";
 import AuthProviderIcon from "../components/auth/AuthProviderIcon.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
+import PageFrame, { PageHeader } from "../components/common/PageFrame.jsx";
 import ModalShell from "../components/common/ModalShell.jsx";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import {
@@ -153,16 +154,12 @@ export default function SettingsPageView({ controller, auth }) {
   };
 
   return (
-<div className={`page-stack settings-page settings-section-${settingsSection}${selectedReportCourtRequest ? " settings-report-open" : ""}`}>
-      <header className="page-header ui-page-hero ui-design-app-hero">
-        <div className="ui-page-hero__copy">
-          <p className="eyebrow">{sectionMeta.eyebrow}</p>
-          <h1>{sectionMeta.title}</h1>
-        </div>
-        {settingsSection !== "main" ? (
+    <PageFrame
+      className={`settings-page settings-section-${settingsSection}${selectedReportCourtRequest ? " settings-report-open" : ""}`}
+      hero={<PageHeader title={sectionMeta.title} actions={settingsSection !== "main" ? (
           <Button as={Link} variant="secondary" to="/app/settings">설정</Button>
-        ) : null}
-      </header>
+      ) : null} />}
+    >
       <div className={`content-grid ${settingsSection === "main" ? "" : "settings-section-grid"}`}>
         <SettingsPrimaryColumn controller={controller} />
 
@@ -288,6 +285,6 @@ export default function SettingsPageView({ controller, auth }) {
         }}
       />
       <SettingsActivityDialog detail={activityDetail} controller={controller} onClose={() => setActivityDetail(null)} />
-    </div>
+    </PageFrame>
   );
 }

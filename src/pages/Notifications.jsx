@@ -4,6 +4,7 @@ import { Bell, Check, Trash2 } from "lucide-react";
 import Card from "../components/common/Card.jsx";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
+import PageFrame, { PageHeader } from "../components/common/PageFrame.jsx";
 import { getRoomScheduleLabel } from "../lib/matchUtils.js";
 import { compareNotificationsNewestFirst, dedupeNotifications, getNotificationDisplayAt, getNotificationDisplayContent, getNotificationHref, isNotificationDisplayable, isNotificationTargetUnavailable, isNotificationVisibleToUser } from "../lib/notifications.js";
 import { getPendingRecruitingInvitations, getRecruitingInvitationSenderName } from "../lib/recruiting.js";
@@ -231,16 +232,11 @@ export default function Notifications({ app }) {
   };
 
   return (
-    <div className="page-stack">
-      <header className="page-header ui-page-hero ui-design-app-hero">
-        <div className="ui-page-hero__copy">
-          <p className="eyebrow">Notifications</p>
-          <h1>알림</h1>
-        </div>
+    <PageFrame hero={<PageHeader title="알림" actions={
         <Button variant="secondary" disabled={!totalUnreadCount || Boolean(notificationReadPendingId)} onClick={() => { void readNotifications("all", app.actions.markAllNotificationsRead); }}>
           {notificationReadPendingId === "all" ? "처리 중" : "모두 읽음"}
         </Button>
-      </header>
+    } />}>
       {notificationsLoadError ? (
         <Card className="section-card">
           <div className="ui-empty-state">
@@ -385,7 +381,6 @@ export default function Notifications({ app }) {
                 지난 알림 <span>{pastNotifications.length}</span>
               </button>
             </div>
-            <Badge tone={totalUnreadCount ? "orange" : "green"}>{totalUnreadCount ? "확인 필요" : "정리됨"}</Badge>
           </div>
         </div>
         <div className="home-action-list notifications-list ui-design-borderless-list" role="tabpanel">
@@ -491,6 +486,6 @@ export default function Notifications({ app }) {
       ) : selectedRecruitingPostId ? (
         <RecruitingRoomLoadingView onClose={() => setSelectedRecruitingPostId("")} />
       ) : null}
-    </div>
+    </PageFrame>
   );
 }

@@ -99,6 +99,7 @@ const visualDirectionDemoSource = read("src/pages/VisualDirectionDemo.jsx");
 const globalStyleManifest = read("src/styles/globals.css");
 const appShellSource = read("src/components/layout/AppShell.jsx");
 const cardSource = read("src/components/common/Card.jsx");
+const pageFrameSource = read("src/components/common/PageFrame.jsx");
 const externalNotificationSettingsCardSource = read("src/components/settings/ExternalNotificationSettingsCard.jsx");
 const brandLockupSource = read("src/components/common/BrandLockup.jsx");
 const sidebarSource = read("src/components/layout/Sidebar.jsx");
@@ -191,13 +192,11 @@ test("앱은 분류 박스 없는 표준 디자인을 사용하고 비교 데모
   assert.match(cardSource, /includes\("section-card"\)[\s\S]*?"ui-design-category-surface"/);
   [
     pageSources.home,
-    pageSources.matches,
     pageSources.recruiting,
     read("src/pages/Recorder.jsx"),
     pageSources.teams,
     pageSources.rankings,
-    pageSources.profile,
-    pageSources.settings,
+    pageFrameSource,
   ].forEach((source) => assert.match(source, /ui-design-app-hero/));
   assert.doesNotMatch(pageSources.settings, /화면 구성|분류 박스 없음 사용 중|selectDesignMode/);
   assert.match(pageSources.landing, /className="guest-landing"/);
@@ -1596,17 +1595,16 @@ test("hero inner boards share one restrained solid surface system", () => {
   assert.doesNotMatch(tokenStyles, /--ui-liquid-glass-(?:caustic|edge-inset|refraction-inner)/);
   assert.match(tokenStyles, /--ui-liquid-glass-divider:\s*rgba\(255,\s*255,\s*255,\s*0\.11\);/);
   assert.match(tokenStyles, /--ui-liquid-glass-divider:\s*rgba\(35,\s*50,\s*59,\s*0\.12\);/);
-  assert.match(primitiveStyles, /html\[data-theme\] \.app-main :is\(\.ui-liquid-glass,\s*\.page-header > \.ui-button\)\s*\{[^}]*border:\s*0;[^}]*background:\s*var\(--ui-liquid-glass-surface-bg,\s*var\(--ui-liquid-glass-bg\)\);[^}]*box-shadow:\s*none;[^}]*backdrop-filter:\s*none;/);
-  assert.match(primitiveStyles, /html\[data-theme\] \.app-main :is\(\.ui-liquid-glass,\s*\.page-header > \.ui-button\)\s*\{[^}]*text-shadow:\s*none;/);
+  assert.match(primitiveStyles, /html\[data-theme\] \.app-main :is\(\.ui-liquid-glass,\s*\.page-header > \.ui-button,\s*\.ui-page-header__actions > \.ui-button-secondary\)\s*\{[^}]*border:\s*0;[^}]*background:\s*var\(--ui-liquid-glass-surface-bg,\s*var\(--ui-liquid-glass-bg\)\);[^}]*box-shadow:\s*none;[^}]*backdrop-filter:\s*none;/);
+  assert.match(primitiveStyles, /html\[data-theme\] \.app-main :is\(\.ui-liquid-glass,\s*\.page-header > \.ui-button,\s*\.ui-page-header__actions > \.ui-button-secondary\)\s*\{[^}]*text-shadow:\s*none;/);
   assert.match(primitiveStyles, /html\[data-theme\] \.app-main \.ui-liquid-glass :where\(\*\)\s*\{[^}]*text-shadow:\s*none;/);
   assert.doesNotMatch(primitiveStyles, /html\[data-theme\] \.app-main \.ui-page-hero :where\(\*\),[\s\S]*?\.guest-landing-hero :where\(\*\)\s*\{[^}]*text-shadow:\s*none;/);
-  assert.match(primitiveStyles, /html\[data-theme\] \.app-main :is\(\.ui-liquid-glass,\s*\.page-header > \.ui-button\)::before\s*\{\s*content:\s*none;/);
+  assert.match(primitiveStyles, /html\[data-theme\] \.app-main :is\(\.ui-liquid-glass,\s*\.page-header > \.ui-button,\s*\.ui-page-header__actions > \.ui-button-secondary\)::before\s*\{\s*content:\s*none;/);
   assert.match(primitiveStyles, /\.app-main \.ui-liquid-glass-segments\s*\{[^}]*border:\s*0;[^}]*border-bottom:\s*var\(--ui-stroke-width\) solid var\(--rb-line\);[^}]*border-radius:\s*0;[^}]*background:\s*transparent;/);
   assert.match(primitiveStyles, /\.app-main \.ui-liquid-glass-segments > \*\s*\{[^}]*border:\s*0;[^}]*border-radius:\s*0;[^}]*background:\s*transparent;[^}]*box-shadow:\s*none;/);
   assert.match(primitiveStyles, /\.app-main \.ui-liquid-glass-segments > \* \+ \*\s*\{[^}]*border-left:\s*0;/);
   assert.match(pageSources.home, /home-hero-board ui-liquid-glass/);
   assert.match(pageSources.teams, /team-hub-board ui-liquid-glass/);
-  assert.match(pageSources.matches, /om-match-panel ui-liquid-glass[\s\S]*om-match-actions/);
   assert.match(pageSources.recruiting, /arena-hero-panel ui-liquid-glass[\s\S]*arena-hero-stats ui-liquid-glass-segments/);
   assert.match(pageSources.season, /<header className="page-header ui-page-hero ui-design-app-hero">/);
   assert.match(pageSources.season, /section-card season-overview-card/);
@@ -1615,9 +1613,9 @@ test("hero inner boards share one restrained solid surface system", () => {
   assert.doesNotMatch(pageSources.season, /season-(?:hero|rule-board|summary-item|content-grid|side-rail|metric-card)|ui-liquid-glass/);
   assert.match(pageSources.playerDetail, /className="player-tier-hero"/);
   assert.doesNotMatch(pageSources.playerDetail, /rank-tier-statement ui-liquid-glass/);
-  assert.match(visualSystemStyles, /\.om-match-hero,\s*\.arena-recruit-hero[\s\S]*?grid-template-columns:\s*minmax\(0,\s*1fr\) minmax\(0,\s*var\(--ui-hero-status-width\)\);/);
-  assert.match(visualSystemStyles, /\.om-match-panel,\s*\.arena-hero-panel[\s\S]*?width:\s*min\(100%,\s*var\(--ui-hero-status-width\)\);/);
-  assert.match(visualSystemStyles, /\.om-match-actions,\s*\.arena-hero-actions[\s\S]*?height:\s*var\(--ui-button-height\);/);
+  assert.match(visualSystemStyles, /:is\(\.arena-recruit-hero\)[\s\S]*?grid-template-columns:\s*minmax\(0,\s*1fr\) minmax\(0,\s*var\(--ui-hero-status-width\)\);/);
+  assert.match(visualSystemStyles, /:is\(\.arena-hero-panel\)[\s\S]*?width:\s*min\(100%,\s*var\(--ui-hero-status-width\)\);/);
+  assert.match(visualSystemStyles, /:is\(\.arena-hero-actions\)[\s\S]*?height:\s*var\(--ui-button-height\);/);
   assert.match(visualSystemStyles, /\.eyebrow\s*\{[^}]*color:\s*var\(--hero-eyebrow-color\);/);
   assert.match(visualSystemStyles, /html\[data-theme\] \.app-main \.ui-page-hero\s*\{[^}]*--hero-title-color:\s*var\(--ui-image-hero-title-color\);[^}]*--hero-copy-color:\s*var\(--ui-image-hero-copy-color\);[^}]*--hero-title-shadow:\s*var\(--ui-image-hero-title-shadow\);[^}]*--hero-copy-shadow:\s*var\(--ui-image-hero-copy-shadow\);/);
   assert.doesNotMatch(visualSystemStyles, /html\[data-theme="light"\] \.app-main \.rank-home \.ui-page-hero\s*\{/);
@@ -1674,6 +1672,7 @@ test("page heroes keep shared eyebrows without implementation copy", () => {
     read("src/pages/Recorder.jsx"),
     read("src/pages/RefereeRulebook.jsx"),
     read("src/pages/TournamentDetailView.jsx"),
+    pageFrameSource,
   ].join("\n");
 
   assert.doesNotMatch(heroSources, /kicker/);
@@ -1683,24 +1682,57 @@ test("page heroes keep shared eyebrows without implementation copy", () => {
   assert.match(heroSources, /className="eyebrow">Study guide</);
   assert.doesNotMatch(heroSources, /공용 방 모달|저장 통로|같은 값|현재 알파 테스트|서버 원본|내부 보정값|실제 공용 방 모달|현재 서비스 화면/);
 
-  const standardizedHeroSources = [
-    pageSources.home,
+  assert.match(pageFrameSource, /page-stack ui-page-frame/);
+  assert.match(pageFrameSource, /\{hero\}\s*\{navigation\}\s*\{children\}/);
+  assert.match(pageFrameSource, /<header className="page-header ui-page-hero ui-design-app-hero">/);
+  [
+    "src/pages/Profile.jsx",
+    "src/pages/Teams.jsx",
+    "src/pages/TeamDetailView.jsx",
+    "src/pages/ProfileRecords.jsx",
+    "src/pages/ProfileAchievements.jsx",
+    "src/pages/Notifications.jsx",
+    "src/pages/AdminPageView.jsx",
+    "src/pages/SettingsPageView.jsx",
+    "src/pages/MatchesPageView.jsx",
+    "src/App.jsx",
+  ].forEach((file) => {
+    const source = read(file);
+    assert.match(source, /import PageFrame\b[^;]*from "[^"]*\/common\/PageFrame\.jsx"/, file);
+    assert.match(source, /<PageFrame\b[\s\S]*?\bhero=\{/, file);
+  });
+  [
     pageSources.profile,
     pageSources.profileRecords,
+    read("src/pages/ProfileAchievements.jsx"),
+    read("src/pages/Notifications.jsx"),
+    read("src/pages/AdminPageView.jsx"),
+    pageSources.settings,
     pageSources.matches,
+    appSource,
+  ].forEach((source) => assert.match(source, /<PageHeader\b/));
+  [
+    pageSources.profile,
+    pageSources.teams,
+    read("src/pages/TeamDetailView.jsx"),
+    pageSources.profileRecords,
+    read("src/pages/ProfileAchievements.jsx"),
+    appSource,
+  ].forEach((source) => assert.match(source, /navigation=\{<MyNavigation\s*\/>\}/));
+  assert.doesNotMatch(appShellSource, /<MyNavigation\b/);
+
+  const standardizedHeroSources = [
+    pageSources.home,
     pageSources.recruiting,
     pageSources.season,
     pageSources.teams,
     pageSources.rankings,
-    pageSources.settings,
+    pageFrameSource,
     matchRoomPageSource,
     courtDetailSource,
     entityProfileHeroSource,
     read("src/components/match/CreateMatchLayout.jsx"),
-    read("src/pages/AdminPageView.jsx"),
     read("src/pages/Affiliations.jsx"),
-    read("src/pages/Notifications.jsx"),
-    read("src/pages/ProfileAchievements.jsx"),
     read("src/pages/Recorder.jsx"),
     read("src/pages/RefereeRulebook.jsx"),
     read("src/pages/Signup.jsx"),

@@ -15,7 +15,7 @@
   font-weight: var(--font-weight-sports);
 }
 
-html[data-theme] .app-main :is(.ui-liquid-glass, .page-header > .ui-button) {
+html[data-theme] .app-main :is(.ui-liquid-glass, .page-header > .ui-button, .ui-page-header__actions > .ui-button-secondary) {
   position: relative;
   isolation: isolate;
   border: 0;
@@ -38,7 +38,7 @@ html[data-theme] .app-main .ui-liquid-glass .ui-button.ui-button-secondary {
   border-color: transparent;
 }
 
-html[data-theme] .app-main :is(.ui-liquid-glass, .page-header > .ui-button)::before {
+html[data-theme] .app-main :is(.ui-liquid-glass, .page-header > .ui-button, .ui-page-header__actions > .ui-button-secondary)::before {
   content: none;
 }
 

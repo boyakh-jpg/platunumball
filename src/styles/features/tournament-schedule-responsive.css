@@ -340,10 +340,6 @@
 }
 
 @media (max-width: 480px) {
-  .om-match-panel {
-    padding: 10px;
-  }
-
   .om-view-icon,
   .om-list-head > span {
     display: none;

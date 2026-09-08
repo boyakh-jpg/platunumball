@@ -211,9 +211,16 @@ html[data-theme] .app-main .page-header :is(p, small):not(.eyebrow) {
 }
 
 html[data-theme] .app-main .page-header > .ui-button,
+html[data-theme] .app-main .ui-page-header__actions > .ui-button,
 html[data-theme] .app-main .page-header .ui-page-hero__copy > .ui-button {
   width: fit-content;
   max-width: 100%;
+}
+
+.ui-page-header__actions {
+  max-width: 100%;
+  margin-inline-start: auto;
+  justify-content: flex-end;
 }
 
 html[data-theme] .app-main .team-hub-hero {
@@ -223,7 +230,7 @@ html[data-theme] .app-main .team-hub-hero {
   padding: var(--ui-page-hero-padding);
 }
 
-html[data-theme] .app-main :is(.home-hero-board, .om-match-panel) {
+html[data-theme] .app-main :is(.home-hero-board) {
   --ui-liquid-glass-surface-bg: var(--ui-hero-information-surface-bg);
   border-color: transparent;
   background: var(--ui-hero-information-surface-bg);
@@ -323,7 +330,7 @@ html[data-theme] .app-main {
   background-color: var(--rb-bg);
 }
 
-html[data-theme] .app-main :is(.match-hero, .om-match-hero, .gm-room-hero) {
+html[data-theme] .app-main :is(.match-hero, .om-match-page .page-header, .gm-room-hero) {
   --ui-page-hero-image: var(--bg-hoop);
   --ui-page-hero-position: var(--hero-bg-position-hoop);
 }

@@ -6,6 +6,7 @@ import Badge from "../components/common/Badge.jsx";
 import BasketballLoader from "../components/common/BasketballLoader.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
+import PageFrame from "../components/common/PageFrame.jsx";
 import EmptyState from "../components/common/EmptyState.jsx";
 import SearchPicker from "../components/common/SearchPicker.jsx";
 import MyNavigation from "../components/profile/MyNavigation.jsx";
@@ -255,34 +256,38 @@ export default function Teams({ app }) {
   };
 
   return (
-    <div className="page-stack teams-page">
-      <section className="team-hub-hero ui-page-hero ui-design-app-hero">
-        <div className="ui-page-hero__copy">
-          <h1>팀</h1>
-        </div>
-        {heroTeam ? (
-          <div className="team-hub-board ui-liquid-glass">
-            <div className="team-hub-board-head">
-              <span>{readOnly ? "1위 팀" : "대표팀"}</span>
-              <b>#{heroTeam.rank}</b>
-            </div>
-            <div className="team-hub-board-identity">
-              <div>
-                <TeamHoverCard team={heroTeam} as="span" className="team-hub-board-name">
-                  <strong>{heroTeam.name}</strong>
-                </TeamHoverCard>
-                <em>{heroTeam.region} · {heroTeam.homeCourt}</em>
+    <PageFrame
+      className="teams-page"
+      hero={(
+        <section className="team-hub-hero ui-page-hero ui-design-app-hero">
+          <div className="ui-page-hero__copy">
+            <h1>팀</h1>
+          </div>
+          {heroTeam ? (
+            <div className="team-hub-board ui-liquid-glass">
+              <div className="team-hub-board-head">
+                <span>{readOnly ? "1위 팀" : "대표팀"}</span>
+                <b>#{heroTeam.rank}</b>
+              </div>
+              <div className="team-hub-board-identity">
+                <div>
+                  <TeamHoverCard team={heroTeam} as="span" className="team-hub-board-name">
+                    <strong>{heroTeam.name}</strong>
+                  </TeamHoverCard>
+                  <em>{heroTeam.region} · {heroTeam.homeCourt}</em>
+                </div>
+              </div>
+              <div className="team-hub-board-stats">
+                <span><b>{heroTeam.mmr}</b><em>MMR</em></span>
+                <span><b>{heroTeam.wins}승 {heroTeam.losses}패</b><em>전적</em></span>
+                <span><b>{heroTeam.members.length}명</b><em>팀원</em></span>
               </div>
             </div>
-            <div className="team-hub-board-stats">
-              <span><b>{heroTeam.mmr}</b><em>MMR</em></span>
-              <span><b>{heroTeam.wins}승 {heroTeam.losses}패</b><em>전적</em></span>
-              <span><b>{heroTeam.members.length}명</b><em>팀원</em></span>
-            </div>
-          </div>
-        ) : null}
-      </section>
-      <MyNavigation />
+          ) : null}
+        </section>
+      )}
+      navigation={<MyNavigation />}
+    >
       {teamDirectoryPending ? <BasketballLoader overlay label="팀 맞추는 중" /> : teamDirectoryError ? (
         <Card className="section-card"><div className="section-title-row"><span className="form-warning">팀 목록을 불러오지 못했습니다.</span><Button type="button" variant="secondary" onClick={() => void loadDirectory?.({ force: true, kind: "teams", filter: directoryFilter, region: directoryRegion, limit: DIRECTORY_TEAM_PAGE_LIMIT, offset: 0, includeTeamMemberProfiles: true })}>다시 시도</Button></div></Card>
       ) : <div className="team-workspace-grid">
@@ -543,6 +548,6 @@ export default function Teams({ app }) {
         </Card>}
         </div>
       </div>}
-    </div>
+    </PageFrame>
   );
 }

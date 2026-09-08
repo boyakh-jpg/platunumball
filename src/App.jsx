@@ -5,6 +5,7 @@ import RequireAuth from "./components/auth/RequireAuth.jsx";
 import GuestAccessNotice from "./components/auth/GuestAccessNotice.jsx";
 import BasketballLoader from "./components/common/BasketballLoader.jsx";
 import LandingLoading from "./components/common/LandingLoading.jsx";
+import PageFrame, { PageHeader } from "./components/common/PageFrame.jsx";
 import AppShell from "./components/layout/AppShell.jsx";
 import ProfileNavigation from "./components/profile/ProfileNavigation.jsx";
 import MyNavigation from "./components/profile/MyNavigation.jsx";
@@ -282,14 +283,10 @@ export default function App() {
             <Route path="/app/players/:playerId" element={<PlayerDetail app={app} />} />
             <Route path="/app/referees/:refereeId" element={<RefereeDetail app={app} />} />
             <Route path="/app/profile" element={guestPreview ? (
-              <div className="page-stack">
-                <header className="page-header ui-page-hero ui-design-app-hero">
-                  <div className="ui-page-hero__copy"><h1>프로필</h1></div>
-                </header>
-                <MyNavigation />
+              <PageFrame hero={<PageHeader title="프로필" />} navigation={<MyNavigation />}>
                 <ProfileNavigation app={app} guestPreview />
                 <GuestAccessNotice title="내 정보는 로그인 후 확인할 수 있습니다" description="로그인하면 프로필, 랭크, 업적과 경기 기록을 불러옵니다." />
-              </div>
+              </PageFrame>
             ) : <Profile app={app} />} />
             <Route path="/app/profile/achievements" element={<ProfileAchievements app={app} />} />
             <Route path="/app/profile/records" element={<ProfileRecords app={app} />} />

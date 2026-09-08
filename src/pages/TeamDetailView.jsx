@@ -5,6 +5,7 @@ import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import EmblemCropEditor from "../components/common/EmblemCropEditor.jsx";
 import ModalShell from "../components/common/ModalShell.jsx";
+import PageFrame from "../components/common/PageFrame.jsx";
 import SearchPicker from "../components/common/SearchPicker.jsx";
 import RecentMatchRow from "../components/match/RecentMatchRow.jsx";
 import EntityProfileHero from "../components/profile/EntityProfileHero.jsx";
@@ -61,7 +62,41 @@ export default function TeamDetailView({ controller }) {
     if (completed !== false) closeDangerAction();
   };
   return (
-    <div className="page-stack team-detail-page rank-team-page">
+    <PageFrame
+      className="team-detail-page rank-team-page"
+      hero={(
+        <EntityProfileHero
+          className="team-detail-hero rank-profile-hero rank-team-hero"
+          style={{ "--team-color": team.accent }}
+          eyebrow="Team Profile"
+          title={team.name}
+          subtitle={`${team.region} · ${team.homeCourt}`}
+          action={app.demoPreview ? null : (
+            <Button
+                type="button"
+                size="sm"
+                variant={isFavoriteTeam ? "primary" : "secondary"}
+                className={isFavoriteTeam ? "favorite-toggle-button ui-liquid-glass active" : "favorite-toggle-button ui-liquid-glass"}
+                disabled={favoritePending}
+                onClick={() => { void toggleTeamFavorite(); }}
+                aria-label={favoritePending ? "즐겨찾기 저장 중" : isFavoriteTeam ? "즐겨찾기 해제" : "즐겨찾기 추가"}
+                title={isFavoriteTeam ? "즐겨찾기 해제" : "즐겨찾기 추가"}
+              >
+                <Star size={16} fill={isFavoriteTeam ? "currentColor" : "none"} />
+                {favoritePending ? "저장 중" : isFavoriteTeam ? "즐겨찾기됨" : "즐겨찾기"}
+            </Button>
+          )}
+          badges={(
+            <>
+              <Badge tone="green" className="ui-liquid-glass">{team.mmr} 팀 MMR</Badge>
+              <Badge tone="gold" className="ui-liquid-glass">팀장 {userMap[captain?.userId]?.name ?? "미지정"}</Badge>
+            </>
+          )}
+          visual={<div className="team-tier-hero"><TierEmblem mmr={team.mmr} size="hero" showLabel /></div>}
+        />
+      )}
+      navigation={<MyNavigation />}
+    >
       {teamDetailError ? (
         <Card className="section-card">
           <div className="section-title-row">
@@ -70,36 +105,6 @@ export default function TeamDetailView({ controller }) {
           </div>
         </Card>
       ) : null}
-      <EntityProfileHero
-        className="team-detail-hero rank-profile-hero rank-team-hero"
-        style={{ "--team-color": team.accent }}
-        eyebrow="Team Profile"
-        title={team.name}
-        subtitle={`${team.region} · ${team.homeCourt}`}
-        action={app.demoPreview ? null : (
-          <Button
-              type="button"
-              size="sm"
-              variant={isFavoriteTeam ? "primary" : "secondary"}
-              className={isFavoriteTeam ? "favorite-toggle-button ui-liquid-glass active" : "favorite-toggle-button ui-liquid-glass"}
-              disabled={favoritePending}
-              onClick={() => { void toggleTeamFavorite(); }}
-              aria-label={favoritePending ? "즐겨찾기 저장 중" : isFavoriteTeam ? "즐겨찾기 해제" : "즐겨찾기 추가"}
-              title={isFavoriteTeam ? "즐겨찾기 해제" : "즐겨찾기 추가"}
-            >
-              <Star size={16} fill={isFavoriteTeam ? "currentColor" : "none"} />
-              {favoritePending ? "저장 중" : isFavoriteTeam ? "즐겨찾기됨" : "즐겨찾기"}
-          </Button>
-        )}
-        badges={(
-          <>
-            <Badge tone="green" className="ui-liquid-glass">{team.mmr} 팀 MMR</Badge>
-            <Badge tone="gold" className="ui-liquid-glass">팀장 {userMap[captain?.userId]?.name ?? "미지정"}</Badge>
-          </>
-        )}
-        visual={<div className="team-tier-hero"><TierEmblem mmr={team.mmr} size="hero" showLabel /></div>}
-      />
-      <MyNavigation />
       {favoriteError ? <span role="status" className="form-warning">{favoriteError}</span> : null}
 
       <Card className="section-card team-description-card">
@@ -633,6 +638,6 @@ export default function TeamDetailView({ controller }) {
         onConvert={convertReceiptEmblem}
         onConfirm={confirmReceiptEmblem}
       />
-    </div>
+    </PageFrame>
   );
 }

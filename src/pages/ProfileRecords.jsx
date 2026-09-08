@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
+import PageFrame, { PageHeader } from "../components/common/PageFrame.jsx";
 import { PersonalRecordMetaLabels } from "../components/match/MatchRecordMeta.jsx";
 import RecentMatchRow from "../components/match/RecentMatchRow.jsx";
 import ProfileRecordSummaryCard from "../components/profile/ProfileRecordSummaryCard.jsx";
@@ -100,15 +101,16 @@ export default function ProfileRecords({ app }) {
     ...fallbackPersonalTotals,
   };
   return (
-    <div className="page-stack profile-records-page">
-      <header className="page-header ui-page-hero ui-design-app-hero">
-        <div className="ui-page-hero__copy">
-          <p className="eyebrow">MY RECORDS</p>
-          <h1>내 기록</h1>
-        </div>
-        <Button as={Link} variant="secondary" to="/app/profile">프로필로</Button>
-      </header>
-      <MyNavigation />
+    <PageFrame
+      className="profile-records-page"
+      hero={(
+        <PageHeader
+          title="내 기록"
+          actions={<Button as={Link} variant="secondary" to="/app/profile">프로필로</Button>}
+        />
+      )}
+      navigation={<MyNavigation />}
+    >
 
       <ProfileRecordSummaryCard
         records={recentRecords}
@@ -233,6 +235,6 @@ export default function ProfileRecords({ app }) {
         </Card>
       ) : null}
       <MatchRoomModal app={app} matchId={selectedRecordMatchId} onClose={() => setSelectedRecordMatchId("")} />
-    </div>
+    </PageFrame>
   );
 }

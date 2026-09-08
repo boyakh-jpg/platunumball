@@ -84,7 +84,6 @@ html[data-theme] .app-main :is(
   .team-hub-hero,
   .profile-hero,
   .team-detail-hero,
-  .om-match-hero,
   .arena-recruit-hero,
   .gm-room-hero
 ) p:not(.eyebrow),
@@ -95,7 +94,6 @@ html[data-theme="light"] .app-main :is(
   .team-hub-hero,
   .profile-hero,
   .team-detail-hero,
-  .om-match-hero,
   .arena-recruit-hero,
   .gm-room-hero
 ) p:not(.eyebrow) {
@@ -109,7 +107,6 @@ html[data-theme] .app-main :is(
   .team-hub-hero,
   .profile-hero,
   .team-detail-hero,
-  .om-match-hero,
   .arena-recruit-hero,
   .gm-room-hero,
   .home-rank-board-head
@@ -277,13 +274,13 @@ html[data-theme] .app-main .ui-page-hero .ui-liquid-glass :is(
 html[data-theme] .app-main .ui-page-hero .team-hub-board .team-hub-board-identity em {
   color: var(--rb-yellow);
 }
-html[data-theme] .app-main :is(.om-match-hero, .arena-recruit-hero) {
+html[data-theme] .app-main :is(.arena-recruit-hero) {
   grid-template-columns: minmax(0, 1fr) minmax(0, var(--ui-hero-status-width));
   gap: var(--space-6);
   min-height: var(--ui-operations-hero-min-height);
   padding: var(--ui-operations-hero-padding);
 }
-html[data-theme] .app-main :is(.om-match-panel, .arena-hero-panel) {
+html[data-theme] .app-main :is(.arena-hero-panel) {
   --ui-liquid-glass-surface-bg: var(--ui-hero-information-surface-bg);
   display: grid;
   width: min(100%, var(--ui-hero-status-width));
@@ -317,33 +314,33 @@ html[data-theme] .app-main .arena-hero-stats strong {
   opacity: 1;
   text-shadow: none;
 }
-html[data-theme] .app-main :is(.om-match-actions, .arena-hero-actions) {
+html[data-theme] .app-main :is(.arena-hero-actions) {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-2);
 }
-html[data-theme] .app-main :is(.om-match-actions, .arena-hero-actions) > .ui-button {
+html[data-theme] .app-main :is(.arena-hero-actions) > .ui-button {
   width: 100%;
   min-height: var(--ui-button-height);
   height: var(--ui-button-height);
 }
 @media (max-width: 1020px) {
-  html[data-theme] .app-main :is(.om-match-hero, .arena-recruit-hero) {
+  html[data-theme] .app-main :is(.arena-recruit-hero) {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  html[data-theme] .app-main :is(.om-match-panel, .arena-hero-panel) {
+  html[data-theme] .app-main :is(.arena-hero-panel) {
     width: 100%;
     justify-self: stretch;
   }
 }
 @media (max-width: 720px) {
-  html[data-theme] .app-main :is(.om-match-hero, .arena-recruit-hero) {
+  html[data-theme] .app-main :is(.arena-recruit-hero) {
     min-height: var(--ui-operations-hero-min-height-mobile);
     padding: var(--ui-operations-hero-padding-mobile);
   }
 
-  html[data-theme] .app-main :is(.om-match-panel, .arena-hero-panel) {
+  html[data-theme] .app-main :is(.arena-hero-panel) {
     width: 100%;
     grid-template-columns: minmax(0, 1fr);
     gap: var(--space-2);

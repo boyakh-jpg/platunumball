@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
+import PageFrame, { PageHeader } from "../components/common/PageFrame.jsx";
 import MyNavigation from "../components/profile/MyNavigation.jsx";
 import { assetUrl } from "../lib/assets.js";
 import { getProfileIconAchievementState, PROFILE_ICON_GROUPS } from "../lib/profileIcons.js";
@@ -91,15 +92,16 @@ export default function ProfileAchievements({ app }) {
   const totalCount = PROFILE_ICON_GROUPS.reduce((sum, group) => sum + group.icons.length, 0);
 
   return (
-    <div className="page-stack profile-achievements-page">
-      <header className="page-header ui-page-hero ui-design-app-hero">
-        <div className="ui-page-hero__copy">
-          <p className="eyebrow">Achievements</p>
-          <h1>아이콘 업적</h1>
-        </div>
-        <Button as={Link} variant="secondary" to="/app/profile">프로필로</Button>
-      </header>
-      <MyNavigation />
+    <PageFrame
+      className="profile-achievements-page"
+      hero={(
+        <PageHeader
+          title="아이콘 업적"
+          actions={<Button as={Link} variant="secondary" to="/app/profile">프로필로</Button>}
+        />
+      )}
+      navigation={<MyNavigation />}
+    >
 
       <Card className="section-card profile-achievement-summary">
         <div>
@@ -134,6 +136,6 @@ export default function ProfileAchievements({ app }) {
           </div>
         </section>
       )) : null}
-    </div>
+    </PageFrame>
   );
 }
