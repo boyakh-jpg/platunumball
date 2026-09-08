@@ -221,7 +221,10 @@ export default function Teams({ app }) {
     try {
       const result = await app.actions.createTeam({ ...draft, captainId: app.currentUser.id });
       if (!result || result?.ok === false) {
-        setTeamCreateError("팀을 만들지 못했습니다. 입력 내용을 확인한 뒤 다시 시도해 주세요.");
+        setTeamCreateError(
+          (typeof result?.message === "string" && result.message.trim())
+          || "팀을 만들지 못했습니다. 입력 내용을 확인한 뒤 다시 시도해 주세요.",
+        );
         return;
       }
       setDraft({ name: "", region: defaultTeamRegion, homeCourt: "", homeCourtId: "", captainId: app.currentUser.id, accent: "#58d2c0" });

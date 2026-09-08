@@ -415,6 +415,10 @@ function RecruitingReady({ app, readOnly = false }) {
     });
   }, [scopedPosts]);
   const queueListLoading = !posts.length && (!filterRequestSettled || app.recruitingPagination?.loading);
+  const queueListError = !targetPostId && filterRequestSettled && !app.recruitingPagination?.loading
+    ? app.recruitingPagination?.error
+    : "";
+  const retryQueueList = () => refreshRecruitingFromServer({ force: true });
 
   const selectedPost = selectedPostId
     ? app.state.recruitingPosts.find((post) => post.id === selectedPostId)
@@ -528,7 +532,7 @@ function RecruitingReady({ app, readOnly = false }) {
     regionDistrictOptions, regionFilterLabel, defaultRegionSelection, queue, setQueue, modeFilter, setModeFilter,
     startDateOptions, startFilter, selectStartFilter, startFilterLabel, app,
     userById, teamById, myTeamIds, courtById, courtByName,
-    targetPostId, openSelectedPost, queueListLoading, selectedPostDetailFailed, closeSelectedPost,
+    targetPostId, openSelectedPost, queueListLoading, queueListError, retryQueueList, selectedPostDetailFailed, closeSelectedPost,
     selectedPostRefreshRef, requestSelectedPostDetail, selectedPostId, selectedPost, selectedPostDetailLoading,
     navigate, location, setSelectedPostId, selectedPostPending, readOnly,
   }} />;

@@ -19,7 +19,7 @@ export default function RecruitingPageView({
   regionDistrictOptions, regionFilterLabel, defaultRegionSelection, queue, setQueue, modeFilter, setModeFilter,
   startDateOptions, startFilter, selectStartFilter, startFilterLabel, app,
   userById, teamById, myTeamIds, courtById, courtByName,
-  targetPostId, openSelectedPost, queueListLoading, selectedPostDetailFailed, closeSelectedPost,
+  targetPostId, openSelectedPost, queueListLoading, queueListError, retryQueueList, selectedPostDetailFailed, closeSelectedPost,
   selectedPostRefreshRef, requestSelectedPostDetail, selectedPostId, selectedPost, selectedPostDetailLoading,
   navigate, location, setSelectedPostId, selectedPostPending, readOnly = false,
 }) {
@@ -201,15 +201,24 @@ export default function RecruitingPageView({
             title="매치방 불러오는 중"
             description="선택한 지역과 날짜의 공개방을 확인하고 있습니다."
           />
-        ) : (
+        ) : !queueListError ? (
           <EmptyState
             title="조건에 맞는 매치방 없음"
             description="필터를 변경하거나 새 매치방을 만들어 보세요."
           />
-        )}
+        ) : null}
       </section>
 
-      {!app.recruitingPagination?.exhausted ? (
+      {queueListError ? (
+        <EmptyState
+          tone="error"
+          title="매치방을 불러오지 못했습니다"
+          description={posts.length ? "기존 목록을 표시하고 있습니다. 같은 조건으로 다시 불러와 주세요." : "선택한 지역과 날짜를 유지한 채 다시 불러올 수 있습니다."}
+          action={<Button variant="secondary" onClick={retryQueueList}>다시 시도</Button>}
+        />
+      ) : null}
+
+      {!queueListError && !app.recruitingPagination?.exhausted ? (
         <div className="om-load-more">
           <button type="button" className="button ui-button button-secondary ui-button-secondary button-md ui-button-md" disabled={app.recruitingPagination?.loading} onClick={() => app.actions.loadMoreRecruiting?.()}>
             {app.recruitingPagination?.loading ? "불러오는 중" : "더 보기"}

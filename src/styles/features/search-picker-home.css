@@ -30,6 +30,7 @@
 .search-picker-field {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
+  grid-auto-flow: column;
   align-items: center;
   gap: var(--space-4);
 }

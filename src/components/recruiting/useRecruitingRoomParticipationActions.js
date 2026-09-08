@@ -152,16 +152,17 @@ export function useRecruitingRoomParticipationActions({
       return;
     }
     setChatSendingPostId(postId);
-    updateChatDraft(roomPost, "");
+    setChatError(postId, "");
     try {
       const result = await app.actions.sendRecruitingChat(roomPost.id, body);
       if (!result || result?.ok === false) throw new Error(result?.error || "chat_send_failed");
+      updateChatDraft(roomPost, "");
       chatSendLogRef.current[postId] = [...recentLog, { body, at: now }];
       const cooldownUntil = Date.now() + CHAT_SEND_COOLDOWN_MS;
       setChatCooldownUntilByPost((current) => ({ ...current, [postId]: cooldownUntil }));
       clearChatCooldown(postId, cooldownUntil);
     } catch (error) {
-      setChatError(postId, "잠시 후 다시 입력해 주세요.");
+      setChatError(postId, "전송하지 못했습니다. 다시 시도해 주세요.");
     } finally {
       setChatSendingPostId((current) => (current === postId ? "" : current));
     }

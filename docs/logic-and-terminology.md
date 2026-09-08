@@ -191,7 +191,7 @@
 ## 2026-07-31 운영 변경 실패 처리
 
 1. 차단·차단 해제, 심판 등록요청, 관리자 임명·연장·회수, 팀 변경은 서버 저장 성공을 확인한 뒤 완료로 표시한다.
-2. 서버 저장 실패 시 입력을 지우거나 성공처럼 표시하지 않으며, 낙관 반영한 상태는 이전 상태로 되돌린다.
+2. 서버 저장 실패 시 입력을 지우거나 성공처럼 표시하지 않으며, 낙관 반영한 상태는 이전 상태로 되돌린다. 방 채팅 초안은 전송 성공 뒤에만 초기화한다. 팀 생성 실패는 action이 반환한 사용자용 사유를 표시하고, 사유가 없을 때만 기본 오류 문구를 쓴다.
 3. 경기 상세의 동의도 같은 서버 액션 경계를 사용해 중복 제출을 막고 실패를 현재 화면에 표시한다.
 4. 경기 결과·실시간 기록 제출은 경기 상세와 공용 방 모달 모두 현재 요청이 끝나기 전 같은 화면의 다음 제출을 막고, 실패하면 입력을 유지한 채 재시도할 수 있어야 한다.
 5. 사후 경기기록의 참가 사실 확인은 현재 출전 명단뿐 아니라 교체로 출전한 뒤 후보로 돌아간 선수도 `playedPlayerIds` 기준으로 표시한다. 저장 중에는 중복 승인을 막고, 실패하면 승인 전 상태와 버튼을 유지한다.
@@ -2805,7 +2805,7 @@ flowchart TD
 19. Recruiting mutation 응답은 최신 post만 반환해도 클라이언트가 초대 대상/참가자 표시를 잃지 않도록 얇은 `state.users`/`state.teams`를 같이 병합한다.
 20. 팀 초대 목록과 현재 프로필 state는 팀원이 아닌 pending 초대의 `fromUserId`/`targetUserId` 공개 프로필도 같이 붙인다.
 21. Supabase 테스트 로그인은 Google auth 계정처럼 서버 프로필에 고정된 세션이다. Settings에서 임의 계정 전환 대상으로 취급하지 않는다.
-22. Settings 저장 UI는 서버 저장 결과를 기다린 뒤 성공/실패를 표시한다. Privacy/Discord 설정은 실패했는데도 `저장됨`으로 표시하면 안 된다.
+22. Settings 저장 UI는 서버 저장 결과를 기다린 뒤 성공/실패를 표시한다. Privacy/Discord 설정은 실패했는데도 `저장됨`으로 표시하면 안 된다. 저장 요청 중에는 `저장 중`, 성공 뒤 새로운 수정에는 `변경 있음`을 표시한다. 실패 시 낙관 상태를 되돌려도 사용자가 입력한 draft는 보존해 다시 저장할 수 있어야 한다.
 
 23. 구형 `setRecruitingReady` 전용 RPC는 현재 운영 action 집합에서 제외한다. 과거 demo seed의 로컬 reducer만 호환용으로 유지한다.
 24. Recruiting server action replay must load the acting profile's current teams, explicit draft/application team ids, and their team members. Team-hosted room creation, private opponent team creation, and team-party participation cannot rely only on teams already related to the target recruiting post.

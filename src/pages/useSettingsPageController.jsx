@@ -39,6 +39,7 @@ export default function useSettingsPageController({ app, section = "main" }) {
   const [homeGuideCardSavePending, setHomeGuideCardSavePending] = useState(false);
   const [homeGuideCardSaveStatus, setHomeGuideCardSaveStatus] = useState("");
   const [generalSettingsSavePending, setGeneralSettingsSavePending] = useState(false); const generalSettingsSavePendingRef = useRef(false); const [discordLinkPending, setDiscordLinkPending] = useState(false); const discordLinkPendingRef = useRef(false);
+  const [generalSettingsSaveFailed, setGeneralSettingsSaveFailed] = useState(false);
   const blockedUserIds = app.state.settings?.blockedUserIds ?? [];
   const [blockUserId, setBlockUserId] = useState(""); const [blockUserQuery, setBlockUserQuery] = useState("");
   const [blockSavePending, setBlockSavePending] = useState(false); const blockSavePendingRef = useRef(false); const [blockSaveStatus, setBlockSaveStatus] = useState("");
@@ -97,12 +98,16 @@ export default function useSettingsPageController({ app, section = "main" }) {
     discordDraft.enabled !== Boolean(discordLinked && discordChannel.enabled) ||
     DISCORD_NOTIFICATION_EVENTS.some((option) => Boolean(discordDraft.events?.[option.id]) !== Boolean(discordChannel.events?.[option.id]));
   const generalSettingsDirty = homeGuideCardDirty || privacyDirty || discordDirty;
-  const generalSettingsStatus = [
-    themeSaveStatus ? `테마 ${themeSaveStatus}` : null,
+  const generalSettingsFeedback = [
     homeGuideCardSaveStatus ? `홈 안내 ${homeGuideCardSaveStatus}` : null,
     privacySaveStatus ? `노출 ${privacySaveStatus}` : null,
     discordSaveStatus ? `디스코드 ${discordSaveStatus}` : null,
-  ].filter(Boolean).join(" · ") || (generalSettingsDirty ? "변경 있음" : "저장됨");
+  ].filter(Boolean).join(" · ");
+  const generalSettingsStatus = generalSettingsSavePending
+    ? "저장 중"
+    : generalSettingsSaveFailed && generalSettingsFeedback
+      ? generalSettingsFeedback
+      : generalSettingsDirty ? "변경 있음" : generalSettingsFeedback || "저장됨";
 
   useEffect(() => {
     const previousTheme = lastThemeRef.current;
@@ -111,14 +116,17 @@ export default function useSettingsPageController({ app, section = "main" }) {
     setThemeSaveStatus((current) => (current === "저장 중" ? current : ""));
   }, [theme]);
   useEffect(() => {
+    if (generalSettingsSavePending || generalSettingsSaveFailed) return;
     setPrivacyDraft(JSON.parse(privacySnapshot));
     setPrivacySaveStatus("");
-  }, [privacySnapshot]);
+  }, [privacySnapshot, generalSettingsSavePending, generalSettingsSaveFailed]);
   useEffect(() => {
+    if (generalSettingsSavePending || generalSettingsSaveFailed) return;
     setHomeGuideCardDraft(homeGuideCardVisible);
     setHomeGuideCardSaveStatus("");
-  }, [homeGuideCardVisible]);
+  }, [homeGuideCardVisible, generalSettingsSavePending, generalSettingsSaveFailed]);
   useEffect(() => {
+    if (generalSettingsSavePending || generalSettingsSaveFailed) return;
     setDiscordDraft({
       enabled: Boolean(discordLinked && discordChannel.enabled),
       events: { ...discordChannel.events },
@@ -126,7 +134,7 @@ export default function useSettingsPageController({ app, section = "main" }) {
     });
     setDiscordSaveStatus("");
     setDiscordLinkError("");
-  }, [discordSnapshot]);
+  }, [discordSnapshot, generalSettingsSavePending, generalSettingsSaveFailed]);
   useEffect(() => {
     if (isSupabaseConfigured && !app.remoteReady) return;
     const discordOAuthResultPromise = consumeDiscordOAuthResult(app.currentUserId);
@@ -329,10 +337,12 @@ export default function useSettingsPageController({ app, section = "main" }) {
     if (!generalSettingsDirty || generalSettingsSavePendingRef.current) return;
     generalSettingsSavePendingRef.current = true;
     setGeneralSettingsSavePending(true);
+    setGeneralSettingsSaveFailed(false);
     try {
-      if (homeGuideCardDirty && !(await saveHomeGuideCardVisibility())) return;
-      if (privacyDirty && !(await savePrivacy())) return;
-      if (discordDirty) await saveDiscordSettings();
+      const saved = (!homeGuideCardDirty || await saveHomeGuideCardVisibility())
+        && (!privacyDirty || await savePrivacy())
+        && (!discordDirty || await saveDiscordSettings());
+      setGeneralSettingsSaveFailed(!saved);
     } finally { generalSettingsSavePendingRef.current = false; setGeneralSettingsSavePending(false); }
   };
   const reportCourtRequest = (request) => {

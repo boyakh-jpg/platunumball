@@ -1,5 +1,6 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { Search } from "lucide-react";
+import { Search, X } from "lucide-react";
+import Button from "./Button.jsx";
 import { postServerAction } from "../../lib/serverActions.js";
 import { preferExactSearchMatches } from "../../../shared/lib/fuzzyText.js";
 
@@ -315,6 +316,22 @@ export default function SearchPicker({
             onChange(event.target.value);
           }}
         />
+        {value && !disabled ? (
+          <Button
+            variant="secondary"
+            className="button-icon"
+            aria-label="검색어 지우기"
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => {
+              setFocused(true);
+              setSubmittedQuery("");
+              onChange("");
+              inputRef.current?.focus();
+            }}
+          >
+            <X size={18} aria-hidden="true" />
+          </Button>
+        ) : null}
       </div>
       {canShow ? (
         <div
