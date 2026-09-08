@@ -3,7 +3,7 @@ import { ADMIN_REVIEW_ACTIONS, getAdminActionTargetUserIds, isHighImpactAdminRev
 import { getCourtCorrectionPatch } from "../lib/courts.js";
 
 export const ADMIN_SECTION_OPTIONS = [
-  { id: "operations", group: "운영 현황", label: "운영 현황", caption: "지금 처리할 업무", icon: Gauge },
+  { id: "operations", group: "운영 현황", label: "운영 현황", caption: "전체 현황과 처리할 업무", icon: Gauge },
   { id: "reports", group: "신고·검토", label: "신고 큐", caption: "전체 신고와 배정", icon: BellRing },
   { id: "courts", group: "신고·검토", label: "구장 신청", caption: "등록 신청과 구장 신고", icon: MapPin },
   { id: "players", group: "신고·검토", label: "플레이어 신고", caption: "신고와 징계", icon: UserRound },

@@ -3197,7 +3197,12 @@ flowchart TD
 
 - `/app/admin` 기본 업무는 `운영 현황`이다. 구장 신청 전용 링크와 `/app/admin?section=courts`는 기존 구장 신청 검토로 직접 연결한다.
 - 관리자 업무는 `운영 현황 / 신고·검토 / 데이터 관리 / 권한·정책` 그룹으로 나눈다. 기존 구장, 플레이어, 경기, 팀·소속, 구장 DB, 사용자 운영, 임명, MMR·신뢰도 기능과 권한 검증은 유지한다.
-- 운영 현황은 `reports`의 실제 `status`, `priority`, `assigned_to`, `assigned_at`, `created_at`, `resolved_at`만 집계한다. 긴급도와 담당자는 관리자가 명시적으로 지정하며 자동 분류·자동 제재하지 않는다.
+- 운영 현황의 전체 회원·팀·경기·대회 통계와 목록은 경기관리자 level 50 이상만 조회한다. 기존 신고 현황과 신고·검토의 level 30 이상 권한은 유지하며 전체 통계 권한으로 대체하지 않는다.
+- 전체 수는 canonical DB의 회원, `deleted_at is null`인 팀, 경기, 대회를 정확히 집계한다. 오늘 신규는 각 행의 `created_at`을 한국 시간(`Asia/Seoul`)의 오늘 범위로 집계한다. 검색·상태·현재 페이지와 무관한 전체 통계이며 브라우저에 이미 로드된 목록 길이나 제한 표본으로 추정하지 않는다.
+- 목록은 `POST /api/admin/dashboard`에서 선택한 `kind`(`members`, `teams`, `matches`, `tournaments`; 기본 `tournaments`) 하나에만 검색·상태 필터·페이지네이션을 적용한다. `status`는 `all`, `active`, `completed`이며 기본값은 `all`이다. 회원·팀은 `all`만 사용한다. 페이지 크기는 기본 30건·최대 60건, `offset`은 0부터 최대 10,000까지다. 개인 연락처·인증 식별자·설정·채팅·신고 원문 없이 목록과 업무 이동에 필요한 최소 필드만 반환한다.
+- 경기의 진행 중과 결과 확정을 구분한다. `active` 필터는 `started_at`이 있고 `ended_at`이 없으며 저장 상태가 `approval`, `disputed`, `confirmed` 또는 취소·무효·종료 상태(`cancelled`, `canceled`, `void`, `voided`, `closed`)가 아닌 경기다. 이는 canonical `live` 단계의 파생 판정이며 저장 상태 `live`를 조회하지 않는다. `completed`는 저장된 `status='confirmed'`만 포함한다. 종료 시각이나 결과 입력만으로 확정을 추정하지 않으며 취소·무효는 확정 수에서 제외하고 별도로 표시한다.
+- 대회 상태는 저장된 `tournaments.status`를 따른다. `active` 필터는 `active`, `completed`는 `closed`다. 대회별 참가팀·승인팀과 `matches.tournament_id`에 연결된 생성 경기·결과 확정 경기·취소 또는 무효 경기를 각각 표시한다. 이후 라운드가 순차 생성되므로 확정 경기 수를 현재 생성 경기 수로 나눈 값을 전체 대회 진행률(%)로 표시하지 않는다. 모든 생성 경기의 확정만으로 대회 종료 상태를 바꾸지 않는다.
+- 신고 현황은 `reports`의 실제 `status`, `priority`, `assigned_to`, `assigned_at`, `created_at`, `resolved_at`을 집계한다. 긴급도와 담당자는 관리자가 명시적으로 지정하며 자동 분류·자동 제재하지 않는다.
 - 응답·처리 시간은 실제 `assigned_at` 또는 `resolved_at`이 있는 행의 표본 수와 함께 표시한다. 표본이 없으면 수치를 만들지 않는다.
 - 시스템 상태는 필수 스키마 조회 성공 여부와 `discord_notification_deliveries`의 최근 bounded 표본만 읽기 전용으로 표시한다. 표본 밖 전체 상태나 worker 생존을 추정하지 않는다.
 - 운영 지표에서 신고 큐로 이동할 때 `mode`, `focus`, 선택 신고를 URL query에 유지한다.

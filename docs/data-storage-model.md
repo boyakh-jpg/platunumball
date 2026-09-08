@@ -215,6 +215,15 @@
 - Supabase 설정 환경에서 관리자 UI는 local state를 먼저 갱신하고 같은 draft를 server action에 전달한다. 배포 전에는 server action 성공 결과 기준으로 재조회/동기화해야 한다.
 - Supabase 설정 환경의 프론트 bootstrap에서는 `localStorage/mockData` 앱 데이터 fallback을 제거했다. 방/경기 reducer의 authoritative RPC 이전은 2026-07-13 operation boundary에서 완료됐다.
 
+## 관리자 운영 현황 조회
+
+- `POST /api/admin/dashboard`는 검증된 관리자 level 50 이상만 사용할 수 있는 서버 조회 경로다. `rankball_admin_dashboard()` 집계 RPC는 `service_role`에만 실행 권한을 부여하고 `public`, `anon`, `authenticated` 실행 권한을 제거한다. 서버는 검증한 현재 프로필을 전달하며 RPC도 DB의 유효한 관리자 권한을 다시 검증한다. 기존 level 30 이상 신고 현황·검토 조회 권한은 유지한다.
+- 집계 원본은 `profiles`, `teams`, `matches`, `tournaments`, `tournament_teams`다. 회원·비삭제 팀(`deleted_at is null`)·경기·대회의 전체 수와 각 `created_at` 기준 한국 시간(`Asia/Seoul`) 오늘 신규 수를 정확히 계산한다. 사용자 관련 목록, 클라이언트 상태, 제한된 표본의 길이로 전체 수를 계산하지 않는다.
+- 요청 body는 `{ kind, search, status, limit, offset }`이다. `kind`는 `members`, `teams`, `matches`, `tournaments` 중 하나이며 기본값은 `tournaments`다. `status`는 `all`, `active`, `completed` 중 하나이며 기본값은 `all`이다. 회원·팀 목록은 `all`로 제한한다. 선택 종류의 검색·상태 필터 적용 후 전체 일치 수와 현재 페이지를 반환하며 기본 30건·최대 60건, `offset` 0~10,000으로 제한한다. 상단 전체 통계는 목록 검색·필터·페이지와 독립적이다.
+- 회원 목록은 `id`, 표시 이름, 해시태그, 지역, 생성 시각 등 목록에 필요한 최소 projection만 반환한다. 이메일, 전화번호, 인증 제공자 식별자, 개인 설정, 채팅·신고 원문이나 전체 프로필 row를 반환하지 않는다. 팀·경기·대회도 제목·상태·일정·집계값·상세 이동에 필요한 필드만 반환한다.
+- 경기 진행 중은 `started_at is not null`, `ended_at is null`이며 `status`가 `approval`, `disputed`, `confirmed`, `cancelled`, `canceled`, `void`, `voided`, `closed`가 아닌 canonical `live` 단계로 집계한다. `live`는 저장 상태가 아니며 목록의 `status`는 저장값을 유지한다. `status='confirmed'`인 결과 확정과 취소·무효를 구분하고 종료·확정 시각만으로 확정을 추정하지 않는다. 대회 상태는 `tournaments.status` 원본을 사용하고, 대회별 참가·승인팀은 `tournament_teams`의 승인 상태를 따르며 거절한 팀은 참가팀 수에서 제외한다.
+- 대회 경기 집계는 `matches.tournament_id`가 원본이다. `tournaments.match_ids`나 현재 브라우저 목록만으로 집계하지 않는다. 생성 경기, 결과 확정 경기, 취소·무효 경기 수를 각각 반환하며, 후속 라운드가 순차 생성되므로 현재 생성 경기 대비 확정 경기 비율을 전체 대회 진행률(%)로 표시하지 않는다.
+
 ## 2026-07-21 admin user operations
 
 - `POST /api/admin/user-operations`의 `load`는 `rankball_admin_user_operations()` RPC 한 번으로 최근 30일 사용자 활동, 신고, 제재, 검토 신호를 집계하고 검색·위험 신호 필터·30건 페이지네이션을 적용한다.

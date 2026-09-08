@@ -44,6 +44,14 @@ export function getTeamDetailNavigation(team) {
   return { to: `${APP_TEAMS_PATH}/${team.id}`, state: { teamPreview: team } };
 }
 
+export function getAdminDashboardDetailPath(kind, id) {
+  const encodedId = encodeURIComponent(id);
+  if (kind === "members") return `/app/players/${encodedId}`;
+  if (kind === "teams") return `${APP_TEAMS_PATH}/${encodedId}`;
+  if (kind === "tournaments") return `/app/tournaments/${encodedId}`;
+  return `/app/matches?match=${encodedId}`;
+}
+
 export function getProfileNavigationItems({ adminLevel = 0, guestPreview = false } = {}) {
   return PROFILE_NAVIGATION_ITEMS.filter((item) => (
     !item.adminOnly || (!guestPreview && Number(adminLevel) >= ADMIN_GRADE_META.support.level)

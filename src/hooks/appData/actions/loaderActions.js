@@ -75,6 +75,13 @@ loadMatchDetail,
         filter: current.page?.filter ?? "",
       });
     },
+    loadAdminDashboard: async (options = {}) => {
+      if (!isSupabaseConfigured) return { ok: false, error: "remote_required" };
+      if (!ensureRemoteReady("운영 대시보드")) return { ok: false, error: "remote_not_ready" };
+      const serverReady = await ensureServerActionAvailable("/api/admin/dashboard", "운영 대시보드");
+      if (serverReady !== true) return serverReady;
+      return runServerAction("/api/admin/dashboard", options);
+    },
     loadAdminUserOperations: async (options = {}) => {
       if (!isSupabaseConfigured) return { ok: true, summary: {}, rows: [], page: { total: 0, hasMore: false, nextOffset: null } };
       if (!ensureRemoteReady("사용자 운영 통계")) return { ok: false, error: "remote_not_ready" };
