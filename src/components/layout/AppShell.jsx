@@ -1,12 +1,13 @@
 import { useEffect } from "react";
-import { Bell } from "lucide-react";
+import { Bell, Settings } from "lucide-react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import BasketballLoader from "../common/BasketballLoader.jsx";
 import Button from "../common/Button.jsx";
 import BottomNav from "./BottomNav.jsx";
 import DataAttribution from "./DataAttribution.jsx";
 import Sidebar from "./Sidebar.jsx";
-import { APP_NOTIFICATION_PATH } from "../../lib/appNavigation.js";
+import MyNavigation from "../profile/MyNavigation.jsx";
+import { APP_NOTIFICATION_PATH, APP_SETTINGS_PATH } from "../../lib/appNavigation.js";
 import { getLoginPath } from "../../lib/profileSetup.js";
 import { getReceiptLocale, RECEIPT_SHELL_COPY } from "../../lib/receiptLocale.js";
 
@@ -36,7 +37,12 @@ export default function AppShell({ app, auth, guestPreview = false }) {
             <span>{shellCopy.notifications}</span>
             {unreadNotificationCount ? <b className="app-notification-badge" aria-hidden="true">{unreadNotificationCount > 99 ? "99+" : unreadNotificationCount}</b> : null}
           </Button>
+          <Button as={Link} to={guestPreview ? getLoginPath(APP_SETTINGS_PATH) : APP_SETTINGS_PATH} variant="secondary" size="sm" aria-label={shellCopy.settings}>
+            <Settings size={18} aria-hidden="true" />
+            <span>{shellCopy.settings}</span>
+          </Button>
         </div>
+        {remoteLoading ? null : <MyNavigation />}
         {remoteLoading ? null : <Outlet />}
         {remoteLoading ? null : <DataAttribution />}
       </main>
