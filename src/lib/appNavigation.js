@@ -3,10 +3,11 @@ import { ADMIN_GRADE_META } from "./adminPolicy.js";
 
 export const APP_NOTIFICATION_PATH = "/app/notifications";
 export const APP_SETTINGS_PATH = "/app/settings";
+const APP_TEAMS_PATH = "/app/teams";
 
 export const MY_NAVIGATION_ITEMS = Object.freeze([
   { to: "/app/profile", labelKey: "myProfile", icon: UserRound },
-  { to: "/app/teams", labelKey: "myTeams", icon: UsersRound },
+  { to: APP_TEAMS_PATH, labelKey: "myTeams", icon: UsersRound },
 ]);
 
 export const PROFILE_NAVIGATION_ITEMS = Object.freeze([
@@ -37,6 +38,10 @@ export function getActiveAppNavigationPath(pathname = "") {
 
 export function getActiveMyNavigationPath(pathname = "") {
   return getActiveNavigationPath(MY_NAVIGATION_ITEMS, pathname);
+}
+
+export function getTeamDetailNavigation(team) {
+  return { to: `${APP_TEAMS_PATH}/${team.id}`, state: { teamPreview: team } };
 }
 
 export function getProfileNavigationItems({ adminLevel = 0, guestPreview = false } = {}) {

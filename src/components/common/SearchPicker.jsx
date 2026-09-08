@@ -270,7 +270,13 @@ export default function SearchPicker({
   }, [canShow, floating, normalizedFloatingHeightLimit, preferAboveOnMobile]);
 
   return (
-    <div ref={pickerRef} className={`search-picker${floating ? " is-floating" : ""}${className ? ` ${className}` : ""}`}>
+    <div
+      ref={pickerRef}
+      className={`search-picker${floating ? " is-floating" : ""}${className ? ` ${className}` : ""}`}
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) setFocused(false);
+      }}
+    >
       <div className={`search-picker-field${fieldClassName ? ` ${fieldClassName}` : ""}`}>
         <Search size={18} />
         <input
@@ -281,7 +287,6 @@ export default function SearchPicker({
           aria-controls={canShow ? resultsId : undefined}
           aria-expanded={canShow}
           onFocus={() => setFocused(true)}
-          onBlur={() => window.setTimeout(() => setFocused(false), 120)}
           onKeyDown={(event) => {
             if (event.key === "ArrowDown" || event.key === "ArrowUp") {
               moveResultFocus(event, event.key === "ArrowDown" ? 1 : -1);
@@ -322,8 +327,8 @@ export default function SearchPicker({
               moveResultFocus(event, event.key === "ArrowDown" ? 1 : -1);
             } else if (event.key === "Escape") {
               event.preventDefault();
-              closeResults();
               inputRef.current?.focus();
+              closeResults();
             }
           }}
           onClickCapture={(event) => {

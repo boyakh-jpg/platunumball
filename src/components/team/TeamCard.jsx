@@ -3,6 +3,7 @@ import Badge from "../common/Badge.jsx";
 import Card from "../common/Card.jsx";
 import TierEmblem from "../rating/TierEmblem.jsx";
 import TeamEmblem from "./TeamEmblem.jsx";
+import { getTeamDetailNavigation } from "../../lib/appNavigation.js";
 import { isMercenaryTeamRole } from "../../lib/constants.js";
 
 export default function TeamCard({ team, users, teams = [team], compact = false, linked = true, rank }) {
@@ -18,8 +19,7 @@ export default function TeamCard({ team, users, teams = [team], compact = false,
       as={linked ? Link : "section"}
       aria-label={linked ? `${team.name} 팀 상세 보기` : undefined}
       className="team-card elite-team-card"
-      state={linked ? { teamPreview: team } : undefined}
-      to={linked ? `/app/teams/${team.id}` : undefined}
+      {...(linked ? getTeamDetailNavigation(team) : {})}
     >
       <div className="team-card-top">
         <div className="team-card-title">

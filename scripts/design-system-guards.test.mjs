@@ -549,7 +549,8 @@ test("팀 목록 카드는 전체가 팀 상세 링크이고 공용 무테두리
   const teamCardSource = read("src/components/team/TeamCard.jsx");
 
   assert.match(teamCardSource, /import \{ Link \} from "react-router-dom";/);
-  assert.match(teamCardSource, /<Card[\s\S]*?as=\{linked \? Link : "section"\}[\s\S]*?to=\{linked \? `\/app\/teams\/\$\{team\.id\}` : undefined\}/);
+  assert.match(teamCardSource, /<Card[\s\S]*?as=\{linked \? Link : "section"\}[\s\S]*?\{\.\.\.\(linked \? getTeamDetailNavigation\(team\) : \{\}\)\}/);
+  assert.match(teamCardSource, /import \{ getTeamDetailNavigation \} from "\.\.\/\.\.\/lib\/appNavigation\.js";/);
   assert.doesNotMatch(teamCardSource, /TeamHoverCard/);
   assert.match(tokenStyles, /\[data-design="editorial"\] \.ui-design-app\s*\{[^}]*--ui-card-border-width:\s*0px;/);
 });
@@ -979,7 +980,7 @@ test("설정 메인은 운영·테스트 카드를 숨기고 표시 설정을 �
   );
   assert.equal(settingsLegends.length, 12);
   settingsLegends.forEach((legend) => {
-    assert.match(legend, /^\s*<div>\s*<h2(?:\s[^>]*)?>[\s\S]*?<\/h2>\s*<p className="eyebrow">[\s\S]*?<\/p>\s*<\/div>\s*$/);
+    assert.match(legend, /^\s*<div>\s*<h2(?:\s[^>]*)?>[\s\S]*?<\/h2>\s*(?:<p className="eyebrow">[\s\S]*?<\/p>\s*)?<\/div>\s*$/);
     assert.doesNotMatch(legend, /<Badge|<button|<a\s|<(?:BellRing|ShieldCheck|Star|ArrowRightLeft|MessageCircle)\b/);
   });
   assert.match(

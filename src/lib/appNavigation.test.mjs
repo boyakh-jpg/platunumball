@@ -5,7 +5,7 @@ import { ADMIN_GRADE_META } from "./adminPolicy.js";
 import { RECEIPT_SHELL_COPY } from "./receiptLocale.js";
 
 test("primary navigation has the same six destinations and labels in either shell", () => {
-  assert.deepEqual(APP_NAVIGATION_ITEMS.map((item) => RECEIPT_SHELL_COPY.ko[item.labelKey]), ["홈", "일정", "매칭", "플레이", "게시판", "나와 팀"]);
+  assert.deepEqual(APP_NAVIGATION_ITEMS.map((item) => RECEIPT_SHELL_COPY.ko[item.labelKey]), ["홈", "일정", "매칭", "플레이", "게시판", "관리"]);
   assert.equal(new Set(APP_NAVIGATION_ITEMS.map((item) => item.to)).size, 6);
   for (const item of APP_NAVIGATION_ITEMS) {
     assert.ok(RECEIPT_SHELL_COPY.en[item.labelKey]);

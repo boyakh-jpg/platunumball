@@ -7,6 +7,7 @@ import UserOperationsPanel from "../components/admin/UserOperationsPanel.jsx";
 import CourtDatabasePanel from "../components/admin/CourtDatabasePanel.jsx";
 import { getAdminReportTypeLabel } from "../lib/admin.js";
 import { ADMIN_DEFAULT_PAGE_LIMIT } from "../lib/queryPolicy.js";
+import { RECEIPT_SHELL_COPY } from "../lib/receiptLocale.js";
 import {
   ADMIN_SECTION_GROUPS,
   REVIEW_QUEUE_FILTER_PLACEHOLDERS,
@@ -139,7 +140,7 @@ export default function AdminPageView({ controller }) {
   return (
     <PageFrame
       className="admin-page"
-      hero={<PageHeader title="관리자 메뉴" />}
+      hero={<PageHeader title={RECEIPT_SHELL_COPY.ko.admin} />}
       navigation={<nav className="admin-section-tabs" aria-label="관리자 업무">
         <div className="ui-filter-row" role="group" aria-label="관리자 업무 그룹">
           {ADMIN_SECTION_GROUPS.map((group) => {

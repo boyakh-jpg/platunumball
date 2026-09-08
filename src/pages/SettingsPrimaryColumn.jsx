@@ -11,6 +11,7 @@ import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import CourtHoverCard from "../components/court/CourtHoverCard.jsx";
 import RefereeHoverCard from "../components/referee/RefereeHoverCard.jsx";
 import { REFEREE_TRUST_MIN } from "../lib/constants.js";
+import { RECEIPT_SHELL_COPY } from "../lib/receiptLocale.js";
 import { getCourtHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
 import { DISCORD_NOTIFICATION_EVENTS, getDiscordAvatarClassName, getDiscordAvatarStyle } from "../lib/discord.js";
 import ExternalNotificationSettingsCard from "../components/settings/ExternalNotificationSettingsCard.jsx";
@@ -378,8 +379,7 @@ export default function SettingsPrimaryColumn({ controller }) {
             <Card as="fieldset" className="section-card settings-fieldset-card admin-menu-card">
               <legend className="section-title-row">
                 <div>
-                  <h2>관리자 메뉴</h2>
-                  <p className="eyebrow">Operations</p>
+                  <h2>{RECEIPT_SHELL_COPY.ko.admin}</h2>
                 </div>
               </legend>
               <div className="contract-grid single ui-support-grid">
