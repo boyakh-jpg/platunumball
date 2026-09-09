@@ -14,6 +14,7 @@ export function CreateMatchLayout({ context }) {
   return (
 <form
       className="page-stack create-match-page"
+      aria-busy={submitting}
       onSubmit={(event) => event.preventDefault()}
       onPointerDownCapture={(event) => {
         const activeElement = event.currentTarget.ownerDocument.activeElement;
@@ -33,6 +34,7 @@ export function CreateMatchLayout({ context }) {
               <input
                 type="checkbox"
                 checked={Boolean(draft.remakeReinvite)}
+                disabled={submitting}
                 onChange={(event) => setDraft((current) => ({ ...current, remakeReinvite: event.target.checked }))}
               />
               <span>
@@ -48,9 +50,9 @@ export function CreateMatchLayout({ context }) {
         </div>
       </header> : null}
 
-      <MatchCreationWizardNav currentStep={wizardStep} steps={creationWizardSteps} onStepChange={goToWizardStep} />
+      <MatchCreationWizardNav currentStep={wizardStep} steps={creationWizardSteps} onStepChange={goToWizardStep} disabled={submitting} />
 
-      <div className="content-grid wide-left">
+      <div className="content-grid wide-left" inert={submitting ? "" : undefined}>
         <CreateMatchIntentSection context={context} />
 
         <CreateMatchDetailsSection context={context} />
@@ -63,8 +65,11 @@ export function CreateMatchLayout({ context }) {
         currentStep={wizardStep}
         steps={creationWizardSteps}
         onStepChange={goToWizardStep}
+        disabled={submitting}
         submitLabel={wizardStep === finalWizardStep
-          ? app.demoPreview
+          ? submitting
+            ? "저장 중..."
+            : app.demoPreview
             ? "로그인하고 이어서 만들기"
             : isSoloRecord
             ? "기록 저장"

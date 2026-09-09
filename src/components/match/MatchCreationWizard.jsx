@@ -43,7 +43,7 @@ export function getMatchCreationSteps(summaryType = "match") {
   return MATCH_CREATION_STEPS;
 }
 
-export function MatchCreationWizardNav({ currentStep, steps = MATCH_CREATION_STEPS, onStepChange }) {
+export function MatchCreationWizardNav({ currentStep, steps = MATCH_CREATION_STEPS, onStepChange, disabled = false }) {
   if (steps.length < 2) return null;
   const currentIndex = Math.max(0, steps.findIndex((step) => step.id === currentStep));
   return (
@@ -51,7 +51,7 @@ export function MatchCreationWizardNav({ currentStep, steps = MATCH_CREATION_STE
       <ol className={`step-count-${steps.length}`}>
         {steps.map((step, index) => (
           <li key={step.id} className={currentStep === step.id ? "active" : index < currentIndex ? "complete" : ""}>
-            <button type="button" aria-current={currentStep === step.id ? "step" : undefined} onClick={() => onStepChange(step.id)}>
+            <button type="button" aria-current={currentStep === step.id ? "step" : undefined} disabled={disabled} onClick={() => onStepChange(step.id)}>
               <span>{index < currentIndex ? <Check size={14} /> : index + 1}</span>
               <strong>{step.label}</strong>
             </button>
@@ -67,6 +67,7 @@ export function MatchCreationWizardActions({
   steps = MATCH_CREATION_STEPS,
   onStepChange,
   onCancel,
+  disabled = false,
   submitLabel = "",
   submitDisabled = false,
   submitFeedback = "",
@@ -77,24 +78,24 @@ export function MatchCreationWizardActions({
   const nextStep = steps[currentIndex + 1];
   return (
     <div className="ui-action-row match-creation-wizard-actions">
-      {submitFeedback ? <small className="create-submit-warning">{submitFeedback}</small> : null}
+      {submitFeedback ? <small className="create-submit-warning" role="alert">{submitFeedback}</small> : null}
       <span className="ui-action-row match-creation-wizard-secondary-actions">
-        <Button type="button" variant="secondary" onClick={onCancel}>
+        <Button type="button" variant="secondary" disabled={disabled} onClick={onCancel}>
           <X size={16} /> 취소하기
         </Button>
         {previousStep ? (
-          <Button type="button" variant="secondary" onClick={() => onStepChange(previousStep.id)}>
+          <Button type="button" variant="secondary" disabled={disabled} onClick={() => onStepChange(previousStep.id)}>
             <ChevronLeft size={17} /> 이전
           </Button>
         ) : null}
       </span>
       <span className="ui-action-row ui-action-row-end match-creation-wizard-primary-actions">
         {nextStep ? (
-          <Button type="button" onClick={() => onStepChange(nextStep.id)}>
+          <Button type="button" disabled={disabled} onClick={() => onStepChange(nextStep.id)}>
             다음 <ChevronRight size={17} />
           </Button>
         ) : submitLabel ? (
-          <Button type="button" disabled={submitDisabled} onClick={onSubmit}>{submitLabel}</Button>
+          <Button type="button" disabled={disabled || submitDisabled} onClick={onSubmit}>{submitLabel}</Button>
         ) : null}
       </span>
     </div>

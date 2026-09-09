@@ -61,11 +61,13 @@ export default function Signup({ app, auth }) {
     district: user.regionDistrict ?? inferredRegion.district,
   }));
   const [formError, setFormError] = useState("");
+  const [formErrorField, setFormErrorField] = useState("");
   const [profileSavePending, setProfileSavePending] = useState(false);
   const profileSavePendingRef = useRef(false);
   const [redirectAfterSave, setRedirectAfterSave] = useState(false);
   const [accountRecoveryOpen, setAccountRecoveryOpen] = useState(false);
   const [accountRecoveryPending, setAccountRecoveryPending] = useState(false);
+  const accountRecoveryPendingRef = useRef(false);
   const [accountRecoveryError, setAccountRecoveryError] = useState("");
   const providerNameAppliedRef = useRef(false);
   const ageGroup = getAgeGroupByBirthYear(draft.birthYear) ?? user.ageGroup ?? "open";
@@ -83,7 +85,11 @@ export default function Signup({ app, auth }) {
   const setupRequired = shouldSetupProfile(user) || shouldRecheckAgeGroup(user);
 
   const districtOptions = getRegionDistrictOptions(draft.sido);
-  const update = (patch) => setDraft((current) => ({ ...current, ...patch }));
+  const update = (patch) => {
+    setDraft((current) => ({ ...current, ...patch }));
+    setFormError("");
+    setFormErrorField("");
+  };
 
   useEffect(() => {
     if (providerNameAppliedRef.current || user.onboardingComplete || !providerProfileName) return;
@@ -104,9 +110,10 @@ export default function Signup({ app, auth }) {
   }, [navigate, redirectAfterSave, redirectTo, user]);
 
   const releaseCurrentLoginForRecovery = async () => {
-    if (!recoverableProviderId || accountRecoveryPending) return;
+    if (!recoverableProviderId || accountRecoveryPendingRef.current || profileSavePendingRef.current) return;
     const confirmed = window.confirm("현재 로그인으로 만든 미완성 가입을 지우고 기존 BOXTIER 아이디로 다시 로그인합니다. 계속할까요?");
     if (!confirmed) return;
+    accountRecoveryPendingRef.current = true;
     setAccountRecoveryPending(true);
     setAccountRecoveryError("");
     try {
@@ -120,45 +127,51 @@ export default function Signup({ app, auth }) {
     } catch {
       setAccountRecoveryError("기존 아이디 연결을 시작하지 못했습니다.");
     } finally {
+      accountRecoveryPendingRef.current = false;
       setAccountRecoveryPending(false);
     }
   };
 
   const submit = async (event) => {
     event.preventDefault();
-    if (profileSavePendingRef.current) return;
+    if (profileSavePendingRef.current || accountRecoveryPendingRef.current) return;
+    const rejectField = (fieldName, message) => {
+      setFormError(message);
+      setFormErrorField(fieldName);
+      event.currentTarget.elements.namedItem(fieldName)?.focus();
+    };
     const name = normalizeProfileName(draft.name);
     if (!name) {
-      setFormError("닉네임을 입력해 주세요.");
+      rejectField("name", "닉네임을 입력해 주세요.");
       return;
     }
     if (name !== user.name && hasReservedOperatorIdentity({ name })) {
-      setFormError("boxtier와 박스티어는 운영자 전용입니다.");
+      rejectField("name", "boxtier와 박스티어는 운영자 전용입니다.");
       return;
     }
     if (user.onboardingComplete && name !== user.name && !nameChangeAllowed) {
-      setFormError(`닉네임은 월 1회만 변경할 수 있습니다. 다음 변경 가능일: ${formatProfileDate(nextNameChangeDate)}`);
+      rejectField("name", `닉네임은 월 1회만 변경할 수 있습니다. 다음 변경 가능일: ${formatProfileDate(nextNameChangeDate)}`);
       return;
     }
     if (handleDuplicate) {
-      setFormError("이미 사용 중인 해시태그입니다.");
+      rejectField("handle", "이미 사용 중인 해시태그입니다.");
       return;
     }
     if (!handleLocked && !handleBody) {
-      setFormError("해시태그를 직접 입력해 주세요.");
+      rejectField("handle", "해시태그를 직접 입력해 주세요.");
       return;
     }
     if (!handleLocked && hasReservedOperatorIdentity({ hashtag: normalizedHandle })) {
-      setFormError("boxtier와 박스티어는 운영자 전용입니다.");
+      rejectField("handle", "boxtier와 박스티어는 운영자 전용입니다.");
       return;
     }
     if (!handleLocked && handleBody.length < PROFILE_HASHTAG_MIN_LENGTH) {
-      setFormError(`해시태그는 ${PROFILE_HASHTAG_MIN_LENGTH}글자 이상 입력해 주세요.`);
+      rejectField("handle", `해시태그는 ${PROFILE_HASHTAG_MIN_LENGTH}글자 이상 입력해 주세요.`);
       return;
     }
     const birthYear = birthYearLocked ? Number(user.birthYear) : Number(draft.birthYear);
     if (!birthYear || !getAgeGroupByBirthYear(birthYear)) {
-      setFormError("출생연도를 정확히 입력해 주세요.");
+      rejectField("birthYear", "출생연도를 정확히 입력해 주세요.");
       return;
     }
     const district = districtOptions.includes(draft.district) ? draft.district : districtOptions[0];
@@ -166,6 +179,8 @@ export default function Signup({ app, auth }) {
     profileSavePendingRef.current = true;
     setProfileSavePending(true);
     setFormError("");
+    setFormErrorField("");
+    let profileSaved = false;
     try {
       const result = await app.actions.updateProfile({
         name,
@@ -191,6 +206,7 @@ export default function Signup({ app, auth }) {
             : "프로필을 저장하지 못했습니다. 입력 내용을 확인한 뒤 다시 시도해 주세요.");
         return;
       }
+      profileSaved = true;
       setRedirectAfterSave(true);
     } catch (error) {
       setFormError(error?.message === "account_rejoin_blocked"
@@ -201,8 +217,10 @@ export default function Signup({ app, auth }) {
             ? "사용할 수 없는 닉네임 또는 해시태그입니다."
             : "프로필을 저장하지 못했습니다. 입력 내용을 확인한 뒤 다시 시도해 주세요.");
     } finally {
-      profileSavePendingRef.current = false;
-      setProfileSavePending(false);
+      if (!profileSaved) {
+        profileSavePendingRef.current = false;
+        setProfileSavePending(false);
+      }
     }
   };
 
@@ -229,7 +247,7 @@ export default function Signup({ app, auth }) {
           <form className="form-grid profile-form-grid" onSubmit={submit}>
             <label>
               닉네임
-              <input required value={draft.name} maxLength={PROFILE_NAME_MAX_LENGTH} onChange={(event) => update({ name: event.target.value })} />
+              <input name="name" required value={draft.name} maxLength={PROFILE_NAME_MAX_LENGTH} aria-invalid={formErrorField === "name" || undefined} aria-describedby={formErrorField === "name" ? "signup-form-error" : undefined} onChange={(event) => update({ name: event.target.value })} />
               {providerProfileName && !user.onboardingComplete ? <span className="muted">로그인 프로필 이름을 불러왔습니다. 자유롭게 수정할 수 있습니다.</span> : null}
               {user.onboardingComplete && !nameChangeAllowed ? <span className="form-warning">다음 변경 가능일: {formatProfileDate(nextNameChangeDate)}</span> : null}
             </label>
@@ -237,7 +255,7 @@ export default function Signup({ app, auth }) {
               해시태그
               <span className="prefixed-input">
                 <span>#</span>
-                <input value={handleBody} minLength={PROFILE_HASHTAG_MIN_LENGTH} maxLength={20} disabled={handleLocked} onChange={(event) => {
+                <input name="handle" value={handleBody} minLength={PROFILE_HASHTAG_MIN_LENGTH} maxLength={20} disabled={handleLocked} aria-invalid={formErrorField === "handle" || undefined} aria-describedby={formErrorField === "handle" ? "signup-form-error" : undefined} onChange={(event) => {
                   setHandleTouched(true);
                   update({ handle: stripHandle(event.target.value) });
                 }} />
@@ -248,7 +266,7 @@ export default function Signup({ app, auth }) {
             </label>
             <label>
               출생연도
-              <input required value={birthYearLocked ? user.birthYear : draft.birthYear} inputMode="numeric" maxLength={4} minLength={4} placeholder="2008" disabled={birthYearLocked} onChange={(event) => update({ birthYear: event.target.value.replace(/\D/g, "").slice(0, 4) })} />
+              <input name="birthYear" required value={birthYearLocked ? user.birthYear : draft.birthYear} inputMode="numeric" maxLength={4} minLength={4} placeholder="2008" disabled={birthYearLocked} aria-invalid={formErrorField === "birthYear" || undefined} aria-describedby={formErrorField === "birthYear" ? "signup-form-error" : undefined} onChange={(event) => update({ birthYear: event.target.value.replace(/\D/g, "").slice(0, 4) })} />
               {birthYearLocked ? <span className="muted">출생연도는 최초 등록 후 수정할 수 없습니다.</span> : null}
             </label>
             <ProfileBasicsFields
@@ -258,7 +276,7 @@ export default function Signup({ app, auth }) {
               onPositionChange={(position) => update({ position })}
               onRegionChange={(sido, district) => update({ sido, district })}
             />
-            {formError ? <p className="form-warning">{formError}</p> : null}
+            {formError ? <p id="signup-form-error" className="form-warning" role="alert">{formError}</p> : null}
             <div className="create-submit-row signup-submit-row">
               <span className="create-submit-warning">소속은 가입 후 나 메뉴에서 선택할 수 있습니다. 가입 단계에서는 지역과 연령부만 설정합니다.</span>
               <Button type="submit" disabled={profileSavePending || accountRecoveryPending}><CheckCircle2 size={18} /> {profileSavePending ? "저장 중" : "저장"}</Button>
@@ -286,7 +304,7 @@ export default function Signup({ app, auth }) {
             </div>
             {recoverableProviderId ? (
               <div className="signup-account-recovery">
-                <Button type="button" variant="secondary" onClick={() => setAccountRecoveryOpen((current) => !current)}>
+                <Button type="button" variant="secondary" disabled={profileSavePending || accountRecoveryPending} onClick={() => setAccountRecoveryOpen((current) => !current)}>
                   이미 BOXTIER 아이디가 있어요
                 </Button>
                 {accountRecoveryOpen ? (
@@ -294,7 +312,7 @@ export default function Signup({ app, auth }) {
                     <strong>기존 아이디 연결</strong>
                     <p>현재 {getAuthProviderLabel(recoverableProviderId)} 로그인으로 만든 미완성 가입만 지운 뒤, 기존 BOXTIER 아이디의 다른 로그인으로 다시 로그인합니다.</p>
                     <p>프로필·기록·MMR·팀 데이터는 자동으로 합치지 않습니다.</p>
-                    <Button type="button" variant="secondary" onClick={() => void releaseCurrentLoginForRecovery()} disabled={accountRecoveryPending}>
+                    <Button type="button" variant="secondary" onClick={() => void releaseCurrentLoginForRecovery()} disabled={profileSavePending || accountRecoveryPending}>
                       {accountRecoveryPending ? "처리 중" : "기존 아이디로 다시 로그인"}
                     </Button>
                   </div>

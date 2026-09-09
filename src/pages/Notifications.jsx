@@ -4,6 +4,7 @@ import { Bell, Check, Trash2 } from "lucide-react";
 import Card from "../components/common/Card.jsx";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
+import EmptyState from "../components/common/EmptyState.jsx";
 import PageFrame, { PageHeader } from "../components/common/PageFrame.jsx";
 import { getRoomScheduleLabel } from "../lib/matchUtils.js";
 import { compareNotificationsNewestFirst, dedupeNotifications, getNotificationDisplayAt, getNotificationDisplayContent, getNotificationHref, isNotificationDisplayable, isNotificationTargetUnavailable, isNotificationVisibleToUser } from "../lib/notifications.js";
@@ -44,10 +45,10 @@ export default function Notifications({ app }) {
     nextParams.delete("view");
     setSearchParams(nextParams, { replace: true });
   }, [requestedView, searchParams, setSearchParams]);
-  const [notificationsLoadError, setNotificationsLoadError] = useState("");
+  const [notificationsLoadError, setNotificationsLoadError] = useState(null);
   const [notificationReadPendingId, setNotificationReadPendingId] = useState("");
   const [notificationReadError, setNotificationReadError] = useState("");
-  const [notificationsLoadMorePending, setNotificationsLoadMorePending] = useState(false);
+  const [notificationsLoadMode, setNotificationsLoadMode] = useState("refresh");
   const pendingInvitationKeysRef = useRef(new Set());
   const notificationDeletePendingRef = useRef("");
   const notificationReadPendingRef = useRef("");
@@ -69,7 +70,8 @@ export default function Notifications({ app }) {
   const refreshNotifications = useCallback(async () => {
     if (notificationsRefreshPendingRef.current) return false;
     notificationsRefreshPendingRef.current = true;
-    setNotificationsLoadError("");
+    setNotificationsLoadMode("refresh");
+    setNotificationsLoadError(null);
     try {
       const [notificationsLoaded, directoryLoaded] = await Promise.all([
         loadNotifications?.(),
@@ -79,25 +81,26 @@ export default function Notifications({ app }) {
       if (directoryLoaded === false && app.serverProfileBound) throw new Error("notification_directory_load_failed");
       return true;
     } catch {
-      setNotificationsLoadError("알림을 불러오지 못했습니다.");
+      setNotificationsLoadError({ message: "알림을 불러오지 못했습니다.", mode: "refresh" });
       return false;
     } finally {
       notificationsRefreshPendingRef.current = false;
+      setNotificationsLoadMode("");
     }
   }, [app.serverProfileBound, loadDirectory, loadNotifications]);
   const loadMoreNotifications = useCallback(async () => {
     if (notificationsRefreshPendingRef.current) return;
     notificationsRefreshPendingRef.current = true;
-    setNotificationsLoadMorePending(true);
-    setNotificationsLoadError("");
+    setNotificationsLoadMode("append");
+    setNotificationsLoadError(null);
     try {
       const loaded = await loadNotifications?.({ append: true });
       if (loaded === false) throw new Error("notification_load_failed");
     } catch {
-      setNotificationsLoadError("알림을 더 불러오지 못했습니다.");
+      setNotificationsLoadError({ message: "알림을 더 불러오지 못했습니다.", mode: "append" });
     } finally {
       notificationsRefreshPendingRef.current = false;
-      setNotificationsLoadMorePending(false);
+      setNotificationsLoadMode("");
     }
   }, [loadNotifications]);
   useEffect(() => {
@@ -181,7 +184,7 @@ export default function Notifications({ app }) {
     let directoryLoaded = false;
     try { directoryLoaded = await app.actions.loadDirectory?.({ kind: "self", force: true }); } catch { directoryLoaded = false; }
     if (directoryLoaded === false && app.serverProfileBound) {
-      setNotificationsLoadError("팀 정보를 불러오지 못했습니다. 다시 시도해 주세요.");
+      setNotificationsLoadError({ message: "팀 정보를 불러오지 못했습니다.", mode: "refresh" });
       return;
     }
     navigate(`/app/teams/${invitation.teamId}`);
@@ -239,17 +242,18 @@ export default function Notifications({ app }) {
     } />}>
       {notificationsLoadError ? (
         <Card className="section-card">
-          <div className="ui-empty-state">
-            <strong>{notificationsLoadError}</strong>
-            <Button type="button" variant="secondary" size="sm" onClick={refreshNotifications}>다시 시도</Button>
-          </div>
+          <EmptyState
+            tone="error"
+            title={notificationsLoadError.message}
+            description="아래 버튼을 눌러 다시 불러와 주세요."
+            action={<Button variant="secondary" size="sm" onClick={notificationsLoadError.mode === "append" ? loadMoreNotifications : refreshNotifications}>다시 시도</Button>}
+          />
         </Card>
       ) : null}
       {pendingInvitations.length ? (
         <Card className="section-card notification-invitation-card">
           <div className="section-title-row">
             <div>
-              <p className="eyebrow">Invitations</p>
               <h2>받은 초대장</h2>
             </div>
             <Badge tone="orange">{pendingInvitations.length}개</Badge>
@@ -292,7 +296,6 @@ export default function Notifications({ app }) {
         <Card className="section-card notification-invitation-card">
           <div className="section-title-row">
             <div>
-              <p className="eyebrow">Team Invitations</p>
               <h2>받은 팀 초대</h2>
             </div>
             <Badge tone="green">{pendingTeamInvitations.length}개</Badge>
@@ -325,7 +328,6 @@ export default function Notifications({ app }) {
         <Card className="section-card notification-invitation-card">
           <div className="section-title-row">
             <div>
-              <p className="eyebrow">Team Join Requests</p>
               <h2>팀 가입 신청</h2>
             </div>
             <Badge tone="orange">{pendingTeamJoinRequests.length}개</Badge>
@@ -357,15 +359,13 @@ export default function Notifications({ app }) {
       <Card className="section-card home-alert-card notification-inbox-card">
         <div className="section-title-row">
           <div>
-            <p className="eyebrow">Inbox</p>
-            <h2>{notificationView === "past" ? `지난 알림 ${pastNotifications.length}개` : `읽지 않은 알림 ${formatCount(totalUnreadCount)}개`}</h2>
+            <h2>{!visibleNotifications.length && (notificationsLoadMode || notificationsLoadError) ? "알림 목록" : notificationView === "past" ? `지난 알림 ${pastNotifications.length}개` : `읽지 않은 알림 ${formatCount(totalUnreadCount)}개`}</h2>
           </div>
           <div className="notification-inbox-controls">
-            <div className="ui-segmented-control segmented-control notification-view-tabs" role="tablist" aria-label="알림 보기">
+            <div className="ui-segmented-control segmented-control notification-view-tabs" role="group" aria-label="알림 보기">
               <button
                 type="button"
-                role="tab"
-                aria-selected={notificationView === "unread"}
+                aria-pressed={notificationView === "unread"}
                 className={notificationView === "unread" ? "active" : ""}
                 onClick={() => selectNotificationView("unread")}
               >
@@ -373,8 +373,7 @@ export default function Notifications({ app }) {
               </button>
               <button
                 type="button"
-                role="tab"
-                aria-selected={notificationView === "past"}
+                aria-pressed={notificationView === "past"}
                 className={notificationView === "past" ? "active" : ""}
                 onClick={() => selectNotificationView("past")}
               >
@@ -383,7 +382,8 @@ export default function Notifications({ app }) {
             </div>
           </div>
         </div>
-        <div className="home-action-list notifications-list ui-design-borderless-list" role="tabpanel">
+        <div className="home-action-list notifications-list ui-design-borderless-list" aria-busy={Boolean(notificationsLoadMode)}>
+          {notificationsLoadMode === "refresh" && displayedNotifications.length ? <p role="status">새 알림을 확인하고 있습니다.</p> : null}
           {notificationReadError ? <small role="status" className="form-warning">{notificationReadError}</small> : null}
           {displayedNotifications.length ? displayedNotifications.map((notification) => {
             const displayContent = getNotificationDisplayContent(notification);
@@ -455,16 +455,19 @@ export default function Notifications({ app }) {
               </span>
               </article>
             );
-          }) : (
-            <div className="ui-empty-state-compact">
-              {notificationView === "past" ? "지난 알림이 없습니다." : "읽지 않은 알림이 없습니다."}
-            </div>
-          )}
+          }) : notificationsLoadMode ? (
+            <EmptyState tone="loading" title="알림을 불러오고 있습니다." />
+          ) : !notificationsLoadError ? (
+            <EmptyState
+              title={app.state.notificationHasMore ? "이전 알림이 더 있습니다." : notificationView === "past" ? "지난 알림이 없습니다." : "읽지 않은 알림이 없습니다."}
+              description={app.state.notificationHasMore ? "알림 더 보기를 눌러 이전에 받은 알림도 확인해 보세요." : notificationView === "past" ? "읽음으로 표시한 알림이 여기에 모입니다." : "새로운 소식이 오면 여기에 알려드릴게요."}
+            />
+          ) : null}
         </div>
         {app.state.notificationHasMore ? (
           <div className="ui-action-row notification-load-more-row">
-            <Button type="button" variant="secondary" size="sm" disabled={notificationsLoadMorePending} onClick={() => { void loadMoreNotifications(); }}>
-              {notificationsLoadMorePending ? "불러오는 중" : "알림 더 보기"}
+            <Button type="button" variant="secondary" size="sm" disabled={Boolean(notificationsLoadMode)} onClick={() => { void loadMoreNotifications(); }}>
+              {notificationsLoadMode === "append" ? "불러오는 중" : "알림 더 보기"}
             </Button>
           </div>
         ) : null}

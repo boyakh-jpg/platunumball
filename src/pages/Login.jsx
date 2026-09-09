@@ -91,14 +91,15 @@ export default function Login({ auth, app }) {
             </div>
           ) : null}
 
-          {auth.error ? <p className="auth-message">{auth.error}</p> : null}
-          {auth.message ? <p className="auth-message">{auth.message}</p> : null}
+          {auth.error ? <p className="auth-message" role="alert">{auth.error}</p> : null}
+          {auth.message ? <p className="auth-message" role="status">{auth.message}</p> : null}
+          {auth.authActionPending ? <p className="auth-message" role="status">로그인 중입니다. 잠시만 기다려 주세요.</p> : null}
           {embeddedGoogleOAuthBrowser && showGoogleBrowserFallback ? (
-            <div className="auth-browser-warning">
+            <div className="auth-browser-warning" role="alert">
               <strong>카카오톡 내 브라우저에서는 Google 로그인을 사용할 수 없습니다.</strong>
               <span>오른쪽 위 메뉴에서 다른 브라우저로 열거나, 아래 링크를 복사해 Chrome 또는 Safari에서 열어 주세요.</span>
               <button type="button" className="auth-browser-copy-button" onClick={copyBrowserOpenUrl}><Copy size={15} /> 링크 복사</button>
-              {copyMessage ? <small>{copyMessage}</small> : null}
+              {copyMessage ? <small role="status">{copyMessage}</small> : null}
             </div>
           ) : null}
 

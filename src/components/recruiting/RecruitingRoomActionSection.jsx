@@ -13,7 +13,7 @@ export function RecruitingRoomActionSection({ context }) {
     canSubmitSourceMatchLiveResult, canSubmitSourceMatchPostgameResult, cancellationReasonText, candidateMmr, confirmPaidCourtJoin, confirmQueueRoom,
     confirmingMatchId, createPortal, currentUserIsRoomReferee, deleteSourceSoloRecord, fit, getDefaultApplyTeamId,
     getEditableSourceMatchStatFields, getJoinRosterPatch, getJoinTeamEligibility, getLobbyPrimaryTeamId, getPartyOptionKey, getPartyOptionLabel,
-    getRoomCancellationActionLabel, individualOnlyRoom, joinCapacity, joinDraft, joinModeEntries, joinSideParty,
+    getRoomCancellationActionLabel, individualOnlyRoom, inviteError, joinCapacity, joinDraft, joinModeEntries, joinSideParty,
     joiningPartyKey, joiningThisRoom, lobby, matchRoom, mine, myTeams, navigate, readOnly,
     paidCourtJoinPrompt, pickupPoolMode, recruitingRoomConfirmed, recruitingRoomTerminalStatus, refreshSourceMatchReview, remakeRoom,
     requestRecruitingCancellation, requestSourceMatchCancellation, requestSourceMatchFinalization, roomCancellationPolicy, roomCancellationTarget, roomQueueStatus, roomTimingStatus,
@@ -494,6 +494,7 @@ export function RecruitingRoomActionSection({ context }) {
                         />
                       )}
                     </div>
+                    {inviteError ? <small className="form-warning" role="alert">{inviteError}</small> : null}
                     <div className="ui-action-row ui-action-row-end">
                     <Button type="submit" disabled={!canJoin || joiningThisRoom}>
                       {joinDraft.joinMode === "team" ? <UsersRound size={18} /> : joinDraft.joinMode === "referee" ? <ShieldCheck size={18} /> : <UserRound size={18} />}

@@ -311,6 +311,10 @@ export function createCreateMatchActions(context) {
       setSubmitFeedback("연습 경기는 비공개 경기방으로만 만들 수 있습니다.");
       return;
     }
+    setSubmitFeedback("");
+    submittingRef.current = true;
+    setSubmitting(true);
+    try {
     const accessToken = !practiceMode && isSupabaseConfigured && !app.demoPreview
       ? await getClientActionAccessToken()
       : "";
@@ -326,10 +330,6 @@ export function createCreateMatchActions(context) {
       setSubmitFeedback(submitDisabledReason || "경기 생성 조건을 확인해 주세요.");
       return;
     }
-    setSubmitFeedback("");
-    submittingRef.current = true;
-    setSubmitting(true);
-    try {
     if (isSoloRecord) {
       const normalizedTeamA = normalizeSoloRecordRosterInput(
         draft.soloTeamAPlayersText,

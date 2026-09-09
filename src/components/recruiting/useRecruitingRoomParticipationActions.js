@@ -46,6 +46,7 @@ export function useRecruitingRoomParticipationActions({
   };
   const submitJoin = async (roomPost, { paidCourtConfirmed = false } = {}) => {
     if (!roomPost?.id || joiningPostId === roomPost.id) return false;
+    setInviteError("");
     const joinDraft = getJoinDraft(roomPost);
     if (joinDraft.joinMode !== "referee" && !paidCourtConfirmed && requiresPaidCourtNotice(roomPost)) {
       setPaidCourtJoinPrompt({ action: "join", roomPost });
@@ -58,7 +59,10 @@ export function useRecruitingRoomParticipationActions({
           benchCapacity: getRecruitingBenchCapacity(roomPost),
         })[0]
       : null;
-    if (isPickupRecruitingRoom(roomPost) && !pickupPlacement) return false;
+    if (isPickupRecruitingRoom(roomPost) && !pickupPlacement) {
+      setInviteError("참가 정원이 찼습니다. 다른 방을 선택해 주세요.");
+      return false;
+    }
     const normalizedJoinDraft = pickupPlacement
       ? {
           ...joinDraft,
@@ -80,7 +84,11 @@ export function useRecruitingRoomParticipationActions({
     try {
       const result = await app.actions.interestRecruitingPost(roomPost.id, application);
       if (result && result.ok !== false) onJoined?.(roomPost.id, result);
+      else setInviteError("참여하지 못했습니다. 선택 내용을 확인한 뒤 다시 시도해 주세요.");
       return result;
+    } catch (error) {
+      setInviteError("참여하지 못했습니다. 선택 내용을 확인한 뒤 다시 시도해 주세요.");
+      return false;
     } finally {
       setJoiningPostId((current) => (current === roomPost.id ? "" : current));
     }
@@ -88,6 +96,7 @@ export function useRecruitingRoomParticipationActions({
   const joinSideParty = async (roomPost, option, { paidCourtConfirmed = false } = {}) => {
     const partyKey = `${roomPost.id}:${getPartyOptionKey(option)}`;
     if (joiningPartyKey) return false;
+    setInviteError("");
     if (!paidCourtConfirmed && requiresPaidCourtNotice(roomPost)) {
       setPaidCourtJoinPrompt({ action: "party", roomPost, option });
       return false;
@@ -96,7 +105,11 @@ export function useRecruitingRoomParticipationActions({
     try {
       const result = await app.actions.joinRecruitingSideParty(roomPost.id, option.team.id, option.sideName, option.entry?.id);
       if (result && result.ok !== false) onJoined?.(roomPost.id, result);
+      else setInviteError("팀 파티에 합류하지 못했습니다. 다시 시도해 주세요.");
       return result;
+    } catch (error) {
+      setInviteError("팀 파티에 합류하지 못했습니다. 다시 시도해 주세요.");
+      return false;
     } finally {
       setJoiningPartyKey((current) => current === partyKey ? "" : current);
     }

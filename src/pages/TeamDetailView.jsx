@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { ImageUp, RotateCcw, Star, Trash2 } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
@@ -26,6 +27,7 @@ import {
 import { formatEmblemDate, getEmblemUploadWarning } from "../lib/emblemPolicy.js";
 import { getUserHashtag } from "../lib/handles.js";
 import { assetUrl } from "../lib/assets.js";
+import { APP_NOTIFICATION_PATH } from "../lib/appNavigation.js";
 import { MatchRoomModal } from "./Matches.jsx";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 
@@ -45,17 +47,21 @@ export default function TeamDetailView({ controller }) {
   const teamControlPending = teamInvitePending || teamManagementPending;
   const [dangerAction, setDangerAction] = useState(null);
   const [dangerAcknowledged, setDangerAcknowledged] = useState(false);
+  const [dangerAttempted, setDangerAttempted] = useState(false);
   useBodyScrollLock(Boolean(dangerAction));
   useEffect(() => {
     setDangerAction(null);
     setDangerAcknowledged(false);
+    setDangerAttempted(false);
   }, [teamId]);
   const closeDangerAction = () => {
     setDangerAction(null);
     setDangerAcknowledged(false);
+    setDangerAttempted(false);
   };
   const confirmDangerAction = async () => {
     if (!dangerAction || !dangerAcknowledged) return;
+    setDangerAttempted(true);
     const completed = dangerAction.type === "delete-team"
       ? await deleteTeam()
       : await excludeTeamMember(dangerAction.userId);
@@ -140,7 +146,10 @@ export default function TeamDetailView({ controller }) {
                 <Button type="button" size="sm" variant="secondary" disabled={teamManagementPending} onClick={() => { void cancelTeamJoinRequest(pendingOwnJoinRequest.id); }}>신청 취소</Button>
               </>
             ) : pendingOwnTeamInvite ? (
-              <Badge tone="green">팀 초대 도착</Badge>
+              <>
+                <Badge tone="green">팀 초대 도착</Badge>
+                <Button as={Link} to={APP_NOTIFICATION_PATH} size="sm">초대 확인</Button>
+              </>
             ) : (
               <Button type="button" size="sm" disabled={teamManagementPending} onClick={openTeamJoinApplication}>
                 {teamFull ? "팀 정원 마감" : "가입 신청"}
@@ -330,6 +339,7 @@ export default function TeamDetailView({ controller }) {
                     초대할 선수
                     <SearchPicker
                       value={memberQuery}
+                      disabled={teamControlPending}
                       onChange={(value) => {
                         setTeamInviteError("");
                         setMemberQuery(value);
@@ -351,7 +361,7 @@ export default function TeamDetailView({ controller }) {
                   </label>
                   <label>
                     초대 역할
-                    <select value={memberDraft.role} onChange={(event) => setMemberDraft((current) => ({ ...current, role: event.target.value }))}>
+                    <select value={memberDraft.role} disabled={teamControlPending} onChange={(event) => setMemberDraft((current) => ({ ...current, role: event.target.value }))}>
                       {inviteRoleOptions.map(([role, label]) => <option key={role} value={role}>{label}</option>)}
                     </select>
                   </label>
@@ -595,6 +605,7 @@ export default function TeamDetailView({ controller }) {
               <input type="checkbox" checked={dangerAcknowledged} onChange={(event) => setDangerAcknowledged(event.target.checked)} disabled={teamControlPending} />
               내용을 확인했습니다.
             </label>
+            {dangerAttempted && teamManagementError ? <p className="form-warning" role="alert">{teamManagementError}</p> : null}
             <div className="ui-action-row app-confirm-actions">
               <Button type="button" variant="secondary" onClick={closeDangerAction} disabled={teamControlPending}>취소</Button>
               <Button type="button" variant="danger" onClick={() => { void confirmDangerAction(); }} disabled={teamControlPending || !dangerAcknowledged}>

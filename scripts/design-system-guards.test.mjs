@@ -1108,7 +1108,7 @@ test("생성 control은 공용 폭과 높이를 사용한다", () => {
   );
   assert.match(
     matchCreationWizardSource,
-    /match-creation-wizard-secondary-actions[\s\S]*취소하기[\s\S]*이전[\s\S]*match-creation-wizard-primary-actions[\s\S]*다음[\s\S]*<Button type="button" disabled=\{submitDisabled\} onClick=\{onSubmit\}/,
+    /match-creation-wizard-secondary-actions[\s\S]*취소하기[\s\S]*이전[\s\S]*match-creation-wizard-primary-actions[\s\S]*다음[\s\S]*<Button type="button" disabled=\{disabled \|\| submitDisabled\} onClick=\{onSubmit\}/,
   );
 });
 
