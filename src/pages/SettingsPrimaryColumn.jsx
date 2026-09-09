@@ -16,6 +16,25 @@ import { getCourtHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.
 import { DISCORD_NOTIFICATION_EVENTS, getDiscordAvatarClassName, getDiscordAvatarStyle } from "../lib/discord.js";
 import ExternalNotificationSettingsCard from "../components/settings/ExternalNotificationSettingsCard.jsx";
 
+function GeneralSettingsSaveRow({ controller }) {
+  const {
+    generalSettingsStatus,
+    generalSettingsDirty,
+    generalSettingsSavePending,
+    homeGuideCardSavePending,
+    saveGeneralSettings,
+  } = controller;
+
+  return (
+    <div className="settings-save-row">
+      <small>{generalSettingsStatus}</small>
+      <Button type="button" variant="primary" onClick={saveGeneralSettings} disabled={!generalSettingsDirty || generalSettingsSavePending || homeGuideCardSavePending}>
+        {generalSettingsSavePending ? "저장 중" : "변경 내용 저장"}
+      </Button>
+    </div>
+  );
+}
+
 export default function SettingsPrimaryColumn({ controller }) {
   const {
     app,
@@ -54,11 +73,8 @@ export default function SettingsPrimaryColumn({ controller }) {
     renderFavoriteSearchItem,
     canOpenAdminMenu,
     themeDirty,
-    generalSettingsDirty,
-    generalSettingsStatus,
     selectTheme,
     connectDiscord,
-    saveGeneralSettings,
   } = controller;
   return (
 <div className="page-stack settings-main-column">
@@ -79,14 +95,13 @@ export default function SettingsPrimaryColumn({ controller }) {
           <Card as="fieldset" className="section-card settings-fieldset-card theme-choice-card">
             <legend className="section-title-row">
               <div>
-                <h2>밝기</h2>
-                <p className="eyebrow">화면 테마</p>
+                <h2>화면 색상</h2>
               </div>
             </legend>
             <div
               className="ui-segmented-control segmented-control"
-              role="radiogroup"
-              aria-label="화면 테마"
+              role="group"
+              aria-label="화면 색상"
             >
               <button
                 type="button"
@@ -95,7 +110,7 @@ export default function SettingsPrimaryColumn({ controller }) {
                 onPointerUp={(event) => event.currentTarget.blur()}
                 onClick={() => selectTheme("light")}
               >
-                <Sun size={15} aria-hidden="true" /> 라이트
+                <Sun size={15} aria-hidden="true" /> 밝게
               </button>
               <button
                 type="button"
@@ -104,11 +119,11 @@ export default function SettingsPrimaryColumn({ controller }) {
                 onPointerUp={(event) => event.currentTarget.blur()}
                 onClick={() => selectTheme("dark")}
               >
-                <Moon size={15} aria-hidden="true" /> 다크
+                <Moon size={15} aria-hidden="true" /> 어둡게
               </button>
             </div>
             <div className="settings-save-row">
-              <small>{themeSaveStatus || (themeDirty ? "변경 있음" : "저장됨")}</small>
+              <small role="status">{themeSaveStatus || (themeDirty ? "변경 있음" : "선택하면 바로 저장돼요.")}</small>
             </div>
           </Card>
 
@@ -283,7 +298,8 @@ export default function SettingsPrimaryColumn({ controller }) {
                 </Button>
               )}
             </div>
-            {discordSaveStatus ? <small>{discordSaveStatus}</small> : null}
+            {!discordLinked && discordSaveStatus ? <small>{discordSaveStatus}</small> : null}
+            {discordLinked ? <GeneralSettingsSaveRow controller={controller} /> : null}
           </Card>
 
           <Card as="fieldset" className="section-card settings-fieldset-card settings-privacy-card settings-preference-card">
@@ -367,12 +383,7 @@ export default function SettingsPrimaryColumn({ controller }) {
               </div>
             </div>
 
-            <div className="settings-save-row">
-              <small>{generalSettingsStatus}</small>
-              <Button type="button" variant="primary" onClick={saveGeneralSettings} disabled={!generalSettingsDirty || generalSettingsSavePending || homeGuideCardSavePending}>
-                {generalSettingsSavePending ? "저장 중" : "저장"}
-              </Button>
-            </div>
+            <GeneralSettingsSaveRow controller={controller} />
           </Card>
 
           {canOpenAdminMenu ? (

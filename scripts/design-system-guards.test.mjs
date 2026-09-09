@@ -925,7 +925,8 @@ test("설정 메인은 운영·테스트 카드를 숨기고 표시 설정을 �
   );
   assert.match(pageSources.settings, /homeGuideCardDirty[\s\S]*saveHomeGuideCardVisibility[\s\S]*saveGeneralSettings/);
   assert.doesNotMatch(pageSources.settings, /선택 즉시 저장됩니다/);
-  assert.match(pageSources.settings, /홈 안내 카드[\s\S]*프로필 표시[\s\S]*saveGeneralSettings/);
+  assert.match(pageSources.settings, /홈 안내 카드[\s\S]*프로필 표시[\s\S]*<GeneralSettingsSaveRow controller=\{controller\}/);
+  assert.match(pageSources.settings, /function GeneralSettingsSaveRow[\s\S]*onClick=\{saveGeneralSettings\}/);
   assert.match(pageSources.settings, /<aside className="page-stack settings-side-column">[\s\S]*플레이어 숨김[\s\S]*remoteSearchType="player"/);
   assert.match(pageSources.settings, /플레이어 숨김[\s\S]*releaseBlock/);
   assert.doesNotMatch(pageSources.settings, /샘플 데이터 복원|데모 데이터 초기화/);
@@ -1661,7 +1662,7 @@ test("hero inner boards share one restrained solid surface system", () => {
   assert.doesNotMatch(homeDashboardResponsiveStyles, /var\(--ui-schedule-hero-mask\)/);
 });
 
-test("page heroes keep shared eyebrows without implementation copy", () => {
+test("page heroes keep shared structure and useful copy without implementation terms", () => {
   const heroSources = [
     ...Object.values(pageSources),
     matchRoomPageSource,
@@ -1678,7 +1679,7 @@ test("page heroes keep shared eyebrows without implementation copy", () => {
 
   assert.doesNotMatch(heroSources, /kicker/);
   assert.doesNotMatch(allStyleSources, /kicker/);
-  assert.match(heroSources, /className="eyebrow">MATCH QUEUE</);
+  assert.match(pageSources.recruiting, /ui-page-hero__copy[\s\S]*<h1>대기 매칭<\/h1>[\s\S]*참가 방법/);
   assert.match(pageSources.teams, /ui-page-hero__copy[\s\S]*<h1>팀<\/h1>/);
   assert.match(heroSources, /className="eyebrow">Study guide</);
   assert.doesNotMatch(heroSources, /공용 방 모달|저장 통로|같은 값|현재 알파 테스트|서버 원본|내부 보정값|실제 공용 방 모달|현재 서비스 화면/);

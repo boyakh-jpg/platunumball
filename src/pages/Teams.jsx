@@ -117,6 +117,15 @@ export default function Teams({ app }) {
   }, [app.state.teams]);
   const selectedCaptainTeamCount = teamCountByUser.get(app.currentUser.id) ?? 0;
   const captainLimitReached = selectedCaptainTeamCount >= MAX_TEAM_MEMBERSHIPS;
+  const teamCreateHint = teamCreatePending
+    ? "팀을 만들고 있습니다. 잠시만 기다려 주세요."
+    : teamCreateError || (captainLimitReached
+      ? `최대 ${MAX_TEAM_MEMBERSHIPS}개 팀에 소속될 수 있어 새 팀을 만들 수 없습니다.`
+      : teamNameInvalid
+        ? "먼저 팀 이름을 입력해 주세요."
+        : homeCourtInvalid
+          ? "구장을 검색하고 목록에서 하나를 선택해 주세요."
+          : "준비됐습니다. 팀을 만들면 팀 관리 화면으로 이동합니다.");
   const rankingTeams = useMemo(() => {
     return app.state.teams
       .map((team) => ({ ...team, ...getStoredTeamRecord(team) }))
@@ -480,19 +489,21 @@ export default function Teams({ app }) {
               {captainLimitReached ? " · 소속 팀 한도에 도달했습니다." : " · 생성 후 팀장이 됩니다."}
             </span>
             <label>
-              팀 이름
+              팀 이름 (필수)
               <input
                 ref={teamNameInputRef}
                 value={draft.name}
+                aria-required="true"
+                placeholder="팀 이름을 입력해 주세요"
                 maxLength={MAX_TEAM_NAME_LENGTH}
                 onChange={(event) => update({ name: event.target.value.slice(0, MAX_TEAM_NAME_LENGTH) })}
               />
-              <span className={teamNameInvalid ? "form-warning" : "form-chip"}>
+              <span className="form-chip">
                 {teamName.length}/{MAX_TEAM_NAME_LENGTH}자
               </span>
             </label>
             <label>
-              지역
+              활동 지역
               <select value={inferRegionSelection(draft.region).sido} onChange={(event) => {
                 const nextSido = event.target.value;
                 const nextDistrict = REGION_TREE.find((item) => item.sido === nextSido)?.districts[0] ?? "";
@@ -516,7 +527,7 @@ export default function Teams({ app }) {
               </select>
             </label>
             <label>
-              홈 코트
+              주로 이용할 구장 (필수)
               <SearchPicker
                 value={courtQuery}
                 onChange={setCourtQuery}
@@ -531,14 +542,14 @@ export default function Teams({ app }) {
                 closeOnResultClick
                 renderItem={renderCourtSearchItem}
               />
-              <span className={homeCourtInvalid ? "form-warning" : "form-chip"}>{homeCourtInvalid ? "승인 구장을 선택해 주세요." : draft.homeCourt}</span>
+              {homeCourtInvalid ? <small>검색 후 목록에서 구장을 눌러 주세요.</small> : <span className="form-chip">{draft.homeCourt}</span>}
             </label>
             <label>
-              팀 컬러
+              팀 색상 (선택)
               <input type="color" value={draft.accent} onChange={(event) => update({ accent: event.target.value })} />
             </label>
-            {teamCreateError ? <span className="form-warning">{teamCreateError}</span> : null}
-            <Button type="submit" disabled={captainLimitReached || teamNameInvalid || homeCourtInvalid || teamCreatePending}><PlusCircle size={18} /> {teamCreatePending ? "저장 중" : "팀 만들기"}</Button>
+            <small id="team-create-status" role="status" className={teamCreateError || captainLimitReached ? "form-warning" : undefined}>{teamCreateHint}</small>
+            <Button type="submit" aria-describedby="team-create-status" disabled={captainLimitReached || teamNameInvalid || homeCourtInvalid || teamCreatePending}><PlusCircle size={18} /> {teamCreatePending ? "팀 만드는 중" : "팀 만들기"}</Button>
           </form> : null}
         </Card>}
         </div>

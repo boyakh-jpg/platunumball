@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { Link } from "react-router-dom";
 import { CalendarDays, ChevronDown, ChevronUp, ClipboardCheck, PlusCircle } from "lucide-react";
 import Button from "../components/common/Button.jsx";
@@ -23,18 +24,24 @@ export default function RecruitingPageView({
   selectedPostRefreshRef, requestSelectedPostDetail, selectedPostId, selectedPost, selectedPostDetailLoading,
   navigate, location, setSelectedPostId, selectedPostPending, readOnly = false,
 }) {
+  const queueControlsRef = useRef(null);
+  const openQueueFilters = () => {
+    setQueueControlsOpen(true);
+    queueControlsRef.current?.focus();
+  };
+
   return (
     <div className="page-stack arena-recruit-page">
       <section className="arena-recruit-hero ui-page-hero ui-design-app-hero">
         <div className="arena-hero-copy ui-page-hero__copy">
-          <span className="eyebrow">MATCH QUEUE</span>
           <h1>대기 매칭</h1>
+          <p>참여하고 싶은 방을 선택해 경기 정보와 참가 방법을 확인하세요.</p>
         </div>
         <div className="arena-hero-panel ui-liquid-glass">
           <div className="arena-hero-stats ui-liquid-glass-segments">
-            <span><strong>{scopedPosts.length}</strong>OPEN</span>
-            <span><strong>{rankedCount}</strong>RANKED</span>
-            <span><strong>{friendlyCount}</strong>FRIENDLY</span>
+            <span><strong>{scopedPosts.length}</strong>전체</span>
+            <span><strong>{rankedCount}</strong>정규전</span>
+            <span><strong>{friendlyCount}</strong>친선전</span>
           </div>
           <div className="arena-hero-actions">
             <Button as={Link} to="/app/create">
@@ -47,23 +54,20 @@ export default function RecruitingPageView({
         </div>
       </section>
 
-      <section className={queueControlsOpen ? "arena-queue-controls ui-design-soft-surface" : "arena-queue-controls ui-design-soft-surface collapsed"}>
+      <section ref={queueControlsRef} tabIndex={-1} aria-label="경기 찾기 조건" className={queueControlsOpen ? "arena-queue-controls ui-design-soft-surface" : "arena-queue-controls ui-design-soft-surface collapsed"}>
         <div className="section-title-row arena-queue-controls-head">
           <div>
-            <span className="eyebrow">QUEUE FILTER</span>
             <strong>매치방 · {posts.length}개 표시</strong>
           </div>
           <Button
             type="button"
             variant="secondary"
             size="sm"
-            className="button-icon section-disclosure-button"
             aria-expanded={queueControlsOpen}
             aria-controls="recruiting-queue-filters"
-            aria-label={queueControlsOpen ? "필터 접기" : "필터 펼치기"}
-            title={queueControlsOpen ? "필터 접기" : "필터 펼치기"}
             onClick={() => setQueueControlsOpen((current) => !current)}
           >
+            {queueControlsOpen ? "조건 접기" : "조건 바꾸기"}
             {queueControlsOpen ? <ChevronUp size={18} strokeWidth={2.5} /> : <ChevronDown size={18} strokeWidth={2.5} />}
           </Button>
         </div>
@@ -108,7 +112,7 @@ export default function RecruitingPageView({
                   {MATCH_FORMAT_FILTERS.map((mode) => <option key={mode.id} value={mode.id}>{mode.label}</option>)}
                 </select>
               </label>
-              <div className="arena-start-date-filter" aria-label="start date">
+              <div className="arena-start-date-filter" aria-label="경기 시작일">
                 {startDateOptions.map((option) => (
                   <button
                     key={option.id}
@@ -204,7 +208,13 @@ export default function RecruitingPageView({
         ) : !queueListError ? (
           <EmptyState
             title="조건에 맞는 매치방 없음"
-            description="필터를 변경하거나 새 매치방을 만들어 보세요."
+            description="지역이나 날짜를 바꿔 찾아보세요. 직접 방을 만들 수도 있습니다."
+            action={(
+              <>
+                <Button variant="secondary" onClick={openQueueFilters}>조건 바꾸기</Button>
+                <Button as={Link} to="/app/create">방 만들기</Button>
+              </>
+            )}
           />
         ) : null}
       </section>
