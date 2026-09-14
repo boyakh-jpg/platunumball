@@ -366,6 +366,7 @@
   --ui-hero-border-width: 1px;
   --ui-page-hero-min-height: 164px;
   --ui-page-hero-min-height-mobile: 144px;
+  --ui-home-hero-min-height-mobile: clamp(280px, 78vw, 360px);
   --ui-page-hero-padding: clamp(16px, 2vw, 22px);
   --ui-operations-hero-min-height: 214px;
   --ui-operations-hero-min-height-mobile: 174px;
@@ -423,10 +424,6 @@
   --hero-bg-position-profile: var(--hero-crop-profile);
   --hero-bg-position-hoop: var(--hero-crop-hoop);
   --hero-bg-position-ball: var(--hero-crop-ball);
-  --ui-page-hero-media-height: 96px;
-  --ui-page-hero-media-height-mobile: 64px;
-  --ui-page-hero-compact-media-height: 40px;
-  --ui-page-hero-compact-media-height-mobile: 24px;
 }
 
 [data-design="editorial"] .ui-design-app {

@@ -112,12 +112,14 @@ html[data-theme] .app-main :is(
   .home-rank-board-head
 ) .eyebrow {
   color: var(--hero-eyebrow-color);
+  text-shadow: var(--hero-copy-shadow);
 }
 html[data-theme] .app-main .ui-page-hero {
-  --hero-title-color: var(--rb-text);
-  --hero-copy-color: var(--rb-muted);
-  --hero-title-shadow: none;
-  --hero-copy-shadow: none;
+  --hero-title-color: var(--ui-image-hero-title-color);
+  --hero-copy-color: var(--ui-image-hero-copy-color);
+  --hero-eyebrow-color: var(--ui-image-hero-title-color);
+  --hero-title-shadow: var(--ui-image-hero-title-shadow);
+  --hero-copy-shadow: var(--ui-image-hero-copy-shadow);
 }
 html[data-theme="light"] .app-main .ui-page-hero {
   box-shadow: none;

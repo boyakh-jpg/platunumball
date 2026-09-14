@@ -393,8 +393,6 @@ button:not(:focus-visible) {
     grid-row: 1;
     display: grid;
     align-content: end;
-    min-height: 0;
-    padding: 0;
   }
 
   .rank-home .rank-summary-grid .rank-hero-top {

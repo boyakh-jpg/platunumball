@@ -831,7 +831,7 @@ RankBall 다크 모드는 이 팔레트를 기본 CSS 색상 표준으로 쓴다
 2026-07-02: 홈 760~1079px hero는 viewport edge까지 full-bleed하되, hero 내부 텍스트/CTA와 바로 아래 검색 입력은 20px 이상 inset을 유지해 테두리에 붙지 않게 한다.
 2026-07-02: 홈 759px 이하에서는 `rank-summary-grid`가 `display: contents`라 실제 hero인 `.home-rank-board-head`가 직접 `--app-main-pad-x`를 상쇄해야 한다. 이 규칙 변경 전에는 390/430/501/760/900/1024px에서 hero left, order, overflow를 다시 확인한다.
 2026-07-02: 경기(`/app/matches`)와 매칭(`/app/recruiting`) page container는 데스크톱에서 공통 앱 폭 1440px을 따른다. 원인/결과: 각 arena CSS 뒤쪽의 1480px override가 공통 `.app-main > *` 폭보다 커져 메뉴별 폭이 달라졌으므로, 최종 page width guard로 통일한다.
-2026-07-02: 홈 hero 배경은 desktop에서는 `rank-summary-grid`, 759px 이하에서는 실제 hero인 `home-rank-board-head` 한 곳에만 둔다. 원인/결과: 부모와 자식에 같은 `--bg-court`가 동시에 적용되어 배경이 두 장처럼 보였으므로 동시 배경을 금지한다.
+2026-07-02: 홈 hero 배경은 모든 너비에서 실제 hero인 `home-rank-board-head` 한 곳에만 둔다. 부모 `rank-summary-grid`는 투명하게 유지해 사진이 겹치지 않게 한다. 안쪽 여백은 `--ui-page-hero-padding`, 759px 이하 최소 높이는 `--ui-home-hero-min-height-mobile`을 사용한다.
 2026-07-24: 홈 hero는 다크에서 `rankball-court-hero-v3.webp`, 라이트에서 같은 구도의 `rankball-court-hero-day-v3.webp`를 `--bg-home-court`로 전환한다. 두 테마는 같은 crop·height 규칙을 공유하며 별도 wash·filter를 씌우지 않는다.
 2026-07-24: 새로 제작하는 주요 메뉴 hero의 다크·라이트 쌍은 같은 사진의 시간대와 조명만 바꾸고 `1600×900` 이상, 같은 crop·height를 유지한다. CGI·3D 렌더 질감은 쓰지 않는다. 새 장식용 농구공은 기본적으로 제외하고, 기능상 꼭 필요한 공은 실제 연속 8패널 심 구조로 검수한다. 사용자가 유지하기로 한 팀 허브·대기 매칭의 기존 공 배경은 예외로 보존한다.
 2026-07-27: 메인 landing의 `--bg-action`은 `main-night-v6.webp`/`main-day-v6.webp` `1672×941` 실사 쌍을 쓴다. 예전 선수 중심 레이업 장면을 고해상도 가로 구도로 재구성하고, 선수는 오른쪽에 두어 왼쪽 문구 공간을 확보한다. 청록·분홍 페인트는 선수 뒤의 좁고 반투명한 연기만 허용하며 넓은 폭발·파티클은 사용하지 않는다. 두 원본 WebP 자체에 선수·림 중심의 하나로 연결된 비정형 외곽과 넓고 매끈한 feather 알파를 동일하게 굽는다. 물방울처럼 분리된 splash·점·소형 돌기는 사용하지 않고, 왼쪽 관중석과 외곽 배경의 투명도를 더 높여 인물을 우선한다. CSS radial mask·filter·blur·wash는 사용하지 않는다. `1079px` 이하에서는 선수 위치를 유지하도록 가로 crop만 `68%`로 옮기고 dark/light의 구도와 높이는 같게 유지한다. 라이트 문구 대비는 이미지 overlay가 아니라 흰 text-shadow만 사용한다. 이전 `main-*-v2`~`v5`는 현재 연결하지 않고 후보로 보관한다.
@@ -843,16 +843,16 @@ RankBall 다크 모드는 이 팔레트를 기본 CSS 색상 표준으로 쓴다
 2026-07-01: 방 모달의 슬롯 초대 popover는 modal overflow에 잘리지 않게 viewport 레벨로 띄우고, 검색 결과는 popover 내부 inline 목록으로 보여 초대 버튼이 항상 누를 수 있어야 한다.
 2026-07-01: 방 모달 경기장 영역은 dark/light 모두 `--bg-hoop` 배경 이미지를 유지하고, light mode에서는 cream overlay로 가독성만 보정한다.
 2026-07-01: 데스크톱이 아닌 홈/경기/모집 hero는 카드처럼 둥근 모서리를 주지 않고, viewport 좌우에 붙여 배경이 새지 않게 full-bleed로 둔다. 앱 히어로의 상단은 공용 알림·설정 아래 문서 흐름을 유지한다.
-2026-07-01: 홈/경기/모집 hero는 사진 띠와 단색 정보 영역을 분리한다. 원본 이미지 위에는 반복 격자·스캔라인·가독성 overlay를 얹지 않는다.
+2026-07-01: 홈/경기/모집 hero는 원본 사진을 히어로 전체 배경으로 채운다. 가독성을 이유로 사진 높이를 얇은 띠로 줄이지 않으며 반복 격자·스캔라인·가독성 overlay를 얹지 않는다.
 2026-07-01: 앱 바닥과 주요 hero/방 모달 overlay의 1px 격자무늬는 제거한다. 코트 정체성은 실제 배경 이미지와 scoreboard/card hierarchy로만 표현한다.
 2026-07-02: "hero들"이라고 하면 홈/경기/모집만이 아니라 `page-header`, landing, team hub, season, profile, team detail, rulebook, tournament, match room 같은 모든 page-level hero를 포함한다.
-2026-07-02: 모든 page-level hero는 이미지 위에 dark/white wash, scanline/grid, 별도 overlay를 얹지 않는다. 앱 hero는 위쪽 사진 띠와 아래쪽 `--rb-bg-3` 정보 면을 공용 primitive에서 분리하고 제목은 `--rb-text`, 설명은 `--rb-muted`, 강조 문구는 `--accent-text`를 사용한다. 어두운 고정 배경을 쓰는 공개 메인은 전용 밝은 전경색을 유지한다.
-2026-07-02: hero 제목은 모두 `--hero-title-font`와 공용 제목·본문 토큰을 사용한다. 개별 feature/theme CSS는 글자색·그림자를 덮어쓰지 않는다. 앱 hero의 원본 이미지는 공용 `::before` 사진 띠에서만 표시하고 정보 면과 겹치지 않는다. `backdrop-filter`, blur, filter, 컨테이너 그림자는 사용하지 않는다.
+2026-07-02: 모든 page-level hero는 이미지 위에 dark/white wash, scanline/grid, 별도 overlay를 얹지 않는다. 앱 hero의 제목·설명은 공용 `--ui-image-hero-title-color`·`--ui-image-hero-copy-color`와 대응하는 글자 그림자 토큰으로 대비를 확보한다. 어두운 고정 배경을 쓰는 공개 메인은 전용 밝은 전경색을 유지한다.
+2026-07-02: hero 제목은 모두 `--hero-title-font`와 공용 제목·본문 토큰을 사용한다. 개별 feature/theme CSS는 글자색·그림자를 덮어쓰지 않는다. 앱 hero의 원본 이미지는 공용 primitive의 전체 배경에서 표시하며 `::before`·`::after` 장식은 비활성화한다. `backdrop-filter`, blur, filter, 컨테이너 그림자는 사용하지 않는다.
 2026-08-02: page-level hero는 eyebrow, 제목, 상태 badge/action, 날짜·구장·지역 같은 동적 정보를 중심으로 표시한다. 작은 분류 라벨은 공용 `.eyebrow` 클래스를 사용하고 별도 `*-kicker` 클래스와 제목을 반복하는 고정 설명은 두지 않는다. 매칭 hero에는 처음 참여하는 사용자가 방을 선택하면 무엇을 확인할 수 있는지 짧은 행동 안내를 제공한다. 서버 원본·모듈·저장 통로·공용 모달 같은 내부 구현 용어를 사용자 화면에 노출하지 않는다.
 2026-08-03: 라이트 테마 모바일 하단 메뉴의 활성 항목은 `--radius-sm`을 사용한다. 메뉴 바와 비활성 항목은 기존 flat 규격을 유지한다.
-2026-08-03: 모든 page-level hero는 역할 클래스 `.ui-page-hero`와 텍스트 영역 `.ui-page-hero__copy`를 사용한다. 일정·알림·설정·관리자·프로필·팀과 프로필·팀의 하위 화면은 `PageFrame`이 히어로 → 선택 탐색 → 본문 순서를 소유한다. 일반 제목·액션 히어로는 `PageHeader`와 공용 `ui-page-hero--compact` variant를 사용해 사진 띠 높이를 줄이며 제목을 반복하는 영문 라벨은 두지 않는다. 사진 높이는 `--ui-page-hero-media-height*`, 본문 여백은 `--ui-page-hero-padding`이 소유한다. 1079px 이하에서는 본문 좌우 여백을 앱 본문 gutter와 맞춘다. 팀 대표 보드와 엔티티 프로필 같은 전용 히어로는 `hero` 슬롯에 기존 공용 컴포넌트를 넣는다. 제목 영역과 액션 영역을 구분하고, 액션의 정렬·줄바꿈·버튼 너비는 공용 `.ui-page-header__actions`가 소유한다. 화면별 hero 클래스는 배경·배치 modifier만 소유하고 제목 글꼴·색·그림자·모바일 크기와 설명 색·그림자는 공용 primitive가 소유한다. 모든 섹션 제목 행은 `.section-title-row`를 기본 역할 클래스로 함께 사용하고 화면별 `*-head` 클래스는 구조 차이만 보정한다.
-2026-08-05: 앱 page-level hero의 제목·설명·강조 문구는 light/dark 모두 해당 테마의 공용 전경 토큰을 사용한다. 팀 대표 보드도 같은 단색 정보 면과 전경색을 사용하며 글자·컨테이너 그림자를 추가하지 않는다.
-2026-07-23: 방 만들기(`/app/create`) page-header는 다크·라이트 전용 체육관 이미지의 사진 띠와 아래 제목 영역을 분리한다. 사진은 오른쪽 골대·접힌 관중석·조명 구조를 중앙 crop 안에 둔다. 장식용 공은 두지 않고 보이는 코트선은 실제 바닥 구조에 맞게 한 번만 표시한다.
+2026-08-03: 모든 page-level hero는 역할 클래스 `.ui-page-hero`와 텍스트 영역 `.ui-page-hero__copy`를 사용한다. 일정·알림·설정·관리자·프로필·팀과 프로필·팀의 하위 화면은 `PageFrame`이 히어로 → 선택 탐색 → 본문 순서를 소유한다. 일반 제목·액션 히어로는 `PageHeader`를 사용하며 제목을 반복하는 영문 라벨은 두지 않는다. 최소 높이는 `--ui-page-hero-min-height`·`--ui-page-hero-min-height-mobile`, 본문 여백은 `--ui-page-hero-padding`이 소유한다. 1079px 이하에서는 본문 좌우 여백을 앱 본문 gutter와 맞춘다. 팀 대표 보드와 엔티티 프로필 같은 전용 히어로는 `hero` 슬롯에 기존 공용 컴포넌트를 넣는다. 제목 영역과 액션 영역을 구분하고, 액션의 정렬·줄바꿈·버튼 너비는 공용 `.ui-page-header__actions`가 소유한다. 화면별 hero 클래스는 배경·배치 modifier만 소유하고 제목 글꼴·색·그림자·모바일 크기와 설명 색·그림자는 공용 primitive가 소유한다. 모든 섹션 제목 행은 `.section-title-row`를 기본 역할 클래스로 함께 사용하고 화면별 `*-head` 클래스는 구조 차이만 보정한다.
+2026-08-05: 앱 page-level hero의 사진 위 제목·설명·강조 문구는 light/dark 모두 이미지용 공용 전경 토큰을 사용한다. 내부 통계판과 팀 대표 보드는 기존 단색 정보 면을 유지하고 `.ui-liquid-glass`가 테마별 전경색과 그림자 없는 글자 토큰을 소유한다.
+2026-07-23: 방 만들기(`/app/create`) page-header는 다크·라이트 전용 체육관 이미지를 전체 배경으로 채운다. 사진은 오른쪽 골대·접힌 관중석·조명 구조를 중앙 crop 안에 둔다. 장식용 공은 두지 않고 보이는 코트선은 실제 바닥 구조에 맞게 한 번만 표시한다.
 2026-07-28: 팀 허브 모바일 hero에도 데스크톱처럼 대표팀 보드를 포함한다. 대표팀이 있으면 팀명·MMR·전적을 표시하며 759px 이하에서도 숨기지 않는다.
 2026-07-02: 홈 image hero와 rank spotlight card는 조각난 frame처럼 보이는 border, underline, inner pseudo frame을 쓰지 않는다. 이미지 경계는 배경/간격으로 처리한다. 티어 카드의 프로필·시즌·설정 링크는 공용 `Button variant="text"`로 배경 없이 표시한다. 이 변형은 주변 글자색을 상속하고 공용 버튼 크기·안쪽 여백·키보드 포커스를 유지하며 hover에만 밑줄을 표시한다. 홈 CSS가 버튼 배경이나 여백을 다시 덮지 않는다.
 2026-07-01: 일반 페이지의 floating search/card layer는 모바일 bottom nav보다 낮아야 한다. 모달/전역 로더만 bottom nav보다 위에 올 수 있다.
@@ -2751,8 +2751,8 @@ UI 수정 전:
 
 ## 2026-08-06 히어로 색상 역할과 즐겨찾기 위치
 
-1. 라이트 앱 홈 히어로는 주황색 제목과 흰색 eyebrow를 사용한다. 나머지 앱 메뉴 히어로는 흰색 제목과 주황색 eyebrow를 사용한다. 라이트 히어로는 그림자를 쓰지 않는다.
-2. 히어로 내부 glass의 글자와 아이콘은 흰색을 사용한다. 팀 대표 보드의 지역·홈구장 한 줄만 노란색 역할 토큰을 사용한다.
+1. 앱 히어로의 사진 위 제목·본문·eyebrow는 모든 화면과 테마에서 공용 이미지 전경색과 가독성용 글자 그림자 토큰을 사용한다. 중첩된 홈 설명도 같은 본문 규칙을 따르며 화면별 CSS가 그림자를 제거하지 않는다.
+2. 히어로 내부 정보판의 글자와 아이콘은 단색 정보 면에 맞는 테마별 전경 토큰을 사용하며 글자 그림자를 쓰지 않는다. 팀 대표 보드의 지역·홈구장은 공용 보조 글자색을 따른다.
 3. 상세 히어로의 즐겨찾기 action은 오른쪽 상단의 공용 작은 아이콘 버튼으로 표시한다. 모바일에서도 같은 위치와 크기를 유지한다.
 
 ## 2026-08-16 비로그인 랜딩 진입
@@ -2950,7 +2950,7 @@ UI 수정 전:
 16. 홈 안내 배너, 처리할 일, 알림, 지역 랭킹의 반복 행은 내부 면색·외곽선·상태선 없이 투명 행과 행 사이 `--ui-divider-subtle` 구획선으로 통일한다. 홈 안내 배너의 마지막 진입 링크는 로그인 여부와 관계없이 마지막 grid 열에 배치한다. 홈 hero의 단색 상황판과 우측 rail의 단일 중성 바탕은 이 규칙에서 제외한다.
 17. `Card`, `Button`, `Badge`, `.ui-folder-tabs`, `.ui-segmented-control`, `.ui-page-hero`, `ModalShell`이 애플리케이션의 형태를 소유한다. 공통 시각 규칙은 `tokens.css`, control·modal은 `primitives/ui-controls.css`, 콘텐츠·hero·인증 배치는 `primitives/ui-content-layout.css`에 둔다. 페이지·기능별 CSS는 배치와 기능 상태만 정의하며 별도 최종 덮어쓰기 파일과 메뉴별 복제 표면 규칙을 만들지 않는다.
 18. 일반 `.section-card`는 면색·외곽선·그림자 없이 위쪽 구획선과 여백만 사용한다. 반복 정보 행도 면색 대신 간격, `--ui-divider-subtle` 구획선, 짧은 상태 rail로 구분한다. 방 모달 선수 slot 내부, 영수증 미리보기·Story·Feed 출력물, hero의 단색 상황판, 로그인의 단일 인증 면은 전용 규칙을 유지한다.
-19. dark 배경·표면은 공용 색상 토큰만 사용하고 완전한 검정 대신 중성 회색 단계로 구분한다. 모든 이미지 hero는 gradient·overlay·mask·컨테이너 그림자 없이 원본 이미지를 표시한다. 앱 hero는 공용 `::before` 사진 띠와 단색 본문을 분리해 대비를 확보한다. 공개 랜딩은 전용 이미지 배치와 글자 안전 영역을 유지한다.
+19. dark 배경·표면은 공용 색상 토큰만 사용하고 완전한 검정 대신 중성 회색 단계로 구분한다. 모든 이미지 hero는 gradient·overlay·mask·컨테이너 그림자 없이 전체 배경에 원본 이미지를 표시한다. 앱 hero는 이미지용 공용 전경색·글자 그림자로 대비를 확보하며 내부 통계판은 단색 표면을 유지한다. 공개 랜딩은 전용 이미지 배치와 글자 안전 영역을 유지한다.
 20. 랜딩·로그인은 앱 내부와 같은 control 높이·button 내용 너비·본문 크기를 사용한다. 랜딩의 비로그인 둘러보기 경로는 항상 유지하고, 인증 여부에 따라 제거하거나 전체 폭 핵심 action으로 바꾸지 않는다.
 21. 일반 dialog는 공용 `ModalShell`을 사용하고 면색·테두리·radius·그림자를 개별 모달 CSS에서 정의하지 않는다. 방 dialog는 같은 셸에 `.ui-room-modal`만 추가한다. 방 slot 내부, 영수증 미리보기·출력물, 전체 화면 경기 시계만 기능상 예외다.
 22. page hero 제목은 `--hero-title-size`, 공개 랜딩 첫 제목은 전용 `--ui-landing-title-size`와 모바일 variant를 사용하고, 문서·인증·가이드·카드 대표 제목은 `.ui-content-title`과 `--ui-content-title-size`를 사용한다. 개별 화면에서 큰 제목 크기를 다시 지정하지 않으며, 목록 안의 정보 제목은 section title 단계 이하를 사용한다.

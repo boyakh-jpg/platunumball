@@ -125,6 +125,7 @@ body {
     grid-column: 1 / -1;
     grid-row: auto;
     justify-self: start;
+    min-height: var(--ui-home-hero-min-height-mobile);
     width: calc(100% + (2 * var(--app-main-pad-x)));
     max-width: none;
     margin-top: 0;
@@ -154,7 +155,6 @@ body {
     font-size: var(--font-size-body-sm);
     font-weight: var(--font-weight-body);
     line-height: 1.5;
-    text-shadow: none;
   }
 
   .rank-home .rank-summary-grid .home-rank-board-head .button {
@@ -335,7 +335,6 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head h1 
 }
 .rank-home .rank-summary-grid .home-rank-board-head p:not(.eyebrow),
 html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head p:not(.eyebrow) {
-  text-shadow: none;
   color: var(--hero-copy-color);
   font-weight: var(--font-weight-body);
   line-height: 1.5;

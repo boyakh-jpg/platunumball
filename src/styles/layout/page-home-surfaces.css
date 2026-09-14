@@ -190,8 +190,8 @@ html[data-theme="light"] .page-header p:not(.eyebrow) {
   display: grid;
   align-content: end;
   width: 100%;
-  min-height: 0;
-  padding: 0;
+  min-height: var(--ui-page-hero-min-height);
+  padding: var(--ui-page-hero-padding);
   gap: var(--space-4);
 }
 

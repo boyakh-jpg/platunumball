@@ -27,7 +27,7 @@
 
 .entity-profile-hero-action {
   position: absolute;
-  top: calc(var(--ui-page-hero-media-height) + var(--ui-page-hero-padding));
+  top: var(--ui-page-hero-padding);
   right: var(--ui-page-hero-padding);
   z-index: 3;
 }

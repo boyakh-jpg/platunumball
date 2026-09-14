@@ -16,6 +16,11 @@
 }
 
 html[data-theme] .app-main :is(.ui-liquid-glass, .page-header > .ui-button, .ui-page-header__actions > .ui-button-secondary) {
+  --hero-title-color: var(--ui-liquid-glass-color);
+  --hero-copy-color: var(--ui-liquid-glass-muted-color);
+  --hero-eyebrow-color: var(--accent-text);
+  --hero-title-shadow: none;
+  --hero-copy-shadow: none;
   position: relative;
   isolation: isolate;
   border: 0;
