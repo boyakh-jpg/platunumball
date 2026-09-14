@@ -308,7 +308,7 @@ html[data-theme] .ui-design-host[data-design="editorial"] .ui-design-app .ui-des
   [data-design="editorial"] .ui-design-app .ui-design-app-hero {
     width: calc(100% + (2 * var(--app-main-pad-x)));
     max-width: none;
-    margin-block-start: calc(-1 * var(--app-main-pad-top));
+    margin-block-start: 0;
     margin-inline: calc(-1 * var(--app-main-pad-x));
     border-radius: 0;
   }

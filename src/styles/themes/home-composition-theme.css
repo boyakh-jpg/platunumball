@@ -126,8 +126,8 @@ body {
     display: contents;
   }
 
-  /* Home hero is display: contents here, so the visible hero must cancel app-main padding itself.
-     Do not switch this back to --page-gutter without rechecking 390/430/501px. */
+  /* With display: contents, the visible home hero cancels horizontal app padding itself.
+     Keep its top edge below the shared tools; verify 390/430/501px when changing the bleed. */
   .rank-home .rank-summary-grid .home-rank-board-head {
     position: relative;
     grid-column: 1 / -1;
@@ -136,7 +136,7 @@ body {
     min-height: clamp(280px, 78vw, 360px);
     width: calc(100% + (2 * var(--app-main-pad-x)));
     max-width: none;
-    margin-top: -18px;
+    margin-top: 0;
     margin-inline: calc(-1 * var(--app-main-pad-x));
     overflow: hidden;
     border: var(--ui-hero-border-width) solid var(--rb-line);

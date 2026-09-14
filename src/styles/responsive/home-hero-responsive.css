@@ -1,18 +1,15 @@
-/* 2026-07-01 final mobile hero bleed standard.
-   The app shell owns page padding, so first-screen heroes must cancel it on mobile. */
+/* Mobile heroes cancel only horizontal app padding.
+   Keep their top edge in flow below the shared notification/settings tools. */
 .app-main {
-  --app-main-pad-top: var(--page-gutter);
   --app-main-pad-x: var(--page-gutter);
 }
 @media (max-width: 1079px) {
   .app-main {
-    --app-main-pad-top: 18px;
     --app-main-pad-x: var(--page-gutter);
   }
 }
 @media (max-width: 1020px) {
   .app-main {
-    --app-main-pad-top: 18px;
     --app-main-pad-x: 16px;
   }
 }
@@ -30,15 +27,11 @@
     width: calc(100% + (2 * var(--app-main-pad-x, var(--page-gutter))));
     max-width: none;
     margin-inline: calc(-1 * var(--app-main-pad-x, var(--page-gutter)));
-    margin-block-start: calc(-1 * var(--app-main-pad-top, 18px));
+    margin-block-start: 0;
     border-top: 0;
     border-right: 0;
     border-left: 0;
     border-radius: 0;
-  }
-
-  .tournament-detail-page > .tournament-hero {
-    margin-block-start: 0;
   }
 
   .app-main > .page-stack > :is(
@@ -53,7 +46,7 @@
     width: calc(100% + (2 * var(--app-main-pad-x)));
     max-width: none;
     margin-inline: calc(-1 * var(--app-main-pad-x));
-    margin-block-start: calc(-1 * var(--app-main-pad-top));
+    margin-block-start: 0;
     border-top: 0;
     border-right: 0;
     border-left: 0;
