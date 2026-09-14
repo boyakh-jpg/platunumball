@@ -27,8 +27,8 @@
 
 .entity-profile-hero-action {
   position: absolute;
-  top: var(--space-8);
-  right: var(--space-8);
+  top: calc(var(--ui-page-hero-media-height) + var(--ui-page-hero-padding));
+  right: var(--ui-page-hero-padding);
   z-index: 3;
 }
 
@@ -164,7 +164,7 @@
 }
 
 .stat-player-button > strong {
-  color: var(--green);
+  color: var(--status-success-text);
   font-size: 0.78rem;
 }
 
@@ -194,7 +194,7 @@
   border: var(--ui-card-border-width) solid rgba(255, 211, 108, 0.2);
   border-radius: var(--radius);
   background: rgba(255, 211, 108, 0.075);
-  color: var(--gold);
+  color: var(--status-warning-text);
   font-size: 0.8rem;
   font-weight: 850;
   line-height: 1.45;
@@ -416,7 +416,7 @@
 }
 
 .approval-panel .approval-voter-list em {
-  color: var(--gold);
+  color: var(--status-warning-text);
   font-size: 0.72rem;
   font-style: normal;
   font-weight: 950;

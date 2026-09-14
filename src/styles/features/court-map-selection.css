@@ -16,7 +16,7 @@
 }
 
 .tournament-court-pool > div:first-child strong {
-  color: var(--rb-orange);
+  color: var(--accent-text);
 }
 
 .tournament-court-pool-list {
@@ -59,7 +59,7 @@
 .tournament-court-pool-list button:hover,
 .tournament-court-pool-list button:focus-visible {
   background: color-mix(in srgb, var(--rb-orange) 14%, transparent);
-  color: var(--rb-orange);
+  color: var(--accent-text);
 }
 
 .tournament-court-pool-list button:focus-visible {
@@ -84,18 +84,6 @@
 
 .court-finder-controls {
   grid-template-columns: minmax(min(160px, 100%), 0.34fr) minmax(160px, 0.28fr) minmax(0, 1fr);
-}
-
-.court-map-launch-control {
-  display: grid;
-  align-content: start;
-  gap: var(--space-3);
-}
-
-.court-map-launch-control > span {
-  color: var(--muted);
-  font-size: 0.76rem;
-  font-weight: 900;
 }
 
 .court-map-launch-control .button {
@@ -128,7 +116,7 @@
   place-items: center;
   border-radius: var(--radius-xs);
   background: color-mix(in srgb, var(--rb-orange) 14%, transparent);
-  color: var(--rb-orange);
+  color: var(--accent-text);
 }
 
 .create-selected-court-main > div,
@@ -163,7 +151,7 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 5px;
-  color: var(--gold);
+  color: var(--status-warning-text);
   font-size: 0.72rem;
   font-style: normal;
   font-weight: 900;
@@ -213,7 +201,7 @@
 }
 
 .court-map-picker-header span {
-  color: var(--rb-orange);
+  color: var(--accent-text);
   font-size: 0.7rem;
   font-weight: 950;
 }

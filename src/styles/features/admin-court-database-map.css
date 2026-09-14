@@ -222,7 +222,7 @@
 }
 
 .court-db-duplicate-answer span.is-warning {
-  color: var(--danger);
+  color: var(--status-danger-text);
 }
 
 .court-db-proximity-review {
@@ -272,7 +272,7 @@
 }
 
 .court-db-proximity-answer span.is-warning {
-  color: var(--danger);
+  color: var(--status-danger-text);
 }
 
 .court-db-proximity-courts {

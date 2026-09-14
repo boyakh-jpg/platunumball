@@ -183,12 +183,12 @@ html[data-theme="light"] .scroll-to-top-button {
 
 .data-source-list a:hover,
 .data-source-list a:focus-visible {
-  color: var(--rb-orange);
+  color: var(--accent-text);
 }
 
 .data-license-note a,
 .data-source-notice a {
-  color: var(--rb-orange);
+  color: var(--accent-text);
   font-weight: 900;
   text-underline-offset: 3px;
 }
@@ -318,7 +318,7 @@ html[data-theme="light"] .scroll-to-top-button {
 .legal-document-nav a:hover,
 .legal-document-nav a:focus-visible,
 .legal-document-nav a.active {
-  color: var(--rb-orange);
+  color: var(--accent-text);
 }
 
 .legal-document-nav a.active {

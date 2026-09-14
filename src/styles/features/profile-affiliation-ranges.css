@@ -132,7 +132,7 @@ html[data-theme] .ui-design-app.app-main :is(
   padding: var(--ui-control-group-padding);
 }
 .affiliation-challenge-list span {
-  color: var(--blue);
+  color: var(--status-info-text);
   font-size: 0.74rem;
   font-weight: 950;
 }
@@ -147,7 +147,7 @@ html[data-theme] .ui-design-app.app-main :is(
   font-weight: 850;
 }
 .affiliation-challenge-list b {
-  color: var(--gold);
+  color: var(--status-warning-text);
   font-size: 0.8rem;
 }
 .season-page {
@@ -250,7 +250,7 @@ html[data-theme] .ui-design-app.app-main :is(
   padding: 14px;
 }
 .rivalry-matchup > span {
-  color: var(--gold);
+  color: var(--status-warning-text);
   font-weight: 950;
 }
 .rivalry-matchup div {
@@ -337,7 +337,7 @@ html[data-theme] .ui-design-app.app-main :is(
   gap: var(--space-2);
 }
 .mmr-range-mode-control span {
-  color: var(--gold);
+  color: var(--status-warning-text);
   font-size: 0.78rem;
   font-weight: 950;
 }

@@ -11,7 +11,6 @@
 
   .rank-home .rank-summary-grid {
     min-height: 0;
-    padding: 14px;
   }
 
   .landing-primary-actions {
@@ -57,8 +56,7 @@ html[data-theme="light"] .sidebar-nav a.active {
 }
 html[data-theme="light"] .rank-home .rank-summary-grid {
   background:
-    var(--bg-court) var(--hero-bg-position-court) / var(--hero-bg-size) no-repeat,
-    var(--rb-bg-3);
+    transparent;
 }
 html[data-theme="light"] .rank-home .rank-profile-card,
 html[data-theme="light"] .rank-home .rank-mode-card {
@@ -100,13 +98,7 @@ body {
     max-width: none;
   }
 
-  .rank-home .home-search-panel.rank-search-card .home-search-box {
-    min-height: 44px;
-    padding-block: 0;
-  }
-
   .rank-home .home-search-panel.rank-search-card .home-search-box input {
-    min-height: 42px;
     font-size: 14px;
   }
 
@@ -133,7 +125,6 @@ body {
     grid-column: 1 / -1;
     grid-row: auto;
     justify-self: start;
-    min-height: clamp(280px, 78vw, 360px);
     width: calc(100% + (2 * var(--app-main-pad-x)));
     max-width: none;
     margin-top: 0;
@@ -141,10 +132,6 @@ body {
     overflow: hidden;
     border: var(--ui-hero-border-width) solid var(--rb-line);
     border-radius: 0;
-    background:
-      var(--bg-court) center 46% / cover no-repeat,
-      var(--rb-bg-2);
-    padding: 18px;
     box-shadow: none;
   }
 
@@ -158,17 +145,15 @@ body {
 
   .rank-home .rank-summary-grid .home-rank-board-head h1 {
     max-width: 8.6ch;
-    color: #fff;
     font-size: clamp(30px, 9vw, 42px);
-    line-height: 0.84;
   }
 
   .rank-home .rank-summary-grid .home-rank-board-head p:not(.eyebrow) {
     max-width: 30ch;
-    color: rgba(255, 255, 255, 0.88);
-    font-size: 13px;
-    font-weight: 850;
-    line-height: 1.35;
+    color: var(--hero-copy-color);
+    font-size: var(--font-size-body-sm);
+    font-weight: var(--font-weight-body);
+    line-height: 1.5;
     text-shadow: none;
   }
 
@@ -188,10 +173,10 @@ body {
 
 }
 .eyebrow {
-  color: var(--rb-orange-2);
+  color: var(--accent-text);
 }
 html[data-theme="light"] .eyebrow {
-  color: var(--rb-orange);
+  color: var(--accent-text);
 }
 .rank-home .home-panel-empty {
   min-height: 66px;
@@ -229,7 +214,6 @@ html[data-theme="light"] .eyebrow {
 
   .rank-home .rank-summary-grid {
     gap: var(--space-6);
-    padding: 18px;
   }
 
   .rank-home .rank-summary-grid .rank-hero-top {
@@ -293,7 +277,7 @@ html[data-theme="light"] .eyebrow {
 
   .rank-home .rank-tier-copy,
   .rank-home .rank-tier-note {
-    font-size: 11px;
+    font-size: var(--font-size-caption);
     line-height: 1.28;
     margin: 0;
   }
@@ -319,7 +303,7 @@ html[data-theme="light"] .eyebrow {
   }
 
   .rank-home .rank-mode-pill em {
-    font-size: 0.68rem;
+    font-size: var(--font-size-caption);
   }
 
   html[data-theme="light"] .rank-home .rank-profile-card,
@@ -347,12 +331,15 @@ html[data-theme="light"] .app-main {
 }
 .rank-home .rank-summary-grid .home-rank-board-head h1,
 html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head h1 {
-  color: var(--rb-cream);
   letter-spacing: 0;
 }
 .rank-home .rank-summary-grid .home-rank-board-head p:not(.eyebrow),
 html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head p:not(.eyebrow) {
   text-shadow: none;
+  color: var(--hero-copy-color);
+  font-weight: var(--font-weight-body);
+  line-height: 1.5;
+  font-size: var(--font-size-body-sm);
 }
 .rank-home .rank-tier-rail {
   display: grid;

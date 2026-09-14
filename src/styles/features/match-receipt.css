@@ -54,7 +54,7 @@
   background: transparent;
 }
 
-.match-receipt-team-fields legend { padding: 0 var(--space-3); color: var(--rb-orange); font-weight: 900; }
+.match-receipt-team-fields legend { padding: 0 var(--space-3); color: var(--accent-text); font-weight: 900; }
 
 .match-receipt-editor label {
   display: grid;
@@ -121,7 +121,7 @@
   font-weight: 900;
 }
 
-.match-receipt-preview-head strong { color: var(--rb-orange); }
+.match-receipt-preview-head strong { color: var(--accent-text); }
 
 .match-receipt-preview-style { flex: 0 1 auto; }
 

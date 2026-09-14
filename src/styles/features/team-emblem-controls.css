@@ -21,12 +21,12 @@
   border: var(--ui-stroke-width) solid rgba(70, 224, 182, 0.24);
   border-radius: 999px;
   background: rgba(70, 224, 182, 0.08);
-  color: var(--green);
+  color: var(--status-success-text);
   padding: 5px 9px;
 }
 
 .form-warning {
-  color: var(--danger);
+  color: var(--status-danger-text);
 }
 
 .progression-list,
@@ -66,7 +66,7 @@
 }
 
 .progression-list em {
-  color: var(--gold);
+  color: var(--status-warning-text);
   font-style: normal;
   font-weight: 900;
 }
@@ -136,13 +136,13 @@
 .member-control-state {
   justify-self: start;
   background: color-mix(in srgb, var(--gold) 12%, var(--ui-button-bg));
-  color: var(--gold);
+  color: var(--status-warning-text);
 }
 
 .member-control-row button {
   border-color: transparent;
   background: var(--ui-button-secondary-bg);
-  color: var(--danger);
+  color: var(--status-danger-text);
   cursor: pointer;
 }
 
@@ -177,7 +177,7 @@
 }
 
 .team-emblem-editor em {
-  color: var(--rb-gold);
+  color: var(--status-warning-text);
 }
 
 .team-emblem-editor-actions {
@@ -217,13 +217,13 @@
 }
 
 .emblem-crop-feedback {
-  color: var(--danger);
+  color: var(--status-danger-text);
 }
 
 .emblem-source-grid button span {
   color: var(--muted);
-  font-size: 0.74rem;
-  font-weight: 800;
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-control);
 }
 
 .emblem-style-controls {
@@ -378,8 +378,8 @@
 .team-emblem-font-grid button small {
   color: var(--muted);
   font-family: Arial, "Apple SD Gothic Neo", sans-serif;
-  font-size: 0.68rem;
-  font-weight: 800;
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-control);
 }
 
 .profile-emblem-card {
@@ -429,8 +429,8 @@
   border-radius: 50%;
   background: var(--surface-2);
   color: var(--muted);
-  font-size: 0.72rem;
-  font-weight: 800;
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-control);
 }
 
 .team-receipt-emblem-preview img {
@@ -447,7 +447,7 @@
 .team-receipt-emblem-copy small,
 .team-receipt-emblem-copy em {
   color: var(--muted);
-  font-size: 0.74rem;
+  font-size: var(--font-size-caption);
   font-style: normal;
 }
 
@@ -495,7 +495,7 @@
 }
 
 .profile-icon-group-tabs button small {
-  font-size: 0.66rem;
+  font-size: var(--font-size-caption);
 }
 
 .profile-icon-catalog {

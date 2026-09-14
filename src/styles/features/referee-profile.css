@@ -39,7 +39,7 @@ html[data-theme="light"] .profile-detail-page .rank-profile-hero.referee-profile
   min-width: 0;
 }
 .referee-license-card .section-title-row > svg {
-  color: var(--rb-blue);
+  color: var(--status-info-text);
 }
 .referee-license-summary {
   display: grid;

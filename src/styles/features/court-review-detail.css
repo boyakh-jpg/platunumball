@@ -41,7 +41,7 @@
 }
 
 .court-detail-metrics svg {
-  color: var(--rb-orange);
+  color: var(--accent-text);
 }
 
 .court-detail-metrics span {
@@ -72,7 +72,7 @@
 }
 
 .court-review-count {
-  color: var(--rb-gold);
+  color: var(--status-warning-text);
   font-size: 0.82rem;
   font-weight: 900;
 }
@@ -121,7 +121,7 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  color: var(--rb-gold);
+  color: var(--status-warning-text);
   white-space: nowrap;
 }
 
@@ -278,7 +278,7 @@
 .court-rating-buttons button:focus-visible,
 .court-rating-buttons button.active {
   border-color: color-mix(in srgb, var(--rb-gold) 68%, var(--ui-control-border));
-  color: var(--rb-gold);
+  color: var(--status-warning-text);
 }
 
 .court-rating-buttons button:focus-visible,
@@ -289,7 +289,7 @@
 }
 
 .court-review-message {
-  color: var(--rb-green);
+  color: var(--status-success-text);
   font-size: 0.78rem;
   font-weight: 850;
   text-align: center;

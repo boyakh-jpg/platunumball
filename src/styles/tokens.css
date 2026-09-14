@@ -127,7 +127,7 @@
   --line-strong: rgba(255, 255, 255, 0.18);
   --text: #f5f6f6;
   --muted: rgba(245, 246, 246, 0.7);
-  --subtle: rgba(245, 246, 246, 0.48);
+  --subtle: var(--muted);
   --green: #65d99f;
   --green-strong: #65d99f;
   --gold: #ffd36c;
@@ -146,8 +146,8 @@
   --rb-line: rgba(255, 255, 255, 0.1);
   --rb-line-strong: rgba(255, 255, 255, 0.18);
   --rb-text: #f5f6f6;
-  --rb-muted: rgba(245, 246, 246, 0.7);
-  --rb-soft: rgba(245, 246, 246, 0.48);
+  --rb-muted: rgba(245, 246, 246, 0.72);
+  --rb-soft: var(--rb-muted);
   --rb-orange: #f05a46;
   --rb-orange-2: #ff7658;
   --rb-orange-pressed: #d94c37;
@@ -206,9 +206,19 @@
   --control-padding-x: 12px;
   --control-font-size: var(--font-size-control);
   --control-border: var(--rb-line);
-  --button-primary-bg: var(--rb-orange);
-  --button-primary-hover-bg: var(--rb-orange-2);
-  --button-primary-pressed-bg: var(--rb-orange-pressed);
+  --accent-text: #ffb6a3;
+  --status-info-text: #b5d2ff;
+  --status-success-text: #65d99f;
+  --status-warning-text: #ffd36c;
+  --status-danger-text: #ffabab;
+  --action-danger-bg: #b53232;
+  --action-danger-hover-bg: #9f2929;
+  --action-primary-bg: #b83c29;
+  --action-primary-hover-bg: #a53323;
+  --action-primary-pressed-bg: #912b1e;
+  --button-primary-bg: var(--action-primary-bg);
+  --button-primary-hover-bg: var(--action-primary-hover-bg);
+  --button-primary-pressed-bg: var(--action-primary-pressed-bg);
   --button-secondary-bg: var(--surface-3);
   --button-secondary-hover-bg: #54585a;
   --button-secondary-pressed-bg: #5b5f61;
@@ -227,9 +237,9 @@
   --ui-profile-popup-shadow: var(--shadow-strong);
   --ui-profile-popup-backdrop-filter: blur(16px) saturate(1.08);
   --ui-liquid-glass-bg: var(--rb-bg-3);
-  --ui-hero-information-surface-bg: color-mix(in srgb, var(--ui-liquid-glass-bg) 54%, transparent);
+  --ui-hero-information-surface-bg: var(--ui-liquid-glass-bg);
   --ui-liquid-glass-color: var(--rb-cream);
-  --ui-liquid-glass-muted-color: color-mix(in srgb, var(--rb-cream) 72%, transparent);
+  --ui-liquid-glass-muted-color: var(--rb-muted);
   --ui-liquid-glass-button-bg: var(--button-secondary-bg);
   --ui-liquid-glass-button-color: var(--rb-text);
   --ui-liquid-glass-border: transparent;
@@ -244,10 +254,11 @@
   --ui-panel-radius: var(--panel-radius);
   --ui-fieldset-border: var(--rb-line);
   --ui-fieldset-radius: var(--radius-md);
-  --ui-fieldset-legend-title-color: var(--rb-orange);
+  --ui-fieldset-legend-title-color: var(--accent-text);
   --ui-fieldset-legend-support-color: var(--rb-text);
   --ui-button-height: var(--control-height);
   --ui-button-height-sm: var(--control-height-sm);
+  --ui-choice-min-inline-size: 7rem;
   --ui-mobile-filter-control-height: 40px;
   --ui-button-radius: var(--control-radius);
   --ui-button-padding-x: var(--control-padding-x);
@@ -294,13 +305,13 @@
   --ui-badge-font-size: var(--font-size-badge);
   --ui-badge-font-weight: var(--font-weight-body);
   --ui-badge-color: var(--rb-muted);
-  --ui-badge-green-bg: color-mix(in srgb, var(--rb-green) 10%, transparent);
+  --ui-badge-green-bg: color-mix(in srgb, var(--rb-green) 10%, var(--surface));
   --ui-badge-green-border: color-mix(in srgb, var(--rb-green) 36%, transparent);
-  --ui-badge-gold-bg: color-mix(in srgb, var(--rb-gold) 10%, transparent);
+  --ui-badge-gold-bg: color-mix(in srgb, var(--rb-gold) 10%, var(--surface));
   --ui-badge-gold-border: color-mix(in srgb, var(--rb-gold) 36%, transparent);
-  --ui-badge-blue-bg: color-mix(in srgb, var(--rb-blue) 10%, transparent);
+  --ui-badge-blue-bg: color-mix(in srgb, var(--rb-blue) 10%, var(--surface));
   --ui-badge-blue-border: color-mix(in srgb, var(--rb-blue) 34%, transparent);
-  --ui-badge-orange-bg: color-mix(in srgb, var(--rb-orange) 12%, transparent);
+  --ui-badge-orange-bg: color-mix(in srgb, var(--rb-orange) 12%, var(--surface));
   --ui-badge-orange-border: color-mix(in srgb, var(--rb-orange) 36%, transparent);
   --ui-result-win-border: var(--blue);
   --ui-result-loss-border: var(--danger);
@@ -379,9 +390,9 @@
   --hero-title-line-height: 1.06;
   --hero-title-letter-spacing: 0;
   --hero-title-color: var(--rb-cream);
-  --hero-eyebrow-color: var(--rb-orange-2);
+  --hero-eyebrow-color: var(--accent-text);
   --hero-title-shadow: none;
-  --hero-copy-color: var(--rb-cream);
+  --hero-copy-color: var(--rb-muted);
   --hero-copy-shadow: none;
   --sidebar-width: 272px;
   --ui-rail-bg: var(--rb-bg-3);
@@ -412,6 +423,10 @@
   --hero-bg-position-profile: var(--hero-crop-profile);
   --hero-bg-position-hoop: var(--hero-crop-hoop);
   --hero-bg-position-ball: var(--hero-crop-ball);
+  --ui-page-hero-media-height: 96px;
+  --ui-page-hero-media-height-mobile: 64px;
+  --ui-page-hero-compact-media-height: 40px;
+  --ui-page-hero-compact-media-height-mobile: 24px;
 }
 
 [data-design="editorial"] .ui-design-app {
@@ -441,7 +456,7 @@ html[data-theme="light"] {
   --line-strong: rgba(24, 33, 38, 0.18);
   --text: #1d2326;
   --muted: #5d666b;
-  --subtle: #7f898e;
+  --subtle: var(--muted);
   --green: #218a5f;
   --green-strong: #1e7653;
   --gold: #a86c14;
@@ -461,7 +476,7 @@ html[data-theme="light"] {
   --rb-line-strong: rgba(24, 33, 38, 0.18);
   --rb-text: #1d2326;
   --rb-muted: #5d666b;
-  --rb-soft: #7f898e;
+  --rb-soft: var(--rb-muted);
   --rb-orange: #e5553f;
   --rb-orange-2: #f05a46;
   --rb-orange-pressed: #d64c38;
@@ -477,9 +492,11 @@ html[data-theme="light"] {
   --card-border: rgba(24, 33, 38, 0.11);
   --card-shadow: none;
   --control-border: rgba(24, 33, 38, 0.14);
-  --button-primary-bg: var(--rb-orange);
-  --button-primary-hover-bg: var(--rb-orange-2);
-  --button-primary-pressed-bg: var(--rb-orange-pressed);
+  --accent-text: #a53323;
+  --status-info-text: #285c9e;
+  --status-success-text: #1e7653;
+  --status-warning-text: #8a590f;
+  --status-danger-text: #ad3030;
   --button-secondary-bg: var(--surface-3);
   --button-secondary-hover-bg: #e2dfd8;
   --button-secondary-pressed-bg: #d8d4cc;
@@ -491,7 +508,7 @@ html[data-theme="light"] {
   --ui-selectable-hover-border: color-mix(in srgb, var(--rb-orange) 28%, var(--ui-control-border));
   --ui-selectable-selected-bg: color-mix(in srgb, var(--rb-orange) 12%, var(--ui-control-bg));
   --ui-selectable-selected-border: color-mix(in srgb, var(--rb-orange) 52%, var(--ui-control-border));
-  --ui-selectable-selected-color: var(--rb-orange-pressed);
+  --ui-selectable-selected-color: var(--accent-text);
   --ui-rail-bg: var(--rb-surface);
   --ui-rail-item-hover-bg: color-mix(in srgb, var(--rb-text) 5%, transparent);
   --ui-rail-item-active-bg: color-mix(in srgb, var(--rb-orange) 10%, transparent);
@@ -501,7 +518,7 @@ html[data-theme="light"] {
   --ui-room-panel-bg: rgba(255, 255, 255, 0.86);
   --ui-liquid-glass-bg: var(--ui-information-surface-bg);
   --ui-liquid-glass-color: var(--rb-text);
-  --ui-liquid-glass-muted-color: var(--rb-soft);
+  --ui-liquid-glass-muted-color: var(--rb-muted);
   --ui-liquid-glass-button-bg: var(--button-secondary-bg);
   --ui-liquid-glass-button-color: var(--rb-text);
   --ui-liquid-glass-border: transparent;
@@ -521,7 +538,7 @@ html[data-theme="light"] {
   --ui-image-hero-title-shadow: 0 1px 2px rgba(10, 14, 18, 0.88), 0 0 6px rgba(10, 14, 18, 0.36);
   --ui-image-hero-copy-shadow: 0 1px 2px rgba(10, 14, 18, 0.82);
   --hero-title-color: var(--rb-text);
-  --hero-eyebrow-color: var(--rb-orange-pressed);
+  --hero-eyebrow-color: var(--accent-text);
   --hero-title-shadow: none;
   --hero-copy-color: var(--rb-muted);
   --hero-copy-shadow: none;

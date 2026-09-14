@@ -244,7 +244,7 @@
 }
 
 .arena-reserve-line > strong {
-  color: var(--gold);
+  color: var(--status-warning-text);
   font-size: 0.78rem;
   font-weight: 950;
 }
@@ -274,7 +274,7 @@
 }
 
 .arena-side-roster header strong {
-  color: var(--gold);
+  color: var(--status-warning-text);
   font-size: 1.15rem;
 }
 
@@ -331,7 +331,7 @@
 }
 
 .arena-room-rule-detail-grid dt {
-  color: var(--rb-orange);
+  color: var(--accent-text);
   font-size: 0.7rem;
   font-weight: 900;
 }
@@ -354,7 +354,7 @@
 }
 
 .arena-room-referee-line > strong {
-  color: var(--rb-orange);
+  color: var(--accent-text);
   font-size: 0.78rem;
 }
 
@@ -400,7 +400,7 @@
 }
 
 .arena-room-rule-panel .arena-details-memo strong {
-  color: var(--gold);
+  color: var(--status-warning-text);
   font-size: 0.78rem;
 }
 
@@ -434,7 +434,7 @@
 }
 
 .arena-room-edit-panel small.room-edit-warning {
-  color: var(--orange);
+  color: var(--accent-text);
 }
 
 .arena-self-placement-actions {

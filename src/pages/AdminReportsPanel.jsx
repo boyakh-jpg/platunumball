@@ -2,6 +2,7 @@ import { ExternalLink, History, UserCheck } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
+import AdminWorkbench from "../components/admin/AdminWorkbench.jsx";
 import { getAdminReportTypeLabel } from "../lib/admin.js";
 import { ADMIN_DEFAULT_PAGE_LIMIT } from "../lib/queryPolicy.js";
 import { ADMIN_QUEUE_FOCUS_LABELS, formatDate } from "./adminPageModel.js";
@@ -96,7 +97,7 @@ export default function AdminReportsPanel({ controller }) {
   const reviewSection = REPORT_SECTION_BY_TYPE[report?.type];
 
   return (
-    <div className="admin-report-workbench">
+    <AdminWorkbench key={queueMode} className="admin-report-workbench" pending={reportOperationPending}>
       <Card className="section-card admin-report-queue">
         <div className="section-title-row">
           <div><p className="eyebrow">Report queue</p><h2>신고·검토 대기열</h2></div>
@@ -118,7 +119,7 @@ export default function AdminReportsPanel({ controller }) {
         {error ? <div className="admin-queue-state error" role="alert"><span>신고 목록을 불러오지 못했습니다.</span><Button type="button" variant="secondary" onClick={() => loadAdminSection?.({ section, queueMode, focus: queueFocus, filter: appliedQueueFilter, limit: ADMIN_DEFAULT_PAGE_LIMIT, offset: 0, force: true })}>다시 시도</Button></div> : null}
         <div className="admin-report-list">
           {reportQueueReports.map((item) => (
-            <button key={item.id} type="button" className={report?.id === item.id ? "active" : ""} disabled={reportOperationPending} onClick={() => selectQueueReport(item.id)}>
+            <button key={item.id} type="button" data-admin-item className={report?.id === item.id ? "active" : ""} disabled={reportOperationPending} onClick={() => selectQueueReport(item.id)}>
               <span><strong>{getAdminReportTypeLabel(item.type)}</strong><em>{item.reason || "사유 없음"}</em><small>{formatDate(item.createdAt)} · {item.assignedTo ? "배정됨" : "미배정"}</small></span>
               <Badge tone={item.priority === "urgent" ? "warning" : item.status === "open" ? "blue" : "neutral"}>{item.priority === "urgent" ? "긴급" : item.status === "open" ? "미처리" : "완료"}</Badge>
             </button>
@@ -159,6 +160,6 @@ export default function AdminReportsPanel({ controller }) {
           </>
         )}
       </Card>
-    </div>
+    </AdminWorkbench>
   );
 }

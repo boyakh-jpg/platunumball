@@ -21,7 +21,7 @@
 .gm-room-topline > span,
 .gm-room-title > .eyebrow,
 .gm-team-head span {
-  color: var(--rb-orange);
+  color: var(--accent-text);
 }
 
 .gm-team-panel,

@@ -95,7 +95,7 @@
 .trust-star-button.selected {
   border-color: rgba(255, 211, 108, 0.58);
   background: rgba(255, 211, 108, 0.12);
-  color: var(--gold);
+  color: var(--status-warning-text);
 }
 
 .trust-star-button:disabled {
@@ -170,7 +170,7 @@
 .court-review-star-button.selected {
   border-color: rgba(255, 211, 108, 0.62);
   background: rgba(255, 211, 108, 0.12);
-  color: var(--gold);
+  color: var(--status-warning-text);
 }
 
 .court-review-star-button:disabled {

@@ -40,7 +40,7 @@
   gap: var(--space-7);
   min-height: 68px;
   border-bottom: var(--ui-stroke-width) solid var(--card-border);
-  background: var(--card-bg-strong);
+  background: var(--ui-modal-bg);
   padding: 10px 14px;
 }
 
@@ -171,7 +171,7 @@
   left: 0;
   z-index: 5;
   border-right: var(--ui-stroke-width-strong) solid color-mix(in srgb, var(--rb-orange) 42%, var(--card-border));
-  background: var(--card-bg-strong);
+  background: var(--ui-modal-bg);
   box-shadow: 5px 0 12px rgba(0, 0, 0, 0.12);
 }
 
@@ -233,7 +233,7 @@
 }
 
 .court-db-row-dirty-count {
-  color: var(--danger);
+  color: var(--status-danger-text);
   font-size: 0.68rem;
   font-weight: 900;
 }

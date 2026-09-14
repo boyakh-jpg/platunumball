@@ -311,6 +311,10 @@
   max-width: 100%;
 }
 
+.arena-field-grid > .ui-action-row {
+  align-self: end;
+}
+
 .arena-field-grid.three {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
@@ -343,7 +347,7 @@
 .arena-mini-note strong {
   display: block;
   margin: 3px 0;
-  color: var(--gold);
+  color: var(--status-warning-text);
   font-size: 1rem;
 }
 
@@ -395,7 +399,7 @@
 
 .arena-team-choice-grid em,
 .arena-team-choice-field > em {
-  color: var(--gold);
+  color: var(--status-warning-text);
   font-size: 0.72rem;
   font-style: normal;
   font-weight: 850;

@@ -68,8 +68,8 @@
   border-radius: var(--ui-data-cell-radius);
   background: var(--ui-data-cell-bg);
   color: var(--muted);
-  font-size: 0.74rem;
-  font-weight: 850;
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-control);
   padding: var(--space-3) var(--space-4);
 }
 .rank-stat-grid strong {
@@ -115,7 +115,7 @@
   font-size: 1rem;
 }
 .rank-mode-pill em {
-  color: var(--blue);
+  color: var(--status-info-text);
   font-size: 0.78rem;
   font-style: normal;
   font-weight: 900;
@@ -159,7 +159,7 @@
   border-block-end-color: transparent;
 }
 .rank-list .rank-row > b {
-  color: var(--blue);
+  color: var(--status-info-text);
   text-align: center;
 }
 .rank-list .rank-row > .avatar.small {
@@ -274,7 +274,7 @@
   }
 }
 .approval-teaser-card .compact-list a > span {
-  color: var(--rb-orange);
+  color: var(--accent-text);
   font-family: var(--font-body);
   font-weight: var(--font-weight-control);
   letter-spacing: 0;
@@ -413,13 +413,13 @@
   white-space: nowrap;
 }
 .match-record-meta__label--personal {
-  color: var(--gold);
+  color: var(--status-warning-text);
 }
 .match-record-meta__label--public {
-  color: var(--green);
+  color: var(--status-success-text);
 }
 .match-record-meta__label--private {
-  color: var(--blue);
+  color: var(--status-info-text);
 }
 .match-record-meta__prefix,
 .match-record-meta__court {
@@ -453,8 +453,8 @@
 .recent-match-row small {
   overflow: visible;
   color: var(--muted);
-  font-size: 0.72rem;
-  font-weight: 850;
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-control);
   white-space: normal;
 }
 .recent-match-row .team-hover-trigger {

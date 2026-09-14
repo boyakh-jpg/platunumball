@@ -1,5 +1,5 @@
 .league-fixture-round {
-  color: var(--rb-orange);
+  color: var(--accent-text);
   font-size: 0.72rem;
   font-weight: 950;
 }
@@ -30,7 +30,7 @@
 }
 
 .league-fixture-matchup > b {
-  color: var(--rb-orange);
+  color: var(--accent-text);
   font-weight: 950;
 }
 
@@ -54,7 +54,7 @@
 }
 
 .league-fixture-forfeit {
-  color: var(--rb-orange);
+  color: var(--accent-text);
 }
 
 .league-fixture-actions {
@@ -172,7 +172,7 @@
 }
 
 .tournament-forfeit-button {
-  color: var(--rb-orange);
+  color: var(--accent-text);
 }
 
 .tournament-inline-schedule.locked,

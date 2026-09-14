@@ -19,7 +19,7 @@
 .match-receipt-card:lang(en) .match-receipt-ticket-game > strong { font-size: clamp(6px, 2cqw, 10px); letter-spacing: 0; }
 
 .match-receipt-editor input[aria-invalid="true"] { border-color: var(--danger); }
-.match-receipt-editor input[aria-invalid="true"]::placeholder { color: var(--danger); opacity: 1; }
+.match-receipt-editor input[aria-invalid="true"]::placeholder { color: var(--status-danger-text); opacity: 1; }
 
 .match-receipt-photo-scoreboard {
   position: absolute;

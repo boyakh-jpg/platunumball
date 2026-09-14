@@ -57,7 +57,7 @@ function GuestHomePage() {
 
       <div className="page-stack home-left-rail">
         <section className="rank-summary-grid ui-page-hero ui-design-app-hero">
-          <div className="home-rank-board-head">
+          <div className="home-rank-board-head ui-page-hero ui-design-app-hero">
             <div className="rank-hero-top ui-page-hero__copy"><div><p className="eyebrow">BOXTIER HOME</p><h1>오늘 농구를 시작하세요</h1><p>공개 매칭과 커뮤니티는 로그인 없이 둘러볼 수 있습니다.</p></div></div>
             <aside className="home-hero-board ui-liquid-glass" aria-label="공개 코트 요약">
               <Link className="home-hero-next" to="/app/recruiting"><span><CalendarDays size={16} /> COURT OPEN</span><strong>공개 매칭 둘러보기</strong><em>실제 모집 중인 경기방을 확인하세요.</em><ArrowUpRight size={18} aria-hidden="true" /></Link>
@@ -140,7 +140,7 @@ export default function HomePageView({
 
       <div className="page-stack home-left-rail">
         <section className="rank-summary-grid ui-page-hero ui-design-app-hero">
-          <div className="home-rank-board-head">
+          <div className="home-rank-board-head ui-page-hero ui-design-app-hero">
             <div className="rank-hero-top ui-page-hero__copy">
               <div>
                 <p className="eyebrow">내 랭크 보드</p>

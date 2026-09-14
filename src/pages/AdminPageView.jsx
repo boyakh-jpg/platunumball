@@ -4,6 +4,7 @@ import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import PageFrame, { PageHeader } from "../components/common/PageFrame.jsx";
 import UserOperationsPanel from "../components/admin/UserOperationsPanel.jsx";
+import AdminWorkbench from "../components/admin/AdminWorkbench.jsx";
 import CourtDatabasePanel from "../components/admin/CourtDatabasePanel.jsx";
 import { getAdminReportTypeLabel } from "../lib/admin.js";
 import { ADMIN_DEFAULT_PAGE_LIMIT } from "../lib/queryPolicy.js";
@@ -192,7 +193,7 @@ export default function AdminPageView({ controller }) {
       ) : section === "appointments" ? (
         <AdminAppointmentSection controller={controller} />
       ) : (
-        <div className="admin-workbench">
+        <AdminWorkbench key={`${section}:${queueMode}`} className="admin-workbench" pending={reviewActionPending}>
           <Card className="section-card">
           <div className="section-title-row">
             <div>
@@ -245,6 +246,7 @@ export default function AdminPageView({ controller }) {
               <button
                 key={row.id}
                 type="button"
+                data-admin-item
                 className={selectedRow?.id === row.id ? "admin-sort-row active" : "admin-sort-row"}
                 disabled={reviewActionPending}
                 onClick={() => setSelectedIdByView((current) => ({ ...current, [view]: row.id }))}
@@ -272,7 +274,7 @@ export default function AdminPageView({ controller }) {
           </Card>
 
           <AdminDetailPanel controller={controller} />
-        </div>
+        </AdminWorkbench>
       )}
     </PageFrame>
   );

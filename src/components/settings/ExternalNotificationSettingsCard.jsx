@@ -124,7 +124,7 @@ export default function ExternalNotificationSettingsCard({ app, discordLinked })
       </div>
       <div className="settings-preference-group">
         <div className="settings-preference-heading"><strong>알림 경로</strong><span>앱 내부 알림은 항상 유지됩니다. Discord는 아래 DM 설정도 켜야 합니다.</span></div>
-        <div className="ui-segmented-control segmented-control external-mode-control" role="radiogroup" aria-label="알림 경로">
+        <div className="ui-segmented-control segmented-control ui-choice-grid external-mode-control" role="radiogroup" aria-label="알림 경로">
           {[["push", "푸시"], ["discord", "Discord"], ["both", "둘 다"], ["none", "사용 안 함"]].map(([mode, label]) => (
             <button key={mode} type="button" className={draft.preferences.mode === mode ? "active" : ""} aria-pressed={draft.preferences.mode === mode} disabled={pending || ((mode === "discord" || mode === "both") && !discordLinked)} onClick={() => setDraft((current) => ({ ...current, preferences: { ...current.preferences, mode } }))}>{label}</button>
           ))}

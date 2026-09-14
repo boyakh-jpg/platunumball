@@ -46,7 +46,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  color: var(--rb-orange);
+  color: var(--accent-text);
 }
 
 .getting-started-step > div > span {
@@ -137,7 +137,7 @@
 
 .getting-started-callout a {
   justify-self: start;
-  color: var(--rb-orange);
+  color: var(--accent-text);
   font-size: 0.76rem;
   font-weight: 900;
 }
@@ -178,7 +178,7 @@
 }
 
 .getting-started-home-guide-setting small {
-  color: var(--rb-orange);
+  color: var(--accent-text);
 }
 
 .getting-started-home-guide-setting > .button {
@@ -250,7 +250,7 @@
 
   .home-guide-card__link {
     grid-column: 2;
-    color: var(--rb-orange);
+    color: var(--accent-text);
   }
 
   .getting-started-page {

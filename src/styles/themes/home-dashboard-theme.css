@@ -10,13 +10,13 @@ html[data-theme="light"] .provider-test,
 html[data-theme="light"] .rank-home .home-rank-board-head .button,
 html[data-theme="light"] .auth-test-login .provider-button {
   border: 0;
-  background: var(--rb-orange);
-  color: #fff;
+  background: var(--button-primary-bg);
+  color: var(--ui-button-color-active);
 }
 html[data-theme="light"] .button-primary:hover,
 html[data-theme="light"] .provider-test:hover,
 html[data-theme="light"] .auth-test-login .provider-button:hover {
-  background: var(--rb-orange-pressed);
+  background: var(--button-primary-hover-bg);
   filter: none;
 }
 html[data-theme="light"] .provider-button,
@@ -37,7 +37,7 @@ html[data-theme="light"] .tag {
 html[data-theme="light"] .badge.orange,
 html[data-theme="light"] .tag.orange {
   background: rgba(229, 85, 63, 0.12);
-  color: #c94732;
+  color: var(--accent-text);
 }
 html[data-theme="light"] .my-team-row b {
   background: var(--ui-selectable-selected-bg);
@@ -46,17 +46,17 @@ html[data-theme="light"] .my-team-row b {
 html[data-theme="light"] .badge.green,
 html[data-theme="light"] .tag.green {
   background: rgba(33, 138, 95, 0.1);
-  color: #1e7653;
+  color: var(--status-success-text);
 }
 html[data-theme="light"] .badge.blue,
 html[data-theme="light"] .tag.blue {
   background: rgba(51, 111, 184, 0.1);
-  color: #285c9e;
+  color: var(--status-info-text);
 }
 html[data-theme="light"] .badge.gold,
 html[data-theme="light"] .tag.gold {
   background: rgba(168, 108, 20, 0.1);
-  color: #8a590f;
+  color: var(--status-warning-text);
 }
 @media (max-width: 1020px) {
   html[data-theme="light"] .bottom-nav {
@@ -358,10 +358,6 @@ button:not(:focus-visible) {
 .home-action-card {
   min-width: 0;
 }
-.home-search-box {
-  min-height: 52px;
-  padding: 0 14px;
-}
 .home-search-box input {
   font-size: 16px;
 }
@@ -375,7 +371,7 @@ button:not(:focus-visible) {
   height: 38px;
   border-radius: 0;
   background: transparent;
-  color: var(--rb-orange-2);
+  color: var(--accent-text);
 }
 .home-action-main strong,
 .home-side-stack .compact-list strong {

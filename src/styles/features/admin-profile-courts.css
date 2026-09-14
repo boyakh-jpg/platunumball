@@ -259,7 +259,7 @@
 }
 
 .admin-sort-counts b {
-  color: var(--rb-gold);
+  color: var(--status-warning-text);
   font-size: 1rem;
   line-height: 1;
 }
@@ -385,7 +385,7 @@
   width: fit-content;
   align-items: center;
   gap: 5px;
-  color: var(--rb-gold);
+  color: var(--status-warning-text);
   font-size: 0.75rem;
   font-weight: 850;
 }

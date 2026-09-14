@@ -62,7 +62,7 @@
 }
 
 .arena-host-kick-row i {
-  color: var(--green);
+  color: var(--status-success-text);
   font-size: 0.72rem;
   font-style: normal;
   font-weight: 950;
@@ -217,7 +217,7 @@
 }
 
 .arena-invite-empty.error {
-  color: var(--danger);
+  color: var(--status-danger-text);
 }
 
 .arena-invite-search {
@@ -305,7 +305,7 @@
 
 .arena-invite-team-head > button.active {
   border-color: rgba(255, 211, 108, 0.42);
-  color: var(--gold);
+  color: var(--status-warning-text);
 }
 
 .arena-invite-team-picker {
@@ -389,7 +389,7 @@
 }
 
 .arena-reserve-line strong {
-  color: var(--gold);
+  color: var(--status-warning-text);
   font-size: 0.8rem;
 }
 

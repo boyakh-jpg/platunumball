@@ -194,7 +194,7 @@ export function MatchRosterPolicyFields({ draft, onChange }) {
           </div>
           <div className="field-block">
             <span className="field-label">균등 교대 기준</span>
-            <div className="ui-segmented-control segmented-control create-choice-segments is-three" role="radiogroup" aria-label="균등 교대 기준">
+            <div className="ui-segmented-control segmented-control ui-choice-grid create-choice-segments is-three" role="radiogroup" aria-label="균등 교대 기준">
               {PICKUP_ROTATION_MODE_OPTIONS.map((option) => (
                 <button key={option.id} type="button" role="radio" aria-checked={policy.rotationMode === option.id} className={policy.rotationMode === option.id ? "active" : ""} onClick={() => onChange({ rotationMode: option.id })}>
                   {option.label}
@@ -215,7 +215,7 @@ export function MatchRosterPolicyFields({ draft, onChange }) {
       ) : policy.benchCapacity > 0 ? (
         <div className="field-block">
           <span className="field-label">후보 출전 정책</span>
-          <div className="ui-segmented-control segmented-control create-choice-segments is-three" role="radiogroup" aria-label="후보 출전 정책">
+          <div className="ui-segmented-control segmented-control ui-choice-grid create-choice-segments is-three" role="radiogroup" aria-label="후보 출전 정책">
             {PLAYING_TIME_POLICY_OPTIONS.map((option) => (
               <button key={option.id} type="button" role="radio" aria-checked={policy.playingTimePolicy === option.id} className={policy.playingTimePolicy === option.id ? "active" : ""} onClick={() => onChange({ playingTimePolicy: option.id, benchPaymentAcknowledged: option.id !== "none" })}>
                 {option.label}
@@ -251,7 +251,7 @@ export function MatchCostPolicyFields({ draft, onChange }) {
         </label>
         <div className="field-block">
           <span className="field-label">구장 확보 상태</span>
-          <div className="ui-segmented-control segmented-control create-choice-segments is-three" role="radiogroup" aria-label="구장 확보 상태">
+          <div className="ui-segmented-control segmented-control ui-choice-grid create-choice-segments is-three" role="radiogroup" aria-label="구장 확보 상태">
             {VENUE_SECURED_OPTIONS.map((option) => (
               <button key={option.id} type="button" role="radio" aria-checked={policy.venueSecured === option.id} className={policy.venueSecured === option.id ? "active" : ""} onClick={() => onChange({ venueSecured: option.id })}>
                 {option.label}
@@ -276,7 +276,7 @@ export function MatchCostPolicyFields({ draft, onChange }) {
         </label>
         <div className="field-block">
           <span className="field-label">1인 금액 반올림</span>
-          <div className="ui-segmented-control segmented-control create-choice-segments" role="radiogroup" aria-label="1인 금액 반올림">
+          <div className="ui-segmented-control segmented-control ui-choice-grid create-choice-segments" role="radiogroup" aria-label="1인 금액 반올림">
             {COST_ROUND_UNIT_OPTIONS.map((option) => (
               <button key={option.id} type="button" role="radio" aria-checked={policy.costRoundUnit === option.id} className={policy.costRoundUnit === option.id ? "active" : ""} onClick={() => onChange({ costRoundUnit: option.id })}>
                 {option.label}
@@ -298,7 +298,7 @@ export function MatchCostPolicyFields({ draft, onChange }) {
         {paidVenue ? (
           <div className="field-block">
             <span className="field-label">환불 기준</span>
-            <div className="ui-segmented-control segmented-control create-choice-segments is-three" role="radiogroup" aria-label="환불 기준">
+            <div className="ui-segmented-control segmented-control ui-choice-grid create-choice-segments is-three" role="radiogroup" aria-label="환불 기준">
               {REFUND_POLICY_OPTIONS.map((option) => (
                 <button key={option.id} type="button" role="radio" aria-checked={policy.refundPolicy === option.id} className={policy.refundPolicy === option.id ? "active" : ""} onClick={() => onChange({ refundPolicy: option.id })}>
                   {option.label}
@@ -340,7 +340,7 @@ export function MatchOperationsPolicyFields({ draft, onChange }) {
         {policy.onCourtCount > 1 ? (
           <div className="field-block">
             <span className="field-label">조끼 준비</span>
-            <div className="ui-segmented-control segmented-control create-choice-segments" role="radiogroup" aria-label="조끼 준비">
+            <div className="ui-segmented-control segmented-control ui-choice-grid create-choice-segments" role="radiogroup" aria-label="조끼 준비">
               {VESTS_PROVIDED_OPTIONS.map((option) => (
                 <button key={option.id} type="button" role="radio" aria-checked={policy.vestsProvided === option.value} className={policy.vestsProvided === option.value ? "active" : ""} onClick={() => onChange({ vestsProvided: option.value })}>
                   {option.label}

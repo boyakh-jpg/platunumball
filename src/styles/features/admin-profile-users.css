@@ -80,11 +80,45 @@
   border-color: rgba(255, 204, 102, 0.32);
 }
 
-.admin-workbench {
+.ui-admin-workbench {
   display: grid;
   grid-template-columns: minmax(300px, 0.9fr) minmax(0, 1.4fr);
   gap: var(--space-6);
   align-items: start;
+}
+
+.ui-admin-workbench__list,
+.ui-admin-workbench__detail {
+  min-width: 0;
+}
+
+.ui-admin-workbench__detail {
+  display: grid;
+  gap: var(--space-6);
+  scroll-margin-block-start: var(--space-7);
+}
+
+.ui-admin-workbench__back {
+  display: none;
+}
+
+@media (max-width: 860px) {
+  .ui-admin-workbench {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ui-admin-workbench__detail,
+  .ui-admin-workbench.is-detail-open > .ui-admin-workbench__list {
+    display: none;
+  }
+
+  .ui-admin-workbench.is-detail-open > .ui-admin-workbench__detail {
+    display: grid;
+  }
+
+  .ui-admin-workbench__back {
+    display: block;
+  }
 }
 
 .admin-user-operations,
@@ -161,12 +195,6 @@
   width: min(100%, 420px);
 }
 
-.admin-user-ops-workbench {
-  display: grid;
-  grid-template-columns: minmax(300px, 0.92fr) minmax(0, 1.45fr);
-  align-items: start;
-  gap: var(--space-6);
-}
 
 .admin-user-risk-list {
   display: grid;
@@ -218,7 +246,7 @@
 }
 
 .admin-user-risk-row b {
-  color: var(--rb-gold);
+  color: var(--status-warning-text);
   font-size: 1rem;
 }
 
@@ -235,7 +263,7 @@
 }
 
 .admin-user-signal-panel > div:first-child svg {
-  color: var(--rb-orange);
+  color: var(--accent-text);
 }
 
 .admin-user-signal-panel small {
@@ -314,7 +342,7 @@
 }
 
 .admin-user-action-head svg {
-  color: var(--rb-orange);
+  color: var(--accent-text);
 }
 
 .admin-user-action-panel > label {
@@ -358,7 +386,7 @@
 
 .admin-user-action-confirm svg,
 .admin-user-action-status {
-  color: var(--rb-orange);
+  color: var(--accent-text);
 }
 
 .admin-appointment-card {

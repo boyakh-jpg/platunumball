@@ -32,7 +32,7 @@ html[data-theme] [data-design] .ui-design-app .home-guide-card {
 }
 
 .home-guide-card:hover .home-guide-card__link {
-  color: var(--rb-orange);
+  color: var(--accent-text);
 }
 
 .home-guide-card:focus-visible {
@@ -46,7 +46,7 @@ html[data-theme] [data-design] .ui-design-app .home-guide-card {
   width: 40px;
   aspect-ratio: 1;
   place-items: center;
-  color: var(--rb-orange);
+  color: var(--accent-text);
   background: transparent;
   border-radius: 0;
 }
@@ -59,7 +59,7 @@ html[data-theme] [data-design] .ui-design-app .home-guide-card {
 }
 
 .home-guide-card__copy small {
-  color: var(--rb-orange);
+  color: var(--accent-text);
   font-size: var(--font-size-caption);
   font-weight: 950;
   letter-spacing: 0.08em;
@@ -84,11 +84,11 @@ html[data-theme] [data-design] .ui-design-app .home-guide-card {
 }
 
 .home-guide-card__path b:last-child {
-  color: var(--rb-gold);
+  color: var(--status-warning-text);
 }
 
 .home-guide-card__path i {
-  color: var(--rb-orange);
+  color: var(--accent-text);
   font-style: normal;
 }
 
@@ -211,7 +211,7 @@ html[data-theme] [data-design] .ui-design-app .home-guide-card {
 .getting-started-section__head .eyebrow,
 .getting-started-callout .eyebrow {
   margin: 0;
-  color: var(--rb-orange);
+  color: var(--accent-text);
   font-size: var(--font-size-caption);
   font-weight: 950;
   letter-spacing: 0.08em;
@@ -299,7 +299,7 @@ html[data-theme] [data-design] .ui-design-app .home-guide-card {
 }
 
 .getting-started-practice-preview strong {
-  color: var(--rb-orange);
+  color: var(--accent-text);
   font-size: var(--font-size-caption);
   letter-spacing: 0.06em;
 }
@@ -392,7 +392,7 @@ html[data-theme] [data-design] .ui-design-app .home-guide-card {
 }
 
 .practice-match-steps li.is-active {
-  color: var(--rb-orange);
+  color: var(--accent-text);
 }
 
 .practice-match-steps strong {
@@ -436,7 +436,7 @@ html[data-theme] [data-design] .ui-design-app .home-guide-card {
 }
 
 .practice-room-guide em {
-  color: var(--rb-orange);
+  color: var(--accent-text);
   font-size: var(--font-size-caption);
   font-style: normal;
   font-weight: 850;

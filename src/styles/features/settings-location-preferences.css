@@ -122,17 +122,6 @@
   order: 11;
 }
 
-.external-mode-control {
-  display: grid;
-  width: 100%;
-  max-width: 100%;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-.external-mode-control > button {
-  min-width: 0;
-}
-
 .external-contact-url {
   display: grid;
   gap: var(--space-2);
@@ -224,7 +213,7 @@
   align-self: start;
   border: var(--ui-stroke-width) solid rgba(70, 229, 197, 0.35);
   border-radius: 999px;
-  color: var(--green);
+  color: var(--status-success-text);
   font-size: 0.68rem;
   font-style: normal;
   font-weight: 900;
@@ -293,7 +282,7 @@
 
 .settings-nearby-courts-head svg {
   flex: 0 0 auto;
-  color: var(--orange);
+  color: var(--accent-text);
 }
 
 .settings-nearby-court-list {
@@ -315,7 +304,7 @@
 
 .settings-nearby-court-list em {
   flex: 0 0 auto;
-  color: var(--orange);
+  color: var(--accent-text);
   white-space: nowrap;
 }
 
@@ -501,7 +490,7 @@
 
 .court-detail-heading h1 {
   margin-top: 5px;
-  color: var(--rb-orange);
+  color: var(--accent-text);
   font-size: 2.8rem;
   line-height: 1;
   overflow-wrap: anywhere;
@@ -521,7 +510,7 @@
 
 .court-detail-heading > p svg {
   flex: 0 0 auto;
-  color: var(--rb-gold);
+  color: var(--status-warning-text);
 }
 
 .court-detail-tags,

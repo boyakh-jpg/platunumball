@@ -184,7 +184,7 @@
 
   .bottom-nav a.active {
     background: var(--surface-2);
-    color: var(--green);
+    color: var(--status-success-text);
   }
 
   html[data-theme="light"] .bottom-nav {
@@ -431,7 +431,7 @@
 }
 
 .broadcast-score i {
-  color: var(--gold);
+  color: var(--status-warning-text);
   font-style: normal;
   font-weight: 950;
 }

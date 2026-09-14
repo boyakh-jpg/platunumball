@@ -9,7 +9,7 @@
 }
 
 .arena-party-picker-head strong {
-  color: var(--gold);
+  color: var(--status-warning-text);
 }
 
 .arena-party-picker-grid {
@@ -77,7 +77,7 @@
 
 .arena-party-picker-grid em,
 .arena-party-picker > em {
-  color: var(--gold);
+  color: var(--status-warning-text);
   font-size: 0.72rem;
   font-style: normal;
   font-weight: 850;
@@ -104,7 +104,7 @@
 .arena-party-role-buttons button.active {
   border-color: rgba(70, 224, 182, 0.55);
   background: rgba(70, 224, 182, 0.18);
-  color: var(--green);
+  color: var(--status-success-text);
 }
 
 .arena-lobby-modal.is-sheet-settling {
@@ -152,7 +152,7 @@
 
 .arena-room-share-message {
   flex-basis: 100%;
-  color: var(--gold);
+  color: var(--status-warning-text);
   font-size: 0.78rem;
   font-weight: 950;
   text-align: right;
@@ -166,7 +166,7 @@
 }
 
 .arena-lobby-title > span {
-  color: var(--gold);
+  color: var(--status-warning-text);
   font-size: 0.82rem;
 }
 
@@ -213,7 +213,7 @@
   border-radius: var(--radius-xs);
   padding: 3px 6px;
   background: rgba(240, 82, 64, 0.12);
-  color: var(--rb-orange-2);
+  color: var(--accent-text);
   font-size: 10px;
   font-style: normal;
   font-weight: 900;
@@ -221,7 +221,7 @@
 }
 
 .arena-lobby-team-head span {
-  color: var(--gold);
+  color: var(--status-warning-text);
   font-size: 0.72rem;
 }
 
@@ -254,7 +254,7 @@
 }
 
 .arena-lobby-score-core span {
-  color: var(--green);
+  color: var(--status-success-text);
   font-size: 0.8rem;
   font-weight: 950;
 }
@@ -267,7 +267,7 @@
 }
 
 .arena-lobby-score-core small.is-over {
-  color: var(--danger);
+  color: var(--status-danger-text);
 }
 
 .arena-lobby-team-panel .arena-side-roster {
@@ -392,7 +392,7 @@ button.arena-room-player-slot {
 .arena-room-slot-crown.captain {
   border-color: rgba(118, 169, 255, 0.45);
   background: rgba(118, 169, 255, 0.22);
-  color: var(--blue);
+  color: var(--status-info-text);
 }
 
 .arena-room-player-slot.empty {

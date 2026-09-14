@@ -52,6 +52,7 @@
 
 .match-list-badge {
   --match-list-badge-color: var(--rb-blue);
+  --match-list-badge-text: var(--status-info-text);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -60,7 +61,7 @@
   border: var(--ui-stroke-width) solid color-mix(in srgb, var(--match-list-badge-color) 30%, transparent);
   border-radius: 999px;
   background: color-mix(in srgb, var(--match-list-badge-color) 14%, transparent);
-  color: var(--match-list-badge-color);
+  color: var(--match-list-badge-text);
   padding: 2px 6px;
   font-size: 10px;
   font-weight: 950;
@@ -70,10 +71,12 @@
 
 .match-list-badge[data-tone="orange"] {
   --match-list-badge-color: var(--rb-orange-2);
+  --match-list-badge-text: var(--accent-text);
 }
 
 .match-list-badge[data-tone="neutral"] {
   --match-list-badge-color: var(--rb-muted);
+  --match-list-badge-text: var(--rb-muted);
 }
 
 .match-list-card__title {
@@ -204,7 +207,7 @@
 }
 
 .match-list-summary__detail {
-  color: var(--rb-gold);
+  color: var(--status-warning-text);
 }
 
 .match-list-card__action {

@@ -225,7 +225,7 @@
 
 .danger-button {
   border-color: rgba(255, 91, 91, 0.42);
-  color: var(--danger);
+  color: var(--status-danger-text);
 }
 
 .app-confirm-backdrop {
@@ -327,7 +327,7 @@
 }
 
 .dispute-score-request strong {
-  color: var(--gold);
+  color: var(--status-warning-text);
   font-size: 1.22rem;
   line-height: 1.1;
 }
@@ -401,7 +401,7 @@
 }
 
 .arena-dispute-score-row strong {
-  color: var(--gold);
+  color: var(--status-warning-text);
   font-size: 1.2rem;
   line-height: 1;
   padding-bottom: 9px;

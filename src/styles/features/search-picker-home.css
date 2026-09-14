@@ -9,13 +9,16 @@
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: var(--space-6);
-  border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.14);
+  min-height: var(--ui-button-height);
+  padding-inline: var(--ui-button-padding-x);
+  border: var(--ui-stroke-width) solid var(--input-border);
 }
 .home-search-box input {
-  min-height: 58px;
+  min-height: 0;
+  height: calc(var(--ui-button-height) - 2 * var(--ui-stroke-width));
   border: 0;
   background: transparent;
-  font-weight: 900;
+  font-weight: var(--font-weight-body);
   padding: 0;
 }
 .home-search-box input:focus {
@@ -70,7 +73,7 @@
   grid-column: 1 / -1;
 }
 .search-picker-title {
-  color: var(--gold);
+  color: var(--status-warning-text);
   font-size: var(--font-size-meta);
   font-weight: var(--font-weight-title);
   padding-inline: 4px;
@@ -99,7 +102,7 @@
 .search-picker-idle-toggle b {
   border-radius: 999px;
   background: rgba(255, 211, 108, 0.16);
-  color: var(--gold);
+  color: var(--status-warning-text);
   font-size: var(--ui-badge-font-size);
   font-weight: var(--ui-badge-font-weight);
   padding: 3px 7px;
@@ -189,7 +192,7 @@
 .search-picker-favorite-action.active {
   border-color: rgba(255, 211, 108, 0.56);
   background: rgba(255, 211, 108, 0.14);
-  color: var(--gold);
+  color: var(--status-warning-text);
 }
 .search-picker-result-row.selected {
   border-color: rgba(70, 224, 182, 0.58);
@@ -232,7 +235,7 @@
   grid-row: 1 / span 2;
   grid-column: 2;
   align-self: center;
-  color: var(--gold);
+  color: var(--status-warning-text);
   font-size: var(--control-font-size);
   font-style: normal;
   font-weight: var(--font-weight-control);
@@ -398,7 +401,7 @@ html[data-theme="light"] .search-picker-result-row.selected {
   align-self: center;
   border-radius: 999px;
   background: rgba(116, 169, 255, 0.12);
-  color: var(--blue);
+  color: var(--status-info-text);
   font-size: 0.68rem;
   font-weight: 950;
   padding: 4px 7px;
@@ -496,7 +499,7 @@ html[data-theme="light"] .search-picker-result-row.selected {
 .home-action-row b {
   border-radius: 999px;
   background: rgba(116, 169, 255, 0.12);
-  color: var(--blue);
+  color: var(--status-info-text);
   font-size: 0.74rem;
   font-weight: 950;
   padding: 5px 8px;

@@ -114,10 +114,10 @@ html[data-theme] .app-main :is(
   color: var(--hero-eyebrow-color);
 }
 html[data-theme] .app-main .ui-page-hero {
-  --hero-title-color: var(--ui-image-hero-title-color);
-  --hero-copy-color: var(--ui-image-hero-copy-color);
-  --hero-title-shadow: var(--ui-image-hero-title-shadow);
-  --hero-copy-shadow: var(--ui-image-hero-copy-shadow);
+  --hero-title-color: var(--rb-text);
+  --hero-copy-color: var(--rb-muted);
+  --hero-title-shadow: none;
+  --hero-copy-shadow: none;
 }
 html[data-theme="light"] .app-main .ui-page-hero {
   box-shadow: none;
@@ -161,7 +161,7 @@ html[data-theme="light"] .app-main .ui-page-hero .eyebrow {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  color: var(--rb-orange);
+  color: var(--accent-text);
   font-size: 0.78rem;
   font-weight: 900;
 }
@@ -188,7 +188,7 @@ html[data-theme="light"] .app-main .ui-page-hero .eyebrow {
 }
 .home-hero-next:hover > svg:last-child,
 .home-hero-next:focus-visible > svg:last-child {
-  color: var(--rb-orange);
+  color: var(--accent-text);
 }
 .home-hero-next:focus-visible {
   outline: 2px solid var(--rb-orange);
@@ -241,7 +241,7 @@ html[data-theme] .app-main :is(
   backdrop-filter: none;
 }
 html[data-theme] .app-main :is(.home-hero-next > span, .team-hub-board-head > span) {
-  color: var(--rb-orange-2);
+  color: var(--accent-text);
 }
 html[data-theme] .app-main :is(
   .home-hero-next > strong,
@@ -260,9 +260,6 @@ html[data-theme] .app-main :is(
 ) {
   color: var(--hero-copy-color);
 }
-html[data-theme] .app-main .ui-page-hero .ui-liquid-glass :where(*) {
-  color: inherit;
-}
 html[data-theme] .app-main .ui-page-hero .ui-liquid-glass :is(
   .home-hero-next > em,
   .home-hero-stats em,
@@ -272,7 +269,7 @@ html[data-theme] .app-main .ui-page-hero .ui-liquid-glass :is(
   color: var(--ui-liquid-glass-muted-color);
 }
 html[data-theme] .app-main .ui-page-hero .team-hub-board .team-hub-board-identity em {
-  color: var(--rb-yellow);
+  color: var(--ui-liquid-glass-muted-color);
 }
 html[data-theme] .app-main :is(.arena-recruit-hero) {
   grid-template-columns: minmax(0, 1fr) minmax(0, var(--ui-hero-status-width));

@@ -20,7 +20,7 @@
 }
 
 .community-photo-input > svg {
-  color: var(--orange);
+  color: var(--accent-text);
 }
 
 .community-photo-input input {

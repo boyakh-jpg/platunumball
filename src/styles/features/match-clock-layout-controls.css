@@ -11,7 +11,7 @@
 }
 
 .ui-match-clock-break-over strong {
-  color: var(--rb-danger);
+  color: var(--status-danger-text);
 }
 
 .ui-match-clock-readonly {
@@ -60,8 +60,8 @@
 
 .ui-match-clock-volume-label {
   flex: 0 0 auto;
-  font-size: 0.72rem;
-  font-weight: 800;
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-control);
 }
 
 .ui-match-clock-panel .ui-match-clock-volume > input[type="range"] {
@@ -125,7 +125,7 @@
 }
 
 .ui-match-clock-error {
-  color: var(--rb-danger);
+  color: var(--status-danger-text);
   font-size: 0.78rem;
   font-weight: 800;
 }
@@ -288,7 +288,7 @@
 }
 
 .ui-match-clock-panel-focus .ui-match-shot-clock-value {
-  color: var(--rb-orange-2);
+  color: var(--accent-text);
   font-size: max(2rem, min(8vmin, 6cqi));
 }
 
@@ -423,7 +423,7 @@
   margin: 0;
   overflow: hidden;
   color: var(--rb-text);
-  font-size: 0.72rem;
+  font-size: var(--font-size-caption);
   text-overflow: ellipsis;
   white-space: nowrap;
   background: var(--ui-control-bg);
@@ -440,7 +440,7 @@
   padding: 4px 8px;
   overflow: hidden;
   color: var(--rb-text);
-  font-size: 0.72rem;
+  font-size: var(--font-size-caption);
   line-height: 1.2;
   text-overflow: ellipsis;
   white-space: nowrap;

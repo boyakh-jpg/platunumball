@@ -35,7 +35,7 @@
 
 .admin-rating-status {
   grid-column: 1 / -1;
-  color: var(--rb-gold);
+  color: var(--status-warning-text);
   font-size: 0.78rem;
 }
 
@@ -63,13 +63,11 @@
 
 .admin-rating-history b {
   flex: 0 0 auto;
-  color: var(--rb-gold);
+  color: var(--status-warning-text);
 }
 
 @media (max-width: 860px) {
   .admin-summary-grid,
-  .admin-workbench,
-  .admin-user-ops-workbench,
   .admin-grade-strip,
   .admin-referee-grade-strip {
     grid-template-columns: 1fr;

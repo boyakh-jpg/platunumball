@@ -325,7 +325,7 @@ test("player and team details share one entity profile hero", () => {
   assert.match(pageSources.playerDetail, /className="player-tier-hero"/);
   assert.match(pageSources.playerDetail, /className="ui-liquid-glass"/);
   assert.doesNotMatch(pageSources.playerDetail, /getDiscordDmUrl|DM 보내기|Discord에서 DM/);
-  assert.match(globalWorkflowStyles, /\.team-tier-hero \.tier-emblem figcaption strong,\s*\.player-tier-hero \.tier-emblem figcaption strong\s*\{[^}]*color:\s*var\(--rb-yellow\);/);
+  assert.match(globalWorkflowStyles, /\.team-tier-hero \.tier-emblem figcaption strong,\s*\.player-tier-hero \.tier-emblem figcaption strong\s*\{[^}]*color:\s*var\(--status-warning-text\);/);
 });
 
 test("프로필 공유 action은 엠블럼 열을 침범하지 않는다", () => {
@@ -620,7 +620,7 @@ test("record result cards share matchup and date mode court metadata", () => {
   );
   assert.match(
     globalSearchStyles,
-    /\.match-record-meta__label--personal\s*\{[^}]*color:\s*var\(--gold\);[\s\S]*?\.match-record-meta__label--public\s*\{[^}]*color:\s*var\(--green\);[\s\S]*?\.match-record-meta__label--private\s*\{[^}]*color:\s*var\(--blue\);/,
+    /\.match-record-meta__label--personal\s*\{[^}]*color:\s*var\(--status-warning-text\);[\s\S]*?\.match-record-meta__label--public\s*\{[^}]*color:\s*var\(--status-success-text\);[\s\S]*?\.match-record-meta__label--private\s*\{[^}]*color:\s*var\(--status-info-text\);/,
   );
   for (const page of ["home", "profile", "profileRecords", "teamDetail"]) {
     assert.match(pageSources[page], /RecentMatchRow/);
@@ -1025,19 +1025,19 @@ test("방 생성과 경기 입력 workflow는 실제 fieldset 흐름을 사용�
   });
   assert.match(
     tokenStyles,
-    /--ui-fieldset-border:\s*var\(--rb-line\);[\s\S]*?--ui-fieldset-radius:\s*var\(--radius-md\);[\s\S]*?--ui-fieldset-legend-title-color:\s*var\(--rb-orange\);[\s\S]*?--ui-fieldset-legend-support-color:\s*var\(--rb-text\);/,
+    /--ui-fieldset-border:\s*var\(--rb-line\);[\s\S]*?--ui-fieldset-radius:\s*var\(--radius-md\);[\s\S]*?--ui-fieldset-legend-title-color:\s*var\(--accent-text\);[\s\S]*?--ui-fieldset-legend-support-color:\s*var\(--rb-text\);/,
   );
   assert.match(
     primitiveStyles,
-    /:is\(\s*fieldset\.settings-fieldset-card,\s*fieldset\.workflow-fieldset\s*\) > legend\.section-title-row:first-child > :first-child\s*\{[^}]*display:\s*flex;[^}]*align-items:\s*baseline;[^}]*overflow:\s*hidden;[^}]*white-space:\s*nowrap;/,
+    /:is\(\s*fieldset\.settings-fieldset-card,\s*fieldset\.workflow-fieldset\s*\) > legend\.section-title-row:first-child > :first-child\s*\{[^}]*display:\s*flex;[^}]*align-items:\s*baseline;[^}]*flex-wrap:\s*wrap;[^}]*white-space:\s*normal;/,
   );
   assert.match(
     primitiveStyles,
-    /:is\(\s*fieldset\.settings-fieldset-card,\s*fieldset\.workflow-fieldset\s*\) > legend\.section-title-row:first-child h2\s*\{[^}]*flex:\s*0 0 auto;[^}]*color:\s*var\(--ui-fieldset-legend-title-color\);[^}]*overflow:\s*visible;[^}]*text-overflow:\s*clip;[^}]*white-space:\s*nowrap;/,
+    /:is\(\s*fieldset\.settings-fieldset-card,\s*fieldset\.workflow-fieldset\s*\) > legend\.section-title-row:first-child h2\s*\{[^}]*flex:\s*0 1 auto;[^}]*max-inline-size:\s*100%;[^}]*color:\s*var\(--ui-fieldset-legend-title-color\);[^}]*white-space:\s*normal;[^}]*overflow-wrap:\s*anywhere;/,
   );
   assert.match(
     primitiveStyles,
-    /:is\(\s*fieldset\.settings-fieldset-card,\s*fieldset\.workflow-fieldset\s*\) > legend\.section-title-row:first-child \.eyebrow\s*\{[^}]*flex:\s*1 1 auto;[^}]*min-inline-size:\s*0;[^}]*overflow:\s*hidden;[^}]*color:\s*var\(--ui-fieldset-legend-support-color\);[^}]*text-overflow:\s*clip;[^}]*white-space:\s*nowrap;/,
+    /:is\(\s*fieldset\.settings-fieldset-card,\s*fieldset\.workflow-fieldset\s*\) > legend\.section-title-row:first-child \.eyebrow\s*\{[^}]*flex:\s*1 1 auto;[^}]*min-inline-size:\s*0;[^}]*color:\s*var\(--ui-fieldset-legend-support-color\);[^}]*white-space:\s*normal;[^}]*overflow-wrap:\s*anywhere;/,
   );
 });
 
@@ -1573,7 +1573,7 @@ test("home omits Season Zero banner and preserves guide and profile icon entry",
 test("hero inner boards share one restrained solid surface system", () => {
   const homeDashboardResponsiveStyles = read("src/styles/responsive/home-dashboard-responsive.css");
 
-  assert.equal(count(tokenStyles, "--hero-copy-color: var(--rb-cream);"), 1);
+  assert.equal(count(tokenStyles, "--hero-copy-color: var(--rb-muted);"), 2);
   assert.match(
     tokenStyles,
     /html\[data-theme="light"\]\s*\{[\s\S]*?--hero-title-color:\s*var\(--rb-text\);[\s\S]*?--hero-copy-color:\s*var\(--rb-muted\);/,
@@ -1619,9 +1619,10 @@ test("hero inner boards share one restrained solid surface system", () => {
   assert.match(visualSystemStyles, /:is\(\.arena-hero-panel\)[\s\S]*?width:\s*min\(100%,\s*var\(--ui-hero-status-width\)\);/);
   assert.match(visualSystemStyles, /:is\(\.arena-hero-actions\)[\s\S]*?height:\s*var\(--ui-button-height\);/);
   assert.match(visualSystemStyles, /\.eyebrow\s*\{[^}]*color:\s*var\(--hero-eyebrow-color\);/);
-  assert.match(visualSystemStyles, /html\[data-theme\] \.app-main \.ui-page-hero\s*\{[^}]*--hero-title-color:\s*var\(--ui-image-hero-title-color\);[^}]*--hero-copy-color:\s*var\(--ui-image-hero-copy-color\);[^}]*--hero-title-shadow:\s*var\(--ui-image-hero-title-shadow\);[^}]*--hero-copy-shadow:\s*var\(--ui-image-hero-copy-shadow\);/);
+  assert.match(visualSystemStyles, /html\[data-theme\] \.app-main \.ui-page-hero\s*\{[^}]*--hero-title-color:\s*var\(--rb-text\);[^}]*--hero-copy-color:\s*var\(--rb-muted\);[^}]*--hero-title-shadow:\s*none;[^}]*--hero-copy-shadow:\s*none;/);
   assert.doesNotMatch(visualSystemStyles, /html\[data-theme="light"\] \.app-main \.rank-home \.ui-page-hero\s*\{/);
-  assert.match(visualSystemStyles, /html\[data-theme\] \.app-main \.ui-page-hero \.ui-liquid-glass :where\(\*\)\s*\{[^}]*color:\s*inherit;/);
+  assert.doesNotMatch(visualSystemStyles, /\.ui-page-hero \.ui-liquid-glass :where\(\*\)\s*\{[^}]*color:\s*inherit;/);
+  assert.match(primitiveStyles, /\.ui-liquid-glass :where\(:not\(\.ui-button, \.ui-button \*\)\)\s*\{[^}]*color:\s*inherit;/);
   assert.match(visualSystemStyles, /\.ui-page-hero \.ui-liquid-glass :is\([\s\S]*?\.home-hero-stats em[\s\S]*?\)\s*\{[^}]*color:\s*var\(--ui-liquid-glass-muted-color\);/);
   assert.match(visualSystemStyles, /\.home-hero-next > strong,[\s\S]*?\.arena-hero-stats strong[\s\S]*?color:\s*var\(--hero-title-color\);/);
   assert.match(primitiveStyles, /html\[data-theme\] \.app-main \.ui-page-hero :is\(h1, h2\)\s*\{[^}]*font-size:\s*var\(--hero-title-size\);/);
@@ -1649,15 +1650,15 @@ test("hero inner boards share one restrained solid surface system", () => {
   assert.equal(count(primitiveStyles, "mask-composite: exclude;"), 0);
   assert.match(
     primitiveStyles,
-    /html\[data-theme\] \.app-main \.ui-page-hero:not\(\.rank-summary-grid\)\s*\{[^}]*background:\s*var\(--ui-page-hero-image,[^}]*box-shadow:\s*none;[^}]*backdrop-filter:\s*none;/,
+    /html\[data-theme\] \.app-main \.ui-page-hero:not\(\.rank-summary-grid\)\s*\{[^}]*background:\s*var\(--rb-bg-3\);[^}]*box-shadow:\s*none;[^}]*backdrop-filter:\s*none;/,
   );
   assert.match(
     primitiveStyles,
-    /\.ui-page-hero:not\(\.rank-summary-grid\)::before,[\s\S]*?\.auth-shell\)::after\s*\{[^}]*content:\s*none;[^}]*display:\s*none;/,
+    /\.ui-page-hero:not\(\.rank-summary-grid\)::after,[\s\S]*?\.auth-shell\)::after\s*\{[^}]*content:\s*none;[^}]*display:\s*none;/,
   );
   assert.match(
     homeDashboardResponsiveStyles,
-    /\.rank-home \.rank-summary-grid,[\s\S]*?background:\s*var\(--bg-home-court\)/,
+    /\.rank-summary-grid \.home-rank-board-head\s*\{[^}]*--ui-page-hero-image:\s*var\(--bg-home-court\);/,
   );
   assert.doesNotMatch(homeDashboardResponsiveStyles, /var\(--ui-schedule-hero-mask\)/);
 });
@@ -1686,7 +1687,7 @@ test("page heroes keep shared structure and useful copy without implementation t
 
   assert.match(pageFrameSource, /page-stack ui-page-frame/);
   assert.match(pageFrameSource, /\{hero\}\s*\{navigation\}\s*\{children\}/);
-  assert.match(pageFrameSource, /<header className="page-header ui-page-hero ui-design-app-hero">/);
+  assert.match(pageFrameSource, /<header className="page-header ui-page-hero ui-page-hero--compact ui-design-app-hero">/);
   [
     "src/pages/Profile.jsx",
     "src/pages/Teams.jsx",
@@ -1782,7 +1783,7 @@ test("shared primitives own application-wide density, surfaces, and modals", () 
   );
   assert.match(
     primitiveStyles,
-    /\.app-main \.page-header\s*\{[^}]*min-height:\s*var\(--ui-page-hero-min-height\);[^}]*box-shadow:\s*var\(--ui-page-hero-shadow\);/,
+    /\.app-main \.page-header\s*\{[^}]*box-shadow:\s*var\(--ui-page-hero-shadow\);/,
   );
   assert.match(tokenStyles, /--ui-information-row-min-height:\s*44px;/);
   assert.match(tokenStyles, /--font-size-title-xl:\s*clamp\(1\.9rem, 3\.4vw, 2\.4rem\);/);
@@ -1827,8 +1828,8 @@ test("팀 허브 대표팀 보드는 팀 전용 너비와 테마 대응 고대�
     read("src/styles/tokens.css"),
     /--rb-yellow:\s*#ffd36c;/,
   );
-  assert.match(visualSystemStyles, /\.ui-page-hero \.ui-liquid-glass :where\(\*\)\s*\{[^}]*color:\s*inherit;/);
-  assert.match(visualSystemStyles, /\.ui-page-hero \.team-hub-board \.team-hub-board-identity em\s*\{[^}]*color:\s*var\(--rb-yellow\);/);
+  assert.match(primitiveStyles, /\.ui-liquid-glass :where\(:not\(\.ui-button, \.ui-button \*\)\)\s*\{[^}]*color:\s*inherit;/);
+  assert.match(visualSystemStyles, /\.ui-page-hero \.team-hub-board \.team-hub-board-identity em\s*\{[^}]*color:\s*var\(--ui-liquid-glass-muted-color\);/);
   assert.match(
     readCssTree("src/styles/global-surfaces.css"),
     /\.team-hub-board\s*\{[^}]*width:\s*min\(100%,\s*720px\);[^}]*max-width:\s*none;/,
@@ -1837,7 +1838,7 @@ test("팀 허브 대표팀 보드는 팀 전용 너비와 테마 대응 고대�
   assert.doesNotMatch(readCssTree("src/styles/global-surfaces.css"), /\.team-hub-board-emblem/);
   assert.match(
     readCssTree("src/styles/global-surfaces.css"),
-    /\.team-hub-board\s*\{[^}]*gap:\s*var\(--space-8\);[^}]*padding:\s*clamp\(24px,\s*3vw,\s*32px\);/,
+    /\.team-hub-board\s*\{[^}]*gap:\s*var\(--space-6\);[^}]*padding:\s*var\(--space-6\);/,
   );
   assert.doesNotMatch(
     visualSystemStyles,
@@ -1885,7 +1886,7 @@ test("team heroes keep one tier emblem and use the shared liquid-glass primitive
   );
   assert.match(entityProfileHeroSource, /className="entity-profile-hero-action"/);
   assert.match(teamDetailSource, /aria-label=\{favoritePending \? "즐겨찾기 저장 중" : isFavoriteTeam \? "즐겨찾기 해제" : "즐겨찾기 추가"\}/);
-  assert.match(globalAdminStyles, /\.entity-profile-hero-action\s*\{[^}]*position:\s*absolute;[^}]*top:\s*var\(--space-8\);[^}]*right:\s*var\(--space-8\);/);
+  assert.match(globalAdminStyles, /\.entity-profile-hero-action\s*\{[^}]*position:\s*absolute;[^}]*top:\s*calc\(var\(--ui-page-hero-media-height\) \+ var\(--ui-page-hero-padding\)\);[^}]*right:\s*var\(--ui-page-hero-padding\);/);
   assert.match(readCssTree("src/styles/global-court-controls.css"), /\.entity-profile-hero-action \.favorite-toggle-button\s*\{[^}]*width:\s*var\(--ui-icon-button-size\);[^}]*font-size:\s*0;/);
   assert.equal(count(teamDetailSource, 'className="ui-liquid-glass"'), 2);
   assert.doesNotMatch(

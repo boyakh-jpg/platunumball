@@ -133,7 +133,7 @@ html[data-theme="light"] .referee-rulebook-page .referee-rulebook-intro h2 {
 }
 
 .court-profile-information-grid h3 svg {
-  color: var(--rb-orange);
+  color: var(--accent-text);
 }
 
 .court-profile-information-grid dl {
@@ -172,7 +172,7 @@ html[data-theme="light"] .referee-rulebook-page .referee-rulebook-intro h2 {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  color: var(--rb-orange);
+  color: var(--accent-text);
 }
 
 .rulebook-asset img {
@@ -213,7 +213,7 @@ html[data-theme="light"] .referee-rulebook-page .referee-rulebook-intro h2 {
 }
 
 .referee-rulebook-checklist b {
-  color: var(--green);
+  color: var(--status-success-text);
   font-size: 0.76rem;
 }
 
@@ -284,7 +284,7 @@ html[data-theme="light"] .referee-rulebook-page .referee-rulebook-intro h2 {
 .referee-rulebook-detail-grid span,
 .referee-stat-columns span,
 .referee-stat-examples span {
-  color: var(--green);
+  color: var(--status-success-text);
   font-size: 0.78rem;
   font-weight: 950;
 }
@@ -307,7 +307,7 @@ html[data-theme="light"] .referee-rulebook-page .referee-rulebook-intro h2 {
 
 .referee-rulebook-footer svg {
   flex: 0 0 auto;
-  color: var(--green);
+  color: var(--status-success-text);
 }
 
 .referee-rulebook-chapter {
@@ -341,7 +341,7 @@ html[data-theme="light"] .referee-rulebook-page .referee-rulebook-intro h2 {
 }
 
 .referee-rulebook-sources a {
-  color: var(--blue);
+  color: var(--status-info-text);
   font-size: 0.78rem;
   font-weight: 900;
   text-decoration: underline;
@@ -367,9 +367,9 @@ html[data-theme="light"] .referee-rulebook-page .referee-rulebook-intro h2 {
   display: grid;
   min-width: 0;
   gap: var(--space-1);
-  border: var(--ui-card-border-width) solid rgba(255, 255, 255, 0.08);
+  border: var(--ui-card-border-width) solid var(--ui-control-border);
   border-radius: var(--radius);
-  background: rgba(0, 0, 0, 0.16);
+  background: var(--ui-control-bg);
   color: var(--muted);
   font-size: 0.76rem;
   font-weight: 800;
@@ -390,7 +390,7 @@ html[data-theme="light"] .referee-rulebook-page .referee-rulebook-intro h2 {
 }
 
 .referee-exam-lock.locked {
-  color: var(--gold);
+  color: var(--status-warning-text);
 }
 
 .referee-exam-actions {

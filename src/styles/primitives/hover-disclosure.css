@@ -59,7 +59,7 @@ button.ui-choice-tile,
 .button.button-icon.section-disclosure-button[aria-expanded="true"] {
   border-color: color-mix(in srgb, var(--rb-orange) 42%, var(--ui-button-border));
   background: color-mix(in srgb, var(--rb-orange) 14%, var(--ui-button-bg));
-  color: var(--rb-orange);
+  color: var(--accent-text);
   filter: none;
 }
 .button.button-icon.section-disclosure-button:active {

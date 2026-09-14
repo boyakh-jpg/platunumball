@@ -15,7 +15,7 @@
 .arena-filter-bar .arena-start-date-filter button.sun.active {
   border-color: transparent;
   background: transparent;
-  color: var(--rb-orange);
+  color: var(--accent-text);
   font-weight: var(--font-weight-title);
 }
 

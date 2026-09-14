@@ -168,7 +168,7 @@ body > .basketball-loader-overlay ~ .basketball-loader-overlay {
 
 .basketball-loader-text {
   min-width: 12rem;
-  color: var(--gold);
+  color: var(--status-warning-text);
   font-size: 0.78rem;
   font-weight: 950;
   line-height: 1.25;
@@ -254,10 +254,10 @@ body.rankball-scroll-locked .app-main {
   height: 20px;
   margin-left: auto;
   border-radius: 999px;
-  background: var(--danger);
+  background: var(--action-danger-bg);
   color: var(--ui-button-color-active);
   padding: 0 5px;
-  font-size: 0.66rem;
+  font-size: var(--font-size-caption);
   font-variant-numeric: tabular-nums;
   line-height: 1;
 }
@@ -356,7 +356,7 @@ body.rankball-scroll-locked .app-main {
 }
 
 .auth-browser-warning strong {
-  color: var(--gold);
+  color: var(--status-warning-text);
   font-size: 0.95rem;
 }
 
@@ -385,7 +385,7 @@ body.rankball-scroll-locked .app-main {
 }
 
 .auth-browser-copy-button:hover {
-  color: var(--gold);
+  color: var(--status-warning-text);
 }
 
 .auth-session-line {

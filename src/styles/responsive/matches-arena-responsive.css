@@ -193,7 +193,7 @@ html[data-theme] .om-calendar-grid button::after {
   color: var(--text);
 }
 .om-schedule-rail .om-calendar-heading .eyebrow {
-  color: var(--rb-orange-2);
+  color: var(--accent-text);
 }
 .om-calendar-filter-bar,
 html[data-theme="light"] .om-calendar-filter-bar {
@@ -257,7 +257,7 @@ html[data-theme="light"] .om-calendar-filter-bar {
 .om-calendar-filter-row .segmented-control button.active {
   border-color: color-mix(in srgb, var(--rb-orange-2) 58%, var(--ui-control-border));
   background: transparent;
-  color: var(--rb-orange-2);
+  color: var(--accent-text);
   font-weight: var(--font-weight-title);
 }
 .om-calendar-filter-row .om-relation-filter-grid,
@@ -333,7 +333,7 @@ html[data-theme="light"] .om-calendar-filter-bar {
 }
 
 .om-schedule-workspace .om-schedule-rail .om-view-card.active {
-  color: var(--rb-orange-2);
+  color: var(--accent-text);
   background: color-mix(in srgb, var(--rb-orange-2) 12%, var(--ui-control-bg));
   box-shadow: none;
 }

@@ -83,11 +83,10 @@
   position: absolute;
   right: 14px;
   bottom: 14px;
-  color: var(--rb-orange);
+  color: var(--accent-text);
 }
 
-.admin-operation-lower-grid,
-.admin-report-workbench {
+.admin-operation-lower-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: start;
@@ -130,7 +129,7 @@
 
 .admin-system-status > svg,
 .admin-report-operation > div:first-child > svg {
-  color: var(--rb-orange);
+  color: var(--accent-text);
 }
 
 .admin-report-focus {
@@ -344,7 +343,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  color: var(--rb-orange);
+  color: var(--accent-text);
   font-size: 0.78rem;
 }
 
@@ -353,8 +352,7 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .admin-operation-lower-grid,
-  .admin-report-workbench {
+  .admin-operation-lower-grid {
     grid-template-columns: 1fr;
   }
 }

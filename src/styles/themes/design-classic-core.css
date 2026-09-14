@@ -234,7 +234,7 @@
 }
 
 [data-design="classic"] .ui-design-schedule-row time b {
-  color: var(--orange);
+  color: var(--accent-text);
   font-size: 0.76rem;
 }
 
@@ -336,7 +336,7 @@
 
 [data-design="classic"] .ui-design-spotlight__intro > div > p:last-child {
   margin: 0;
-  color: var(--gold);
+  color: var(--status-warning-text);
   font-size: 0.84rem;
 }
 
@@ -378,11 +378,11 @@
 }
 
 [data-design="classic"] .ui-design-result-row .is-win {
-  color: var(--orange);
+  color: var(--accent-text);
 }
 
 [data-design="classic"] .ui-design-result-row .is-loss {
-  color: var(--blue);
+  color: var(--status-info-text);
 }
 
 [data-design="classic"] .ui-design-result-row strong {
@@ -423,7 +423,7 @@
 
 [data-design="classic"] .ui-design-preference-row svg {
   grid-row: 1 / 3;
-  color: var(--orange);
+  color: var(--accent-text);
 }
 
 [data-design="classic"] .ui-design-preference-row small {

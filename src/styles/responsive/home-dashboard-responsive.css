@@ -52,61 +52,16 @@ html[data-theme="light"] .rank-home .rank-summary-grid::after {
   background: none;
   opacity: 0;
 }
-/* Team hub is the tall ranked-team exception at every responsive breakpoint. */
-@media (min-width: 760px) and (max-width: 1079px) {
-  .app-main > .page-stack.teams-page > .team-hub-hero:first-child {
-    grid-template-columns: minmax(0, 1fr);
-    align-content: end;
-    align-items: end;
-    justify-items: start;
-    gap: var(--space-12);
-    min-height: clamp(430px, 46vw, 620px);
-    padding: clamp(22px, 3.4vw, 34px);
-  }
-
-  .app-main > .page-stack.teams-page > .team-hub-hero:first-child .team-hub-board {
-    display: grid;
-    width: min(100%, 720px);
-    max-width: none;
-    justify-self: start;
-  }
-}
-@media (max-width: 759px) {
-  .app-main > .page-stack.teams-page > .team-hub-hero:first-child {
-    min-height: clamp(620px, 87vw, 660px);
-    align-content: end;
-    gap: var(--space-9);
-    padding: 18px;
-  }
-
-  .app-main > .page-stack.teams-page > .team-hub-hero:first-child .team-hub-board {
-    display: grid;
-    width: 100%;
-    max-width: none;
-    gap: var(--space-7);
-    padding: 22px;
-  }
-
-  .app-main > .page-stack.teams-page > .team-hub-hero:first-child .team-hub-board strong {
-    font-size: clamp(1.8rem, 8vw, 2.5rem);
-  }
-
-  .app-main > .page-stack.teams-page > .team-hub-hero:first-child .team-hub-board em {
-    font-size: 0.85rem;
-  }
-}
-/* 2026-07-02 home hero single image layer.
-   Desktop uses the grid background; mobile uses the visible child because the grid is display: contents. */
 .rank-home .rank-summary-grid .home-rank-board-head,
 html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
-  background: transparent;
+  --ui-page-hero-image: var(--bg-home-court);
+  --ui-page-hero-position: center 46%;
 }
 
 .rank-home .rank-summary-grid,
 html[data-theme="light"] .rank-home .rank-summary-grid {
   background:
-    var(--bg-home-court) center 46% / cover no-repeat,
-    var(--rb-bg-2);
+    transparent;
 }
 .rank-home .home-search-panel.rank-search-card {
   grid-template-columns: minmax(0, 1fr) auto;
@@ -306,13 +261,12 @@ html[data-theme="light"] .rank-home .rank-summary-grid {
 
   .rank-home .rank-summary-grid,
   html[data-theme="light"] .rank-home .rank-summary-grid {
-    background: none;
+    background: transparent;
   }
 
   .rank-home .rank-summary-grid .home-rank-board-head,
   html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
-    background:
-      var(--bg-home-court) center 46% / cover no-repeat,
-      var(--rb-bg-2);
+    --ui-page-hero-image: var(--bg-home-court);
+    --ui-page-hero-position: center 46%;
   }
 }

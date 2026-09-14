@@ -161,7 +161,7 @@
 
 .guest-landing-auth-error {
   margin: 0;
-  color: var(--rb-danger);
+  color: var(--status-danger-text);
   font-size: 0.82rem;
   font-weight: 800;
 }
@@ -229,7 +229,7 @@
 }
 
 .guest-landing-demo-poster-flow li > span:first-child {
-  color: var(--rb-orange-2);
+  color: var(--accent-text);
   font-size: var(--ui-meta-font-size);
   font-weight: 850;
 }
@@ -286,7 +286,7 @@
 }
 
 .guest-landing-record-flow li > span {
-  color: var(--rb-orange-2);
+  color: var(--accent-text);
   font-size: 0.82rem;
   font-weight: 850;
 }
@@ -338,7 +338,7 @@
 
 .guest-landing-benefits svg {
   flex: none;
-  color: var(--rb-orange-2);
+  color: var(--accent-text);
 }
 
 .guest-landing-matching-note {

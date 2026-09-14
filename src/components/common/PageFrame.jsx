@@ -10,7 +10,7 @@ export default function PageFrame({ hero, navigation, children, className = "" }
 
 export function PageHeader({ title, description, actions }) {
   return (
-    <header className="page-header ui-page-hero ui-design-app-hero">
+    <header className="page-header ui-page-hero ui-page-hero--compact ui-design-app-hero">
       <div className="ui-page-hero__copy">
         <h1>{title}</h1>
         {description ? <p>{description}</p> : null}

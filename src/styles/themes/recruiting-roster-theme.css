@@ -91,7 +91,7 @@ html[data-theme="light"] .arena-filter-bar .arena-start-date-filter button.sat.a
 html[data-theme="light"] .arena-filter-bar .arena-start-date-filter button.sun.active {
   border: 0;
   background: transparent;
-  color: var(--rb-orange);
+  color: var(--accent-text);
   font-weight: var(--font-weight-title);
 }
 
@@ -424,7 +424,7 @@ html[data-theme="light"] .arena-room-slot-crown.captain {
 html[data-theme="light"] .arena-room-slot-crown.captain {
   border-color: rgba(118, 169, 255, 0.55);
   background: rgba(118, 169, 255, 0.26);
-  color: var(--rb-blue);
+  color: var(--status-info-text);
 }
 
 /* 2026-07-01 reserve row and restrained palette pass. */
@@ -445,7 +445,7 @@ html[data-theme="light"] .arena-reserve-line {
 
 .arena-reserve-line > strong,
 html[data-theme="light"] .arena-reserve-line > strong {
-  color: var(--rb-gold);
+  color: var(--status-warning-text);
 }
 
 .arena-reserve-line > .arena-room-reserve-row,
@@ -462,12 +462,12 @@ html[data-theme="light"] .arena-reserve-line > .arena-room-reserve-row {
 
 .arena-lobby-score-core span,
 html[data-theme="light"] .arena-lobby-score-core span {
-  color: var(--rb-gold);
+  color: var(--status-warning-text);
 }
 
 .arena-room-player-slot.ready em,
 .arena-room-player-slot.ready [title="참가"],
 html[data-theme="light"] .arena-room-player-slot.ready em,
 html[data-theme="light"] .arena-room-player-slot.ready [title="참가"] {
-  color: var(--rb-green);
+  color: var(--status-success-text);
 }

@@ -10,7 +10,7 @@
 .naver-pin-picker-close:hover {
   border-color: color-mix(in srgb, var(--rb-orange) 42%, var(--ui-button-border));
   background: color-mix(in srgb, var(--rb-orange) 14%, var(--ui-button-bg));
-  color: var(--rb-orange);
+  color: var(--accent-text);
 }
 
 .naver-pin-picker-actions {
@@ -193,7 +193,7 @@
   padding: 0;
   border: 0;
   background: transparent;
-  color: var(--rb-orange);
+  color: var(--accent-text);
   font-size: 0.7rem;
   font-weight: 850;
   cursor: pointer;
@@ -218,7 +218,7 @@
 }
 
 .court-db-edit-row small {
-  color: var(--danger);
+  color: var(--status-danger-text);
   font-weight: 800;
 }
 

@@ -60,7 +60,7 @@ html[data-theme] [data-design] .ui-design-app .rank-home .home-side-stack .compa
 }
 
 html[data-theme] [data-design] .ui-design-app .rank-home .home-action-icon {
-  color: var(--rb-orange-2);
+  color: var(--accent-text);
   background: transparent;
   border-radius: 0;
 }

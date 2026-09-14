@@ -49,7 +49,7 @@ export function CreateMatchCourtRosterSection({ context }) {
                 ))}
               </select>
             </label>
-            <div className="court-map-launch-control">
+            <div className="field-block court-map-launch-control">
               <span>지도</span>
               <Button
                 type="button"

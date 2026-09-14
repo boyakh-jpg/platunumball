@@ -208,12 +208,12 @@
 }
 
 .mmr-change.positive {
-  color: var(--green);
+  color: var(--status-success-text);
   background: rgba(88, 210, 192, 0.1);
 }
 
 .mmr-change.negative {
-  color: var(--danger);
+  color: var(--status-danger-text);
   background: rgba(240, 93, 94, 0.1);
 }
 
@@ -484,7 +484,7 @@ html[data-theme] .app-main .score-line > :is(span, a, .team-hover-trigger) > :is
 .notification-row-open,
 .notification-terminal-state {
   background: color-mix(in srgb, var(--rb-blue) 14%, transparent);
-  color: var(--rb-blue);
+  color: var(--status-info-text);
   font-size: 0.74rem;
   font-weight: 950;
   min-width: max-content;

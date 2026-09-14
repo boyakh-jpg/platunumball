@@ -45,11 +45,11 @@
   width: 30px;
   height: 30px;
   place-items: center;
-  color: var(--rb-orange);
+  color: var(--accent-text);
 }
 
 .ui-empty-state-error .ui-empty-state-icon {
-  color: var(--danger);
+  color: var(--status-danger-text);
 }
 
 .ui-empty-state-loading .ui-empty-state-icon {

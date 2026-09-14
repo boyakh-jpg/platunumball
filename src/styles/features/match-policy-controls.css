@@ -22,7 +22,7 @@
   line-height: 1.45;
 }
 .match-rule-summary.is-invalid {
-  color: var(--danger);
+  color: var(--status-danger-text);
 }
 .inline-validated-input {
   position: relative;
@@ -44,7 +44,7 @@
   max-width: 82px;
   overflow: hidden;
   transform: translateY(-50%);
-  color: var(--danger);
+  color: var(--status-danger-text);
   font-size: 0.68rem;
   font-weight: 900;
   line-height: 1;
@@ -59,7 +59,7 @@
   grid-template-columns: minmax(0, 2fr) minmax(150px, 1fr);
 }
 .meeting-point-required::placeholder {
-  color: var(--danger);
+  color: var(--status-danger-text);
   opacity: 0.82;
 }
 .match-dispute-queue {
@@ -92,7 +92,7 @@
 }
 .match-dispute-queue-head em {
   flex: 0 0 auto;
-  color: var(--rb-orange);
+  color: var(--accent-text);
   font-style: normal;
   font-weight: 950;
 }
@@ -429,7 +429,7 @@
 .roster a em {
   border-radius: 999px;
   background: rgba(116, 169, 255, 0.13);
-  color: var(--blue);
+  color: var(--status-info-text);
   font-size: 0.68rem;
   font-style: normal;
   font-weight: 950;
@@ -456,7 +456,7 @@
 }
 .memo-box span {
   display: block;
-  color: var(--gold);
+  color: var(--status-warning-text);
   font-size: 0.74rem;
   font-weight: 900;
   text-transform: uppercase;

@@ -86,7 +86,7 @@
   border: 0;
   border-radius: var(--radius-xs);
   background: rgba(255, 211, 108, 0.16);
-  color: var(--gold);
+  color: var(--status-warning-text);
   font-size: 0.74rem;
   font-weight: 950;
   padding: 0 10px;
@@ -200,7 +200,7 @@
 
 .tournament-governance-feedback {
   grid-column: 1 / -1;
-  color: var(--gold);
+  color: var(--status-warning-text);
   font-size: 0.82rem;
 }
 
@@ -245,7 +245,7 @@
 }
 
 .tournament-round h3 {
-  color: var(--gold);
+  color: var(--status-warning-text);
   font-size: 0.95rem;
 }
 
@@ -288,7 +288,7 @@
 
 .tournament-round article strong,
 .league-fixture-grid b {
-  color: var(--gold);
+  color: var(--status-warning-text);
   font-size: 0.72rem;
   font-weight: 950;
 }
@@ -365,7 +365,7 @@
 .vertical-bracket-title strong {
   max-width: 260px;
   overflow: hidden;
-  color: var(--gold);
+  color: var(--status-warning-text);
   font-size: 1.2rem;
   font-weight: 950;
   text-overflow: ellipsis;
@@ -375,7 +375,7 @@
 .vertical-bracket-trophy {
   width: 72px;
   height: 72px;
-  color: var(--gold);
+  color: var(--status-warning-text);
   box-shadow: inset 0 0 50px rgba(255, 211, 108, 0.08);
 }
 
@@ -397,7 +397,7 @@
 .vertical-bracket-row h3 {
   justify-self: center;
   min-height: var(--bracket-round-title-height);
-  color: var(--gold);
+  color: var(--status-warning-text);
   font-size: 0.9rem;
   font-weight: 950;
   line-height: var(--bracket-round-title-height);

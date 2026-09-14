@@ -37,7 +37,7 @@
 }
 
 .affiliation-search-result > b {
-  color: var(--gold);
+  color: var(--status-warning-text);
   font-size: var(--control-font-size);
 }
 
@@ -378,9 +378,9 @@
 }
 
 .player-profile-team-row small {
-  color: var(--rb-orange-2);
-  font-size: 0.68rem;
-  font-weight: 950;
+  color: var(--accent-text);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-control);
 }
 
 .player-profile-team-row:not(.is-representative) small {
@@ -403,9 +403,9 @@
 .player-profile-team-row em,
 .player-profile-team-empty {
   color: var(--rb-muted);
-  font-size: 0.72rem;
+  font-size: var(--font-size-caption);
   font-style: normal;
-  font-weight: 800;
+  font-weight: var(--font-weight-control);
 }
 
 .player-profile-team-empty {

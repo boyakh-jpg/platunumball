@@ -3,6 +3,7 @@ import { AlertTriangle, RefreshCw, Search, ShieldAlert, UserRoundCheck } from "l
 import Badge from "../common/Badge.jsx";
 import Button from "../common/Button.jsx";
 import Card from "../common/Card.jsx";
+import AdminWorkbench from "./AdminWorkbench.jsx";
 import { SUSPENSION_TIERS } from "../../lib/admin.js";
 import {
   ADMIN_USER_OPERATION_ACTIONS,
@@ -229,7 +230,7 @@ export default function UserOperationsPanel({ app }) {
         </div>
       </Card>
 
-      <div className="admin-user-ops-workbench">
+      <AdminWorkbench className="admin-user-ops-workbench" pending={actionPending}>
         <Card className="section-card admin-user-ops-list-card">
           <div className="section-title-row">
             <div><p className="eyebrow">Review Queue</p><h2>{riskOnly ? "주의 신호 사용자" : "전체 사용자"}</h2></div>
@@ -243,6 +244,7 @@ export default function UserOperationsPanel({ app }) {
                 <button
                   key={user.id}
                   type="button"
+                  data-admin-item
                   className={selected?.id === user.id ? "admin-user-risk-row active" : "admin-user-risk-row"}
                   disabled={actionPending}
                   onClick={() => setSelectedId(user.id)}
@@ -350,7 +352,7 @@ export default function UserOperationsPanel({ app }) {
             </>
           ) : <div className="ui-empty-state-compact">검토할 사용자를 선택해 주세요.</div>}
         </Card>
-      </div>
+      </AdminWorkbench>
     </div>
   );
 }

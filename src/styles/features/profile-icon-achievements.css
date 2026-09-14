@@ -173,7 +173,7 @@
 }
 
 .profile-achievement-summary strong {
-  color: var(--rb-orange);
+  color: var(--accent-text);
   font-family: var(--sports-display-font);
   font-size: clamp(2rem, 5vw, 3.2rem);
   line-height: 0.9;
@@ -183,7 +183,7 @@
 .profile-achievement-summary p {
   color: var(--muted);
   font-size: 0.78rem;
-  font-weight: 800;
+  font-weight: var(--font-weight-body);
 }
 
 .profile-achievement-summary p {
@@ -204,13 +204,13 @@
 
 .profile-achievement-group > .section-title-row > small {
   color: var(--muted);
-  font-size: 0.74rem;
+  font-size: var(--font-size-caption);
   font-weight: 850;
 }
 
 .profile-achievement-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr));
   gap: var(--space-4);
 }
 
@@ -229,7 +229,7 @@
 
 .profile-achievement-card.unlocked {
   border-color: color-mix(in srgb, var(--rb-orange) 48%, var(--ui-control-border));
-  background: color-mix(in srgb, var(--rb-orange) 8%, var(--ui-control-bg));
+  background: color-mix(in srgb, var(--rb-orange) 4%, var(--rb-bg-3));
 }
 
 .profile-achievement-card.locked {
@@ -281,6 +281,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
+  flex-wrap: wrap;
 }
 
 .profile-achievement-title strong {
@@ -290,11 +291,11 @@
 .profile-achievement-title span {
   flex: 0 0 auto;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--rb-orange) 16%, var(--surface-3));
-  color: var(--rb-orange);
+  background: color-mix(in srgb, var(--rb-orange) 8%, var(--rb-bg-3));
+  color: var(--accent-text);
   padding: 2px 6px;
-  font-size: 0.62rem;
-  font-weight: 900;
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-control);
 }
 
 .profile-achievement-card.locked .profile-achievement-title span {
@@ -305,9 +306,9 @@
 .profile-achievement-body p {
   margin: 0;
   color: var(--muted);
-  font-size: 0.72rem;
-  font-weight: 800;
-  line-height: 1.35;
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-body);
+  line-height: 1.5;
 }
 
 .profile-achievement-progress {
@@ -332,8 +333,8 @@
 .profile-achievement-metrics small,
 .profile-achievement-default {
   color: var(--muted);
-  font-size: 0.64rem;
-  font-weight: 800;
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-body);
 }
 
 .emblem-crop-dialog {
@@ -396,7 +397,7 @@
 }
 
 .emblem-crop-preview span {
-  color: var(--danger);
+  color: var(--status-danger-text);
   font-weight: 850;
 }
 
@@ -466,4 +467,14 @@
   border-radius: 50%;
   background: var(--surface);
   box-shadow: 0 1px 4px color-mix(in srgb, var(--text) 22%, transparent);
+}
+
+.profile-achievement-filters {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+}
+
+.profile-achievement-result-count {
+  margin-block-start: var(--space-5);
+  color: var(--muted);
+  font-size: var(--font-size-body-sm);
 }

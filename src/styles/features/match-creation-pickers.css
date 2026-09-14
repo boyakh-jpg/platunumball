@@ -35,7 +35,7 @@
 }
 .create-submit-warning {
   flex: 1 1 260px;
-  color: var(--gold);
+  color: var(--status-warning-text);
   font-size: 0.84rem;
   font-weight: 850;
   line-height: 1.45;
@@ -173,7 +173,7 @@ label {
   padding: 10px;
 }
 .create-public-note > svg {
-  color: var(--rb-orange);
+  color: var(--accent-text);
 }
 .tournament-team-grid {
   display: grid;
@@ -217,7 +217,7 @@ label {
   white-space: nowrap;
 }
 .tournament-selected-strip em {
-  color: var(--gold);
+  color: var(--status-warning-text);
   font-size: 0.72rem;
   font-style: normal;
   font-weight: 950;
@@ -255,7 +255,7 @@ label {
   font-weight: 850;
 }
 .tournament-team-grid em {
-  color: var(--gold);
+  color: var(--status-warning-text);
 }
 .team-picker {
   border: var(--ui-stroke-width) solid var(--line);
@@ -397,7 +397,7 @@ label {
   gap: var(--space-3);
 }
 .team-search-popover small {
-  color: var(--gold);
+  color: var(--status-warning-text);
   font-size: 0.68rem;
   font-weight: 950;
   padding-inline: 4px;
@@ -443,7 +443,7 @@ label {
 .team-search-popover em {
   grid-row: 1 / span 2;
   grid-column: 2;
-  color: var(--gold);
+  color: var(--status-warning-text);
   font-size: 0.68rem;
   font-style: normal;
   font-weight: 950;

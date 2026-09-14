@@ -128,7 +128,7 @@
 }
 
 .om-calendar-toolbar strong span {
-  color: var(--gold);
+  color: var(--status-warning-text);
   font-size: 0.78rem;
   font-weight: 950;
   line-height: 1;
@@ -173,11 +173,11 @@
 }
 
 .om-calendar-grid button.today {
-  color: var(--gold);
+  color: var(--status-warning-text);
 }
 
 .om-calendar-grid button:hover {
-  color: var(--gold);
+  color: var(--status-warning-text);
 }
 
 .om-calendar-grid button strong {
@@ -195,7 +195,7 @@
   justify-content: center;
   border-radius: 0;
   background: transparent;
-  color: var(--gold);
+  color: var(--status-warning-text);
   font-size: 0.68rem;
   font-weight: 950;
   line-height: 1;
@@ -291,7 +291,7 @@
 }
 
 .om-tournament-meta strong {
-  color: var(--gold);
+  color: var(--status-warning-text);
 }
 
 .om-tournament-detail-link {

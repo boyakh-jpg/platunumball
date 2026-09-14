@@ -141,13 +141,13 @@
 
 .team-tier-hero .tier-emblem figcaption strong,
 .player-tier-hero .tier-emblem figcaption strong {
-  color: var(--rb-yellow);
+  color: var(--status-warning-text);
   font-size: 1rem;
 }
 
 .team-tier-hero .tier-emblem figcaption span,
 .player-tier-hero .tier-emblem figcaption span {
-  color: var(--rb-cream);
+  color: var(--rb-muted);
   font-size: 0.75rem;
 }
 
@@ -329,7 +329,7 @@
 
 .my-team-row b {
   background: rgba(70, 224, 182, 0.12);
-  color: var(--green);
+  color: var(--status-success-text);
 }
 
 .my-team-representative-button {
@@ -357,7 +357,7 @@
 
 .team-rank-chip {
   background: rgba(255, 211, 108, 0.12);
-  color: var(--gold);
+  color: var(--status-warning-text);
 }
 
 .match-focus-card,

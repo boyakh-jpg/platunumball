@@ -68,7 +68,7 @@
 .notification-actions .notification-read-button:hover,
 .notification-actions .notification-read-button:focus-visible {
   border-color: color-mix(in srgb, var(--rb-orange) 56%, var(--ui-control-border));
-  color: var(--rb-orange);
+  color: var(--accent-text);
 }
 
 @media (max-width: 760px) {

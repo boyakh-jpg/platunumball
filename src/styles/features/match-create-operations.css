@@ -111,7 +111,7 @@
 .match-creation-wizard-nav li.active button > span,
 .match-creation-wizard-nav li.complete button > span {
   border-color: var(--rb-orange);
-  color: var(--rb-orange);
+  color: var(--accent-text);
 }
 
 .match-intent-preset-section,
@@ -385,26 +385,6 @@
   align-self: start;
 }
 
-.create-match-page .ui-segmented-control.create-choice-segments {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  width: 100%;
-  max-width: 100%;
-}
-
-.create-match-page .ui-segmented-control.create-choice-segments.is-three {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.create-match-page .ui-segmented-control.create-choice-segments.is-four {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-.create-match-page .ui-segmented-control.create-choice-segments > button {
-  min-width: 0;
-  white-space: normal;
-}
-
 html[data-theme] .app-main .create-match-page :is(
   .ui-segmented-control.create-choice-segments,
   .create-timing-control,
@@ -441,7 +421,7 @@ html[data-theme] .app-main .create-match-page :is(
 ) > button:is(.active, [aria-checked="true"], [aria-selected="true"]) {
   border-color: color-mix(in srgb, var(--rb-orange) 58%, var(--ui-control-border));
   background: color-mix(in srgb, var(--rb-orange) 12%, var(--ui-control-bg));
-  color: var(--rb-orange);
+  color: var(--accent-text);
 }
 
 .match-bench-capacity-control {
@@ -554,7 +534,7 @@ html[data-theme] .app-main .create-match-page :is(
 }
 
 .match-cost-summary strong {
-  color: var(--gold);
+  color: var(--status-warning-text);
 }
 
 .match-cost-summary em {
@@ -638,7 +618,7 @@ html[data-theme] .app-main .create-match-page :is(
 }
 
 .match-creation-ready svg {
-  color: var(--rb-orange);
+  color: var(--accent-text);
 }
 
 .match-creation-wizard-secondary-actions,

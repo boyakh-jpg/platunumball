@@ -72,23 +72,10 @@
   .app-main > .page-stack > .team-hub-hero:first-child {
     grid-template-columns: 1fr;
     align-items: end;
-    min-height: 174px;
-    padding: 18px;
   }
 
   .app-main > .page-stack > .team-hub-hero:first-child > div:first-child {
     min-height: 0;
-  }
-
-  .app-main > .page-stack > .team-hub-hero:first-child .team-hub-board {
-    display: none;
-  }
-}
-@media (max-width: 480px) {
-  .app-main > .page-stack > .team-hub-hero:first-child,
-  .app-main > .page-stack > .page-header:first-child {
-    min-height: 158px;
-    padding: 16px;
   }
 }
 /* 2026-07-02 home responsive rail balance. */
@@ -177,7 +164,7 @@ html[data-theme="light"] .rank-home .rank-spotlight-card {
   gap: var(--space-6);
 }
 .rank-home .rank-spotlight-content .eyebrow {
-  color: var(--rb-orange-2);
+  color: var(--accent-text);
   font-size: 0.72rem;
   text-shadow: 0 8px 18px rgba(0, 0, 0, 0.5);
 }

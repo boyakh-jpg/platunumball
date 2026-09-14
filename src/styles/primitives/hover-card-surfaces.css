@@ -2,7 +2,7 @@
   display: inline-flex;
   max-width: 100%;
   overflow: hidden;
-  color: var(--gold);
+  color: var(--status-warning-text);
   font-size: 0.76rem;
   font-weight: 950;
   text-overflow: ellipsis;
@@ -15,7 +15,7 @@
   border: var(--ui-stroke-width) solid rgba(255, 211, 108, 0.28);
   border-radius: 999px;
   background: rgba(255, 211, 108, 0.1);
-  color: var(--gold);
+  color: var(--status-warning-text);
   font-size: 0.72rem;
   font-weight: 950;
   padding: 4px 8px;
@@ -71,7 +71,7 @@
 .player-hover-tier-grid b,
 .player-hover-team > b,
 .team-hover-tier b {
-  color: var(--gold);
+  color: var(--status-warning-text);
   font-size: 0.72rem;
   font-weight: 950;
 }
@@ -154,7 +154,7 @@
 
 .court-hover-address b,
 .court-hover-note b {
-  color: var(--gold);
+  color: var(--status-warning-text);
   font-size: 0.72rem;
   font-weight: 950;
 }
@@ -202,7 +202,7 @@
   border: var(--ui-stroke-width) solid rgba(70, 224, 182, 0.28);
   border-radius: var(--radius-md);
   background: rgba(70, 224, 182, 0.12);
-  color: var(--green);
+  color: var(--status-success-text);
   font-size: 1rem;
   font-weight: 1000;
 }
@@ -210,13 +210,13 @@
 .referee-hover-grade.gold {
   border-color: rgba(255, 211, 108, 0.45);
   background: rgba(255, 211, 108, 0.13);
-  color: var(--gold);
+  color: var(--status-warning-text);
 }
 
 .referee-hover-grade.blue {
   border-color: rgba(92, 148, 255, 0.4);
   background: rgba(92, 148, 255, 0.12);
-  color: var(--blue);
+  color: var(--status-info-text);
 }
 
 .referee-hover-grade.neutral {
@@ -233,13 +233,13 @@
   border: var(--ui-stroke-width) solid rgba(70, 224, 182, 0.16);
   border-radius: var(--radius-xs);
   background: rgba(70, 224, 182, 0.07);
-  color: var(--green);
+  color: var(--status-success-text);
   padding: 9px;
 }
 
 .referee-hover-tier b,
 .referee-hover-note {
-  color: var(--gold);
+  color: var(--status-warning-text);
   font-size: 0.76rem;
   font-weight: 950;
 }
@@ -389,7 +389,7 @@
 }
 
 .court-hover-reviews > b {
-  color: var(--gold);
+  color: var(--status-warning-text);
   font-size: 0.72rem;
   font-weight: 950;
 }
@@ -407,7 +407,7 @@
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  color: var(--gold);
+  color: var(--status-warning-text);
   font-size: 0.7rem;
   white-space: nowrap;
 }

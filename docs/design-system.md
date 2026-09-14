@@ -843,16 +843,16 @@ RankBall 다크 모드는 이 팔레트를 기본 CSS 색상 표준으로 쓴다
 2026-07-01: 방 모달의 슬롯 초대 popover는 modal overflow에 잘리지 않게 viewport 레벨로 띄우고, 검색 결과는 popover 내부 inline 목록으로 보여 초대 버튼이 항상 누를 수 있어야 한다.
 2026-07-01: 방 모달 경기장 영역은 dark/light 모두 `--bg-hoop` 배경 이미지를 유지하고, light mode에서는 cream overlay로 가독성만 보정한다.
 2026-07-01: 데스크톱이 아닌 홈/경기/모집 hero는 카드처럼 둥근 모서리를 주지 않고, viewport 좌우에 붙여 배경이 새지 않게 full-bleed로 둔다. 앱 히어로의 상단은 공용 알림·설정 아래 문서 흐름을 유지한다.
-2026-07-01: 홈/경기/모집 hero 이미지 위에는 1px 반복 격자/스캔라인을 얹지 않고, 가독성용 어두운 overlay와 이미지 질감만 둔다.
+2026-07-01: 홈/경기/모집 hero는 사진 띠와 단색 정보 영역을 분리한다. 원본 이미지 위에는 반복 격자·스캔라인·가독성 overlay를 얹지 않는다.
 2026-07-01: 앱 바닥과 주요 hero/방 모달 overlay의 1px 격자무늬는 제거한다. 코트 정체성은 실제 배경 이미지와 scoreboard/card hierarchy로만 표현한다.
 2026-07-02: "hero들"이라고 하면 홈/경기/모집만이 아니라 `page-header`, landing, team hub, season, profile, team detail, rulebook, tournament, match room 같은 모든 page-level hero를 포함한다.
-2026-07-02: 모든 page-level hero는 이미지 위에 dark/white wash, scanline/grid, 별도 `::before`/`::after` overlay를 얹지 않는다. hero 텍스트는 dark에서 `--rb-cream`과 `--rb-orange`/`--rb-orange-2`, light 앱 hero에서 `--rb-text`와 `--rb-orange-pressed`로 시인성을 확보한다. 어두운 고정 배경을 쓰는 공개 메인과 팀 대표 보드는 light에서도 `--rb-cream`을 사용할 수 있다.
-2026-07-02: hero 제목은 모두 `--hero-title-font`와 홈 hero 기준 `--hero-title-shadow`를 쓴다. 개별 feature/theme CSS는 제목 그림자를 덮어쓰지 않는다. 원인/결과: 개별 파일의 `linear-gradient` background와 `::before`/`::after` overlay가 뒤쪽 CSS에서 다시 살아나 이미지 위 막이 반복됐으므로, page-level hero는 최종 guard에서 image + fallback color만 남기고 `backdrop-filter`/blur/filter를 쓰지 않는다.
+2026-07-02: 모든 page-level hero는 이미지 위에 dark/white wash, scanline/grid, 별도 overlay를 얹지 않는다. 앱 hero는 위쪽 사진 띠와 아래쪽 `--rb-bg-3` 정보 면을 공용 primitive에서 분리하고 제목은 `--rb-text`, 설명은 `--rb-muted`, 강조 문구는 `--accent-text`를 사용한다. 어두운 고정 배경을 쓰는 공개 메인은 전용 밝은 전경색을 유지한다.
+2026-07-02: hero 제목은 모두 `--hero-title-font`와 공용 제목·본문 토큰을 사용한다. 개별 feature/theme CSS는 글자색·그림자를 덮어쓰지 않는다. 앱 hero의 원본 이미지는 공용 `::before` 사진 띠에서만 표시하고 정보 면과 겹치지 않는다. `backdrop-filter`, blur, filter, 컨테이너 그림자는 사용하지 않는다.
 2026-08-02: page-level hero는 eyebrow, 제목, 상태 badge/action, 날짜·구장·지역 같은 동적 정보를 중심으로 표시한다. 작은 분류 라벨은 공용 `.eyebrow` 클래스를 사용하고 별도 `*-kicker` 클래스와 제목을 반복하는 고정 설명은 두지 않는다. 매칭 hero에는 처음 참여하는 사용자가 방을 선택하면 무엇을 확인할 수 있는지 짧은 행동 안내를 제공한다. 서버 원본·모듈·저장 통로·공용 모달 같은 내부 구현 용어를 사용자 화면에 노출하지 않는다.
 2026-08-03: 라이트 테마 모바일 하단 메뉴의 활성 항목은 `--radius-sm`을 사용한다. 메뉴 바와 비활성 항목은 기존 flat 규격을 유지한다.
-2026-08-03: 모든 page-level hero는 역할 클래스 `.ui-page-hero`와 텍스트 영역 `.ui-page-hero__copy`를 사용한다. 일정·알림·설정·관리자·프로필·팀과 프로필·팀의 하위 화면은 `PageFrame`이 히어로 → 선택 탐색 → 본문 순서를 소유한다. 일반 제목·액션 히어로는 `PageHeader`를 사용하며 제목을 반복하는 영문 라벨은 두지 않는다. 팀 대표 보드와 엔티티 프로필 같은 전용 히어로는 `hero` 슬롯에 기존 공용 컴포넌트를 넣는다. 제목 영역과 액션 영역을 구분하고, 액션의 정렬·줄바꿈·버튼 너비는 공용 `.ui-page-header__actions`가 소유한다. 화면별 hero 클래스는 배경·배치 modifier만 소유하고 제목 글꼴·색·그림자·모바일 크기와 설명 색·그림자는 공용 primitive가 소유한다. 모든 섹션 제목 행은 `.section-title-row`를 기본 역할 클래스로 함께 사용하고 화면별 `*-head` 클래스는 구조 차이만 보정한다.
-2026-08-05: dark page-level hero의 크림색 제목·설명과 표준 오렌지 eyebrow는 공용 `--hero-title-shadow`/`--hero-copy-shadow`를 사용한다. light page-level hero는 그림자를 쓰지 않고 표준 진한 글자색으로 대비를 확보하며, 팀 대표 보드는 어두운 농구공 위에서 크림색 팀명·순위·지표를 사용한다.
-2026-07-23: 방 만들기(`/app/create`) page-header는 다크·라이트 전용 체육관 이미지 hero를 쓴다. 왼쪽 제목 영역은 단순한 벽면 여백을 유지하고 오른쪽 골대·접힌 관중석·조명 구조는 중앙 crop 안에 둔다. 장식용 공은 두지 않고 보이는 코트선은 실제 바닥 구조에 맞게 한 번만 표시한다.
+2026-08-03: 모든 page-level hero는 역할 클래스 `.ui-page-hero`와 텍스트 영역 `.ui-page-hero__copy`를 사용한다. 일정·알림·설정·관리자·프로필·팀과 프로필·팀의 하위 화면은 `PageFrame`이 히어로 → 선택 탐색 → 본문 순서를 소유한다. 일반 제목·액션 히어로는 `PageHeader`와 공용 `ui-page-hero--compact` variant를 사용해 사진 띠 높이를 줄이며 제목을 반복하는 영문 라벨은 두지 않는다. 사진 높이는 `--ui-page-hero-media-height*`, 본문 여백은 `--ui-page-hero-padding`이 소유한다. 1079px 이하에서는 본문 좌우 여백을 앱 본문 gutter와 맞춘다. 팀 대표 보드와 엔티티 프로필 같은 전용 히어로는 `hero` 슬롯에 기존 공용 컴포넌트를 넣는다. 제목 영역과 액션 영역을 구분하고, 액션의 정렬·줄바꿈·버튼 너비는 공용 `.ui-page-header__actions`가 소유한다. 화면별 hero 클래스는 배경·배치 modifier만 소유하고 제목 글꼴·색·그림자·모바일 크기와 설명 색·그림자는 공용 primitive가 소유한다. 모든 섹션 제목 행은 `.section-title-row`를 기본 역할 클래스로 함께 사용하고 화면별 `*-head` 클래스는 구조 차이만 보정한다.
+2026-08-05: 앱 page-level hero의 제목·설명·강조 문구는 light/dark 모두 해당 테마의 공용 전경 토큰을 사용한다. 팀 대표 보드도 같은 단색 정보 면과 전경색을 사용하며 글자·컨테이너 그림자를 추가하지 않는다.
+2026-07-23: 방 만들기(`/app/create`) page-header는 다크·라이트 전용 체육관 이미지의 사진 띠와 아래 제목 영역을 분리한다. 사진은 오른쪽 골대·접힌 관중석·조명 구조를 중앙 crop 안에 둔다. 장식용 공은 두지 않고 보이는 코트선은 실제 바닥 구조에 맞게 한 번만 표시한다.
 2026-07-28: 팀 허브 모바일 hero에도 데스크톱처럼 대표팀 보드를 포함한다. 대표팀이 있으면 팀명·MMR·전적을 표시하며 759px 이하에서도 숨기지 않는다.
 2026-07-02: 홈 image hero와 rank spotlight card는 조각난 frame처럼 보이는 border, underline, inner pseudo frame을 쓰지 않는다. 이미지 경계는 배경/간격으로 처리한다. 티어 카드의 프로필·시즌·설정 링크는 공용 `Button variant="text"`로 배경 없이 표시한다. 이 변형은 주변 글자색을 상속하고 공용 버튼 크기·안쪽 여백·키보드 포커스를 유지하며 hover에만 밑줄을 표시한다. 홈 CSS가 버튼 배경이나 여백을 다시 덮지 않는다.
 2026-07-01: 일반 페이지의 floating search/card layer는 모바일 bottom nav보다 낮아야 한다. 모달/전역 로더만 bottom nav보다 위에 올 수 있다.
@@ -1322,7 +1322,7 @@ RankBall 다크 모드는 이 팔레트를 기본 CSS 색상 표준으로 쓴다
 18. 정책 입력은 한 카드 안에서 `개인 MMR`, `경기 형식`, `팀 MMR`, `경기 신뢰도`, `방 운영 신뢰도` 섹션으로 구분한다. 섹션을 다시 카드로 감싸지 않는다.
 19. 정책 저장 영역은 현재 버전, 변경 사유, 기본값 초안 적용, 저장 상태를 함께 보여준다. 모바일은 필드와 저장 액션을 한 열로 내려 가로 스크롤을 만들지 않는다.
 20. 정책 저장은 공통 확인 팝업에서 적용 시점과 비소급 원칙을 다시 확인한 뒤 실행한다.
-21. `사용자 운영`은 상단에 전체 사용자, 30일 활동, 검토 필요, 활성 제재, 30일 경고 요약을 두고 아래에는 기존 관리자 표준과 같은 왼쪽 목록·오른쪽 상세 workbench를 사용한다.
+21. `사용자 운영`은 상단에 전체 사용자, 30일 활동, 검토 필요, 활성 제재, 30일 경고 요약을 두고 아래에는 기존 관리자 표준과 같은 왼쪽 목록·오른쪽 상세 workbench를 사용한다. 신고·검토와 사용자 운영은 공용 `AdminWorkbench`를 사용한다. 860px 이하에서는 목록을 먼저 보여주고 항목 선택 시 상세만 표시한다. `목록으로`를 누르면 검색·필터·선택을 유지하고 선택 행의 초점과 이전 스크롤 위치를 복원한다. 처리 중에는 상세 이동과 복귀도 잠근다. 데스크톱은 두 열과 현재 초점을 유지한다.
 22. 사용자 목록은 `주의 신호`와 `전체 사용자`를 분리하고 이름·해시태그·ID·지역 검색과 30건 페이지네이션을 사용한다. 위험 수치는 검토 정렬값이며 자동 처벌 점수처럼 표현하지 않는다.
 23. 상세에는 신호 근거, 최근 30일 활동 지표, 현재 제한 종료 시각을 먼저 보여준다. 조치 선택·기간·관리 사유·사용자 안내는 같은 `admin-user-action-panel`에 배치한다.
 24. 운영 현황은 관리자 level 50 이상에게 회원·팀·경기·대회 전체 수를 먼저 보여준다. 공용 지표 카드 선택 시 같은 화면의 목록이 전환되며 기본 목록은 대회다. 검색·상태·페이지를 URL에 유지하고 각 행에서 상세로 이동한다. 대회는 참가·승인 팀 수와 생성·결과 확정·취소/무효 경기 수를 구분하며, 라운드가 순차 생성되므로 전체 진행률로 표시하지 않는다. 모바일에서도 요약 4개는 2열을 유지하고 목록의 이름·보조 정보는 줄을 나눠 배치한다. 조회 전 수치는 대시로, 실패는 재시도 안내로 표시한다. 아래 신고 지표는 기존 level 30 이상에게 긴급, 미처리, 미배정, 24시간 이상 경과, 오늘 접수·처리, 가장 오래된 미처리를 보여주고 각 카드에서 필터와 선택 신고를 유지한 전체 신고 큐로 이동한다.
@@ -1652,8 +1652,8 @@ UI 수정 전:
 
 1. Buttons, icon buttons, segmented controls, selects, inputs, cards, panels, badges, and chips derive from shared primitive tokens in `tokens.css`.
 2. Page CSS may change layout, width, and contextual emphasis, but should not invent unrelated border radius, shadow, border, or primary color rules.
-3. Primary actions use orange. Secondary controls use surface plus border. Green is reserved for READY/success state.
-4. Raw page-specific button/card overrides should be migrated back to the shared primitive layer instead of adding new late overrides.
+3. Primary actions use orange. Secondary controls use surface plus border. Green is reserved for READY/success state. 강조 글자는 `--accent-text`, 상태 글자는 `--status-info-text`, `--status-success-text`, `--status-warning-text`, `--status-danger-text`를 사용한다. 버튼 면은 별도 `--action-primary-*`, `--action-danger-*` 토큰을 사용해 흰 글자 대비를 확보한다. 일반 글자는 4.5:1, 큰 글자는 3:1 이상을 기준으로 확인한다. 본문·보조 정보·모바일 하단 메뉴는 공용 본문·caption 크기와 굵기를 사용하고 12px 미만으로 축소하지 않는다.
+4. Raw page-specific button/card overrides should be migrated back to the shared primitive layer instead of adding new late overrides. 상태 배지 배경은 공용 `--ui-badge-*-bg`에서 상태색과 불투명 `--surface`를 혼합해 중첩 카드에서도 글자 대비를 유지한다.
 5. Hero title typography uses the shared `--hero-title-*` tokens. Home, Matches, Recruiting, room, profile, team, season, rulebook, and tournament heroes keep page layout differences but share title color, shadow, condensed font stack, line-height, and letter spacing.
 6. Page-specific cards and panels should be added to the shared primitive selector layer first. Only layout-specific size/gap/placement belongs in page CSS.
 7. Condensed hero title fonts use non-negative tracking through `--hero-title-letter-spacing`. English-heavy words like `RANKBALL` must not use tight negative spacing.
@@ -1662,7 +1662,7 @@ UI 수정 전:
 7-3. Match/recruiting summary center labels such as `VS` and fill counts stay about half the side label size.
 7-4. Default text uses `--font-body`. Functional panel titles and descriptions use the shared `.ui-panel-title` and `.ui-panel-copy` typography instead of browser-default `strong`/`span` weights. Sports display typography remains an explicit override only.
 7-4-0. `--font-body`는 프로젝트가 직접 제공하는 `Pretendard Variable` 웹폰트를 우선 사용해 Windows, macOS, iOS, Android에서 같은 기본 UI 글꼴을 유지한다. 시스템 폰트는 웹폰트 로드 실패 시에만 fallback으로 사용한다.
-7-4-1. 모든 hero glass surface는 화면별 재구현 없이 공용 `.ui-liquid-glass` 클래스와 `--ui-liquid-glass-*` 토큰을 사용한다. 이 클래스는 배경과 구분되는 반투명 면, `blur(10px)`, 약한 단일 그림자만 소유한다. 테두리, 굴절선, 가상 요소 광택, 다중 그림자는 사용하지 않는다. 글라스는 상위 hero의 `text-shadow`를 내부 자식까지 차단하며 주요 글자는 `--ui-liquid-glass-color`, 보조 문구는 `--ui-liquid-glass-muted-color`를 사용해 light/dark 모두 대비를 유지한다. 내부 구획은 별도 카드로 나누지 않고 `.ui-liquid-glass-segments`의 한 줄 기준선을 사용한다. primary CTA의 주황색 의미와 대표팀 이름의 `--sports-display-font`는 유지한다.
+7-4-1. hero 내부 정보 면은 화면별 재구현 없이 공용 `.ui-liquid-glass` 클래스와 `--ui-liquid-glass-*` 토큰을 사용한다. 이름은 기존 마크업 호환을 위해 유지하며 실제 표면은 불투명한 테마 중성 면이다. blur, 테두리, 굴절선, 가상 요소 광택, 그림자는 사용하지 않는다. 주요 글자는 `--ui-liquid-glass-color`, 보조 문구는 `--ui-liquid-glass-muted-color`를 사용한다. 글자색 상속은 공용 버튼과 그 자식을 제외해 버튼 variant의 전경색을 유지한다. 내부 구획은 별도 카드로 나누지 않고 `.ui-liquid-glass-segments`의 기준선을 사용한다. primary CTA의 주황색 의미와 대표팀 이름의 `--sports-display-font`는 유지한다.
 7-4-1-1. 공개 랜딩의 로고·레터는 별도 글래스나 text shadow를 사용하지 않는다. 배경 구도와 원본 브랜드 자산으로 대비를 확보한다.
 7-4-2. 공개 랜딩의 장문 `.landing-purpose` 박스와 로고 아래 기능 요약 문구는 표시하지 않는다. 개인정보처리방침·약관 링크는 공용 푸터에 둔다. 모바일은 배경을 `cover`로 확대하지 않고 뷰포트 높이 기준으로 축소해 선수의 몸이 보이되 로고·레터에 닿지 않게 오른쪽에 둔다.
 7-4-3. 경기 기록의 WIN·LOSS·DRAW 상태는 라이트·다크 모두 각각 `--ui-result-win-border`, `--ui-result-loss-border`, `--ui-result-draw-border`와 공용 `--ui-status-rail-*` 크기 토큰을 조합한 짧고 둥근 세로선으로 표시한다. 기록 행은 별도 면색·외곽선·결과별 배경색을 사용하지 않는다.
@@ -1769,7 +1769,7 @@ UI 수정 전:
 4. 경기와 매칭 hero는 데스크톱 `214px / 24px`, 모바일 `174px / 16px` 프레임을 함께 쓴다.
 5. 모바일 카드 배지는 잘라 숨기지 않고 줄바꿈하며, 전체폭 액션은 공용 버튼 높이를 쓴다.
 6. 팀 hero는 공통 압축 hero의 예외다. 데스크톱은 `min-height: clamp(430px, 46vw, 620px)` 세로형 한 열을 유지하고, 대표팀 보드를 팀 허브 제목 아래에 충분한 간격으로 둔다. 보드 너비는 공용 글라스 너비와 묶지 않고 팀 전용 최대 `720px`를 사용하며 모든 폼팩터에서 가용 폭을 넘지 않는다. 태블릿·모바일에서도 보드를 숨기지 않는다.
-7. 이미지 hero의 본문은 라이트·다크 테마 모두 사진 위에서 읽히는 공통 hero 복사 색과 그림자를 유지한다.
+7. 앱 이미지 hero의 본문은 사진 아래 단색 정보 면에 배치하고 라이트·다크 테마의 공용 hero 전경색을 사용한다. 사진 위 글자와 그림자로 대비를 보정하지 않는다.
 8. 경기방·시즌·대회 상세도 최상위 섹션 간격 토큰을 사용한다.
 9. 경기·매칭 hero 상황판 셀은 테마 대응 공용 control-group 표면을 사용한다.
 10. 방·대회 modal 외곽은 공용 room-modal 테두리, 배경, 그림자 토큰을 사용한다.
@@ -2105,7 +2105,7 @@ UI 수정 전:
 1. `구장 DB`는 `구장 검색`과 `수정 이력` 탭을 분리한다. 각 탭은 전체 DB 기준 필터·정렬 결과를 100행씩 표시하고 현재 행 수가 아니라 서버의 전체 결과 건수를 보여준다.
 2. 데이터 칼럼은 한 줄 말줄임 정렬 버튼과 바로 아래 높이를 줄인 필터 control을 함께 둔다. 두 header 행은 고정 높이와 일치하는 sticky offset을 사용해 겹치지 않게 한다. text/select/date filter는 `필터 적용` 또는 Enter 때만 서버를 호출하며 입력 중 매 글자마다 요청하지 않는다.
 3. 행은 31px 안팎의 한 줄 밀도를 유지한다. 긴 ID·이름·주소·사유는 말줄임하고 원문은 title로 확인한다. 좁은 화면에서는 정보를 여러 줄 카드로 키우지 않고 의도적인 가로 스크롤을 사용한다.
-4. `구장 DB`는 관리자 본문의 전용 실행 카드에서 열리는 거의 전체 화면 modal이다. modal은 명시적인 `창 닫기`를 제공하고 표 영역이 남은 viewport 높이를 모두 사용한다.
+4. `구장 DB`는 관리자 본문의 전용 실행 카드에서 열리는 거의 전체 화면 modal이다. modal은 명시적인 `창 닫기`를 제공하고 표 영역이 남은 viewport 높이를 모두 사용한다. 헤더와 좌측 고정 열은 불투명 `--ui-modal-bg`를 사용해 중첩 표면의 대비 저하와 스크롤 내용의 비침을 방지한다.
 5. 표는 세로·가로 스크롤을 자체 처리하고 하단 가로 scrollbar 공간을 항상 확보한다. `네이버지도`와 행별 미저장 셀 수를 표시하는 작업 열은 가장 왼쪽에 고정한다.
 6. 구장 검색의 기본 필터는 `수정횟수 0회`, 기본 정렬은 수정횟수 오름차순이다. 작업 열 다음에는 실제 검수 순서인 `시설명 → 명칭판정 → 거리(m) → 코트 → 실내외 → 시설유형 → 구장분류 → 바닥 → 코트형태 → 골대 → 이용방식 → 예약 → 유료 → 조명 → 공개`를 둔다. 표준 구장명과 나머지 근거·운영 정보는 그 뒤에 두고 ID·주소·위도·경도처럼 보통 변경하지 않는 식별·위치 값은 마지막에 둔다.
 7. 별도 행 수정 버튼을 두지 않는다. 허용된 셀을 한 번 누르면 즉시 input/select로 바꾸고 여러 행의 변경을 동시에 누적한다. enum·boolean은 dropdown으로 제한하고 연락처·공식 URL·예약 URL·운영 정보도 같은 표에서 편집한다. 변경된 셀과 자동 재계산된 표준명은 일괄 저장 전 danger 토큰의 붉은 배경으로 표시한다.
@@ -2299,7 +2299,7 @@ UI 수정 전:
 
 1. 같은 grid 행의 동일 역할 CTA·요약 칸은 내용 길이와 관계없이 같은 폭과 높이를 사용하고 부모 너비를 남기지 않는다.
 2. 랜딩의 주요 CTA는 영수증 체험·경기 기록 시작 2개로 제한하고 공용 action-pair 너비 안에서 균등하게 배치한다. 둘러보기는 같은 묶음 아래 텍스트 링크로 두며 별도 보조 버튼·통계 행을 추가하지 않는다.
-3. 같은 field 행의 input·select·button은 `--ui-button-height`를 사용해 control 상단과 하단을 맞춘다. native 날짜·시간 입력도 같은 높이와 부모 너비를 유지하며 넘치지 않아야 한다. helper 문구는 control 아래 독립 행으로 두며 control 높이에 포함하지 않는다.
+3. 같은 field 행의 input·select·button은 `--ui-button-height`를 사용해 control 상단과 하단을 맞춘다. native 날짜·시간 입력도 같은 높이와 부모 너비를 유지하며 넘치지 않아야 한다. helper 문구는 control 아래 독립 행으로 두며 control 높이에 포함하지 않는다. `arena-field-grid`의 직접 자식 action 행은 입력 하단에 맞추고, 지도 실행처럼 라벨과 버튼을 묶는 영역은 공용 `field-block`의 라벨 크기와 간격을 재사용한다.
 4. 매칭 생성의 2열 breakpoint는 제목·참가 방식, 경기 인원·일정, 날짜·시간을 각각 명시적인 같은 행에 배치한다. CSS 자동 배치로 한쪽 칸만 다음 행에 밀리지 않게 한다.
 5. desktop `985px`와 mobile `390px`, dark·light에서 가로 overflow와 같은 행의 width·height 편차를 검사한다. 내용 길이가 다른 정보 카드처럼 동일 역할이 아닌 요소는 강제로 같은 높이로 늘리지 않는다.
 
@@ -2376,6 +2376,7 @@ UI 수정 전:
 4. 배정 전 엠블럼은 오류 placeholder처럼 보이는 점선 원을 사용하지 않는다. 확정 티어와 같은 3D 금속 렌더 계열 안에서 중앙의 입체 금속 물음표로 미확정 상태를 구분한다. 배치 진행 수는 엠블럼 내부 장식이 아니라 공용 상태 라벨의 `현재/5` 문구로 표시한다.
 5. 배정 전 엠블럼은 공용 `tier-placement-v2.webp`를 사용한다. `tier-*-v5.webp`와 같은 정면 대칭 3D 금속·보석 렌더 계열을 유지하고, 중앙 농구공 대신 입체 금속 물음표로 미확정 상태를 구분한다. 프로필 hero, hover card, 경기 슬롯처럼 크기가 달라져도 같은 정사각 paint box와 실루엣을 유지하고 다크·라이트 테마에서 배경과 충분히 구분되어야 한다. 공용 방 모달의 비익명 선수 아바타 뒤에는 배치 완료 여부와 관계없이 `getTierEmblemSrc(mmr, ratings)`로 현재 티어 문장을 표시한다.
 6. 선수·팀 상세 hero의 티어 엠블럼은 모바일 너비에서 중앙 정렬한다. 배정 전 선수 hero는 엠블럼 캡션의 `배정 전 · 현재/5`만 표시하고 같은 티어·MMR 문구를 옆에 반복하지 않는다.
+6-1. 아이콘 업적 목록은 이름·달성 조건 검색, 분류, 달성 상태 필터를 제공한다. 필터는 공용 `form-grid` 간격을 사용하고 가용 너비에 맞춰 열 수를 정한다. 처음 24개를 표시하고 같은 화면의 `아이콘 더 보기`로 24개씩 추가한다. 필터 변경·초기화 시 표시 개수를 초기화한다. 전체·해금 수는 canonical 아이콘 카탈로그와 업적 상태 helper로 계산한다. 로딩·실패 시 해금 수는 대시로 표시하고 실패 시 재시도를 제공한다.
 
 ## 2026-07-28 공용 최근 경기 결과 행
 
@@ -2402,7 +2403,7 @@ UI 수정 전:
 
 1. 팀 메뉴 대표팀 hero에는 팀 엠블럼을 표시하지 않는다. 팀 상세 hero 오른쪽에도 팀 엠블럼을 반복하지 않고 큰 티어 엠블럼 하나만 표시한다.
 2. 팀 상세 hero의 제목 아래에는 팀 MMR과 팀장 배지만 남긴다. 별도 티어 배지와 작은 티어 엠블럼은 오른쪽 큰 티어 엠블럼과 중복되므로 표시하지 않는다.
-3. 팀 상세 hero의 티어 엠블럼 아래 티어명은 `--rb-yellow`, MMR은 `--rb-cream`을 사용해 배경 이미지 위에서도 밝은·어두운 테마 모두 같은 대비를 유지한다.
+3. 팀·선수 상세 hero의 티어 엠블럼 아래 티어명은 `--status-warning-text`, MMR은 `--rb-muted`를 사용해 단색 정보 면에서 밝은·어두운 테마 모두 대비를 유지한다.
 4. 팀 상세 hero의 즐겨찾기 버튼과 정보 배지는 공용 `.ui-liquid-glass`를 직접 사용한다. 별도 반투명 배경만 흉내 내는 화면 전용 글라스 규칙을 만들지 않는다.
 
 ## 2026-07-28 개인 프로필 hero 정렬
@@ -2938,18 +2939,18 @@ UI 수정 전:
 5. 일반 표면은 중성 회색과 여백으로 묶고 장식용 테두리, 중첩 카드, 유리 굴절, 과한 그림자를 만들지 않는다. 선은 표·목록·탭의 정렬과 구획을 설명할 때만 사용한다. 다크 배경은 완전한 검정에 가깝게 낮추지 않는다.
 6. folder tab과 segmented control의 활성 상태는 텍스트 색과 굵기로만 표시한다. 하단선, 위·좌·우 테두리를 이어 붙인 `∩`형 외곽선, 들뜬 위치 이동, 별도 pill·배경 면을 금지한다. 역할이 같은 전환 그룹은 컨테이너 전체 너비를 채우고 각 항목은 같은 너비를 사용한다. 라벨 최소 너비를 확보할 수 없는 화면에서만 가로 이동으로 보존한다. 입력 선택용 radiogroup·grid는 이 너비 규칙에서 제외한다.
 7. action은 기본적으로 내용 너비를 사용한다. 폼 제출이나 모바일의 단일 핵심 과업처럼 전체 폭이 동작 이해에 필요한 경우에만 block button을 사용한다.
-8. page hero 제목과 본문은 공용 hero 색상·크기 토큰을 사용한다. light·dark 모두 hero 컨테이너와 내부 정보 면에 그림자를 사용하지 않는다. 390px, 768px, 1024px, 1440px에서 이미지 crop과 문구 안전 영역을 확인한다. hero의 정보 위계는 유지하되 일반 본문 크기로 확장하지 않는다.
+8. page hero 제목과 본문은 공용 hero 색상·크기 토큰을 사용한다. light·dark 모두 hero 컨테이너와 내부 정보 면에 그림자를 사용하지 않는다. 320px, 390px, 768px, 1024px, 1080px, 1440px에서 이미지 crop, 글자 대비, 줄바꿈, control 높이·시작선·끝선과 상단 action 가림 여부를 확인한다. hero의 정보 위계는 유지하되 일반 본문 크기로 확장하지 않는다.
 9. 선택적 설명은 공용 `HelpDisclosure`의 `?`에 넣고 데스크톱 hover·focus, 터치 click으로 연다. 필수 조건, 오류, 위험, 현재 상태, 접근성 라벨은 항상 보이게 유지한다.
 10. 새 button·field·card·tab은 공용 primitive와 token을 사용한다. 화면별 색상·높이·radius·테두리를 하드코딩하지 않는다.
 11. 방 모달의 선수 slot 내부와 영수증 미리보기·Story·Feed 출력물은 이 밀도·표면 통일 범위에서 제외하고 전용 규칙을 유지한다.
 12. 데스크톱 side rail은 공용 `--ui-rail-*` 토큰을 사용한다. 본문과 분리되는 한 단계의 중성 표면만 허용하고 외곽선·블러·중첩 프로필 박스를 사용하지 않는다.
-13. `.ui-liquid-glass`는 이전 마크업과의 호환을 위한 이름으로만 남긴다. 실제 표면은 테마별 중성 면을 사용하고 blur, backdrop-filter, 굴절, 광택, 장식 테두리, 그림자를 사용하지 않는다. 홈·팀·일정·매칭 hero의 내부 정보 면은 공용 `--ui-hero-information-surface-bg`만 사용해 배경과 구분되는 낮은 투명도를 유지한다. 주요 글자는 `--ui-liquid-glass-color`, 보조 문구는 `--ui-liquid-glass-muted-color`를 사용해 light/dark 모두 대비를 유지한다. 일정·매칭 hero의 현황 숫자는 같은 `--sports-display-font`를 사용하고 숫자·라벨 글자는 완전 불투명으로 표시한다.
+13. `.ui-liquid-glass`는 이전 마크업과의 호환을 위한 이름으로만 남긴다. 실제 표면은 테마별 중성 면을 사용하고 blur, backdrop-filter, 굴절, 광택, 장식 테두리, 그림자를 사용하지 않는다. 홈·팀·일정·매칭 hero의 내부 정보 면은 공용 `--ui-hero-information-surface-bg`만 사용해 불투명한 중성 면을 유지한다. 주요 글자는 `--ui-liquid-glass-color`, 보조 문구는 `--ui-liquid-glass-muted-color`를 사용해 light/dark 모두 대비를 유지한다. 일정·매칭 hero의 현황 숫자는 같은 `--sports-display-font`를 사용하고 숫자·라벨 글자는 완전 불투명으로 표시한다.
 14. 승패·무승부 기록 행은 공용 `--ui-result-win-bg`, `--ui-result-loss-bg`, `--ui-result-draw-bg`의 옅은 파스텔 면과 `--ui-status-rail-*`의 짧고 둥근 세로 상태선을 함께 사용한다. 화면별 상태 면색과 선 크기를 만들지 않는다.
 15. 경기 목록 요약의 팀명은 말줄임 없이 두 줄까지 줄바꿈하되 요소 높이는 실제 줄 수만 차지한다. 팀명과 날짜·모드·장소 정보 사이에는 추가 빈 줄을 만들지 않는다. 카드 밀도와 최소 높이는 바깥 행의 `--ui-compact-*` 토큰이 소유하며, 영역을 완전히 넘는 이름만 두 줄 상한 안에서 자른다.
 16. 홈 안내 배너, 처리할 일, 알림, 지역 랭킹의 반복 행은 내부 면색·외곽선·상태선 없이 투명 행과 행 사이 `--ui-divider-subtle` 구획선으로 통일한다. 홈 안내 배너의 마지막 진입 링크는 로그인 여부와 관계없이 마지막 grid 열에 배치한다. 홈 hero의 단색 상황판과 우측 rail의 단일 중성 바탕은 이 규칙에서 제외한다.
 17. `Card`, `Button`, `Badge`, `.ui-folder-tabs`, `.ui-segmented-control`, `.ui-page-hero`, `ModalShell`이 애플리케이션의 형태를 소유한다. 공통 시각 규칙은 `tokens.css`, control·modal은 `primitives/ui-controls.css`, 콘텐츠·hero·인증 배치는 `primitives/ui-content-layout.css`에 둔다. 페이지·기능별 CSS는 배치와 기능 상태만 정의하며 별도 최종 덮어쓰기 파일과 메뉴별 복제 표면 규칙을 만들지 않는다.
 18. 일반 `.section-card`는 면색·외곽선·그림자 없이 위쪽 구획선과 여백만 사용한다. 반복 정보 행도 면색 대신 간격, `--ui-divider-subtle` 구획선, 짧은 상태 rail로 구분한다. 방 모달 선수 slot 내부, 영수증 미리보기·Story·Feed 출력물, hero의 단색 상황판, 로그인의 단일 인증 면은 전용 규칙을 유지한다.
-19. dark 배경·표면은 공용 색상 토큰만 사용하고 완전한 검정 대신 중성 회색 단계로 구분한다. 모든 이미지 hero는 gradient·overlay·가상 요소 mask·컨테이너 그림자를 사용하지 않고 원본 이미지를 노출한다. 이미지와 글자의 대비는 `--ui-image-hero-title-*`, `--ui-image-hero-copy-*` 공용 토큰으로만 보정한다.
+19. dark 배경·표면은 공용 색상 토큰만 사용하고 완전한 검정 대신 중성 회색 단계로 구분한다. 모든 이미지 hero는 gradient·overlay·mask·컨테이너 그림자 없이 원본 이미지를 표시한다. 앱 hero는 공용 `::before` 사진 띠와 단색 본문을 분리해 대비를 확보한다. 공개 랜딩은 전용 이미지 배치와 글자 안전 영역을 유지한다.
 20. 랜딩·로그인은 앱 내부와 같은 control 높이·button 내용 너비·본문 크기를 사용한다. 랜딩의 비로그인 둘러보기 경로는 항상 유지하고, 인증 여부에 따라 제거하거나 전체 폭 핵심 action으로 바꾸지 않는다.
 21. 일반 dialog는 공용 `ModalShell`을 사용하고 면색·테두리·radius·그림자를 개별 모달 CSS에서 정의하지 않는다. 방 dialog는 같은 셸에 `.ui-room-modal`만 추가한다. 방 slot 내부, 영수증 미리보기·출력물, 전체 화면 경기 시계만 기능상 예외다.
 22. page hero 제목은 `--hero-title-size`, 공개 랜딩 첫 제목은 전용 `--ui-landing-title-size`와 모바일 variant를 사용하고, 문서·인증·가이드·카드 대표 제목은 `.ui-content-title`과 `--ui-content-title-size`를 사용한다. 개별 화면에서 큰 제목 크기를 다시 지정하지 않으며, 목록 안의 정보 제목은 section title 단계 이하를 사용한다.
@@ -2980,7 +2981,7 @@ UI 수정 전:
 15. 설정 알림 checkbox 행은 첫 행과 같은 왼쪽 기준선에 맞춘다. 연결된 로그인은 데스크톱 한 rail 너비로 가운데 배치하고 provider action은 설정의 공용 action 폭을 사용한다.
 16. 프로필 링크 복사 control은 공용 control 배경을 사용한다. 프로필 보조 section은 데스크톱에서 양 rail을 균형 있게 쓰되 각 rail 내부 section은 한 열로 배치한다. 프로필 아이콘 카드의 action 묶음은 자기 카드의 가용 폭 안에서 줄바꿈하며 인접 rail을 침범하지 않는다.
 17. 커뮤니티 모바일 목록의 추천 수·날짜는 제목보다 두 단계 작은 메타 크기를 사용하고 제목과 메타 사이 간격은 기존 값의 70%로 줄인다.
-18. 영수증 편집 section은 공용 page 간격과 구획선을 사용한다. 편집 input·select와 지도 선택 action은 공용 control 높이를 사용한다. 쿼터 점수 입력은 `A`, `B` placeholder와 다른 입력과 같은 명시적 테두리를 사용하며, 5열로 고정하지 않고 가용 너비에 맞춰 열 수를 정한다. `560px` 이하에서는 장소 입력과 지도 선택 action을 한 열로 쌓는다. 영수증 fieldset의 선·radius·legend 색은 `--ui-fieldset-*` 토큰을 canonical owner로 삼고 일정의 관계·유형 filter, 설정, 방 만들기·기록하기, 경기방 편집 구획에 재사용한다. 일정에서는 화면 제목을 실제 legend로 배치해 상단선을 끊는다. 설정 화면의 모든 section card는 설정 전용 `settings-fieldset-card` semantic variant와 실제 `<fieldset>/<legend>`로 이 legend형 라운드 외곽선을 재사용하고, 공용 surface·info surface·category surface 초기화 대상에서는 제외한다. 설정과 workflow legend는 `제목 → 보조글` 순서의 한 줄만 사용한다. 제목은 `--ui-fieldset-legend-title-color`의 주황색, 보조글은 `--ui-fieldset-legend-support-color`의 테마 전경색을 사용한다. 제목은 축소·잘림 없이 온전히 보존한다. 보조글만 남은 폭을 사용하고 좁은 화면에서도 줄바꿈하거나 말줄임표를 붙이지 않으며 넘는 부분은 hard clip한다. 카드 단위 아이콘·건수·연결 상태 badge는 legend 바로 다음의 공용 `settings-fieldset-status-row`에 두고 fieldset 안쪽 우측 상단에 정렬한다. 내부 panel에만 해당하는 상태는 해당 panel 안에 유지한다. 저장 상태·action은 별도 행으로 분리하고, 데스크톱에서는 상태와 action 열을 고정해 `불러오는 중` 같은 문구가 버튼을 밀지 않으며 모바일에서는 세로 배치한다. legend는 음수 margin·transform·absolute positioning 없이 native fieldset 흐름이 높이를 예약하게 해 앞 section과 다음 입력·체크 컴포넌트를 덮지 않는다. 모바일 checkbox는 모든 행의 시작선과 행 간격을 동일하게 유지한다. 세부 설정 이동 action은 별도 링크 외형을 만들지 않고 공용 `Button` 높이·폰트를 사용한다. 연결 로그인과 계정 action은 `content-grid`의 한 rail card 안에 두고 provider·로그아웃·탈퇴 action은 각 묶음에서 같은 너비를 사용한다. 방 만들기·기록하기와 경기방의 결과 입력·구장 리뷰처럼 여러 입력을 한 주제로 묶는 편집 구획은 공용 `workflow-fieldset` semantic variant와 실제 `<fieldset>/<legend>`를 사용한다. 상태 badge는 `workflow-fieldset-status-row`로 본문 우측 상단에 분리한다. 읽기 전용 최종 확인·점수 요약·목록·단일 action 카드는 일반 Card를 유지한다.
+18. 영수증 편집 section은 공용 page 간격과 구획선을 사용한다. 편집 input·select와 지도 선택 action은 공용 control 높이를 사용한다. 쿼터 점수 입력은 `A`, `B` placeholder와 다른 입력과 같은 명시적 테두리를 사용하며, 5열로 고정하지 않고 가용 너비에 맞춰 열 수를 정한다. `560px` 이하에서는 장소 입력과 지도 선택 action을 한 열로 쌓는다. 영수증 fieldset의 선·radius·legend 색은 `--ui-fieldset-*` 토큰을 canonical owner로 삼고 일정의 관계·유형 filter, 설정, 방 만들기·기록하기, 경기방 편집 구획에 재사용한다. 일정에서는 화면 제목을 실제 legend로 배치해 상단선을 끊는다. 설정 화면의 모든 section card는 설정 전용 `settings-fieldset-card` semantic variant와 실제 `<fieldset>/<legend>`로 이 legend형 라운드 외곽선을 재사용하고, 공용 surface·info surface·category surface 초기화 대상에서는 제외한다. 설정과 workflow legend는 `제목 → 보조글` 순서를 유지하고 가용 너비가 부족하면 줄바꿈한다. 제목은 `--ui-fieldset-legend-title-color`의 주황색, 보조글은 `--ui-fieldset-legend-support-color`의 테마 전경색을 사용한다. 제목과 보조글 모두 축소·잘림·말줄임 없이 온전히 표시하며 긴 단어도 가용 폭 안에서 줄바꿈한다. 카드 단위 아이콘·건수·연결 상태 badge는 legend 바로 다음의 공용 `settings-fieldset-status-row`에 두고 fieldset 안쪽 우측 상단에 정렬한다. 내부 panel에만 해당하는 상태는 해당 panel 안에 유지한다. 저장 상태·action은 별도 행으로 분리하고, 데스크톱에서는 상태와 action 열을 고정해 `불러오는 중` 같은 문구가 버튼을 밀지 않으며 모바일에서는 세로 배치한다. legend는 음수 margin·transform·absolute positioning 없이 native fieldset 흐름이 높이를 예약하게 해 앞 section과 다음 입력·체크 컴포넌트를 덮지 않는다. 모바일 checkbox는 모든 행의 시작선과 행 간격을 동일하게 유지한다. 세부 설정 이동 action은 별도 링크 외형을 만들지 않고 공용 `Button` 높이·폰트를 사용한다. 연결 로그인과 계정 action은 `content-grid`의 한 rail card 안에 두고 provider·로그아웃·탈퇴 action은 각 묶음에서 같은 너비를 사용한다. 방 만들기·기록하기와 경기방의 결과 입력·구장 리뷰처럼 여러 입력을 한 주제로 묶는 편집 구획은 공용 `workflow-fieldset` semantic variant와 실제 `<fieldset>/<legend>`를 사용한다. 상태 badge는 `workflow-fieldset-status-row`로 본문 우측 상단에 분리한다. 읽기 전용 최종 확인·점수 요약·목록·단일 action 카드는 일반 Card를 유지한다.
 19. 매칭의 경기 유형은 고정 선택지 3개인 `전체 / 정규전 / 친선전` 공용 segmented button으로 표시한다. 경기 방식은 선택지가 4개를 넘으므로 지역·날짜 filter와 같은 한 행의 select로 표시한다. 경기 방식 filter는 `1v1`, `2v2`, 일반 `3v3`, `3x3`, `5v5`를 제공하며 `3x3`은 `3v3` 인원과 FIBA 3x3 규칙을 함께 가진 경기만 실제로 분리한다. 같은 경기 방식 filter를 제공하는 기록 화면도 이 공용 목록과 판별 helper를 사용한다. 매칭 hero는 방을 선택해 경기 정보·참가 방법을 확인하도록 안내하고 현황 라벨은 `전체 / 정규전 / 친선전`으로 표시한다. 검색 조건 펼침 버튼은 아이콘과 `조건 바꾸기 / 조건 접기` 문구를 함께 표시한다. 빈 결과에는 `조건 바꾸기`와 `방 만들기`를 제공한다. 조건 바꾸기는 선택값을 유지한 채 조건 영역을 펼치고 그곳으로 키보드 초점을 옮긴다.
 
 ## 2026-08-18 외부 알림·연락 UI
@@ -2990,4 +2991,4 @@ UI 수정 전:
 3. 데스크톱과 모바일 모두 공용 상단의 종 아이콘에서 알림으로 진입한다. 읽지 않은 수는 `99+`를 상한으로 표시한다. 알림 목록은 최초 20건과 `더 보기` cursor pagination을 사용한다.
 4. 연락처 사용과 Kakao 오픈프로필 URL은 설정에서 기본 비활성화한다. 공개 프로필, 일반 프로필 상세, 검색 결과, 선수 slot에는 연락 action이나 URL을 표시하지 않는다.
 5. 활성 모집방·경기 컨텍스트가 있는 선수 프로필 카드에서만 `연락 방법 확인` action을 표시한다. click 뒤 서버가 양쪽 참가·차단·공개 설정을 확인해 반환한 Kakao URL만 새 탭으로 열며, Discord 연락은 지원하거나 대체 표시하지 않는다.
-6. 새 화면은 공용 `Card`, `Button`, checkbox, segmented control, 색상·간격·control 높이 토큰을 사용한다. 알림 경로 4개 모드는 filter text tab이 아닌 전체 폭 `radiogroup` segmented button으로 표시한다. 모바일에서는 모드·상태·action을 겹치지 않게 세로 배치한다.
+6. 새 화면은 공용 `Card`, `Button`, checkbox, segmented control, 색상·간격·control 높이 토큰을 사용한다. 알림 경로 4개 모드는 filter text tab이 아닌 전체 폭 `radiogroup` segmented button으로 표시한다. 방 생성의 입력 선택 그룹과 함께 공용 `.ui-choice-grid`를 사용하고 `--ui-choice-min-inline-size` 기준의 자동 열 배치로 긴 라벨과 좁은 화면에 대응한다. 모바일에서는 모드·상태·action을 겹치지 않게 세로 배치한다.

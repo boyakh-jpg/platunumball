@@ -28,8 +28,11 @@ html[data-theme] .app-main :is(.ui-liquid-glass, .page-header > .ui-button, .ui-
 }
 
 html[data-theme] .app-main .ui-liquid-glass :where(*) {
-  color: inherit;
   text-shadow: none;
+}
+
+html[data-theme] .app-main .ui-liquid-glass :where(:not(.ui-button, .ui-button *)) {
+  color: inherit;
 }
 
 html[data-theme] .app-main .ui-liquid-glass .ui-button.ui-button-secondary {
@@ -239,7 +242,7 @@ html[data-theme] .ui-button.ui-button-secondary:active:not(:disabled) {
 .ui-folder-tabs button:is([aria-selected="true"], [aria-checked="true"]) {
   border-color: transparent;
   background: transparent;
-  color: var(--rb-orange-2);
+  color: var(--accent-text);
   font-weight: var(--font-weight-title);
   box-shadow: none;
   transform: none;
@@ -263,6 +266,20 @@ html[data-theme] .ui-button.ui-button-text:hover:not(:disabled) {
   background: transparent;
   text-decoration: underline;
   text-underline-offset: var(--space-2);
+}
+
+.ui-segmented-control.ui-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--ui-choice-min-inline-size)), 1fr));
+  width: 100%;
+  max-width: 100%;
+}
+
+.ui-choice-grid > button {
+  min-width: 0;
+  height: auto;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 html[data-theme] .app-main .ui-segmented-control:not(.create-choice-segments):not([role="radiogroup"]):not(.ui-filter-row) {
@@ -293,7 +310,7 @@ html[data-theme] .app-main .ui-segmented-control:not(.create-choice-segments):no
 }
 
 html[data-theme] .app-main .ui-segmented-control:not(.create-choice-segments):not([role="radiogroup"]) > button:is(.active, [aria-current="page"], [aria-selected="true"]) {
-  color: var(--rb-orange-2);
+  color: var(--accent-text);
   background: transparent;
   font-weight: var(--font-weight-title);
   box-shadow: none;
@@ -328,14 +345,14 @@ html[data-theme] .app-main .ui-segmented-control:not(.create-choice-segments):no
 .ui-button.ui-button-danger,
 .ui-button.danger-button {
   color: var(--ui-button-color-active);
-  background: var(--danger);
+  background: var(--action-danger-bg);
   border-color: transparent;
 }
 
 .ui-button.ui-button-danger:hover:not(:disabled),
 .ui-button.danger-button:hover:not(:disabled) {
   color: var(--ui-button-color-active);
-  background: color-mix(in srgb, var(--danger) 84%, #000);
+  background: var(--action-danger-hover-bg);
   border-color: transparent;
 }
 
@@ -388,7 +405,7 @@ html[data-theme] .app-main .ui-segmented-control:not(.create-choice-segments):no
 .ui-numeric-stepper > button:hover:not(:disabled) {
   border-color: var(--ui-selectable-hover-border);
   background: var(--ui-selectable-hover-bg);
-  color: var(--rb-orange);
+  color: var(--accent-text);
 }
 
 .ui-numeric-stepper > :is(button, input):focus-visible {
@@ -422,25 +439,25 @@ html[data-theme] .app-main .ui-segmented-control:not(.create-choice-segments):no
 }
 
 .ui-badge.ui-badge-green {
-  color: var(--rb-green);
+  color: var(--status-success-text);
   background: var(--ui-badge-green-bg);
   border-color: var(--ui-badge-green-border);
 }
 
 .ui-badge.ui-badge-gold {
-  color: var(--rb-gold);
+  color: var(--status-warning-text);
   background: var(--ui-badge-gold-bg);
   border-color: var(--ui-badge-gold-border);
 }
 
 .ui-badge.ui-badge-blue {
-  color: var(--rb-blue);
+  color: var(--status-info-text);
   background: var(--ui-badge-blue-bg);
   border-color: var(--ui-badge-blue-border);
 }
 
 .ui-badge.ui-badge-orange {
-  color: var(--rb-orange);
+  color: var(--accent-text);
   background: var(--ui-badge-orange-bg);
   border-color: var(--ui-badge-orange-border);
 }

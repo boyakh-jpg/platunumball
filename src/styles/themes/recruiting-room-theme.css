@@ -27,7 +27,7 @@ html[data-theme="light"] .arena-room-player-slot b {
 }
 
 html[data-theme="light"] .arena-room-player-slot em {
-  color: var(--rb-gold);
+  color: var(--status-warning-text);
 }
 
 /* 2026-07-01 final room slot override: transparent avatar, no slot border, live party line. */
@@ -160,7 +160,7 @@ html[data-theme="light"] .arena-side-roster .arena-room-player-slot:not(.empty) 
 }
 
 .arena-filter-count {
-  color: var(--rb-gold);
+  color: var(--status-warning-text);
   font-size: 12px;
   font-weight: 950;
 }
@@ -195,12 +195,12 @@ html[data-theme="light"] .arena-side-roster .arena-room-player-slot:not(.empty) 
 }
 
 .arena-lobby-title h2 {
-  color: var(--rb-orange);
+  color: var(--accent-text);
 }
 
 .arena-lobby-title > span,
 .arena-lobby-team-head span {
-  color: var(--rb-orange-2);
+  color: var(--accent-text);
   font-size: 11px;
   font-weight: 950;
   text-transform: uppercase;
@@ -257,11 +257,7 @@ html[data-theme="light"] .arena-side-roster .arena-room-player-slot:not(.empty) 
 }
 
 .arena-lobby-score-core i {
-  color: var(--rb-orange-2);
-}
-
-.arena-lobby-score-core span {
-  color: var(--rb-green);
+  color: var(--accent-text);
 }
 
 .arena-room-slot-row,
@@ -311,7 +307,7 @@ html[data-theme="light"] .arena-side-roster .arena-room-player-slot:not(.empty) 
 }
 
 .arena-room-player-slot.empty.invite {
-  color: var(--rb-gold);
+  color: var(--status-warning-text);
 }
 
 .arena-room-player-slot .avatar {
@@ -350,13 +346,13 @@ html[data-theme="light"] .arena-side-roster .arena-room-player-slot:not(.empty) 
   min-height: 18px;
   border-radius: 999px;
   background: rgba(116, 169, 255, 0.16);
-  color: var(--rb-blue);
+  color: var(--status-info-text);
   font-size: 9.5px;
   font-weight: 950;
 }
 
 .arena-room-player-slot em {
-  color: var(--rb-gold);
+  color: var(--status-warning-text);
   font-size: 10px;
   font-weight: 950;
 }

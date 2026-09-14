@@ -43,7 +43,7 @@
 }
 
 .gm-room-topline > span {
-  color: var(--gold);
+  color: var(--status-warning-text);
   font-size: 0.86rem;
   font-weight: 950;
 }
@@ -55,7 +55,7 @@
 }
 
 .gm-room-title > .eyebrow {
-  color: var(--gold);
+  color: var(--status-warning-text);
   font-size: 0.82rem;
   font-weight: 950;
   text-transform: uppercase;
@@ -96,7 +96,7 @@
 }
 
 .gm-team-head span {
-  color: var(--gold);
+  color: var(--status-warning-text);
   font-size: 0.72rem;
   font-weight: 950;
   text-transform: uppercase;
@@ -171,7 +171,7 @@
 .gm-room-slot-crown.captain {
   border-color: rgba(118, 169, 255, 0.45);
   background: rgba(118, 169, 255, 0.22);
-  color: var(--blue);
+  color: var(--status-info-text);
 }
 
 .gm-player-slot .avatar {
@@ -200,7 +200,7 @@
   justify-content: center;
   border-radius: 999px;
   background: rgba(116, 169, 255, 0.14);
-  color: var(--blue);
+  color: var(--status-info-text);
   font-size: 0.58rem;
   font-weight: 950;
   padding: 2px 6px;
@@ -209,7 +209,7 @@
 .gm-player-slot em {
   grid-row: 4;
   min-height: 16px;
-  color: var(--gold);
+  color: var(--status-warning-text);
   font-size: 0.62rem;
   font-style: normal;
   font-weight: 950;
@@ -229,7 +229,7 @@
 }
 
 .gm-reserve-line > strong {
-  color: var(--gold);
+  color: var(--status-warning-text);
   font-size: 0.78rem;
   font-weight: 950;
 }
@@ -268,14 +268,14 @@
 }
 
 .gm-score-core i {
-  color: var(--gold);
+  color: var(--status-warning-text);
   font-size: 1.25rem;
   font-style: normal;
   font-weight: 950;
 }
 
 .gm-score-core span {
-  color: var(--green);
+  color: var(--status-success-text);
   font-size: 0.8rem;
   font-weight: 950;
 }
@@ -296,7 +296,7 @@
 }
 
 .gm-room-actions svg {
-  color: var(--rb-orange);
+  color: var(--accent-text);
   flex: 0 0 auto;
 }
 
@@ -322,7 +322,7 @@
 }
 
 .gm-next-action-card span {
-  color: var(--gold);
+  color: var(--status-warning-text);
   font-size: 0.72rem;
   font-weight: 950;
 }

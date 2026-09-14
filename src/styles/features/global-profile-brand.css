@@ -101,7 +101,7 @@
 .rank-home .match-focus-card .match-card .score-line strong {
   display: block;
   min-width: 0;
-  color: var(--rb-orange-2);
+  color: var(--accent-text);
   line-height: 0.92;
 }
 .rank-home .match-focus-card .match-card .score-line span,

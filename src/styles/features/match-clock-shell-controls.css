@@ -33,9 +33,9 @@
 }
 
 .ui-match-clock-eyebrow {
-  color: var(--rb-orange);
-  font-size: 0.72rem;
-  font-weight: 900;
+  color: var(--accent-text);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-control);
   letter-spacing: 0.06em;
 }
 
@@ -173,9 +173,9 @@
   top: 10px;
   left: 12px;
   z-index: 2;
-  color: var(--rb-orange);
-  font-size: 0.68rem;
-  font-weight: 900;
+  color: var(--accent-text);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-control);
   letter-spacing: 0.08em;
   line-height: 1;
   pointer-events: none;
@@ -203,8 +203,8 @@
 }
 
 .ui-match-clock-attendance-qr span {
-  font-size: 0.72rem;
-  font-weight: 900;
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-control);
   line-height: 1.1;
 }
 
@@ -361,7 +361,7 @@
 
 .ui-match-score-control-error {
   margin: 0;
-  color: var(--rb-danger);
+  color: var(--status-danger-text);
   font-size: 0.86rem;
 }
 
@@ -374,9 +374,9 @@
 
 .ui-match-clock-main-time-label {
   justify-self: center;
-  color: var(--rb-orange);
-  font-size: 0.72rem;
-  font-weight: 900;
+  color: var(--accent-text);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-control);
   letter-spacing: 0.08em;
   line-height: 1;
   white-space: nowrap;
@@ -384,7 +384,7 @@
 
 .ui-match-clock-period {
   justify-self: center;
-  color: var(--rb-orange);
+  color: var(--accent-text);
   font-family: var(--sports-display-font);
   font-size: clamp(1.2rem, 2.2cqi, 1.7rem);
   line-height: 0.9;
@@ -434,7 +434,7 @@
 }
 
 .ui-match-shot-clock-label {
-  color: var(--rb-orange);
+  color: var(--accent-text);
   font-size: 0.76rem;
   font-weight: 900;
   letter-spacing: 0.08em;
@@ -457,8 +457,8 @@
   padding: 5px 8px;
   overflow: hidden;
   color: var(--ui-button-color-active);
-  font-size: 0.68rem;
-  font-weight: 900;
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-control);
   line-height: 1;
   text-overflow: ellipsis;
   white-space: nowrap;

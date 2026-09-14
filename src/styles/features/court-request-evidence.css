@@ -68,7 +68,7 @@
 .settings-court-step.is-current .settings-court-step-number,
 .settings-court-step.is-current .settings-court-step-head em {
   border-color: var(--rb-orange);
-  color: var(--rb-orange-2);
+  color: var(--accent-text);
 }
 
 .settings-court-step.is-complete .settings-court-step-number {
@@ -78,7 +78,7 @@
 }
 
 .settings-court-step.is-complete .settings-court-step-head em {
-  color: var(--green);
+  color: var(--status-success-text);
 }
 
 .settings-court-step > small,
