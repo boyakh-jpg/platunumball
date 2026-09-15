@@ -53,15 +53,21 @@ export function getActiveMyNavigationPath(pathname = "") {
 }
 
 export function getTeamDetailNavigation(team) {
-  return { to: `${APP_TEAMS_PATH}/${team.id}`, state: { teamPreview: team } };
+  return { to: getEntityDetailPath("teams", team.id), state: { teamPreview: team } };
 }
 
-export function getAdminDashboardDetailPath(kind, id) {
+export function getEntityDetailPath(kind, id) {
   const encodedId = encodeURIComponent(id);
   if (kind === "members") return `/app/players/${encodedId}`;
   if (kind === "teams") return `${APP_TEAMS_PATH}/${encodedId}`;
   if (kind === "tournaments") return `/app/tournaments/${encodedId}`;
   return `/app/matches?match=${encodedId}`;
+}
+
+export const getAdminDashboardDetailPath = getEntityDetailPath;
+
+export function getRecruitingRoomPath(id = "") {
+  return id ? `${APP_MATCHING_PATH}?post=${encodeURIComponent(id)}` : APP_MATCHING_PATH;
 }
 
 export function getProfileNavigationItems({ adminLevel = 0, guestPreview = false } = {}) {

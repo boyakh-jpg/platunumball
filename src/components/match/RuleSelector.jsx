@@ -29,7 +29,7 @@ function getMatchingPresetId(options, rules) {
 export default function RuleSelector({ draft, onChange }) {
   const rules = normalizeMatchRules(draft, { mode: draft.mode });
   const inputValidation = getMatchRuleInputValidation(draft, { mode: draft.mode });
-  const clockPresetOptions = getMatchClockPresetOptions(draft.mode);
+  const clockPresetOptions = getMatchClockPresetOptions(draft.mode, rules);
   const [selectedPresetId, setSelectedPresetId] = useState(() => getMatchingPresetId(clockPresetOptions, rules) || "custom");
   const matchingPresetId = getMatchingPresetId(clockPresetOptions, rules);
   const activePresetId = selectedPresetId === "custom" ? "custom" : matchingPresetId || "custom";
@@ -37,8 +37,8 @@ export default function RuleSelector({ draft, onChange }) {
   const [presetDetailsOpen, setPresetDetailsOpen] = useState(false);
   const ruleFieldsId = useId();
   const ruleFieldsOpen = customRules || !inputValidation.valid || presetDetailsOpen;
-  const updateRules = (patch, { preserveRuleSet = false } = {}) => {
-    const next = { ...rules, ...patch, ...(!preserveRuleSet ? { ruleSet: "standard" } : {}) };
+  const updateRules = (patch) => {
+    const next = { ...rules, ...patch };
     const payload = getMatchRulesPayload(next, { mode: draft.mode });
     const preservedRawNumbers = Object.fromEntries(
       MATCH_RULE_NUMBER_FIELDS
@@ -47,7 +47,7 @@ export default function RuleSelector({ draft, onChange }) {
     );
     onChange({ ...payload, ...preservedRawNumbers });
   };
-  const updateNumber = (key, value) => onChange({ [key]: value, ruleSet: "standard" });
+  const updateNumber = (key, value) => onChange({ [key]: value, ruleSet: rules.ruleSet });
   const numberValue = (key) => (
     Object.prototype.hasOwnProperty.call(draft, key) ? draft[key] : rules[key]
   );
@@ -68,7 +68,7 @@ export default function RuleSelector({ draft, onChange }) {
               onClick={() => {
                 setSelectedPresetId(option.id);
                 setPresetDetailsOpen(false);
-                updateRules(option.patch, { preserveRuleSet: true });
+                updateRules(option.patch);
               }}
             >
               {option.label}

@@ -1,10 +1,12 @@
 import { HOST_JOIN_MODE_OPTIONS } from "../../lib/matchCreationPolicyOptions.js";
+import { getMatchFormatChangePatch } from "../../lib/matchCreationPolicies.js";
+import { MATCH_FORMAT_FILTERS, getMatchFormatLabel, getMatchModeForFormat } from "../../../shared/lib/matchFormats.js";
 
 export function CreateMatchDetailsSection({ context }) {
   const {
-    Card, MATCH_MODES, MatchRosterPolicyFields, NumericStepper, SOLO_RECORD_MODES,
+    Card, MatchRosterPolicyFields, NumericStepper, SOLO_RECORD_MODES,
     SearchPicker, app, canCreateTeamRoom, challengeModeIds, draft, hasTeamChallenge,
-    getDefaultCreateTitle, getDefaultTournamentTitle, getMatchFormationMode, getMatchModeChangePatch, getSoloRecordUserSearchText, isDefaultCreateTitle, isDefaultTournamentTitle,
+    getDefaultCreateTitle, getDefaultTournamentTitle, getMatchFormationMode, getSoloRecordUserSearchText, isDefaultCreateTitle, isDefaultTournamentTitle,
     isInstantRoom, isMatchRecordRoom, isPickupMatch, isPublicRoom, isSoloRecord, isStandardCreateWizard, isTournamentRoom,
     maxScheduleDate, minSoloRecordDate, modeManuallyChangedRef, normalizeSoloRosterSide, practiceMode, recordComposition, recordEntryMode,
     remoteDirectoryEnabled, renderSoloRecordUserSearchItem, scheduleMaxDate,
@@ -27,23 +29,31 @@ export function CreateMatchDetailsSection({ context }) {
     });
   };
 
-  const selectMode = (mode) => {
+  const selectedFormat = getMatchFormatLabel(draft.mode, draft);
+  const formatOptions = MATCH_FORMAT_FILTERS.filter((option) => !isSoloRecord || SOLO_RECORD_MODES.some(({ id }) => id === getMatchModeForFormat(option.id)));
+  const selectMode = (format) => {
+    const mode = getMatchModeForFormat(format);
+    const formatPatch = getMatchFormatChangePatch(draft, format);
     modeManuallyChangedRef.current = true;
     if (hasTeamChallenge && !challengeModeIds.has(mode)) return;
+    if (draft.mode === mode) {
+      update(formatPatch);
+      return;
+    }
     if (isTournamentRoom) {
       update({
-        ...getMatchModeChangePatch(draft, mode),
+        ...formatPatch,
         title: isDefaultCreateTitle(draft.title) ? getDefaultCreateTitle(mode) : draft.title,
       });
       return;
     }
     if (isSoloRecord) {
-      update({ mode });
+      update(formatPatch);
       return;
     }
     if (isMatchRecordRoom) {
       update({
-        ...getMatchModeChangePatch(draft, mode),
+        ...formatPatch,
         hostJoinMode: recordComposition === "team" ? "team" : "player",
         teamOnly: recordComposition === "team",
         teamAId: undefined,
@@ -59,7 +69,7 @@ export function CreateMatchDetailsSection({ context }) {
     const hostJoinMode = hasTeamChallenge ? "team" : getMatchFormationMode(draft) === "pickup" || mode === "1v1" || !canCreateTeamRoom ? "player" : draft.hostJoinMode;
     const nextIsTeamRoom = !isTournamentRoom && hostJoinMode === "team";
     update({
-      ...getMatchModeChangePatch(draft, mode),
+      ...formatPatch,
       hostJoinMode,
       teamOnly: nextIsTeamRoom,
       teamAId: hasTeamChallenge ? draft.teamAId : undefined,
@@ -139,22 +149,23 @@ export function CreateMatchDetailsSection({ context }) {
               </div>
             ) : null}
             <div className="field-block create-capacity-field">
-              <span className="field-label">경기 인원</span>
-              <div className="ui-segmented-control segmented-control create-choice-segments is-four" role="radiogroup" aria-label="경기 인원">
-                {(isSoloRecord ? SOLO_RECORD_MODES : MATCH_MODES).map((mode) => (
+              <span className="field-label">경기 방식</span>
+              <div className="ui-segmented-control segmented-control create-choice-segments is-match-format" role="radiogroup" aria-label="경기 방식">
+                {formatOptions.map((mode) => (
                   <button
                     key={mode.id}
                     type="button"
                     role="radio"
-                    aria-checked={draft.mode === mode.id}
-                    className={draft.mode === mode.id ? "active" : ""}
-                    disabled={hasTeamChallenge && !challengeModeIds.has(mode.id)}
+                    aria-checked={selectedFormat === mode.id}
+                    className={selectedFormat === mode.id ? "active" : ""}
+                    disabled={hasTeamChallenge && !challengeModeIds.has(getMatchModeForFormat(mode.id))}
                     onClick={() => selectMode(mode.id)}
                   >
                     {mode.label}
                   </button>
                 ))}
               </div>
+              <small>{selectedFormat === "3x3" ? isSoloRecord || isMatchRecordRoom ? "3x3 경기로 기록해요." : "3x3 · 기본 21점·10분. 시간과 점수는 다음 단계에서 바꿀 수 있어요." : selectedFormat === "3v3" ? "일반 3대3 경기예요. 3x3와 구분해서 기록해요." : "경기에 맞는 인원과 방식을 선택해 주세요."}</small>
             </div>
             {!isInstantRoom ? (
               <>

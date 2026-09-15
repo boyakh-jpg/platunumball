@@ -9,6 +9,8 @@ import MatchRecommendationPanel from "../components/match/MatchRecommendationPan
 import MatchVoidDialog, { MatchFinalizeDialog } from "../components/match/MatchVoidDialog.jsx";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
+import ShareButton from "../components/share/ShareButton.jsx";
+import { getEntityDetailPath } from "../lib/appNavigation.js";
 import Card from "../components/common/Card.jsx";
 import ModalShell from "../components/common/ModalShell.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
@@ -35,7 +37,10 @@ export default function MatchRoomView({ controller }) {
             <Badge tone={status.tone}>{status.label}</Badge>
             {match.preRegistered ? <Badge tone="green">사전등록</Badge> : null}
           </div>
-          <span>{getMatchFormatLabel(match.mode, match.rules)}</span>
+          <div className="ui-action-row">
+            <span>{getMatchFormatLabel(match.mode, match.rules)}</span>
+            {!isSoloRecord ? <ShareButton path={getEntityDetailPath("matches", match.id)} title={match.title || matchKind} text={[getMatchFormatLabel(match.mode, match.rules), match.court, match.scheduledAt].filter(Boolean).join(" · ")} label="경기 공유" /> : null}
+          </div>
         </div>
         <div className="gm-room-title ui-page-hero__copy">
           <span className="eyebrow">{match.official ? "OFFICIAL ROOM" : "CUSTOM ROOM"}</span>

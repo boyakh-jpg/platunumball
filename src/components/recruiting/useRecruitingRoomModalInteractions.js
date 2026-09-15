@@ -1,8 +1,7 @@
 import { useRef, useState } from "react";
 
 export function useRecruitingRoomModalInteractions({
-  useCallback, setRoomShareStatus, roomShareStatusTimerRef, copyTextToClipboard, roomShareUrl,
-  getRecruitingDisplayTitle, selectedPost, BRAND_NAME, getRoomScheduleLabel, setInviteDraft,
+  useCallback, setRoomShareStatus, roomShareStatusTimerRef, selectedPost, setInviteDraft,
   setSlotActionDraft, setSoloRecordDeleteTarget, setPaidCourtJoinPrompt, onClose, isPersonalRecordMatch,
   app, soloRecordDeleteTarget, sheetDragTimerRef, setSheetDragSettling, setSheetDragOffset,
   inviteDraft, slotActionDraft, pendingRosterOpen, getRoomEditDraftByPost, lobbyModalRef,
@@ -18,30 +17,6 @@ export function useRecruitingRoomModalInteractions({
     window.clearTimeout(roomShareStatusTimerRef.current);
     roomShareStatusTimerRef.current = window.setTimeout(() => setRoomShareStatus(""), 1600);
   }, []);
-
-  const copyRoomShareUrl = useCallback(async () => {
-    try {
-      const copied = await copyTextToClipboard(roomShareUrl);
-      showRoomShareStatus(copied ? "URL을 복사했습니다." : "URL을 복사하지 못했습니다.");
-    } catch {
-      showRoomShareStatus("URL을 복사하지 못했습니다.");
-    }
-  }, [roomShareUrl, showRoomShareStatus]);
-
-  const shareRoom = useCallback(async () => {
-    const title = getRecruitingDisplayTitle(selectedPost, `${BRAND_NAME} 매치방`);
-    const text = [title, selectedPost?.court, selectedPost ? getRoomScheduleLabel(selectedPost) : ""].filter(Boolean).join(" · ");
-    if (navigator.share) {
-      try {
-        await navigator.share({ title, text, url: roomShareUrl });
-        showRoomShareStatus("공유 화면을 열었습니다.");
-        return;
-      } catch (error) {
-        if (error?.name === "AbortError") return;
-      }
-    }
-    await copyRoomShareUrl();
-  }, [copyRoomShareUrl, roomShareUrl, selectedPost, showRoomShareStatus]);
 
   const closeModal = () => {
     setInviteDraft(null);
@@ -183,7 +158,7 @@ export function useRecruitingRoomModalInteractions({
   };
 
   return {
-    showRoomShareStatus, copyRoomShareUrl, shareRoom, closeModal, closeFromBackdrop,
+    showRoomShareStatus, closeModal, closeFromBackdrop,
     deleteSourceSoloRecord, confirmDeleteSourceSoloRecord, resetSheetDrag, getSheetDismissDistance, isSheetDragInteractiveTarget,
     canDismissBySheetDrag, startSheetDrag, moveSheetDrag, finishSheetDrag, cancelSheetDrag,
     sheetDragProgress, sheetBackdropOpacity, sheetModalOpacity, sourceDisputePending, sourceDisputeStatus, submitSourceDispute,

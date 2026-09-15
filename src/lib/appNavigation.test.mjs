@@ -1,8 +1,21 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { APP_NAVIGATION_ITEMS, APP_SETTINGS_PATH, MY_NAVIGATION_ITEMS, getActiveAppNavigationPath, getActiveMyNavigationPath, getProfileNavigationItems } from "./appNavigation.js";
+import { APP_NAVIGATION_ITEMS, APP_SETTINGS_PATH, MY_NAVIGATION_ITEMS, getActiveAppNavigationPath, getActiveMyNavigationPath, getProfileNavigationItems, getEntityDetailPath, getAdminDashboardDetailPath, getRecruitingRoomPath } from "./appNavigation.js";
 import { ADMIN_GRADE_META } from "./adminPolicy.js";
 import { RECEIPT_SHELL_COPY } from "./receiptLocale.js";
+
+test("공유와 운영 목록은 같은 상세 경로와 안전하게 인코딩된 ID를 사용한다", () => {
+  const id = "경기/팀?1";
+  const encoded = encodeURIComponent(id);
+  for (const [kind, path] of [
+    ["members", `/app/players/${encoded}`], ["teams", `/app/teams/${encoded}`],
+    ["tournaments", `/app/tournaments/${encoded}`], ["matches", `/app/matches?match=${encoded}`],
+  ]) {
+    assert.equal(getEntityDetailPath(kind, id), path);
+    assert.equal(getAdminDashboardDetailPath(kind, id), path);
+  }
+  assert.equal(getRecruitingRoomPath(id), `/app/recruiting?post=${encoded}`);
+});
 
 test("primary navigation has the same six destinations and labels in either shell", () => {
   assert.deepEqual(APP_NAVIGATION_ITEMS.map((item) => RECEIPT_SHELL_COPY.ko[item.labelKey]), ["홈", "일정", "매칭", "플레이", "게시판", "관리"]);

@@ -2,6 +2,9 @@ import { Link } from "react-router-dom";
 import { CalendarDays, ChevronLeft, ChevronRight, Flag, Save, ShieldCheck, UserRound } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
+import ShareButton from "../components/share/ShareButton.jsx";
+import { getEntityDetailPath } from "../lib/appNavigation.js";
+import { getMatchFormatLabel } from "../lib/matchRules.js";
 import ModalShell from "../components/common/ModalShell.jsx";
 import SearchPicker from "../components/common/SearchPicker.jsx";
 import TierBadge from "../components/rating/TierBadge.jsx";
@@ -30,7 +33,10 @@ export default function TournamentDetailView({ controller }) {
   const { app, tournament, scheduleDialog, setScheduleDialog, savingScheduleId, forfeitDialog, setForfeitDialog, savingForfeitId, selectedMatchId, setSelectedMatchId, editingScheduleId, setEditingScheduleId, refereeQuery, setRefereeQuery, governanceAction, governanceFeedback, teamById, userById, matchesById, tournamentMatches, teamRows, acceptedCount, hasPendingTeamApprovals, governanceEnabled, requiredRefereeCount, acceptedRefereeIds, refereeRows, eligibleRefereeCandidates, canInviteReferee, canReviewRegion, canStartCommunity, verticalBracket, championTeam, canManageSchedule, todayValue, maxScheduleDate, leagueFixtures, leagueMatchesByFixture, leagueStandings, tournamentCourts, saveSchedule, confirmSchedule, confirmForfeit, runGovernanceAction, saveMatchReferee, renderRefereeInviteItem, organizer, dialogMatch, forfeitMatch, matchesReturnTo } = controller;
 return (
     <div className="page-stack tournament-detail-page">
-      <Button as={Link} variant="secondary" className="tournament-back-link" to={matchesReturnTo}><ChevronLeft size={17} /> 경기로</Button>
+      <div className="ui-action-row" data-align="start">
+        <Button touchFriendly as={Link} variant="secondary" className="tournament-back-link" to={matchesReturnTo}><ChevronLeft size={17} /> 경기로</Button>
+        <ShareButton size="md" path={getEntityDetailPath("tournaments", tournament.id)} title={tournament.title} text={[getMatchFormatLabel(tournament.mode, tournament.rules), formatWindow(tournament), tournament.court].filter(Boolean).join(" · ")} label="대회 공유" />
+      </div>
 
       <section className="tournament-hero ui-page-hero ui-design-app-hero">
         <div className="ui-page-hero__copy">
@@ -48,7 +54,7 @@ return (
               ? getTournamentSanctionLabel(tournament)
               : statusLabels[tournament.status] ?? "상태 확인 중"}
           </Badge>
-          <Badge tone="blue">{tournament.mode}</Badge>
+          <Badge tone="blue">{getMatchFormatLabel(tournament.mode, tournament.rules)}</Badge>
         </div>
       </section>
 

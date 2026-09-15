@@ -648,3 +648,7 @@ html[data-theme] .app-main .create-match-page :is(
   gap: var(--space-6);
   min-width: 0;
 }
+.create-choice-segments.is-match-format {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 4rem), 1fr));
+}

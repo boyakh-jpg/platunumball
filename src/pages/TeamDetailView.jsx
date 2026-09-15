@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { ImageUp, RotateCcw, Star, Trash2 } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
+import ShareButton from "../components/share/ShareButton.jsx";
 import Card from "../components/common/Card.jsx";
 import EmblemCropEditor from "../components/common/EmblemCropEditor.jsx";
 import ModalShell from "../components/common/ModalShell.jsx";
@@ -27,7 +28,7 @@ import {
 import { formatEmblemDate, getEmblemUploadWarning } from "../lib/emblemPolicy.js";
 import { getUserHashtag } from "../lib/handles.js";
 import { assetUrl } from "../lib/assets.js";
-import { APP_NOTIFICATION_PATH } from "../lib/appNavigation.js";
+import { APP_NOTIFICATION_PATH, getEntityDetailPath } from "../lib/appNavigation.js";
 import { MatchRoomModal } from "./Matches.jsx";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 
@@ -103,6 +104,11 @@ export default function TeamDetailView({ controller }) {
       )}
       navigation={<MyNavigation />}
     >
+      {!app.demoPreview ? (
+        <div className="ui-action-row ui-action-row-end" data-align="start">
+          <ShareButton path={getEntityDetailPath("teams", team.id)} title={team.name} text={[team.region, team.homeCourt].filter(Boolean).join(" · ")} label="팀 공유" />
+        </div>
+      ) : null}
       {teamDetailError ? (
         <Card className="section-card">
           <div className="section-title-row">

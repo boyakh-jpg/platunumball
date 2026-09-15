@@ -207,7 +207,7 @@ export function normalizeMatchRules(source = {}, { mode = "3v3" } = {}) {
 
   return {
     ...source,
-    ruleSet: source.ruleSet === "fiba_3x3" && mode === "3v3" ? "fiba_3x3" : "standard",
+    ruleSet: isFiba3x3Rules(mode, source) ? "fiba_3x3" : "standard",
     gameClockEnabled,
     qrAttendanceEnabled,
     endCondition,

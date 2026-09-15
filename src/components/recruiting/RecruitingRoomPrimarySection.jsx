@@ -1,5 +1,6 @@
 import { getRecruitingRoomRosterProps } from "./RecruitingRoomRosterProps.js";
 import { getMatchFormatLabel, resolveMatchRuleSource } from "../../lib/matchRules.js";
+import ShareButton from "../share/ShareButton.jsx";
 
 function RecruitingRoomVersusSide({ context, sideName, meta }) {
   const {
@@ -86,7 +87,7 @@ export function RecruitingRoomPrimarySection({ context }) {
   const {
     Badge, Button, CircleHelp, CourtHoverCard, Crown,
     InvitationPanel, InvitePanel, MapPin, MatchAttendanceQrPanel, ROOM_BODY_MODES, RoomKickPanel,
-    RoomPhaseRenderer, SearchPicker, Share2, SideRoster,
+    RoomPhaseRenderer, SearchPicker, SideRoster,
     TeamEmblem, X, acceptRoomInvitation, activeInviteDraft, alreadyApplied,
     app, attendanceScanState, autoBalancedIndividualRoom, benchCapacity, canInspectMatchAttendance, canInvitePlayerByRoom, canInviteSideFromRoom,
     canManageEntry, canManageMatchCheckin, canMoveMatchSides, closeModal, contextPanel,
@@ -98,11 +99,11 @@ export function RecruitingRoomPrimarySection({ context }) {
     renderMatchSubstitutionPanel, renderPickupParticipantPool, renderPickupRotation, renderRoomReserveLine, renderRoomTeamResult, renderSelfSlotCommand,
     renderSlotCommand, renderSourceMatchRecordBoard, requiresPaidCourtNotice, roomCompetitionLabel, roomDisplayTitle, roomMatchTypeLabel,
     roomOwnerId, roomPhaseBadge, roomPhaseSectionsAfterVersus, roomPhaseSectionsBeforeVersus, roomPhaseViewModel, roomReadyLabel,
-    roomShareEnabled, roomShareStatus, roomState, roomTeamACandidates, roomTeamBCandidates, roomTeamFeedback,
+    roomShareEnabled, roomShareStatus, roomShareUrl, roomState, roomTeamACandidates, roomTeamBCandidates, roomTeamFeedback,
     roomTeamQuery, roomTeamSavingSide, roomTeamSelectionOpen, roomTitleSizeClass, roomVisibilityLabel, roomVisibilityTone,
     saveRoomTeam, selectedMatchRules, selectedPost, selectedRoomTeamAId,
     selectedRoomTeamBId, sendInvites, setAttendanceStartStatus, setInviteDraft, setRoomTeamQuery, setSlotActionDraft,
-    shareRoom, showCaptainBadge, slotPositions, sourceMatch, sourceMatchAttendance, sourceMatchCheckedInIds,
+    showCaptainBadge, slotPositions, sourceMatch, sourceMatchAttendance, sourceMatchCheckedInIds,
     setRoomHelpOpen, sideMmrBalance, sourceMatchPlacementByPlayerId, sourceMatchSideLeaderIds, sourceMatchSlotManagementOpen, sourceRoomReadOnly, teamAMeta,
     teamBMeta, teamOnlyRoom, toggleInvitePlayer, tournamentRoomOwnerName, updateInviteDraft, userById,
   } = context;
@@ -125,16 +126,19 @@ export function RecruitingRoomPrimarySection({ context }) {
                     <Badge tone={referee ? "blue" : "neutral"}>{getRoomRefereeLabel(selectedPost)}</Badge>
                     {requiresPaidCourtNotice(selectedPost) ? <Badge tone="orange">유료 구장</Badge> : null}
                   </div>
-                  <div className="ui-action-row ui-action-row-end arena-room-share-actions" aria-label={roomShareEnabled ? "방 공유" : "방 작업"}>
-                    <Button type="button" size="sm" variant="secondary" onClick={() => setRoomHelpOpen(true)}>
+                  <div className="ui-action-row ui-action-row-end arena-room-share-actions" data-align="start" aria-label={roomShareEnabled ? "방 공유" : "방 작업"}>
+                    <Button touchFriendly type="button" size="sm" variant="secondary" onClick={() => setRoomHelpOpen(true)}>
                       <CircleHelp size={15} /> 진행 도움말
                     </Button>
                     {roomShareEnabled ? (
-                      <Button type="button" size="sm" variant="secondary" onClick={shareRoom}>
-                        <Share2 size={15} /> 공유하기
-                      </Button>
+                      <ShareButton
+                        path={roomShareUrl}
+                        title={roomDisplayTitle}
+                        text={[roomDisplayTitle, selectedPost.court, getRoomScheduleLabel(selectedPost)].filter(Boolean).join(" · ")}
+                        label="공유하기"
+                      />
                     ) : null}
-                    <Button type="button" size="sm" variant="secondary" onClick={() => { setInviteDraft(null); setSlotActionDraft(null); closeModal(); }}>
+                    <Button touchFriendly type="button" size="sm" variant="secondary" onClick={() => { setInviteDraft(null); setSlotActionDraft(null); closeModal(); }}>
                       <X size={15} /> 방 닫기
                     </Button>
                     {roomShareStatus ? <span className="arena-room-share-message">{roomShareStatus}</span> : null}

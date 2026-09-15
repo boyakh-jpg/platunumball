@@ -24,6 +24,10 @@ export function getMatchFormatLabel(mode = "", rules = {}) {
   return isFiba3x3Rules(mode, rules) ? "3x3" : mode;
 }
 
+export function getMatchModeForFormat(format = "5v5") {
+  return format === "3x3" ? "3v3" : format;
+}
+
 export function matchesMatchFormatFilter(match = {}, filter = "all") {
   const normalizedFilter = String(filter ?? "all");
   return normalizedFilter === "all"

@@ -16,6 +16,7 @@ import {
   VENUE_SECURED_OPTIONS,
 } from "./matchCreationPolicyOptions.js";
 import { buildRoomRemakeDraft } from "./matchCreationRemake.js";
+import { getMatchFormatLabel, getMatchModeForFormat, isFiba3x3Rules } from "../../shared/lib/matchFormats.js";
 export * from "./matchCreationPolicyOptions.js";
 export { getRoomRemakeWarningCopy } from "./matchCreationRemake.js";
 
@@ -165,15 +166,22 @@ export function getModeClockPreset(mode = "5v5", presetId = "community") {
   return getModeClockPreset(mode, "community");
 }
 
-export function getMatchClockPresetOptions(mode = "5v5") {
+export function getMatchClockPresetOptions(mode = "5v5", rules = {}) {
   if (mode !== "5v5") {
     return [
       { id: "community", label: "기본 8분×2", patch: getModeClockPreset(mode, "community") },
       { id: "quarters", label: "4쿼터 8분×4", patch: getModeClockPreset(mode, "quarters") },
       { id: "quick", label: "빠른 11점", patch: getModeClockPreset(mode, "quick") },
-      { id: "score21", label: mode === "3v3" ? "3x3 · 21점" : "기본 21점", patch: getModeClockPreset(mode, "score21") },
+      { id: "score21", label: mode === "3v3" ? "21점 · 10분" : "기본 21점", patch: getModeClockPreset(mode, "score21") },
       { id: "extended", label: "긴 경기 15분", patch: getModeClockPreset(mode, "extended") },
-    ];
+    ].map((option) => ({
+      ...option,
+      patch: {
+        ...option.patch,
+        ruleSet: isFiba3x3Rules(mode, rules) ? "fiba_3x3" : "standard",
+        ball: rules.ball ?? getDefaultMatchRules(mode).ball,
+      },
+    }));
   }
   return [
     { id: "community", label: "기본 8분×2", patch: getModeClockPreset(mode, "community") },
@@ -261,6 +269,12 @@ export function getMatchModeChangePatch(source = {}, mode = "5v5") {
   const preset = getModeClockPreset(nextMode, "community");
   return {
     mode: nextMode,
+    ...getRulePresetChangePatch(source, preset),
+  };
+}
+
+function getRulePresetChangePatch(source, preset) {
+  return {
     ...preset,
     gameClockEnabled: source.gameClockEnabled !== false && source.gameClockEnabled !== "false",
     attackRule: source.attackRule ?? preset.attackRule,
@@ -287,6 +301,17 @@ export function getDefaultMatchCreationPolicy(mode = "5v5") {
     ballProvider: "host",
     vestsProvided: false,
   };
+}
+
+export function getMatchFormatChangePatch(source = {}, format = "5v5") {
+  const current = getMatchCreationPolicySource(source);
+  const mode = getMatchModeForFormat(format);
+  if (getMatchFormatLabel(current.mode, current) === format) return { mode };
+  if (format !== "3x3" && !isFiba3x3Rules(current.mode, current)) {
+    return getMatchModeChangePatch(current, mode);
+  }
+  const preset = getModeClockPreset(mode, format === "3x3" ? "score21" : "community");
+  return { mode, ...getRulePresetChangePatch(current, preset), ball: preset.ball };
 }
 
 export function getRoomRemakeDraft(source = {}) {
@@ -533,7 +558,7 @@ export function getMatchCreationSummary(source = {}) {
     rows: [
       { label: "경기 목적", value: purpose.label },
       { label: "팀 구성", value: pickup ? "현장 픽업" : "경기 전 구성" },
-      { label: "명단", value: `${policySource.mode || "5v5"} · ${rosterText}` },
+      { label: "명단", value: `${getMatchFormatLabel(policySource.mode || "5v5", policySource)} · ${rosterText}` },
       ...(pickup ? [{ label: "팀 배치", value: "출석 후 현장 결정" }] : []),
       ...(pickup ? [{ label: "운영 정책", value: policy.rotationMode === "period" ? "쿼터·하프 종료마다 균등 교대" : policy.rotationMode === "interval" ? `${policy.rotationIntervalMinutes}분 간격 균등 교대` : "방장·심판 직접 교대" }] : policy.benchCapacity > 0 ? [{ label: "출전 정책", value: playingTime }] : []),
       { label: "경기 규칙", value: rulesValid ? getMatchRuleSummary(policySource, policySource.mode) : "입력값 확인 필요" },

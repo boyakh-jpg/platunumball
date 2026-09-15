@@ -10,6 +10,9 @@ import {
   getPublicRoomMaxDateInput,
 } from "./matchUtils.js";
 import { getMatchCreationPolicyPayload } from "./matchCreationPolicies.js";
+import { getEntityDetailPath, getRecruitingRoomPath } from "./appNavigation.js";
+import { getAppShareUrl } from "./sharing.js";
+export { copyTextToClipboard } from "./sharing.js";
 import { normalizeMatchRules } from "./matchRules.js";
 import {
   getRecruitingBenchCapacity,
@@ -99,36 +102,8 @@ export function getRecruitingMaxDateInput() {
   return getPublicRoomMaxDateInput();
 }
 
-export function getRoomShareUrl(roomId = "") {
-  const path = roomId ? `/app/recruiting?post=${encodeURIComponent(roomId)}` : "/app/recruiting";
-  const configuredBase = import.meta.env.VITE_PUBLIC_APP_URL;
-  const fallbackBase = typeof window !== "undefined" ? window.location.origin : "";
-  const base = String(configuredBase || fallbackBase).replace(/\/$/, "");
-  return base ? `${base}${path}` : path;
-}
-
-export async function copyTextToClipboard(text) {
-  if (!text) return false;
-  if (navigator.clipboard?.writeText) {
-    try {
-      await navigator.clipboard.writeText(text);
-      return true;
-    } catch {
-      // Fall back to the selection copy path below.
-    }
-  }
-  const textarea = document.createElement("textarea");
-  textarea.value = text;
-  textarea.setAttribute("readonly", "");
-  textarea.style.position = "fixed";
-  textarea.style.left = "-9999px";
-  textarea.style.opacity = "0";
-  document.body.appendChild(textarea);
-  textarea.focus();
-  textarea.select();
-  const copied = document.execCommand("copy");
-  document.body.removeChild(textarea);
-  return copied;
+export function getRoomShareUrl(roomId = "", matchId = "") {
+  return getAppShareUrl(matchId ? getEntityDetailPath("matches", matchId) : getRecruitingRoomPath(roomId));
 }
 
 export function getDefaultApplyTeamId(post, teams) {

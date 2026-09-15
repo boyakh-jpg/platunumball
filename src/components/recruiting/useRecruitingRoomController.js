@@ -26,11 +26,11 @@ export function useRecruitingRoomController({
   readOnly = false,
 }) {
   const {
-    BRAND_NAME, CHAT_MESSAGE_MAX_LENGTH, CHAT_RATE_LIMIT, CHAT_RATE_WINDOW_MS, CHAT_REPEAT_BLOCK_MS, CHAT_SEND_COOLDOWN_MS, DIRECTORY_PICKER_PAGE_LIMIT,
-    MATCH_DISPUTE_REASON_OPTIONS, PLAYER_STAT_FIELDS, UNSAFE_INPUT_MESSAGE, buildMatchDisputeRequest, copyTextToClipboard, getDefaultJoinDraft, getJoinActiveCapacity,
+    CHAT_MESSAGE_MAX_LENGTH, CHAT_RATE_LIMIT, CHAT_RATE_WINDOW_MS, CHAT_REPEAT_BLOCK_MS, CHAT_SEND_COOLDOWN_MS, DIRECTORY_PICKER_PAGE_LIMIT,
+    MATCH_DISPUTE_REASON_OPTIONS, PLAYER_STAT_FIELDS, UNSAFE_INPUT_MESSAGE, buildMatchDisputeRequest, getDefaultJoinDraft, getJoinActiveCapacity,
     getJoinReserveCapacity, getLinkedPersonalRecordDisplayUser, getMatchManualFinalizationStatus, getMatchResultRevision, getMatchRoomPhase, getMatchRuleInputValidation, getPartyOptionKey, getPickupOpenSlotPlacements,
-    getRecruitingBenchCapacity, getRecruitingDisplayTitle, getRecruitingLobby, getRecruitingPostTerminalState, getRecruitingSideCapacity, getRegisteredCourts, getRoomEditDraft,
-    getRoomEditSaveError, getRoomScheduleLabel, getRoomShareUrl, getUnsafeUserTextReason, isCurrentUserRoomParticipant, isIndividualOnlyRecruitingRoom, isMatchRoomChatLocked,
+    getRecruitingBenchCapacity, getRecruitingLobby, getRecruitingPostTerminalState, getRecruitingSideCapacity, getRegisteredCourts, getRoomEditDraft,
+    getRoomEditSaveError, getRoomShareUrl, getUnsafeUserTextReason, isCurrentUserRoomParticipant, isIndividualOnlyRecruitingRoom, isMatchRoomChatLocked,
     isPaidRecruitingCourt, isPersonalRecordMatch, isPickupRecruitingRoom, isSyntheticMatchRoomId, isTeamOnlyRoom, useCallback, useEffect,
     useMemo, useNavigate, useRef, useState,
   } = RECRUITING_ROOM_DEPENDENCIES;
@@ -196,7 +196,7 @@ export function useRecruitingRoomController({
   );
   const roomChatLobby = useMemo(() => getRecruitingLobby(selectedPost, roomDataState), [roomDataState, selectedPost]);
   const canPollRoomChat = isCurrentUserRoomParticipant(selectedPost, roomChatLobby, app.currentUser.id);
-  const roomShareUrl = useMemo(() => getRoomShareUrl(roomPostId), [roomPostId]);
+  const roomShareUrl = useMemo(() => getRoomShareUrl(roomPostId, sourceMatch?.id), [roomPostId, sourceMatch?.id]);
   const roomChatLocked = sourceMatch
     ? isMatchRoomChatLocked(sourceMatch)
     : Boolean(selectedPost?.confirmedAt || getRecruitingPostTerminalState(selectedPost));
@@ -364,13 +364,12 @@ export function useRecruitingRoomController({
     inviteDraft, isIndividualOnlyRecruitingRoom,
   });
   const {
-    showRoomShareStatus, copyRoomShareUrl, shareRoom, closeModal, closeFromBackdrop,
+    showRoomShareStatus, closeModal, closeFromBackdrop,
     deleteSourceSoloRecord, confirmDeleteSourceSoloRecord, resetSheetDrag, getSheetDismissDistance, isSheetDragInteractiveTarget,
     canDismissBySheetDrag, startSheetDrag, moveSheetDrag, finishSheetDrag, cancelSheetDrag,
     sheetDragProgress, sheetBackdropOpacity, sheetModalOpacity, sourceDisputePending, sourceDisputeStatus, submitSourceDispute,
   } = useRecruitingRoomModalInteractions({
-    useCallback, setRoomShareStatus, roomShareStatusTimerRef, copyTextToClipboard, roomShareUrl,
-    getRecruitingDisplayTitle, selectedPost, BRAND_NAME, getRoomScheduleLabel, setInviteDraft,
+    useCallback, setRoomShareStatus, roomShareStatusTimerRef, selectedPost, setInviteDraft,
     setSlotActionDraft, setSoloRecordDeleteTarget, setPaidCourtJoinPrompt, onClose, isPersonalRecordMatch,
     app, soloRecordDeleteTarget, sheetDragTimerRef, setSheetDragSettling, setSheetDragOffset,
     inviteDraft, slotActionDraft, pendingRosterOpen, getRoomEditDraftByPost, lobbyModalRef,
@@ -486,15 +485,15 @@ export function useRecruitingRoomController({
     ...RECRUITING_ROOM_DEPENDENCIES,
     acceptRoomInvitation, app, attendanceScanState, attendanceStartStatus, cancelSheetDrag, chatCooldownUntilByPost, chatErrorByPost,
     chatSendingPostId, clockClient, closeFromBackdrop, closeModal, closeRoomEdit, confirmDeleteSourceSoloRecord, confirmPaidCourtJoin,
-    confirmQueueRoom, confirmSourceMatchFinalization, confirmingMatchId, contextPanel, copyRoomShareUrl, courtByName, currentUserIsAdmin,
+    confirmQueueRoom, confirmSourceMatchFinalization, confirmingMatchId, contextPanel, courtByName, currentUserIsAdmin,
     deleteSourceSoloRecord, entryPoint, finalizeMatchPending, finalizeMatchTarget, finishSheetDrag, getChatDraft, getJoinDraft,
     getRefereeInviteQuery, getRoomEditDraftByPost, handleChatVisibleChange, inviteDraft, inviteError, joinSideParty, joiningPartyKey,
     joiningPostId, lobbyModalRef, moveSheetDrag, myTeams, navigate, onRemake, openInviteSlot,
     openRoomEdit, openSelfSlotAction, paidCourtJoinPrompt, refreshSourceMatchReview, registeredCourts, remoteDirectoryEnabled, requestSourceMatchFinalization,
-    readOnly, requiresPaidCourtNotice, roomCancellationPending, roomCancellationTarget, roomHelpOpen, roomChatLocked, roomDataState, roomEditStatusByPost, roomShareEnabled, roomShareStatus,
+    readOnly, requiresPaidCourtNotice, roomCancellationPending, roomCancellationTarget, roomHelpOpen, roomChatLocked, roomDataState, roomEditStatusByPost, roomShareEnabled, roomShareStatus, roomShareUrl,
     roomTeamFeedback, roomTeamQuery, roomTeamSavingSide, runRoomSlotAction, runSourceMatchAction, saveRoomEdit, selectedPost, sendInvites, setAttendanceStartStatus,
     setFinalizeMatchTarget, setInviteDraft, setPaidCourtJoinPrompt, setRoomCancellationPending, setRoomCancellationTarget, setRoomHelpOpen, setRoomTeamFeedback, setRoomTeamQuery,
-    setRoomTeamSavingSide, setSlotActionDraft, setSoloRecordDeleteTarget, setSourceDisputeDraft, setSourceMatchDraftScore, shareRoom, sheetBackdropOpacity, sheetDragOffset,
+    setRoomTeamSavingSide, setSlotActionDraft, setSoloRecordDeleteTarget, setSourceDisputeDraft, setSourceMatchDraftScore, sheetBackdropOpacity, sheetDragOffset,
     sheetDragSettling, sheetModalOpacity, slotActionDraft, slotActionPending, soloRecordDeleteTarget, sourceDisputeDraft, sourceDisputePending, sourceDisputeStatus,
     sourceMatch, sourceMatchActionPending, sourceMatchDraftScore, sourceMatchReviewRefreshing,
     startSheetDrag, submitChat, submitJoin, submitSourceDispute, teamById, toggleInvitePlayer, updateChatDraft,

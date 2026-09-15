@@ -11,6 +11,7 @@ import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { getUserHashtag } from "../lib/handles.js";
 import { getMatchListRoomTypeLabel, getScheduleMatchRosterProjection } from "../lib/matchListProjection.js";
 import { getTournamentMatches } from "../lib/tournamentMatches.js";
+import { getMatchFormatLabel } from "../lib/matchRules.js";
 import { getRoomCompetitionLabel, getRoomRefereeLabel, getRoomVisibilityLabel, MATCH_LIST_STATUSES } from "../lib/matchUtils.js";
 import { getRecruitingEntryForUser, getRecruitingListCardCounts, getRecruitingListCardLobby, getRecruitingRoomOwnerId, isPaidRecruitingCourt } from "../lib/recruiting.js";
 import { RecruitingRoomModal, getRecruitingRoomListStatus } from "./Recruiting.jsx";
@@ -267,7 +268,7 @@ return (
                   </p>
                 </div>
                 <div className="om-tournament-meta">
-                  <span>{tournament.mode}</span>
+                  <span>{getMatchFormatLabel(tournament.mode, tournament.rules)}</span>
                   <span>{tournament.ranked === false ? "친선" : "정규"}</span>
                   <span>{tournamentMmrLabels[tournament.mmrPolicy] ?? "MMR 조건 확인"}</span>
                   <strong>{tournamentState.teamApprovalLabel}</strong>

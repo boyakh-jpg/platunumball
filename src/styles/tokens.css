@@ -258,6 +258,7 @@
   --ui-fieldset-legend-support-color: var(--rb-text);
   --ui-button-height: var(--control-height);
   --ui-button-height-sm: var(--control-height-sm);
+  --ui-button-touch-height: 44px;
   --ui-choice-min-inline-size: 7rem;
   --ui-mobile-filter-control-height: 40px;
   --ui-button-radius: var(--control-radius);
@@ -433,6 +434,13 @@
   --ui-room-modal-border-width: 0px;
   --ui-room-panel-border-width: 0px;
   --ui-hero-border-width: 0px;
+}
+
+@media (max-width: 720px) {
+  .ui-button-touch {
+    --ui-button-height: var(--ui-button-touch-height);
+    --ui-button-height-sm: var(--ui-button-touch-height);
+  }
 }
 
 .ui-room-borderless-scope {
