@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { useState } from "react";
-import { ArrowRight, ArrowUpRight, Bell, BookOpenCheck, CalendarDays, ClipboardCheck, FlaskConical, MessageSquareText, PlusCircle, ReceiptText, Trophy, UsersRound } from "lucide-react";
+import { ArrowRight, ArrowUpRight, Bell, BookOpenCheck, CalendarDays, FlaskConical, MessageSquareText, Trophy, UsersRound } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
@@ -9,6 +9,7 @@ import GuestAccessNotice from "../components/auth/GuestAccessNotice.jsx";
 import MatchCard from "../components/match/MatchCard.jsx";
 import RecentMatchRow from "../components/match/RecentMatchRow.jsx";
 import HomeRightRail from "../components/home/HomeRightRail.jsx";
+import HomeStartActions from "../components/home/HomeStartActions.jsx";
 import { isHomeGuideCardVisible } from "../data/settingsMappers.js";
 import { getRoomScheduleLabel } from "../lib/matchUtils.js";
 
@@ -47,12 +48,8 @@ function GuestHomePage() {
   return (
     <div className="page-stack rank-home">
       <Card className="home-search-panel rank-search-card">
+        <HomeStartActions />
         <SearchPicker value={query} onChange={setQuery} placeholder="선수명, 팀명, 경기 일련번호를 바로 검색" items={[]} remoteSearchType={["profile", "team", "match_code"]} remoteSearchPublic mapRemoteItem={mapGuestSearchItem} renderItem={renderGuestSearchItem} floating fieldClassName="home-search-box" resultsClassName="home-global-search-results" />
-        <div className="home-search-actions">
-          <Button as={Link} to="/app/create" className="home-search-create"><PlusCircle size={18} /> 방 만들기</Button>
-          <Button as={Link} to="/app/create?intent=record" variant="secondary" className="home-search-create"><ClipboardCheck size={18} /> 기록하기</Button>
-          <Button as={Link} to="/app/receipt" variant="secondary" className="home-search-create"><ReceiptText size={18} /> 영수증 발급</Button>
-        </div>
       </Card>
 
       <div className="page-stack home-left-rail">
@@ -68,7 +65,7 @@ function GuestHomePage() {
 
         <Card as={Link} to="/app/guide" className="home-guide-card" aria-label="BOXTIER 사용 설명 보기">
           <span className="home-guide-card__icon"><BookOpenCheck size={24} aria-hidden="true" /></span>
-          <span className="home-guide-card__copy"><small>FIRST STEP · 13단계 안내</small><strong>처음 사용하시나요?</strong></span>
+          <span className="home-guide-card__copy"><small>참가부터 기록까지</small><strong>처음 사용하시나요?</strong></span>
           <span className="home-guide-card__link">사용 설명 <ArrowRight size={18} aria-hidden="true" /></span>
         </Card>
 
@@ -112,6 +109,7 @@ export default function HomePageView({
   return (
     <div className="page-stack rank-home">
       <Card className="home-search-panel rank-search-card">
+        <HomeStartActions />
         <SearchPicker
           value={query}
           onChange={setQuery}
@@ -131,11 +129,6 @@ export default function HomePageView({
           fieldClassName="home-search-box"
           resultsClassName="home-global-search-results"
         />
-        <div className="home-search-actions">
-          <Button as={Link} to="/app/create" className="home-search-create"><PlusCircle size={18} /> 방 만들기</Button>
-          <Button as={Link} to="/app/create?intent=record" variant="secondary" className="home-search-create"><ClipboardCheck size={18} /> 기록하기</Button>
-          <Button as={Link} to="/app/receipt" variant="secondary" className="home-search-create"><ReceiptText size={18} /> 영수증 발급</Button>
-        </div>
       </Card>
 
       <div className="page-stack home-left-rail">
@@ -182,7 +175,7 @@ export default function HomePageView({
               <BookOpenCheck size={24} aria-hidden="true" />
             </span>
             <span className="home-guide-card__copy">
-              <small>FIRST STEP · 13단계 안내</small>
+              <small>참가부터 기록까지</small>
               <strong>처음 사용하시나요?</strong>
             </span>
             <span className="home-guide-card__path" aria-hidden="true">

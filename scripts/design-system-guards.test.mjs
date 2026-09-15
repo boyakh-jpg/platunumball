@@ -803,7 +803,7 @@ test("공용 CTA는 좁은 화면에서도 내용 너비를 유지한다", () =>
   );
   assert.match(
     read("src/styles/responsive/home-dashboard-responsive.css"),
-    /\.home-search-actions\s*\{[^}]*width:\s*min\(100%, var\(--ui-action-trio-max-inline-size\)\);/,
+    /\.home-start-actions,[\s\S]*?\.home-record-options:not\(\[hidden\]\)\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\);/,
   );
   assert.match(
     primitiveStyles,
@@ -812,7 +812,8 @@ test("공용 CTA는 좁은 화면에서도 내용 너비를 유지한다", () =>
   assert.doesNotMatch(primitiveStyles, /@media \(max-width:\s*760px\)[\s\S]*?\.ui-button-block\s*\{\s*width:\s*100%;\s*\}/);
   assert.doesNotMatch(allStyleSources, /\.season-play-report > a\s*\{[^}]*display:\s*block/);
   assert.doesNotMatch(allStyleSources, /\.ranking-name span\s*\{/);
-  for (const source of [pageSources.home, pageSources.matches, pageSources.recruiting]) {
+  assert.equal(count(pageSources.home, "<HomeStartActions />"), 2);
+  for (const source of [pageSources.matches, pageSources.recruiting]) {
     assert.match(source, /to="\/app\/create\?intent=record" variant="secondary"/);
   }
 });
@@ -1472,7 +1473,7 @@ test("알파 온보딩은 기록 중심 무료 핵심 흐름을 안내한다", (
   assert.match(appSource, /path="\/app\/guide\/practice" element=\{<PracticeMatch app=\{app\} \/>\}/);
   assert.equal(count(pageSources.home, 'to="/app/guide"'), 2);
   assert.match(pageSources.home, /처음 사용하시나요\?/);
-  assert.match(pageSources.home, /13단계 안내/);
+  assert.match(pageSources.home, /참가부터 기록까지/);
   assert.match(pageSources.home, /to="\/app\/guide\/practice"[\s\S]*연습경기 해보기/);
   assert.match(pageSources.home, /isHomeGuideCardVisible\(app\.state\.settings\)/);
   assert.match(gettingStartedSource, /useSearchParams/);

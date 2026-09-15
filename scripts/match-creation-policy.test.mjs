@@ -152,9 +152,13 @@ test("게스트 생성 draft는 같은 생성 URL에서만 복원하고 실제 �
   assert.match(appSource, /GUEST_PUBLIC_APP_PATHS[\s\S]*"\/app\/create"/u);
 });
 
-test("방 만들기는 같은 단계의 조건 변경은 스크롤을 유지하고 실제 단계 이동만 상단으로 이동한다", () => {
+test("방 만들기는 같은 단계의 스크롤을 유지하고 새 단계의 입력 영역으로 이동한다", () => {
   const source = fs.readFileSync(new URL("../src/components/match/useCreateMatchBaseController.js", import.meta.url), "utf8");
-  assert.match(source, /if \(step !== wizardStep\) window\.scrollTo\(\{ top: 0, behavior: "auto" \}\)/u);
+  const layoutSource = fs.readFileSync(new URL("../src/components/match/CreateMatchLayout.jsx", import.meta.url), "utf8");
+  assert.doesNotMatch(source, /window\.scrollTo/u);
+  assert.match(layoutSource, /if \(previousStepRef\.current === wizardStep\) return;/u);
+  assert.match(layoutSource, /stepContentRef\.current\?\.focus\(\{ preventScroll: true \}\)/u);
+  assert.match(layoutSource, /stepContentRef\.current\?\.scrollIntoView\(\{ block: "start", behavior: "instant" \}\)/u);
 });
 
 test("공개 개인 경쟁전은 평균과 사이드 내부 MMR 폭을 함께 제한한다", () => {
@@ -343,8 +347,9 @@ test("match rule presets preserve existing choices and add both requested 8-minu
     assert.deepEqual(options.slice(0, 2).map(({ id }) => id), ["community", "quarters"]);
   }
   const ruleSelectorSource = fs.readFileSync(path.join(root, "src/components/match/RuleSelector.jsx"), "utf8");
-  assert.match(ruleSelectorSource, /<fieldset className="match-rule-custom-fields" disabled=\{!customRules\}>/);
-  assert.match(ruleSelectorSource, />\s*커스텀\s*<\/button>/);
+  assert.match(ruleSelectorSource, /<fieldset id=\{ruleFieldsId\} className="match-rule-custom-fields" disabled=\{!customRules\} hidden=\{!ruleFieldsOpen\}>/);
+  assert.match(ruleSelectorSource, />\s*직접 설정\s*<\/button>/);
+  assert.match(ruleSelectorSource, /ruleFieldsOpen = customRules \|\| !inputValidation\.valid \|\| presetDetailsOpen/);
 });
 
 test("match rule number inputs stay editable and enforce the 70 percent regulation limit", () => {

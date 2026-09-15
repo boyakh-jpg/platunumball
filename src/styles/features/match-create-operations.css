@@ -621,6 +621,10 @@ html[data-theme] .app-main .create-match-page :is(
   color: var(--accent-text);
 }
 
+.create-match-step-content {
+  scroll-margin-block-start: var(--space-8);
+}
+
 .match-creation-wizard-secondary-actions,
 .match-creation-wizard-primary-actions {
   max-width: 100%;

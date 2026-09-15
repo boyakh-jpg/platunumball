@@ -85,26 +85,8 @@ body {
     grid-area: dashboard;
   }
 
-.rank-home .home-search-panel.rank-search-card {
-  display: flex;
-  min-height: 0;
-  align-items: center;
-  gap: var(--space-8);
-}
-
-  .rank-home .home-search-panel.rank-search-card > .search-picker {
-    flex: 1 1 auto;
-    min-width: 0;
-    max-width: none;
-  }
-
   .rank-home .home-search-panel.rank-search-card .home-search-box input {
     font-size: 14px;
-  }
-
-  .rank-home .home-search-panel.rank-search-card .home-search-create {
-    margin-left: 0;
-    flex: 1 1 0;
   }
 
 }

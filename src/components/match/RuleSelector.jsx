@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useId, useState } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
+import Button from "../common/Button.jsx";
 import InlineValidatedInput from "../common/InlineValidatedInput.jsx";
 import {
   MATCH_BALL_OPTIONS,
@@ -32,6 +34,9 @@ export default function RuleSelector({ draft, onChange }) {
   const matchingPresetId = getMatchingPresetId(clockPresetOptions, rules);
   const activePresetId = selectedPresetId === "custom" ? "custom" : matchingPresetId || "custom";
   const customRules = activePresetId === "custom";
+  const [presetDetailsOpen, setPresetDetailsOpen] = useState(false);
+  const ruleFieldsId = useId();
+  const ruleFieldsOpen = customRules || !inputValidation.valid || presetDetailsOpen;
   const updateRules = (patch, { preserveRuleSet = false } = {}) => {
     const next = { ...rules, ...patch, ...(!preserveRuleSet ? { ruleSet: "standard" } : {}) };
     const payload = getMatchRulesPayload(next, { mode: draft.mode });
@@ -51,8 +56,8 @@ export default function RuleSelector({ draft, onChange }) {
   return (
     <div className="match-rule-selector">
       <div className="match-clock-preset-row match-rule-preset-row">
-        <span>경기 방식 프리셋</span>
-        <div className="ui-segmented-control segmented-control compact-segments" role="radiogroup" aria-label="경기 방식 프리셋">
+        <span>경기 시간 선택</span>
+        <div className="ui-segmented-control segmented-control compact-segments" role="radiogroup" aria-label="경기 시간 선택">
           {clockPresetOptions.map((option) => (
             <button
               key={option.id}
@@ -62,6 +67,7 @@ export default function RuleSelector({ draft, onChange }) {
               className={activePresetId === option.id ? "active" : ""}
               onClick={() => {
                 setSelectedPresetId(option.id);
+                setPresetDetailsOpen(false);
                 updateRules(option.patch, { preserveRuleSet: true });
               }}
             >
@@ -75,11 +81,20 @@ export default function RuleSelector({ draft, onChange }) {
             className={customRules ? "active" : ""}
             onClick={() => setSelectedPresetId("custom")}
           >
-            커스텀
+            직접 설정
           </button>
         </div>
       </div>
-      <fieldset className="match-rule-custom-fields" disabled={!customRules}>
+      <small className={`match-rule-summary${inputValidation.valid ? "" : " is-invalid"}`}>
+        {inputValidation.valid ? `적용된 규칙 · ${getMatchRuleSummary(rules, draft.mode)}` : "안내가 표시된 값을 확인해 주세요."}
+      </small>
+      {!customRules && inputValidation.valid ? (
+        <Button variant="secondary" aria-expanded={ruleFieldsOpen} aria-controls={ruleFieldsId} onClick={() => setPresetDetailsOpen((open) => !open)}>
+          세부 규칙 {ruleFieldsOpen ? "접기" : "보기"}
+          {ruleFieldsOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+        </Button>
+      ) : null}
+      <fieldset id={ruleFieldsId} className="match-rule-custom-fields" disabled={!customRules} hidden={!ruleFieldsOpen}>
       <div className="match-clock-preset-row">
         <span>BOXTIER 모바일 전광판</span>
         <div className="ui-segmented-control segmented-control compact-segments" role="radiogroup" aria-label="BOXTIER 모바일 전광판 사용 여부">
@@ -249,9 +264,6 @@ export default function RuleSelector({ draft, onChange }) {
       ) : null}
       </div>
       </fieldset>
-      <small className={`match-rule-summary${inputValidation.valid ? "" : " is-invalid"}`}>
-        {inputValidation.valid ? getMatchRuleSummary(rules, draft.mode) : "빨간 안내가 표시된 값을 확인해 주세요."}
-      </small>
     </div>
   );
 }

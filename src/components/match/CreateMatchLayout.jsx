@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef } from "react";
 import { CreateMatchIntentSection } from "./CreateMatchIntentSection.jsx";
 import { CreateMatchDetailsSection } from "./CreateMatchDetailsSection.jsx";
 import { CreateMatchCourtRosterSection } from "./CreateMatchCourtRosterSection.jsx";
@@ -10,6 +11,16 @@ export function CreateMatchLayout({ context }) {
     onCancel, remakeDraft, setDraft, submit, submitDisabled, submitFeedback, submitting,
     wizardStep,
   } = context;
+  const stepContentRef = useRef(null);
+  const previousStepRef = useRef(wizardStep);
+  const currentStepLabel = creationWizardSteps.find((step) => step.id === wizardStep)?.label;
+
+  useLayoutEffect(() => {
+    if (previousStepRef.current === wizardStep) return;
+    previousStepRef.current = wizardStep;
+    stepContentRef.current?.focus({ preventScroll: true });
+    stepContentRef.current?.scrollIntoView({ block: "start", behavior: "instant" });
+  }, [wizardStep]);
 
   return (
 <form
@@ -52,7 +63,7 @@ export function CreateMatchLayout({ context }) {
 
       <MatchCreationWizardNav currentStep={wizardStep} steps={creationWizardSteps} onStepChange={goToWizardStep} disabled={submitting} />
 
-      <div className="content-grid wide-left" inert={submitting ? "" : undefined}>
+      <div ref={stepContentRef} className="content-grid wide-left create-match-step-content" tabIndex={-1} role="region" aria-label={`${currentStepLabel} 입력`} inert={submitting ? "" : undefined}>
         <CreateMatchIntentSection context={context} />
 
         <CreateMatchDetailsSection context={context} />

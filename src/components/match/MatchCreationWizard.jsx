@@ -92,7 +92,7 @@ export function MatchCreationWizardActions({
       <span className="ui-action-row ui-action-row-end match-creation-wizard-primary-actions">
         {nextStep ? (
           <Button type="button" disabled={disabled} onClick={() => onStepChange(nextStep.id)}>
-            다음 <ChevronRight size={17} />
+            다음: {nextStep.label} <ChevronRight size={17} />
           </Button>
         ) : submitLabel ? (
           <Button type="button" disabled={disabled || submitDisabled} onClick={onSubmit}>{submitLabel}</Button>

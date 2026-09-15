@@ -63,10 +63,6 @@ html[data-theme="light"] .rank-home .rank-summary-grid {
   background:
     transparent;
 }
-.rank-home .home-search-panel.rank-search-card {
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-}
 .rank-home .home-search-panel.rank-search-card > .search-picker {
   min-width: 0;
 }
@@ -91,24 +87,6 @@ html[data-theme="light"] .rank-home .rank-summary-grid {
   border-color: color-mix(in srgb, var(--rb-orange-2) 58%, var(--rb-line));
   box-shadow: var(--focus-ring);
 }
-.rank-home .home-search-create {
-  display: inline-flex;
-  width: 100%;
-  max-width: 100%;
-  text-decoration: none;
-}
-.rank-home .home-search-actions {
-  display: grid;
-  width: min(100%, var(--ui-action-trio-max-inline-size));
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-4);
-}
-
-.rank-home .home-search-actions > :is(.button, .ui-button, a) {
-  width: 100%;
-  min-width: 0;
-}
-
 .rank-home .home-public-actions {
   flex-wrap: nowrap;
   max-width: var(--ui-action-trio-max-inline-size);
@@ -225,34 +203,18 @@ html[data-theme="light"] .rank-home .rank-summary-grid {
   }
 }
 @media (max-width: 759px) {
-  .rank-home .home-search-panel.rank-search-card {
-    grid-template-columns: 1fr;
+  .home-start-actions,
+  .home-record-options:not([hidden]) {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .rank-home .home-search-results.home-global-search-results.is-floating {
     max-height: min(380px, var(--search-picker-max-height, 380px));
   }
 
-  .rank-home .home-search-create,
-  .rank-home .home-search-actions {
-    width: 100%;
-  }
-
-  .rank-home .home-search-actions {
-    max-width: none;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: var(--space-2);
-  }
-
   .rank-home .home-public-actions {
     width: 100%;
     max-width: none;
-  }
-
-  .rank-home .home-search-actions :is(.button, .ui-button) {
-    min-width: 0;
-    padding-inline: var(--space-2);
-    font-size: var(--font-size-caption);
   }
 
   .rivalry-challenge-actions {

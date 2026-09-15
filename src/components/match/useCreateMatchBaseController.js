@@ -426,14 +426,15 @@ const navigate = useNavigate();
     const step = Number(nextStep);
     if (!wizardStepIds.has(step)) return;
 
-    setWizardStep(step);
-    if (step !== wizardStep) window.scrollTo({ top: 0, behavior: "auto" });
-    if (!syncStepToUrl) return;
+    if (!syncStepToUrl) {
+      setWizardStep(step);
+      return;
+    }
     const nextSearch = getCreateStepSearch(location.search, step);
     if (nextSearch === location.search) return;
 
     navigate({ pathname: location.pathname, search: nextSearch }, { replace });
-  }, [location.pathname, location.search, navigate, syncStepToUrl, wizardStep, wizardStepIds]);
+  }, [location.pathname, location.search, navigate, syncStepToUrl, wizardStepIds]);
 
   useEffect(() => {
     if (!syncStepToUrl) return;
