@@ -1,0 +1,72 @@
+.ui-share-control {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: start;
+  align-self: start;
+  gap: var(--control-group-gap);
+  min-inline-size: 0;
+  max-inline-size: 100%;
+}
+
+.ui-share-feedback {
+  flex-basis: 100%;
+  max-inline-size: 100%;
+  color: var(--rb-muted);
+  font-size: var(--font-size-meta);
+  overflow-wrap: anywhere;
+}
+
+.ui-share-feedback:empty {
+  display: none;
+}
+
+.ui-action-row > .ui-share-control {
+  display: contents;
+}
+
+.ui-action-row > .ui-share-control > .ui-share-feedback,
+.ui-action-row > .ui-share-control > input,
+.ui-action-row > .ui-share-control > textarea,
+.ui-action-row > .ui-share-control > .ui-share-panel {
+  flex-basis: 100%;
+  order: 1;
+}
+
+.ui-share-panel {
+  flex-basis: 100%;
+  min-inline-size: 0;
+  padding: var(--space-8);
+  border: var(--ui-card-border-width) solid var(--ui-card-border);
+  border-radius: var(--ui-panel-radius);
+  background: var(--rb-surface);
+}
+
+.ui-share-preview {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: start;
+  gap: var(--space-12);
+}
+
+.ui-share-preview-copy {
+  flex: 1 1 16rem;
+  min-inline-size: 0;
+  display: grid;
+  justify-items: start;
+  gap: var(--space-8);
+}
+
+.ui-share-preview-copy p {
+  margin: 0;
+  color: var(--rb-muted);
+  font-size: var(--font-size-body-sm);
+  overflow-wrap: anywhere;
+}
+
+.ui-share-preview-image {
+  display: block;
+  inline-size: min(100%, 18rem);
+  block-size: auto;
+  border: var(--ui-stroke-width) solid var(--rb-line);
+  border-radius: var(--radius-md);
+}

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { copyTextToClipboard, getAppShareUrl, shareLink } from "./sharing.js";
+import { copyTextToClipboard, getAppShareUrl, getPromotionShareText, shareLink } from "./sharing.js";
 import { getRoomShareUrl } from "./recruitingPage.js";
 
 const payload = { title: "농구 모임", text: "이번 주 경기", url: "https://example.com/app/matches?match=game-1" };
@@ -40,6 +40,35 @@ test("기기 공유 미지원 또는 거절 시 동일한 주소를 복사한다
     }), "copied");
     assert.equal(copied, payload.url);
   }
+});
+
+test("모집 공유는 알려진 정보와 참가 조건을 담고 누락된 값은 만들지 않는다", () => {
+  const text = getPromotionShareText({
+    title: "주말 농구", eyebrow: "3x3 · 모집 중",
+    fields: [
+      { label: "인원", value: "5/6명" },
+      { label: "일정", value: "토요일 15:00" },
+      { label: "비용", value: "주최자에게 확인" },
+      { label: "미정 구장", value: "" },
+      { label: "승인팀", value: 0 },
+      { label: "누락", value: null },
+    ],
+    note: "참가 조건이 적용됩니다.", actionLabel: "경기방 확인",
+  });
+  assert.equal(text, "3x3 · 모집 중 · 주말 농구\n인원: 5/6명\n일정: 토요일 15:00\n비용: 주최자에게 확인\n승인팀: 0\n참가 조건이 적용됩니다.\n경기방 확인");
+});
+
+test("모집 공유 복사는 안내 문구와 원래 상세 주소를 함께 전달한다", async () => {
+  const fallbackText = `${payload.text}\n\n${payload.url}`;
+  for (const navigator of [{}, { share: async () => { throw new Error("거절"); } }]) {
+    let copied;
+    assert.equal(await shareLink(payload, { navigator, fallbackText, copy: async (value) => { copied = value; return true; } }), "copied");
+    assert.equal(copied, fallbackText);
+  }
+  assert.equal(await shareLink(payload, {
+    navigator: { share: async () => { throw Object.assign(new Error(), { name: "AbortError" }); } },
+    fallbackText, copy: async () => assert.fail("취소 후 모집 문구를 복사하면 안 됨"),
+  }), "cancelled");
 });
 
 test("복사까지 실패하면 성공으로 알리지 않는다", async () => {

@@ -35,7 +35,20 @@ return (
     <div className="page-stack tournament-detail-page">
       <div className="ui-action-row" data-align="start">
         <Button touchFriendly as={Link} variant="secondary" className="tournament-back-link" to={matchesReturnTo}><ChevronLeft size={17} /> 경기로</Button>
-        <ShareButton size="md" path={getEntityDetailPath("tournaments", tournament.id)} title={tournament.title} text={[getMatchFormatLabel(tournament.mode, tournament.rules), formatWindow(tournament), tournament.court].filter(Boolean).join(" · ")} label="대회 공유" />
+        <ShareButton
+          size="md" path={getEntityDetailPath("tournaments", tournament.id)} title={tournament.title} label="대회 공유"
+          promotion={{
+            eyebrow: `${getMatchFormatLabel(tournament.mode, tournament.rules)} · 대회 안내`,
+            fields: [
+              { label: "일정", value: formatWindow(tournament) },
+              { label: "장소", value: tournament.court },
+              { label: "참가팀", value: `${acceptedCount}팀 승인` },
+              { label: "상태", value: tournament.status === "draft" && governanceEnabled ? getTournamentSanctionLabel(tournament) : statusLabels[tournament.status] ?? "상태 확인 중" },
+            ],
+            actionLabel: "일정·대진 보기",
+            note: "공유 시점의 안내입니다. 참가에는 기존 초대·승인 조건이 적용됩니다.",
+          }}
+        />
       </div>
 
       <section className="tournament-hero ui-page-hero ui-design-app-hero">

@@ -1,6 +1,7 @@
 import { getRecruitingRoomRosterProps } from "./RecruitingRoomRosterProps.js";
 import { getMatchFormatLabel, resolveMatchRuleSource } from "../../lib/matchRules.js";
 import ShareButton from "../share/ShareButton.jsx";
+import { getRecruitingListCardCounts } from "../../../shared/lib/recruitingLobbyCounts.js";
 
 function RecruitingRoomVersusSide({ context, sideName, meta }) {
   const {
@@ -109,6 +110,7 @@ export function RecruitingRoomPrimarySection({ context }) {
   } = context;
   const roomRuleSource = resolveMatchRuleSource(sourceMatch, { mode: selectedPost.mode, rules: selectedMatchRules });
   const roomFormatLabel = getMatchFormatLabel(roomRuleSource.mode, roomRuleSource.rules);
+  const shareCounts = getRecruitingListCardCounts(selectedPost, lobby);
 
   return (
     <>
@@ -134,7 +136,19 @@ export function RecruitingRoomPrimarySection({ context }) {
                       <ShareButton
                         path={roomShareUrl}
                         title={roomDisplayTitle}
-                        text={[roomDisplayTitle, selectedPost.court, getRoomScheduleLabel(selectedPost)].filter(Boolean).join(" · ")}
+                        promotion={{
+                          eyebrow: [roomFormatLabel, roomReadyLabel].filter(Boolean).join(" · "),
+                          fields: [
+                            { label: "일정", value: getRoomScheduleLabel(selectedPost) },
+                            { label: "장소", value: selectedPost.court },
+                            { label: "현재 인원", value: `${shareCounts.filled}/${shareCounts.capacity}명` },
+                            { label: "비용 안내", value: String(selectedPost.courtFee ?? "").trim() || (requiresPaidCourtNotice(selectedPost) ? "주최자에게 확인" : "비용 안내 없음") },
+                          ],
+                          actionLabel: "링크에서 경기방 확인",
+                          note: selectedPost.visibility === "private"
+                            ? "비공개 경기방입니다. 초대와 기존 참가 조건이 적용됩니다."
+                            : "공유 시점의 안내입니다. 링크에서 최신 정보와 참가 조건을 확인하세요.",
+                        }}
                         label="공유하기"
                       />
                     ) : null}

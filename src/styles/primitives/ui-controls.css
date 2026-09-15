@@ -677,36 +677,6 @@ input[type="checkbox"]:hover:not(:disabled) {
   align-items: flex-start;
 }
 
-.ui-share-control {
-  display: grid;
-  justify-items: start;
-  align-self: start;
-  gap: var(--space-2);
-  min-inline-size: 0;
-  max-inline-size: 100%;
-}
-
-.ui-share-feedback {
-  max-inline-size: 100%;
-  color: var(--rb-muted);
-  font-size: var(--font-size-meta);
-  overflow-wrap: anywhere;
-}
-
-.ui-share-feedback:empty {
-  display: none;
-}
-
-.ui-action-row > .ui-share-control {
-  display: contents;
-}
-
-.ui-action-row > .ui-share-control > .ui-share-feedback,
-.ui-action-row > .ui-share-control > input {
-  flex-basis: 100%;
-  order: 1;
-}
-
 .ui-clipboard-buffer {
   position: fixed;
   inline-size: 1px;

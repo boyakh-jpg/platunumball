@@ -106,7 +106,18 @@ export default function TeamDetailView({ controller }) {
     >
       {!app.demoPreview ? (
         <div className="ui-action-row ui-action-row-end" data-align="start">
-          <ShareButton path={getEntityDetailPath("teams", team.id)} title={team.name} text={[team.region, team.homeCourt].filter(Boolean).join(" · ")} label="팀 공유" />
+          <ShareButton
+            path={getEntityDetailPath("teams", team.id)} title={team.name} label="팀 공유"
+            promotion={{
+              eyebrow: "팀 소개",
+              fields: [
+                { label: "활동 지역", value: team.region },
+                { label: "주요 구장", value: team.homeCourt },
+              ],
+              actionLabel: "팀 소개·가입 안내 보기",
+              note: "가입은 팀 승인 후 확정됩니다. 링크에서 현재 가입 조건을 확인하세요.",
+            }}
+          />
         </div>
       ) : null}
       {teamDetailError ? (

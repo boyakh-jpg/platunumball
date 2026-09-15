@@ -38,7 +38,16 @@ export async function copyTextToClipboard(text, { navigator: browser = globalThi
   }
 }
 
-export async function shareLink(payload, { navigator: browser = globalThis.navigator, copy = copyTextToClipboard } = {}) {
+export function getPromotionShareText({ title, eyebrow, fields = [], actionLabel, note }) {
+  return [
+    [eyebrow, title].filter(Boolean).join(" · "),
+    ...fields.filter(({ value }) => value !== null && value !== undefined && String(value).trim()).map(({ label, value }) => `${label}: ${value}`),
+    note,
+    actionLabel,
+  ].filter(Boolean).join("\n");
+}
+
+export async function shareLink(payload, { navigator: browser = globalThis.navigator, copy = copyTextToClipboard, fallbackText = payload?.url } = {}) {
   if (!payload?.url) return "failed";
   if (browser?.share) {
     try {
@@ -49,7 +58,7 @@ export async function shareLink(payload, { navigator: browser = globalThis.navig
     }
   }
   try {
-    return await copy(payload.url) ? "copied" : "failed";
+    return await copy(fallbackText) ? "copied" : "failed";
   } catch {
     return "failed";
   }
