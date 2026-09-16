@@ -2,7 +2,8 @@ export const SHARE_FEEDBACK = Object.freeze({
   shared: "공유했습니다.",
   copied: "링크를 복사했어요. 원하는 곳에 붙여넣어 주세요.",
   cancelled: "",
-  failed: "링크를 복사하지 못했어요. 아래 주소를 직접 복사해 주세요.",
+  failed: "공유창을 열지 못했어요. 복사 버튼으로 직접 전달해 주세요.",
+  copyFailed: "링크를 복사하지 못했어요. 위 주소를 직접 선택해 복사해 주세요.",
 });
 
 export function getAppShareUrl(path, base = import.meta.env?.VITE_PUBLIC_APP_URL || globalThis.location?.origin || "") {
@@ -66,19 +67,12 @@ export async function shareImageFile(file, { title, navigator: browser = globalT
   }
 }
 
-export async function shareLink(payload, { navigator: browser = globalThis.navigator, copy = copyTextToClipboard, fallbackText = payload?.url } = {}) {
-  if (!payload?.url) return "failed";
-  if (browser?.share) {
-    try {
-      await browser.share(payload);
-      return "shared";
-    } catch (error) {
-      if (error?.name === "AbortError") return "cancelled";
-    }
-  }
+export async function shareLink(payload, { navigator: browser = globalThis.navigator } = {}) {
+  if (!payload?.url || typeof browser?.share !== "function") return "failed";
   try {
-    return await copy(fallbackText) ? "copied" : "failed";
-  } catch {
-    return "failed";
+    await browser.share(payload);
+    return "shared";
+  } catch (error) {
+    return error?.name === "AbortError" ? "cancelled" : "failed";
   }
 }

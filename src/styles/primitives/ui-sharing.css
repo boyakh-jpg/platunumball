@@ -24,21 +24,27 @@
   display: contents;
 }
 
-.ui-action-row > .ui-share-control > .ui-share-feedback,
-.ui-action-row > .ui-share-control > input,
-.ui-action-row > .ui-share-control > textarea,
 .ui-action-row > .ui-share-control > .ui-share-panel {
   flex-basis: 100%;
   order: 1;
 }
 
 .ui-share-panel {
+  display: grid;
+  gap: var(--control-group-gap);
   flex-basis: 100%;
   min-inline-size: 0;
   padding: var(--space-8);
   border: var(--ui-card-border-width) solid var(--ui-card-border);
   border-radius: var(--ui-panel-radius);
   background: var(--rb-surface);
+}
+
+.ui-share-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--control-group-gap);
 }
 
 .ui-share-preview {

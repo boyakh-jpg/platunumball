@@ -239,7 +239,7 @@
   background: var(--ui-control-bg);
   padding: var(--space-4);
 }
-.share-card strong {
+.share-card-name {
   font-size: 2rem;
   line-height: 1.06;
 }
@@ -258,6 +258,10 @@
 .share-card-emblem .tier-emblem {
   width: 100%;
   max-width: 168px;
+}
+.share-card-actions {
+  grid-column: 1 / -1;
+  min-inline-size: 0;
 }
 .share-card-action {
   box-sizing: border-box;
@@ -289,7 +293,7 @@
     gap: var(--space-5);
   }
 
-  .share-card strong {
+  .share-card-name {
     font-size: 1.62rem;
     overflow-wrap: anywhere;
     word-break: break-word;

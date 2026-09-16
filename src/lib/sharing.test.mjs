@@ -37,11 +37,10 @@ test("경기방은 가상 모집글 ID 대신 실제 경기로 연결하고 모�
   assert.equal(getRoomShareUrl("post/1"), "/app/recruiting?post=post%2F1");
 });
 
-test("기기 공유에 성공하면 링크를 중복 복사하지 않는다", async () => {
+test("앱으로 보내기는 원래 제목·문구·주소를 기기 공유창에 전달한다", async () => {
   let shared;
   const status = await shareLink(payload, {
     navigator: { share: async (value) => { shared = value; } },
-    copy: async () => assert.fail("복사하면 안 됨"),
   });
   assert.equal(status, "shared");
   assert.deepEqual(shared, payload);
@@ -50,18 +49,14 @@ test("기기 공유에 성공하면 링크를 중복 복사하지 않는다", as
 test("사용자가 공유창을 닫으면 복사하거나 오류를 표시하지 않는다", async () => {
   assert.equal(await shareLink(payload, {
     navigator: { share: async () => { throw Object.assign(new Error(), { name: "AbortError" }); } },
-    copy: async () => assert.fail("취소 후 복사하면 안 됨"),
   }), "cancelled");
 });
 
-test("기기 공유 미지원 또는 거절 시 동일한 주소를 복사한다", async () => {
-  for (const navigator of [{}, { share: async () => { throw new Error("거절"); } }]) {
-    let copied;
-    assert.equal(await shareLink(payload, {
-      navigator, copy: async (value) => { copied = value; return true; },
-    }), "copied");
-    assert.equal(copied, payload.url);
+test("기기 공유 미지원·거절·잘못된 주소는 공유 실패로 반환한다", async () => {
+  for (const navigator of [{}, { share: true }, { share: async () => { throw new Error("거절"); } }]) {
+    assert.equal(await shareLink(payload, { navigator }), "failed");
   }
+  assert.equal(await shareLink({}, { navigator: { share: () => assert.fail("주소 없이 공유하면 안 됨") } }), "failed");
 });
 
 test("모집 공유는 알려진 정보와 참가 조건을 담고 누락된 값은 만들지 않는다", () => {
@@ -81,22 +76,20 @@ test("모집 공유는 알려진 정보와 참가 조건을 담고 누락된 값
 });
 
 test("모집 공유 복사는 안내 문구와 원래 상세 주소를 함께 전달한다", async () => {
-  const fallbackText = `${payload.text}\n\n${payload.url}`;
-  for (const navigator of [{}, { share: async () => { throw new Error("거절"); } }]) {
-    let copied;
-    assert.equal(await shareLink(payload, { navigator, fallbackText, copy: async (value) => { copied = value; return true; } }), "copied");
-    assert.equal(copied, fallbackText);
-  }
-  assert.equal(await shareLink(payload, {
-    navigator: { share: async () => { throw Object.assign(new Error(), { name: "AbortError" }); } },
-    fallbackText, copy: async () => assert.fail("취소 후 모집 문구를 복사하면 안 됨"),
-  }), "cancelled");
+  const text = `${payload.text}\n\n${payload.url}`;
+  let copied;
+  assert.equal(await copyTextToClipboard(text, {
+    navigator: { clipboard: { writeText: async (value) => { copied = value; } } },
+  }), true);
+  assert.equal(copied, text);
 });
 
-test("복사까지 실패하면 성공으로 알리지 않는다", async () => {
-  assert.equal(await shareLink(payload, { navigator: {}, copy: async () => false }), "failed");
-  assert.equal(await shareLink(payload, { navigator: {}, copy: async () => { throw new Error(); } }), "failed");
-  assert.equal(await shareLink({}, { navigator: {} }), "failed");
+test("선택한 복사가 실패하거나 내용이 없으면 성공으로 알리지 않는다", async () => {
+  assert.equal(await copyTextToClipboard(payload.url, { navigator: {}, document: {} }), false);
+  assert.equal(await copyTextToClipboard(payload.url, {
+    navigator: { clipboard: { writeText: async () => { throw new Error("denied"); } } }, document: {},
+  }), false);
+  assert.equal(await copyTextToClipboard("", { navigator: { clipboard: { writeText: () => assert.fail("빈 내용을 복사하면 안 됨") } } }), false);
 });
 
 test("클립보드 권한이 없어도 선택 복사를 시도하고 임시 입력과 포커스를 복구한다", async () => {

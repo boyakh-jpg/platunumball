@@ -11,14 +11,16 @@ export default function ShareCard({ user }) {
   return (
     <div className="share-card ui-design-info-surface">
       <div className="share-card-copy">
-        <strong>{user.name}</strong>
+        <strong className="share-card-name">{user.name}</strong>
         <span className="share-card-tier-copy ui-tier-label">
           {placementComplete ? `${getTierDivision(mmr)} · ${Math.round(mmr)} MMR` : getPlacementLabel(user.ratings)}
         </span>
-        <ShareButton className="share-card-action" path={user?.id ? getEntityDetailPath("members", user.id) : ""} title={`${user.name} 프로필`} label="프로필 공유" />
       </div>
       <div className="share-card-emblem" aria-hidden="true">
         <TierEmblem mmr={mmr} ratings={user.ratings} size="hero" />
+      </div>
+      <div className="share-card-actions">
+        <ShareButton className="share-card-action" path={user?.id ? getEntityDetailPath("members", user.id) : ""} title={`${user.name} 프로필`} label="프로필 공유" />
       </div>
     </div>
   );
