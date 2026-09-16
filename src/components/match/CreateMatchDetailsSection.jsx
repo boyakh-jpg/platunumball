@@ -94,7 +94,7 @@ export function CreateMatchDetailsSection({ context }) {
             </div>
           </legend>
           <div className={`form-grid create-match-info-grid ${!isTournamentRoom && !isSoloRecord && !isMatchRecordRoom ? "is-standard-room" : ""}`}>
-            <label className="create-title-field">
+            <label className="create-title-field" data-create-field="title" tabIndex={-1}>
               {isTournamentRoom ? "대회 이름" : "제목"}
               <input value={draft.title} onChange={(event) => update({ title: event.target.value })} />
             </label>
@@ -169,7 +169,7 @@ export function CreateMatchDetailsSection({ context }) {
             </div>
             {!isInstantRoom ? (
               <>
-                <label className="create-date-field">
+                <label className="create-date-field" data-create-field="schedule" tabIndex={-1}>
                   날짜
                   <input type="date" min={isSoloRecord || isMatchRecordRoom ? minSoloRecordDate : today} max={scheduleMaxDate} value={draft.scheduledDate} onChange={(event) => update({ scheduledDate: event.target.value })} />
                 </label>
@@ -186,7 +186,7 @@ export function CreateMatchDetailsSection({ context }) {
             ) : null}
             {isSoloRecord ? (
               <>
-                <div className="stat-stepper-row personal-record-score-field">
+                <div className="stat-stepper-row personal-record-score-field" data-create-field="scores" tabIndex={-1}>
                   <div>
                     <strong>우리팀 점수</strong>
                     <span>TEAM</span>
@@ -264,7 +264,7 @@ export function CreateMatchDetailsSection({ context }) {
                     renderItem={renderSoloRecordUserSearchItem("teamB")}
                   />
                 </label>
-                <label className="memo-label solo-record-roster-field">
+                <label className="memo-label solo-record-roster-field" data-create-field="roster" tabIndex={-1}>
                   우리팀 선수
                   <textarea
                     value={draft.soloTeamAPlayersText}
@@ -288,7 +288,7 @@ export function CreateMatchDetailsSection({ context }) {
             ) : null}
             {isTournamentRoom ? (
               <>
-                <label>
+                <label data-create-field="endDate" tabIndex={-1}>
                   종료일
                   <input type="date" min={today} max={maxScheduleDate} value={draft.tournamentEndDate} onChange={(event) => update({ tournamentEndDate: event.target.value })} />
                 </label>

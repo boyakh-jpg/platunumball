@@ -625,6 +625,24 @@ html[data-theme] .app-main .create-match-page :is(
   scroll-margin-block-start: var(--space-8);
 }
 
+.create-record-next-steps {
+  display: grid;
+  gap: var(--space-5);
+  margin: 0;
+  padding-inline-start: var(--space-7);
+}
+
+.create-record-next-steps li::marker {
+  color: var(--accent-text);
+  font-weight: 800;
+}
+
+.create-record-next-steps p {
+  margin: var(--space-2) 0 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
 .match-creation-wizard-secondary-actions,
 .match-creation-wizard-primary-actions {
   max-width: 100%;

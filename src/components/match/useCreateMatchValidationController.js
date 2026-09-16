@@ -275,39 +275,50 @@ export function useCreateMatchValidationController(context) {
     : isPublicRoom
       ? publicTeamInvalid
       : teamTierBlocked || privateTeamInvalid));
-  const submitDisabledReason = challengeTeamInvalid
-    ? !selectedTeamA || !selectedTeamB
+  const issue = (message, field, step = 1) => ({ message, field, step });
+  const policyIssue = matchCreationValidation.policyIssues[0];
+  const submitIssue = challengeTeamInvalid
+    ? issue(!selectedTeamA || !selectedTeamB
       ? "라이벌 팀 명단을 불러오는 중입니다."
-      : "양 팀이 출전 인원을 채울 수 있는 경기 인원을 선택해 주세요."
+      : "양 팀이 출전 인원을 채울 수 있는 경기 인원을 선택해 주세요.", "basics")
     : courtRequiredBlocked
-    ? "등록된 구장을 선택해야 생성할 수 있습니다."
+    ? issue("경기할 구장을 검색하고 선택해 주세요.", "court", 4)
     : meetingPointInvalid
-      ? "실제로 만날 출입구·층·코트 번호를 2자 이상 적어 주세요."
+      ? issue("실제로 만날 출입구·층·코트 번호를 2자 이상 적어 주세요.", "meetingPoint", 4)
     : matchRuleInvalid
-      ? matchCreationValidation.ruleErrors[0]
+      ? issue(matchCreationValidation.ruleErrors[0], "rules", 3)
     : matchCreationPolicyInvalid
-      ? matchCreationValidation.policyErrors[0]
+      ? issue(policyIssue.message, policyIssue.field, policyIssue.field === "cost" ? 4 : policyIssue.field === "rules" ? 3 : 1)
     : isSoloRecord && soloRecordInvalid
-    ? (recordEntryMode === "named" ? soloRosterError : "") || "제목, 종료 시각, 점수를 확인해 주세요. 내 기록은 경기 종료 후 24시간 이내에만 저장할 수 있습니다."
+    ? !draft.title.trim()
+      ? issue("내 기록 제목을 입력해 주세요.", "title")
+      : !recordCreationWindow.valid
+        ? issue("경기 종료 후 24시간 이내의 종료 시각을 선택해 주세요.", "schedule")
+        : recordEntryMode === "named" && soloRosterError
+          ? issue(soloRosterError, "roster")
+          : soloStatsInvalid
+            ? issue("개인 스탯은 0~999 사이의 숫자로 입력해 주세요.", "participants")
+            : issue("양 팀 점수를 0~999 사이의 숫자로 입력해 주세요.", "scores")
     : isMatchRecordRoom && matchRecordInvalid
-      ? (matchRecordInvalidReason || "경기 기록 정보를 확인해 주세요.")
+      ? issue(matchRecordInvalidReason || "경기 기록 정보를 확인해 주세요.", !draft.title.trim() ? "title" : !recordCreationWindow.valid ? "schedule" : "basics")
     : !scheduleAllowed
-    ? isMatchRecordRoom ? "경기 기록은 경기 종료 후 24시간 이내에만 만들 수 있으며 미래 시각은 선택할 수 없습니다." : "일정 조건이 맞지 않습니다. 즉시는 바로 생성 가능하고, 예약 일정은 허용 기간 안에서만 가능합니다."
+    ? issue(isMatchRecordRoom ? "경기 기록은 경기 종료 후 24시간 이내에만 만들 수 있으며 미래 시각은 선택할 수 없습니다." : "일정 조건이 맞지 않습니다. 즉시는 바로 생성 가능하고, 예약 일정은 허용 기간 안에서만 가능합니다.", "schedule")
     : !tournamentEndAllowed
-      ? "대회 종료일이 허용 기간을 벗어났습니다."
+      ? issue("대회 종료일이 허용 기간을 벗어났습니다.", "endDate")
       : teamTierBlocked
-        ? "상대팀 MMR이 현재 허용구간 밖입니다. MMR 제한을 경고만 또는 제한 없음으로 바꾸면 생성할 수 있습니다."
+        ? issue("상대팀 MMR이 현재 허용구간 밖입니다. MMR 제한을 경고만 또는 제한 없음으로 바꾸면 생성할 수 있습니다.", "participants")
         : ageRestrictionBlocked
-          ? "생성자가 선택한 연령 제한 밖입니다. 연령 제한을 바꾸면 생성할 수 있습니다."
+          ? issue("생성자가 선택한 연령 제한 밖입니다. 연령 제한을 바꾸면 생성할 수 있습니다.", "participants")
           : hostTrustBlocked
-            ? `방장 신뢰도 ${hostTrustRequired}점 이상 필요합니다. 현재 ${hostTrustScore}점입니다.`
+            ? issue(`방장 신뢰도 ${hostTrustRequired}점 이상 필요합니다. 현재 ${hostTrustScore}점입니다.`, "participants")
             : privateTeamInvalid
-              ? privateTeamInvalidReason || "팀전을 만들려면 먼저 팀에 가입해야 합니다."
+              ? issue(privateTeamInvalidReason || "팀전을 만들려면 먼저 팀에 가입해야 합니다.", "basics")
               : isTournamentRoom && tournamentInvalidReason
-                ? tournamentInvalidReason
+                ? issue(tournamentInvalidReason, !draft.title.trim() ? "title" : "participants")
                 : isPublicRoom && publicTeamInvalid && publicTeamInvalidReason
-                  ? publicTeamInvalidReason
-                  : "";
+                  ? issue(publicTeamInvalidReason, "basics")
+                  : null;
+  const submitDisabledReason = submitIssue?.message ?? "";
   const courtSummary = selectedCourt ?? defaultCourt;
   const courtPlayWarning = selectedCourt ? getCourtPlayWarning(selectedCourt, draft.mode) : "";
   const selectCourt = (court) => {
@@ -428,7 +439,7 @@ export function useCreateMatchValidationController(context) {
     courtRequiredBlocked, privateTeamInvalid, matchRecordInvalid, publicTeamInvalid, tournamentMmrBlocked, tournamentOrganizerEligible, requiredTournamentRefereeCount,
     tournamentRefereePoolValidation, tournamentInvalid, publicTeamInvalidReason, privateTeamInvalidReason, matchRecordInvalidReason, tournamentInvalidReason, soloStatsInvalid,
     soloScoreForNumber, soloScoreAgainstNumber, soloRecordInvalid, meetingPointInvalid, matchRuleInvalid, matchCreationPolicyInvalid, challengeTeamInvalid, submitDisabled,
-    submitDisabledReason, courtSummary, courtPlayWarning, selectCourt, clearSelectedCourt, removeTournamentCourt, update,
+    submitIssue, submitDisabledReason, courtSummary, courtPlayWarning, selectCourt, clearSelectedCourt, removeTournamentCourt, update,
     updateSoloStat, normalizeSoloRosterSide, appendSoloRecordUser,
   };
 }

@@ -868,6 +868,7 @@ test("equal payment without playing guarantee requires explicit acknowledgement 
     benchPaymentAcknowledged: false,
   };
   assert.match(getMatchCreationValidation(draft).errors.join(" "), /확인/);
+  assert.deepEqual(getMatchCreationValidation(draft).policyIssues.map((issue) => issue.field), ["roster"]);
   assert.equal(getMatchCreationValidation({ ...draft, benchPaymentAcknowledged: true }).errors.length, 0);
 });
 
@@ -879,8 +880,11 @@ test("paid venue requires structured cost", () => {
     venueFee: 0,
   };
   assert.match(getMatchCreationValidation(draft).errors.join(" "), /대관료/);
+  const validation = getMatchCreationValidation(draft);
+  assert.deepEqual(validation.policyIssues, [{ field: "cost", message: validation.policyErrors[0] }]);
   assert.match(getMatchCreationValidation({ ...draft, refereeFee: 10000 }).errors.join(" "), /대관료/);
   assert.equal(getMatchCreationValidation({ ...draft, venueFee: 10000 }).errors.length, 0);
+  assert.deepEqual(getMatchCreationValidation({ ...draft, venueFee: 10000 }).policyIssues, []);
 });
 
 test("match cost inputs keep an empty editing value instead of restoring normalized zero", () => {
@@ -1429,7 +1433,7 @@ test("CreateMatch persists bench capacity at top level and inside rules", () => 
   assert.doesNotMatch(source, /official:\s*true/);
   assert.doesNotMatch(source, /wizardStep === \(isMatchRecordRoom \? 5 : 1\)/);
   const wizardSource = fs.readFileSync(path.join(root, "src/components/match/MatchCreationWizard.jsx"), "utf8");
-  assert.match(wizardSource, /참가를 확인한 선수만 서버 정책에 따라 개인 MMR 반영 대상/);
+  assert.match(wizardSource, /확인한 선수만 개인 MMR 반영 대상이 되며 팀 MMR은 반영하지 않습니다/);
   assert.doesNotMatch(wizardSource, /1v1 10%|2v2 20%|3v3 35%|5v5 50%/);
   assert.doesNotMatch(wizardSource, /MMR에는 반영하지 않습니다/);
   assert.match(wizardSource, /const purposeValue = matchPurpose/);

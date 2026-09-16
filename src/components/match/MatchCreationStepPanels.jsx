@@ -9,7 +9,7 @@ export function MatchCreationRulePanel({
   onChange,
 }) {
   return (
-    <Card as="fieldset" className="section-card full-span workflow-fieldset">
+    <Card as="fieldset" className="section-card full-span workflow-fieldset" data-create-field="rules" tabIndex={-1}>
       <legend className="section-title-row">
         <div>
           <h2>룰 설정</h2>

@@ -10,7 +10,7 @@ export default function MeetingPointFields({ draft, onChange, required = false, 
     : "";
 
   return (
-    <div className="meeting-point-fields">
+    <div className="meeting-point-fields" data-create-field="meetingPoint" tabIndex={-1}>
       <label>
         구체적인 만남 장소
         <InlineValidatedInput

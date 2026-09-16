@@ -15,10 +15,10 @@ export function CreateMatchIntentSection({ context }) {
   return (
     <>
 {wizardStep === 1 ? (
-        <Card as="fieldset" className="section-card full-span create-visibility-card workflow-fieldset">
+        <Card as="fieldset" className="section-card full-span create-visibility-card workflow-fieldset" data-create-field="basics" tabIndex={-1}>
           <legend className="section-title-row">
             <div>
-              <h2 className="create-choice-heading">{isRecordCreateIntent ? "기록 방식" : "공개 범위"}</h2>
+              <h2 className="create-choice-heading">{isRecordCreateIntent ? "어떤 기록을 남길까요?" : "누구와 경기하나요?"}</h2>
               <p className="eyebrow">Room visibility</p>
             </div>
           </legend>
@@ -31,7 +31,9 @@ export function CreateMatchIntentSection({ context }) {
                 <button
                   type="button"
                   className={draft.recordType === RECORD_TYPES.match && draft.visibility === "private" ? "ui-choice-tile active" : "ui-choice-tile"}
+                  aria-pressed={draft.recordType === RECORD_TYPES.match && draft.visibility === "private"}
                   onClick={() => {
+                    if (draft.recordType === RECORD_TYPES.match && draft.visibility === "private") return;
                     const team = defaultTeamA ?? selectedTeamA;
                     const mode = getMatchModeOrDefault(draft.mode, defaultMode);
                     const hostJoinMode = getMatchFormationMode(draft) === "pickup" || mode === "1v1" || !canCreateTeamRoom ? "player" : draft.hostJoinMode;
@@ -60,14 +62,16 @@ export function CreateMatchIntentSection({ context }) {
                   <Lock size={19} />
                   <span>
                     <strong>비공개 경기방</strong>
-                    <em>초대받은 선수·팀만 참여합니다.</em>
+                    <em>함께할 선수·팀을 직접 초대해요.</em>
                   </span>
                 </button>
                 <button
                   type="button"
                   className={draft.recordType === RECORD_TYPES.match && draft.visibility === "public" ? "ui-choice-tile active" : "ui-choice-tile"}
+                  aria-pressed={draft.recordType === RECORD_TYPES.match && draft.visibility === "public"}
                   disabled={practiceMode || hasTeamChallenge}
                   onClick={() => {
+                    if (draft.recordType === RECORD_TYPES.match && draft.visibility === "public") return;
                     const team = defaultTeamA ?? selectedTeamA;
                     const nextMode = getMatchModeOrDefault(draft.mode, defaultMode);
                     const hostJoinMode = getMatchFormationMode(draft) === "pickup" || nextMode === "1v1" || !canCreateTeamRoom ? "player" : draft.hostJoinMode;
@@ -94,17 +98,18 @@ export function CreateMatchIntentSection({ context }) {
                   <Globe2 size={19} />
                   <span>
                     <strong>공개 매칭방</strong>
-                    <em>매칭 목록에서 선수·팀을 모집합니다.</em>
+                    <em>매칭 목록에서 함께할 선수·팀을 찾아요.</em>
                   </span>
                 </button>
-                <button type="button" className={isTournamentRoom ? "ui-choice-tile active" : "ui-choice-tile"} disabled={practiceMode || hasTeamChallenge} onClick={() => {
+                <button type="button" className={isTournamentRoom ? "ui-choice-tile active" : "ui-choice-tile"} aria-pressed={isTournamentRoom} disabled={practiceMode || hasTeamChallenge} onClick={() => {
+                  if (isTournamentRoom) return;
                   setTeamRegion("전체");
                   update(getTournamentCreateSelectionPatch(draft, defaultMode, [defaultTournamentTeamA?.id, defaultTournamentTeamB?.id]));
                 }}>
                   <Trophy size={19} />
                   <span>
                     <strong>비공개 대회방</strong>
-                    <em>초대팀으로 리그·토너먼트를 운영합니다.</em>
+                    <em>여러 팀을 초대해 리그·토너먼트를 열어요.</em>
                   </span>
                 </button>
               </>
@@ -113,7 +118,9 @@ export function CreateMatchIntentSection({ context }) {
                 <button
                   type="button"
                   className={isMatchRecordRoom ? "ui-choice-tile active" : "ui-choice-tile"}
+                  aria-pressed={isMatchRecordRoom}
                   onClick={() => {
+                    if (isMatchRecordRoom) return;
                     const nextMode = getMatchModeOrDefault(draft.mode, defaultMode);
                     update({
                       ...getMatchIntentChangePatch(draft, "standard_competitive"),
@@ -151,40 +158,44 @@ export function CreateMatchIntentSection({ context }) {
                   <ClipboardList size={19} />
                   <span>
                     <strong>경기 기록</strong>
-                    <em>빈 경기 기록을 만든 뒤 실제 참가자를 등록하고 2/3 이상의 내 참가 확인을 받습니다.</em>
+                    <em>함께 뛴 사람들과 결과를 확인해요. 참가 확인을 거쳐 개인 MMR 반영 대상이 됩니다.</em>
                   </span>
                 </button>
                 <button
                   type="button"
                   className={isSoloRecord ? "ui-choice-tile active" : "ui-choice-tile"}
-                  onClick={() => update({
-                    ...getMatchModeChangePatch(draft, "1v1"),
-                    recordType: RECORD_TYPES.personalRecord,
-                    recordEntryMode: getRecordEntryMode(draft),
-                    visibility: "private",
-                    timingType: "scheduled",
-                    hostJoinMode: "player",
-                    teamOnly: false,
-                    ranked: false,
-                    official: false,
-                    preRegistered: false,
-                    mmrLimitMode: "off",
-                    title: draft.recordType === RECORD_TYPES.personalRecord ? draft.title : "개인 기록",
-                    scheduledDate: today,
-                    scheduledTime: getSeoulTimeInputValue(),
-                    courtId: "",
-                    court: "",
-                    playerIds: [],
-                    reservePlayerIds: [],
-                    opponentPlayerIds: [],
-                    opponentReservePlayerIds: [],
-                    opponentLeaderId: "",
-                  })}
+                  aria-pressed={isSoloRecord}
+                  onClick={() => {
+                    if (isSoloRecord) return;
+                    update({
+                      ...getMatchModeChangePatch(draft, "1v1"),
+                      recordType: RECORD_TYPES.personalRecord,
+                      recordEntryMode: getRecordEntryMode(draft),
+                      visibility: "private",
+                      timingType: "scheduled",
+                      hostJoinMode: "player",
+                      teamOnly: false,
+                      ranked: false,
+                      official: false,
+                      preRegistered: false,
+                      mmrLimitMode: "off",
+                      title: draft.recordType === RECORD_TYPES.personalRecord ? draft.title : "개인 기록",
+                      scheduledDate: today,
+                      scheduledTime: getSeoulTimeInputValue(),
+                      courtId: "",
+                      court: "",
+                      playerIds: [],
+                      reservePlayerIds: [],
+                      opponentPlayerIds: [],
+                      opponentReservePlayerIds: [],
+                      opponentLeaderId: "",
+                    });
+                  }}
                 >
                   <ClipboardList size={19} />
                   <span>
                     <strong>내 기록</strong>
-                    <em>승인 없이 빠르게 남기거나 선수 이름을 직접 적습니다. MMR에는 반영되지 않습니다.</em>
+                    <em>다른 사람의 확인 없이 혼자 저장해요. MMR에는 반영되지 않습니다.</em>
                   </span>
                 </button>
               </>

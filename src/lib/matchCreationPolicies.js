@@ -479,19 +479,19 @@ export function getMatchCreationValidation(source = {}) {
   const policySource = getMatchCreationPolicySource(source);
   const policy = getMatchCreationPolicyPayload(policySource);
   const ruleValidation = getMatchRuleInputValidation(policySource, { mode: policySource.mode });
-  const policyErrors = [];
+  const policyIssues = [];
   const warnings = [];
   const paidVenue = policy.venuePaymentType === "paid_reserved" || policy.venuePaymentType === "paid_not_reserved";
-  if (paidVenue && policy.venueFee <= 0) policyErrors.push("유료구장은 대관료를 1원 이상 입력해야 합니다.");
+  if (paidVenue && policy.venueFee <= 0) policyIssues.push({ field: "cost", message: "유료구장은 대관료를 1원 이상 입력해야 합니다." });
   if (policy.requiresBenchPaymentAcknowledgement && !policy.benchPaymentAcknowledged) {
-    policyErrors.push("후보의 동일 결제와 출전 미보장 조건을 확인해야 합니다.");
+    policyIssues.push({ field: "roster", message: "후보의 동일 결제와 출전 미보장 조건을 확인해야 합니다." });
   }
   if (policy.formationMode === "pickup") {
     if (policy.hostJoinMode !== "player" || policy.teamOnly === true) {
-      policyErrors.push("픽업은 개인 참가 방식으로만 만들 수 있습니다.");
+      policyIssues.push({ field: "basics", message: "픽업은 개인 참가 방식으로만 만들 수 있습니다." });
     }
     if (policy.official !== false) {
-      policyErrors.push("픽업은 공식 경기로 만들 수 없습니다.");
+      policyIssues.push({ field: "rules", message: "픽업은 공식 경기로 만들 수 없습니다." });
     }
     warnings.push("체크인에서 방장 또는 배정 심판이 팀 배치와 교대 순서를 확정해야 시작할 수 있습니다.");
   }
@@ -504,11 +504,13 @@ export function getMatchCreationValidation(source = {}) {
   if (policy.ranked && getMatchRulesPayload(policySource, { mode: policySource.mode }).gameClockEnabled === false) {
     warnings.push("경기시계를 사용하지 않으면 해당 여부를 최종 MMR 반영 전에 서버에서 검증합니다.");
   }
+  const policyErrors = policyIssues.map((issue) => issue.message);
   return {
     policy,
     ruleValidation,
     ruleErrors: ruleValidation.errors,
     policyErrors,
+    policyIssues,
     errors: [...ruleValidation.errors, ...policyErrors],
     warnings,
   };

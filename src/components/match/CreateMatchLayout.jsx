@@ -4,20 +4,41 @@ import { CreateMatchDetailsSection } from "./CreateMatchDetailsSection.jsx";
 import { CreateMatchCourtRosterSection } from "./CreateMatchCourtRosterSection.jsx";
 import { CreateMatchPolicyReviewSection } from "./CreateMatchPolicyReviewSection.jsx";
 
+function focusCreateField(container, field) {
+  const target = container?.querySelector(`[data-create-field="${field}"]`) ?? container;
+  target?.focus({ preventScroll: true });
+  target?.scrollIntoView({ block: "center", behavior: "instant" });
+}
+
 export function CreateMatchLayout({ context }) {
   const {
     Badge, MatchCreationWizardActions, MatchCreationWizardNav, creationWizardSteps, draft, embedded, finalWizardStep,
     app, getRoomRemakeWarningCopy, goToWizardStep, isMatchRecordRoom, isRecordCreateIntent, isSoloRecord, isTournamentRoom, navigate,
-    onCancel, remakeDraft, setDraft, submit, submitDisabled, submitFeedback, submitting,
+    onCancel, remakeDraft, setDraft, submit, submitDisabled, submitFeedback, submitIssue, submitting,
     wizardStep,
   } = context;
   const stepContentRef = useRef(null);
   const previousStepRef = useRef(wizardStep);
+  const pendingFieldRef = useRef(null);
   const currentStepLabel = creationWizardSteps.find((step) => step.id === wizardStep)?.label;
+  const fixSubmitIssue = () => {
+    if (!submitIssue) return;
+    const step = creationWizardSteps.some((item) => item.id === submitIssue.step) ? submitIssue.step : creationWizardSteps[0].id;
+    if (step === wizardStep) focusCreateField(stepContentRef.current, submitIssue.field);
+    else {
+      pendingFieldRef.current = submitIssue.field;
+      goToWizardStep(step);
+    }
+  };
 
   useLayoutEffect(() => {
     if (previousStepRef.current === wizardStep) return;
     previousStepRef.current = wizardStep;
+    if (pendingFieldRef.current) {
+      focusCreateField(stepContentRef.current, pendingFieldRef.current);
+      pendingFieldRef.current = null;
+      return;
+    }
     stepContentRef.current?.focus({ preventScroll: true });
     stepContentRef.current?.scrollIntoView({ block: "start", behavior: "instant" });
   }, [wizardStep]);
@@ -92,6 +113,8 @@ export function CreateMatchLayout({ context }) {
           : ""}
         submitDisabled={app.demoPreview ? submitting : submitDisabled || submitting}
         submitFeedback={wizardStep === finalWizardStep ? submitFeedback : ""}
+        submitIssue={!app.demoPreview && submitDisabled ? submitIssue : null}
+        onFixIssue={fixSubmitIssue}
         onSubmit={submit}
         onCancel={() => {
           if (onCancel) onCancel();

@@ -23,7 +23,7 @@ export function CreateMatchCourtRosterSection({ context }) {
   return (
     <>
 {wizardStep === finalWizardStep ? (
-        <Card as="fieldset" className="section-card full-span selector-panel workflow-fieldset">
+        <Card as="fieldset" className="section-card full-span selector-panel workflow-fieldset" data-create-field="court" tabIndex={-1}>
           <legend className="section-title-row">
             <div>
               <h2>코트 검색</h2>
@@ -185,10 +185,10 @@ export function CreateMatchCourtRosterSection({ context }) {
         />
 
         {wizardStep === 1 ? (
-        <Card as="fieldset" className="section-card full-span selector-panel workflow-fieldset">
+        <Card as="fieldset" className="section-card full-span selector-panel workflow-fieldset" data-create-field="participants" tabIndex={-1}>
           <legend className="section-title-row">
             <div>
-              <h2>{isSoloRecord ? "개인 스탯" : isMatchRecordRoom ? "방에서 참가자 구성" : isTournamentRoom ? "초대 팀 선택" : isTeamRoom ? "방 생성 후 팀 선택" : "개인전 매칭 기준"}</h2>
+              <h2>{isSoloRecord ? "개인 스탯" : isMatchRecordRoom ? "기록을 만든 뒤 할 일" : isTournamentRoom ? "초대 팀 선택" : isTeamRoom ? "방 생성 후 팀 선택" : "개인전 매칭 기준"}</h2>
               <p className="eyebrow">{isSoloRecord ? "Solo Record" : isMatchRecordRoom ? "Record Setup" : isTournamentRoom || isTeamRoom ? "Team Finder" : "Match Criteria"}</p>
             </div>
           </legend>
@@ -373,13 +373,16 @@ export function CreateMatchCourtRosterSection({ context }) {
               </div>
             </>
           ) : isMatchRecordRoom ? (
-            <div className="create-public-note create-match-record-setup-note ui-design-borderless-surface">
-              <ClipboardList size={17} />
-              <span>
-                {recordComposition === "team"
-                  ? "빈 경기 기록 생성 후 방장이 두 팀을 선택합니다. 각 팀장이 실제 출전 명단을 확정하고 24시간 동안 참가자 2/3 이상의 내 참가 확인과 문제 신고를 받습니다."
-                  : "빈 경기 기록 생성 후 방장이 A/B 참가자를 계정으로 채웁니다. 24시간 동안 실제 참가자 2/3 이상의 내 참가 확인과 문제 신고를 받습니다."}
-              </span>
+            <div className="create-match-record-setup-note">
+              <ol className="create-record-next-steps">
+                <li>
+                  <strong>{recordComposition === "team" ? "팀과 출전 명단 선택" : "참가자 명단 입력"}</strong>
+                  <p>{recordComposition === "team" ? "방장이 두 팀을 선택하고, 각 팀장이 실제 출전 명단을 확정해요." : "방장이 양 팀에서 실제로 뛴 사람들을 계정으로 등록해요."}</p>
+                </li>
+                <li><strong>팀 점수 입력</strong><p>양 팀의 최종 점수를 입력해요.</p></li>
+                <li><strong>내 참가 확인 요청</strong><p>기록을 공유하고, 참가자가 자신의 참가 여부를 확인해요.</p></li>
+              </ol>
+              <p className="supporting-note">24시간 동안 실제 참가자 2/3 이상의 내 참가 확인을 받습니다. 잘못된 내용은 문제 신고로 알려주세요.</p>
             </div>
           ) : isTeamRoom ? (
             <div className="create-public-note ui-design-borderless-surface">
