@@ -58,6 +58,7 @@ export async function createSharePoster(promotion, palette) {
     }
     context.fillStyle = color;
     visible.forEach((line, index) => context.fillText(line, x, y + index * size * 1.3));
+    return visible.length * size * 1.3;
   };
   // Choose QR polarity from the resolved theme colors; never invert QR modules in dark mode.
   const brightness = (color) => {
@@ -75,25 +76,32 @@ export async function createSharePoster(promotion, palette) {
 
   drawText("BOXTIER", PADDING, 76, { size: 34, weight: palette.titleWeight });
   context.fillStyle = palette.accent;
-  context.fillRect(PADDING, 146, WIDTH - PADDING * 2, 5);
-  drawText(promotion.eyebrow || "", PADDING, 194, { size: 30, lines: 1, color: palette.accent });
+  context.fillRect(PADDING, 138, WIDTH - PADDING * 2, 5);
+  drawText(promotion.eyebrow || "", PADDING, 186, { size: 30, lines: 1, color: palette.accent });
   let titleSize = 88;
   font(titleSize, palette.titleWeight);
   while (titleSize > 52 && wrapText(context, promotion.title, WIDTH - PADDING * 2).length > 3) {
     titleSize -= 2;
     font(titleSize, palette.titleWeight);
   }
-  drawText(promotion.title, PADDING, 264, { size: titleSize, lines: 3, weight: palette.titleWeight });
+  const titleHeight = drawText(promotion.title, PADDING, 248, { size: titleSize, lines: 3, weight: palette.titleWeight });
 
   const fields = (promotion.fields || []).filter(({ value }) => value !== null && value !== undefined && String(value).trim()).slice(0, 4);
-  const columnWidth = (WIDTH - PADDING * 2) / 2;
-  fields.forEach(({ label, value }, index) => {
-    const x = PADDING + (index % 2) * columnWidth;
-    const y = 632 + Math.floor(index / 2) * 190;
-    drawText(label, x, y, { size: 28, color: palette.muted, lines: 1, width: columnWidth - 40 });
-    drawText(value, x, y + 48, { size: 38, lines: 2, width: columnWidth - 40 });
+  const columns = fields.length <= 2 ? 1 : 2;
+  const fieldPadding = 32;
+  const fieldGap = 32;
+  const rowHeight = 176;
+  const fieldsTop = Math.max(464, 248 + titleHeight + 48);
+  const columnWidth = (WIDTH - PADDING * 2 - fieldPadding * 2 - fieldGap * (columns - 1)) / columns;
+  if (fields.length) {
     context.fillStyle = palette.surface;
-    context.fillRect(x, y + 156, columnWidth - 40, 3);
+    context.fillRect(PADDING, fieldsTop, WIDTH - PADDING * 2, Math.ceil(fields.length / columns) * rowHeight + fieldPadding);
+  }
+  fields.forEach(({ label, value }, index) => {
+    const x = PADDING + fieldPadding + (index % columns) * (columnWidth + fieldGap);
+    const y = fieldsTop + fieldPadding + Math.floor(index / columns) * rowHeight;
+    drawText(label, x, y, { size: 28, color: palette.muted, lines: 1, width: columnWidth });
+    drawText(value, x, y + 44, { size: 38, lines: 2, width: columnWidth });
   });
 
   const matrix = createQrMatrix(promotion.url);
@@ -109,6 +117,8 @@ export async function createSharePoster(promotion, palette) {
     if (filled) context.fillRect(qrX + (x + quietZone) * moduleSize, qrY + (y + quietZone) * moduleSize, moduleSize, moduleSize);
   }));
   const footerWidth = qrX - PADDING - 40;
+  context.fillStyle = palette.surface;
+  context.fillRect(PADDING, 1040, WIDTH - PADDING * 2, 3);
   drawText(promotion.actionLabel, PADDING, 1080, { size: 36, width: footerWidth, lines: 2, weight: palette.titleWeight });
   drawText(promotion.note || "", PADDING, 1190, { size: 26, width: footerWidth, lines: 2, color: palette.muted });
 

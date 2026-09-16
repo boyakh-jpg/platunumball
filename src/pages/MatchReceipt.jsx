@@ -12,6 +12,7 @@ import { getCourtAddress, getRegisteredCourts, mergeCourtSearchCourts } from "..
 import { getLoginPath, inferRegionSelection } from "../lib/profileSetup.js";
 import { COURT_MAP_SEARCH_LIMIT, COURT_MAP_SEARCH_PURPOSE } from "../lib/queryPolicy.js";
 import { postServerAction } from "../lib/serverActions.js";
+import { canShareImageFile } from "../lib/sharing.js";
 import { getUserHashtag } from "../lib/handles.js";
 import { MATCH_RECEIPT_LINE_ART_AI_PROMPT, createMatchReceiptLineArt } from "../lib/matchReceiptEmblem.js";
 import { getTeamEmblemErrorMessage, prepareTeamEmblemUpload } from "../lib/teamEmblem.js";
@@ -168,10 +169,6 @@ function downloadBlob(blob, fileName) {
 function isIosDevice(navigatorValue) {
   return /iPad|iPhone|iPod/u.test(navigatorValue?.userAgent || "")
     || (navigatorValue?.platform === "MacIntel" && navigatorValue.maxTouchPoints > 1);
-}
-
-function canShareImageFile(navigatorValue, file) {
-  return typeof navigatorValue?.share === "function" && Boolean(navigatorValue.canShare?.({ files: [file] }));
 }
 
 function getPhotoGestureSnapshot(pointers) {
@@ -1142,7 +1139,7 @@ export default function MatchReceipt({ auth, app }) {
       const preset = "story";
       const blob = await createPng(preset);
       const file = new File([blob], getMatchReceiptFileName(draft, preset), { type: "image/png" });
-      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+      if (canShareImageFile(navigator, file)) {
         await navigator.share({ title: receiptCopy.shareTitle, files: [file] });
         setStatus(receiptCopy.shareOpened);
         trackMatchReceiptEvent("receipt_shared", { loggedIn: Boolean(auth?.session), imagePreset: preset, method: "web_share" });

@@ -1,9 +1,31 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { copyTextToClipboard, getAppShareUrl, getPromotionShareText, shareLink } from "./sharing.js";
+import { canShareImageFile, copyTextToClipboard, getAppShareUrl, getPromotionShareText, shareImageFile, shareLink } from "./sharing.js";
 import { getRoomShareUrl } from "./recruitingPage.js";
 
 const payload = { title: "농구 모임", text: "이번 주 경기", url: "https://example.com/app/matches?match=game-1" };
+
+test("이미지 공유 지원 여부는 실제 파일로 확인하고 확인 실패는 미지원으로 처리한다", () => {
+  const file = new File(["png"], "share.png", { type: "image/png" });
+  const supported = { share() {}, canShare: (data) => { assert.deepEqual(data, { files: [file] }); return true; } };
+  assert.equal(canShareImageFile(supported, file), true);
+  for (const browser of [undefined, {}, { share() {} }, { canShare: () => true }, { share() {}, canShare: () => false }, { share() {}, canShare() { throw new Error("blocked"); } }]) {
+    assert.equal(canShareImageFile(browser, file), false);
+  }
+  assert.equal(canShareImageFile(supported, null), false);
+});
+
+test("이미지 보내기는 준비된 PNG를 전달하고 공유 성공·취소·실패를 구분한다", async () => {
+  const file = new File(["png"], "share.png", { type: "image/png" });
+  let shared;
+  const navigator = { canShare: () => true, share: async (data) => { shared = data; } };
+  assert.equal(await shareImageFile(file, { title: payload.title, navigator }), "shared");
+  assert.deepEqual(shared, { title: payload.title, files: [file] });
+  for (const [name, expected] of [["AbortError", "cancelled"], ["NotAllowedError", "failed"], ["DataError", "failed"]]) {
+    assert.equal(await shareImageFile(file, { navigator: { ...navigator, share: async () => { throw Object.assign(new Error(), { name }); } } }), expected);
+  }
+  assert.equal(await shareImageFile(file, { navigator: { canShare: () => false, share: () => assert.fail("미지원 기기는 공유창을 열면 안 됨") } }), "failed");
+});
 
 test("공유 주소는 설정된 서비스 주소와 상세 경로를 사용한다", () => {
   assert.equal(getAppShareUrl("/app/teams/team-1", "https://example.com"), "https://example.com/app/teams/team-1");

@@ -47,6 +47,25 @@ export function getPromotionShareText({ title, eyebrow, fields = [], actionLabel
   ].filter(Boolean).join("\n");
 }
 
+export function canShareImageFile(browser, file) {
+  if (!file || typeof browser?.share !== "function") return false;
+  try {
+    return browser.canShare?.({ files: [file] }) === true;
+  } catch {
+    return false;
+  }
+}
+
+export async function shareImageFile(file, { title, navigator: browser = globalThis.navigator } = {}) {
+  if (!canShareImageFile(browser, file)) return "failed";
+  try {
+    await browser.share({ title, files: [file] });
+    return "shared";
+  } catch (error) {
+    return error?.name === "AbortError" ? "cancelled" : "failed";
+  }
+}
+
 export async function shareLink(payload, { navigator: browser = globalThis.navigator, copy = copyTextToClipboard, fallbackText = payload?.url } = {}) {
   if (!payload?.url) return "failed";
   if (browser?.share) {
