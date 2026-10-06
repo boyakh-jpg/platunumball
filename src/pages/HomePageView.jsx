@@ -54,7 +54,7 @@ function GuestHomePage() {
       </Card>
 
       <div className="page-stack home-left-rail">
-        <section className="rank-summary-grid ui-page-hero ui-design-app-hero">
+        <section className="rank-summary-grid">
           <div className="home-rank-board-head ui-page-hero ui-design-app-hero">
             <div className="rank-hero-top ui-page-hero__copy"><div><h1>오늘 농구를 시작하세요</h1><p>경기를 찾고, 함께 뛰고, 내 기록을 쌓으세요.</p></div></div>
             <aside className="home-hero-board ui-liquid-glass" aria-label="공개 코트 요약">
@@ -134,7 +134,7 @@ export default function HomePageView({
       </Card>
 
       <div className="page-stack home-left-rail">
-        <section className="rank-summary-grid ui-page-hero ui-design-app-hero">
+        <section className="rank-summary-grid">
           <div className="home-rank-board-head ui-page-hero ui-design-app-hero">
             <div className="rank-hero-top ui-page-hero__copy">
               <div>

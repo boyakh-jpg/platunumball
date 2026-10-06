@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { RotateCw, UserRound } from "lucide-react";
+import { UserRound } from "lucide-react";
 import { Link } from "react-router-dom";
 import { APP_SETTINGS_PATH, getEntityDetailPath } from "../../lib/appNavigation.js";
 import { getLoginPath } from "../../lib/profileSetup.js";
@@ -10,7 +9,6 @@ import Card from "../common/Card.jsx";
 import TierEmblem from "./TierEmblem.jsx";
 
 export default function PlayerCard({ user, rankLabel, recentFiveWins = 0, mySeasonRow, mySeasonIndex = -1 }) {
-  const [reveal, setReveal] = useState(0);
   const placementComplete = user && isPlacementComplete(user.ratings);
   const rating = user?.ratings?.integrated;
   const ratingLabel = placementComplete
@@ -20,8 +18,7 @@ export default function PlayerCard({ user, rankLabel, recentFiveWins = 0, mySeas
   return (
     <Card className="ui-player-card ui-design-decorative-surface" aria-label={user ? "내 선수 카드" : "선수 카드 시작하기"}>
       <div className="ui-player-card-stage">
-        <div key={reveal} className="ui-player-card-face">
-          <span className="ui-player-card-particles" aria-hidden="true" />
+        <div className="ui-player-card-face">
           <div className="ui-player-card-heading"><h2>내 선수 카드</h2><span>{ratingLabel}</span></div>
           <div className="ui-player-card-identity">
             {user ? <TierEmblem mmr={rating} ratings={user.ratings} size="md" /> : <UserRound className="ui-player-card-placeholder" aria-hidden="true" />}
@@ -38,10 +35,9 @@ export default function PlayerCard({ user, rankLabel, recentFiveWins = 0, mySeas
           )}
         </div>
       </div>
-      <div className="ui-player-card-actions">
-        <Button variant="secondary" touchFriendly onClick={() => setReveal((value) => value + 1)}><RotateCw size={16} aria-hidden="true" /> 카드 펼치기</Button>
-        {!user ? <Button as={Link} to={getLoginPath("/app")} touchFriendly>내 카드 시작</Button> : null}
-      </div>
+      {!user ? <div className="ui-player-card-actions">
+        <Button as={Link} to={getLoginPath("/app")} touchFriendly>내 카드 시작</Button>
+      </div> : null}
       {user ? <nav className="ui-player-card-links" aria-label="선수 카드 메뉴">
         <Button as={Link} to={getEntityDetailPath("members", user.id)} variant="text" touchFriendly>프로필</Button>
         <Button as={Link} to="/app/season" variant="text" touchFriendly>시즌</Button>

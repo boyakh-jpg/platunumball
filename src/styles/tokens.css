@@ -116,7 +116,6 @@
   --font-size-title-xl: clamp(1.9rem, 3.4vw, 2.4rem);
   --motion-duration-fast: 180ms;
   --motion-duration-enter: 320ms;
-  --motion-duration-card: 760ms;
   --motion-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   --sports-display-font: "BoxTier Sports Display", "KBL Jump Condensed", "Anton", sans-serif;
   --sports-display-width-scale: 1.08;
