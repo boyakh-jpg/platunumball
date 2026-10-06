@@ -289,7 +289,7 @@ html[data-theme] .app-main :is(.arena-hero-panel) {
   align-items: stretch;
   gap: var(--space-3);
   padding: var(--space-3);
-  background: color-mix(in srgb, var(--ui-liquid-glass-bg) 82%, transparent);
+  background: var(--ui-hero-information-surface-bg);
   box-shadow: none;
 }
 html[data-theme] .app-main .arena-hero-stats {

@@ -2946,7 +2946,7 @@ UI 수정 전:
 10. 새 button·field·card·tab은 공용 primitive와 token을 사용한다. 화면별 색상·높이·radius·테두리를 하드코딩하지 않는다.
 11. 방 모달의 선수 slot 내부와 영수증 미리보기·Story·Feed 출력물은 이 밀도·표면 통일 범위에서 제외하고 전용 규칙을 유지한다.
 12. 데스크톱 side rail은 공용 `--ui-rail-*` 토큰을 사용한다. 본문과 분리되는 한 단계의 중성 표면만 허용하고 외곽선·블러·중첩 프로필 박스를 사용하지 않는다.
-13. `.ui-liquid-glass`는 이전 마크업과의 호환을 위한 이름으로만 남긴다. 실제 표면은 테마별 중성 면을 사용하고 blur, backdrop-filter, 굴절, 광택, 장식 테두리, 그림자를 사용하지 않는다. 홈·팀·일정·매칭 hero의 내부 정보 면은 공용 `--ui-hero-information-surface-bg`만 사용해 불투명한 중성 면을 유지한다. 주요 글자는 `--ui-liquid-glass-color`, 보조 문구는 `--ui-liquid-glass-muted-color`를 사용해 light/dark 모두 대비를 유지한다. 일정·매칭 hero의 현황 숫자는 같은 `--sports-display-font`를 사용하고 숫자·라벨 글자는 완전 불투명으로 표시한다.
+13. `.ui-liquid-glass`는 이전 마크업과의 호환을 위한 이름으로만 남긴다. 실제 표면은 테마별 중성 면을 사용하고 blur, backdrop-filter, 굴절, 광택, 장식 테두리, 그림자를 사용하지 않는다. 홈·팀·일정·매칭 hero의 내부 정보 면은 공용 `--ui-hero-information-surface-bg`만 사용해 테마별 중성 면을 90% 불투명도로 표시한다. 투명도는 배경색에만 적용하고 카드 전체 opacity는 변경하지 않는다. 주요 글자는 `--ui-liquid-glass-color`, 보조 문구는 `--ui-liquid-glass-muted-color`를 사용해 light/dark 모두 대비를 유지한다. 일정·매칭 hero의 현황 숫자는 같은 `--sports-display-font`를 사용하고 숫자·라벨 글자는 완전 불투명으로 표시한다.
 14. 승패·무승부 기록 행은 공용 `--ui-result-win-bg`, `--ui-result-loss-bg`, `--ui-result-draw-bg`의 옅은 파스텔 면과 `--ui-status-rail-*`의 짧고 둥근 세로 상태선을 함께 사용한다. 화면별 상태 면색과 선 크기를 만들지 않는다.
 15. 경기 목록 요약의 팀명은 말줄임 없이 두 줄까지 줄바꿈하되 요소 높이는 실제 줄 수만 차지한다. 팀명과 날짜·모드·장소 정보 사이에는 추가 빈 줄을 만들지 않는다. 카드 밀도와 최소 높이는 바깥 행의 `--ui-compact-*` 토큰이 소유하며, 영역을 완전히 넘는 이름만 두 줄 상한 안에서 자른다.
 16. 홈 안내 배너, 처리할 일, 알림, 지역 랭킹의 반복 행은 내부 면색·외곽선·상태선 없이 투명 행과 행 사이 `--ui-divider-subtle` 구획선으로 통일한다. 홈 안내 배너의 마지막 진입 링크는 로그인 여부와 관계없이 마지막 grid 열에 배치한다. 홈 hero의 단색 상황판과 우측 rail의 단일 중성 바탕은 이 규칙에서 제외한다.
