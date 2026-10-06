@@ -893,8 +893,8 @@ test("guide screenshots ship with the app and the shot clock has one separated o
   assert.match(matchClockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-volume input\[type="range"\]\s*\{[^}]*min-width:\s*0;/);
   assert.match(matchClockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-score-actions \.ui-button\s*\{[^}]*min-height:\s*calc\(var\(--ui-button-height\) \+ var\(--space-4\)\);/);
   assert.match(matchClockStyles, /\.ui-match-clock-attendance-qr\s*\{[^}]*border:\s*0;/);
-  assert.match(matchClockStyles, /\.ui-match-clock-score-control-side-a \.ui-button\s*\{[^}]*background:\s*var\(--team-home\);/);
-  assert.match(matchClockStyles, /\.ui-match-clock-score-control-side-b \.ui-button\s*\{[^}]*background:\s*var\(--team-away\);/);
+  assert.match(matchClockStyles, /\.ui-match-clock-score-control-side-a \.ui-button\s*\{[^}]*--ui-button-secondary-bg:\s*color-mix\(in srgb, var\(--team-home\) 95%, var\(--rb-text\)\);/);
+  assert.match(matchClockStyles, /\.ui-match-clock-score-control-side-b \.ui-button\s*\{[^}]*--ui-button-secondary-bg:\s*color-mix\(in srgb, var\(--team-away\) 95%, var\(--rb-text\)\);/);
   assert.match(matchClockSource, /className="ui-match-clock-period">\{periodDisplayLabel\}/);
   assert.match(matchClockSource, /`\$\{liveClock\?\.currentPeriod \|\| 1\}Q`/);
   assert.doesNotMatch(matchClockSource, /<Badge[^>]*>\{getMatchClockPeriodLabel\(liveClock\)\}<\/Badge>/);

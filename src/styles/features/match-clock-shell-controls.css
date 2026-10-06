@@ -157,7 +157,7 @@
   display: grid;
   grid-area: score;
   grid-template-columns: minmax(0, 1fr) minmax(150px, 1.25fr) minmax(0, 1fr);
-  gap: var(--control-group-gap);
+  gap: 0;
   align-items: stretch;
   color: var(--rb-text);
   background: var(--scoreboard);
@@ -211,6 +211,7 @@
 .ui-match-clock-scoreboard > div {
   display: grid;
   place-content: center;
+  gap: var(--space-3);
   min-width: 0;
   min-height: 132px;
   padding: 12px;
@@ -219,10 +220,12 @@
 
 .ui-match-clock-scoreboard > .ui-match-clock-team-a {
   color: var(--team-home);
+  background: color-mix(in srgb, var(--team-home) 12%, var(--scoreboard));
 }
 
 .ui-match-clock-scoreboard > .ui-match-clock-team-b {
   color: var(--team-away);
+  background: color-mix(in srgb, var(--team-away) 12%, var(--scoreboard));
 }
 
 .ui-match-clock-scoreboard-time-only {
@@ -239,6 +242,7 @@
 .ui-match-clock-team-score {
   font-family: var(--sports-display-font);
   font-size: clamp(2.7rem, 8cqi, 5.2rem);
+  font-variant-numeric: tabular-nums;
   line-height: 1;
 }
 
@@ -266,16 +270,20 @@
 }
 
 .ui-match-clock-score-control-side-a .ui-button {
-  color: var(--scoreboard);
-  background: var(--team-home);
+  --ui-button-secondary-bg: color-mix(in srgb, var(--team-home) 95%, var(--rb-text));
+  --ui-button-secondary-hover-bg: color-mix(in srgb, var(--team-home) 90%, var(--rb-text));
+  --ui-button-secondary-pressed-bg: color-mix(in srgb, var(--team-home) 80%, var(--rb-text));
 }
 
 .ui-match-clock-score-control-side-b .ui-button {
-  color: var(--scoreboard);
-  background: var(--team-away);
+  --ui-button-secondary-bg: color-mix(in srgb, var(--team-away) 95%, var(--rb-text));
+  --ui-button-secondary-hover-bg: color-mix(in srgb, var(--team-away) 90%, var(--rb-text));
+  --ui-button-secondary-pressed-bg: color-mix(in srgb, var(--team-away) 80%, var(--rb-text));
 }
 
 .ui-match-clock-score-actions {
+  --ui-button-color: var(--scoreboard);
+
   display: grid;
   grid-template-columns: repeat(4, minmax(40px, 1fr));
   gap: 8px;
@@ -442,7 +450,7 @@
 
 .ui-match-shot-clock-value {
   font-family: var(--sports-display-font);
-  font-size: clamp(3.25rem, 10vw, 5.5rem);
+  font-size: clamp(3.25rem, 10cqi, 5.5rem);
   font-variant-numeric: tabular-nums;
   line-height: 0.9;
 }
