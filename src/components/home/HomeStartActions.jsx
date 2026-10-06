@@ -6,7 +6,7 @@ import { HOME_START_LINKS, HOME_RECORD_LINKS } from "../../lib/appNavigation.js"
 function StartLink({ item }) {
   const Icon = item.icon;
   return (
-    <Link className="home-start-action" to={item.to}>
+    <Link className={`home-start-action${item.intent === "primary" ? " home-start-action-primary" : ""}`} to={item.to}>
       <Icon size={20} aria-hidden="true" />
       <span><strong>{item.label}</strong><small>{item.description}</small></span>
       <ArrowRight size={17} aria-hidden="true" />

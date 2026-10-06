@@ -8,7 +8,7 @@ const APP_MATCHING_PATH = "/app/recruiting";
 const APP_CREATE_PATH = "/app/create";
 
 export const HOME_START_LINKS = Object.freeze([
-  { to: APP_MATCHING_PATH, label: "경기 찾기", description: "참가할 수 있는 경기 둘러보기", icon: Handshake },
+  { to: APP_MATCHING_PATH, label: "경기 찾기", description: "참가할 수 있는 경기 둘러보기", icon: Handshake, intent: "primary" },
   { to: APP_CREATE_PATH, label: "경기·대회 열기", description: "일정을 정하고 참가자 모으기", icon: PlusCircle },
 ]);
 

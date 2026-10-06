@@ -172,9 +172,9 @@ html[data-theme] .app-main .ui-match-list-surface .ui-match-list-summary {
   border-radius: var(--ui-button-radius);
   box-shadow: var(--ui-button-shadow, none);
   transition:
-    border-color 140ms ease,
-    background-color 140ms ease,
-    color 140ms ease;
+    border-color var(--motion-duration-fast) var(--motion-ease),
+    background-color var(--motion-duration-fast) var(--motion-ease),
+    color var(--motion-duration-fast) var(--motion-ease);
 }
 
 html[data-theme] .ui-button.ui-button-secondary {
@@ -255,9 +255,9 @@ html[data-theme] .ui-button.ui-button-secondary:active:not(:disabled) {
 
 :is(.ui-folder-tabs button, .ui-segmented-control button, button.ui-choice-tile) {
   transition:
-    border-color 140ms ease,
-    background-color 140ms ease,
-    color 140ms ease;
+    border-color var(--motion-duration-fast) var(--motion-ease),
+    background-color var(--motion-duration-fast) var(--motion-ease),
+    color var(--motion-duration-fast) var(--motion-ease);
 }
 
 html[data-theme] .ui-button.ui-button-text {
@@ -328,7 +328,7 @@ html[data-theme] .app-main .ui-segmented-control:not(.create-choice-segments):no
 }
 
 @media (prefers-reduced-motion: reduce) {
-  :is(.ui-button, .ui-folder-tabs button, .ui-segmented-control button, button.ui-choice-tile) {
+  :is(.ui-button, .ui-folder-tabs button, .ui-segmented-control button, button.ui-choice-tile, .ui-control) {
     transition: none;
   }
 }
@@ -555,9 +555,9 @@ html[data-theme] .app-main .ui-segmented-control:not(.create-choice-segments):no
   border: var(--ui-stroke-width) solid var(--ui-control-border);
   border-radius: var(--ui-control-radius);
   transition:
-    border-color 140ms ease,
-    box-shadow 140ms ease,
-    background-color 140ms ease;
+    border-color var(--motion-duration-fast) var(--motion-ease),
+    box-shadow var(--motion-duration-fast) var(--motion-ease),
+    background-color var(--motion-duration-fast) var(--motion-ease);
 }
 
 .ui-control:disabled {

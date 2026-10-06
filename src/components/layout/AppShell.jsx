@@ -31,12 +31,12 @@ export default function AppShell({ app, auth, guestPreview = false }) {
       <Sidebar user={app.currentUser} teams={app.state.teams} auth={auth} guestPreview={guestPreview} />
       <main className="app-main ui-design-app" aria-busy={remoteLoading}>
         <div className="app-shell-tools">
-          <Button as={Link} to={guestPreview ? getLoginPath(APP_NOTIFICATION_PATH) : APP_NOTIFICATION_PATH} variant="secondary" size="sm" aria-label={unreadNotificationCount ? shellCopy.unreadNotifications(unreadNotificationCount) : shellCopy.notifications}>
+          <Button as={Link} to={guestPreview ? getLoginPath(APP_NOTIFICATION_PATH) : APP_NOTIFICATION_PATH} variant="secondary" touchFriendly aria-label={unreadNotificationCount ? shellCopy.unreadNotifications(unreadNotificationCount) : shellCopy.notifications}>
             <Bell size={18} aria-hidden="true" />
             <span>{shellCopy.notifications}</span>
             {unreadNotificationCount ? <b className="app-notification-badge" aria-hidden="true">{unreadNotificationCount > 99 ? "99+" : unreadNotificationCount}</b> : null}
           </Button>
-          <Button as={Link} to={guestPreview ? getLoginPath(APP_SETTINGS_PATH) : APP_SETTINGS_PATH} variant="secondary" size="sm" aria-label={shellCopy.settings}>
+          <Button as={Link} to={guestPreview ? getLoginPath(APP_SETTINGS_PATH) : APP_SETTINGS_PATH} variant="secondary" touchFriendly aria-label={shellCopy.settings}>
             <Settings size={18} aria-hidden="true" />
             <span>{shellCopy.settings}</span>
           </Button>

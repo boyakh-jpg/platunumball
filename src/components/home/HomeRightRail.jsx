@@ -2,13 +2,12 @@ import { Bell, ClipboardCheck, Trophy } from "lucide-react";
 import { Link } from "react-router-dom";
 import { MAX_TEAM_MEMBERSHIPS, getTeamRoleLabel } from "../../lib/constants.js";
 import { getNotificationDisplayContent, getNotificationHref } from "../../lib/notifications.js";
-import { getPlacementLabel } from "../../lib/rating.js";
 import Badge from "../common/Badge.jsx";
 import Button from "../common/Button.jsx";
 import Card from "../common/Card.jsx";
 import PlayerHoverCard from "../profile/PlayerHoverCard.jsx";
 import ProfileEmblem from "../profile/ProfileEmblem.jsx";
-import TierEmblem from "../rating/TierEmblem.jsx";
+import PlayerCard from "../rating/PlayerCard.jsx";
 import TeamEmblem from "../team/TeamEmblem.jsx";
 import TeamHoverCard from "../team/TeamHoverCard.jsx";
 
@@ -31,7 +30,6 @@ export default function HomeRightRail({
   myTeamCount,
   myTeams,
   openActionRoom,
-  placementComplete,
   priorityItems,
   priorityNoticeItems,
   processingInviteId,
@@ -46,22 +44,7 @@ export default function HomeRightRail({
     <aside className="page-stack home-right-rail">
       <aside className="page-stack home-top-rail">
         <div className="rank-tier-rail">
-          <Card className="section-card rank-profile-card rank-spotlight-card ui-design-decorative-surface">
-            <div className="rank-spotlight-content">
-              <div className="rank-spotlight-main">
-                <TierEmblem mmr={user.ratings.integrated} ratings={user.ratings} size="md" />
-                <div>
-                  <strong>{rankSpotlightLabel}</strong>
-                  <span>{placementComplete ? `${Math.round(user.ratings.integrated)} MMR` : getPlacementLabel(user.ratings)} · 최근 5경기 {recentFiveWins}승</span>
-                </div>
-              </div>
-              <div className="rank-profile-tabs rank-spotlight-links">
-                <Button as={Link} to={`/app/players/${user.id}`} size="sm" variant="text">프로필</Button>
-                <Button as={Link} to="/app/season" size="sm" variant="text">시즌</Button>
-                <Button as={Link} to="/app/settings" size="sm" variant="text">설정</Button>
-              </div>
-            </div>
-          </Card>
+          <PlayerCard user={user} rankLabel={rankSpotlightLabel} recentFiveWins={recentFiveWins} mySeasonRow={mySeasonRow} mySeasonIndex={mySeasonIndex} />
         </div>
 
         <Card className="section-card home-action-card">

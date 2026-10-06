@@ -12,10 +12,15 @@
 }
 .home-start-actions {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1.6fr) repeat(2, minmax(0, 1fr));
   gap: var(--space-5);
 }
 .home-start-action {
+  --home-action-bg: var(--surface-2);
+  --home-action-hover-bg: var(--surface-3);
+  --home-action-text: var(--text);
+  --home-action-muted: var(--muted);
+  --home-action-icon: var(--rb-orange);
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
@@ -25,12 +30,20 @@
   padding: var(--space-7);
   border: var(--ui-stroke-width) solid var(--line);
   border-radius: var(--ui-control-radius);
-  background: var(--surface-2);
-  color: var(--text);
+  background: var(--home-action-bg);
+  color: var(--home-action-text);
   font: inherit;
   text-align: left;
   text-decoration: none;
   cursor: pointer;
+  transition: background-color var(--motion-duration-fast) var(--motion-ease), border-color var(--motion-duration-fast) var(--motion-ease), transform var(--motion-duration-fast) var(--motion-ease);
+}
+.home-start-action-primary {
+  --home-action-bg: var(--button-primary-bg);
+  --home-action-hover-bg: var(--button-primary-hover-bg);
+  --home-action-text: var(--ui-button-color-active);
+  --home-action-muted: var(--ui-button-color-active);
+  --home-action-icon: var(--ui-button-color-active);
 }
 .home-start-action > span {
   display: grid;
@@ -44,19 +57,19 @@
   overflow-wrap: anywhere;
 }
 .home-start-action small {
-  color: var(--muted);
+  color: var(--home-action-muted);
   font-size: var(--font-size-caption);
   line-height: 1.45;
   word-break: keep-all;
   overflow-wrap: anywhere;
 }
 .home-start-action > svg:first-child {
-  color: var(--rb-orange);
+  color: var(--home-action-icon);
 }
 .home-start-action:hover,
 .home-start-action[aria-expanded="true"] {
   border-color: var(--rb-orange);
-  background: var(--surface-3);
+  background: var(--home-action-hover-bg);
 }
 .home-start-action:focus-visible {
   outline: var(--ui-stroke-width) solid var(--rb-orange);

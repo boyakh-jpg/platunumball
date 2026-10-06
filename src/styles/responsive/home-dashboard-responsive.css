@@ -203,7 +203,14 @@ html[data-theme="light"] .rank-home .rank-summary-grid {
   }
 }
 @media (max-width: 759px) {
-  .home-start-actions,
+  .home-start-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .home-start-action-primary {
+    grid-column: 1 / -1;
+  }
+
   .home-record-options:not([hidden]) {
     grid-template-columns: minmax(0, 1fr);
   }

@@ -1,0 +1,165 @@
+/* PlayerCard owns the decorative card surface; records retain the shared data styles. */
+.ui-player-card {
+  --ui-card-padding: var(--space-8);
+  --ui-card-radius: var(--radius-xl);
+  --ui-card-bg: var(--ui-tier-decoration-bg);
+  --ui-design-soft-surface-bg: var(--ui-card-bg);
+  display: grid;
+  gap: var(--space-6);
+  min-width: 0;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.ui-player-card-stage {
+  min-width: 0;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+}
+
+.ui-player-card-face {
+  position: relative;
+  display: grid;
+  gap: var(--space-8);
+  padding: var(--space-8);
+  border-radius: inherit;
+  background: linear-gradient(135deg, var(--surface-3), var(--rb-bg-2));
+  animation: ui-player-card-reveal var(--motion-duration-card) var(--motion-ease);
+  transition: transform var(--motion-duration-fast) var(--motion-ease);
+}
+
+.ui-player-card-heading,
+.ui-player-card-identity {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-6);
+  min-width: 0;
+}
+
+.ui-player-card-heading h2 {
+  margin: 0;
+  font-size: var(--font-size-app-section-title);
+}
+
+.ui-player-card-heading > span {
+  color: var(--accent-text);
+  font-size: var(--font-size-caption);
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.ui-player-card-identity > div {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-2);
+  overflow-wrap: anywhere;
+}
+
+.ui-player-card-identity strong {
+  font-size: var(--font-size-title-md);
+}
+
+.ui-player-card-identity span {
+  color: var(--muted);
+  font-size: var(--font-size-app-support);
+}
+
+.ui-player-card-placeholder {
+  width: var(--space-24);
+  height: var(--space-24);
+  color: var(--accent-text);
+}
+
+.ui-player-card-stats,
+.ui-player-card-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin: 0;
+  padding: var(--space-6) 0 0;
+  border-top: var(--ui-stroke-width) solid var(--line);
+}
+
+.ui-player-card-stats > div {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-2);
+}
+
+.ui-player-card-stats dt,
+.ui-player-card-steps li {
+  color: var(--muted);
+  font-size: var(--font-size-caption);
+  overflow-wrap: anywhere;
+}
+
+.ui-player-card-stats dd {
+  margin: 0;
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-title);
+  overflow-wrap: anywhere;
+}
+
+.ui-player-card-steps {
+  list-style: none;
+  text-align: center;
+}
+
+.ui-player-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.ui-player-card-links {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.ui-player-card-particles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  background:
+    radial-gradient(circle at 12% 24%, var(--gold) 0 2px, transparent 3px),
+    radial-gradient(circle at 83% 18%, var(--rb-orange) 0 2px, transparent 3px),
+    radial-gradient(circle at 76% 76%, var(--gold) 0 1px, transparent 2px),
+    radial-gradient(circle at 20% 84%, var(--rb-orange) 0 1px, transparent 2px);
+  animation: ui-player-card-particles var(--motion-duration-card) var(--motion-ease);
+}
+
+@keyframes ui-player-card-reveal {
+  0% { transform: rotateZ(-12deg) scale(0.92); }
+  42% { transform: rotateZ(180deg) scale(0.55); }
+  100% { transform: rotateZ(360deg) scale(1); }
+}
+
+@keyframes ui-player-card-particles {
+  0% { opacity: 0; transform: scale(0.6); }
+  45% { opacity: 0.8; }
+  100% { opacity: 0; transform: scale(1.35); }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ui-player-card-stage:hover .ui-player-card-face {
+    transform: rotateZ(-1deg) scale(0.98);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-player-card-face,
+  .ui-player-card-particles {
+    animation: none;
+  }
+
+  .ui-player-card-face {
+    transition: none;
+  }
+
+  .ui-player-card-stage:hover .ui-player-card-face {
+    transform: none;
+  }
+}

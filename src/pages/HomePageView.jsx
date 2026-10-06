@@ -10,6 +10,7 @@ import MatchCard from "../components/match/MatchCard.jsx";
 import RecentMatchRow from "../components/match/RecentMatchRow.jsx";
 import HomeRightRail from "../components/home/HomeRightRail.jsx";
 import HomeStartActions from "../components/home/HomeStartActions.jsx";
+import PlayerCard from "../components/rating/PlayerCard.jsx";
 import { isHomeGuideCardVisible } from "../data/settingsMappers.js";
 import { getRoomScheduleLabel } from "../lib/matchUtils.js";
 
@@ -55,10 +56,10 @@ function GuestHomePage() {
       <div className="page-stack home-left-rail">
         <section className="rank-summary-grid ui-page-hero ui-design-app-hero">
           <div className="home-rank-board-head ui-page-hero ui-design-app-hero">
-            <div className="rank-hero-top ui-page-hero__copy"><div><p className="eyebrow">BOXTIER HOME</p><h1>오늘 농구를 시작하세요</h1><p>공개 매칭과 커뮤니티는 로그인 없이 둘러볼 수 있습니다.</p></div></div>
+            <div className="rank-hero-top ui-page-hero__copy"><div><h1>오늘 농구를 시작하세요</h1><p>경기를 찾고, 함께 뛰고, 내 기록을 쌓으세요.</p></div></div>
             <aside className="home-hero-board ui-liquid-glass" aria-label="공개 코트 요약">
               <Link className="home-hero-next" to="/app/recruiting"><span><CalendarDays size={16} /> COURT OPEN</span><strong>공개 매칭 둘러보기</strong><em>실제 모집 중인 경기방을 확인하세요.</em><ArrowUpRight size={18} aria-hidden="true" /></Link>
-              <div className="home-hero-stats"><span><strong>—</strong><em>내 확정 경기</em></span><span><strong>—</strong><em>최근 전적</em></span><span><strong>—</strong><em>지역 순위</em></span></div>
+              <div className="home-hero-stats"><span><strong>찾기</strong><em>내 주변 경기</em></span><span><strong>참가</strong><em>함께 농구</em></span><span><strong>기록</strong><em>내 랭크 성장</em></span></div>
             </aside>
           </div>
         </section>
@@ -83,6 +84,7 @@ function GuestHomePage() {
 
       <aside className="page-stack home-right-rail">
         <aside className="page-stack home-top-rail">
+          <div className="rank-tier-rail"><PlayerCard /></div>
           <Card className="section-card"><div className="section-title-row"><h2>공개 랭크보드</h2></div><p className="muted">전체 선수·팀 순위를 지금 볼 수 있습니다.</p><Button as={Link} to="/app/rankings" variant="secondary" className="ui-button-block ui-design-borderless-surface"><Trophy size={17} /> 전체 랭크보드</Button></Card>
           <Card className="section-card home-action-card"><div className="section-title-row"><h2>내가 처리할 일</h2></div><div className="home-action-list ui-design-borderless-list"><div className="home-action-row priority-5"><span className="home-action-icon"><Bell size={18} /></span><span className="home-action-main"><strong>개인 알림</strong><em>로그인 후 초대와 경기 요청이 여기에 표시됩니다.</em></span></div></div></Card>
         </aside>
@@ -136,7 +138,6 @@ export default function HomePageView({
           <div className="home-rank-board-head ui-page-hero ui-design-app-hero">
             <div className="rank-hero-top ui-page-hero__copy">
               <div>
-                <p className="eyebrow">내 랭크 보드</p>
                 <h1>{user.name}님의 오늘 코트 현황</h1>
                 <p>{user.region} · {user.position} · 통합 {getPlayerRatingSummary(user)}</p>
               </div>

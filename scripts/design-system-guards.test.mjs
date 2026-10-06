@@ -803,8 +803,11 @@ test("공용 CTA는 좁은 화면에서도 내용 너비를 유지한다", () =>
   );
   assert.match(
     read("src/styles/responsive/home-dashboard-responsive.css"),
-    /\.home-start-actions,[\s\S]*?\.home-record-options:not\(\[hidden\]\)\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\);/,
+    /\.home-record-options:not\(\[hidden\]\)\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\);/,
   );
+  const homeResponsive = read("src/styles/responsive/home-dashboard-responsive.css");
+  assert.match(homeResponsive, /\.home-start-actions\s*\{[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\);/);
+  assert.match(homeResponsive, /\.home-start-action-primary\s*\{[^}]*grid-column:\s*1 \/ -1;/);
   assert.match(
     primitiveStyles,
     /html\[data-theme\] \.guest-landing-primary-actions\s*\{[^}]*width:\s*min\(100%, var\(--ui-action-pair-max-inline-size\)\);[^}]*max-width:\s*var\(--ui-action-pair-max-inline-size\);/,
@@ -1109,7 +1112,7 @@ test("생성 control은 공용 폭과 높이를 사용한다", () => {
   );
   assert.match(
     matchCreationWizardSource,
-    /match-creation-wizard-secondary-actions[\s\S]*취소하기[\s\S]*이전[\s\S]*match-creation-wizard-primary-actions[\s\S]*다음[\s\S]*<Button type="button" disabled=\{disabled \|\| submitDisabled\} onClick=\{onSubmit\}/,
+    /match-creation-wizard-secondary-actions[\s\S]*취소하기[\s\S]*이전[\s\S]*match-creation-wizard-primary-actions[\s\S]*다음[\s\S]*<Button type="button"(?: touchFriendly)? disabled=\{disabled \|\| submitDisabled\} onClick=\{onSubmit\}/,
   );
 });
 
@@ -2347,7 +2350,7 @@ test("page tabs and selection groups use the shared Button owner", () => {
     ["src/pages/PlayerDetail.jsx", "rank-profile-tabs"],
     ["src/pages/RefereeDetail.jsx", "rank-profile-tabs"],
     ["src/pages/TeamDetailView.jsx", "rank-profile-tabs"],
-    ["src/components/home/HomeRightRail.jsx", "rank-profile-tabs"],
+    ["src/components/rating/PlayerCard.jsx", "ui-player-card-links"],
     ["src/pages/AdminPageView.jsx", "admin-section-tabs"],
     ["src/components/profile/ProfileIconDialog.jsx", "profile-icon-group-tabs"],
   ]) {

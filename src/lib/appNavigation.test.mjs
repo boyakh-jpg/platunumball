@@ -18,7 +18,7 @@ test("공유와 운영 목록은 같은 상세 경로와 안전하게 인코딩�
 });
 
 test("primary navigation has the same six destinations and labels in either shell", () => {
-  assert.deepEqual(APP_NAVIGATION_ITEMS.map((item) => RECEIPT_SHELL_COPY.ko[item.labelKey]), ["홈", "일정", "매칭", "플레이", "게시판", "관리"]);
+  assert.deepEqual(APP_NAVIGATION_ITEMS.map((item) => RECEIPT_SHELL_COPY.ko[item.labelKey]), ["홈", "일정", "매칭", "기록", "게시판", "내 정보"]);
   assert.equal(new Set(APP_NAVIGATION_ITEMS.map((item) => item.to)).size, 6);
   for (const item of APP_NAVIGATION_ITEMS) {
     assert.ok(RECEIPT_SHELL_COPY.en[item.labelKey]);
